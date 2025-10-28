@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { BillOfMaterials, InventoryItem, HistoricalSale, Vendor } from '../types';
+// FIX: Add AiConfig to imports
+import type { BillOfMaterials, InventoryItem, HistoricalSale, Vendor, AiConfig } from '../types';
 import { generateForecast } from '../services/forecastingService';
 import type { Forecast } from '../services/forecastingService';
 import { calculateAllBuildability } from '../services/buildabilityService';
@@ -13,6 +14,8 @@ interface PlanningForecastProps {
   vendors: Vendor[];
   onCreatePo: (vendorId: string, items: { sku: string; name: string; quantity: number }[]) => void;
   onCreateBuildOrder: (sku: string, name: string, quantity: number) => void;
+  // FIX: Add aiConfig to props to provide model and prompt info
+  aiConfig: AiConfig;
 }
 
 // Chart component placeholder
@@ -49,7 +52,7 @@ interface SuggestedAction {
     vendorId?: string;
 }
 
-const PlanningForecast: React.FC<PlanningForecastProps> = ({ boms, inventory, historicalSales, vendors, onCreatePo, onCreateBuildOrder }) => {
+const PlanningForecast: React.FC<PlanningForecastProps> = ({ boms, inventory, historicalSales, vendors, onCreatePo, onCreateBuildOrder, aiConfig }) => {
   const [selectedProduct, setSelectedProduct] = useState('PROD-B');
   const [aiInsight, setAiInsight] = useState('Generating insight...');
   const [isLoadingInsight, setIsLoadingInsight] = useState(true);
@@ -73,16 +76,20 @@ const PlanningForecast: React.FC<PlanningForecastProps> = ({ boms, inventory, hi
       setIsLoadingInsight(true);
       try {
         const fullForecast = finishedGoods.flatMap(fg => generateForecast(fg.sku, historicalSales, 90));
-        const insight = await getAiPlanningInsight(inventory, boms, fullForecast);
+        // FIX: Pass the model and prompt template to the AI service function.
+        const promptTemplate = aiConfig.prompts.find(p => p.id === 'getAiPlanningInsight');
+        if (!promptTemplate) throw new Error("Planning insight prompt not found.");
+        const insight = await getAiPlanningInsight(aiConfig.model, promptTemplate.prompt, inventory, boms, fullForecast);
         setAiInsight(insight);
       } catch (e) {
+        console.error(e);
         setAiInsight("Could not generate AI insight at this time.");
       } finally {
         setIsLoadingInsight(false);
       }
     };
     fetchInsight();
-  }, [inventory, boms, historicalSales, finishedGoods]);
+  }, [inventory, boms, historicalSales, finishedGoods, aiConfig]);
   
   const { projectedInventory, suggestedActions } = useMemo(() => {
     const grossRequirements: Map<string, { date: string, quantity: number }[]> = new Map();

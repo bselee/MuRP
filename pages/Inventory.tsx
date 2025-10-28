@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { InventoryItem, BillOfMaterials } from '../types';
-import { SearchIcon } from '../components/icons';
+import { SearchIcon, ChevronUpIcon, ChevronDownIcon } from '../components/icons';
 
 interface InventoryProps {
     inventory: InventoryItem[];
@@ -8,8 +8,46 @@ interface InventoryProps {
     boms: BillOfMaterials[];
 }
 
+type SortKeys = keyof InventoryItem | 'status';
+
+const getStockStatus = (item: InventoryItem): 'In Stock' | 'Low Stock' | 'Out of Stock' => {
+    if (item.stock <= 0) return 'Out of Stock';
+    if (item.stock < item.reorderPoint) return 'Low Stock';
+    return 'In Stock';
+};
+
+const SortableHeader: React.FC<{
+    title: string;
+    sortKey: SortKeys;
+    sortConfig: { key: SortKeys; direction: 'ascending' | 'descending' } | null;
+    requestSort: (key: SortKeys) => void;
+}> = ({ title, sortKey, sortConfig, requestSort }) => {
+    const isSorted = sortConfig?.key === sortKey;
+    const direction = isSorted ? sortConfig?.direction : undefined;
+
+    return (
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+            <button className="flex items-center gap-2 group" onClick={() => requestSort(sortKey)}>
+                {title}
+                <span className={`transition-opacity ${isSorted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                    {isSorted ? (
+                        direction === 'ascending' ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />
+                    ) : (
+                        <ChevronDownIcon className="w-4 h-4 text-gray-500" />
+                    )}
+                </span>
+            </button>
+        </th>
+    );
+};
+
+
 const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [filters, setFilters] = useState({ category: '', status: '', vendor: '' });
+    const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
+    const [suggestions, setSuggestions] = useState<InventoryItem[]>([]);
+    const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
 
     const bomSkuSet = useMemo(() => {
         const skus = new Set<string>();
@@ -18,24 +56,90 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => 
         });
         return skus;
     }, [boms]);
-    
-    const filteredInventory = useMemo(() =>
-        inventory.filter(item =>
-            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.sku.toLowerCase().includes(searchTerm.toLowerCase())
-        ),
-        [inventory, searchTerm]
-    );
+
+    const filterOptions = useMemo(() => {
+        const categories = [...new Set(inventory.map(item => item.category))].sort();
+        const vendors = [...new Set(inventory.map(item => item.vendorId).filter(id => id && id !== 'N/A'))];
+        const statuses = ['In Stock', 'Low Stock', 'Out of Stock'];
+        return { categories, vendors, statuses };
+    }, [inventory]);
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setSearchTerm(value);
+        if (value.length > 1) {
+            const newSuggestions = inventory.filter(item =>
+                item.name.toLowerCase().includes(value.toLowerCase()) ||
+                item.sku.toLowerCase().includes(value.toLowerCase())
+            ).slice(0, 5);
+            setSuggestions(newSuggestions);
+            setIsSuggestionsVisible(true);
+        } else {
+            setSuggestions([]);
+            setIsSuggestionsVisible(false);
+        }
+    };
+
+    const handleSuggestionClick = (item: InventoryItem) => {
+        setSearchTerm(item.name);
+        setIsSuggestionsVisible(false);
+    };
+
+    const handleFilterChange = (filterType: keyof typeof filters, value: string) => {
+        setFilters(prev => ({ ...prev, [filterType]: value }));
+    };
+
+    const requestSort = (key: SortKeys) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const processedInventory = useMemo(() => {
+        let filteredItems = [...inventory];
+
+        if (filters.category) {
+            filteredItems = filteredItems.filter(item => item.category === filters.category);
+        }
+        if (filters.status) {
+            filteredItems = filteredItems.filter(item => getStockStatus(item) === filters.status);
+        }
+        if (filters.vendor) {
+            filteredItems = filteredItems.filter(item => item.vendorId === filters.vendor);
+        }
+
+        if (searchTerm) {
+             filteredItems = filteredItems.filter(item =>
+                item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.sku.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+
+        if (sortConfig !== null) {
+            filteredItems.sort((a, b) => {
+                const aVal = sortConfig.key === 'status' ? getStockStatus(a) : a[sortConfig.key as keyof InventoryItem];
+                const bVal = sortConfig.key === 'status' ? getStockStatus(b) : b[sortConfig.key as keyof InventoryItem];
+
+                if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
+                return 0;
+            });
+        }
+        return filteredItems;
+    }, [inventory, filters, searchTerm, sortConfig]);
 
     const StockIndicator: React.FC<{ item: InventoryItem }> = ({ item }) => {
         const percentage = Math.max(0, (item.stock / (item.reorderPoint * 1.5)) * 100);
         let bgColor = 'bg-green-500';
-        if (item.stock < item.reorderPoint) bgColor = 'bg-red-500';
+        if (item.stock <= 0) bgColor = 'bg-red-500/50';
+        else if (item.stock < item.reorderPoint) bgColor = 'bg-red-500';
         else if (item.stock < item.reorderPoint * 1.2) bgColor = 'bg-yellow-500';
 
         return (
             <div className="w-full bg-gray-600 rounded-full h-2.5">
-                <div className={bgColor + " h-2.5 rounded-full"} style={{ width: `${percentage > 100 ? 100 : percentage}%` }}></div>
+                <div className={`${bgColor} h-2.5 rounded-full`} style={{ width: `${Math.min(100, percentage)}%` }}></div>
             </div>
         );
     };
@@ -48,22 +152,56 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => 
             </header>
             
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 p-4">
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                     <div className="relative w-full sm:max-w-xs">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <SearchIcon className="h-5 w-5 text-gray-400" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <div className="relative lg:col-span-1">
+                        <label htmlFor="search-inventory" className="block text-sm font-medium text-gray-300 mb-1">Search by name or SKU</label>
+                        <div className="relative">
+                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <SearchIcon className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <input
+                                id="search-inventory"
+                                type="text"
+                                placeholder="Worm Castings..."
+                                value={searchTerm}
+                                onChange={handleSearchChange}
+                                onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 200)}
+                                onFocus={handleSearchChange}
+                                autoComplete="off"
+                                className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                            />
+                             {isSuggestionsVisible && suggestions.length > 0 && (
+                                <ul className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-auto shadow-lg">
+                                    {suggestions.map(item => (
+                                        <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className="p-2 text-sm text-white hover:bg-indigo-600 cursor-pointer">
+                                            {item.name} <span className="text-gray-400">({item.sku})</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
-                        <input
-                            type="text"
-                            placeholder="Search by name or SKU..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
-                        />
                     </div>
-                    <button className="w-full sm:w-auto bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
-                        Add New Item
-                    </button>
+                    <div>
+                        <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-1">Category</label>
+                        <select id="filter-category" value={filters.category} onChange={(e) => handleFilterChange('category', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                            <option value="">All Categories</option>
+                            {filterOptions.categories.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-1">Stock Status</label>
+                        <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                            <option value="">All Statuses</option>
+                            {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label htmlFor="filter-vendor" className="block text-sm font-medium text-gray-300 mb-1">Vendor</label>
+                        <select id="filter-vendor" value={filters.vendor} onChange={(e) => handleFilterChange('vendor', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                            <option value="">All Vendors</option>
+                            {filterOptions.vendors.map(vId => <option key={vId} value={vId}>{vendorMap.get(vId) || vId}</option>)}
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -72,17 +210,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => 
                     <table className="min-w-full divide-y divide-gray-700">
                         <thead className="bg-gray-800">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Item</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Category</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Stock Level</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">On Order</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Reorder Point</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">MOQ</th>
+                                <SortableHeader title="Item" sortKey="name" sortConfig={sortConfig} requestSort={requestSort} />
+                                <SortableHeader title="Category" sortKey="category" sortConfig={sortConfig} requestSort={requestSort} />
+                                <SortableHeader title="Stock Level" sortKey="stock" sortConfig={sortConfig} requestSort={requestSort} />
+                                <SortableHeader title="On Order" sortKey="onOrder" sortConfig={sortConfig} requestSort={requestSort} />
+                                <SortableHeader title="Reorder Point" sortKey="reorderPoint" sortConfig={sortConfig} requestSort={requestSort} />
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor</th>
                             </tr>
                         </thead>
                         <tbody className="bg-gray-800 divide-y divide-gray-700">
-                            {filteredInventory.map((item) => (
+                            {processedInventory.map((item) => (
                                 <tr key={item.sku} className="hover:bg-gray-700/50 transition-colors duration-200">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
@@ -102,7 +239,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => 
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.onOrder}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.reorderPoint}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.moq || 'N/A'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{vendorMap.get(item.vendorId) || 'N/A'}</td>
                                 </tr>
                             ))}

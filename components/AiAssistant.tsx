@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { askAboutInventory } from '../services/geminiService';
-import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder } from '../types';
+import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, AiConfig } from '../types';
 import { BotIcon, CloseIcon, SendIcon } from './icons';
 
 interface AiAssistantProps {
@@ -10,6 +10,7 @@ interface AiAssistantProps {
   inventory: InventoryItem[];
   vendors: Vendor[];
   purchaseOrders: PurchaseOrder[];
+  aiConfig: AiConfig;
 }
 
 type Message = {
@@ -17,7 +18,7 @@ type Message = {
   text: string;
 };
 
-const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, boms, inventory, vendors, purchaseOrders }) => {
+const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, boms, inventory, vendors, purchaseOrders, aiConfig }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -44,10 +45,15 @@ const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, boms, invent
     setIsLoading(true);
 
     try {
-      const response = await askAboutInventory(input, boms, inventory, vendors, purchaseOrders);
+      const promptTemplate = aiConfig.prompts.find(p => p.id === 'askAboutInventory');
+      if (!promptTemplate) {
+        throw new Error("Inventory assistant prompt not found.");
+      }
+      const response = await askAboutInventory(aiConfig.model, promptTemplate.prompt, input, boms, inventory, vendors, purchaseOrders);
       const botMessage: Message = { sender: 'bot', text: response };
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
+      console.error(error);
       const errorMessage: Message = { sender: 'bot', text: 'Sorry, I encountered an error. Please try again.' };
       setMessages(prev => [...prev, errorMessage]);
     } finally {

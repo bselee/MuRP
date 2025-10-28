@@ -1,94 +1,154 @@
+
+
 import { GoogleGenAI } from "@google/genai";
-import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder } from '../types';
+import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, BOMComponent, WatchlistItem } from '../types';
 import type { Forecast } from './forecastingService';
 
-
-// The API key is injected from the environment and does not need to be managed in the UI.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
+async function callGemini(model: string, prompt: string, isJson = false) {
+    try {
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: prompt,
+        });
+
+        // FIX: Directly access the .text property as per Gemini API guidelines.
+        if (!response.text) {
+            return "I'm sorry, I couldn't generate a response. Please try again.";
+        }
+        return response.text;
+    } catch (error) {
+        console.error("Error calling Gemini API:", error);
+        if (error instanceof Error) {
+            return `An error occurred: ${error.message}. Make sure your API key is configured correctly.`;
+        }
+        return "An unknown error occurred while contacting the AI assistant.";
+    }
+}
+
 export async function askAboutInventory(
+  model: string,
+  promptTemplate: string,
   question: string,
   boms: BillOfMaterials[],
   inventory: InventoryItem[],
   vendors: Vendor[],
   purchaseOrders: PurchaseOrder[]
 ): Promise<string> {
-  const model = 'gemini-2.5-flash';
-
-  const context = `
-    You are an expert inventory management AI assistant for a company that sells organic soil and amendments.
-    Analyze the following data to answer the user's question.
-    Provide clear, concise answers. You can use markdown for formatting if needed.
-
-    INVENTORY DATA (Current Stock Levels, On Order, Reorder Points):
-    ${JSON.stringify(inventory, null, 2)}
-
-    BILLS OF MATERIALS (BOMs) DATA (Recipes for finished products):
-    ${JSON.stringify(boms, null, 2)}
-
-    VENDORS DATA:
-    ${JSON.stringify(vendors, null, 2)}
-
-    PURCHASE ORDERS DATA:
-    ${JSON.stringify(purchaseOrders, null, 2)}
-  `;
-
-  const prompt = `${context}\n\nUSER QUESTION: ${question}`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: prompt,
-    });
+  const finalPrompt = promptTemplate
+    .replace('{{question}}', question)
+    .replace('{{boms}}', JSON.stringify(boms, null, 2))
+    .replace('{{inventory}}', JSON.stringify(inventory, null, 2))
+    .replace('{{vendors}}', JSON.stringify(vendors, null, 2))
+    .replace('{{purchaseOrders}}', JSON.stringify(purchaseOrders, null, 2));
     
-    if (!response.text) {
-        return "I'm sorry, I couldn't generate a response. Please try again.";
-    }
-
-    return response.text;
-  } catch (error) {
-    console.error("Error calling Gemini API:", error);
-    if (error instanceof Error) {
-        return `An error occurred: ${error.message}. Make sure your API key is configured correctly.`;
-    }
-    return "An unknown error occurred while contacting the AI assistant.";
-  }
+  return callGemini(model, finalPrompt);
 }
 
 export async function getAiPlanningInsight(
+  model: string,
+  promptTemplate: string,
   inventory: InventoryItem[],
   boms: BillOfMaterials[],
   forecast: Forecast[]
 ): Promise<string> {
-    const model = 'gemini-2.5-flash';
+    const finalPrompt = promptTemplate
+        .replace('{{inventory}}', JSON.stringify(inventory, null, 2))
+        .replace('{{boms}}', JSON.stringify(boms, null, 2))
+        .replace('{{forecast}}', JSON.stringify(forecast, null, 2));
 
-    const context = `
-        You are a senior supply chain analyst AI. Your task is to analyze the provided inventory data, bills of materials, and sales forecast to identify the single most critical upcoming risk to the supply chain.
-        
-        Provide a concise, one-sentence summary of the risk, followed by a one-sentence recommended action. Be specific about the item and the timeline.
+    return callGemini(model, finalPrompt);
+}
 
-        Example:
-        "Forecasted demand for Organic Super Soil will deplete your Worm Castings inventory in approximately 22 days, halting production.
-        ACTION: Immediately create a purchase order for at least 250 units of Worm Castings (COMP-001) to prevent a stockout."
-
-        CURRENT INVENTORY:
-        ${JSON.stringify(inventory, null, 2)}
-
-        BILLS OF MATERIALS:
-        ${JSON.stringify(boms, null, 2)}
-
-        DEMAND FORECAST (next 90 days, daily):
-        ${JSON.stringify(forecast, null, 2)}
-    `;
+export async function getRegulatoryAdvice(
+    model: string,
+    promptTemplate: string,
+    productName: string,
+    ingredients: BOMComponent[],
+    state: string,
+    watchlist: WatchlistItem[]
+): Promise<string> {
+    const ingredientList = ingredients.map(c => c.name).join(', ');
+    const finalPrompt = promptTemplate
+        .replace('{{productName}}', productName)
+        .replace('{{state}}', state)
+        .replace('{{ingredientList}}', ingredientList)
+        .replace('{{watchlist}}', JSON.stringify(watchlist, null, 2));
 
     try {
         const response = await ai.models.generateContent({
-            model: model,
-            contents: context,
+            model,
+            contents: finalPrompt,
+            config: {
+                tools: [{ googleSearch: {} }],
+            },
         });
-        return response.text ?? "Could not generate an insight at this time.";
+        // FIX: Directly access the .text property as per Gemini API guidelines.
+        return response.text ?? "Could not generate regulatory advice at this time.";
     } catch (error) {
-        console.error("Error generating AI planning insight:", error);
-        return "Error analyzing data. Please check API configuration.";
+        console.error("Error calling Gemini API for regulatory advice:", error);
+        return "An error occurred while fetching regulatory information. Please try again.";
+    }
+}
+
+export async function draftComplianceLetter(
+    model: string,
+    promptTemplate: string,
+    productName: string,
+    ingredients: BOMComponent[],
+    state: string,
+    complianceAnalysis: string
+): Promise<string> {
+    const ingredientList = ingredients.map(c => `- ${c.name} (${c.sku})`).join('\n');
+    const finalPrompt = promptTemplate
+        .replace('{{state}}', state)
+        .replace('{{productName}}', productName)
+        .replace('{{ingredientList}}', ingredientList)
+        .replace('{{complianceAnalysis}}', complianceAnalysis);
+
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: finalPrompt,
+            config: {
+                tools: [{ googleSearch: {} }],
+            },
+        });
+        // FIX: Directly access the .text property as per Gemini API guidelines.
+        return response.text ?? "Could not generate the draft letter at this time.";
+    } catch (error) {
+        console.error("Error calling Gemini API for letter drafting:", error);
+        return "An error occurred while drafting the compliance letter. Please try again.";
+    }
+}
+
+export async function verifyArtworkLabel(
+    model: string, // Expects a multimodal model like 'gemini-2.5-flash-image'
+    promptTemplate: string,
+    artworkImageBase64: string,
+    expectedBarcode: string
+): Promise<string> {
+    const finalPrompt = promptTemplate.replace('{{expectedBarcode}}', expectedBarcode);
+    
+    try {
+        const imagePart = {
+            inlineData: {
+                mimeType: 'image/png',
+                data: artworkImageBase64,
+            },
+        };
+        const textPart = { text: finalPrompt };
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image', // Hardcode to a known multimodal model for this specific task
+            contents: { parts: [imagePart, textPart] },
+        });
+
+        // FIX: Directly access the .text property as per Gemini API guidelines.
+        return response.text ?? "Could not analyze the artwork image.";
+    } catch (error) {
+        console.error("Error calling Gemini API for artwork verification:", error);
+        return "An error occurred during image analysis. Please try again.";
     }
 }

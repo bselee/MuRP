@@ -1,7 +1,29 @@
+
 export interface BOMComponent {
   sku: string;
   quantity: number;
   name: string;
+}
+
+export interface Artwork {
+  id: string;
+  fileName: string;
+  revision: number;
+  url: string; // Mock URL to the file
+  regulatoryDocLink?: string;
+  barcode?: string;
+  folderId?: string;
+}
+
+export interface ArtworkFolder {
+    id: string;
+    name: string;
+}
+
+export interface Packaging {
+  bagType: string;
+  labelType: string;
+  specialInstructions: string;
 }
 
 export interface BillOfMaterials {
@@ -9,6 +31,9 @@ export interface BillOfMaterials {
   finishedSku: string;
   name: string;
   components: BOMComponent[];
+  artwork: Artwork[];
+  packaging: Packaging;
+  barcode?: string;
 }
 
 export interface InventoryItem {
@@ -25,7 +50,10 @@ export interface InventoryItem {
 export interface Vendor {
     id: string;
     name: string;
-    contactEmail: string;
+    contactEmails: string[];
+    phone: string;
+    address: string;
+    website: string;
     leadTimeDays: number;
 }
 
@@ -42,6 +70,9 @@ export interface PurchaseOrder {
     status: 'Pending' | 'Submitted' | 'Fulfilled';
     createdAt: string;
     items: PurchaseOrderItem[];
+    expectedDate?: string;
+    notes?: string;
+    requisitionIds?: string[];
 }
 
 export interface HistoricalSale {
@@ -59,11 +90,112 @@ export interface BuildOrder {
     createdAt: string;
 }
 
+export interface User {
+    id: string;
+    name: string;
+    email: string;
+    role: 'Admin' | 'Manager' | 'Staff';
+    department: 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV';
+}
+
+export interface RequisitionItem {
+    sku: string;
+    name: string;
+    quantity: number;
+    reason: string;
+}
+
+export interface InternalRequisition {
+    id: string;
+    requesterId: string;
+    department: User['department'];
+    createdAt: string;
+    status: 'Pending' | 'Approved' | 'Rejected' | 'Ordered';
+    items: RequisitionItem[];
+}
+
+export interface ExternalConnection {
+  id: string;
+  name: string;
+  apiUrl: string;
+  apiKey: string;
+}
+
+export interface GmailConnection {
+  isConnected: boolean;
+  email: string | null;
+}
+
+export interface WatchlistItem {
+    id: string;
+    type: 'Ingredient' | 'Claim' | 'Testing';
+    term: string; 
+    reason: string;
+}
+
+export interface AiPrompt {
+    id: string;
+    name: string;
+    description: string;
+    prompt: string;
+}
+
+export interface AiConfig {
+    model: string;
+    prompts: AiPrompt[];
+}
+
+
+export const mockWatchlist: WatchlistItem[] = [
+    { id: 'watch-1', type: 'Ingredient', term: 'Neem Seed Meal', reason: 'Potential pesticide registration requirements in some states.' },
+    { id: 'watch-2', type: 'Ingredient', term: 'Kelp Meal', reason: 'Often requires guaranteed analysis for certain minerals.' },
+    { id: 'watch-3', type: 'Claim', term: 'Organic', reason: 'Use of "Organic" term is highly regulated and requires certification.' },
+    { id: 'watch-4', type: 'Testing', term: 'Heavy Metals', reason: 'Products sold in CA, OR, WA require heavy metals analysis.' },
+];
+
+export const mockArtworkFolders: ArtworkFolder[] = [
+    { id: 'folder-1', name: 'Soil Products' },
+    { id: 'folder-2', name: 'Amendments' },
+    { id: 'folder-3', name: 'Archived Designs' },
+];
+
+export const mockUsers: User[] = [
+    { id: 'user-admin', name: 'Alicia Admin', email: 'alicia.admin@goodestfungus.com', role: 'Admin', department: 'Purchasing' },
+    { id: 'user-manager-mfg1', name: 'Brenda Prod', email: 'brenda.prod@goodestfungus.com', role: 'Manager', department: 'MFG 1' },
+    { id: 'user-manager-mfg2', name: 'Charles Fab', email: 'charles.fab@goodestfungus.com', role: 'Manager', department: 'MFG 2' },
+    { id: 'user-staff-mfg1', name: 'Steve Worker', email: 'steve.worker@goodestfungus.com', role: 'Staff', department: 'MFG 1' },
+    { id: 'user-staff-shp', name: 'Diana Ship', email: 'diana.ship@goodestfungus.com', role: 'Staff', department: 'SHP/RCV' },
+    { id: 'user-staff-ful', name: 'Edward Pack', email: 'edward.pack@goodestfungus.com', role: 'Staff', department: 'Fulfillment' },
+];
 
 export const mockVendors: Vendor[] = [
-    { id: 'VEND-001', name: 'Soil Solutions Inc.', contactEmail: 'sales@soilsolutions.com', leadTimeDays: 14 },
-    { id: 'VEND-002', name: 'Garden Supplies Co.', contactEmail: 'orders@gardensupplies.co', leadTimeDays: 7 },
-    { id: 'VEND-003', name: 'Eco Packaging', contactEmail: 'contact@ecopackaging.com', leadTimeDays: 21 },
+    { 
+        id: 'VEND-001', 
+        name: 'Soil Solutions Inc.', 
+        contactEmails: ['sales@soilsolutions.com', 'support@soilsolutions.com'], 
+        phone: '1-800-555-0101',
+        address: '123 Green Way, Soilsville, CA 90210',
+        website: 'https://www.soilsolutions.com',
+        leadTimeDays: 14 
+    },
+    { 
+        id: 'VEND-002', 
+        name: 'Garden Supplies Co.', 
+        contactEmails: ['orders@gardensupplies.co'], 
+        phone: '1-888-555-0102',
+        address: '456 Bloom Ave, Gardenton, TX 75001',
+        website: 'https://www.gardensupplies.co',
+        leadTimeDays: 7 
+    },
+    { 
+        id: 'VEND-003', 
+        name: 'Eco Packaging', 
+        contactEmails: ['contact@ecopackaging.com', 'billing@ecopackaging.com'], 
+        phone: '1-877-555-0103',
+        address: '789 Recycle Rd, Packburg, FL 33101',
+        website: 'https://www.ecopackaging.com',
+        leadTimeDays: 21 
+    },
 ];
 
 export const mockInventory: InventoryItem[] = [
@@ -91,22 +223,41 @@ export const mockBOMs: BillOfMaterials[] = [
     id: "bom_110105",
     finishedSku: "PROD-A",
     name: "Premium Potting Mix (1 cu ft)",
+    barcode: "850012345011",
     components: [
       { sku: "COMP-001", name: "Worm Castings (1 lb)", quantity: 5 },
       { sku: "COMP-002", name: "Pumice (1/8 inch)", quantity: 2 },
       { sku: "COMP-003", name: "Coconut Coir Brick", quantity: 1 },
       { sku: "BAG-SML", name: "Small Burlap Bag (1 cu ft)", quantity: 1 },
     ],
+    artwork: [
+      { id: "art-001", fileName: "premium-potting-mix-label-5x6.ai", revision: 3, url: "/art/premium-label-v3.pdf", regulatoryDocLink: "https://example.com/docs/reg/prod-a", barcode: "850012345011", folderId: "folder-1" }
+    ],
+    packaging: {
+      bagType: "Printed Burlap Sack",
+      labelType: "Front Sticker, 5x6 inch",
+      specialInstructions: "Ensure bag is heat-sealed and batch code is stamped on bottom right corner."
+    }
   },
   {
     id: "bom_110106",
     finishedSku: "PROD-B",
     name: "Organic Super Soil (2 cu ft)",
+    barcode: "850012345028",
     components: [
       { sku: "COMP-001", name: "Worm Castings (1 lb)", quantity: 10 },
       { sku: "SUB-A", name: "Seed Starter Kit", quantity: 1 }, // Using a sub-assembly
       { sku: "BAG-MED", name: "Medium Burlap Bag (2 cu ft)", quantity: 1 },
     ],
+    artwork: [
+        { id: "art-002a", fileName: "super-soil-front-6x5.5.png", revision: 1, url: "/art/super-soil-front-v1.pdf", folderId: "folder-1" },
+        { id: "art-002b", fileName: "super-soil-back-6x5.5.png", revision: 2, url: "/art/super-soil-back-v2.pdf", folderId: "folder-1" }
+    ],
+    packaging: {
+        bagType: "Heavy-duty poly bag",
+        labelType: "Front and Back Stickers, 6x5.5 inch",
+        specialInstructions: "Attach 'Organic Certified' tag to the top seam."
+    }
   },
   {
     id: "bom_110107",
@@ -118,17 +269,32 @@ export const mockBOMs: BillOfMaterials[] = [
       { sku: "COMP-003", name: "Coconut Coir Brick", quantity: 2 },
       { sku: "BAG-LRG", name: "Large Burlap Bag (4 cu ft)", quantity: 1 },
     ],
+    artwork: [],
+    packaging: {
+        bagType: "Unprinted Burlap Sack",
+        labelType: "Stapled Cardstock Tag",
+        specialInstructions: "Use jute twine for the tie. Double-knot."
+    }
   },
   {
     id: "bom_110108",
     finishedSku: "PROD-D",
     name: "Seed Starting Mix (1 cu ft)",
+    barcode: "850012345042",
     components: [
       { sku: "COMP-003", name: "Coconut Coir Brick", quantity: 3 },
       { sku: "COMP-002", name: "Pumice (1/8 inch)", quantity: 5 },
       { sku: "COMP-004", name: "Kelp Meal (1 lb)", quantity: 1 },
       { sku: "BAG-SML", name: "Small Burlap Bag (1 cu ft)", quantity: 1 },
     ],
+    artwork: [
+        { id: "art-004", fileName: "seed-start-label-5x6.svg", revision: 5, url: "/art/seed-start-v5.pdf", regulatoryDocLink: "https://example.com/docs/reg/prod-d", folderId: "folder-2" }
+    ],
+    packaging: {
+        bagType: "Printed Burlap Sack",
+        labelType: "Front Sticker, 5x6 inch",
+        specialInstructions: "None."
+    }
   },
   {
     id: "bom_sub_a",
@@ -137,7 +303,15 @@ export const mockBOMs: BillOfMaterials[] = [
     components: [
         { sku: "COMP-005", name: "Neem Seed Meal (1 lb)", quantity: 2 },
         { sku: "COMP-007", name: "Mycorrhizal Fungi Inoculant", quantity: 1 },
-    ]
+    ],
+    artwork: [
+         { id: "art-005", fileName: "starter-kit-sticker.ai", revision: 1, url: "/art/starter-kit-sticker-v1.pdf", folderId: "folder-2" }
+    ],
+    packaging: {
+        bagType: "Small plastic ziplock",
+        labelType: "Small instructional sticker",
+        specialInstructions: "Pack inside a small cardboard box before shipping."
+    }
   }
 ];
 
@@ -150,7 +324,9 @@ export const mockPurchaseOrders: PurchaseOrder[] = [
         items: [
             { sku: 'COMP-001', name: 'Worm Castings (1 lb)', quantity: 200, price: 5.50 },
             { sku: 'COMP-003', name: 'Coconut Coir Brick', quantity: 100, price: 2.75 },
-        ]
+        ],
+        expectedDate: '2024-07-29',
+        notes: 'Standard delivery.'
     },
     {
         id: 'PO-2024-002',
@@ -160,7 +336,9 @@ export const mockPurchaseOrders: PurchaseOrder[] = [
         items: [
             { sku: 'BAG-SML', name: 'Small Burlap Bag (1 cu ft)', quantity: 500, price: 0.50 },
             { sku: 'BAG-LRG', name: 'Large Burlap Bag (4 cu ft)', quantity: 100, price: 1.25 },
-        ]
+        ],
+        expectedDate: '2024-08-22',
+        notes: 'Please palletize bags by size.'
     },
     {
         id: 'PO-2024-003',
@@ -193,8 +371,51 @@ export const mockBuildOrders: BuildOrder[] = [
     }
 ];
 
+export const mockInternalRequisitions: InternalRequisition[] = [
+    {
+        id: 'REQ-2024-001',
+        requesterId: 'user-staff-mfg1', 
+        department: 'MFG 1',
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), 
+        status: 'Approved',
+        items: [
+            { sku: 'COMP-001', name: 'Worm Castings (1 lb)', quantity: 50, reason: 'Low on production line' },
+            { sku: 'BAG-SML', name: 'Small Burlap Bag (1 cu ft)', quantity: 100, reason: 'Stock running out for PROD-A run' }
+        ]
+    },
+    {
+        id: 'REQ-2024-002',
+        requesterId: 'user-manager-mfg2',
+        department: 'MFG 2',
+        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'Pending',
+        items: [
+            { sku: 'COMP-006', name: 'Biochar (1 gallon)', quantity: 20, reason: 'Scheduled build for PROD-C' },
+        ]
+    },
+     {
+        id: 'REQ-2024-003',
+        requesterId: 'user-staff-shp',
+        department: 'SHP/RCV',
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'Rejected',
+        items: [
+            { sku: 'BAG-LRG', name: 'Large Burlap Bag (4 cu ft)', quantity: 200, reason: 'Emergency stock request' },
+        ]
+    },
+     {
+        id: 'REQ-2024-004',
+        requesterId: 'user-staff-mfg1',
+        department: 'MFG 1',
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'Ordered',
+        items: [
+            { sku: 'COMP-003', name: 'Coconut Coir Brick', quantity: 50, reason: 'Restocking safety levels' },
+        ]
+    }
+];
 
-// Generate mock historical sales data for the last 90 days
+
 const generateHistoricalSales = (): HistoricalSale[] => {
     const sales: HistoricalSale[] = [];
     const skus = ["PROD-A", "PROD-B", "PROD-C", "PROD-D"];
@@ -204,17 +425,144 @@ const generateHistoricalSales = (): HistoricalSale[] => {
         date.setDate(today.getDate() - i);
         const dateString = date.toISOString().split('T')[0];
 
-        // Simulate more sales for popular products
-        if (Math.random() > 0.3) { // 70% chance of sale for PROD-A
+        if (Math.random() > 0.3) {
             sales.push({ sku: 'PROD-A', date: dateString, quantity: Math.floor(Math.random() * 5) + 1 });
         }
-        if (Math.random() > 0.4) { // 60% chance of sale for PROD-B
+        if (Math.random() > 0.4) {
              sales.push({ sku: 'PROD-B', date: dateString, quantity: Math.floor(Math.random() * 8) + 2 });
         }
-        if (Math.random() > 0.8) { // 20% chance of sale for PROD-C
+        if (Math.random() > 0.8) {
              sales.push({ sku: 'PROD-C', date: dateString, quantity: Math.floor(Math.random() * 2) + 1 });
         }
     }
     return sales;
 };
 export const mockHistoricalSales: HistoricalSale[] = generateHistoricalSales();
+
+export const defaultAiConfig: AiConfig = {
+    model: 'gemini-2.5-flash',
+    prompts: [
+        {
+            id: 'askAboutInventory',
+            name: 'Inventory Assistant',
+            description: 'Main prompt for the AI chat assistant that answers questions about inventory, POs, vendors, and BOMs.',
+            prompt: `You are an expert inventory management AI assistant for a company that sells organic soil and amendments.
+Analyze the following data to answer the user's question.
+Provide clear, concise answers. You can use markdown for formatting if needed.
+
+INVENTORY DATA (Current Stock Levels, On Order, Reorder Points):
+{{inventory}}
+
+BILLS OF MATERIALS (BOMs) DATA (Recipes for finished products):
+{{boms}}
+
+VENDORS DATA:
+{{vendors}}
+
+PURCHASE ORDERS DATA:
+{{purchaseOrders}}
+
+USER QUESTION: {{question}}`
+        },
+        {
+            id: 'getAiPlanningInsight',
+            name: 'Planning Insight',
+            description: 'Analyzes forecast and inventory to identify the most critical upcoming supply chain risk.',
+            prompt: `You are a senior supply chain analyst AI. Your task is to analyze the provided inventory data, bills of materials, and sales forecast to identify the single most critical upcoming risk to the supply chain.
+        
+Provide a concise, one-sentence summary of the risk, followed by a one-sentence recommended action. Be specific about the item and the timeline.
+
+Example:
+"Forecasted demand for Organic Super Soil will deplete your Worm Castings inventory in approximately 22 days, halting production.
+ACTION: Immediately create a purchase order for at least 250 units of Worm Castings (COMP-001) to prevent a stockout."
+
+CURRENT INVENTORY:
+{{inventory}}
+
+BILLS OF MATERIALS:
+{{boms}}
+
+DEMAND FORECAST (next 90 days, daily):
+{{forecast}}`
+        },
+        {
+            id: 'getRegulatoryAdvice',
+            name: 'Regulatory Co-Pilot',
+            description: 'Scans state regulations for potential compliance issues based on product ingredients.',
+            prompt: `You are a highly skilled regulatory compliance co-pilot for a consumer packaged goods company. 
+Your primary goal is to identify and flag potential out-of-compliance issues for the product "{{productName}}" based on its ingredients when sold in {{state}}.
+
+**Product Ingredients:** {{ingredientList}}.
+
+**Internal Compliance Watchlist:**
+Pay special attention to these items. If any are present in the product or implied by the product name, they MUST be addressed in your analysis.
+{{watchlist}}
+        
+**Instructions:**
+1. Use your search tool to find the most current and specific regulations for the {{state}} Department of Agriculture (or equivalent) regarding the sale, labeling, and registration of soil amendments, organic fertilizers, and related gardening products.
+2. Based on your search, create a "Scanned Sources" section first. This MUST include the primary URL you are using for your analysis and any contact information (like a phone number or email) for the relevant state agency. Format it as:
+   **Scanned Sources:**
+   - Website: [URL]
+   - Contact: [Phone Number or Email]
+3. Structure the rest of your response in two sections:
+   - **Potential Issues:** A bulleted list of any ingredients or claims that may trigger specific {{state}} regulations (e.g., Prop 65 warnings, tonnage reports, specific ingredient registrations). Explicitly mention if a watchlisted item is a concern and why. Be direct.
+   - **Recommendations:** A bulleted list of actionable steps the company should take, such as "Register product with the [State] Department of Agriculture" or "Add specific warning language to the label."
+
+If you find no specific issues after a thorough search, explicitly state that "No specific compliance issues were identified for the given ingredients based on current regulations," but still provide the "Scanned Sources" section.`
+        },
+        {
+            id: 'draftComplianceLetter',
+            name: 'Compliance Letter Drafter',
+            description: 'Drafts a formal letter to a state regulatory body based on a compliance analysis.',
+            prompt: `You are a compliance professional drafting a formal letter to the {{state}} Department of Agriculture (or its equivalent regulatory body for soil/fertilizer products).
+        
+Your task is to generate a draft letter based on a product's details and our internal compliance analysis. The letter should be professional, clear, and aim to either register the product or seek clarification on compliance requirements.
+
+**Product Details:**
+- Product Name: {{productName}}
+- Ingredients:
+{{ingredientList}}
+
+**Internal Compliance Analysis Summary:**
+{{complianceAnalysis}}
+
+**Instructions for the letter:**
+1.  Use standard business letter format.
+2.  Include placeholders for company-specific information: [Company Name], [Company Address], [City, State, ZIP], [Date], and [Your Name/Title].
+3.  Address the letter to the appropriate division, such as "Feed, Fertilizer, and Livestock Drugs Regulatory Services" or similar. If you can't find a specific division via search, address it generally to the Department of Agriculture.
+4.  Clearly state the purpose of the letter (e.g., to inquire about registration, to submit a new product for registration).
+5.  Reference the product name and list its key ingredients.
+6.  Based on the provided analysis, politely ask for clarification on any potential issues (e.g., "Our analysis suggested we may need to address specific labeling for...").
+7.  Conclude by stating a desire to ensure full compliance and provide contact information.
+
+Generate the draft letter now.`
+        },
+        {
+            id: 'verifyArtworkLabel',
+            name: 'Artwork & Barcode Verifier',
+            description: 'Analyzes an image of a product label to verify the barcode and check for quality issues.',
+            prompt: `You are a quality control AI specializing in packaging and label verification. Analyze the provided image of a product label.
+
+**Expected Barcode:** {{expectedBarcode}}
+
+**Your Tasks:**
+1.  **Barcode Presence:** Determine if a barcode is clearly visible in the image.
+2.  **Barcode Reading:** If a barcode is present, attempt to read its numerical value.
+3.  **Barcode Matching:** Compare the read barcode number to the "Expected Barcode". State clearly whether they MATCH or DO NOT MATCH.
+4.  **Quality Analysis:** Provide a brief, bulleted analysis of the barcode's print quality. Check for potential scanning issues like:
+    *   **Clarity:** Is it blurry, smudged, or pixelated?
+    *   **Quiet Zones:** Are the blank spaces on either side of the barcode clear of any text or images?
+    *   **Contrast:** Is the contrast between the bars and the background sufficient?
+
+**Format your response as follows:**
+
+**Barcode Status:** [Present / Not Present]
+**Read Barcode:** [The number you read / N/A]
+**Verification:** [MATCH / MISMATCH / N/A]
+**Quality Analysis:**
+*   Clarity: [Your analysis]
+*   Quiet Zones: [Your analysis]
+*   Contrast: [Your analysis]`
+        }
+    ]
+};
