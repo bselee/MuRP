@@ -1,0 +1,5 @@
+{
+  "name": "TGF MRP",
+  "description": "An enterprise inventory management system with Next.js 14, featuring intelligent purchase order automation and Finale Inventory integration.",
+  "requestFramePermissions": []
+}
