@@ -50,6 +50,15 @@ export interface HistoricalSale {
     quantity: number;
 }
 
+export interface BuildOrder {
+    id: string;
+    finishedSku: string;
+    name: string;
+    quantity: number;
+    status: 'Pending' | 'In Progress' | 'Completed';
+    createdAt: string;
+}
+
 
 export const mockVendors: Vendor[] = [
     { id: 'VEND-001', name: 'Soil Solutions Inc.', contactEmail: 'sales@soilsolutions.com', leadTimeDays: 14 },
@@ -164,6 +173,26 @@ export const mockPurchaseOrders: PurchaseOrder[] = [
         ]
     }
 ];
+
+export const mockBuildOrders: BuildOrder[] = [
+    {
+        id: 'BO-2024-001',
+        finishedSku: 'PROD-A',
+        name: 'Premium Potting Mix (1 cu ft)',
+        quantity: 50,
+        status: 'In Progress',
+        createdAt: '2024-08-04T11:00:00Z',
+    },
+    {
+        id: 'BO-2024-002',
+        finishedSku: 'PROD-D',
+        name: 'Seed Starting Mix (1 cu ft)',
+        quantity: 30,
+        status: 'Pending',
+        createdAt: '2024-08-06T15:00:00Z',
+    }
+];
+
 
 // Generate mock historical sales data for the last 90 days
 const generateHistoricalSales = (): HistoricalSale[] => {

@@ -7,14 +7,15 @@ import Inventory from './pages/Inventory';
 import PurchaseOrders from './pages/PurchaseOrders';
 import Vendors from './pages/Vendors';
 import PlanningForecast from './pages/PlanningForecast';
+import Production from './pages/Production';
 import Settings from './pages/Settings';
 import Toast from './components/Toast';
 import { BotIcon } from './components/icons';
 // FIX: Added mockHistoricalSales to the import statement to resolve reference error.
-import { mockBOMs, mockInventory, mockVendors, mockPurchaseOrders, mockHistoricalSales } from './types';
-import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, HistoricalSale, PurchaseOrderItem } from './types';
+import { mockBOMs, mockInventory, mockVendors, mockPurchaseOrders, mockHistoricalSales, mockBuildOrders } from './types';
+import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, HistoricalSale, PurchaseOrderItem, BuildOrder } from './types';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Planning & Forecast' | 'Settings';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Planning & Forecast' | 'Production' | 'Settings';
 
 export type ToastInfo = {
   id: number;
@@ -28,6 +29,7 @@ const App: React.FC = () => {
   const [vendors] = useState<Vendor[]>(mockVendors);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(mockPurchaseOrders);
   const [historicalSales] = useState<HistoricalSale[]>(mockHistoricalSales);
+  const [buildOrders, setBuildOrders] = useState<BuildOrder[]>(mockBuildOrders);
   
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -88,6 +90,82 @@ const App: React.FC = () => {
     setCurrentPage('Purchase Orders');
   };
 
+  const handleCreateBuildOrder = (sku: string, name: string, quantity: number) => {
+    const newBuildOrder: BuildOrder = {
+      id: `BO-${new Date().getFullYear()}-${(buildOrders.length + 1).toString().padStart(3, '0')}`,
+      finishedSku: sku,
+      name,
+      quantity,
+      status: 'Pending',
+      createdAt: new Date().toISOString(),
+    };
+    setBuildOrders(prev => [newBuildOrder, ...prev]);
+    addToast(`Successfully created Build Order ${newBuildOrder.id} for ${quantity}x ${name}.`, 'success');
+    setCurrentPage('Production');
+  };
+
+  const handleCompleteBuildOrder = (buildOrderId: string) => {
+    let completedOrder: BuildOrder | undefined;
+    
+    // Update build order status
+    setBuildOrders(prevOrders => {
+      const newOrders = [...prevOrders];
+      const orderIndex = newOrders.findIndex(bo => bo.id === buildOrderId);
+      if (orderIndex !== -1 && newOrders[orderIndex].status !== 'Completed') {
+        completedOrder = { ...newOrders[orderIndex], status: 'Completed' };
+        newOrders[orderIndex] = completedOrder;
+      }
+      return newOrders;
+    });
+
+    if (completedOrder) {
+      const bom = boms.find(b => b.finishedSku === completedOrder!.finishedSku);
+      if (!bom) {
+        addToast(`Could not complete ${completedOrder.id}: BOM not found.`, 'error');
+        return;
+      }
+
+      // Update inventory levels
+      setInventory(prevInventory => {
+        const newInventory = [...prevInventory];
+        
+        // Decrement components
+        bom.components.forEach(component => {
+          const itemIndex = newInventory.findIndex(invItem => invItem.sku === component.sku);
+          if (itemIndex !== -1) {
+            newInventory[itemIndex] = {
+              ...newInventory[itemIndex],
+              stock: newInventory[itemIndex].stock - (component.quantity * completedOrder!.quantity),
+            };
+          }
+        });
+
+        // Increment finished good
+        const finishedGoodIndex = newInventory.findIndex(invItem => invItem.sku === completedOrder!.finishedSku);
+        if (finishedGoodIndex !== -1) {
+           newInventory[finishedGoodIndex] = {
+              ...newInventory[finishedGoodIndex],
+              stock: newInventory[finishedGoodIndex].stock + completedOrder!.quantity,
+            };
+        } else {
+            // If FG isn't in inventory, add it (edge case)
+            newInventory.push({
+                sku: completedOrder!.finishedSku,
+                name: completedOrder!.name,
+                category: 'Finished Goods',
+                stock: completedOrder!.quantity,
+                onOrder: 0,
+                reorderPoint: 0, // default
+                vendorId: 'N/A'
+            });
+        }
+        return newInventory;
+      });
+
+      addToast(`${completedOrder.id} marked as completed. Inventory updated.`, 'success');
+    }
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case 'Dashboard':
@@ -105,7 +183,10 @@ const App: React.FC = () => {
           historicalSales={historicalSales}
           vendors={vendors}
           onCreatePo={handleCreatePo}
+          onCreateBuildOrder={handleCreateBuildOrder}
         />;
+      case 'Production':
+        return <Production buildOrders={buildOrders} onCompleteBuildOrder={handleCompleteBuildOrder} />;
       case 'Settings':
         return <Settings />;
       default:

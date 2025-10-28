@@ -5,7 +5,6 @@ import type { Forecast } from '../services/forecastingService';
 import { calculateAllBuildability } from '../services/buildabilityService';
 import { getAiPlanningInsight } from '../services/geminiService';
 import { LightBulbIcon, DocumentTextIcon, ChevronDownIcon, CheckCircleIcon, ExclamationCircleIcon, XCircleIcon } from '../components/icons';
-import ExecutiveSummary from '../components/ExecutiveSummary';
 
 interface PlanningForecastProps {
   boms: BillOfMaterials[];
@@ -13,6 +12,7 @@ interface PlanningForecastProps {
   historicalSales: HistoricalSale[];
   vendors: Vendor[];
   onCreatePo: (vendorId: string, items: { sku: string; name: string; quantity: number }[]) => void;
+  onCreateBuildOrder: (sku: string, name: string, quantity: number) => void;
 }
 
 // Chart component placeholder
@@ -40,15 +40,16 @@ interface ProjectedInventory {
 }
 
 interface SuggestedAction {
+    type: 'PO' | 'BUILD';
     sku: string;
     name: string;
     quantity: number;
     reason: string;
-    orderDate: string;
-    vendorId: string;
+    actionDate: string; // Generic date for action
+    vendorId?: string;
 }
 
-const PlanningForecast: React.FC<PlanningForecastProps> = ({ boms, inventory, historicalSales, vendors, onCreatePo }) => {
+const PlanningForecast: React.FC<PlanningForecastProps> = ({ boms, inventory, historicalSales, vendors, onCreatePo, onCreateBuildOrder }) => {
   const [selectedProduct, setSelectedProduct] = useState('PROD-B');
   const [aiInsight, setAiInsight] = useState('Generating insight...');
   const [isLoadingInsight, setIsLoadingInsight] = useState(true);
@@ -107,6 +108,7 @@ const PlanningForecast: React.FC<PlanningForecastProps> = ({ boms, inventory, hi
     const projectedInventory: Map<string, ProjectedInventory[]> = new Map();
     const suggestedActions: SuggestedAction[] = [];
     
+    // Suggest Purchase Orders for components
     for (const [sku, demands] of grossRequirements.entries()) {
         const item = inventoryMap.get(sku);
         if (!item) continue;
@@ -124,23 +126,54 @@ const PlanningForecast: React.FC<PlanningForecastProps> = ({ boms, inventory, hi
             const isBelowReorder = currentStock < item.reorderPoint;
             projections.push({ date: dateStr, projectedStock: Math.round(currentStock), isBelowReorder });
 
-            if (isBelowReorder && !hasBeenActioned && item.vendorId) {
+            if (isBelowReorder && !hasBeenActioned && item.vendorId && item.vendorId !== 'N/A') {
                 const vendor = vendorMap.get(item.vendorId);
                 const orderDate = new Date(date);
                 orderDate.setDate(orderDate.getDate() - (vendor?.leadTimeDays || 7));
                 suggestedActions.push({
+                    type: 'PO',
                     sku: item.sku,
                     name: item.name,
                     vendorId: item.vendorId,
                     quantity: item.moq || Math.ceil(item.reorderPoint * 1.5),
                     reason: `Stock predicted to drop below reorder point around ${new Date(dateStr).toLocaleDateString()}`,
-                    orderDate: orderDate.toISOString().split('T')[0]
+                    actionDate: orderDate.toISOString().split('T')[0]
                 });
                 hasBeenActioned = true; // Only suggest one action per item
             }
         }
         projectedInventory.set(sku, projections);
     }
+    
+    // Suggest Build Orders for the selected finished good
+    const fgItem = inventoryMap.get(selectedProduct);
+    if(fgItem) {
+        let currentFgStock = fgItem.stock;
+        let fgActioned = false;
+        for(let i=0; i < 90; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() + i);
+            const dateStr = date.toISOString().split('T')[0];
+
+            const dailyDemand = forecast.find(d => d.date === dateStr)?.quantity || 0;
+            currentFgStock -= dailyDemand;
+
+            if(currentFgStock < fgItem.reorderPoint && !fgActioned) {
+                const actionDate = new Date(date);
+                actionDate.setDate(actionDate.getDate() - 7); // Assume 7 day build time
+                suggestedActions.push({
+                    type: 'BUILD',
+                    sku: fgItem.sku,
+                    name: fgItem.name,
+                    quantity: Math.ceil(fgItem.reorderPoint * 1.5 - currentFgStock), // Suggest building up to 1.5x reorder point
+                    reason: `Finished good stock low around ${new Date(dateStr).toLocaleDateString()}`,
+                    actionDate: actionDate.toISOString().split('T')[0]
+                });
+                fgActioned = true;
+            }
+        }
+    }
+
     return { projectedInventory, suggestedActions };
   }, [selectedProduct, forecast, bomsMap, inventoryMap, vendorMap]);
 
@@ -149,8 +182,12 @@ const PlanningForecast: React.FC<PlanningForecastProps> = ({ boms, inventory, hi
     [boms, inventory]
   );
   
-  const handleCreatePoClick = (action: SuggestedAction) => {
-      onCreatePo(action.vendorId, [{sku: action.sku, name: action.name, quantity: action.quantity}]);
+  const handleCreateActionClick = (action: SuggestedAction) => {
+    if (action.type === 'PO' && action.vendorId) {
+        onCreatePo(action.vendorId, [{sku: action.sku, name: action.name, quantity: action.quantity}]);
+    } else if (action.type === 'BUILD') {
+        onCreateBuildOrder(action.sku, action.name, action.quantity);
+    }
   }
 
   return (
@@ -224,15 +261,15 @@ const PlanningForecast: React.FC<PlanningForecastProps> = ({ boms, inventory, hi
                     {suggestedActions.length > 0 ? (
                         <ul className="space-y-3">
                             {suggestedActions.map(action => (
-                                <li key={action.sku} className="p-3 bg-gray-800 rounded-lg">
-                                    <p className="font-semibold text-indigo-300">Order {action.name}</p>
+                                <li key={action.sku + action.type} className="p-3 bg-gray-800 rounded-lg">
+                                    <p className={`font-semibold ${action.type === 'PO' ? 'text-indigo-300' : 'text-green-300'}`}>{action.type === 'PO' ? 'Order' : 'Build'} {action.name}</p>
                                     <p className="text-sm text-gray-300">Quantity: <span className="font-bold">{action.quantity}</span></p>
                                     <p className="text-xs text-gray-400">{action.reason}</p>
                                     <button 
-                                        onClick={() => handleCreatePoClick(action)}
-                                        className="text-xs font-semibold mt-2 w-full text-white bg-indigo-600 hover:bg-indigo-700 py-1.5 rounded-md transition-colors"
+                                        onClick={() => handleCreateActionClick(action)}
+                                        className={`text-xs font-semibold mt-2 w-full text-white ${action.type === 'PO' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-600 hover:bg-green-700'} py-1.5 rounded-md transition-colors`}
                                     >
-                                        Create PO by {new Date(action.orderDate).toLocaleDateString()}
+                                        {action.type === 'PO' ? 'Create PO' : 'Create Build Order'} by {new Date(action.actionDate).toLocaleDateString()}
                                     </button>
                                 </li>
                             ))}

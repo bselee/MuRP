@@ -118,6 +118,58 @@ const Settings: React.FC = () => {
         </div>
       </section>
 
+      {/* Automation Rules Section */}
+      <section>
+        <h2 className="text-xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4">Automation Rules (Future)</h2>
+        <div className="space-y-6">
+          {/* Purchasing Rule */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+            <h3 className="text-lg font-semibold text-white">Automated Purchasing</h3>
+            <p className="text-sm text-gray-400 mt-1 mb-4">Automatically create draft purchase orders when components run low.</p>
+            <div className="space-y-4 p-4 border border-dashed border-gray-600 rounded-lg">
+                <div className="flex items-center gap-2 text-gray-300 flex-wrap">
+                   <span>WHEN projected stock for a</span>
+                   <select className="bg-gray-700 border-gray-600 rounded-md p-1 text-sm">
+                       <option>Component</option>
+                       <option>Raw Material</option>
+                   </select>
+                   <span>is less than</span>
+                   <input type="number" defaultValue="14" className="w-16 bg-gray-700 border-gray-600 rounded-md p-1 text-sm text-center" />
+                   <span>days of supply</span>
+                </div>
+                 <div className="flex items-center gap-2 text-gray-300 flex-wrap">
+                   <span>THEN automatically create a draft PO for its primary vendor.</span>
+                </div>
+                <div className="flex justify-end pt-2">
+                    <button className="bg-gray-600 text-gray-400 font-semibold py-2 px-4 rounded-md cursor-not-allowed">Enable Rule</button>
+                </div>
+            </div>
+          </div>
+          {/* Production Rule */}
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+            <h3 className="text-lg font-semibold text-white">Automated Production</h3>
+            <p className="text-sm text-gray-400 mt-1 mb-4">Automatically create build orders when finished goods are needed.</p>
+            <div className="space-y-4 p-4 border border-dashed border-gray-600 rounded-lg">
+                <div className="flex items-center gap-2 text-gray-300 flex-wrap">
+                   <span>WHEN projected stock for a</span>
+                   <select className="bg-gray-700 border-gray-600 rounded-md p-1 text-sm">
+                       <option>Finished Good</option>
+                   </select>
+                   <span>is less than</span>
+                   <input type="number" defaultValue="7" className="w-16 bg-gray-700 border-gray-600 rounded-md p-1 text-sm text-center" />
+                   <span>days of supply</span>
+                </div>
+                 <div className="flex items-center gap-2 text-gray-300 flex-wrap">
+                   <span>THEN automatically create a Build Order to replenish stock up to the reorder point.</span>
+                </div>
+                 <div className="flex justify-end pt-2">
+                    <button className="bg-gray-600 text-gray-400 font-semibold py-2 px-4 rounded-md cursor-not-allowed">Enable Rule</button>
+                </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 };

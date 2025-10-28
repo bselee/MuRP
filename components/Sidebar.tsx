@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Page } from '../App';
-import { HomeIcon, PackageIcon, DocumentTextIcon, UsersIcon, LightBulbIcon, CogIcon, BoxIcon, ChevronDoubleLeftIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, UsersIcon, LightBulbIcon, CogIcon, BoxIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon } from './icons';
 
 interface SidebarProps {
     currentPage: Page;
@@ -35,10 +35,11 @@ const NavItem: React.FC<{
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollapsed, onToggle }) => {
     const navItems: { page: Page; icon: React.ReactNode }[] = [
         { page: 'Dashboard', icon: <HomeIcon className="w-6 h-6" /> },
+        { page: 'Planning & Forecast', icon: <LightBulbIcon className="w-6 h-6" /> },
+        { page: 'Production', icon: <WrenchScrewdriverIcon className="w-6 h-6" /> },
         { page: 'Inventory', icon: <PackageIcon className="w-6 h-6" /> },
         { page: 'Purchase Orders', icon: <DocumentTextIcon className="w-6 h-6" /> },
         { page: 'Vendors', icon: <UsersIcon className="w-6 h-6" /> },
-        { page: 'Planning & Forecast', icon: <LightBulbIcon className="w-6 h-6" /> },
     ];
 
     return (

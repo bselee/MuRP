@@ -128,3 +128,9 @@ export const InformationCircleIcon = ({ className }: { className?: string }) => 
         <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 );
+
+export const WrenchScrewdriverIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.878-5.878m0 0L21 5.636c0-1.018-.84-1.836-1.878-1.836H15.636c-1.018 0-1.836.818-1.836 1.878l-5.878 5.878m5.878-5.878L5.636 21" />
+    </svg>
+);
