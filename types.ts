@@ -1,4 +1,5 @@
 
+
 export interface BOMComponent {
   sku: string;
   quantity: number;
@@ -107,7 +108,8 @@ export interface RequisitionItem {
 
 export interface InternalRequisition {
     id: string;
-    requesterId: string;
+    requesterId: string | null; // Can be null for system-generated reqs
+    source: 'Manual' | 'System';
     department: User['department'];
     createdAt: string;
     status: 'Pending' | 'Approved' | 'Rejected' | 'Ordered';
@@ -375,6 +377,7 @@ export const mockInternalRequisitions: InternalRequisition[] = [
     {
         id: 'REQ-2024-001',
         requesterId: 'user-staff-mfg1', 
+        source: 'Manual',
         department: 'MFG 1',
         createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), 
         status: 'Approved',
@@ -386,6 +389,7 @@ export const mockInternalRequisitions: InternalRequisition[] = [
     {
         id: 'REQ-2024-002',
         requesterId: 'user-manager-mfg2',
+        source: 'Manual',
         department: 'MFG 2',
         createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'Pending',
@@ -396,6 +400,7 @@ export const mockInternalRequisitions: InternalRequisition[] = [
      {
         id: 'REQ-2024-003',
         requesterId: 'user-staff-shp',
+        source: 'Manual',
         department: 'SHP/RCV',
         createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'Rejected',
@@ -406,11 +411,23 @@ export const mockInternalRequisitions: InternalRequisition[] = [
      {
         id: 'REQ-2024-004',
         requesterId: 'user-staff-mfg1',
+        source: 'Manual',
         department: 'MFG 1',
         createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'Ordered',
         items: [
             { sku: 'COMP-003', name: 'Coconut Coir Brick', quantity: 50, reason: 'Restocking safety levels' },
+        ]
+    },
+    {
+        id: 'REQ-2024-005',
+        requesterId: null,
+        source: 'System',
+        department: 'Purchasing',
+        createdAt: new Date().toISOString(),
+        status: 'Pending',
+        items: [
+            { sku: 'COMP-002', name: 'Pumice (1/8 inch)', quantity: 150, reason: 'AI Forecast: Predicted shortage in 25 days.' },
         ]
     }
 ];

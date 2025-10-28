@@ -269,3 +269,10 @@ export const FlagIcon = ({ className, title }: { className?: string; title?: str
     <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6H8.5l-1-1H5a2 2 0 00-2 2z" />
   </svg>
 );
+
+export const GripVerticalIcon = ({ className }: { className?: string }) => (
+  <svg className={className} aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 10 16">
+    <path d="M1 2.75A1.75 1.75 0 0 1 2.75 1h.5A1.75 1.75 0 0 1 5 2.75v.5A1.75 1.75 0 0 1 3.25 5h-.5A1.75 1.75 0 0 1 1 3.25v-.5ZM1 8.75A1.75 1.75 0 0 1 2.75 7h.5A1.75 1.75 0 0 1 5 8.75v.5A1.75 1.75 0 0 1 3.25 11h-.5A1.75 1.75 0 0 1 1 9.25v-.5ZM6 2.75A1.75 1.75 0 0 1 7.75 1h.5A1.75 1.75 0 0 1 10 2.75v.5A1.75 1.75 0 0 1 8.25 5h-.5A1.75 1.75 0 0 1 6 3.25v-.5ZM6 8.75A1.75 1.75 0 0 1 7.75 7h.5A1.75 1.75 0 0 1 10 8.75v.5A1.75 1.75 0 0 1 8.25 11h-.5A1.75 1.75 0 0 1 6 9.25v-.5Z"/>
+    <path d="M1 14.75A1.75 1.75 0 0 1 2.75 13h.5A1.75 1.75 0 0 1 5 14.75v.5A1.75 1.75 0 0 1 3.25 17h-.5A1.75 1.75 0 0 1 1 15.25v-.5ZM6 14.75A1.75 1.75 0 0 1 7.75 13h.5A1.75 1.75 0 0 1 10 14.75v.5A1.75 1.75 0 0 1 8.25 17h-.5A1.75 1.75 0 0 1 6 15.25v-.5Z"/>
+  </svg>
+);

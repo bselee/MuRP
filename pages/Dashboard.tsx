@@ -2,14 +2,14 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import type { Page } from '../App';
-import type { BillOfMaterials, InventoryItem, HistoricalSale, Vendor, InternalRequisition, User, AiConfig } from '../types';
+import type { BillOfMaterials, InventoryItem, HistoricalSale, Vendor, InternalRequisition, User, AiConfig, RequisitionItem } from '../types';
 import ExecutiveSummary from '../components/ExecutiveSummary';
 import BuildabilityTable from '../components/BuildabilityTable';
 import { calculateAllBuildability } from '../services/buildabilityService';
 import { generateForecast } from '../services/forecastingService';
 import type { Forecast } from '../services/forecastingService';
 import { getAiPlanningInsight } from '../services/geminiService';
-import { ChevronDownIcon, LightBulbIcon, ClipboardListIcon, BeakerIcon, UsersIcon } from '../components/icons';
+import { ChevronDownIcon, LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon } from '../components/icons';
 
 interface DashboardProps {
   inventory: InventoryItem[];
@@ -19,7 +19,7 @@ interface DashboardProps {
   requisitions: InternalRequisition[];
   users: User[];
   currentUser: User;
-  onCreatePo: (vendorId: string, items: { sku: string; name: string; quantity: number }[]) => void;
+  onCreateRequisition: (items: RequisitionItem[], source: 'Manual' | 'System') => void;
   onCreateBuildOrder: (sku: string, name: string, quantity: number) => void;
   setCurrentPage: (page: Page) => void;
   aiConfig: AiConfig;
@@ -54,23 +54,25 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
   const { inventory, boms, requisitions, users, currentUser, setCurrentPage } = props;
   
   const [openSections, setOpenSections] = useState({
-      shortages: true,
-      buildability: true,
-      requisitions: true,
-      todos: true,
-      users: true,
-      forecast: false,
+    buildability: true,
+    shortages: true,
+    requisitions: true,
+    todos: false,
+    forecast: false,
   });
 
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections(prev => ({...prev, [section]: !prev[section]}));
   };
 
-  const handleCardClick = (sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
-    const sectionKey = sectionId as keyof typeof openSections;
-    if (sectionKey in openSections && !openSections[sectionKey]) {
-        toggleSection(sectionKey);
+  const handleCardClick = (sectionId: keyof typeof openSections) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+        // Also expand the section if it's closed
+        if (!openSections[sectionId]) {
+            toggleSection(sectionId);
+        }
     }
   };
   
@@ -96,6 +98,68 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
   const bomsMissingArtwork = useMemo(() => boms.filter(b => b.artwork.length === 0 && b.finishedSku.startsWith('PROD-')), [boms]);
   const artworkMissingDocs = useMemo(() => boms.flatMap(b => b.artwork).filter(a => !a.regulatoryDocLink), [boms]);
 
+  const criticalShortagesContent = criticalShortages.length > 0 ? (
+      <ul className="divide-y divide-gray-700">
+          {criticalShortages.map(item => (
+              <li key={item.sku} className="py-3">
+                  <div className="flex items-center justify-between">
+                      <div>
+                          <p className="text-sm font-medium text-white">{item.name}</p>
+                          <p className="text-xs text-gray-400">{item.sku}</p>
+                      </div>
+                      <div className="text-right">
+                          <p className="text-sm font-semibold text-red-400">{item.stock} in stock</p>
+                          <p className="text-xs text-gray-500">Reorder at {item.reorderPoint}</p>
+                      </div>
+                  </div>
+              </li>
+          ))}
+      </ul>
+  ) : <p className="text-center text-gray-400 py-8">No critical shortages. Well done!</p>;
+  
+  const pendingRequisitionsContent = (currentUser.role === 'Admin' || currentUser.role === 'Manager') ? (
+    pendingRequisitions.length > 0 ? (
+        <div className="space-y-3">
+            <ul className="divide-y divide-gray-700">
+               {pendingRequisitions.slice(0, 5).map(req => (
+                   <li key={req.id} className="py-2">
+                       <p className="text-sm font-medium text-white">{req.department} - {req.source === 'System' ? 'System (AI)' : (userMap.get(req.requesterId!) || 'Unknown')}</p>
+                       <p className="text-xs text-gray-400">{req.items.length} item(s) requested on {new Date(req.createdAt).toLocaleDateString()}</p>
+                   </li>
+               ))}
+            </ul>
+             <button onClick={() => setCurrentPage('Purchase Orders')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 w-full text-right mt-2">
+                View All Requisitions &rarr;
+            </button>
+        </div>
+    ) : <p className="text-center text-gray-400 py-8">No requisitions are pending approval.</p>
+  ) : <p className="text-center text-gray-400 py-8">You do not have permission to view requisitions.</p>;
+
+  const todosContent = (
+      <div className="space-y-4">
+          <div>
+              <h4 className="font-semibold text-gray-200">BOMs Missing Artwork ({bomsMissingArtwork.length})</h4>
+              {bomsMissingArtwork.length > 0 ? (
+                 <ul className="text-sm text-gray-400 list-disc pl-5 mt-1">
+                      {bomsMissingArtwork.slice(0,3).map(b => <li key={b.id}>{b.name}</li>)}
+                 </ul>
+              ) : <p className="text-sm text-gray-500 mt-1">All products have artwork.</p>}
+          </div>
+           <div>
+              <h4 className="font-semibold text-gray-200">Artwork Missing Regulatory Docs ({artworkMissingDocs.length})</h4>
+               {artworkMissingDocs.length > 0 ? (
+                 <ul className="text-sm text-gray-400 list-disc pl-5 mt-1">
+                      {artworkMissingDocs.slice(0,3).map(a => <li key={a.id}>{a.fileName}</li>)}
+                 </ul>
+              ) : <p className="text-sm text-gray-500 mt-1">All artwork has documentation links.</p>}
+          </div>
+          <div className="flex justify-end gap-4 pt-2">
+              <button onClick={() => setCurrentPage('BOMs')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">Manage BOMs &rarr;</button>
+              <button onClick={() => setCurrentPage('Artwork')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">Manage Artwork &rarr;</button>
+          </div>
+      </div>
+  );
+
   return (
     <div className="space-y-8">
       <header>
@@ -105,119 +169,67 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       
       <section>
         <h2 className="text-xl font-semibold mb-4 text-gray-300">Executive Summary</h2>
-        <ExecutiveSummary data={buildabilityData} onCardClick={handleCardClick} />
+        <ExecutiveSummary data={buildabilityData} onCardClick={() => handleCardClick('buildability')} />
       </section>
+      
+      <div className="space-y-6">
+        <CollapsibleSection
+          id="buildability"
+          title="Buildability Status"
+          icon={<BeakerIcon className="w-6 h-6 text-indigo-400"/>}
+          isOpen={openSections.buildability}
+          onToggle={() => toggleSection('buildability')}
+        >
+          <BuildabilityTable data={buildabilityData} />
+        </CollapsibleSection>
+        
+        <CollapsibleSection
+          id="shortages"
+          title="Critical Shortages"
+          icon={<ExclamationCircleIcon className="w-6 h-6 text-red-400"/>}
+          isOpen={openSections.shortages}
+          onToggle={() => toggleSection('shortages')}
+        >
+          {criticalShortagesContent}
+        </CollapsibleSection>
+        
+        <CollapsibleSection
+          id="requisitions"
+          title="Pending Requisitions"
+          icon={<ClipboardListIcon className="w-6 h-6 text-yellow-400"/>}
+          isOpen={openSections.requisitions}
+          onToggle={() => toggleSection('requisitions')}
+        >
+          {pendingRequisitionsContent}
+        </CollapsibleSection>
+        
+        <CollapsibleSection
+          id="todos"
+          title="Compliance & Artwork Todos"
+          icon={<BeakerIcon className="w-6 h-6 text-blue-400"/>}
+          isOpen={openSections.todos}
+          onToggle={() => toggleSection('todos')}
+        >
+          {todosContent}
+        </CollapsibleSection>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <div className="space-y-8">
-          <CollapsibleSection title="Critical Shortages" id="shortages" isOpen={openSections.shortages} onToggle={() => toggleSection('shortages')}>
-              {criticalShortages.length > 0 ? (
-                      <ul className="divide-y divide-gray-700">
-                          {criticalShortages.map(item => (
-                              <li key={item.sku} className="py-3">
-                                  <div className="flex items-center justify-between">
-                                      <div>
-                                          <p className="text-sm font-medium text-white">{item.name}</p>
-                                          <p className="text-xs text-gray-400">{item.sku}</p>
-                                      </div>
-                                      <div className="text-right">
-                                          <p className="text-sm font-semibold text-red-400">{item.stock} in stock</p>
-                                          <p className="text-xs text-gray-500">Reorder at {item.reorderPoint}</p>
-                                      </div>
-                                  </div>
-                              </li>
-                          ))}
-                      </ul>
-                  ) : (
-                      <p className="text-center text-gray-400 py-8">No critical shortages. Well done!</p>
-                  )}
-          </CollapsibleSection>
-          
-          {(currentUser.role === 'Admin' || currentUser.role === 'Manager') && (
-            <CollapsibleSection title="Pending Requisitions" icon={<ClipboardListIcon className="w-6 h-6 text-yellow-400"/>} id="requisitions" isOpen={openSections.requisitions} onToggle={() => toggleSection('requisitions')}>
-                {pendingRequisitions.length > 0 ? (
-                    <div className="space-y-3">
-                        <ul className="divide-y divide-gray-700">
-                           {pendingRequisitions.slice(0, 5).map(req => (
-                               <li key={req.id} className="py-2">
-                                   <p className="text-sm font-medium text-white">{req.department} - {userMap.get(req.requesterId) || 'Unknown'}</p>
-                                   <p className="text-xs text-gray-400">{req.items.length} item(s) requested on {new Date(req.createdAt).toLocaleDateString()}</p>
-                               </li>
-                           ))}
-                        </ul>
-                         <button onClick={() => setCurrentPage('Requisitions')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 w-full text-right mt-2">
-                            View All Requisitions &rarr;
-                        </button>
-                    </div>
-                ) : <p className="text-center text-gray-400 py-8">No requisitions are pending approval.</p>}
-            </CollapsibleSection>
-          )}
-
-          <CollapsibleSection title="Buildability Status" id="buildability" isOpen={openSections.buildability} onToggle={() => toggleSection('buildability')}>
-            <BuildabilityTable data={buildabilityData} />
-          </CollapsibleSection>
-        </div>
-
-        <div className="space-y-8">
-            <CollapsibleSection title="Compliance & Artwork Todos" icon={<BeakerIcon className="w-6 h-6 text-blue-400"/>} id="todos" isOpen={openSections.todos} onToggle={() => toggleSection('todos')}>
-                <div className="space-y-4">
-                    <div>
-                        <h4 className="font-semibold text-gray-200">BOMs Missing Artwork ({bomsMissingArtwork.length})</h4>
-                        {bomsMissingArtwork.length > 0 ? (
-                           <ul className="text-sm text-gray-400 list-disc pl-5 mt-1">
-                                {bomsMissingArtwork.slice(0,3).map(b => <li key={b.id}>{b.name}</li>)}
-                           </ul>
-                        ) : <p className="text-sm text-gray-500 mt-1">All products have artwork.</p>}
-                    </div>
-                     <div>
-                        <h4 className="font-semibold text-gray-200">Artwork Missing Regulatory Docs ({artworkMissingDocs.length})</h4>
-                         {artworkMissingDocs.length > 0 ? (
-                           <ul className="text-sm text-gray-400 list-disc pl-5 mt-1">
-                                {artworkMissingDocs.slice(0,3).map(a => <li key={a.id}>{a.fileName}</li>)}
-                           </ul>
-                        ) : <p className="text-sm text-gray-500 mt-1">All artwork has documentation links.</p>}
-                    </div>
-                    <div className="flex justify-end gap-4 pt-2">
-                        <button onClick={() => setCurrentPage('BOMs')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">Manage BOMs &rarr;</button>
-                        <button onClick={() => setCurrentPage('Artwork')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">Manage Artwork &rarr;</button>
-                    </div>
-                </div>
-            </CollapsibleSection>
-
-            {currentUser.role === 'Admin' && (
-                <CollapsibleSection title="User Management" icon={<UsersIcon className="w-6 h-6 text-green-400"/>} id="users" isOpen={openSections.users} onToggle={() => toggleSection('users')}>
-                    <div className="space-y-3">
-                        <ul className="divide-y divide-gray-700">
-                           {users.slice(0, 5).map(user => (
-                               <li key={user.id} className="py-2 flex justify-between items-center">
-                                   <div>
-                                       <p className="text-sm font-medium text-white">{user.name}</p>
-                                       <p className="text-xs text-gray-400">{user.email}</p>
-                                   </div>
-                                   <p className="text-sm text-gray-300">{user.role}</p>
-                               </li>
-                           ))}
-                        </ul>
-                         <button onClick={() => setCurrentPage('User Management')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 w-full text-right mt-2">
-                            Manage All Users &rarr;
-                        </button>
-                    </div>
-                </CollapsibleSection>
-            )}
-        </div>
+        <CollapsibleSection
+          title="Planning & Forecast"
+          id="forecast"
+          isOpen={openSections.forecast}
+          onToggle={() => toggleSection('forecast')}
+          icon={<LightBulbIcon className="w-6 h-6 text-yellow-300" />}
+        >
+          <PlanningForecastContent {...props} />
+        </CollapsibleSection>
       </div>
-
-
-      <CollapsibleSection title="Planning & Forecast" id="forecast" isOpen={openSections.forecast} onToggle={() => toggleSection('forecast')}>
-        <PlanningForecastContent {...props} />
-      </CollapsibleSection>
     </div>
   );
 };
 
 
 // The content from the old Planning & Forecast page is now a component here
-const PlanningForecastContent: React.FC<DashboardProps> = ({ boms, inventory, historicalSales, vendors, onCreatePo, onCreateBuildOrder, aiConfig }) => {
+const PlanningForecastContent: React.FC<DashboardProps> = ({ boms, inventory, historicalSales, vendors, onCreateRequisition, onCreateBuildOrder, aiConfig }) => {
   const [selectedProduct, setSelectedProduct] = useState('PROD-B');
   const [aiInsight, setAiInsight] = useState('Generating insight...');
   const [isLoadingInsight, setIsLoadingInsight] = useState(true);
@@ -279,7 +291,7 @@ const PlanningForecastContent: React.FC<DashboardProps> = ({ boms, inventory, hi
     
     const suggestedActions: SuggestedAction[] = [];
     
-    // Suggest Purchase Orders for components
+    // Suggest Purchase Requisitions for components
     for (const [sku, demands] of grossRequirements.entries()) {
         const item = inventoryMap.get(sku);
         if (!item) continue;
@@ -298,12 +310,11 @@ const PlanningForecastContent: React.FC<DashboardProps> = ({ boms, inventory, hi
                 const orderDate = new Date(date);
                 orderDate.setDate(orderDate.getDate() - (vendor?.leadTimeDays || 7));
                 suggestedActions.push({
-                    type: 'PO',
+                    type: 'REQUISITION',
                     sku: item.sku,
                     name: item.name,
-                    vendorId: item.vendorId,
                     quantity: item.moq || Math.ceil(item.reorderPoint * 1.5),
-                    reason: `Stock predicted to drop below reorder point around ${new Date(dateStr).toLocaleDateString()}`,
+                    reason: `AI Forecast: Stock predicted to drop below reorder point around ${new Date(dateStr).toLocaleDateString()}`,
                     actionDate: orderDate.toISOString().split('T')[0]
                 });
                 hasBeenActioned = true; // Only suggest one action per item
@@ -342,8 +353,11 @@ const PlanningForecastContent: React.FC<DashboardProps> = ({ boms, inventory, hi
   }, [selectedProduct, forecast, bomsMap, inventoryMap, vendorMap]);
 
   const handleCreateActionClick = (action: SuggestedAction) => {
-    if (action.type === 'PO' && action.vendorId) {
-        onCreatePo(action.vendorId, [{sku: action.sku, name: action.name, quantity: action.quantity}]);
+    if (action.type === 'REQUISITION') {
+        onCreateRequisition(
+            [{ sku: action.sku, name: action.name, quantity: action.quantity, reason: action.reason }], 
+            'System'
+        );
     } else if (action.type === 'BUILD') {
         onCreateBuildOrder(action.sku, action.name, action.quantity);
     }
@@ -383,16 +397,16 @@ const PlanningForecastContent: React.FC<DashboardProps> = ({ boms, inventory, hi
                       <div className="bg-gray-800 p-4 rounded-lg max-h-[450px] overflow-y-auto">
                           {suggestedActions.length > 0 ? (
                               <ul className="space-y-3">
-                                  {suggestedActions.map(action => (
-                                      <li key={action.sku + action.type} className="p-3 bg-gray-900/50 rounded-lg">
-                                          <p className={`font-semibold ${action.type === 'PO' ? 'text-indigo-300' : 'text-green-300'}`}>{action.type === 'PO' ? 'Order' : 'Build'} {action.name}</p>
+                                  {suggestedActions.map((action, index) => (
+                                      <li key={`${action.sku}-${action.type}-${index}`} className="p-3 bg-gray-900/50 rounded-lg">
+                                          <p className={`font-semibold ${action.type === 'REQUISITION' ? 'text-indigo-300' : 'text-green-300'}`}>{action.type === 'REQUISITION' ? 'Request' : 'Build'} {action.name}</p>
                                           <p className="text-sm text-gray-300">Quantity: <span className="font-bold">{action.quantity}</span></p>
                                           <p className="text-xs text-gray-400">{action.reason}</p>
                                           <button
                                               onClick={() => handleCreateActionClick(action)}
-                                              className={`text-xs font-semibold mt-2 w-full text-white ${action.type === 'PO' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-600 hover:bg-green-700'} py-1.5 rounded-md transition-colors`}
+                                              className={`text-xs font-semibold mt-2 w-full text-white ${action.type === 'REQUISITION' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-600 hover:bg-green-700'} py-1.5 rounded-md transition-colors`}
                                           >
-                                              {action.type === 'PO' ? 'Create PO' : 'Create Build Order'} by {new Date(action.actionDate).toLocaleDateString()}
+                                              {action.type === 'REQUISITION' ? 'Create Requisition' : 'Create Build Order'} by {new Date(action.actionDate).toLocaleDateString()}
                                           </button>
                                       </li>
                                   ))}
@@ -424,7 +438,7 @@ const DemandChart: React.FC<{ data: Forecast[] }> = ({ data }) => {
 };
 
 interface SuggestedAction {
-    type: 'PO' | 'BUILD';
+    type: 'REQUISITION' | 'BUILD';
     sku: string;
     name: string;
     quantity: number;

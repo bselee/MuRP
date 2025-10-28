@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo } from 'react';
 import AiAssistant from './components/AiAssistant';
 import Sidebar from './components/Sidebar';
@@ -11,7 +12,6 @@ import Vendors from './pages/Vendors';
 import Production from './pages/Production';
 import BOMs from './pages/BOMs';
 import Settings from './pages/Settings';
-import Requisitions from './pages/Requisitions';
 import LoginScreen from './pages/LoginScreen';
 import Toast from './components/Toast';
 import ApiDocs from './pages/ApiDocs';
@@ -48,7 +48,7 @@ import type {
     ArtworkFolder,
 } from './types';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Requisitions' | 'Settings' | 'API Documentation' | 'User Management' | 'Artwork';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'User Management' | 'Artwork';
 
 export type ToastInfo = {
   id: number;
@@ -331,12 +331,12 @@ const App: React.FC = () => {
     addToast(`Folder "${name}" created successfully.`, 'success');
   };
 
-  const handleCreateRequisition = (items: RequisitionItem[]) => {
-    if (!currentUser || currentUser.role === 'Admin') return;
-    const newReq: InternalRequisition = {
+  const handleCreateRequisition = (items: RequisitionItem[], source: 'Manual' | 'System' = 'Manual') => {
+      const newReq: InternalRequisition = {
         id: `REQ-${new Date().getFullYear()}-${(requisitions.length + 1).toString().padStart(3, '0')}`,
-        requesterId: currentUser.id,
-        department: currentUser.department,
+        requesterId: source === 'Manual' ? currentUser!.id : null,
+        department: source === 'Manual' ? currentUser!.department : 'Purchasing',
+        source,
         createdAt: new Date().toISOString(),
         status: 'Pending',
         items,
@@ -456,8 +456,8 @@ const App: React.FC = () => {
           boms={boms} 
           historicalSales={historicalSales}
           vendors={vendors}
-          onCreatePo={(vendorId, items) => handleCreatePo({ vendorId, items })}
           onCreateBuildOrder={handleCreateBuildOrder}
+          onCreateRequisition={handleCreateRequisition}
           requisitions={requisitions}
           users={users}
           currentUser={currentUser}
@@ -478,6 +478,11 @@ const App: React.FC = () => {
                     onGeneratePos={handleGeneratePosFromRequisitions}
                     gmailConnection={gmailConnection}
                     onSendEmail={handleSendPoEmail}
+                    requisitions={requisitions}
+                    users={users}
+                    onApproveRequisition={handleApproveRequisition}
+                    onRejectRequisition={handleRejectRequisition}
+                    onCreateRequisition={(items) => handleCreateRequisition(items, 'Manual')}
                 />;
       case 'Vendors':
         return <Vendors vendors={vendors} />;
@@ -497,16 +502,6 @@ const App: React.FC = () => {
             aiConfig={aiConfig}
             artworkFolders={artworkFolders}
             onCreateArtworkFolder={handleCreateArtworkFolder}
-        />;
-      case 'Requisitions':
-        return <Requisitions 
-            currentUser={currentUser}
-            requisitions={requisitions}
-            users={users}
-            inventory={inventory}
-            onApprove={handleApproveRequisition}
-            onReject={handleRejectRequisition}
-            onCreate={handleCreateRequisition}
         />;
       case 'User Management':
         return <Users
@@ -539,8 +534,8 @@ const App: React.FC = () => {
           boms={boms} 
           historicalSales={historicalSales}
           vendors={vendors}
-          onCreatePo={(vendorId, items) => handleCreatePo({ vendorId, items })}
           onCreateBuildOrder={handleCreateBuildOrder}
+          onCreateRequisition={handleCreateRequisition}
           requisitions={requisitions}
           users={users}
           currentUser={currentUser}
