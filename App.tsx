@@ -15,8 +15,8 @@ import Settings from './pages/Settings';
 import LoginScreen from './pages/LoginScreen';
 import Toast from './components/Toast';
 import ApiDocs from './pages/ApiDocs';
-import Users from './pages/Users';
 import ArtworkPage from './pages/Artwork';
+import NewUserSetup from './pages/NewUserSetup';
 import { 
     mockBOMs, 
     mockInventory, 
@@ -48,7 +48,7 @@ import type {
     ArtworkFolder,
 } from './types';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'User Management' | 'Artwork';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'Artwork';
 
 export type ToastInfo = {
   id: number;
@@ -92,8 +92,12 @@ const App: React.FC = () => {
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
-    setCurrentPage('Dashboard'); // Reset to dashboard on login
-    addToast(`Welcome, ${user.name}!`, 'success');
+    // Onboarding check happens in the main render logic.
+    // If onboarding is not complete, the setup screen will be shown.
+    // If it is complete, this toast will show as they enter the dashboard.
+    if (user.onboardingComplete) {
+        addToast(`Welcome back, ${user.name}!`, 'success');
+    }
   };
 
   const handleLogout = () => {
@@ -409,6 +413,7 @@ const App: React.FC = () => {
       email,
       role,
       department,
+      onboardingComplete: false,
     };
     setUsers(prev => [...prev, newUser]);
     addToast(`User ${email} has been invited as a ${role}.`, 'success');
@@ -422,6 +427,14 @@ const App: React.FC = () => {
   const handleDeleteUser = (userId: string) => {
     setUsers(prev => prev.filter(u => u.id !== userId));
     addToast('User has been removed.', 'info');
+  };
+
+  const handleCompleteOnboarding = (userId: string) => {
+    setUsers(prevUsers => prevUsers.map(user => 
+        user.id === userId ? { ...user, onboardingComplete: true } : user
+    ));
+    setCurrentUser(prev => prev ? { ...prev, onboardingComplete: true } : null);
+    addToast('Welcome aboard! Your account is now active.', 'success');
   };
 
 
@@ -503,13 +516,6 @@ const App: React.FC = () => {
             artworkFolders={artworkFolders}
             onCreateArtworkFolder={handleCreateArtworkFolder}
         />;
-      case 'User Management':
-        return <Users
-            users={users}
-            onInviteUser={handleInviteUser}
-            onUpdateUser={handleUpdateUser}
-            onDeleteUser={handleDeleteUser}
-        />;
       case 'API Documentation':
           return <ApiDocs />;
       case 'Settings':
@@ -527,6 +533,10 @@ const App: React.FC = () => {
             setCurrentPage={setCurrentPage}
             externalConnections={externalConnections}
             onSetExternalConnections={setExternalConnections}
+            users={users}
+            onInviteUser={handleInviteUser}
+            onUpdateUser={handleUpdateUser}
+            onDeleteUser={handleDeleteUser}
         />;
       default:
         return <Dashboard 
@@ -547,6 +557,10 @@ const App: React.FC = () => {
 
   if (!currentUser) {
     return <LoginScreen users={users} onLogin={handleLogin} />;
+  }
+
+  if (currentUser && !currentUser.onboardingComplete) {
+      return <NewUserSetup user={currentUser} onSetupComplete={() => handleCompleteOnboarding(currentUser.id)} />;
   }
 
   return (

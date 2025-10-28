@@ -97,6 +97,7 @@ export interface User {
     email: string;
     role: 'Admin' | 'Manager' | 'Staff';
     department: 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV';
+    onboardingComplete?: boolean;
 }
 
 export interface RequisitionItem {
@@ -162,12 +163,13 @@ export const mockArtworkFolders: ArtworkFolder[] = [
 ];
 
 export const mockUsers: User[] = [
-    { id: 'user-admin', name: 'Alicia Admin', email: 'alicia.admin@goodestfungus.com', role: 'Admin', department: 'Purchasing' },
-    { id: 'user-manager-mfg1', name: 'Brenda Prod', email: 'brenda.prod@goodestfungus.com', role: 'Manager', department: 'MFG 1' },
-    { id: 'user-manager-mfg2', name: 'Charles Fab', email: 'charles.fab@goodestfungus.com', role: 'Manager', department: 'MFG 2' },
-    { id: 'user-staff-mfg1', name: 'Steve Worker', email: 'steve.worker@goodestfungus.com', role: 'Staff', department: 'MFG 1' },
-    { id: 'user-staff-shp', name: 'Diana Ship', email: 'diana.ship@goodestfungus.com', role: 'Staff', department: 'SHP/RCV' },
-    { id: 'user-staff-ful', name: 'Edward Pack', email: 'edward.pack@goodestfungus.com', role: 'Staff', department: 'Fulfillment' },
+    { id: 'user-admin', name: 'Alicia Admin', email: 'alicia.admin@goodestfungus.com', role: 'Admin', department: 'Purchasing', onboardingComplete: true },
+    { id: 'user-manager-mfg1', name: 'Brenda Prod', email: 'brenda.prod@goodestfungus.com', role: 'Manager', department: 'MFG 1', onboardingComplete: true },
+    { id: 'user-manager-mfg2', name: 'Charles Fab', email: 'charles.fab@goodestfungus.com', role: 'Manager', department: 'MFG 2', onboardingComplete: true },
+    { id: 'user-staff-mfg1', name: 'Steve Worker', email: 'steve.worker@goodestfungus.com', role: 'Staff', department: 'MFG 1', onboardingComplete: true },
+    { id: 'user-staff-shp', name: 'Diana Ship', email: 'diana.ship@goodestfungus.com', role: 'Staff', department: 'SHP/RCV', onboardingComplete: true },
+    { id: 'user-staff-ful', name: 'Edward Pack', email: 'edward.pack@goodestfungus.com', role: 'Staff', department: 'Fulfillment', onboardingComplete: true },
+    { id: 'user-new-invite', name: 'Frank Newbie', email: 'frank.newbie@goodestfungus.com', role: 'Staff', department: 'MFG 1', onboardingComplete: false },
 ];
 
 export const mockVendors: Vendor[] = [

@@ -3,7 +3,8 @@ import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiPrompt } from '../types';
 import { defaultAiConfig } from '../types';
 import AiPromptEditModal from '../components/AiPromptEditModal';
-import { GmailIcon, KeyIcon, ClipboardCopyIcon, RefreshIcon, TrashIcon, ServerStackIcon, LinkIcon, BotIcon, ChevronDownIcon, PencilIcon } from '../components/icons';
+import { GmailIcon, KeyIcon, ClipboardCopyIcon, RefreshIcon, TrashIcon, ServerStackIcon, LinkIcon, BotIcon, ChevronDownIcon, PencilIcon, UsersIcon } from '../components/icons';
+import UserManagementPanel from '../components/UserManagementPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -19,13 +20,18 @@ interface SettingsProps {
     setCurrentPage: (page: Page) => void;
     externalConnections: ExternalConnection[];
     onSetExternalConnections: (connections: ExternalConnection[]) => void;
+    users: User[];
+    onInviteUser: (email: string, role: User['role'], department: User['department']) => void;
+    onUpdateUser: (updatedUser: User) => void;
+    onDeleteUser: (userId: string) => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({ 
     currentUser, aiConfig, setAiConfig,
     gmailConnection, onGmailConnect, onGmailDisconnect,
     apiKey, onGenerateApiKey, onRevokeApiKey, addToast,
-    setCurrentPage, externalConnections, onSetExternalConnections
+    setCurrentPage, externalConnections, onSetExternalConnections,
+    users, onInviteUser, onUpdateUser, onDeleteUser
 }) => {
     const [showApiKey, setShowApiKey] = useState(false);
     const [isDevSettingsOpen, setIsDevSettingsOpen] = useState(false);
@@ -91,8 +97,25 @@ const Settings: React.FC<SettingsProps> = ({
         <div className="space-y-12 max-w-4xl mx-auto">
           <header>
             <h1 className="text-3xl font-bold text-white tracking-tight">Settings</h1>
-            <p className="text-gray-400 mt-1">Manage integrations, API keys, and application preferences.</p>
+            <p className="text-gray-400 mt-1">Manage users, integrations, API keys, and application preferences.</p>
           </header>
+          
+          {/* User Management Section */}
+          {(currentUser.role === 'Admin' || currentUser.role === 'Manager') && (
+            <section>
+                <h2 className="text-xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4 flex items-center gap-2">
+                    <UsersIcon className="w-6 h-6" />
+                    User Management
+                </h2>
+                <UserManagementPanel
+                    currentUser={currentUser}
+                    users={users}
+                    onInviteUser={onInviteUser}
+                    onUpdateUser={onUpdateUser}
+                    onDeleteUser={onDeleteUser}
+                />
+            </section>
+          )}
 
           {/* API & Integrations Section */}
           <section>
