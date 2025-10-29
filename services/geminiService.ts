@@ -4,9 +4,19 @@ import { GoogleGenAI } from "@google/genai";
 import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, BOMComponent, WatchlistItem } from '../types';
 import type { Forecast } from './forecastingService';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+if (!apiKey) {
+  console.error('VITE_GEMINI_API_KEY is not set. AI features will be disabled.');
+}
+
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 async function callGemini(model: string, prompt: string, isJson = false) {
+    if (!ai) {
+        return "AI features are disabled. Please configure VITE_GEMINI_API_KEY to enable AI assistance.";
+    }
+    
     try {
         const response = await ai.models.generateContent({
             model: model,
@@ -69,6 +79,10 @@ export async function getRegulatoryAdvice(
     state: string,
     watchlist: WatchlistItem[]
 ): Promise<string> {
+    if (!ai) {
+        return "AI features are disabled. Please configure VITE_GEMINI_API_KEY to enable regulatory advice.";
+    }
+    
     const ingredientList = ingredients.map(c => c.name).join(', ');
     const finalPrompt = promptTemplate
         .replace('{{productName}}', productName)
@@ -100,6 +114,10 @@ export async function draftComplianceLetter(
     state: string,
     complianceAnalysis: string
 ): Promise<string> {
+    if (!ai) {
+        return "AI features are disabled. Please configure VITE_GEMINI_API_KEY to enable letter drafting.";
+    }
+    
     const ingredientList = ingredients.map(c => `- ${c.name} (${c.sku})`).join('\n');
     const finalPrompt = promptTemplate
         .replace('{{state}}', state)
@@ -129,6 +147,10 @@ export async function verifyArtworkLabel(
     artworkImageBase64: string,
     expectedBarcode: string
 ): Promise<string> {
+    if (!ai) {
+        return "AI features are disabled. Please configure VITE_GEMINI_API_KEY to enable artwork verification.";
+    }
+    
     const finalPrompt = promptTemplate.replace('{{expectedBarcode}}', expectedBarcode);
     
     try {
