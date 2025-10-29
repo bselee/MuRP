@@ -461,7 +461,6 @@ export async function fetchUsers(): Promise<User[]> {
   const { data, error } = await supabase
     .from('users')
     .select('*')
-    .eq('is_deleted', false)
     .order('name');
 
   if (error) {
@@ -487,7 +486,6 @@ export async function fetchUserById(userId: string): Promise<User | null> {
     .from('users')
     .select('*')
     .eq('id', userId)
-    .eq('is_deleted', false)
     .single();
 
   if (error) {
