@@ -170,6 +170,8 @@ const App: React.FC = () => {
         // Check if we're in password reset flow - don't load user profile yet
         if (isPasswordResetMode) {
           // Skip loading user profile during password reset
+          // But make sure authLoading is set to false so app doesn't hang
+          setAuthLoading(false);
           return;
         }
         
