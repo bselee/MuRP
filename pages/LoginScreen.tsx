@@ -21,18 +21,25 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthSuccess, addToast }) =>
     setLoading(true);
 
     try {
+      console.log('Attempting sign in for:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Sign in error:', error);
+        throw error;
+      }
+
+      console.log('Sign in successful:', data);
 
       if (data.user) {
         addToast('Successfully signed in!', 'success');
-        onAuthSuccess();
+        await onAuthSuccess();
       }
     } catch (error: any) {
+      console.error('Sign in failed:', error);
       addToast(error.message || 'Failed to sign in', 'error');
     } finally {
       setLoading(false);

@@ -235,8 +235,21 @@ const App: React.FC = () => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
-  const handleAuthSuccess = () => {
-    // Auth state change listener will handle setting the user
+  const handleAuthSuccess = async () => {
+    // Force refresh the session to ensure auth state is updated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const mockUser: User = {
+        id: session.user.id,
+        name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+        email: session.user.email || '',
+        role: session.user.user_metadata?.role || 'Staff',
+        department: session.user.user_metadata?.department || 'Purchasing',
+        onboardingComplete: true,
+      };
+      setCurrentUser(mockUser);
+      setSupabaseUser(session.user);
+    }
   };
 
   const handleLogout = async () => {
