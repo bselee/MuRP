@@ -125,12 +125,17 @@ const App: React.FC = () => {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        console.log('[App] Starting auth initialization...');
         const user = await getCurrentUser();
+        console.log('[App] getCurrentUser result:', user ? 'User found' : 'No user');
         setSupabaseUser(user);
         
         // Fetch user profile from database to get actual role
         if (user) {
+          console.log('[App] Fetching user profile from database...');
           const userProfile = await fetchUserById(user.id);
+          console.log('[App] User profile result:', userProfile ? 'Profile found' : 'No profile');
+          
           if (userProfile) {
             setCurrentUser(userProfile);
             // Only show welcome toast if not in password reset flow
@@ -141,6 +146,7 @@ const App: React.FC = () => {
           } else {
             // User authenticated but no profile in public.users table
             // Create a default profile
+            console.log('[App] No profile found, creating default user');
             const defaultUser: User = {
               id: user.id,
               name: user.email?.split('@')[0] || 'User',
@@ -151,10 +157,13 @@ const App: React.FC = () => {
             };
             setCurrentUser(defaultUser);
           }
+        } else {
+          console.log('[App] No user authenticated, will show login screen');
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('[App] Auth initialization error:', error);
       } finally {
+        console.log('[App] Auth initialization complete, setting authLoading to false');
         setAuthLoading(false);
       }
     };
