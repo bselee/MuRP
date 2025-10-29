@@ -84,10 +84,12 @@ const ResetPassword: React.FC = () => {
 
       setSuccess(true);
       
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
+      // Sign out and redirect to login after 2 seconds
+      setTimeout(async () => {
+        await supabase.auth.signOut();
+        // Clear the hash and redirect to login
         window.location.href = '/';
-      }, 3000);
+      }, 2000);
     } catch (error: any) {
       setError(error.message || 'Failed to reset password');
     } finally {

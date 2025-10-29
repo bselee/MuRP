@@ -12,6 +12,7 @@ import {
   fetchBuildOrders,
   fetchRequisitions,
   fetchUsers,
+  fetchUserById,
   fetchArtworkFolders,
   subscribeToInventory,
   subscribeToPurchaseOrders,
@@ -110,18 +111,29 @@ const App: React.FC = () => {
         const user = await getCurrentUser();
         setSupabaseUser(user);
         
-        // Create mock User object from Supabase user for backward compatibility
+        // Fetch user profile from database to get actual role
         if (user) {
-          const mockUser: User = {
-            id: user.id,
-            name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-            email: user.email || '',
-            role: user.user_metadata?.role || 'Staff', // Default role
-            department: user.user_metadata?.department || 'Purchasing',
-            onboardingComplete: true, // Assume complete for now
-          };
-          setCurrentUser(mockUser);
-          addToast(`Welcome back, ${mockUser.name}!`, 'success');
+          const userProfile = await fetchUserById(user.id);
+          if (userProfile) {
+            setCurrentUser(userProfile);
+            // Only show welcome toast if not in password reset flow
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            if (hashParams.get('type') !== 'recovery') {
+              addToast(`Welcome back, ${userProfile.name}!`, 'success');
+            }
+          } else {
+            // User authenticated but no profile in public.users table
+            // Create a default profile
+            const defaultUser: User = {
+              id: user.id,
+              name: user.email?.split('@')[0] || 'User',
+              email: user.email || '',
+              role: 'Staff',
+              department: 'Purchasing',
+              onboardingComplete: false,
+            };
+            setCurrentUser(defaultUser);
+          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -138,15 +150,29 @@ const App: React.FC = () => {
       setSupabaseUser(user);
       
       if (user) {
-        const mockUser: User = {
-          id: user.id,
-          name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-          email: user.email || '',
-          role: user.user_metadata?.role || 'Staff',
-          department: user.user_metadata?.department || 'Purchasing',
-          onboardingComplete: true,
-        };
-        setCurrentUser(mockUser);
+        // Check if we're in password reset flow - don't load user profile yet
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        if (hashParams.get('type') === 'recovery') {
+          // Skip loading user profile during password reset
+          return;
+        }
+        
+        // Fetch user profile from database to get actual role
+        const userProfile = await fetchUserById(user.id);
+        if (userProfile) {
+          setCurrentUser(userProfile);
+        } else {
+          // User authenticated but no profile in public.users table
+          const defaultUser: User = {
+            id: user.id,
+            name: user.email?.split('@')[0] || 'User',
+            email: user.email || '',
+            role: 'Staff',
+            department: 'Purchasing',
+            onboardingComplete: false,
+          };
+          setCurrentUser(defaultUser);
+        }
       } else {
         setCurrentUser(null);
       }
@@ -240,15 +266,22 @@ const App: React.FC = () => {
     // Force refresh the session to ensure auth state is updated
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      const mockUser: User = {
-        id: session.user.id,
-        name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-        email: session.user.email || '',
-        role: session.user.user_metadata?.role || 'Staff',
-        department: session.user.user_metadata?.department || 'Purchasing',
-        onboardingComplete: true,
-      };
-      setCurrentUser(mockUser);
+      // Fetch user profile from database to get actual role
+      const userProfile = await fetchUserById(session.user.id);
+      if (userProfile) {
+        setCurrentUser(userProfile);
+      } else {
+        // Fallback to default user if no profile found
+        const defaultUser: User = {
+          id: session.user.id,
+          name: session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
+          role: 'Staff',
+          department: 'Purchasing',
+          onboardingComplete: false,
+        };
+        setCurrentUser(defaultUser);
+      }
       setSupabaseUser(session.user);
     }
   };

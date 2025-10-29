@@ -480,6 +480,34 @@ export async function fetchUsers(): Promise<User[]> {
 }
 
 /**
+ * Fetch a single user by auth ID (for current user profile)
+ */
+export async function fetchUserById(userId: string): Promise<User | null> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .eq('is_deleted', false)
+    .single();
+
+  if (error) {
+    console.error('Error fetching user by ID:', error);
+    return null;
+  }
+
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    role: data.role as 'Admin' | 'Manager' | 'Staff',
+    department: data.department as 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV',
+    onboardingComplete: true,
+  };
+}
+
+/**
  * Create a new user
  */
 export async function createUser(user: Omit<User, 'id' | 'onboardingComplete'>): Promise<string> {
