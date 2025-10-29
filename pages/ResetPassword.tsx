@@ -121,24 +121,40 @@ const ResetPassword: React.FC = () => {
     }
 
     setLoading(true);
+    console.log('[ResetPassword] Attempting to update password...');
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      // Add timeout to updateUser call
+      const updatePromise = supabase.auth.updateUser({
         password: password,
       });
+      
+      const timeoutPromise = new Promise<{ data: any; error: any }>((resolve) => {
+        setTimeout(() => {
+          console.warn('[ResetPassword] updateUser timeout after 10 seconds');
+          resolve({ data: null, error: { message: 'Request timed out. Your password may have been updated. Try logging in.' } });
+        }, 10000);
+      });
+      
+      const { error } = await Promise.race([updatePromise, timeoutPromise]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[ResetPassword] updateUser error:', error);
+        throw error;
+      }
 
+      console.log('[ResetPassword] Password updated successfully');
       setSuccess(true);
       
-      // Sign out and redirect to login after 2 seconds
-      setTimeout(async () => {
-        await supabase.auth.signOut();
-        // Clear the hash and redirect to login
+      // Redirect to login after 2 seconds (don't wait for signOut)
+      setTimeout(() => {
+        console.log('[ResetPassword] Redirecting to login...');
+        // Clear URL and go to login
         window.location.href = '/';
       }, 2000);
     } catch (error: any) {
-      setError(error.message || 'Failed to reset password');
+      console.error('[ResetPassword] Failed to update password:', error);
+      setError(error.message || 'Failed to reset password. Please try requesting a new reset link.');
     } finally {
       setLoading(false);
     }
