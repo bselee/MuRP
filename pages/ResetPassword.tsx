@@ -13,50 +13,89 @@ const ResetPassword: React.FC = () => {
   useEffect(() => {
     const initSession = async () => {
       try {
-        // Check if we're in password reset mode
+        // Parse URL parameters
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
+        
         const type = hashParams.get('type') || queryParams.get('type');
+        const token = hashParams.get('token') || queryParams.get('token');
+        const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
         
         console.log('[ResetPassword] Initializing...', { 
           type,
+          hasToken: !!token,
+          hasAccessToken: !!accessToken,
           url: window.location.href,
-          hasHash: !!window.location.hash,
-          hasQuery: !!window.location.search
+          hash: window.location.hash,
+          search: window.location.search
         });
         
         if (type !== 'recovery') {
-          console.error('[ResetPassword] Not a recovery link');
+          console.error('[ResetPassword] Not a recovery link, type:', type);
           setError('Invalid password reset link. Please request a new one.');
           return;
         }
 
-        // Give Supabase's detectSessionInUrl time to process the URL
-        // It automatically handles the token exchange
-        console.log('[ResetPassword] Waiting for Supabase to detect session...');
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // If we have an access_token in the URL, try to set session with it
+        if (accessToken) {
+          console.log('[ResetPassword] Found access_token, attempting to set session...');
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: hashParams.get('refresh_token') || queryParams.get('refresh_token') || '',
+          });
+          
+          if (error) {
+            console.error('[ResetPassword] setSession error:', error);
+            setError('Failed to verify reset token. Link may have expired. Please request a new password reset.');
+            return;
+          }
+          
+          if (data.session) {
+            console.log('[ResetPassword] Session established via access_token');
+            setSessionReady(true);
+            return;
+          }
+        }
         
-        // Check if session was established
-        console.log('[ResetPassword] Checking for session...');
+        // If we have a token parameter, verify it
+        if (token) {
+          console.log('[ResetPassword] Found token, verifying OTP...');
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: 'recovery',
+          });
+          
+          if (error) {
+            console.error('[ResetPassword] verifyOtp error:', error);
+            setError('Failed to verify reset token. Link may have expired. Please request a new password reset.');
+            return;
+          }
+          
+          if (data.session) {
+            console.log('[ResetPassword] Session established via verifyOtp');
+            setSessionReady(true);
+            return;
+          }
+        }
+        
+        // Last resort: wait briefly and check if session exists
+        console.log('[ResetPassword] No direct tokens found, checking for existing session...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (sessionError) {
-          console.error('[ResetPassword] Session error:', sessionError);
-          setError('Failed to verify reset link. Please request a new password reset.');
+        if (!sessionError && session) {
+          console.log('[ResetPassword] Found existing session');
+          setSessionReady(true);
           return;
         }
         
-        if (!session) {
-          console.error('[ResetPassword] No session found after redirect');
-          setError('Session expired or invalid. Please request a new password reset link.');
-          return;
-        }
+        console.error('[ResetPassword] No valid session or tokens found');
+        setError('Could not verify password reset link. Please request a new one.');
         
-        console.log('[ResetPassword] Session verified successfully');
-        setSessionReady(true);
       } catch (err) {
         console.error('[ResetPassword] Unexpected error:', err);
-        setError('An error occurred. Please try requesting a new password reset link.');
+        setError('An error occurred while verifying your reset link. Please try requesting a new one.');
       }
     };
 
