@@ -43,12 +43,22 @@ if [ -f ".env.local" ]; then
     check_pass ".env.local file exists"
     
     # Check required variables
-    REQUIRED_VARS=("VITE_SUPABASE_URL" "VITE_SUPABASE_ANON_KEY" "SUPABASE_SERVICE_ROLE_KEY" "GEMINI_API_KEY")
+    REQUIRED_VARS=("VITE_SUPABASE_URL" "VITE_SUPABASE_ANON_KEY" "SUPABASE_SERVICE_ROLE_KEY")
+    OPTIONAL_VARS=("VITE_GEMINI_API_KEY")
+    
     for var in "${REQUIRED_VARS[@]}"; do
         if grep -q "^$var=" .env.local; then
             check_pass "$var is set"
         else
             check_fail "$var is missing in .env.local"
+        fi
+    done
+    
+    for var in "${OPTIONAL_VARS[@]}"; do
+        if grep -q "^$var=" .env.local; then
+            check_pass "$var is set"
+        else
+            check_warn "$var is missing (AI features will be disabled)"
         fi
     done
 else
