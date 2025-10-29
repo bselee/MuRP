@@ -15,6 +15,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthSuccess, addToast }) =>
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,14 +30,30 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthSuccess, addToast }) =>
 
       if (error) {
         console.error('Sign in error:', error);
-        throw error;
+        
+        // Provide more helpful error messages
+        if (error.message.includes('Invalid login credentials')) {
+          addToast('Invalid email or password. Please check your credentials.', 'error');
+        } else if (error.message.includes('Email not confirmed')) {
+          addToast('Please verify your email address before signing in. Check your inbox for the confirmation link.', 'error');
+        } else {
+          addToast(error.message || 'Failed to sign in', 'error');
+        }
+        return;
       }
 
       console.log('Sign in successful:', data);
 
       if (data.user) {
-        addToast('Successfully signed in!', 'success');
-        await onAuthSuccess();
+        // Check if email is confirmed
+        if (data.user.email_confirmed_at) {
+          addToast('Successfully signed in!', 'success');
+          await onAuthSuccess();
+        } else {
+          setNeedsEmailConfirmation(true);
+          addToast('Please verify your email address. Check your inbox for the confirmation link.', 'error');
+          await supabase.auth.signOut();
+        }
       }
     } catch (error: any) {
       console.error('Sign in failed:', error);
@@ -80,8 +97,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthSuccess, addToast }) =>
     setLoading(true);
 
     try {
+      const redirectUrl = window.location.hostname === 'localhost' 
+        ? 'http://localhost:5173'
+        : window.location.origin;
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: redirectUrl,
       });
 
       if (error) throw error;
@@ -148,6 +169,30 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthSuccess, addToast }) =>
               >
                 {loading ? 'Signing in...' : 'Sign In'}
               </button>
+
+              {needsEmailConfirmation && (
+                <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-3 text-sm">
+                  <p className="text-yellow-300 mb-2">Haven't received the confirmation email?</p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase.auth.resend({
+                          type: 'signup',
+                          email,
+                        });
+                        if (error) throw error;
+                        addToast('Confirmation email resent! Check your inbox.', 'success');
+                      } catch (error: any) {
+                        addToast(error.message || 'Failed to resend email', 'error');
+                      }
+                    }}
+                    className="text-yellow-400 hover:text-yellow-300 underline"
+                  >
+                    Resend confirmation email
+                  </button>
+                </div>
+              )}
 
               <div className="text-center space-y-2">
                 <button
