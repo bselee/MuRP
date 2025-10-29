@@ -105,14 +105,22 @@ const App: React.FC = () => {
   const [externalConnections, setExternalConnections] = useState<ExternalConnection[]>([]);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
 
-  // Monitor URL hash for password reset mode
+  // Monitor URL hash AND query params for password reset mode
   useEffect(() => {
     const checkPasswordResetMode = () => {
+      // Check both hash parameters and query parameters
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const isRecovery = hashParams.get('type') === 'recovery';
+      const queryParams = new URLSearchParams(window.location.search);
+      
+      const isRecoveryHash = hashParams.get('type') === 'recovery';
+      const isRecoveryQuery = queryParams.get('type') === 'recovery';
+      const isRecovery = isRecoveryHash || isRecoveryQuery;
+      
       console.log('[App] Checking password reset mode:', { 
-        hash: window.location.hash, 
-        type: hashParams.get('type'),
+        hash: window.location.hash,
+        search: window.location.search,
+        hashType: hashParams.get('type'),
+        queryType: queryParams.get('type'),
         isRecovery 
       });
       setIsPasswordResetMode(isRecovery);
@@ -121,9 +129,13 @@ const App: React.FC = () => {
     // Check on mount
     checkPasswordResetMode();
 
-    // Check on hash change
+    // Check on hash change and location change
     window.addEventListener('hashchange', checkPasswordResetMode);
-    return () => window.removeEventListener('hashchange', checkPasswordResetMode);
+    window.addEventListener('popstate', checkPasswordResetMode);
+    return () => {
+      window.removeEventListener('hashchange', checkPasswordResetMode);
+      window.removeEventListener('popstate', checkPasswordResetMode);
+    };
   }, []);
 
   // Initialize Supabase auth session

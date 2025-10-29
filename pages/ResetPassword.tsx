@@ -13,13 +13,22 @@ const ResetPassword: React.FC = () => {
   useEffect(() => {
     const initSession = async () => {
       try {
-        // Check if we have a recovery token in the URL
+        // Check both hash and query parameters for recovery tokens
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const type = hashParams.get('type');
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
+        const queryParams = new URLSearchParams(window.location.search);
         
-        console.log('Password reset flow initiated', { type, hasAccessToken: !!accessToken });
+        // Try hash first, then query params
+        const type = hashParams.get('type') || queryParams.get('type');
+        const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+        
+        console.log('Password reset flow initiated', { 
+          type, 
+          hasAccessToken: !!accessToken,
+          fromHash: !!hashParams.get('type'),
+          fromQuery: !!queryParams.get('type'),
+          url: window.location.href
+        });
         
         if (type !== 'recovery') {
           setError('Invalid or expired password reset link. Please request a new one.');
