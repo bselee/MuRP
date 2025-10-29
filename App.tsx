@@ -78,6 +78,7 @@ const App: React.FC = () => {
   // Auth state
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   
   // App user state (for backward compatibility with mock User type)
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -103,6 +104,22 @@ const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [externalConnections, setExternalConnections] = useState<ExternalConnection[]>([]);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
+
+  // Monitor URL hash for password reset mode
+  useEffect(() => {
+    const checkPasswordResetMode = () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const isRecovery = hashParams.get('type') === 'recovery';
+      setIsPasswordResetMode(isRecovery);
+    };
+
+    // Check on mount
+    checkPasswordResetMode();
+
+    // Check on hash change
+    window.addEventListener('hashchange', checkPasswordResetMode);
+    return () => window.removeEventListener('hashchange', checkPasswordResetMode);
+  }, []);
 
   // Initialize Supabase auth session
   useEffect(() => {
@@ -151,8 +168,7 @@ const App: React.FC = () => {
       
       if (user) {
         // Check if we're in password reset flow - don't load user profile yet
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        if (hashParams.get('type') === 'recovery') {
+        if (isPasswordResetMode) {
           // Skip loading user profile during password reset
           return;
         }
@@ -181,7 +197,7 @@ const App: React.FC = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [isPasswordResetMode]);
 
   // Load data when user is authenticated
   useEffect(() => {
@@ -747,11 +763,8 @@ const App: React.FC = () => {
     }
   };
 
-  // Check if we're on the password reset route
-  const hashParams = new URLSearchParams(window.location.hash.substring(1));
-  const isPasswordReset = hashParams.get('type') === 'recovery';
-
-  if (isPasswordReset) {
+  // ALWAYS show reset password screen if we're in recovery mode, regardless of auth state
+  if (isPasswordResetMode) {
     return <ResetPassword />;
   }
 
