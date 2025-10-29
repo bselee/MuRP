@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "supabase:types": "supabase gen types typescript --local > types/supabase.ts"
+    "supabase:types": "supabase gen types typescript --local > types/supabase.ts",
+    "verify": "./scripts/verify-deployment.sh",
+    "setup:db": "./scripts/setup-database.sh",
+    "deploy:preview": "./scripts/deploy.sh preview",
+    "deploy:prod": "./scripts/deploy.sh production",
+    "deploy": "npm run verify && npm run deploy:prod"
   },
   "dependencies": {
     "@google/genai": "^1.27.0",
