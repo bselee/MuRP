@@ -8,15 +8,61 @@ const ResetPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
     // Check if we have a recovery token in the URL
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const type = hashParams.get('type');
+    const accessToken = hashParams.get('access_token');
     
     if (type !== 'recovery') {
       setError('Invalid or expired password reset link. Please request a new one.');
+      return;
     }
+
+    if (!accessToken) {
+      setError('No recovery token found. Please request a new password reset link.');
+      return;
+    }
+
+    // Exchange the hash params for a session
+    const initSession = async () => {
+      try {
+        // Wait a bit for Supabase to process the URL hash
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session error:', error);
+          setError('Auth session missing! The password reset link may have expired. Please request a new one.');
+          return;
+        }
+        
+        if (!data.session) {
+          console.log('No session found. Attempting to verify OTP...');
+          // Try to verify the token from URL if session doesn't exist
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: hashParams.toString(),
+            type: 'recovery',
+          });
+          
+          if (verifyError) {
+            console.error('OTP verification error:', verifyError);
+            setError('Failed to verify recovery link. Please request a new password reset.');
+            return;
+          }
+        }
+        
+        setSessionReady(true);
+      } catch (err) {
+        console.error('Session initialization error:', err);
+        setError('Failed to initialize session. Please try the password reset link again.');
+      }
+    };
+
+    initSession();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,6 +100,19 @@ const ResetPassword: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Show loading while establishing session
+  if (!sessionReady && !error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
+        <div className="w-full max-w-md text-center">
+          <BoxIcon className="w-16 h-16 text-indigo-400 mx-auto mb-4 animate-pulse" />
+          <h1 className="text-2xl font-bold text-white mb-2">Verifying reset link...</h1>
+          <p className="text-gray-400">Please wait while we verify your password reset request.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
