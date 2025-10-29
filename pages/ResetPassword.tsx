@@ -36,25 +36,29 @@ const ResetPassword: React.FC = () => {
           return;
         }
 
-        // If we have an access_token in the URL, try to set session with it
+        // If we have an access_token in the URL, proceed with password reset
+        // We'll attempt to set session in the background but won't wait for it
         if (accessToken) {
-          console.log('[ResetPassword] Found access_token, attempting to set session...');
-          const { data, error } = await supabase.auth.setSession({
+          console.log('[ResetPassword] Found access_token, setting session in background...');
+          
+          // Fire and forget - don't wait for this
+          supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: hashParams.get('refresh_token') || queryParams.get('refresh_token') || '',
+          }).then((result) => {
+            if (result.error) {
+              console.error('[ResetPassword] Background setSession error:', result.error);
+            } else {
+              console.log('[ResetPassword] Background setSession succeeded');
+            }
+          }).catch((err) => {
+            console.error('[ResetPassword] Background setSession exception:', err);
           });
           
-          if (error) {
-            console.error('[ResetPassword] setSession error:', error);
-            setError('Failed to verify reset token. Link may have expired. Please request a new password reset.');
-            return;
-          }
-          
-          if (data.session) {
-            console.log('[ResetPassword] Session established via access_token');
-            setSessionReady(true);
-            return;
-          }
+          // Proceed immediately to show password form
+          console.log('[ResetPassword] Proceeding to show password reset form');
+          setSessionReady(true);
+          return;
         }
         
         // If we have a token parameter, verify it
