@@ -6,7 +6,6 @@
   "framework": "vite",
   "outputDirectory": "dist",
   "regions": ["iad1"],
-
   "headers": [
     {
       "source": "/api/(.*)",
