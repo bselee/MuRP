@@ -110,6 +110,11 @@ const App: React.FC = () => {
     const checkPasswordResetMode = () => {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const isRecovery = hashParams.get('type') === 'recovery';
+      console.log('[App] Checking password reset mode:', { 
+        hash: window.location.hash, 
+        type: hashParams.get('type'),
+        isRecovery 
+      });
       setIsPasswordResetMode(isRecovery);
     };
 
@@ -776,8 +781,16 @@ const App: React.FC = () => {
 
   // ALWAYS show reset password screen if we're in recovery mode, regardless of auth state
   if (isPasswordResetMode) {
+    console.log('[App] Rendering ResetPassword component');
     return <ResetPassword />;
   }
+
+  console.log('[App] Render decision:', { 
+    isPasswordResetMode, 
+    authLoading, 
+    hasSupabaseUser: !!supabaseUser,
+    hasCurrentUser: !!currentUser 
+  });
 
   // Show loading state while checking auth or loading data
   if (authLoading || (supabaseUser && dataLoading && inventory.length === 0)) {
