@@ -74,14 +74,41 @@ export async function getSession() {
 
 // Helper function to get the current user
 export async function getCurrentUser() {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  
-  if (error) {
-    console.error('Error fetching user:', error)
-    return null
+  try {
+    console.log('[getCurrentUser] Calling supabase.auth.getUser()...');
+    
+    // Add a timeout to prevent hanging forever
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => {
+        console.warn('[getCurrentUser] Timeout after 5 seconds, returning null');
+        resolve(null);
+      }, 5000);
+    });
+    
+    const userPromise = supabase.auth.getUser().then(result => {
+      console.log('[getCurrentUser] Got response:', result.data.user ? 'User exists' : 'No user', result.error);
+      return result;
+    });
+    
+    const result = await Promise.race([userPromise, timeoutPromise]);
+    
+    if (result === null) {
+      console.warn('[getCurrentUser] Timed out waiting for auth response');
+      return null;
+    }
+    
+    const { data: { user }, error } = result;
+    
+    if (error) {
+      console.error('[getCurrentUser] Error fetching user:', error);
+      return null;
+    }
+    
+    return user;
+  } catch (error) {
+    console.error('[getCurrentUser] Exception:', error);
+    return null;
   }
-  
-  return user
 }
 
 // Helper function to sign out
