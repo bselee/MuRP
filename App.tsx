@@ -29,6 +29,7 @@ import Production from './pages/Production';
 import BOMs from './pages/BOMs';
 import Settings from './pages/Settings';
 import LoginScreen from './pages/LoginScreen';
+import ResetPassword from './pages/ResetPassword';
 import Toast from './components/Toast';
 import ApiDocs from './pages/ApiDocs';
 import ArtworkPage from './pages/Artwork';
@@ -712,6 +713,14 @@ const App: React.FC = () => {
         />;
     }
   };
+
+  // Check if we're on the password reset route
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  const isPasswordReset = hashParams.get('type') === 'recovery';
+
+  if (isPasswordReset) {
+    return <ResetPassword />;
+  }
 
   // Show loading state while checking auth or loading data
   if (authLoading || (supabaseUser && dataLoading && inventory.length === 0)) {
