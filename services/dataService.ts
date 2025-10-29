@@ -9,7 +9,10 @@ import type {
   InventoryItem, 
   Vendor, 
   PurchaseOrder,
-  BuildOrder 
+  BuildOrder,
+  InternalRequisition,
+  User,
+  ArtworkFolder
 } from '../types';
 
 /**
@@ -362,6 +365,290 @@ export function subscribeToPurchaseOrders(callback: (payload: any) => void) {
         event: '*',
         schema: 'public',
         table: 'purchase_orders',
+      },
+      callback
+    )
+    .subscribe();
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}
+
+/**
+ * Fetch all requisitions
+ */
+export async function fetchRequisitions(): Promise<InternalRequisition[]> {
+  const { data, error } = await supabase
+    .from('requisitions')
+    .select('*')
+    .eq('is_deleted', false)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching requisitions:', error);
+    throw error;
+  }
+
+  return (data || []).map((req: any) => ({
+    id: req.id,
+    requesterId: req.requester_id,
+    source: req.requester_id ? 'Manual' : 'System',
+    department: req.department || 'Purchasing',
+    createdAt: req.created_at,
+    status: req.status as 'Pending' | 'Approved' | 'Rejected' | 'Ordered',
+    items: Array.isArray(req.items) ? req.items : [],
+  }));
+}
+
+/**
+ * Create a new requisition
+ */
+export async function createRequisition(
+  req: Omit<InternalRequisition, 'id' | 'createdAt'>
+): Promise<string> {
+  // Generate requisition number
+  const { data: seqData, error: seqError } = await supabase
+    .rpc('nextval', { seq_name: 'requisition_number_seq' }) as { data: number; error: any };
+
+  if (seqError) {
+    console.error('Error generating requisition number:', seqError);
+    throw seqError;
+  }
+
+  const reqNumber = `REQ-${seqData.toString().padStart(5, '0')}`;
+
+  const { error } = await supabase
+    .from('requisitions')
+    .insert({
+      requisition_number: reqNumber,
+      requester_id: req.requesterId || null,
+      department: req.department,
+      status: req.status,
+      items: req.items,
+    });
+
+  if (error) {
+    console.error('Error creating requisition:', error);
+    throw error;
+  }
+
+  return reqNumber;
+}
+
+/**
+ * Update requisition status
+ */
+export async function updateRequisitionStatus(
+  id: string,
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Ordered'
+): Promise<void> {
+  const { error } = await supabase
+    .from('requisitions')
+    .update({ status })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error updating requisition status:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch all users from the database
+ */
+export async function fetchUsers(): Promise<User[]> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('is_deleted', false)
+    .order('name');
+
+  if (error) {
+    console.error('Error fetching users:', error);
+    throw error;
+  }
+
+  return (data || []).map((user: any) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role as 'Admin' | 'Manager' | 'Staff',
+    department: user.department as 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV',
+    onboardingComplete: true,
+  }));
+}
+
+/**
+ * Create a new user
+ */
+export async function createUser(user: Omit<User, 'id' | 'onboardingComplete'>): Promise<string> {
+  const { data, error } = await supabase
+    .from('users')
+    .insert({
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      department: user.department,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Error creating user:', error);
+    throw error;
+  }
+
+  return data.id;
+}
+
+/**
+ * Fetch all artwork folders
+ */
+export async function fetchArtworkFolders(): Promise<ArtworkFolder[]> {
+  const { data, error } = await supabase
+    .from('artwork_folders')
+    .select('*')
+    .eq('is_deleted', false)
+    .order('name');
+
+  if (error) {
+    console.error('Error fetching artwork folders:', error);
+    throw error;
+  }
+
+  return (data || []).map((folder: any) => ({
+    id: folder.id,
+    name: folder.name,
+    description: folder.description || '',
+  }));
+}
+
+/**
+ * Create a new artwork folder
+ */
+export async function createArtworkFolder(folder: Omit<ArtworkFolder, 'id'>): Promise<string> {
+  const { data, error } = await supabase
+    .from('artwork_folders')
+    .insert({
+      name: folder.name,
+      description: folder.description,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Error creating artwork folder:', error);
+    throw error;
+  }
+
+  return data.id;
+}
+
+/**
+ * Update a BOM
+ */
+export async function updateBOM(id: string, bom: Partial<BillOfMaterials>): Promise<void> {
+  const updateData: any = {};
+  
+  if (bom.name) updateData.name = bom.name;
+  if (bom.components) updateData.components = bom.components;
+  if (bom.artwork) updateData.artwork = bom.artwork;
+  if (bom.packaging) updateData.packaging = bom.packaging;
+  if (bom.barcode) updateData.barcode = bom.barcode;
+  if (bom.notes) updateData.production_notes = bom.notes;
+
+  const { error } = await supabase
+    .from('boms')
+    .update(updateData)
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error updating BOM:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update build order status
+ */
+export async function updateBuildOrderStatus(
+  id: string,
+  status: 'Planned' | 'In Progress' | 'Completed' | 'Cancelled'
+): Promise<void> {
+  const updateData: any = { status };
+  
+  if (status === 'In Progress' && !updateData.started_at) {
+    updateData.started_at = new Date().toISOString();
+  }
+  
+  if (status === 'Completed') {
+    updateData.completed_at = new Date().toISOString();
+  }
+
+  const { error } = await supabase
+    .from('build_orders')
+    .update(updateData)
+    .eq('build_number', id);
+
+  if (error) {
+    console.error('Error updating build order status:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update purchase order status
+ */
+export async function updatePurchaseOrderStatus(
+  id: string,
+  status: 'Pending' | 'Submitted' | 'Fulfilled' | 'Cancelled'
+): Promise<void> {
+  const { error } = await supabase
+    .from('purchase_orders')
+    .update({ status })
+    .eq('po_number', id);
+
+  if (error) {
+    console.error('Error updating purchase order status:', error);
+    throw error;
+  }
+}
+
+/**
+ * Subscribe to real-time build order changes
+ */
+export function subscribeToBuildOrders(callback: (payload: any) => void) {
+  const subscription = supabase
+    .channel('build-orders-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'build_orders',
+      },
+      callback
+    )
+    .subscribe();
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}
+
+/**
+ * Subscribe to real-time BOM changes
+ */
+export function subscribeToBOMs(callback: (payload: any) => void) {
+  const subscription = supabase
+    .channel('boms-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'boms',
       },
       callback
     )

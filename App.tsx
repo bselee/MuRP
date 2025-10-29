@@ -10,8 +10,13 @@ import {
   fetchBOMs,
   fetchPurchaseOrders,
   fetchBuildOrders,
+  fetchRequisitions,
+  fetchUsers,
+  fetchArtworkFolders,
   subscribeToInventory,
   subscribeToPurchaseOrders,
+  subscribeToBuildOrders,
+  subscribeToBOMs,
 } from './services/dataService';
 import AiAssistant from './components/AiAssistant';
 import Sidebar from './components/Sidebar';
@@ -79,14 +84,14 @@ const App: React.FC = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
-  const [historicalSales] = useState<HistoricalSale[]>(mockHistoricalSales); // Keep mock for now
+  const [historicalSales] = useState<HistoricalSale[]>(mockHistoricalSales); // Keep mock for now - no DB table yet
   const [buildOrders, setBuildOrders] = useState<BuildOrder[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
-  const [requisitions, setRequisitions] = useState<InternalRequisition[]>(mockInternalRequisitions);
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [watchlist] = useState<WatchlistItem[]>(mockWatchlist);
-  const [aiConfig, setAiConfig] = useState<AiConfig>(defaultAiConfig);
-  const [artworkFolders, setArtworkFolders] = useState<ArtworkFolder[]>(mockArtworkFolders);
+  const [requisitions, setRequisitions] = useState<InternalRequisition[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [watchlist] = useState<WatchlistItem[]>(mockWatchlist); // Keep mock for now - no DB table yet
+  const [aiConfig, setAiConfig] = useState<AiConfig>(defaultAiConfig); // Keep mock for now - stored in user metadata
+  const [artworkFolders, setArtworkFolders] = useState<ArtworkFolder[]>([]);
   
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -158,12 +163,24 @@ const App: React.FC = () => {
     const loadData = async () => {
       setDataLoading(true);
       try {
-        const [inventoryData, vendorsData, bomsData, posData, buildOrdersData] = await Promise.all([
+        const [
+          inventoryData,
+          vendorsData,
+          bomsData,
+          posData,
+          buildOrdersData,
+          requisitionsData,
+          usersData,
+          artworkFoldersData
+        ] = await Promise.all([
           fetchInventory(),
           fetchVendors(),
           fetchBOMs(),
           fetchPurchaseOrders(),
           fetchBuildOrders(),
+          fetchRequisitions(),
+          fetchUsers(),
+          fetchArtworkFolders(),
         ]);
 
         setInventory(inventoryData);
@@ -171,6 +188,9 @@ const App: React.FC = () => {
         setBoms(bomsData);
         setPurchaseOrders(posData);
         setBuildOrders(buildOrdersData);
+        setRequisitions(requisitionsData);
+        setUsers(usersData);
+        setArtworkFolders(artworkFoldersData);
       } catch (error: any) {
         console.error('Error loading data:', error);
         addToast(`Failed to load data: ${error.message}`, 'error');
@@ -190,9 +210,19 @@ const App: React.FC = () => {
       fetchPurchaseOrders().then(setPurchaseOrders).catch(console.error);
     });
 
+    const unsubBuildOrders = subscribeToBuildOrders(() => {
+      fetchBuildOrders().then(setBuildOrders).catch(console.error);
+    });
+
+    const unsubBOMs = subscribeToBOMs(() => {
+      fetchBOMs().then(setBoms).catch(console.error);
+    });
+
     return () => {
       unsubInventory();
       unsubPOs();
+      unsubBuildOrders();
+      unsubBOMs();
     };
   }, [supabaseUser]);
 
