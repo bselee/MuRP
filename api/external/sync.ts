@@ -1,0 +1,202 @@
+/**
+ * External Sync API Endpoint
+ * Triggers synchronization for all enabled external data sources
+ * GET /api/external/sync
+ */
+
+import { requireRole, handleError, successResponse, ApiError, getQueryParam } from '../../lib/api/helpers';
+import { supabaseAdmin } from '../../lib/supabase';
+import { createConnector } from '../../lib/connectors/registry';
+import { transformInventoryBatch, transformVendorBatch } from '../../lib/transformers';
+import type { SyncConfig } from '../../lib/connectors/types';
+
+export default async function handler(request: Request): Promise<Response> {
+  // Handle OPTIONS for CORS
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    });
+  }
+
+  if (request.method !== 'GET') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  try {
+    // Require admin role for triggering sync
+    const auth = await requireRole(request, 'admin');
+
+    // Optional: sync specific source by ID
+    const sourceId = getQueryParam(request, 'source_id');
+
+    console.log(`[Sync] Triggered by user ${auth.user.id}${sourceId ? ` for source ${sourceId}` : ''}`);
+
+    // Fetch enabled external data sources
+    let query = supabaseAdmin
+      .from('external_data_sources')
+      .select('*')
+      .eq('sync_enabled', true)
+      .eq('is_deleted', false);
+
+    if (sourceId) {
+      query = query.eq('id', sourceId);
+    }
+
+    const { data: sources, error } = await query;
+
+    if (error) {
+      throw new ApiError('Failed to fetch data sources', 500);
+    }
+
+    if (!sources || sources.length === 0) {
+      return successResponse({ message: 'No enabled data sources found', synced: 0 });
+    }
+
+    const results = [];
+
+    // Process each source
+    for (const source of sources) {
+      try {
+        console.log(`[Sync] Processing source: ${source.display_name} (${source.source_type})`);
+
+        // Update status to syncing
+        await supabaseAdmin
+          .from('external_data_sources')
+          .update({ sync_status: 'syncing' })
+          .eq('id', source.id);
+
+        const startTime = Date.now();
+
+        // Create connector config
+        const config: SyncConfig = {
+          sourceId: source.id,
+          sourceType: source.source_type,
+          credentials: source.credentials,
+          fieldMapping: source.field_mappings || {},
+          syncFrequency: source.sync_frequency,
+          enabled: source.sync_enabled,
+        };
+
+        // Create connector instance
+        const connector = createConnector(config);
+
+        // Authenticate
+        const authenticated = await connector.authenticate(config.credentials);
+        if (!authenticated) {
+          throw new Error('Authentication failed');
+        }
+
+        // Fetch data
+        const [inventory, vendors] = await Promise.all([
+          connector.fetchInventory().catch(err => {
+            console.warn(`[Sync] Inventory fetch failed:`, err);
+            return [];
+          }),
+          connector.fetchVendors().catch(err => {
+            console.warn(`[Sync] Vendor fetch failed:`, err);
+            return [];
+          }),
+        ]);
+
+        // Transform data
+        const context = {
+          sourceType: source.source_type,
+          mapping: source.field_mappings || {},
+        };
+
+        const transformedInventory = transformInventoryBatch(inventory, context);
+        const transformedVendors = transformVendorBatch(vendors, context);
+
+        // Upsert to database (using external_id for conflict resolution)
+        let inventoryCount = 0;
+        let vendorCount = 0;
+
+        if (transformedInventory.success.length > 0) {
+          const { error: invError } = await supabaseAdmin
+            .from('inventory_items')
+            .upsert(transformedInventory.success as any, {
+              onConflict: 'source_system,external_id',
+            });
+
+          if (!invError) {
+            inventoryCount = transformedInventory.success.length;
+          } else {
+            console.error('[Sync] Inventory upsert error:', invError);
+          }
+        }
+
+        if (transformedVendors.success.length > 0) {
+          const { error: vendError } = await supabaseAdmin
+            .from('vendors')
+            .upsert(transformedVendors.success as any, {
+              onConflict: 'source_system,external_id',
+            });
+
+          if (!vendError) {
+            vendorCount = transformedVendors.success.length;
+          } else {
+            console.error('[Sync] Vendor upsert error:', vendError);
+          }
+        }
+
+        const duration = Date.now() - startTime;
+
+        // Update sync status to success
+        await supabaseAdmin
+          .from('external_data_sources')
+          .update({
+            sync_status: 'success',
+            last_sync_at: new Date().toISOString(),
+            last_sync_duration_ms: duration,
+            sync_error: null,
+          })
+          .eq('id', source.id);
+
+        results.push({
+          source: source.display_name,
+          success: true,
+          inventory: inventoryCount,
+          vendors: vendorCount,
+          duration_ms: duration,
+        });
+
+      } catch (error: any) {
+        console.error(`[Sync] Error processing source ${source.id}:`, error);
+
+        // Update sync status to failed
+        await supabaseAdmin
+          .from('external_data_sources')
+          .update({
+            sync_status: 'failed',
+            sync_error: error.message || 'Unknown error',
+          })
+          .eq('id', source.id);
+
+        results.push({
+          source: source.display_name,
+          success: false,
+          error: error.message,
+        });
+      }
+    }
+
+    return successResponse({
+      synced: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length,
+      results,
+    }, 'Sync completed');
+
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export const config = {
+  runtime: 'nodejs',
+  maxDuration: 300, // 5 minutes for long sync operations
+};
