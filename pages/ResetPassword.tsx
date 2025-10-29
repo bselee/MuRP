@@ -26,35 +26,29 @@ const ResetPassword: React.FC = () => {
       return;
     }
 
-    // Exchange the hash params for a session
+    // Supabase automatically exchanges the URL hash for a session
+    // We just need to wait for it and verify
     const initSession = async () => {
       try {
-        // Wait a bit for Supabase to process the URL hash
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Give Supabase time to process the hash fragment
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
+        // Check if session was established
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Session error:', error);
-          setError('Auth session missing! The password reset link may have expired. Please request a new one.');
+          setError('Failed to verify recovery link. The link may have expired. Please request a new password reset.');
           return;
         }
         
         if (!data.session) {
-          console.log('No session found. Attempting to verify OTP...');
-          // Try to verify the token from URL if session doesn't exist
-          const { error: verifyError } = await supabase.auth.verifyOtp({
-            token_hash: hashParams.toString(),
-            type: 'recovery',
-          });
-          
-          if (verifyError) {
-            console.error('OTP verification error:', verifyError);
-            setError('Failed to verify recovery link. Please request a new password reset.');
-            return;
-          }
+          console.error('No session established from recovery link');
+          setError('Failed to verify recovery link. Please request a new password reset.');
+          return;
         }
         
+        console.log('Recovery session established successfully');
         setSessionReady(true);
       } catch (err) {
         console.error('Session initialization error:', err);
