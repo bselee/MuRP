@@ -11,7 +11,7 @@ npm install
 
 ### 2. Install Playwright Browsers (First time only)
 ```bash
-npx playwright install chromium
+npx playwright install --with-deps chromium
 ```
 
 ### 3. Start Development Server
@@ -221,7 +221,7 @@ VITE_SUPABASE_ANON_KEY=test_anon_key_for_playwright_testing
 ## Common Issues and Solutions
 
 ### Issue: "Chromium not installed"
-**Solution**: Run `npx playwright install chromium`
+**Solution**: Run `npx playwright install --with-deps chromium`
 
 ### Issue: "Port 3001 already in use"
 **Solution**: 
@@ -361,7 +361,7 @@ When adding new tests:
 
 ---
 
-**Last Updated**: October 29, 2025
+**Last Updated**: October 2024
 **Test Framework**: Playwright v1.56.1
 **Total Tests**: 100+
 **Test Coverage**: Authentication, UI/UX, Responsive Design, Accessibility, Form Validation, Integration
