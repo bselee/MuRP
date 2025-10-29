@@ -1,7 +1,9 @@
 
 
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { supabase, getCurrentUser, signOut } from './lib/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import AiAssistant from './components/AiAssistant';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -57,6 +59,11 @@ export type ToastInfo = {
 };
 
 const App: React.FC = () => {
+  // Auth state
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  
+  // App user state (for backward compatibility with mock User type)
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [boms, setBoms] = useState<BillOfMaterials[]>(mockBOMs);
@@ -80,6 +87,59 @@ const App: React.FC = () => {
   const [externalConnections, setExternalConnections] = useState<ExternalConnection[]>([]);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
 
+  // Initialize Supabase auth session
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const user = await getCurrentUser();
+        setSupabaseUser(user);
+        
+        // Create mock User object from Supabase user for backward compatibility
+        if (user) {
+          const mockUser: User = {
+            id: user.id,
+            name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+            email: user.email || '',
+            role: user.user_metadata?.role || 'Staff', // Default role
+            department: user.user_metadata?.department || 'Purchasing',
+            onboardingComplete: true, // Assume complete for now
+          };
+          setCurrentUser(mockUser);
+          addToast(`Welcome back, ${mockUser.name}!`, 'success');
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    initAuth();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const user = session?.user || null;
+      setSupabaseUser(user);
+      
+      if (user) {
+        const mockUser: User = {
+          id: user.id,
+          name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+          email: user.email || '',
+          role: user.user_metadata?.role || 'Staff',
+          department: user.user_metadata?.department || 'Purchasing',
+          onboardingComplete: true,
+        };
+        setCurrentUser(mockUser);
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const addToast = (message: string, type: ToastInfo['type'] = 'info') => {
     const id = Date.now();
@@ -90,19 +150,19 @@ const App: React.FC = () => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
-    // Onboarding check happens in the main render logic.
-    // If onboarding is not complete, the setup screen will be shown.
-    // If it is complete, this toast will show as they enter the dashboard.
-    if (user.onboardingComplete) {
-        addToast(`Welcome back, ${user.name}!`, 'success');
-    }
+  const handleAuthSuccess = () => {
+    // Auth state change listener will handle setting the user
   };
 
-  const handleLogout = () => {
-    addToast(`Goodbye, ${currentUser?.name}.`, 'info');
-    setCurrentUser(null);
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      addToast(`Goodbye!`, 'info');
+      setCurrentUser(null);
+      setSupabaseUser(null);
+    } catch (error: any) {
+      addToast(`Error signing out: ${error.message}`, 'error');
+    }
   };
   
   const handleCreatePo = (
@@ -555,10 +615,21 @@ const App: React.FC = () => {
     }
   };
 
-  if (!currentUser) {
-    return <LoginScreen users={users} onLogin={handleLogin} />;
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
   }
 
+  // Show login screen if not authenticated
+  if (!currentUser) {
+    return <LoginScreen onAuthSuccess={handleAuthSuccess} addToast={addToast} />;
+  }
+
+  // Show onboarding if user hasn't completed setup
   if (currentUser && !currentUser.onboardingComplete) {
       return <NewUserSetup user={currentUser} onSetupComplete={() => handleCompleteOnboarding(currentUser.id)} />;
   }
