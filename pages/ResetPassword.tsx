@@ -11,40 +11,41 @@ const ResetPassword: React.FC = () => {
   const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
-    // Check if we have a recovery token in the URL
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const type = hashParams.get('type');
-    const accessToken = hashParams.get('access_token');
-    
-    if (type !== 'recovery') {
-      setError('Invalid or expired password reset link. Please request a new one.');
-      return;
-    }
-
-    if (!accessToken) {
-      setError('No recovery token found. Please request a new password reset link.');
-      return;
-    }
-
-    // Supabase automatically exchanges the URL hash for a session
-    // We just need to wait for it and verify
     const initSession = async () => {
       try {
-        // Give Supabase time to process the hash fragment
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Check if we have a recovery token in the URL
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const type = hashParams.get('type');
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
         
-        // Check if session was established
-        const { data, error } = await supabase.auth.getSession();
+        console.log('Password reset flow initiated', { type, hasAccessToken: !!accessToken });
+        
+        if (type !== 'recovery') {
+          setError('Invalid or expired password reset link. Please request a new one.');
+          return;
+        }
+
+        if (!accessToken) {
+          setError('No recovery token found. Please request a new password reset link.');
+          return;
+        }
+
+        // Manually set the session using the tokens from the URL
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || '',
+        });
         
         if (error) {
           console.error('Session error:', error);
-          setError('Failed to verify recovery link. The link may have expired. Please request a new password reset.');
+          setError(`Failed to verify recovery link: ${error.message}. Please request a new password reset.`);
           return;
         }
         
         if (!data.session) {
-          console.error('No session established from recovery link');
-          setError('Failed to verify recovery link. Please request a new password reset.');
+          console.error('No session established from recovery tokens');
+          setError('Failed to verify recovery link. The link may have expired. Please request a new password reset.');
           return;
         }
         
