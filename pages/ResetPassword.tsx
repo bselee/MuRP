@@ -13,56 +13,50 @@ const ResetPassword: React.FC = () => {
   useEffect(() => {
     const initSession = async () => {
       try {
-        // Check both hash and query parameters for recovery tokens
+        // Check if we're in password reset mode
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
-        
-        // Try hash first, then query params
         const type = hashParams.get('type') || queryParams.get('type');
-        const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
         
-        console.log('Password reset flow initiated', { 
-          type, 
-          hasAccessToken: !!accessToken,
-          fromHash: !!hashParams.get('type'),
-          fromQuery: !!queryParams.get('type'),
-          url: window.location.href
+        console.log('[ResetPassword] Initializing...', { 
+          type,
+          url: window.location.href,
+          hasHash: !!window.location.hash,
+          hasQuery: !!window.location.search
         });
         
         if (type !== 'recovery') {
-          setError('Invalid or expired password reset link. Please request a new one.');
+          console.error('[ResetPassword] Not a recovery link');
+          setError('Invalid password reset link. Please request a new one.');
           return;
         }
 
-        if (!accessToken) {
-          setError('No recovery token found. Please request a new password reset link.');
-          return;
-        }
-
-        // Manually set the session using the tokens from the URL
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken || '',
-        });
+        // Give Supabase's detectSessionInUrl time to process the URL
+        // It automatically handles the token exchange
+        console.log('[ResetPassword] Waiting for Supabase to detect session...');
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
-        if (error) {
-          console.error('Session error:', error);
-          setError(`Failed to verify recovery link: ${error.message}. Please request a new password reset.`);
-          return;
-        }
+        // Check if session was established
+        console.log('[ResetPassword] Checking for session...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (!data.session) {
-          console.error('No session established from recovery tokens');
-          setError('Failed to verify recovery link. The link may have expired. Please request a new password reset.');
+        if (sessionError) {
+          console.error('[ResetPassword] Session error:', sessionError);
+          setError('Failed to verify reset link. Please request a new password reset.');
           return;
         }
         
-        console.log('Recovery session established successfully');
+        if (!session) {
+          console.error('[ResetPassword] No session found after redirect');
+          setError('Session expired or invalid. Please request a new password reset link.');
+          return;
+        }
+        
+        console.log('[ResetPassword] Session verified successfully');
         setSessionReady(true);
       } catch (err) {
-        console.error('Session initialization error:', err);
-        setError('Failed to initialize session. Please try the password reset link again.');
+        console.error('[ResetPassword] Unexpected error:', err);
+        setError('An error occurred. Please try requesting a new password reset link.');
       }
     };
 
@@ -115,6 +109,28 @@ const ResetPassword: React.FC = () => {
           <BoxIcon className="w-16 h-16 text-indigo-400 mx-auto mb-4 animate-pulse" />
           <h1 className="text-2xl font-bold text-white mb-2">Verifying reset link...</h1>
           <p className="text-gray-400">Please wait while we verify your password reset request.</p>
+          <p className="text-gray-500 text-sm mt-4">This should only take a few seconds.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state with option to go back
+  if (error && !sessionReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-red-900/30 border border-red-700 rounded-lg p-8 text-center">
+            <BoxIcon className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-white mb-2">Reset Link Issue</h1>
+            <p className="text-red-300 mb-6">{error}</p>
+            <a
+              href="/"
+              className="inline-block bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Back to Login
+            </a>
+          </div>
         </div>
       </div>
     );
