@@ -4,6 +4,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase, getCurrentUser, signOut } from './lib/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import {
+  fetchInventory,
+  fetchVendors,
+  fetchBOMs,
+  fetchPurchaseOrders,
+  fetchBuildOrders,
+  subscribeToInventory,
+  subscribeToPurchaseOrders,
+} from './services/dataService';
 import AiAssistant from './components/AiAssistant';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -66,12 +75,13 @@ const App: React.FC = () => {
   // App user state (for backward compatibility with mock User type)
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  const [boms, setBoms] = useState<BillOfMaterials[]>(mockBOMs);
-  const [inventory, setInventory] = useState<InventoryItem[]>(mockInventory);
-  const [vendors] = useState<Vendor[]>(mockVendors);
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(mockPurchaseOrders);
-  const [historicalSales] = useState<HistoricalSale[]>(mockHistoricalSales);
-  const [buildOrders, setBuildOrders] = useState<BuildOrder[]>(mockBuildOrders);
+  const [boms, setBoms] = useState<BillOfMaterials[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [historicalSales] = useState<HistoricalSale[]>(mockHistoricalSales); // Keep mock for now
+  const [buildOrders, setBuildOrders] = useState<BuildOrder[]>([]);
+  const [dataLoading, setDataLoading] = useState(false);
   const [requisitions, setRequisitions] = useState<InternalRequisition[]>(mockInternalRequisitions);
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [watchlist] = useState<WatchlistItem[]>(mockWatchlist);
@@ -140,6 +150,51 @@ const App: React.FC = () => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Load data when user is authenticated
+  useEffect(() => {
+    if (!supabaseUser) return;
+
+    const loadData = async () => {
+      setDataLoading(true);
+      try {
+        const [inventoryData, vendorsData, bomsData, posData, buildOrdersData] = await Promise.all([
+          fetchInventory(),
+          fetchVendors(),
+          fetchBOMs(),
+          fetchPurchaseOrders(),
+          fetchBuildOrders(),
+        ]);
+
+        setInventory(inventoryData);
+        setVendors(vendorsData);
+        setBoms(bomsData);
+        setPurchaseOrders(posData);
+        setBuildOrders(buildOrdersData);
+      } catch (error: any) {
+        console.error('Error loading data:', error);
+        addToast(`Failed to load data: ${error.message}`, 'error');
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    loadData();
+
+    // Subscribe to real-time updates
+    const unsubInventory = subscribeToInventory(() => {
+      fetchInventory().then(setInventory).catch(console.error);
+    });
+
+    const unsubPOs = subscribeToPurchaseOrders(() => {
+      fetchPurchaseOrders().then(setPurchaseOrders).catch(console.error);
+    });
+
+    return () => {
+      unsubInventory();
+      unsubPOs();
+    };
+  }, [supabaseUser]);
 
   const addToast = (message: string, type: ToastInfo['type'] = 'info') => {
     const id = Date.now();
@@ -615,11 +670,16 @@ const App: React.FC = () => {
     }
   };
 
-  // Show loading state while checking auth
-  if (authLoading) {
+  // Show loading state while checking auth or loading data
+  if (authLoading || (supabaseUser && dataLoading && inventory.length === 0)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-white text-xl">Loading...</div>
+        <div className="text-center">
+          <div className="text-white text-xl mb-2">
+            {authLoading ? 'Authenticating...' : 'Loading your data...'}
+          </div>
+          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
       </div>
     );
   }
