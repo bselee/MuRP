@@ -16,87 +16,102 @@ const ResetPassword: React.FC = () => {
         // Parse URL parameters
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
-        
+
         const type = hashParams.get('type') || queryParams.get('type');
-        const token = hashParams.get('token') || queryParams.get('token');
-        const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
-        
-        console.log('[ResetPassword] Initializing...', { 
+        const code = queryParams.get('code'); // PKCE code
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+
+        console.log('[ResetPassword] Initializing session...', {
           type,
-          hasToken: !!token,
+          hasCode: !!code,
           hasAccessToken: !!accessToken,
+          hasRefreshToken: !!refreshToken,
           url: window.location.href,
           hash: window.location.hash,
           search: window.location.search
         });
-        
+
+        // Verify this is a recovery link
         if (type !== 'recovery') {
           console.error('[ResetPassword] Not a recovery link, type:', type);
           setError('Invalid password reset link. Please request a new one.');
           return;
         }
 
-        // If we have an access_token in the URL, proceed with password reset
-        // We'll attempt to set session in the background but won't wait for it
-        if (accessToken) {
-          console.log('[ResetPassword] Found access_token, setting session in background...');
-          
-          // Fire and forget - don't wait for this
-          supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: hashParams.get('refresh_token') || queryParams.get('refresh_token') || '',
-          }).then((result) => {
-            if (result.error) {
-              console.error('[ResetPassword] Background setSession error:', result.error);
-            } else {
-              console.log('[ResetPassword] Background setSession succeeded');
-            }
-          }).catch((err) => {
-            console.error('[ResetPassword] Background setSession exception:', err);
-          });
-          
-          // Proceed immediately to show password form
-          console.log('[ResetPassword] Proceeding to show password reset form');
-          setSessionReady(true);
-          return;
-        }
-        
-        // If we have a token parameter, verify it
-        if (token) {
-          console.log('[ResetPassword] Found token, verifying OTP...');
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: 'recovery',
-          });
-          
-          if (error) {
-            console.error('[ResetPassword] verifyOtp error:', error);
-            setError('Failed to verify reset token. Link may have expired. Please request a new password reset.');
+        // Method 1: PKCE code exchange (preferred with flowType: 'pkce')
+        if (code) {
+          console.log('[ResetPassword] PKCE code detected, exchanging for session...');
+
+          // The Supabase client will automatically exchange the code for a session
+          // when detectSessionInUrl is enabled. We just need to wait for it.
+          await new Promise(resolve => setTimeout(resolve, 1500));
+
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+          if (sessionError) {
+            console.error('[ResetPassword] Session error after code exchange:', sessionError);
+            setError('Failed to establish session. Please request a new password reset link.');
             return;
           }
-          
+
+          if (session) {
+            console.log('[ResetPassword] Session established via PKCE code exchange');
+            setSessionReady(true);
+            return;
+          }
+
+          console.warn('[ResetPassword] Code present but no session after exchange');
+        }
+
+        // Method 2: Direct access token (legacy hash-based flow)
+        if (accessToken && refreshToken) {
+          console.log('[ResetPassword] Access token detected, setting session...');
+
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) {
+            console.error('[ResetPassword] setSession error:', error);
+            setError('Failed to verify reset link. Please request a new one.');
+            return;
+          }
+
           if (data.session) {
-            console.log('[ResetPassword] Session established via verifyOtp');
+            console.log('[ResetPassword] Session established via access token');
             setSessionReady(true);
             return;
           }
         }
-        
-        // Last resort: wait briefly and check if session exists
-        console.log('[ResetPassword] No direct tokens found, checking for existing session...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (!sessionError && session) {
-          console.log('[ResetPassword] Found existing session');
-          setSessionReady(true);
-          return;
+
+        // Method 3: Wait for automatic session detection
+        console.log('[ResetPassword] Waiting for automatic session detection...');
+
+        // Give Supabase's detectSessionInUrl more time to work
+        let attempts = 0;
+        const maxAttempts = 6;
+
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          attempts++;
+
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+          if (session && !sessionError) {
+            console.log(`[ResetPassword] Session found on attempt ${attempts}`);
+            setSessionReady(true);
+            return;
+          }
+
+          console.log(`[ResetPassword] No session yet (attempt ${attempts}/${maxAttempts})`);
         }
-        
-        console.error('[ResetPassword] No valid session or tokens found');
-        setError('Could not verify password reset link. Please request a new one.');
-        
+
+        // If we get here, session establishment failed
+        console.error('[ResetPassword] Failed to establish session after all attempts');
+        setError('Could not verify password reset link. The link may have expired. Please request a new one.');
+
       } catch (err) {
         console.error('[ResetPassword] Unexpected error:', err);
         setError('An error occurred while verifying your reset link. Please try requesting a new one.');
@@ -174,7 +189,7 @@ const ResetPassword: React.FC = () => {
     );
   }
 
-  // Show error state with option to go back
+  // Show error state with option to go back or request new link
   if (error && !sessionReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
@@ -183,12 +198,19 @@ const ResetPassword: React.FC = () => {
             <BoxIcon className="w-16 h-16 text-red-400 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-white mb-2">Reset Link Issue</h1>
             <p className="text-red-300 mb-6">{error}</p>
-            <a
-              href="/"
-              className="inline-block bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Back to Login
-            </a>
+            <div className="space-y-3">
+              <a
+                href="/"
+                className="block w-full bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Back to Login
+              </a>
+              <p className="text-gray-400 text-sm">
+                The password reset link may have expired or been used already.
+                <br />
+                Please request a new password reset from the login page.
+              </p>
+            </div>
           </div>
         </div>
       </div>

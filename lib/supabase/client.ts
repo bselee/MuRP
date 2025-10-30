@@ -44,6 +44,7 @@ export function createClient() {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        flowType: 'pkce', // Use PKCE flow for better SPA support
         storage: window.localStorage,
       },
     }
