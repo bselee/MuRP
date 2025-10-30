@@ -98,10 +98,17 @@ Preview production build:
 npm run preview
 ```
 
-Validate before committing:
+Validate before committing (runs tests + build):
 ```bash
 npm run validate
 ```
+
+Check for remaining console statements:
+```bash
+npm run check:console
+```
+
+> Note: Scripts in `scripts/` directory are pre-configured as executable.
 
 ## 📊 Project Scripts
 

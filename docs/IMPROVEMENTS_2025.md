@@ -12,7 +12,7 @@ This document tracks the critical improvements made to the TGF MRP project based
   - Added Jest + React Testing Library
   - Created `jest.config.js` with proper TypeScript support
   - Added test scripts: `npm test`, `npm run test:watch`, `npm run test:coverage`
-  - Implemented tests for ErrorBoundary and Logger (12 tests passing)
+  - Implemented tests for ErrorBoundary, Logger, and LoadingSpinner (16 tests passing)
   - Set coverage thresholds at 50% for branches, functions, lines, statements
 
 #### 2. Error Boundaries
@@ -131,9 +131,9 @@ npm run test:coverage
 
 ### Current Test Coverage
 
-- Test Suites: 2 passed
-- Tests: 12 passed
-- Components tested: ErrorBoundary, Logger
+- Test Suites: 3 passed
+- Tests: 16 passed
+- Components tested: ErrorBoundary, Logger, LoadingSpinner
 
 ## Build & Deploy
 
