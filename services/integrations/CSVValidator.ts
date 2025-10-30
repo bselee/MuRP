@@ -83,7 +83,9 @@ function cleanNumericValue(value: any): number | null {
 }
 
 export class CSVValidator {
-  private static readonly EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // More comprehensive email regex that handles most valid email formats
+  // while still being practical for CSV validation
+  private static readonly EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
   private static readonly LARGE_FILE_THRESHOLD = 500;
 
   validate(data: any[], entity: Entity): ValidationResult {
@@ -115,7 +117,14 @@ export class CSVValidator {
           
           if (error) {
             console.error('Foreign key validation error:', error);
-            return errors; // Return empty errors if DB check fails
+            // Add a general error to inform user that validation couldn't complete
+            errors.push({
+              row: 1,
+              field: 'Vendor ID',
+              message: 'Unable to validate vendor IDs against database. Please try again.',
+              severity: 'error'
+            });
+            return errors;
           }
           
           const existingIds = new Set(existingVendors?.map(v => v.id) || []);
@@ -162,7 +171,9 @@ export class CSVValidator {
         onProgress(Math.min(i + CHUNK_SIZE, total), total);
       }
       
-      // Yield to UI thread
+      // Yield to UI thread to keep interface responsive
+      // Using setTimeout(0) as a cross-browser compatible approach
+      // Could be enhanced with scheduler.postTask() when browser support improves
       await new Promise(resolve => setTimeout(resolve, 0));
     }
 

@@ -61,6 +61,9 @@ const Settings: React.FC<SettingsProps> = ({
   
   // Use ref to store full parsed data to avoid memory issues with large files
   const parsedDataRef = useRef<any[] | null>(null);
+  
+  // Configuration constants
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
@@ -73,8 +76,7 @@ const Settings: React.FC<SettingsProps> = ({
     setImportSuccess(null);
     if (!f) return;
 
-    // Check file size (10MB limit)
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    // Check file size limit
     if (f.size > MAX_FILE_SIZE) {
       const sizeMB = (f.size / 1024 / 1024).toFixed(1);
       addToast(`File too large (${sizeMB}MB). Maximum: 10MB`, 'error');
