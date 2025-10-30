@@ -18,9 +18,12 @@ interface LogEntry {
 
 class Logger {
   private context?: string
+  private isDevelopment: boolean
   
   constructor(context?: string) {
     this.context = context
+    // Use NODE_ENV for both dev and test environments
+    this.isDevelopment = process.env.NODE_ENV !== 'production'
   }
   
   private log(level: LogLevel, message: string, metadata?: any) {
@@ -32,16 +35,21 @@ class Logger {
       metadata,
     }
     
+    // Only log to console in development or for errors/warnings
+    if (!this.isDevelopment && level === 'debug') {
+      return
+    }
+    
     const output = JSON.stringify(entry)
     
     switch (level) {
       case 'debug':
-        if (process.env.NODE_ENV === 'development') {
-          console.debug(output)
-        }
+        console.debug(output)
         break
       case 'info':
-        console.info(output)
+        if (this.isDevelopment) {
+          console.info(output)
+        }
         break
       case 'warn':
         console.warn(output)
