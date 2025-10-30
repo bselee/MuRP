@@ -110,18 +110,37 @@ const App: React.FC = () => {
     const initAuth = async () => {
       try {
         console.log('[App] Starting auth initialization...');
+        console.log('[App] Current URL:', window.location.href);
         
         // Check URL for password reset indicators
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
         const isRecoveryHash = hashParams.get('type') === 'recovery';
         const isRecoveryQuery = queryParams.get('type') === 'recovery';
+        const hasCode = queryParams.get('code'); // PKCE code
+        const hasAccessToken = hashParams.get('access_token'); // Legacy token
+        
+        console.log('[App] URL params check:', {
+          isRecoveryHash,
+          isRecoveryQuery,
+          hasCode,
+          hasAccessToken,
+          hash: window.location.hash,
+          search: window.location.search
+        });
         
         if (isRecoveryHash || isRecoveryQuery) {
-          console.log('[App] Password reset URL detected, entering reset mode');
+          console.log('[App] Password reset URL detected (via type param), entering reset mode');
           setIsPasswordResetMode(true);
           setAuthLoading(false);
           return;
+        }
+        
+        // Also check if we have a code/token but no type - might be password reset
+        if ((hasCode || hasAccessToken) && !window.sessionStorage.getItem('supabase.auth.token')) {
+          console.log('[App] Auth code detected without existing session - might be password reset');
+          // Wait a moment for the PASSWORD_RECOVERY event to fire
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
         
         const user = await getCurrentUser();
