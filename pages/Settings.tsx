@@ -55,6 +55,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState<{completed: number; total: number} | null>(null);
+  const [importSuccess, setImportSuccess] = useState<{count: number; type: string} | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
@@ -64,13 +65,30 @@ const Settings: React.FC<SettingsProps> = ({
     setPreviewRows(null);
     setParsedRows(null);
     setValidation(null);
+    setImportSuccess(null);
     if (!f) return;
+
+    // Check file size (10MB limit)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (f.size > MAX_FILE_SIZE) {
+      const sizeMB = (f.size / 1024 / 1024).toFixed(1);
+      addToast(`File too large (${sizeMB}MB). Maximum: 10MB`, 'error');
+      setImportFile(null);
+      e.target.value = '';
+      return;
+    }
     const ext = f.name.split('.').pop()?.toLowerCase();
     if (ext === 'csv') {
       f.text().then((text) => {
         try {
           const res = Papa.parse(text, { header: true, skipEmptyLines: true });
-          const rows = Array.isArray(res.data) ? (res.data as any[]).filter(Boolean) : [];
+          const rawRows = Array.isArray(res.data) ? (res.data as any[]).filter(Boolean) : [];
+          // Filter out empty rows (rows where all values are empty)
+          const rows = rawRows.filter(row => {
+            return Object.values(row).some(val => 
+              val !== null && val !== undefined && String(val).trim() !== ''
+            );
+          });
           const headers = res.meta?.fields || (rows.length ? Object.keys(rows[0]) : []);
           setParsedRows(rows);
           setPreviewHeaders(headers || []);
@@ -87,7 +105,13 @@ const Settings: React.FC<SettingsProps> = ({
       f.text().then((text) => {
         try {
           const data = JSON.parse(text);
-          const rows = Array.isArray(data) ? data : [data];
+          const rawRows = Array.isArray(data) ? data : [data];
+          // Filter out empty rows (rows where all values are empty)
+          const rows = rawRows.filter(row => {
+            return Object.values(row).some(val => 
+              val !== null && val !== undefined && String(val).trim() !== ''
+            );
+          });
           const headers = rows.length ? Object.keys(rows[0]) : [];
           setParsedRows(rows);
           setPreviewHeaders(headers);
@@ -134,29 +158,43 @@ const Settings: React.FC<SettingsProps> = ({
     }
     try {
       setIsSaving(true);
+      setImportSuccess(null);
       setSaveProgress({ completed: 0, total: parsedRows?.length || 0 });
       const text = await importFile.text();
       const { CSVAdapter } = await import('../services/integrations/CSVAdapter');
       const adapter = new CSVAdapter();
       await adapter.importCSVText(text, importType);
+      let count = 0;
       if (importType === 'inventory') {
         const items = await adapter.fetchInventory();
         const { bulkUpsertInventory } = await import('../services/dataService');
-        const total = items.length;
-        await bulkUpsertInventory(items, (completed, t) => setSaveProgress({ completed, total: t }));
+        count = await bulkUpsertInventory(items, (completed, t) => setSaveProgress({ completed, total: t }));
       } else {
         const vendors = await adapter.fetchVendors();
         const { bulkUpsertVendors } = await import('../services/dataService');
-        const total = vendors.length;
-        await bulkUpsertVendors(vendors, (completed, t) => setSaveProgress({ completed, total: t }));
+        count = await bulkUpsertVendors(vendors, (completed, t) => setSaveProgress({ completed, total: t }));
       }
-      addToast('Save to database completed successfully.', 'success');
+      setImportSuccess({ count, type: importType });
+      addToast(`Successfully imported ${count} ${importType} records.`, 'success');
     } catch (err: any) {
       console.error('Save to database failed:', err);
       addToast(err?.message || 'Failed to save to database', 'error');
     } finally {
       setIsSaving(false);
+      setSaveProgress(null);
     }
+  };
+
+  const handleImportAnother = () => {
+    setImportFile(null);
+    setPreviewHeaders(null);
+    setPreviewRows(null);
+    setParsedRows(null);
+    setValidation(null);
+    setImportSuccess(null);
+    // Reset file input
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
   };
 
     const handleCopyApiKey = () => {
@@ -280,11 +318,8 @@ const Settings: React.FC<SettingsProps> = ({
                     <label className="text-sm text-gray-300">File</label>
                     <input type="file" accept=".csv,.json" onChange={handleFileUpload} className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white" />
                     <div className="flex items-center justify-end gap-3">
-                      <button onClick={handleProcessImport} disabled={!validation?.valid || isSaving} className={`font-semibold py-2 px-4 rounded-md transition-colors ${validation?.valid && !isSaving ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-600 text-gray-300 cursor-not-allowed'}`}>
-                        {validation?.valid ? 'Confirm Import (Preview Only)' : 'Fix Errors First'}
-                      </button>
                       <button onClick={handleConfirmSave} disabled={!validation?.valid || isSaving} className={`font-semibold py-2 px-4 rounded-md transition-colors ${validation?.valid && !isSaving ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-600 text-gray-300 cursor-not-allowed'}`}>
-                        {isSaving ? 'Saving…' : 'Confirm & Save to Database'}
+                        {isSaving ? 'Saving…' : validation?.valid ? 'Confirm & Save to Database' : 'Fix Errors First'}
                       </button>
                     </div>
                   </div>
@@ -296,12 +331,40 @@ const Settings: React.FC<SettingsProps> = ({
                       </div>
                     </div>
                   )}
+                  {importSuccess && !isSaving && (
+                    <div className="mt-2 bg-green-900/30 border border-green-700 rounded p-4">
+                      <p className="font-semibold text-green-400">
+                        ✓ Successfully imported {importSuccess.count} {importSuccess.type} records to database
+                      </p>
+                      <div className="flex gap-2 mt-3">
+                        <button 
+                          onClick={() => setCurrentPage(importSuccess.type === 'inventory' ? 'Inventory' : 'Vendors')} 
+                          className="bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                        >
+                          View {importSuccess.type === 'inventory' ? 'Inventory' : 'Vendors'} →
+                        </button>
+                        <button 
+                          onClick={handleImportAnother} 
+                          className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-700 transition-colors"
+                        >
+                          Import Another File
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {validation && (
                     <div className="mt-2 space-y-2">
                       <div className={`p-3 rounded ${validation.valid ? 'bg-green-900/30 border border-green-800' : 'bg-red-900/30 border border-red-800'}`}>
                         <p className="font-semibold">{validation.valid ? 'Validation Passed' : 'Validation Failed'}</p>
                         <p className="text-sm text-gray-300">Rows: {validation.summary.validRows} valid / {validation.summary.errorRows} with errors (Total {validation.summary.totalRows})</p>
                       </div>
+                      {validation.valid && (
+                        <div className="bg-yellow-900/20 border border-yellow-700 rounded p-3">
+                          <p className="text-yellow-300 text-sm">
+                            ⚠️ Data is previewed only. Click "Confirm & Save to Database" to persist to database.
+                          </p>
+                        </div>
+                      )}
                       {validation.errors.length > 0 && (
                         <div className="max-h-40 overflow-y-auto">
                           <p className="font-semibold text-red-400">Errors:</p>

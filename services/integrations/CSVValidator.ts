@@ -65,6 +65,8 @@ function isNonEmpty(v: any): boolean {
 }
 
 export class CSVValidator {
+  private static readonly EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   validate(data: any[], entity: Entity): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationError[] = [];
@@ -84,11 +86,23 @@ export class CSVValidator {
         if (!isNonEmpty(val)) {
           errors.push({ row: rowNumber, field: logicalField, message: `${logicalField} is required`, severity: 'error' });
         } else if (entity === 'vendors' && logicalField === 'Emails') {
-          // For vendors, ensure at least one email present if provided aliases
+          // For vendors, ensure at least one email present and validate format
           const str = String(val);
           const emails = str.split(/[,;\s]+/).filter(Boolean);
           if (emails.length === 0) {
             errors.push({ row: rowNumber, field: logicalField, message: `At least one email is required`, severity: 'error' });
+          } else {
+            // Validate each email format
+            emails.forEach(email => {
+              if (!CSVValidator.EMAIL_REGEX.test(email)) {
+                errors.push({ 
+                  row: rowNumber, 
+                  field: logicalField, 
+                  message: `Invalid email format: "${email}"`, 
+                  severity: 'error' 
+                });
+              }
+            });
           }
         }
       }
