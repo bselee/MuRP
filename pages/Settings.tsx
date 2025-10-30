@@ -121,6 +121,19 @@ const Settings: React.FC<SettingsProps> = ({
           <section>
             <h2 className="text-xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4">API & Integrations</h2>
             <div className="space-y-6">
+              {/* Data Source (Preview) */}
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                <h3 className="text-lg font-semibold text-white">Data Source</h3>
+                <p className="text-sm text-gray-400 mt-1">Select where the app reads core data from. Supabase is active today; Finale and CSV are coming soon.</p>
+                <div className="mt-4 pt-4 border-t border-gray-700/50 grid gap-3 md:grid-cols-2">
+                  <label className="text-sm text-gray-300">Primary Source</label>
+                  <select className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white" disabled>
+                    <option value="supabase">Supabase (Current)</option>
+                    <option value="finale">Finale Inventory (Coming Soon)</option>
+                    <option value="csv">CSV/JSON Upload (Coming Soon)</option>
+                  </select>
+                </div>
+              </div>
 
               {/* Our API Credentials (Inbound) */}
               <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">

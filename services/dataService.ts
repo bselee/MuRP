@@ -65,6 +65,12 @@ export async function fetchInventory(): Promise<InventoryItem[]> {
   }));
 }
 
+// Unified variant using the new DataManager (not yet wired app-wide)
+export async function fetchInventoryUnified(): Promise<InventoryItem[]> {
+  const { dataManager } = await import('./dataManager');
+  return dataManager.fetchInventory();
+}
+
 /**
  * Fetch all vendors
  */
