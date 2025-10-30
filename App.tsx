@@ -266,16 +266,7 @@ const App: React.FC = () => {
       try {
         console.log('[App] Starting data load...');
         
-        const [
-          inventoryData,
-          vendorsData,
-          bomsData,
-          posData,
-          buildOrdersData,
-          requisitionsData,
-          usersData,
-          artworkFoldersData
-        ] = await Promise.all([
+        const results = await Promise.allSettled([
           fetchInventory(),
           fetchVendors(),
           fetchBOMs(),
@@ -286,17 +277,72 @@ const App: React.FC = () => {
           fetchArtworkFolders(),
         ]);
 
-        console.log('[App] Data loaded successfully');
         clearTimeout(timeoutId);
 
-        setInventory(inventoryData);
-        setVendors(vendorsData);
-        setBoms(bomsData);
-        setPurchaseOrders(posData);
-        setBuildOrders(buildOrdersData);
-        setRequisitions(requisitionsData);
-        setUsers(usersData);
-        setArtworkFolders(artworkFoldersData);
+        const [
+          inventoryResult,
+          vendorsResult,
+          bomsResult,
+          posResult,
+          buildOrdersResult,
+          requisitionsResult,
+          usersResult,
+          artworkFoldersResult,
+        ] = results;
+
+        if (inventoryResult.status === 'fulfilled') {
+          setInventory(inventoryResult.value);
+        } else {
+          console.error('Failed to load inventory:', inventoryResult.reason);
+        }
+
+        if (vendorsResult.status === 'fulfilled') {
+          setVendors(vendorsResult.value);
+        } else {
+          console.error('Failed to load vendors:', vendorsResult.reason);
+          setVendors([]);
+        }
+
+        if (bomsResult.status === 'fulfilled') {
+          setBoms(bomsResult.value);
+        } else {
+          console.error('Failed to load BOMs:', bomsResult.reason);
+        }
+
+        if (posResult.status === 'fulfilled') {
+          setPurchaseOrders(posResult.value);
+        } else {
+          console.error('Failed to load purchase orders:', posResult.reason);
+        }
+
+        if (buildOrdersResult.status === 'fulfilled') {
+          setBuildOrders(buildOrdersResult.value);
+        } else {
+          console.error('Failed to load build orders:', buildOrdersResult.reason);
+        }
+
+        if (requisitionsResult.status === 'fulfilled') {
+          setRequisitions(requisitionsResult.value);
+        } else {
+          console.error('Failed to load requisitions:', requisitionsResult.reason);
+        }
+
+        if (usersResult.status === 'fulfilled') {
+          setUsers(usersResult.value);
+        } else {
+          console.error('Failed to load users:', usersResult.reason);
+        }
+
+        if (artworkFoldersResult.status === 'fulfilled') {
+          setArtworkFolders(artworkFoldersResult.value);
+        } else {
+          console.error('Failed to load artwork folders:', artworkFoldersResult.reason);
+        }
+
+        const failedCount = results.filter(r => r.status === 'rejected').length;
+        if (failedCount > 0) {
+          addToast(`${failedCount} data source(s) failed to load. Some features may be limited.`, 'error');
+        }
       } catch (error: any) {
         console.error('[App] Error loading data:', error);
         clearTimeout(timeoutId);

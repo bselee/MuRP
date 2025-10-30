@@ -1,7 +1,7 @@
 import type { InventoryItem, Vendor, PurchaseOrder, BuildOrder } from '../types';
 import { DataError, DataErrorCode } from './errors';
 import type { IDataAdapter } from './integrations/BaseAdapter';
-import { createAdapter, type DataSourceConfig } from './integrations/adapters';
+import { createAdapter, createAdapterFromConfig, type DataSourceConfig } from './integrations/adapters';
 
 export interface CacheConfig {
   enabled: boolean;
@@ -29,7 +29,7 @@ class DataManager {
 
   async initialize(config?: DataSourceConfig, cache?: CacheConfig) {
     if (config?.primary) {
-      this.primary = createAdapter(config.primary);
+      this.primary = createAdapterFromConfig(config);
     }
     if (cache) this.cacheConfig = { ...this.cacheConfig, ...cache, ttlByEntity: { ...this.cacheConfig.ttlByEntity, ...cache.ttlByEntity } };
     await this.primary.connect();

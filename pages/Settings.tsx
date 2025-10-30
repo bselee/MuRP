@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Papa from 'papaparse';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiPrompt } from '../types';
 import { defaultAiConfig } from '../types';
@@ -37,15 +38,51 @@ const Settings: React.FC<SettingsProps> = ({
     const [isDevSettingsOpen, setIsDevSettingsOpen] = useState(false);
     const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
     const [selectedPrompt, setSelectedPrompt] = useState<AiPrompt | null>(null);
+    // Experimental features: local toggle persisted in localStorage
+    const [useDataManager, setUseDataManager] = useState<boolean>(() => {
+      try { return localStorage.getItem('useDataManager') === 'true'; } catch { return false; }
+    });
     
     // State for the "Add New Connection" form
     const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
   const [importType, setImportType] = useState<'inventory' | 'vendors'>('inventory');
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [previewHeaders, setPreviewHeaders] = useState<string[] | null>(null);
+  const [previewRows, setPreviewRows] = useState<any[] | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
     setImportFile(f);
+    // Build a tiny preview for CSV/JSON (first ~5 rows)
+    setPreviewHeaders(null);
+    setPreviewRows(null);
+    if (!f) return;
+    const ext = f.name.split('.').pop()?.toLowerCase();
+    if (ext === 'csv') {
+      f.text().then(async (text) => {
+        try {
+          const res = Papa.parse(text, { header: true, preview: 5, skipEmptyLines: true });
+          const rows = Array.isArray(res.data) ? res.data.filter(Boolean).slice(0, 5) : [];
+          const headers = res.meta?.fields || (rows.length ? Object.keys(rows[0]) : []);
+          setPreviewHeaders(headers || []);
+          setPreviewRows(rows || []);
+        } catch (err) {
+          console.warn('CSV preview failed:', err);
+        }
+      });
+    } else if (ext === 'json') {
+      f.text().then((text) => {
+        try {
+          const data = JSON.parse(text);
+          const rows = Array.isArray(data) ? data.slice(0, 5) : [data];
+          const headers = rows.length ? Object.keys(rows[0]) : [];
+          setPreviewHeaders(headers);
+          setPreviewRows(rows);
+        } catch (err) {
+          console.warn('JSON preview failed:', err);
+        }
+      });
+    }
   };
 
   const handleProcessImport = async () => {
@@ -98,6 +135,13 @@ const Settings: React.FC<SettingsProps> = ({
         setAiConfig({ ...aiConfig, model: e.target.value });
         addToast('AI Model updated successfully.', 'success');
     };
+
+  const handleToggleUseDataManager = () => {
+    const next = !useDataManager;
+    setUseDataManager(next);
+    try { localStorage.setItem('useDataManager', String(next)); } catch {}
+    addToast(`Experimental: DataManager for Inventory ${next ? 'enabled' : 'disabled'}.`, 'info');
+  };
 
     const handleEditPrompt = (prompt: AiPrompt) => {
         setSelectedPrompt(prompt);
@@ -181,6 +225,31 @@ const Settings: React.FC<SettingsProps> = ({
                       <button onClick={handleProcessImport} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">Import</button>
                     </div>
                   </div>
+                  {previewRows && previewHeaders && (
+                    <div className="mt-2 border border-gray-700 rounded-md overflow-x-auto">
+                      <div className="bg-gray-900/50 text-xs text-gray-400 px-3 py-2">Preview (first {Math.min(5, previewRows.length)} rows)</div>
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-900/40">
+                            {previewHeaders.map(h => (
+                              <th key={h} className="text-left px-3 py-2 text-gray-300 whitespace-nowrap">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {previewRows.map((row, idx) => (
+                            <tr key={idx} className="odd:bg-gray-800/30">
+                              {previewHeaders.map(h => (
+                                <td key={h} className="px-3 py-2 text-gray-300 whitespace-nowrap">
+                                  {row?.[h] as any}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -316,6 +385,21 @@ const Settings: React.FC<SettingsProps> = ({
                 </button>
                  {isDevSettingsOpen && (
                     <div className="mt-4 border-t border-gray-700 pt-4 space-y-6">
+                        {/* Experimental Features */}
+                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h3 className="text-lg font-semibold text-white">Experimental Features</h3>
+                              <p className="text-sm text-gray-400 mt-1">Toggle experimental capabilities for safe testing in production.</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <label className="text-sm text-gray-300">Use DataManager for Inventory</label>
+                              <input type="checkbox" checked={useDataManager} onChange={handleToggleUseDataManager} className="w-5 h-5" />
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-3">When enabled, inventory reads route through the new DataManager layer with caching and error-aware fallback. Disable if anything looks off.</p>
+                        </div>
+
                         {/* AI Model Configuration */}
                          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
                             <div className="flex items-center gap-4">

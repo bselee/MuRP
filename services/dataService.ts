@@ -29,6 +29,18 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 10000): P
  * Fetch all inventory items for the current user
  */
 export async function fetchInventory(): Promise<InventoryItem[]> {
+  // Experimental flag: route through DataManager when enabled
+  try {
+    const useDM = typeof window !== 'undefined' && window.localStorage?.getItem('useDataManager') === 'true';
+    if (useDM) {
+      console.log('[fetchInventory] Using DataManager path (experimental)');
+      const { dataManager } = await import('./dataManager');
+      return await dataManager.fetchInventory();
+    }
+  } catch (e) {
+    console.warn('[fetchInventory] DataManager path failed or unavailable, falling back to direct query', e);
+  }
+
   console.log('[fetchInventory] Starting query...');
   
   const result = await withTimeout(
