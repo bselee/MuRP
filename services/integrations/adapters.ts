@@ -1,5 +1,6 @@
 import type { IDataAdapter } from './BaseAdapter';
 import { SupabaseAdapter } from './SupabaseAdapter';
+import { CSVAdapter } from './CSVAdapter';
 
 export type PrimarySource = 'supabase' | 'finale' | 'csv';
 
@@ -18,6 +19,8 @@ export function createAdapter(kind: PrimarySource): IDataAdapter {
   switch (kind) {
     case 'supabase':
       return new SupabaseAdapter();
+    case 'csv':
+      return new CSVAdapter();
     // case 'finale':
     //   return new FinaleAdapter(config);
     // case 'csv':

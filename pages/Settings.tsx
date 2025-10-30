@@ -40,6 +40,29 @@ const Settings: React.FC<SettingsProps> = ({
     
     // State for the "Add New Connection" form
     const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
+  const [importType, setImportType] = useState<'inventory' | 'vendors'>('inventory');
+  const [importFile, setImportFile] = useState<File | null>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    setImportFile(f);
+  };
+
+  const handleProcessImport = async () => {
+    if (!importFile) {
+      addToast('Please choose a CSV file to import.', 'error');
+      return;
+    }
+    try {
+      const text = await importFile.text();
+      const { CSVAdapter } = await import('../services/integrations/CSVAdapter');
+      const adapter = new CSVAdapter();
+      const count = await adapter.importCSVText(text, importType);
+      addToast(`Imported ${count} ${importType} records from CSV.`, 'success');
+    } catch (err: any) {
+      addToast(err?.message || 'Failed to import CSV', 'error');
+    }
+  };
 
     const handleCopyApiKey = () => {
         if (apiKey) {
@@ -132,6 +155,32 @@ const Settings: React.FC<SettingsProps> = ({
                     <option value="finale">Finale Inventory (Coming Soon)</option>
                     <option value="csv">CSV/JSON Upload (Coming Soon)</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Import / Export (CSV/JSON) */}
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                <h3 className="text-lg font-semibold text-white">Import / Export Data</h3>
+                <p className="text-sm text-gray-400 mt-1">Quickly seed or update data using CSV templates. Export coming soon.</p>
+                <div className="mt-4 pt-4 border-t border-gray-700/50 space-y-3">
+                  <div className="grid md:grid-cols-3 gap-3 items-center">
+                    <label className="text-sm text-gray-300">Entity</label>
+                    <select value={importType} onChange={e => setImportType(e.target.value as any)} className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white">
+                      <option value="inventory">Inventory Items</option>
+                      <option value="vendors">Vendors</option>
+                    </select>
+                    <div className="text-right text-sm text-gray-400">
+                      <a className="underline hover:text-gray-200 mr-3" href="/templates/inventory-template.csv" download>Inventory Template</a>
+                      <a className="underline hover:text-gray-200" href="/templates/vendors-template.csv" download>Vendors Template</a>
+                    </div>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-3 items-center">
+                    <label className="text-sm text-gray-300">File</label>
+                    <input type="file" accept=".csv,.json" onChange={handleFileUpload} className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white" />
+                    <div className="text-right">
+                      <button onClick={handleProcessImport} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">Import</button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
