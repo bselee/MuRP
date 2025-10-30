@@ -110,6 +110,20 @@ const App: React.FC = () => {
     const initAuth = async () => {
       try {
         console.log('[App] Starting auth initialization...');
+        
+        // Check URL for password reset indicators
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const queryParams = new URLSearchParams(window.location.search);
+        const isRecoveryHash = hashParams.get('type') === 'recovery';
+        const isRecoveryQuery = queryParams.get('type') === 'recovery';
+        
+        if (isRecoveryHash || isRecoveryQuery) {
+          console.log('[App] Password reset URL detected, entering reset mode');
+          setIsPasswordResetMode(true);
+          setAuthLoading(false);
+          return;
+        }
+        
         const user = await getCurrentUser();
         console.log('[App] getCurrentUser result:', user ? 'User found' : 'No user');
         setSupabaseUser(user);
