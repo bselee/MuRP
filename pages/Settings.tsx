@@ -3,6 +3,8 @@ import Papa from 'papaparse';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiPrompt } from '../types';
 import { defaultAiConfig } from '../types';
+import type { ValidationResult } from '../services/integrations/CSVValidator';
+import { CSVValidator } from '../services/integrations/CSVValidator';
 import AiPromptEditModal from '../components/AiPromptEditModal';
 import { GmailIcon, KeyIcon, ClipboardCopyIcon, RefreshIcon, TrashIcon, ServerStackIcon, LinkIcon, BotIcon, ChevronDownIcon, PencilIcon, UsersIcon } from '../components/icons';
 import UserManagementPanel from '../components/UserManagementPanel';
@@ -49,37 +51,51 @@ const Settings: React.FC<SettingsProps> = ({
   const [importFile, setImportFile] = useState<File | null>(null);
   const [previewHeaders, setPreviewHeaders] = useState<string[] | null>(null);
   const [previewRows, setPreviewRows] = useState<any[] | null>(null);
+  const [parsedRows, setParsedRows] = useState<any[] | null>(null);
+  const [validation, setValidation] = useState<ValidationResult | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
     setImportFile(f);
-    // Build a tiny preview for CSV/JSON (first ~5 rows)
+    // Reset preview and validation state
     setPreviewHeaders(null);
     setPreviewRows(null);
+    setParsedRows(null);
+    setValidation(null);
     if (!f) return;
     const ext = f.name.split('.').pop()?.toLowerCase();
     if (ext === 'csv') {
-      f.text().then(async (text) => {
+      f.text().then((text) => {
         try {
-          const res = Papa.parse(text, { header: true, preview: 5, skipEmptyLines: true });
-          const rows = Array.isArray(res.data) ? res.data.filter(Boolean).slice(0, 5) : [];
+          const res = Papa.parse(text, { header: true, skipEmptyLines: true });
+          const rows = Array.isArray(res.data) ? (res.data as any[]).filter(Boolean) : [];
           const headers = res.meta?.fields || (rows.length ? Object.keys(rows[0]) : []);
+          setParsedRows(rows);
           setPreviewHeaders(headers || []);
-          setPreviewRows(rows || []);
+          setPreviewRows(rows.slice(0, 5));
+          const validator = new CSVValidator();
+          const result = validator.validate(rows, importType);
+          setValidation(result);
         } catch (err) {
-          console.warn('CSV preview failed:', err);
+          console.warn('CSV parse failed:', err);
+          addToast('Failed to parse CSV. Please check the file format.', 'error');
         }
       });
     } else if (ext === 'json') {
       f.text().then((text) => {
         try {
           const data = JSON.parse(text);
-          const rows = Array.isArray(data) ? data.slice(0, 5) : [data];
+          const rows = Array.isArray(data) ? data : [data];
           const headers = rows.length ? Object.keys(rows[0]) : [];
+          setParsedRows(rows);
           setPreviewHeaders(headers);
-          setPreviewRows(rows);
+          setPreviewRows(rows.slice(0, 5));
+          const validator = new CSVValidator();
+          const result = validator.validate(rows, importType);
+          setValidation(result);
         } catch (err) {
-          console.warn('JSON preview failed:', err);
+          console.warn('JSON parse failed:', err);
+          addToast('Failed to parse JSON. Please check the file format.', 'error');
         }
       });
     }
@@ -87,7 +103,11 @@ const Settings: React.FC<SettingsProps> = ({
 
   const handleProcessImport = async () => {
     if (!importFile) {
-      addToast('Please choose a CSV file to import.', 'error');
+      addToast('Please choose a CSV or JSON file to import.', 'error');
+      return;
+    }
+    if (!validation || !validation.valid) {
+      addToast('Please fix validation errors before importing.', 'error');
       return;
     }
     try {
@@ -222,9 +242,41 @@ const Settings: React.FC<SettingsProps> = ({
                     <label className="text-sm text-gray-300">File</label>
                     <input type="file" accept=".csv,.json" onChange={handleFileUpload} className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white" />
                     <div className="text-right">
-                      <button onClick={handleProcessImport} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">Import</button>
+                      <button onClick={handleProcessImport} disabled={!validation?.valid} className={`font-semibold py-2 px-4 rounded-md transition-colors ${validation?.valid ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-600 text-gray-300 cursor-not-allowed'}`}>
+                        {validation?.valid ? 'Confirm Import' : 'Fix Errors First'}
+                      </button>
                     </div>
                   </div>
+                  {validation && (
+                    <div className="mt-2 space-y-2">
+                      <div className={`p-3 rounded ${validation.valid ? 'bg-green-900/30 border border-green-800' : 'bg-red-900/30 border border-red-800'}`}>
+                        <p className="font-semibold">{validation.valid ? 'Validation Passed' : 'Validation Failed'}</p>
+                        <p className="text-sm text-gray-300">Rows: {validation.summary.validRows} valid / {validation.summary.errorRows} with errors (Total {validation.summary.totalRows})</p>
+                      </div>
+                      {validation.errors.length > 0 && (
+                        <div className="max-h-40 overflow-y-auto">
+                          <p className="font-semibold text-red-400">Errors:</p>
+                          {validation.errors.slice(0, 10).map((e, i) => (
+                            <p key={i} className="text-sm text-red-300">Row {e.row}: {e.field} - {e.message}</p>
+                          ))}
+                          {validation.errors.length > 10 && (
+                            <p className="text-sm text-gray-400">… and {validation.errors.length - 10} more errors</p>
+                          )}
+                        </div>
+                      )}
+                      {validation.warnings.length > 0 && (
+                        <div className="max-h-32 overflow-y-auto">
+                          <p className="font-semibold text-yellow-400">Warnings:</p>
+                          {validation.warnings.slice(0, 5).map((w, i) => (
+                            <p key={i} className="text-sm text-yellow-300">Row {w.row}: {w.field} - {w.message}</p>
+                          ))}
+                          {validation.warnings.length > 5 && (
+                            <p className="text-sm text-gray-400">… and {validation.warnings.length - 5} more warnings</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {previewRows && previewHeaders && (
                     <div className="mt-2 border border-gray-700 rounded-md overflow-x-auto">
                       <div className="bg-gray-900/50 text-xs text-gray-400 px-3 py-2">Preview (first {Math.min(5, previewRows.length)} rows)</div>
