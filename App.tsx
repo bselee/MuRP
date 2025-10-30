@@ -117,17 +117,27 @@ const App: React.FC = () => {
         const queryParams = new URLSearchParams(window.location.search);
         const isRecoveryHash = hashParams.get('type') === 'recovery';
         const isRecoveryQuery = queryParams.get('type') === 'recovery';
+        const isResetParam = queryParams.get('reset') === 'true'; // Custom reset flag
         const hasCode = queryParams.get('code'); // PKCE code
         const hasAccessToken = hashParams.get('access_token'); // Legacy token
         
         console.log('[App] URL params check:', {
           isRecoveryHash,
           isRecoveryQuery,
+          isResetParam,
           hasCode,
           hasAccessToken,
           hash: window.location.hash,
           search: window.location.search
         });
+        
+        // Check for custom reset parameter (most reliable with PKCE)
+        if (isResetParam) {
+          console.log('[App] Password reset detected via reset=true param, entering reset mode');
+          setIsPasswordResetMode(true);
+          setAuthLoading(false);
+          return;
+        }
         
         if (isRecoveryHash || isRecoveryQuery) {
           console.log('[App] Password reset URL detected (via type param), entering reset mode');

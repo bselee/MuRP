@@ -98,9 +98,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthSuccess, addToast }) =>
     setLoading(true);
 
     try {
-      const redirectUrl = window.location.hostname === 'localhost' 
+      // Use a custom path for password reset to distinguish from normal login
+      const baseUrl = window.location.hostname === 'localhost' 
         ? 'http://localhost:5173'
         : window.location.origin;
+      
+      const redirectUrl = `${baseUrl}?reset=true`;
+      
+      console.log('[LoginScreen] Requesting password reset with redirect:', redirectUrl);
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
