@@ -53,6 +53,8 @@ const Settings: React.FC<SettingsProps> = ({
   const [previewRows, setPreviewRows] = useState<any[] | null>(null);
   const [parsedRows, setParsedRows] = useState<any[] | null>(null);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState<{completed: number; total: number} | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
@@ -118,6 +120,42 @@ const Settings: React.FC<SettingsProps> = ({
       addToast(`Imported ${count} ${importType} records from CSV.`, 'success');
     } catch (err: any) {
       addToast(err?.message || 'Failed to import CSV', 'error');
+    }
+  };
+
+  const handleConfirmSave = async () => {
+    if (!importFile) {
+      addToast('Please choose a CSV or JSON file to import.', 'error');
+      return;
+    }
+    if (!validation || !validation.valid) {
+      addToast('Please fix validation errors before saving.', 'error');
+      return;
+    }
+    try {
+      setIsSaving(true);
+      setSaveProgress({ completed: 0, total: parsedRows?.length || 0 });
+      const text = await importFile.text();
+      const { CSVAdapter } = await import('../services/integrations/CSVAdapter');
+      const adapter = new CSVAdapter();
+      await adapter.importCSVText(text, importType);
+      if (importType === 'inventory') {
+        const items = await adapter.fetchInventory();
+        const { bulkUpsertInventory } = await import('../services/dataService');
+        const total = items.length;
+        await bulkUpsertInventory(items, (completed, t) => setSaveProgress({ completed, total: t }));
+      } else {
+        const vendors = await adapter.fetchVendors();
+        const { bulkUpsertVendors } = await import('../services/dataService');
+        const total = vendors.length;
+        await bulkUpsertVendors(vendors, (completed, t) => setSaveProgress({ completed, total: t }));
+      }
+      addToast('Save to database completed successfully.', 'success');
+    } catch (err: any) {
+      console.error('Save to database failed:', err);
+      addToast(err?.message || 'Failed to save to database', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -241,12 +279,23 @@ const Settings: React.FC<SettingsProps> = ({
                   <div className="grid md:grid-cols-3 gap-3 items-center">
                     <label className="text-sm text-gray-300">File</label>
                     <input type="file" accept=".csv,.json" onChange={handleFileUpload} className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white" />
-                    <div className="text-right">
-                      <button onClick={handleProcessImport} disabled={!validation?.valid} className={`font-semibold py-2 px-4 rounded-md transition-colors ${validation?.valid ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-600 text-gray-300 cursor-not-allowed'}`}>
-                        {validation?.valid ? 'Confirm Import' : 'Fix Errors First'}
+                    <div className="flex items-center justify-end gap-3">
+                      <button onClick={handleProcessImport} disabled={!validation?.valid || isSaving} className={`font-semibold py-2 px-4 rounded-md transition-colors ${validation?.valid && !isSaving ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-600 text-gray-300 cursor-not-allowed'}`}>
+                        {validation?.valid ? 'Confirm Import (Preview Only)' : 'Fix Errors First'}
+                      </button>
+                      <button onClick={handleConfirmSave} disabled={!validation?.valid || isSaving} className={`font-semibold py-2 px-4 rounded-md transition-colors ${validation?.valid && !isSaving ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-600 text-gray-300 cursor-not-allowed'}`}>
+                        {isSaving ? 'Saving…' : 'Confirm & Save to Database'}
                       </button>
                     </div>
                   </div>
+                  {isSaving && saveProgress && (
+                    <div className="mt-2 text-sm text-gray-300">
+                      Saving… {saveProgress.completed}/{saveProgress.total}
+                      <div className="w-full bg-gray-700 h-2 rounded mt-1">
+                        <div className="bg-green-500 h-2 rounded" style={{ width: `${saveProgress.total ? Math.round((saveProgress.completed / saveProgress.total) * 100) : 0}%` }} />
+                      </div>
+                    </div>
+                  )}
                   {validation && (
                     <div className="mt-2 space-y-2">
                       <div className={`p-3 rounded ${validation.valid ? 'bg-green-900/30 border border-green-800' : 'bg-red-900/30 border border-red-800'}`}>

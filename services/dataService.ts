@@ -26,6 +26,25 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 10000): P
 }
 
 /**
+ * Simple retry with exponential backoff
+ */
+async function retryWithBackoff<T>(fn: () => Promise<T>, opts: { retries?: number; baseDelayMs?: number } = {}): Promise<T> {
+  const retries = opts.retries ?? 3;
+  const base = opts.baseDelayMs ?? 300;
+  let lastErr: any;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const delay = base * Math.pow(2, i);
+      await new Promise(res => setTimeout(res, delay));
+    }
+  }
+  throw lastErr;
+}
+
+/**
  * Fetch all inventory items for the current user
  */
 export async function fetchInventory(): Promise<InventoryItem[]> {
@@ -530,11 +549,11 @@ export async function fetchUserById(userId: string): Promise<User | null> {
       }, 10000);
     });
     
-    const fetchPromise = supabase
+    const fetchPromise = retryWithBackoff(() => supabase
       .from('users')
       .select('*')
       .eq('id', userId)
-      .single();
+      .single(), { retries: 3, baseDelayMs: 300 });
     
     const result = await Promise.race([fetchPromise, timeoutPromise]);
     
@@ -568,6 +587,73 @@ export async function fetchUserById(userId: string): Promise<User | null> {
     console.error('[fetchUserById] Exception:', err);
     return null;
   }
+}
+
+/**
+ * Bulk upsert Inventory items
+ */
+export async function bulkUpsertInventory(items: InventoryItem[], onProgress?: (completed: number, total: number) => void): Promise<number> {
+  const chunkSize = 200;
+  const total = items.length;
+  let completed = 0;
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize).map(it => ({
+      sku: it.sku,
+      name: it.name,
+      category: it.category,
+      stock: it.stock,
+      on_order: it.onOrder ?? 0,
+      reorder_point: it.reorderPoint ?? 0,
+      vendor_id: it.vendorId || null,
+      moq: it.moq ?? null,
+      is_deleted: false,
+    }));
+    const { error } = await withTimeout(
+      supabase
+        .from('inventory_items')
+        .upsert(chunk, { onConflict: 'sku' })
+    , 15000);
+    if (error) {
+      console.error('[bulkUpsertInventory] Upsert error:', error);
+      throw error;
+    }
+    completed += chunk.length;
+    onProgress?.(completed, total);
+  }
+  return total;
+}
+
+/**
+ * Bulk upsert Vendors
+ */
+export async function bulkUpsertVendors(vendors: Vendor[], onProgress?: (completed: number, total: number) => void): Promise<number> {
+  const chunkSize = 200;
+  const total = vendors.length;
+  let completed = 0;
+  for (let i = 0; i < vendors.length; i += chunkSize) {
+    const chunk = vendors.slice(i, i + chunkSize).map(v => ({
+      id: v.id || undefined, // allow DB default UUID if not provided
+      name: v.name,
+      contact_emails: Array.isArray(v.contactEmails) ? v.contactEmails : [],
+      contact_phone: v.phone || null,
+      address: v.address || null,
+      website: v.website || null,
+      lead_time_days: v.leadTimeDays ?? 0,
+      is_deleted: false,
+    }));
+    const { error } = await withTimeout(
+      supabase
+        .from('vendors')
+        .upsert(chunk, { onConflict: 'id' })
+    , 15000);
+    if (error) {
+      console.error('[bulkUpsertVendors] Upsert error:', error);
+      throw error;
+    }
+    completed += chunk.length;
+    onProgress?.(completed, total);
+  }
+  return total;
 }
 
 /**
