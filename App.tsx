@@ -209,7 +209,17 @@ const App: React.FC = () => {
 
     const loadData = async () => {
       setDataLoading(true);
+      
+      // Add overall timeout for data loading
+      const timeoutId = setTimeout(() => {
+        console.warn('[App] Data loading timeout after 15 seconds, proceeding with partial data');
+        setDataLoading(false);
+        addToast('Some data took too long to load. You can continue using the app.', 'info');
+      }, 15000);
+      
       try {
+        console.log('[App] Starting data load...');
+        
         const [
           inventoryData,
           vendorsData,
@@ -230,6 +240,9 @@ const App: React.FC = () => {
           fetchArtworkFolders(),
         ]);
 
+        console.log('[App] Data loaded successfully');
+        clearTimeout(timeoutId);
+
         setInventory(inventoryData);
         setVendors(vendorsData);
         setBoms(bomsData);
@@ -239,7 +252,8 @@ const App: React.FC = () => {
         setUsers(usersData);
         setArtworkFolders(artworkFoldersData);
       } catch (error: any) {
-        console.error('Error loading data:', error);
+        console.error('[App] Error loading data:', error);
+        clearTimeout(timeoutId);
         addToast(`Failed to load data: ${error.message}`, 'error');
       } finally {
         setDataLoading(false);
