@@ -482,27 +482,55 @@ export async function fetchUsers(): Promise<User[]> {
  * Fetch a single user by auth ID (for current user profile)
  */
 export async function fetchUserById(userId: string): Promise<User | null> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', userId)
-    .single();
+  try {
+    console.log('[fetchUserById] Fetching user:', userId);
+    
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => {
+        console.warn('[fetchUserById] Timeout after 10 seconds');
+        resolve(null);
+      }, 10000);
+    });
+    
+    const fetchPromise = supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    const result = await Promise.race([fetchPromise, timeoutPromise]);
+    
+    if (result === null) {
+      console.error('[fetchUserById] Query timed out');
+      return null;
+    }
+    
+    const { data, error } = result;
 
-  if (error) {
-    console.error('Error fetching user by ID:', error);
+    if (error) {
+      console.error('[fetchUserById] Error:', error);
+      return null;
+    }
+
+    if (!data) {
+      console.warn('[fetchUserById] No data found for user:', userId);
+      return null;
+    }
+
+    console.log('[fetchUserById] User found:', data.email);
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      role: data.role as 'Admin' | 'Manager' | 'Staff',
+      department: data.department as 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV',
+      onboardingComplete: true,
+    };
+  } catch (err) {
+    console.error('[fetchUserById] Exception:', err);
     return null;
   }
-
-  if (!data) return null;
-
-  return {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-    role: data.role as 'Admin' | 'Manager' | 'Staff',
-    department: data.department as 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV',
-    onboardingComplete: true,
-  };
 }
 
 /**
