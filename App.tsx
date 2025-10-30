@@ -1,7 +1,7 @@
 
 
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { supabase, getCurrentUser, signOut } from './lib/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import {
@@ -22,19 +22,22 @@ import {
 import AiAssistant from './components/AiAssistant';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import Dashboard from './pages/Dashboard';
-import Inventory from './pages/Inventory';
-import PurchaseOrders from './pages/PurchaseOrders';
-import Vendors from './pages/Vendors';
-import Production from './pages/Production';
-import BOMs from './pages/BOMs';
-import Settings from './pages/Settings';
+import Toast from './components/Toast';
+import LoadingSpinner from './components/LoadingSpinner';
 import LoginScreen from './pages/LoginScreen';
 import ResetPassword from './pages/ResetPassword';
-import Toast from './components/Toast';
-import ApiDocs from './pages/ApiDocs';
-import ArtworkPage from './pages/Artwork';
-import NewUserSetup from './pages/NewUserSetup';
+
+// Lazy load pages for code splitting
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const PurchaseOrders = lazy(() => import('./pages/PurchaseOrders'));
+const Vendors = lazy(() => import('./pages/Vendors'));
+const Production = lazy(() => import('./pages/Production'));
+const BOMs = lazy(() => import('./pages/BOMs'));
+const Settings = lazy(() => import('./pages/Settings'));
+const ApiDocs = lazy(() => import('./pages/ApiDocs'));
+const ArtworkPage = lazy(() => import('./pages/Artwork'));
+const NewUserSetup = lazy(() => import('./pages/NewUserSetup'));
 import { 
     mockBOMs, 
     mockInventory, 
@@ -907,7 +910,11 @@ const App: React.FC = () => {
 
   // Show onboarding if user hasn't completed setup
   if (currentUser && !currentUser.onboardingComplete) {
-      return <NewUserSetup user={currentUser} onSetupComplete={() => handleCompleteOnboarding(currentUser.id)} />;
+      return (
+        <Suspense fallback={<LoadingSpinner message="Loading setup..." />}>
+          <NewUserSetup user={currentUser} onSetupComplete={() => handleCompleteOnboarding(currentUser.id)} />
+        </Suspense>
+      );
   }
 
   return (
@@ -926,7 +933,9 @@ const App: React.FC = () => {
         <Header currentUser={currentUser} onLogout={handleLogout} />
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-900 p-4 sm:p-6 lg:p-8">
-          {renderPage()}
+          <Suspense fallback={<LoadingSpinner message="Loading page..." />}>
+            {renderPage()}
+          </Suspense>
         </main>
       </div>
 
