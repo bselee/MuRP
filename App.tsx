@@ -105,39 +105,6 @@ const App: React.FC = () => {
   const [externalConnections, setExternalConnections] = useState<ExternalConnection[]>([]);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
 
-  // Monitor URL hash AND query params for password reset mode
-  useEffect(() => {
-    const checkPasswordResetMode = () => {
-      // Check both hash parameters and query parameters
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const queryParams = new URLSearchParams(window.location.search);
-      
-      const isRecoveryHash = hashParams.get('type') === 'recovery';
-      const isRecoveryQuery = queryParams.get('type') === 'recovery';
-      const isRecovery = isRecoveryHash || isRecoveryQuery;
-      
-      console.log('[App] Checking password reset mode:', { 
-        hash: window.location.hash,
-        search: window.location.search,
-        hashType: hashParams.get('type'),
-        queryType: queryParams.get('type'),
-        isRecovery 
-      });
-      setIsPasswordResetMode(isRecovery);
-    };
-
-    // Check on mount
-    checkPasswordResetMode();
-
-    // Check on hash change and location change
-    window.addEventListener('hashchange', checkPasswordResetMode);
-    window.addEventListener('popstate', checkPasswordResetMode);
-    return () => {
-      window.removeEventListener('hashchange', checkPasswordResetMode);
-      window.removeEventListener('popstate', checkPasswordResetMode);
-    };
-  }, []);
-
   // Initialize Supabase auth session
   useEffect(() => {
     const initAuth = async () => {
@@ -156,8 +123,7 @@ const App: React.FC = () => {
           if (userProfile) {
             setCurrentUser(userProfile);
             // Only show welcome toast if not in password reset flow
-            const hashParams = new URLSearchParams(window.location.hash.substring(1));
-            if (hashParams.get('type') !== 'recovery') {
+            if (!isPasswordResetMode) {
               addToast(`Welcome back, ${userProfile.name}!`, 'success');
             }
           } else {
@@ -187,8 +153,18 @@ const App: React.FC = () => {
 
     initAuth();
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Listen for auth state changes - including PASSWORD_RECOVERY event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[App] Auth state change event:', event);
+      
+      // Handle password recovery flow
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('[App] Password recovery detected, entering reset mode');
+        setIsPasswordResetMode(true);
+        setAuthLoading(false);
+        return;
+      }
+      
       const user = session?.user || null;
       setSupabaseUser(user);
       
