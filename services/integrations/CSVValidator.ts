@@ -30,6 +30,7 @@ const FIELD_ALIASES: Record<Entity, Record<string, string[]>> = {
     'On Order': ['On Order', 'onOrder'],
     'Reorder Point': ['Reorder Point', 'reorderPoint'],
     'MOQ': ['MOQ', 'moq'],
+    'Vendor ID': ['Vendor ID', 'vendorId', 'vendor_id'],
   },
   vendors: {
     'ID': ['ID', 'id'],
@@ -64,10 +65,121 @@ function isNonEmpty(v: any): boolean {
   return v !== undefined && v !== null && String(v).trim() !== '';
 }
 
+function cleanNumericValue(value: any): number | null {
+  if (!isNonEmpty(value)) return null;
+  
+  // Remove common non-numeric characters: $, commas, spaces, %
+  const cleaned = String(value)
+    .replace(/[$,\s%]/g, '')
+    .trim();
+  
+  const num = Number(cleaned);
+  
+  if (isNaN(num)) {
+    return null; // Invalid
+  }
+  
+  return num;
+}
+
 export class CSVValidator {
   private static readonly EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  private static readonly LARGE_FILE_THRESHOLD = 500;
 
   validate(data: any[], entity: Entity): ValidationResult {
+    return this.validateSync(data, entity);
+  }
+
+  async validateForeignKeys(data: any[], entity: Entity): Promise<ValidationError[]> {
+    const errors: ValidationError[] = [];
+    
+    if (entity === 'inventory') {
+      // Get all unique vendor IDs from CSV
+      const vendorIds = new Set<string>();
+      data.forEach(row => {
+        const vendorId = getValue(row, 'Vendor ID', entity) || row['Vendor ID'] || row['vendorId'];
+        if (isNonEmpty(vendorId) && vendorId !== 'N/A') {
+          vendorIds.add(String(vendorId));
+        }
+      });
+      
+      if (vendorIds.size > 0) {
+        try {
+          // Dynamically import supabase to avoid circular dependencies
+          const { supabase } = await import('../dataService');
+          const { data: existingVendors, error } = await supabase
+            .from('vendors')
+            .select('id')
+            .in('id', Array.from(vendorIds))
+            .eq('is_deleted', false);
+          
+          if (error) {
+            console.error('Foreign key validation error:', error);
+            return errors; // Return empty errors if DB check fails
+          }
+          
+          const existingIds = new Set(existingVendors?.map(v => v.id) || []);
+          
+          // Flag missing vendors
+          data.forEach((row, index) => {
+            const vendorId = getValue(row, 'Vendor ID', entity) || row['Vendor ID'] || row['vendorId'];
+            if (isNonEmpty(vendorId) && vendorId !== 'N/A' && !existingIds.has(String(vendorId))) {
+              errors.push({
+                row: index + 2,
+                field: 'Vendor ID',
+                message: `Vendor "${vendorId}" does not exist in database`,
+                severity: 'error'
+              });
+            }
+          });
+        } catch (err) {
+          console.error('Failed to validate foreign keys:', err);
+        }
+      }
+    }
+    
+    return errors;
+  }
+
+  async validateAsync(
+    data: any[], 
+    entity: Entity, 
+    onProgress?: (processed: number, total: number) => void
+  ): Promise<ValidationResult> {
+    const CHUNK_SIZE = 100;
+    const errors: ValidationError[] = [];
+    const warnings: ValidationError[] = [];
+    const total = data.length;
+    
+    for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+      const chunk = data.slice(i, Math.min(i + CHUNK_SIZE, data.length));
+      const chunkResult = this.validateSync(chunk, entity, i);
+      
+      errors.push(...chunkResult.errors);
+      warnings.push(...chunkResult.warnings);
+      
+      if (onProgress) {
+        onProgress(Math.min(i + CHUNK_SIZE, total), total);
+      }
+      
+      // Yield to UI thread
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    const errorRowsSet = new Set(errors.map(e => e.row));
+    const errorRows = errorRowsSet.size;
+    const totalRows = data.length;
+    const validRows = totalRows - errorRows;
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings,
+      summary: { totalRows, validRows, errorRows },
+    };
+  }
+
+  private validateSync(data: any[], entity: Entity, rowOffset: number = 0): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationError[] = [];
 
@@ -78,7 +190,7 @@ export class CSVValidator {
     const seenKeys = new Map<string, number>();
 
     data.forEach((row, index) => {
-      const rowNumber = index + 2; // +1 header row, +1 for 1-based
+      const rowNumber = rowOffset + index + 2; // +rowOffset for chunking, +1 header row, +1 for 1-based
 
       // Required fields
       for (const logicalField of required) {
@@ -110,8 +222,16 @@ export class CSVValidator {
       // Numeric fields
       for (const nf of numeric) {
         const v = getValue(row, nf, entity);
-        if (isNonEmpty(v) && isNaN(Number(v))) {
-          errors.push({ row: rowNumber, field: nf, message: `${nf} must be a number`, severity: 'error' });
+        if (isNonEmpty(v)) {
+          const cleaned = cleanNumericValue(v);
+          if (cleaned === null) {
+            errors.push({ 
+              row: rowNumber, 
+              field: nf, 
+              message: `${nf} must be a number (found: "${v}")`, 
+              severity: 'error' 
+            });
+          }
         }
       }
 

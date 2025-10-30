@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Papa from 'papaparse';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiPrompt } from '../types';
@@ -51,11 +51,16 @@ const Settings: React.FC<SettingsProps> = ({
   const [importFile, setImportFile] = useState<File | null>(null);
   const [previewHeaders, setPreviewHeaders] = useState<string[] | null>(null);
   const [previewRows, setPreviewRows] = useState<any[] | null>(null);
-  const [parsedRows, setParsedRows] = useState<any[] | null>(null);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState<{completed: number; total: number} | null>(null);
   const [importSuccess, setImportSuccess] = useState<{count: number; type: string} | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationProgress, setValidationProgress] = useState<{processed: number; total: number} | null>(null);
+  const [duplicateStrategy, setDuplicateStrategy] = useState<'skip' | 'overwrite'>('overwrite');
+  
+  // Use ref to store full parsed data to avoid memory issues with large files
+  const parsedDataRef = useRef<any[] | null>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
@@ -63,7 +68,7 @@ const Settings: React.FC<SettingsProps> = ({
     // Reset preview and validation state
     setPreviewHeaders(null);
     setPreviewRows(null);
-    setParsedRows(null);
+    parsedDataRef.current = null;
     setValidation(null);
     setImportSuccess(null);
     if (!f) return;
@@ -79,7 +84,7 @@ const Settings: React.FC<SettingsProps> = ({
     }
     const ext = f.name.split('.').pop()?.toLowerCase();
     if (ext === 'csv') {
-      f.text().then((text) => {
+      f.text().then(async (text) => {
         try {
           const res = Papa.parse(text, { header: true, skipEmptyLines: true });
           const rawRows = Array.isArray(res.data) ? (res.data as any[]).filter(Boolean) : [];
@@ -90,19 +95,64 @@ const Settings: React.FC<SettingsProps> = ({
             );
           });
           const headers = res.meta?.fields || (rows.length ? Object.keys(rows[0]) : []);
-          setParsedRows(rows);
+          parsedDataRef.current = rows; // Store full data in ref
           setPreviewHeaders(headers || []);
-          setPreviewRows(rows.slice(0, 5));
+          setPreviewRows(rows.slice(0, 5)); // Only store preview in state
+          
           const validator = new CSVValidator();
-          const result = validator.validate(rows, importType);
-          setValidation(result);
+          setIsValidating(true);
+          
+          // Use async validation for large files
+          if (rows.length > 500) {
+            setValidationProgress({ processed: 0, total: rows.length });
+            const result = await validator.validateAsync(
+              rows, 
+              importType, 
+              (processed, total) => setValidationProgress({ processed, total })
+            );
+            
+            // Add foreign key validation for inventory
+            if (importType === 'inventory') {
+              const fkErrors = await validator.validateForeignKeys(rows, importType);
+              if (fkErrors.length > 0) {
+                result.errors.push(...fkErrors);
+                result.valid = false;
+                const errorRowsSet = new Set([...result.errors.map(e => e.row)]);
+                result.summary.errorRows = errorRowsSet.size;
+                result.summary.validRows = result.summary.totalRows - result.summary.errorRows;
+              }
+            }
+            
+            setValidation(result);
+            setValidationProgress(null);
+          } else {
+            const result = validator.validate(rows, importType);
+            
+            // Add foreign key validation for inventory
+            if (importType === 'inventory') {
+              const fkErrors = await validator.validateForeignKeys(rows, importType);
+              if (fkErrors.length > 0) {
+                result.errors.push(...fkErrors);
+                result.valid = false;
+                const errorRowsSet = new Set([...result.errors.map(e => e.row)]);
+                result.summary.errorRows = errorRowsSet.size;
+                result.summary.validRows = result.summary.totalRows - result.summary.errorRows;
+              }
+            }
+            
+            setValidation(result);
+          }
+          
+          setIsValidating(false);
         } catch (err) {
           console.warn('CSV parse failed:', err);
           addToast('Failed to parse CSV. Please check the file format.', 'error');
+          setIsValidating(false);
+          setValidationProgress(null);
         }
       });
     } else if (ext === 'json') {
-      f.text().then((text) => {
+      f.text().then(async (text) => {
         try {
           const data = JSON.parse(text);
           const rawRows = Array.isArray(data) ? data : [data];
@@ -113,42 +163,67 @@ const Settings: React.FC<SettingsProps> = ({
             );
           });
           const headers = rows.length ? Object.keys(rows[0]) : [];
-          setParsedRows(rows);
+          parsedDataRef.current = rows; // Store full data in ref
           setPreviewHeaders(headers);
-          setPreviewRows(rows.slice(0, 5));
+          setPreviewRows(rows.slice(0, 5)); // Only store preview in state
+          
           const validator = new CSVValidator();
-          const result = validator.validate(rows, importType);
-          setValidation(result);
+          setIsValidating(true);
+          
+          // Use async validation for large files
+          if (rows.length > 500) {
+            setValidationProgress({ processed: 0, total: rows.length });
+            const result = await validator.validateAsync(
+              rows, 
+              importType, 
+              (processed, total) => setValidationProgress({ processed, total })
+            );
+            
+            // Add foreign key validation for inventory
+            if (importType === 'inventory') {
+              const fkErrors = await validator.validateForeignKeys(rows, importType);
+              if (fkErrors.length > 0) {
+                result.errors.push(...fkErrors);
+                result.valid = false;
+                const errorRowsSet = new Set([...result.errors.map(e => e.row)]);
+                result.summary.errorRows = errorRowsSet.size;
+                result.summary.validRows = result.summary.totalRows - result.summary.errorRows;
+              }
+            }
+            
+            setValidation(result);
+            setValidationProgress(null);
+          } else {
+            const result = validator.validate(rows, importType);
+            
+            // Add foreign key validation for inventory
+            if (importType === 'inventory') {
+              const fkErrors = await validator.validateForeignKeys(rows, importType);
+              if (fkErrors.length > 0) {
+                result.errors.push(...fkErrors);
+                result.valid = false;
+                const errorRowsSet = new Set([...result.errors.map(e => e.row)]);
+                result.summary.errorRows = errorRowsSet.size;
+                result.summary.validRows = result.summary.totalRows - result.summary.errorRows;
+              }
+            }
+            
+            setValidation(result);
+          }
+          
+          setIsValidating(false);
         } catch (err) {
           console.warn('JSON parse failed:', err);
           addToast('Failed to parse JSON. Please check the file format.', 'error');
+          setIsValidating(false);
+          setValidationProgress(null);
         }
       });
     }
   };
 
-  const handleProcessImport = async () => {
-    if (!importFile) {
-      addToast('Please choose a CSV or JSON file to import.', 'error');
-      return;
-    }
-    if (!validation || !validation.valid) {
-      addToast('Please fix validation errors before importing.', 'error');
-      return;
-    }
-    try {
-      const text = await importFile.text();
-      const { CSVAdapter } = await import('../services/integrations/CSVAdapter');
-      const adapter = new CSVAdapter();
-      const count = await adapter.importCSVText(text, importType);
-      addToast(`Imported ${count} ${importType} records from CSV.`, 'success');
-    } catch (err: any) {
-      addToast(err?.message || 'Failed to import CSV', 'error');
-    }
-  };
-
   const handleConfirmSave = async () => {
-    if (!importFile) {
+    if (!importFile || !parsedDataRef.current) {
       addToast('Please choose a CSV or JSON file to import.', 'error');
       return;
     }
@@ -159,23 +234,90 @@ const Settings: React.FC<SettingsProps> = ({
     try {
       setIsSaving(true);
       setImportSuccess(null);
-      setSaveProgress({ completed: 0, total: parsedRows?.length || 0 });
+      const totalRows = parsedDataRef.current.length;
+      setSaveProgress({ completed: 0, total: totalRows });
+      
       const text = await importFile.text();
       const { CSVAdapter } = await import('../services/integrations/CSVAdapter');
       const adapter = new CSVAdapter();
       await adapter.importCSVText(text, importType);
+      
       let count = 0;
       if (importType === 'inventory') {
         const items = await adapter.fetchInventory();
-        const { bulkUpsertInventory } = await import('../services/dataService');
-        count = await bulkUpsertInventory(items, (completed, t) => setSaveProgress({ completed, total: t }));
+        
+        // Handle duplicate strategy
+        if (duplicateStrategy === 'skip') {
+          // Get existing SKUs from database
+          const { supabase } = await import('../services/dataService');
+          const { data: existingItems } = await supabase
+            .from('inventory_items')
+            .select('sku')
+            .eq('is_deleted', false);
+          
+          const existingSkus = new Set(existingItems?.map(item => item.sku) || []);
+          
+          // Filter out items with existing SKUs
+          const newItems = items.filter(item => !existingSkus.has(item.sku));
+          
+          if (newItems.length === 0) {
+            addToast('All items already exist in database. No new records imported.', 'info');
+            setIsSaving(false);
+            setSaveProgress(null);
+            return;
+          }
+          
+          const { bulkUpsertInventory } = await import('../services/dataService');
+          count = await bulkUpsertInventory(newItems, (completed, t) => setSaveProgress({ completed, total: t }));
+          
+          if (newItems.length < items.length) {
+            addToast(`Imported ${count} new records. Skipped ${items.length - count} duplicates.`, 'success');
+          }
+        } else {
+          // Overwrite strategy (default upsert behavior)
+          const { bulkUpsertInventory } = await import('../services/dataService');
+          count = await bulkUpsertInventory(items, (completed, t) => setSaveProgress({ completed, total: t }));
+        }
       } else {
         const vendors = await adapter.fetchVendors();
-        const { bulkUpsertVendors } = await import('../services/dataService');
-        count = await bulkUpsertVendors(vendors, (completed, t) => setSaveProgress({ completed, total: t }));
+        
+        // Handle duplicate strategy for vendors
+        if (duplicateStrategy === 'skip') {
+          const { supabase } = await import('../services/dataService');
+          const { data: existingVendors } = await supabase
+            .from('vendors')
+            .select('id')
+            .eq('is_deleted', false);
+          
+          const existingIds = new Set(existingVendors?.map(v => v.id) || []);
+          
+          // Filter out vendors with existing IDs
+          const newVendors = vendors.filter(v => !existingIds.has(v.id));
+          
+          if (newVendors.length === 0) {
+            addToast('All vendors already exist in database. No new records imported.', 'info');
+            setIsSaving(false);
+            setSaveProgress(null);
+            return;
+          }
+          
+          const { bulkUpsertVendors } = await import('../services/dataService');
+          count = await bulkUpsertVendors(newVendors, (completed, t) => setSaveProgress({ completed, total: t }));
+          
+          if (newVendors.length < vendors.length) {
+            addToast(`Imported ${count} new records. Skipped ${vendors.length - count} duplicates.`, 'success');
+          }
+        } else {
+          // Overwrite strategy (default upsert behavior)
+          const { bulkUpsertVendors } = await import('../services/dataService');
+          count = await bulkUpsertVendors(vendors, (completed, t) => setSaveProgress({ completed, total: t }));
+        }
       }
+      
       setImportSuccess({ count, type: importType });
-      addToast(`Successfully imported ${count} ${importType} records.`, 'success');
+      if (count > 0 && duplicateStrategy === 'overwrite') {
+        addToast(`Successfully imported ${count} ${importType} records.`, 'success');
+      }
     } catch (err: any) {
       console.error('Save to database failed:', err);
       addToast(err?.message || 'Failed to save to database', 'error');
@@ -189,7 +331,7 @@ const Settings: React.FC<SettingsProps> = ({
     setImportFile(null);
     setPreviewHeaders(null);
     setPreviewRows(null);
-    setParsedRows(null);
+    parsedDataRef.current = null;
     setValidation(null);
     setImportSuccess(null);
     // Reset file input
@@ -315,14 +457,32 @@ const Settings: React.FC<SettingsProps> = ({
                     </div>
                   </div>
                   <div className="grid md:grid-cols-3 gap-3 items-center">
+                    <label className="text-sm text-gray-300">Duplicate Handling</label>
+                    <select value={duplicateStrategy} onChange={e => setDuplicateStrategy(e.target.value as any)} className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white">
+                      <option value="overwrite">Overwrite existing records</option>
+                      <option value="skip">Skip duplicates (keep existing)</option>
+                    </select>
+                    <p className="text-xs text-gray-400">
+                      {duplicateStrategy === 'overwrite' ? 'New data will replace existing records with same SKU/ID' : 'Existing records will be preserved, duplicates skipped'}
+                    </p>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-3 items-center">
                     <label className="text-sm text-gray-300">File</label>
                     <input type="file" accept=".csv,.json" onChange={handleFileUpload} className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white" />
                     <div className="flex items-center justify-end gap-3">
-                      <button onClick={handleConfirmSave} disabled={!validation?.valid || isSaving} className={`font-semibold py-2 px-4 rounded-md transition-colors ${validation?.valid && !isSaving ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-600 text-gray-300 cursor-not-allowed'}`}>
-                        {isSaving ? 'Saving…' : validation?.valid ? 'Confirm & Save to Database' : 'Fix Errors First'}
+                      <button onClick={handleConfirmSave} disabled={!validation?.valid || isSaving || isValidating} className={`font-semibold py-2 px-4 rounded-md transition-colors ${validation?.valid && !isSaving && !isValidating ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-600 text-gray-300 cursor-not-allowed'}`}>
+                        {isValidating ? 'Validating…' : isSaving ? 'Saving…' : validation?.valid ? 'Confirm & Save to Database' : 'Fix Errors First'}
                       </button>
                     </div>
                   </div>
+                  {isValidating && validationProgress && (
+                    <div className="mt-2 text-sm text-gray-300">
+                      Validating… {validationProgress.processed}/{validationProgress.total}
+                      <div className="w-full bg-gray-700 h-2 rounded mt-1">
+                        <div className="bg-indigo-500 h-2 rounded" style={{ width: `${validationProgress.total ? Math.round((validationProgress.processed / validationProgress.total) * 100) : 0}%` }} />
+                      </div>
+                    </div>
+                  )}
                   {isSaving && saveProgress && (
                     <div className="mt-2 text-sm text-gray-300">
                       Saving… {saveProgress.completed}/{saveProgress.total}
