@@ -111,33 +111,35 @@ const App: React.FC = () => {
       try {
         console.log('[App] Starting auth initialization...');
         console.log('[App] Current URL:', window.location.href);
-        
-        // Check URL for password reset indicators
+        console.log('[App] Current pathname:', window.location.pathname);
+
+        // Check if we're on the /reset path - this is the most reliable way with PKCE
+        if (window.location.pathname === '/reset') {
+          console.log('[App] Password reset detected via /reset path, entering reset mode');
+          setIsPasswordResetMode(true);
+          setAuthLoading(false);
+          return;
+        }
+
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        console.log('[App] Existing session present:', !!existingSession);
+
+        // Check URL for password reset indicators (legacy detection)
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
         const isRecoveryHash = hashParams.get('type') === 'recovery';
         const isRecoveryQuery = queryParams.get('type') === 'recovery';
-        const isResetParam = queryParams.get('reset') === 'true'; // Custom reset flag
         const hasCode = queryParams.get('code'); // PKCE code
         const hasAccessToken = hashParams.get('access_token'); // Legacy token
         
         console.log('[App] URL params check:', {
           isRecoveryHash,
           isRecoveryQuery,
-          isResetParam,
           hasCode,
           hasAccessToken,
           hash: window.location.hash,
           search: window.location.search
         });
-        
-        // Check for custom reset parameter (most reliable with PKCE)
-        if (isResetParam) {
-          console.log('[App] Password reset detected via reset=true param, entering reset mode');
-          setIsPasswordResetMode(true);
-          setAuthLoading(false);
-          return;
-        }
         
         if (isRecoveryHash || isRecoveryQuery) {
           console.log('[App] Password reset URL detected (via type param), entering reset mode');
@@ -147,10 +149,11 @@ const App: React.FC = () => {
         }
         
         // Also check if we have a code/token but no type - might be password reset
-        if ((hasCode || hasAccessToken) && !window.sessionStorage.getItem('supabase.auth.token')) {
-          console.log('[App] Auth code detected without existing session - might be password reset');
-          // Wait a moment for the PASSWORD_RECOVERY event to fire
-          await new Promise(resolve => setTimeout(resolve, 500));
+        if ((hasCode || hasAccessToken) && !existingSession) {
+          console.log('[App] Auth code detected without existing session - entering reset mode');
+          setIsPasswordResetMode(true);
+          setAuthLoading(false);
+          return;
         }
         
         const user = await getCurrentUser();

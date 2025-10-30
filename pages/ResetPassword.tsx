@@ -22,18 +22,23 @@ const ResetPassword: React.FC = () => {
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
 
+        // Supabase PKCE flow sometimes omits the type parameter; infer recovery when only code is present
+        const inferredRecovery = !type && !!code;
+        const isRecoveryFlow = type === 'recovery' || inferredRecovery;
+
         console.log('[ResetPassword] Initializing session...', {
           type,
           hasCode: !!code,
           hasAccessToken: !!accessToken,
           hasRefreshToken: !!refreshToken,
+          inferredRecovery,
           url: window.location.href,
           hash: window.location.hash,
           search: window.location.search
         });
 
         // Verify this is a recovery link
-        if (type !== 'recovery') {
+        if (!isRecoveryFlow) {
           console.error('[ResetPassword] Not a recovery link, type:', type);
           setError('Invalid password reset link. Please request a new one.');
           return;

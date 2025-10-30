@@ -99,11 +99,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthSuccess, addToast }) =>
 
     try {
       // Use a custom path for password reset to distinguish from normal login
+      // Important: Add reset=true as a query parameter so it survives alongside Supabase's code parameter
       const baseUrl = window.location.hostname === 'localhost' 
         ? 'http://localhost:5173'
         : window.location.origin;
       
-      const redirectUrl = `${baseUrl}?reset=true`;
+      // Use the /reset path instead of query parameter to avoid conflicts with PKCE code
+      const redirectUrl = `${baseUrl}/reset`;
       
       console.log('[LoginScreen] Requesting password reset with redirect:', redirectUrl);
       
@@ -169,9 +171,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthSuccess, addToast }) =>
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowPassword(prev => !prev)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -290,9 +292,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onAuthSuccess, addToast }) =>
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowPassword(prev => !prev)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                    tabIndex={-1}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
