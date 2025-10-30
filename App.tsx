@@ -4,6 +4,7 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { supabase, getCurrentUser, signOut } from './lib/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { createLogger } from './lib/logger';
 import {
   fetchInventory,
   fetchVendors,
@@ -78,6 +79,8 @@ export type ToastInfo = {
 };
 
 const App: React.FC = () => {
+  const logger = useMemo(() => createLogger('App'), []);
+  
   // Auth state
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -112,20 +115,21 @@ const App: React.FC = () => {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        console.log('[App] Starting auth initialization...');
-        console.log('[App] Current URL:', window.location.href);
-        console.log('[App] Current pathname:', window.location.pathname);
+        logger.debug('Starting auth initialization', {
+          url: window.location.href,
+          pathname: window.location.pathname
+        });
 
         // Check if we're on the /reset path - this is the most reliable way with PKCE
         if (window.location.pathname === '/reset') {
-          console.log('[App] Password reset detected via /reset path, entering reset mode');
+          logger.debug('Password reset detected via /reset path');
           setIsPasswordResetMode(true);
           setAuthLoading(false);
           return;
         }
 
         const { data: { session: existingSession } } = await supabase.auth.getSession();
-        console.log('[App] Existing session present:', !!existingSession);
+        logger.debug('Session check', { hasSession: !!existingSession });
 
         // Check URL for password reset indicators (legacy detection)
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -135,17 +139,15 @@ const App: React.FC = () => {
         const hasCode = queryParams.get('code'); // PKCE code
         const hasAccessToken = hashParams.get('access_token'); // Legacy token
         
-        console.log('[App] URL params check:', {
+        logger.debug('URL params check', {
           isRecoveryHash,
           isRecoveryQuery,
-          hasCode,
-          hasAccessToken,
-          hash: window.location.hash,
-          search: window.location.search
+          hasCode: !!hasCode,
+          hasAccessToken: !!hasAccessToken
         });
         
         if (isRecoveryHash || isRecoveryQuery) {
-          console.log('[App] Password reset URL detected (via type param), entering reset mode');
+          logger.debug('Password reset URL detected via type param');
           setIsPasswordResetMode(true);
           setAuthLoading(false);
           return;
@@ -153,21 +155,20 @@ const App: React.FC = () => {
         
         // Also check if we have a code/token but no type - might be password reset
         if ((hasCode || hasAccessToken) && !existingSession) {
-          console.log('[App] Auth code detected without existing session - entering reset mode');
+          logger.debug('Auth code detected without existing session');
           setIsPasswordResetMode(true);
           setAuthLoading(false);
           return;
         }
         
         const user = await getCurrentUser();
-        console.log('[App] getCurrentUser result:', user ? 'User found' : 'No user');
+        logger.debug('User check', { hasUser: !!user });
         setSupabaseUser(user);
         
         // Fetch user profile from database to get actual role
         if (user) {
-          console.log('[App] Fetching user profile from database...');
+          logger.debug('Fetching user profile from database');
           const userProfile = await fetchUserById(user.id);
-          console.log('[App] User profile result:', userProfile ? 'Profile found' : 'No profile');
           
           if (userProfile) {
             setCurrentUser(userProfile);
@@ -178,7 +179,7 @@ const App: React.FC = () => {
           } else {
             // User authenticated but no profile in public.users table
             // Create a default profile
-            console.log('[App] No profile found, creating default user');
+            logger.debug('No profile found, creating default user');
             const defaultUser: User = {
               id: user.id,
               name: user.email?.split('@')[0] || 'User',
@@ -189,13 +190,11 @@ const App: React.FC = () => {
             };
             setCurrentUser(defaultUser);
           }
-        } else {
-          console.log('[App] No user authenticated, will show login screen');
         }
       } catch (error) {
-        console.error('[App] Auth initialization error:', error);
+        logger.error('Auth initialization error', error);
       } finally {
-        console.log('[App] Auth initialization complete, setting authLoading to false');
+        logger.debug('Auth initialization complete');
         setAuthLoading(false);
       }
     };
@@ -204,11 +203,11 @@ const App: React.FC = () => {
 
     // Listen for auth state changes - including PASSWORD_RECOVERY event
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[App] Auth state change event:', event);
+      logger.debug('Auth state change', { event });
       
       // Handle password recovery flow
       if (event === 'PASSWORD_RECOVERY') {
-        console.log('[App] Password recovery detected, entering reset mode');
+        logger.debug('Password recovery detected');
         setIsPasswordResetMode(true);
         setAuthLoading(false);
         return;
@@ -261,13 +260,13 @@ const App: React.FC = () => {
       
       // Add overall timeout for data loading
       const timeoutId = setTimeout(() => {
-        console.warn('[App] Data loading timeout after 15 seconds, proceeding with partial data');
+        logger.warn('Data loading timeout after 15 seconds');
         setDataLoading(false);
         addToast('Some data took too long to load. You can continue using the app.', 'info');
       }, 15000);
       
       try {
-        console.log('[App] Starting data load...');
+        logger.debug('Starting data load');
         
         const results = await Promise.allSettled([
           fetchInventory(),
@@ -296,50 +295,50 @@ const App: React.FC = () => {
         if (inventoryResult.status === 'fulfilled') {
           setInventory(inventoryResult.value);
         } else {
-          console.error('Failed to load inventory:', inventoryResult.reason);
+          logger.error('Failed to load inventory', inventoryResult.reason);
         }
 
         if (vendorsResult.status === 'fulfilled') {
           setVendors(vendorsResult.value);
         } else {
-          console.error('Failed to load vendors:', vendorsResult.reason);
+          logger.error('Failed to load vendors', vendorsResult.reason);
           setVendors([]);
         }
 
         if (bomsResult.status === 'fulfilled') {
           setBoms(bomsResult.value);
         } else {
-          console.error('Failed to load BOMs:', bomsResult.reason);
+          logger.error('Failed to load BOMs', bomsResult.reason);
         }
 
         if (posResult.status === 'fulfilled') {
           setPurchaseOrders(posResult.value);
         } else {
-          console.error('Failed to load purchase orders:', posResult.reason);
+          logger.error('Failed to load purchase orders', posResult.reason);
         }
 
         if (buildOrdersResult.status === 'fulfilled') {
           setBuildOrders(buildOrdersResult.value);
         } else {
-          console.error('Failed to load build orders:', buildOrdersResult.reason);
+          logger.error('Failed to load build orders', buildOrdersResult.reason);
         }
 
         if (requisitionsResult.status === 'fulfilled') {
           setRequisitions(requisitionsResult.value);
         } else {
-          console.error('Failed to load requisitions:', requisitionsResult.reason);
+          logger.error('Failed to load requisitions', requisitionsResult.reason);
         }
 
         if (usersResult.status === 'fulfilled') {
           setUsers(usersResult.value);
         } else {
-          console.error('Failed to load users:', usersResult.reason);
+          logger.error('Failed to load users', usersResult.reason);
         }
 
         if (artworkFoldersResult.status === 'fulfilled') {
           setArtworkFolders(artworkFoldersResult.value);
         } else {
-          console.error('Failed to load artwork folders:', artworkFoldersResult.reason);
+          logger.error('Failed to load artwork folders', artworkFoldersResult.reason);
         }
 
         const failedCount = results.filter(r => r.status === 'rejected').length;
@@ -347,7 +346,7 @@ const App: React.FC = () => {
           addToast(`${failedCount} data source(s) failed to load. Some features may be limited.`, 'error');
         }
       } catch (error: any) {
-        console.error('[App] Error loading data:', error);
+        logger.error('Error loading data', error);
         clearTimeout(timeoutId);
         addToast(`Failed to load data: ${error.message}`, 'error');
       } finally {
@@ -359,19 +358,19 @@ const App: React.FC = () => {
 
     // Subscribe to real-time updates
     const unsubInventory = subscribeToInventory(() => {
-      fetchInventory().then(setInventory).catch(console.error);
+      fetchInventory().then(setInventory).catch(err => logger.error('Inventory subscription update failed', err));
     });
 
     const unsubPOs = subscribeToPurchaseOrders(() => {
-      fetchPurchaseOrders().then(setPurchaseOrders).catch(console.error);
+      fetchPurchaseOrders().then(setPurchaseOrders).catch(err => logger.error('PO subscription update failed', err));
     });
 
     const unsubBuildOrders = subscribeToBuildOrders(() => {
-      fetchBuildOrders().then(setBuildOrders).catch(console.error);
+      fetchBuildOrders().then(setBuildOrders).catch(err => logger.error('Build orders subscription update failed', err));
     });
 
     const unsubBOMs = subscribeToBOMs(() => {
-      fetchBOMs().then(setBoms).catch(console.error);
+      fetchBOMs().then(setBoms).catch(err => logger.error('BOMs subscription update failed', err));
     });
 
     return () => {
@@ -878,11 +877,11 @@ const App: React.FC = () => {
 
   // ALWAYS show reset password screen if we're in recovery mode, regardless of auth state
   if (isPasswordResetMode) {
-    console.log('[App] Rendering ResetPassword component');
+    logger.debug('Rendering ResetPassword component');
     return <ResetPassword />;
   }
 
-  console.log('[App] Render decision:', { 
+  logger.debug('Render decision', { 
     isPasswordResetMode, 
     authLoading, 
     hasSupabaseUser: !!supabaseUser,
