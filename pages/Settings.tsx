@@ -56,7 +56,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState<{completed: number; total: number} | null>(null);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null;
     setImportFile(f);
     // Reset preview and validation state
@@ -65,19 +65,61 @@ const Settings: React.FC<SettingsProps> = ({
     setParsedRows(null);
     setValidation(null);
     if (!f) return;
+    // Enforce file size limit (10MB)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (f.size > MAX_FILE_SIZE) {
+      const sizeMB = (f.size / (1024 * 1024)).toFixed(1);
+      addToast(`File too large (${sizeMB}MB). Maximum allowed is 10MB.`, 'error');
+      return;
+    }
     const ext = f.name.split('.').pop()?.toLowerCase();
     if (ext === 'csv') {
-      f.text().then((text) => {
+  f.text().then(async (text) => {
         try {
           const res = Papa.parse(text, { header: true, skipEmptyLines: true });
-          const rows = Array.isArray(res.data) ? (res.data as any[]).filter(Boolean) : [];
+          // Filter out empty rows
+          const rowsRaw = Array.isArray(res.data) ? (res.data as any[]) : [];
+          const rows = rowsRaw.filter(row => Object.values(row ?? {}).some(v => v !== undefined && v !== null && String(v).trim() !== ''));
           const headers = res.meta?.fields || (rows.length ? Object.keys(rows[0]) : []);
           setParsedRows(rows);
           setPreviewHeaders(headers || []);
           setPreviewRows(rows.slice(0, 5));
           const validator = new CSVValidator();
           const result = validator.validate(rows, importType);
-          setValidation(result);
+          // After base validation, optionally perform async foreign key checks (inventory > Vendor ID)
+          if (importType === 'inventory') {
+            try {
+              const { supabase } = await import('../lib/supabase/client');
+              // Collect unique vendor IDs present
+              const vendorIdKeys = ['Vendor ID', 'vendorId', 'VendorID', 'vendor_id', 'Vendor Id'];
+              const vendorIds = Array.from(new Set(rows
+                .map(r => vendorIdKeys.map(k => r?.[k]).find(Boolean))
+                .filter(Boolean))) as string[];
+              if (vendorIds.length > 0) {
+                const { data: existing } = await supabase
+                  .from('vendors')
+                  .select('id')
+                  .in('id', vendorIds);
+                const existingSet = new Set((existing || []).map(v => v.id));
+                const fkErrors = rows
+                  .map((r, idx) => ({ val: vendorIdKeys.map(k => r?.[k]).find(Boolean) as string | undefined, idx }))
+                  .filter(x => x.val && !existingSet.has(x.val))
+                  .map(x => ({ row: x.idx + 2, field: 'Vendor ID', message: `Vendor "${x.val}" does not exist`, severity: 'error' as const }));
+                const merged = { ...result, errors: [...result.errors, ...fkErrors] };
+                merged.summary.errorRows = new Set(merged.errors.map(e => e.row)).size;
+                merged.summary.validRows = merged.summary.totalRows - merged.summary.errorRows;
+                merged.valid = merged.errors.length === 0;
+                setValidation(merged);
+              } else {
+                setValidation(result);
+              }
+            } catch (e) {
+              console.warn('Foreign key validation skipped due to error:', e);
+              setValidation(result);
+            }
+          } else {
+            setValidation(result);
+          }
         } catch (err) {
           console.warn('CSV parse failed:', err);
           addToast('Failed to parse CSV. Please check the file format.', 'error');
@@ -87,7 +129,8 @@ const Settings: React.FC<SettingsProps> = ({
       f.text().then((text) => {
         try {
           const data = JSON.parse(text);
-          const rows = Array.isArray(data) ? data : [data];
+          const rowsRaw = Array.isArray(data) ? data : [data];
+          const rows = rowsRaw.filter(row => Object.values(row ?? {}).some(v => v !== undefined && v !== null && String(v).trim() !== ''));
           const headers = rows.length ? Object.keys(rows[0]) : [];
           setParsedRows(rows);
           setPreviewHeaders(headers);
@@ -156,6 +199,58 @@ const Settings: React.FC<SettingsProps> = ({
       addToast(err?.message || 'Failed to save to database', 'error');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // CSV Export handlers
+  const handleExportInventory = async () => {
+    try {
+      const { fetchInventory } = await import('../services/dataService');
+      const items = await fetchInventory();
+      const csv = Papa.unparse(items.map(i => ({
+        SKU: i.sku,
+        Name: i.name,
+        Category: i.category,
+        Stock: i.stock,
+        'On Order': i.onOrder ?? 0,
+        'Reorder Point': i.reorderPoint ?? 0,
+        'Vendor ID': i.vendorId ?? '',
+        MOQ: i.moq ?? '',
+      })));
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inventory-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      addToast('Failed to export inventory CSV.', 'error');
+    }
+  };
+
+  const handleExportVendors = async () => {
+    try {
+      const { fetchVendors } = await import('../services/dataService');
+      const vendors = await fetchVendors();
+      const csv = Papa.unparse(vendors.map(v => ({
+        ID: v.id,
+        Name: v.name,
+        Emails: Array.isArray((v as any).contactEmails) ? (v as any).contactEmails.join(', ') : (v as any).contactEmail || '',
+        Phone: v.phone || '',
+        Address: v.address || '',
+        Website: (v as any).website || '',
+        'Lead Time Days': (v as any).leadTimeDays ?? (v as any).leadTime ?? '',
+      })));
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vendors-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      addToast('Failed to export vendors CSV.', 'error');
     }
   };
 
@@ -263,8 +358,12 @@ const Settings: React.FC<SettingsProps> = ({
               {/* Import / Export (CSV/JSON) */}
               <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
                 <h3 className="text-lg font-semibold text-white">Import / Export Data</h3>
-                <p className="text-sm text-gray-400 mt-1">Quickly seed or update data using CSV templates. Export coming soon.</p>
+                <p className="text-sm text-gray-400 mt-1">Quickly seed or update data using CSV templates. Export your current data or import new records.</p>
                 <div className="mt-4 pt-4 border-t border-gray-700/50 space-y-3">
+                  <div className="flex items-center justify-end gap-2">
+                    <button onClick={handleExportInventory} className="text-xs bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1.5 px-3 rounded-md">Export Inventory CSV</button>
+                    <button onClick={handleExportVendors} className="text-xs bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1.5 px-3 rounded-md">Export Vendors CSV</button>
+                  </div>
                   <div className="grid md:grid-cols-3 gap-3 items-center">
                     <label className="text-sm text-gray-300">Entity</label>
                     <select value={importType} onChange={e => setImportType(e.target.value as any)} className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white">
@@ -281,13 +380,18 @@ const Settings: React.FC<SettingsProps> = ({
                     <input type="file" accept=".csv,.json" onChange={handleFileUpload} className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white" />
                     <div className="flex items-center justify-end gap-3">
                       <button onClick={handleProcessImport} disabled={!validation?.valid || isSaving} className={`font-semibold py-2 px-4 rounded-md transition-colors ${validation?.valid && !isSaving ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-600 text-gray-300 cursor-not-allowed'}`}>
-                        {validation?.valid ? 'Confirm Import (Preview Only)' : 'Fix Errors First'}
+                        {validation?.valid ? 'Import to Preview (Not Saved)' : 'Fix Errors First'}
                       </button>
                       <button onClick={handleConfirmSave} disabled={!validation?.valid || isSaving} className={`font-semibold py-2 px-4 rounded-md transition-colors ${validation?.valid && !isSaving ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-600 text-gray-300 cursor-not-allowed'}`}>
                         {isSaving ? 'Saving…' : 'Confirm & Save to Database'}
                       </button>
                     </div>
                   </div>
+                  {validation?.valid && (
+                    <div className="bg-yellow-900/20 border border-yellow-700 rounded p-3 mt-2">
+                      <p className="text-yellow-300 text-sm">Data shown below is a preview only. Click "Confirm & Save to Database" to persist changes.</p>
+                    </div>
+                  )}
                   {isSaving && saveProgress && (
                     <div className="mt-2 text-sm text-gray-300">
                       Saving… {saveProgress.completed}/{saveProgress.total}

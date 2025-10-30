@@ -30,6 +30,9 @@ const FIELD_ALIASES: Record<Entity, Record<string, string[]>> = {
     'On Order': ['On Order', 'onOrder'],
     'Reorder Point': ['Reorder Point', 'reorderPoint'],
     'MOQ': ['MOQ', 'moq'],
+    'Vendor ID': ['Vendor ID', 'vendorId', 'VendorID', 'vendor_id', 'Vendor Id'],
+    'Price': ['Price', 'price', 'Unit Price', 'unit_price'],
+    'Cost': ['Cost', 'cost', 'Unit Cost', 'unit_cost'],
   },
   vendors: {
     'ID': ['ID', 'id'],
@@ -65,6 +68,8 @@ function isNonEmpty(v: any): boolean {
 }
 
 export class CSVValidator {
+  private static EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   validate(data: any[], entity: Entity): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationError[] = [];
@@ -74,6 +79,8 @@ export class CSVValidator {
 
     // Duplicate check for Inventory SKU
     const seenKeys = new Map<string, number>();
+    // Duplicate check for Vendor Name
+    const seenVendorNames = new Map<string, number>();
 
     data.forEach((row, index) => {
       const rowNumber = index + 2; // +1 header row, +1 for 1-based
@@ -89,6 +96,13 @@ export class CSVValidator {
           const emails = str.split(/[,;\s]+/).filter(Boolean);
           if (emails.length === 0) {
             errors.push({ row: rowNumber, field: logicalField, message: `At least one email is required`, severity: 'error' });
+          } else {
+            // Email format validation for each address
+            for (const email of emails) {
+              if (!CSVValidator.EMAIL_REGEX.test(email)) {
+                errors.push({ row: rowNumber, field: 'Emails', message: `Invalid email format: ${email}` , severity: 'error' });
+              }
+            }
           }
         }
       }
@@ -110,6 +124,36 @@ export class CSVValidator {
             warnings.push({ row: rowNumber, field: 'SKU', message: `Duplicate SKU: ${key}`, severity: 'warning' });
           } else {
             seenKeys.set(key, rowNumber);
+          }
+        }
+
+        // Stock level warning: stock below reorder point
+        const stockVal = getValue(row, 'Stock', entity);
+        const ropVal = getValue(row, 'Reorder Point', entity);
+        const stockNum = isNonEmpty(stockVal) ? Number(stockVal) : null;
+        const ropNum = isNonEmpty(ropVal) ? Number(ropVal) : null;
+        if (stockNum !== null && ropNum !== null && !isNaN(stockNum) && !isNaN(ropNum) && stockNum < ropNum) {
+          warnings.push({ row: rowNumber, field: 'Stock', message: `Stock (${stockNum}) is below Reorder Point (${ropNum})`, severity: 'warning' });
+        }
+
+        // Pricing validation if both Price and Cost provided
+        const priceVal = getValue(row, 'Price', entity);
+        const costVal = getValue(row, 'Cost', entity);
+        const priceNum = isNonEmpty(priceVal) ? Number(String(priceVal).replace(/[$,\s]/g, '')) : null;
+        const costNum = isNonEmpty(costVal) ? Number(String(costVal).replace(/[$,\s]/g, '')) : null;
+        if (priceNum !== null && costNum !== null && !isNaN(priceNum) && !isNaN(costNum) && priceNum < costNum) {
+          warnings.push({ row: rowNumber, field: 'Price', message: `Price (${priceNum}) is below Cost (${costNum})`, severity: 'warning' });
+        }
+      }
+
+      if (entity === 'vendors') {
+        const name = getValue(row, 'Name', entity);
+        if (isNonEmpty(name)) {
+          const key = String(name).toLowerCase();
+          if (seenVendorNames.has(key)) {
+            warnings.push({ row: rowNumber, field: 'Name', message: `Duplicate vendor name: ${name}`, severity: 'warning' });
+          } else {
+            seenVendorNames.set(key, rowNumber);
           }
         }
       }
