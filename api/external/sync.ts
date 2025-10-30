@@ -5,10 +5,10 @@
  */
 
 import { requireRole, handleError, successResponse, ApiError, getQueryParam } from '../../lib/api/helpers';
-import { supabaseAdmin } from '../../lib/supabase';
 import { createConnector } from '../../lib/connectors/registry';
 import { transformInventoryBatch, transformVendorBatch } from '../../lib/transformers';
 import type { SyncConfig } from '../../lib/connectors/types';
+import type { ConnectorCredentials, FieldMapping } from '../../lib/connectors/types';
 
 export default async function handler(request: Request): Promise<Response> {
   // Handle OPTIONS for CORS
@@ -36,6 +36,8 @@ export default async function handler(request: Request): Promise<Response> {
 
     console.log(`[Sync] Triggered by user ${auth.user.id}${sourceId ? ` for source ${sourceId}` : ''}`);
 
+  const { getSupabaseAdmin } = await import('../../lib/supabase');
+    const supabaseAdmin = getSupabaseAdmin();
     // Fetch enabled external data sources
     let query = supabaseAdmin
       .from('external_data_sources')
@@ -76,8 +78,8 @@ export default async function handler(request: Request): Promise<Response> {
         const config: SyncConfig = {
           sourceId: source.id,
           sourceType: source.source_type,
-          credentials: source.credentials,
-          fieldMapping: source.field_mappings || {},
+          credentials: (source.credentials as unknown as ConnectorCredentials),
+          fieldMapping: ((source.field_mappings || {}) as unknown as FieldMapping),
           syncFrequency: source.sync_frequency,
           enabled: source.sync_enabled,
         };
@@ -86,7 +88,7 @@ export default async function handler(request: Request): Promise<Response> {
         const connector = createConnector(config);
 
         // Authenticate
-        const authenticated = await connector.authenticate(config.credentials);
+  const authenticated = await connector.authenticate(config.credentials);
         if (!authenticated) {
           throw new Error('Authentication failed');
         }
@@ -106,7 +108,7 @@ export default async function handler(request: Request): Promise<Response> {
         // Transform data
         const context = {
           sourceType: source.source_type,
-          mapping: source.field_mappings || {},
+          mapping: ((source.field_mappings || {}) as unknown as FieldMapping),
         };
 
         const transformedInventory = transformInventoryBatch(inventory, context);

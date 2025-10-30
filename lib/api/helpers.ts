@@ -3,7 +3,7 @@
  * Common utilities for API routes
  */
 
-import { createServerClient, supabaseAdmin } from '../supabase';
+import { createServerClient } from '../supabase';
 import type { User } from '@supabase/supabase-js';
 
 // =============================================================================
@@ -64,7 +64,9 @@ export async function requireRole(request: Request, role: string): Promise<AuthC
   const auth = await requireAuth(request);
   
   // Fetch user role from database
-  const { data: userData, error } = await supabaseAdmin
+  const { getSupabaseAdmin } = await import('../supabase');
+  const admin = getSupabaseAdmin();
+  const { data: userData, error } = await admin
     .from('users')
     .select('role')
     .eq('id', auth.user.id)

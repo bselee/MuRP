@@ -53,6 +53,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [previewRows, setPreviewRows] = useState<any[] | null>(null);
   const [parsedRows, setParsedRows] = useState<any[] | null>(null);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [validationProgress, setValidationProgress] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState<{completed: number; total: number} | null>(null);
 
@@ -64,6 +65,7 @@ const Settings: React.FC<SettingsProps> = ({
     setPreviewRows(null);
     setParsedRows(null);
     setValidation(null);
+    setValidationProgress(null);
     if (!f) return;
     // Enforce file size limit (10MB)
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -85,7 +87,13 @@ const Settings: React.FC<SettingsProps> = ({
           setPreviewHeaders(headers || []);
           setPreviewRows(rows.slice(0, 5));
           const validator = new CSVValidator();
-          const result = validator.validate(rows, importType);
+          let result: ValidationResult;
+          if (rows.length > 500) {
+            setValidationProgress(0);
+            result = await validator.validateAsync(rows, importType, { chunkSize: 250, onProgress: (p) => setValidationProgress(p) });
+          } else {
+            result = validator.validate(rows, importType);
+          }
           // After base validation, optionally perform async foreign key checks (inventory > Vendor ID)
           if (importType === 'inventory') {
             try {
@@ -120,9 +128,11 @@ const Settings: React.FC<SettingsProps> = ({
           } else {
             setValidation(result);
           }
+          setValidationProgress(100);
         } catch (err) {
           console.warn('CSV parse failed:', err);
           addToast('Failed to parse CSV. Please check the file format.', 'error');
+          setValidationProgress(null);
         }
       });
     } else if (ext === 'json') {
@@ -136,8 +146,16 @@ const Settings: React.FC<SettingsProps> = ({
           setPreviewHeaders(headers);
           setPreviewRows(rows.slice(0, 5));
           const validator = new CSVValidator();
-          const result = validator.validate(rows, importType);
-          setValidation(result);
+          if (rows.length > 500) {
+            setValidationProgress(0);
+            validator.validateAsync(rows, importType, { chunkSize: 250, onProgress: (p) => setValidationProgress(p) })
+              .then((result) => { setValidation(result); setValidationProgress(100); })
+              .catch((err) => { console.warn('Async validation failed:', err); setValidationProgress(null); addToast('Validation failed.', 'error'); });
+          } else {
+            const result = validator.validate(rows, importType);
+            setValidation(result);
+            setValidationProgress(100);
+          }
         } catch (err) {
           console.warn('JSON parse failed:', err);
           addToast('Failed to parse JSON. Please check the file format.', 'error');
@@ -428,6 +446,20 @@ const Settings: React.FC<SettingsProps> = ({
                           )}
                         </div>
                       )}
+                    </div>
+                  )}
+                  {validationProgress !== null && (!validation || validationProgress < 100) && (
+                    <div className="mt-2 text-sm text-gray-300">
+                      Validating… {validationProgress}%
+                      <div className="w-full bg-gray-700 h-2 rounded mt-1">
+                        <div className="bg-indigo-500 h-2 rounded" style={{ width: `${validationProgress}%` }} />
+                      </div>
+                    </div>
+                  )}
+                  {validationProgress !== null && validationProgress >= 100 && validation && (
+                    <div className="mt-2 text-sm text-green-400 flex items-center gap-2">
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-600 text-white">✓</span>
+                      <span>Validation complete</span>
                     </div>
                   )}
                   {previewRows && previewHeaders && (
