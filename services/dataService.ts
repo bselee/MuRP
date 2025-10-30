@@ -16,19 +16,38 @@ import type {
 } from '../types';
 
 /**
+ * Wrapper to add timeout protection to Supabase queries
+ */
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`Query timeout after ${timeoutMs}ms`)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]);
+}
+
+/**
  * Fetch all inventory items for the current user
  */
 export async function fetchInventory(): Promise<InventoryItem[]> {
-  const { data, error } = await supabase
-    .from('inventory_items')
-    .select('*')
-    .eq('is_deleted', false)
-    .order('sku');
+  console.log('[fetchInventory] Starting query...');
+  
+  const result = await withTimeout(
+    supabase
+      .from('inventory_items')
+      .select('*')
+      .eq('is_deleted', false)
+      .order('sku'),
+    10000
+  );
+
+  const { data, error } = result;
 
   if (error) {
-    console.error('Error fetching inventory:', error);
+    console.error('[fetchInventory] Error:', error);
     throw error;
   }
+
+  console.log(`[fetchInventory] Fetched ${data?.length || 0} items`);
 
   // Transform database format to app format
   return (data || []).map(item => ({
