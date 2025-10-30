@@ -27,6 +27,10 @@
   ],
   "rewrites": [
     {
+      "source": "/reset",
+      "destination": "/"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api/:path*"
     }
