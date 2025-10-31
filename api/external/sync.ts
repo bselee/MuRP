@@ -31,8 +31,21 @@ export default async function handler(request: Request): Promise<Response> {
   }
 
   try {
-    // Require admin role for triggering sync
-    const auth = await requireRole(request, 'admin');
+    // CRITICAL: Perform auth check first and ensure any auth failures return 401
+    // This must happen before any admin client or connector imports
+    let auth;
+    try {
+      auth = await requireRole(request, 'admin');
+    } catch (authError: any) {
+      // If auth fails for ANY reason (missing token, invalid token, missing env vars, etc.),
+      // always return 401 instead of 500
+      console.error('[Sync] Auth failed:', authError.message);
+      if (authError instanceof ApiError && authError.statusCode === 401) {
+        throw authError; // Preserve 401 errors
+      }
+      // Convert any other auth-related errors to 401
+      throw new ApiError('Unauthorized', 401);
+    }
 
     const [{ createConnector }, { transformInventoryBatch, transformVendorBatch }] = await Promise.all([
       import('../../lib/connectors/registry'),
@@ -44,7 +57,12 @@ export default async function handler(request: Request): Promise<Response> {
 
     console.log(`[Sync] Triggered by user ${auth.user.id}${sourceId ? ` for source ${sourceId}` : ''}`);
 
-  const { getSupabaseAdmin } = await import('../../lib/supabase');
+    // Import admin client and connectors AFTER auth check to prevent module-load errors
+    // from causing 500s on unauthenticated requests
+    const { getSupabaseAdmin } = await import('../../lib/supabase');
+    const { createConnector } = await import('../../lib/connectors/registry');
+    const { transformInventoryBatch, transformVendorBatch } = await import('../../lib/transformers');
+
     const supabaseAdmin = getSupabaseAdmin();
     // Fetch enabled external data sources
     let query = supabaseAdmin
