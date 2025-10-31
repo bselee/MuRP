@@ -4,7 +4,10 @@ import { GoogleGenAI } from "@google/genai";
 import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, BOMComponent, WatchlistItem } from '../types';
 import type { Forecast } from './forecastingService';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+// Support both process.env (for backwards compatibility) and import.meta.env (Vite standard)
+// @ts-ignore - process.env might not be available in browser
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env?.API_KEY);
+const ai = new GoogleGenAI({ apiKey: apiKey! });
 
 async function callGemini(model: string, prompt: string, isJson = false) {
     try {
