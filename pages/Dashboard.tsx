@@ -406,9 +406,11 @@ const PlanningForecastContent: React.FC<DashboardProps> = ({ boms, inventory, hi
                                           <p className="text-xs text-gray-400">{action.reason}</p>
                                           <button
                                               onClick={() => handleCreateActionClick(action)}
-                                              className={`text-xs font-semibold mt-2 w-full text-white ${action.type === 'REQUISITION' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-600 hover:bg-green-700'} py-1.5 rounded-md transition-colors`}
+                                              className={`text-xs font-semibold mt-2 w-full text-white ${action.type === 'REQUISITION' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-600 hover:bg-green-700'} py-1.5 rounded-md transition-colors flex items-center justify-center gap-1`}
+                                              title={`AI-Generated ${action.type === 'REQUISITION' ? 'Requisition' : 'Build Order'} - Click to auto-generate`}
                                           >
-                                              {action.type === 'REQUISITION' ? 'Create Requisition' : 'Create Build Order'} by {new Date(action.actionDate).toLocaleDateString()}
+                                              <span>⚡</span>
+                                              {action.type === 'REQUISITION' ? 'Auto-Generate Requisition' : 'Create Build Order'} by {new Date(action.actionDate).toLocaleDateString()}
                                           </button>
                                       </li>
                                   ))}
