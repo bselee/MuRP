@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder } from '../types';
 import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon } from '../components/icons';
 import RegulatoryScanModal from '../components/RegulatoryScanModal';
+import BatchArtworkVerificationModal from '../components/BatchArtworkVerificationModal';
 
 type ArtworkWithProduct = Artwork & {
     productName: string;
@@ -26,6 +27,7 @@ interface ArtworkPageProps {
 
 const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, onUpdateArtwork, initialFilter, onClearFilter, watchlist, aiConfig, artworkFolders, onCreateArtworkFolder }) => {
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
+    const [isBatchVerificationModalOpen, setIsBatchVerificationModalOpen] = useState(false);
     const [selectedArtworkForScan, setSelectedArtworkForScan] = useState<ArtworkWithProduct | null>(null);
     const [searchTerm, setSearchTerm] = useState(initialFilter);
     const [selectedArtworkIds, setSelectedArtworkIds] = useState<string[]>([]);
@@ -137,11 +139,20 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                                 <h1 className="text-3xl font-bold text-white tracking-tight">Artwork Library</h1>
                                 <p className="text-gray-400 mt-1">A central repository for all product artwork and design files.</p>
                             </div>
-                            {selectedArtworkIds.length > 0 && (
-                                <button onClick={handleCreatePo} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-colors">
-                                    Create PO for Packaging ({selectedArtworkIds.length})
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => setIsBatchVerificationModalOpen(true)}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2"
+                                >
+                                    <SparklesIcon className="w-5 h-5" />
+                                    Batch Verify
                                 </button>
-                            )}
+                                {selectedArtworkIds.length > 0 && (
+                                    <button onClick={handleCreatePo} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-colors">
+                                        Create PO for Packaging ({selectedArtworkIds.length})
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="h-5 w-5 text-gray-400" /></div>
@@ -165,6 +176,13 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                     aiConfig={aiConfig}
                  />
             )}
+            
+            <BatchArtworkVerificationModal
+                isOpen={isBatchVerificationModalOpen}
+                onClose={() => setIsBatchVerificationModalOpen(false)}
+                boms={boms}
+                aiConfig={aiConfig}
+            />
         </>
     );
 };
