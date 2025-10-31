@@ -1,35 +1,38 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React from 'react';
 
-type ErrorBoundaryProps = {
-  children: ReactNode;
-  fallback?: ReactNode;
-  onError?: (error: Error, info: ErrorInfo) => void;
-};
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  key?: React.Key; // Allow React key prop
+}
 
-type ErrorBoundaryState = {
+interface ErrorBoundaryState {
   hasError: boolean;
-};
+}
 
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false };
+// React 19 class component with explicit props/state declarations
+class ErrorBoundaryComponent extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  declare props: ErrorBoundaryProps;
+  declare state: ErrorBoundaryState;
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
 
   static getDerivedStateFromError(): ErrorBoundaryState {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    if (this.props.onError) {
-      this.props.onError(error, info);
-    }
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
+    this.props.onError?.(error, errorInfo);
   }
 
-  render() {
+  render(): React.ReactNode {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-
-      return (
+      return this.props.fallback || (
         <div className="rounded-lg border border-red-500/60 bg-red-500/10 p-6 text-red-100">
           <h2 className="text-lg font-semibold">Something went wrong.</h2>
           <p className="mt-2 text-sm text-red-100/80">
@@ -43,4 +46,4 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-export default ErrorBoundary;
+export default ErrorBoundaryComponent;

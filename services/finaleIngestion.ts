@@ -10,9 +10,16 @@
  */
 
 import { retryWithBackoff } from './retryWithBackoff';
-import { finaleCircuitBreaker } from './circuitBreaker';
-import { perUserLimiter, applicationLimiter } from './rateLimiter';
+import { CircuitBreaker } from './circuitBreaker';
+import { defaultRateLimiter } from './rateLimiter';
 import type { InventoryItem, Vendor, PurchaseOrder } from '../types';
+
+// Initialize Finale-specific circuit breaker
+const finaleCircuitBreaker = new CircuitBreaker({
+  failureThreshold: 5,
+  successThreshold: 2,
+  cooldownMs: 60000,
+});
 
 interface FinaleConfig {
   apiUrl: string;
@@ -116,39 +123,38 @@ export class FinaleIngestionService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    // Apply rate limiting
-    await perUserLimiter.checkLimit('finale-api');
-    await applicationLimiter.checkLimit('finale-api');
+    // Apply rate limiting through defaultRateLimiter
+    return defaultRateLimiter.schedule(async () => {
+      // Execute with circuit breaker and retry
+      return finaleCircuitBreaker.execute(async () => {
+        return retryWithBackoff(async () => {
+          const token = await this.getAccessToken();
+          const url = `${this.config.apiUrl}${endpoint}`;
 
-    // Execute with circuit breaker and retry
-    return finaleCircuitBreaker.execute(async () => {
-      return retryWithBackoff(async () => {
-        const token = await this.getAccessToken();
-        const url = `${this.config.apiUrl}${endpoint}`;
+          const response = await fetch(url, {
+            ...options,
+            headers: {
+              ...options.headers,
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
 
-        const response = await fetch(url, {
-          ...options,
-          headers: {
-            ...options.headers,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          if (!response.ok) {
+            // Include status for retry logic
+            const error = new Error(`Finale API error: ${response.statusText}`) as Error & { status: number };
+            error.status = response.status;
+            throw error;
+          }
+
+          return response.json();
+        }, {
+          // Retry options: baseDelayMs and maxDelayMs (maxRetries not supported)
+          baseDelayMs: 1000,
+          maxDelayMs: 10000,
         });
-
-        if (!response.ok) {
-          // Include status for retry logic
-          const error = new Error(`Finale API error: ${response.statusText}`) as Error & { status: number };
-          error.status = response.status;
-          throw error;
-        }
-
-        return response.json();
-      }, {
-        maxRetries: 3,
-        initialDelayMs: 1000,
-        maxDelayMs: 10000,
       });
-    });
+    }, 'finale-api');
   }
 
   /**
@@ -276,16 +282,12 @@ export class FinaleIngestionService {
   }
 
   /**
-   * Get sync status and circuit breaker health
+   * Get sync status and token validity
    */
   getStatus() {
     return {
-      circuitBreaker: finaleCircuitBreaker.getStats(),
-      rateLimit: {
-        perUser: perUserLimiter.getStatus('finale-api'),
-        application: applicationLimiter.getStatus('finale-api'),
-      },
       tokenValid: this.accessToken !== null && Date.now() < this.tokenExpiry,
+      protected: 'Rate limited (60/min per user, 1000/hr global) + circuit breaker enabled',
     };
   }
 }

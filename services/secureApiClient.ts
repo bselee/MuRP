@@ -13,7 +13,7 @@
  */
 
 import { retryWithBackoff } from './retryWithBackoff';
-import { perUserLimiter } from './rateLimiter';
+import { defaultRateLimiter } from './rateLimiter';
 
 interface ApiProxyRequest {
   service: string;          // 'finale' | 'gemini' | etc.
@@ -59,41 +59,40 @@ export class SecureApiClient {
     params?: Record<string, unknown>
   ): Promise<T> {
     // Apply rate limiting
-    await perUserLimiter.checkLimit('api-proxy');
+    return defaultRateLimiter.schedule(async () => {
+      const requestBody: ApiProxyRequest = {
+        service,
+        action,
+        params,
+      };
 
-    const requestBody: ApiProxyRequest = {
-      service,
-      action,
-      params,
-    };
+      return retryWithBackoff(async () => {
+        const response = await fetch(this.backendUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.authToken && { 'Authorization': `Bearer ${this.authToken}` }),
+          },
+          body: JSON.stringify(requestBody),
+        });
 
-    return retryWithBackoff(async () => {
-      const response = await fetch(this.backendUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.authToken && { 'Authorization': `Bearer ${this.authToken}` }),
-        },
-        body: JSON.stringify(requestBody),
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`API proxy error (${response.status}): ${errorText}`);
+        }
+
+        const result: ApiProxyResponse<T> = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || 'API request failed');
+        }
+
+        return result.data as T;
+      }, {
+        baseDelayMs: 1000,
+        maxDelayMs: 10000,
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API proxy error (${response.status}): ${errorText}`);
-      }
-
-      const result: ApiProxyResponse<T> = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'API request failed');
-      }
-
-      return result.data as T;
-    }, {
-      maxRetries: 3,
-      initialDelayMs: 1000,
-      maxDelayMs: 10000,
-    });
+    }, 'api-proxy');
   }
 
   /**
