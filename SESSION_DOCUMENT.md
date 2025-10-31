@@ -469,6 +469,36 @@ git log --oneline -10
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** October 29, 2025  
-**Status:** Password reset issue in progress, otherwise fully functional
+## Recent Changes (October 30, 2025)
+
+### UI/Import Enhancements
+- Added async, chunked CSV/JSON validation with progress indicator in `Settings`.
+- Display a small green “Validation complete” checkmark when validation hits 100%.
+- Retained validation rules: required, numeric, vendor email format, duplicate vendor name warnings, stock below ROP, price vs cost.
+- Kept 10MB file limit and preview-only messaging before save.
+- Inventory import performs async FK check for Vendor IDs against Supabase and merges errors.
+
+### API Hardening
+- Refactored server Supabase admin client to lazy initialization via `getSupabaseAdmin()` to avoid import-time throws.
+- Updated `lib/api/helpers.ts` to instantiate admin client only after auth is verified.
+- Updated `/api/external/sync` to use typed credentials/field mappings and lazy admin client.
+
+### Deployments & Smoke Tests
+- Preview deployed: https://tgf-hpq4b8ogk-will-selees-projects.vercel.app
+- Smoke results:
+   - GET / → 200
+   - GET /reset → 200
+   - GET /api/ai/query → 405
+   - OPTIONS /api/ai/query → 204
+   - POST /api/ai/query (no auth) → 401
+   - GET /api/external/sync (no auth) → 500 (expected 401)
+
+Known follow-up: The unauthenticated sync endpoint still returns 500 in the preview deploy likely due to missing server env for the admin client or an import path touching runtime before auth short-circuits. Next mitigation options:
+- Ensure SUPABASE_SERVICE_ROLE_KEY is set in Vercel project env for Serverless Functions (Preview + Prod).
+- If envs are already set, add a guard around connector/transformer imports or move them after auth, or wrap potential throws to always return 401 for unauthenticated calls.
+
+---
+
+**Document Version:** 1.1  
+**Last Updated:** October 30, 2025  
+**Status:** Auth, core UI working; password reset fixed; preview deploy OK; follow-up needed for sync unauth 401

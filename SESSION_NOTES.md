@@ -1,6 +1,6 @@
 # TGF-MRP Backend Implementation Session Notes
 
-**Session Date:** October 28, 2025  
+**Latest Update:** October 30, 2025  
 **Objective:** Build production-ready backend for TGF MRP system using Supabase + Vercel
 
 ---
@@ -296,3 +296,48 @@ Proceed to **Phase 2: API Development**
 
 ### Current Step
 📍 Setting up Supabase client utilities...
+
+---
+
+## Session Log — October 30, 2025
+
+### What changed
+- CSV/JSON import validation now supports async, chunked processing with a progress bar and a “Validation complete” checkmark in `Settings`.
+- Stronger validation and warnings preserved (emails, required/numeric, vendor name duplicates, stock vs ROP, price vs cost).
+- Inventory import performs async FK validation against `vendors` and merges errors into the result summary.
+- Hardened server code:
+   - Introduced lazy admin client via `getSupabaseAdmin()` to prevent import-time failures.
+   - Updated `lib/api/helpers.ts` to acquire admin client only after auth passes.
+   - Updated `/api/external/sync` to pass correctly typed credentials and field mappings.
+
+### Deployments & Smoke tests
+- Preview deployed: https://tgf-hpq4b8ogk-will-selees-projects.vercel.app
+- Results:
+   - GET / → 200
+   - GET /reset → 200
+   - GET /api/ai/query → 405
+   - OPTIONS /api/ai/query → 204
+   - POST /api/ai/query (no auth) → 401
+   - GET /api/external/sync (no auth) → 500 (should be 401)
+
+### Notes/Follow-ups
+- The unauthenticated sync path still returns 500 in preview. Likely causes:
+   - Missing SUPABASE_SERVICE_ROLE_KEY in the Serverless Function environment on preview, or
+   - An import path that touches the admin client/connector stack before auth short-circuit.
+- Next steps:
+   - Verify Vercel env vars for Preview + Production.
+   - If set, move any remaining connector/transformer instantiation behind the auth gate or add guarding try/catch to return 401.
+   - After fix, redeploy and re-run smoke tests.
+
+### Branches/Merges
+- Merged documentation improvements (PR #5) into main previously.
+- This session pushed:
+   - `services/integrations/CSVValidator.ts` (validateAsync)
+   - `pages/Settings.tsx` (progress UI + checkmark)
+   - `api/external/sync.ts` (typed config + lazy admin usage)
+   - `lib/api/helpers.ts` (lazy admin usage post-auth)
+   - `lib/supabase.ts` (getSupabaseAdmin)
+
+### Status
+- UI enhancements deployed to preview; validation UX improved significantly.
+- Auth endpoints behave as expected; sync unauth still needs final hardening to return 401.

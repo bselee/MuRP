@@ -5,8 +5,6 @@
  */
 
 import { requireRole, handleError, successResponse, ApiError, getQueryParam } from '../../lib/api/helpers';
-import { createConnector } from '../../lib/connectors/registry';
-import { transformInventoryBatch, transformVendorBatch } from '../../lib/transformers';
 import type { SyncConfig } from '../../lib/connectors/types';
 import type { ConnectorCredentials, FieldMapping } from '../../lib/connectors/types';
 
@@ -27,9 +25,19 @@ export default async function handler(request: Request): Promise<Response> {
     return new Response('Method not allowed', { status: 405 });
   }
 
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return handleError(new ApiError('Unauthorized', 401));
+  }
+
   try {
     // Require admin role for triggering sync
     const auth = await requireRole(request, 'admin');
+
+    const [{ createConnector }, { transformInventoryBatch, transformVendorBatch }] = await Promise.all([
+      import('../../lib/connectors/registry'),
+      import('../../lib/transformers'),
+    ]);
 
     // Optional: sync specific source by ID
     const sourceId = getQueryParam(request, 'source_id');
