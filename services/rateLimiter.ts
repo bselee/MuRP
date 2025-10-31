@@ -130,12 +130,12 @@ class RateLimiter {
 
 // Default rate limiters
 export const perUserLimiter = new RateLimiter({
-  maxRequestsPerWindow: parseInt(import.meta.env.VITE_RATE_LIMIT_PER_USER || '60'),
+  maxRequestsPerWindow: parseInt(import.meta.env.VITE_RATE_LIMIT_PER_USER || '60', 10),
   windowMs: 60 * 1000, // 1 minute
 });
 
 export const applicationLimiter = new RateLimiter({
-  maxRequestsPerWindow: parseInt(import.meta.env.VITE_RATE_LIMIT_TOTAL_HOUR || '1000'),
+  maxRequestsPerWindow: parseInt(import.meta.env.VITE_RATE_LIMIT_TOTAL_HOUR || '1000', 10),
   windowMs: 60 * 60 * 1000, // 1 hour
 });
 

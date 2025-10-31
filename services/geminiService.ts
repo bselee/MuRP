@@ -5,7 +5,7 @@ import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, BOMComponen
 import type { Forecast } from './forecastingService';
 
 // Support both process.env (for backwards compatibility) and import.meta.env (Vite standard)
-// @ts-ignore - process.env might not be available in browser
+// @ts-expect-error - process.env.API_KEY exists in Node.js build context but not in browser
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' && process.env?.API_KEY);
 const ai = new GoogleGenAI({ apiKey: apiKey! });
 

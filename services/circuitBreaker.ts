@@ -130,8 +130,8 @@ export class CircuitBreaker {
 
 // Pre-configured circuit breakers for common services
 export const geminiCircuitBreaker = new CircuitBreaker({
-  failureThreshold: parseInt(import.meta.env.VITE_CIRCUIT_BREAKER_THRESHOLD || '5'),
-  timeout: parseInt(import.meta.env.VITE_CIRCUIT_BREAKER_TIMEOUT || '60000'),
+  failureThreshold: parseInt(import.meta.env.VITE_CIRCUIT_BREAKER_THRESHOLD || '5', 10),
+  timeout: parseInt(import.meta.env.VITE_CIRCUIT_BREAKER_TIMEOUT || '60000', 10),
   name: 'Gemini AI'
 });
 

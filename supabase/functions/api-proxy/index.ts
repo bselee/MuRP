@@ -13,13 +13,18 @@
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 interface ApiProxyRequest {
   service: string
   action: string
   params?: Record<string, unknown>
 }
+
+// Constants for fallback values
+const UNKNOWN_USER = 'unknown'
+const UNKNOWN_SERVICE = 'unknown'
+const UNKNOWN_ACTION = 'unknown'
 
 interface ApiProxyResponse {
   success: boolean
@@ -133,9 +138,9 @@ serve(async (req) => {
       )
 
       await logAuditEntry(supabaseClient, {
-        user_id: 'unknown',
-        service: 'unknown',
-        action: 'unknown',
+        user_id: UNKNOWN_USER,
+        service: UNKNOWN_SERVICE,
+        action: UNKNOWN_ACTION,
         success: false,
         execution_time_ms: executionTime,
         error_message: errorMessage,
@@ -167,7 +172,7 @@ serve(async (req) => {
 async function handleFinaleRequest(
   action: string,
   params: Record<string, unknown> | undefined,
-  supabaseClient: any
+  supabaseClient: SupabaseClient
 ): Promise<unknown> {
   // Get Finale credentials from Supabase Vault (secure storage)
   const { data: secrets } = await supabaseClient
@@ -259,7 +264,7 @@ async function handleFinaleRequest(
 async function handleGeminiRequest(
   action: string,
   params: Record<string, unknown> | undefined,
-  supabaseClient: any
+  supabaseClient: SupabaseClient
 ): Promise<unknown> {
   // Get Gemini API key from environment (or Vault)
   const apiKey = Deno.env.get('GEMINI_API_KEY')
@@ -317,7 +322,7 @@ function sanitizeGeminiParams(params: Record<string, unknown> | undefined): Reco
  * Log API request to audit table
  */
 async function logAuditEntry(
-  supabaseClient: any,
+  supabaseClient: SupabaseClient,
   entry: {
     user_id: string
     service: string
