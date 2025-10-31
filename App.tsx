@@ -5,6 +5,7 @@ import React, { useState, useMemo } from 'react';
 import AiAssistant from './components/AiAssistant';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import PurchaseOrders from './pages/PurchaseOrders';
@@ -17,6 +18,8 @@ import Toast from './components/Toast';
 import ApiDocs from './pages/ApiDocs';
 import ArtworkPage from './pages/Artwork';
 import NewUserSetup from './pages/NewUserSetup';
+import usePersistentState from './hooks/usePersistentState';
+import useModalState from './hooks/useModalState';
 import { 
     mockBOMs, 
     mockInventory, 
@@ -57,27 +60,31 @@ export type ToastInfo = {
 };
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = usePersistentState<User | null>('currentUser', null);
 
-  const [boms, setBoms] = useState<BillOfMaterials[]>(mockBOMs);
-  const [inventory, setInventory] = useState<InventoryItem[]>(mockInventory);
-  const [vendors] = useState<Vendor[]>(mockVendors);
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(mockPurchaseOrders);
-  const [historicalSales] = useState<HistoricalSale[]>(mockHistoricalSales);
-  const [buildOrders, setBuildOrders] = useState<BuildOrder[]>(mockBuildOrders);
-  const [requisitions, setRequisitions] = useState<InternalRequisition[]>(mockInternalRequisitions);
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [watchlist] = useState<WatchlistItem[]>(mockWatchlist);
-  const [aiConfig, setAiConfig] = useState<AiConfig>(defaultAiConfig);
-  const [artworkFolders, setArtworkFolders] = useState<ArtworkFolder[]>(mockArtworkFolders);
+  const [boms, setBoms] = usePersistentState<BillOfMaterials[]>('boms', mockBOMs);
+  const [inventory, setInventory] = usePersistentState<InventoryItem[]>('inventory', mockInventory);
+  const [vendors] = usePersistentState<Vendor[]>('vendors', mockVendors);
+  const [purchaseOrders, setPurchaseOrders] = usePersistentState<PurchaseOrder[]>('purchaseOrders', mockPurchaseOrders);
+  const [historicalSales] = usePersistentState<HistoricalSale[]>('historicalSales', mockHistoricalSales);
+  const [buildOrders, setBuildOrders] = usePersistentState<BuildOrder[]>('buildOrders', mockBuildOrders);
+  const [requisitions, setRequisitions] = usePersistentState<InternalRequisition[]>('requisitions', mockInternalRequisitions);
+  const [users, setUsers] = usePersistentState<User[]>('users', mockUsers);
+  const [watchlist] = usePersistentState<WatchlistItem[]>('watchlist', mockWatchlist);
+  const [aiConfig, setAiConfig] = usePersistentState<AiConfig>('aiConfig', defaultAiConfig);
+  const [artworkFolders, setArtworkFolders] = usePersistentState<ArtworkFolder[]>('artworkFolders', mockArtworkFolders);
   
-  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [currentPage, setCurrentPage] = useState<Page>('Dashboard');
+  const {
+    isOpen: isAiAssistantOpen,
+    open: openAiAssistant,
+    close: closeAiAssistant,
+  } = useModalState();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = usePersistentState<boolean>('sidebarCollapsed', false);
+  const [currentPage, setCurrentPage] = usePersistentState<Page>('currentPage', 'Dashboard');
   const [toasts, setToasts] = useState<ToastInfo[]>([]);
-  const [gmailConnection, setGmailConnection] = useState<GmailConnection>({ isConnected: false, email: null });
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [externalConnections, setExternalConnections] = useState<ExternalConnection[]>([]);
+  const [gmailConnection, setGmailConnection] = usePersistentState<GmailConnection>('gmailConnection', { isConnected: false, email: null });
+  const [apiKey, setApiKey] = usePersistentState<string | null>('apiKey', null);
+  const [externalConnections, setExternalConnections] = usePersistentState<ExternalConnection[]>('externalConnections', []);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
 
 
@@ -577,14 +584,24 @@ const App: React.FC = () => {
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         currentUser={currentUser}
         pendingRequisitionCount={pendingRequisitionCount}
-        onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
+  onOpenAiAssistant={openAiAssistant}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header currentUser={currentUser} onLogout={handleLogout} />
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-900 p-4 sm:p-6 lg:p-8">
-          {renderPage()}
+          <ErrorBoundary
+            key={currentPage}
+            fallback={(
+              <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-6 text-red-100">
+                <h2 className="text-lg font-semibold">We hit a snag loading this page.</h2>
+                <p className="mt-2 text-sm text-red-100/80">Try navigating to a different section or refreshing the browser.</p>
+              </div>
+            )}
+          >
+            {renderPage()}
+          </ErrorBoundary>
         </main>
       </div>
 
@@ -596,7 +613,7 @@ const App: React.FC = () => {
       
       <AiAssistant
         isOpen={isAiAssistantOpen}
-        onClose={() => setIsAiAssistantOpen(false)}
+  onClose={closeAiAssistant}
         boms={boms}
         inventory={inventory}
         vendors={vendors}
