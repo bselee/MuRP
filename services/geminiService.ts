@@ -4,7 +4,15 @@ import { GoogleGenAI } from "@google/genai";
 import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, BOMComponent, WatchlistItem } from '../types';
 import type { Forecast } from './forecastingService';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+// Support both import.meta.env (Vite) and process.env (Node cli/backends)
+// @ts-expect-error process may be undefined in browser environments
+const envApiKey = import.meta.env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env?.API_KEY : undefined);
+
+if (!envApiKey) {
+    console.warn('Gemini API key is not configured. Set VITE_GEMINI_API_KEY in your environment.');
+}
+
+const ai = new GoogleGenAI({ apiKey: envApiKey! });
 
 async function callGemini(model: string, prompt: string, isJson = false) {
     try {
