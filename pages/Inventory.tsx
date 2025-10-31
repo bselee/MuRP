@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import type { InventoryItem, BillOfMaterials } from '../types';
-import { SearchIcon, ChevronUpIcon, ChevronDownIcon } from '../components/icons';
+import { SearchIcon, ChevronUpIcon, ChevronDownIcon, ArrowsUpDownIcon } from '../components/icons';
+import ImportExportModal from '../components/ImportExportModal';
+import { exportToCsv, exportToJson, exportToXls } from '../services/exportService';
+import { generateInventoryPdf } from '../services/pdfService';
 
 interface InventoryProps {
     inventory: InventoryItem[];
@@ -48,6 +51,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => 
     const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
     const [suggestions, setSuggestions] = useState<InventoryItem[]>([]);
     const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
+    const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
 
     const bomSkuSet = useMemo(() => {
         const skus = new Set<string>();
@@ -130,6 +134,22 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => 
         return filteredItems;
     }, [inventory, filters, searchTerm, sortConfig]);
 
+    const handleExportCsv = () => {
+        exportToCsv(processedInventory, `inventory-export-${new Date().toISOString().split('T')[0]}.csv`);
+    };
+
+    const handleExportPdf = () => {
+        generateInventoryPdf(processedInventory, vendorMap);
+    };
+
+    const handleExportJson = () => {
+        exportToJson(processedInventory, `inventory-export-${new Date().toISOString().split('T')[0]}.json`);
+    };
+
+    const handleExportXls = () => {
+        exportToXls(processedInventory, `inventory-export-${new Date().toISOString().split('T')[0]}.xls`);
+    };
+
     const StockIndicator: React.FC<{ item: InventoryItem }> = ({ item }) => {
         const percentage = Math.max(0, (item.stock / (item.reorderPoint * 1.5)) * 100);
         let bgColor = 'bg-green-500';
@@ -145,108 +165,129 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => 
     };
 
     return (
-        <div className="space-y-6">
-            <header>
-                <h1 className="text-3xl font-bold text-white tracking-tight">Inventory</h1>
-                <p className="text-gray-400 mt-1">Search, filter, and manage all your stock items.</p>
-            </header>
-            
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                    <div className="relative lg:col-span-1">
-                        <label htmlFor="search-inventory" className="block text-sm font-medium text-gray-300 mb-1">Search by name or SKU</label>
-                        <div className="relative">
-                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <SearchIcon className="h-5 w-5 text-gray-400" />
+        <>
+            <div className="space-y-6">
+                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white tracking-tight">Inventory</h1>
+                        <p className="text-gray-400 mt-1">Search, filter, and manage all your stock items.</p>
+                    </div>
+                    <div className="flex-shrink-0">
+                        <button
+                            onClick={() => setIsImportExportModalOpen(true)}
+                            className="flex items-center gap-2 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+                        >
+                            <ArrowsUpDownIcon className="w-5 h-5" />
+                            <span>Import / Export</span>
+                        </button>
+                    </div>
+                </header>
+                
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                        <div className="relative lg:col-span-1">
+                            <label htmlFor="search-inventory" className="block text-sm font-medium text-gray-300 mb-1">Search by name or SKU</label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <SearchIcon className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <input
+                                    id="search-inventory"
+                                    type="text"
+                                    placeholder="Worm Castings..."
+                                    value={searchTerm}
+                                    onChange={handleSearchChange}
+                                    onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 200)}
+                                    onFocus={handleSearchChange}
+                                    autoComplete="off"
+                                    className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                                />
+                                {isSuggestionsVisible && suggestions.length > 0 && (
+                                    <ul className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-auto shadow-lg">
+                                        {suggestions.map(item => (
+                                            <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className="p-2 text-sm text-white hover:bg-indigo-600 cursor-pointer">
+                                                {item.name} <span className="text-gray-400">({item.sku})</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
-                            <input
-                                id="search-inventory"
-                                type="text"
-                                placeholder="Worm Castings..."
-                                value={searchTerm}
-                                onChange={handleSearchChange}
-                                onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 200)}
-                                onFocus={handleSearchChange}
-                                autoComplete="off"
-                                className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
-                            />
-                             {isSuggestionsVisible && suggestions.length > 0 && (
-                                <ul className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-auto shadow-lg">
-                                    {suggestions.map(item => (
-                                        <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className="p-2 text-sm text-white hover:bg-indigo-600 cursor-pointer">
-                                            {item.name} <span className="text-gray-400">({item.sku})</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
+                        </div>
+                        <div>
+                            <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-1">Category</label>
+                            <select id="filter-category" value={filters.category} onChange={(e) => handleFilterChange('category', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                                <option value="">All Categories</option>
+                                {filterOptions.categories.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-1">Stock Status</label>
+                            <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                                <option value="">All Statuses</option>
+                                {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="filter-vendor" className="block text-sm font-medium text-gray-300 mb-1">Vendor</label>
+                            <select id="filter-vendor" value={filters.vendor} onChange={(e) => handleFilterChange('vendor', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                                <option value="">All Vendors</option>
+                                {filterOptions.vendors.map(vId => <option key={vId} value={vId}>{vendorMap.get(vId) || vId}</option>)}
+                            </select>
                         </div>
                     </div>
-                    <div>
-                        <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-1">Category</label>
-                        <select id="filter-category" value={filters.category} onChange={(e) => handleFilterChange('category', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
-                            <option value="">All Categories</option>
-                            {filterOptions.categories.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                    </div>
-                     <div>
-                        <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-1">Stock Status</label>
-                        <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
-                            <option value="">All Statuses</option>
-                            {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                    </div>
-                     <div>
-                        <label htmlFor="filter-vendor" className="block text-sm font-medium text-gray-300 mb-1">Vendor</label>
-                        <select id="filter-vendor" value={filters.vendor} onChange={(e) => handleFilterChange('vendor', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
-                            <option value="">All Vendors</option>
-                            {filterOptions.vendors.map(vId => <option key={vId} value={vId}>{vendorMap.get(vId) || vId}</option>)}
-                        </select>
-                    </div>
                 </div>
-            </div>
 
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-700">
-                        <thead className="bg-gray-800">
-                            <tr>
-                                <SortableHeader title="Item" sortKey="name" sortConfig={sortConfig} requestSort={requestSort} />
-                                <SortableHeader title="Category" sortKey="category" sortConfig={sortConfig} requestSort={requestSort} />
-                                <SortableHeader title="Stock Level" sortKey="stock" sortConfig={sortConfig} requestSort={requestSort} />
-                                <SortableHeader title="On Order" sortKey="onOrder" sortConfig={sortConfig} requestSort={requestSort} />
-                                <SortableHeader title="Reorder Point" sortKey="reorderPoint" sortConfig={sortConfig} requestSort={requestSort} />
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-gray-800 divide-y divide-gray-700">
-                            {processedInventory.map((item) => (
-                                <tr key={item.sku} className="hover:bg-gray-700/50 transition-colors duration-200">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <div>
-                                                <div className="text-sm font-medium text-white">{item.name}</div>
-                                                <div className="text-xs text-gray-400">{item.sku}</div>
-                                            </div>
-                                            {bomSkuSet.has(item.sku) && (
-                                                <span className="ml-2 text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full">BOM</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.category}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-white mb-1">{item.stock}</div>
-                                        <StockIndicator item={item} />
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.onOrder}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.reorderPoint}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{vendorMap.get(item.vendorId) || 'N/A'}</td>
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-700">
+                            <thead className="bg-gray-800">
+                                <tr>
+                                    <SortableHeader title="Item" sortKey="name" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <SortableHeader title="Category" sortKey="category" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <SortableHeader title="Stock Level" sortKey="stock" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <SortableHeader title="On Order" sortKey="onOrder" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <SortableHeader title="Reorder Point" sortKey="reorderPoint" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="bg-gray-800 divide-y divide-gray-700">
+                                {processedInventory.map((item) => (
+                                    <tr key={item.sku} className="hover:bg-gray-700/50 transition-colors duration-200">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div>
+                                                    <div className="text-sm font-medium text-white">{item.name}</div>
+                                                    <div className="text-xs text-gray-400">{item.sku}</div>
+                                                </div>
+                                                {bomSkuSet.has(item.sku) && (
+                                                    <span className="ml-2 text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full">BOM</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.category}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm text-white mb-1">{item.stock}</div>
+                                            <StockIndicator item={item} />
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.onOrder}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.reorderPoint}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{vendorMap.get(item.vendorId) || 'N/A'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
+            <ImportExportModal
+                isOpen={isImportExportModalOpen}
+                onClose={() => setIsImportExportModalOpen(false)}
+                onExportCsv={handleExportCsv}
+                onExportPdf={handleExportPdf}
+                onExportJson={handleExportJson}
+                onExportXls={handleExportXls}
+            />
+        </>
     );
 };
 

@@ -66,7 +66,9 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
   };
 
   const handleCardClick = (sectionId: keyof typeof openSections) => {
-    const element = document.getElementById(sectionId);
+    // FIX: `keyof` can return `string | number | symbol`, but `getElementById` expects a `string`.
+    // Using `toString()` safely converts the key to a string for the DOM query.
+    const element = document.getElementById(sectionId.toString());
     if (element) {
         element.scrollIntoView({ behavior: 'smooth' });
         // Also expand the section if it's closed

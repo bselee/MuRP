@@ -1,24 +1,7 @@
 
 
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { supabase, getCurrentUser, signOut } from './lib/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
-import {
-  fetchInventory,
-  fetchVendors,
-  fetchBOMs,
-  fetchPurchaseOrders,
-  fetchBuildOrders,
-  fetchRequisitions,
-  fetchUsers,
-  fetchUserById,
-  fetchArtworkFolders,
-  subscribeToInventory,
-  subscribeToPurchaseOrders,
-  subscribeToBuildOrders,
-  subscribeToBOMs,
-} from './services/dataService';
+import React, { useState, useMemo } from 'react';
 import AiAssistant from './components/AiAssistant';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -30,7 +13,6 @@ import Production from './pages/Production';
 import BOMs from './pages/BOMs';
 import Settings from './pages/Settings';
 import LoginScreen from './pages/LoginScreen';
-import ResetPassword from './pages/ResetPassword';
 import Toast from './components/Toast';
 import ApiDocs from './pages/ApiDocs';
 import ArtworkPage from './pages/Artwork';
@@ -75,26 +57,19 @@ export type ToastInfo = {
 };
 
 const App: React.FC = () => {
-  // Auth state
-  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
-  
-  // App user state (for backward compatibility with mock User type)
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
-  const [boms, setBoms] = useState<BillOfMaterials[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
-  const [historicalSales] = useState<HistoricalSale[]>(mockHistoricalSales); // Keep mock for now - no DB table yet
-  const [buildOrders, setBuildOrders] = useState<BuildOrder[]>([]);
-  const [dataLoading, setDataLoading] = useState(false);
-  const [requisitions, setRequisitions] = useState<InternalRequisition[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [watchlist] = useState<WatchlistItem[]>(mockWatchlist); // Keep mock for now - no DB table yet
-  const [aiConfig, setAiConfig] = useState<AiConfig>(defaultAiConfig); // Keep mock for now - stored in user metadata
-  const [artworkFolders, setArtworkFolders] = useState<ArtworkFolder[]>([]);
+  const [boms, setBoms] = useState<BillOfMaterials[]>(mockBOMs);
+  const [inventory, setInventory] = useState<InventoryItem[]>(mockInventory);
+  const [vendors] = useState<Vendor[]>(mockVendors);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(mockPurchaseOrders);
+  const [historicalSales] = useState<HistoricalSale[]>(mockHistoricalSales);
+  const [buildOrders, setBuildOrders] = useState<BuildOrder[]>(mockBuildOrders);
+  const [requisitions, setRequisitions] = useState<InternalRequisition[]>(mockInternalRequisitions);
+  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [watchlist] = useState<WatchlistItem[]>(mockWatchlist);
+  const [aiConfig, setAiConfig] = useState<AiConfig>(defaultAiConfig);
+  const [artworkFolders, setArtworkFolders] = useState<ArtworkFolder[]>(mockArtworkFolders);
   
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -105,279 +80,6 @@ const App: React.FC = () => {
   const [externalConnections, setExternalConnections] = useState<ExternalConnection[]>([]);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
 
-  // Initialize Supabase auth session
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        console.log('[App] Starting auth initialization...');
-        console.log('[App] Current URL:', window.location.href);
-        console.log('[App] Current pathname:', window.location.pathname);
-
-        // Check if we're on the /reset path - this is the most reliable way with PKCE
-        if (window.location.pathname === '/reset') {
-          console.log('[App] Password reset detected via /reset path, entering reset mode');
-          setIsPasswordResetMode(true);
-          setAuthLoading(false);
-          return;
-        }
-
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-        console.log('[App] Existing session present:', !!existingSession);
-
-        // Check URL for password reset indicators (legacy detection)
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const queryParams = new URLSearchParams(window.location.search);
-        const isRecoveryHash = hashParams.get('type') === 'recovery';
-        const isRecoveryQuery = queryParams.get('type') === 'recovery';
-        const hasCode = queryParams.get('code'); // PKCE code
-        const hasAccessToken = hashParams.get('access_token'); // Legacy token
-        
-        console.log('[App] URL params check:', {
-          isRecoveryHash,
-          isRecoveryQuery,
-          hasCode,
-          hasAccessToken,
-          hash: window.location.hash,
-          search: window.location.search
-        });
-        
-        if (isRecoveryHash || isRecoveryQuery) {
-          console.log('[App] Password reset URL detected (via type param), entering reset mode');
-          setIsPasswordResetMode(true);
-          setAuthLoading(false);
-          return;
-        }
-        
-        // Also check if we have a code/token but no type - might be password reset
-        if ((hasCode || hasAccessToken) && !existingSession) {
-          console.log('[App] Auth code detected without existing session - entering reset mode');
-          setIsPasswordResetMode(true);
-          setAuthLoading(false);
-          return;
-        }
-        
-        const user = await getCurrentUser();
-        console.log('[App] getCurrentUser result:', user ? 'User found' : 'No user');
-        setSupabaseUser(user);
-        
-        // Fetch user profile from database to get actual role
-        if (user) {
-          console.log('[App] Fetching user profile from database...');
-          const userProfile = await fetchUserById(user.id);
-          console.log('[App] User profile result:', userProfile ? 'Profile found' : 'No profile');
-          
-          if (userProfile) {
-            setCurrentUser(userProfile);
-            // Only show welcome toast if not in password reset flow
-            if (!isPasswordResetMode) {
-              addToast(`Welcome back, ${userProfile.name}!`, 'success');
-            }
-          } else {
-            // User authenticated but no profile in public.users table
-            // Create a default profile
-            console.log('[App] No profile found, creating default user');
-            const defaultUser: User = {
-              id: user.id,
-              name: user.email?.split('@')[0] || 'User',
-              email: user.email || '',
-              role: 'Staff',
-              department: 'Purchasing',
-              onboardingComplete: false,
-            };
-            setCurrentUser(defaultUser);
-          }
-        } else {
-          console.log('[App] No user authenticated, will show login screen');
-        }
-      } catch (error) {
-        console.error('[App] Auth initialization error:', error);
-      } finally {
-        console.log('[App] Auth initialization complete, setting authLoading to false');
-        setAuthLoading(false);
-      }
-    };
-
-    initAuth();
-
-    // Listen for auth state changes - including PASSWORD_RECOVERY event
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[App] Auth state change event:', event);
-      
-      // Handle password recovery flow
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('[App] Password recovery detected, entering reset mode');
-        setIsPasswordResetMode(true);
-        setAuthLoading(false);
-        return;
-      }
-      
-      const user = session?.user || null;
-      setSupabaseUser(user);
-      
-      if (user) {
-        // Check if we're in password reset flow - don't load user profile yet
-        if (isPasswordResetMode) {
-          // Skip loading user profile during password reset
-          // But make sure authLoading is set to false so app doesn't hang
-          setAuthLoading(false);
-          return;
-        }
-        
-        // Fetch user profile from database to get actual role
-        const userProfile = await fetchUserById(user.id);
-        if (userProfile) {
-          setCurrentUser(userProfile);
-        } else {
-          // User authenticated but no profile in public.users table
-          const defaultUser: User = {
-            id: user.id,
-            name: user.email?.split('@')[0] || 'User',
-            email: user.email || '',
-            role: 'Staff',
-            department: 'Purchasing',
-            onboardingComplete: false,
-          };
-          setCurrentUser(defaultUser);
-        }
-      } else {
-        setCurrentUser(null);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [isPasswordResetMode]);
-
-  // Load data when user is authenticated
-  useEffect(() => {
-    if (!supabaseUser) return;
-
-    const loadData = async () => {
-      setDataLoading(true);
-      
-      // Add overall timeout for data loading
-      const timeoutId = setTimeout(() => {
-        console.warn('[App] Data loading timeout after 15 seconds, proceeding with partial data');
-        setDataLoading(false);
-        addToast('Some data took too long to load. You can continue using the app.', 'info');
-      }, 15000);
-      
-      try {
-        console.log('[App] Starting data load...');
-        
-        const results = await Promise.allSettled([
-          fetchInventory(),
-          fetchVendors(),
-          fetchBOMs(),
-          fetchPurchaseOrders(),
-          fetchBuildOrders(),
-          fetchRequisitions(),
-          fetchUsers(),
-          fetchArtworkFolders(),
-        ]);
-
-        clearTimeout(timeoutId);
-
-        const [
-          inventoryResult,
-          vendorsResult,
-          bomsResult,
-          posResult,
-          buildOrdersResult,
-          requisitionsResult,
-          usersResult,
-          artworkFoldersResult,
-        ] = results;
-
-        if (inventoryResult.status === 'fulfilled') {
-          setInventory(inventoryResult.value);
-        } else {
-          console.error('Failed to load inventory:', inventoryResult.reason);
-        }
-
-        if (vendorsResult.status === 'fulfilled') {
-          setVendors(vendorsResult.value);
-        } else {
-          console.error('Failed to load vendors:', vendorsResult.reason);
-          setVendors([]);
-        }
-
-        if (bomsResult.status === 'fulfilled') {
-          setBoms(bomsResult.value);
-        } else {
-          console.error('Failed to load BOMs:', bomsResult.reason);
-        }
-
-        if (posResult.status === 'fulfilled') {
-          setPurchaseOrders(posResult.value);
-        } else {
-          console.error('Failed to load purchase orders:', posResult.reason);
-        }
-
-        if (buildOrdersResult.status === 'fulfilled') {
-          setBuildOrders(buildOrdersResult.value);
-        } else {
-          console.error('Failed to load build orders:', buildOrdersResult.reason);
-        }
-
-        if (requisitionsResult.status === 'fulfilled') {
-          setRequisitions(requisitionsResult.value);
-        } else {
-          console.error('Failed to load requisitions:', requisitionsResult.reason);
-        }
-
-        if (usersResult.status === 'fulfilled') {
-          setUsers(usersResult.value);
-        } else {
-          console.error('Failed to load users:', usersResult.reason);
-        }
-
-        if (artworkFoldersResult.status === 'fulfilled') {
-          setArtworkFolders(artworkFoldersResult.value);
-        } else {
-          console.error('Failed to load artwork folders:', artworkFoldersResult.reason);
-        }
-
-        const failedCount = results.filter(r => r.status === 'rejected').length;
-        if (failedCount > 0) {
-          addToast(`${failedCount} data source(s) failed to load. Some features may be limited.`, 'error');
-        }
-      } catch (error: any) {
-        console.error('[App] Error loading data:', error);
-        clearTimeout(timeoutId);
-        addToast(`Failed to load data: ${error.message}`, 'error');
-      } finally {
-        setDataLoading(false);
-      }
-    };
-
-    loadData();
-
-    // Subscribe to real-time updates
-    const unsubInventory = subscribeToInventory(() => {
-      fetchInventory().then(setInventory).catch(console.error);
-    });
-
-    const unsubPOs = subscribeToPurchaseOrders(() => {
-      fetchPurchaseOrders().then(setPurchaseOrders).catch(console.error);
-    });
-
-    const unsubBuildOrders = subscribeToBuildOrders(() => {
-      fetchBuildOrders().then(setBuildOrders).catch(console.error);
-    });
-
-    const unsubBOMs = subscribeToBOMs(() => {
-      fetchBOMs().then(setBoms).catch(console.error);
-    });
-
-    return () => {
-      unsubInventory();
-      unsubPOs();
-      unsubBuildOrders();
-      unsubBOMs();
-    };
-  }, [supabaseUser]);
 
   const addToast = (message: string, type: ToastInfo['type'] = 'info') => {
     const id = Date.now();
@@ -388,39 +90,19 @@ const App: React.FC = () => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
-  const handleAuthSuccess = async () => {
-    // Force refresh the session to ensure auth state is updated
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      // Fetch user profile from database to get actual role
-      const userProfile = await fetchUserById(session.user.id);
-      if (userProfile) {
-        setCurrentUser(userProfile);
-      } else {
-        // Fallback to default user if no profile found
-        const defaultUser: User = {
-          id: session.user.id,
-          name: session.user.email?.split('@')[0] || 'User',
-          email: session.user.email || '',
-          role: 'Staff',
-          department: 'Purchasing',
-          onboardingComplete: false,
-        };
-        setCurrentUser(defaultUser);
-      }
-      setSupabaseUser(session.user);
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+    // Onboarding check happens in the main render logic.
+    // If onboarding is not complete, the setup screen will be shown.
+    // If it is complete, this toast will show as they enter the dashboard.
+    if (user.onboardingComplete) {
+        addToast(`Welcome back, ${user.name}!`, 'success');
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      addToast(`Goodbye!`, 'info');
-      setCurrentUser(null);
-      setSupabaseUser(null);
-    } catch (error: any) {
-      addToast(`Error signing out: ${error.message}`, 'error');
-    }
+  const handleLogout = () => {
+    addToast(`Goodbye, ${currentUser?.name}.`, 'info');
+    setCurrentUser(null);
   };
   
   const handleCreatePo = (
@@ -873,39 +555,10 @@ const App: React.FC = () => {
     }
   };
 
-  // ALWAYS show reset password screen if we're in recovery mode, regardless of auth state
-  if (isPasswordResetMode) {
-    console.log('[App] Rendering ResetPassword component');
-    return <ResetPassword />;
-  }
-
-  console.log('[App] Render decision:', { 
-    isPasswordResetMode, 
-    authLoading, 
-    hasSupabaseUser: !!supabaseUser,
-    hasCurrentUser: !!currentUser 
-  });
-
-  // Show loading state while checking auth or loading data
-  if (authLoading || (supabaseUser && dataLoading && inventory.length === 0)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-center">
-          <div className="text-white text-xl mb-2">
-            {authLoading ? 'Authenticating...' : 'Loading your data...'}
-          </div>
-          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show login screen if not authenticated
   if (!currentUser) {
-    return <LoginScreen onAuthSuccess={handleAuthSuccess} addToast={addToast} />;
+    return <LoginScreen users={users} onLogin={handleLogin} />;
   }
 
-  // Show onboarding if user hasn't completed setup
   if (currentUser && !currentUser.onboardingComplete) {
       return <NewUserSetup user={currentUser} onSetupComplete={() => handleCompleteOnboarding(currentUser.id)} />;
   }

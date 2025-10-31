@@ -1,4 +1,4 @@
-import type { PurchaseOrder, Vendor } from '../types';
+import type { PurchaseOrder, Vendor, InventoryItem } from '../types';
 
 // These are globally available from the script tags in index.html
 declare const jspdf: any;
@@ -91,4 +91,49 @@ export const generatePoPdf = (po: PurchaseOrder, vendor: Vendor) => {
 
     // --- Save File ---
     doc.save(`${po.id}.pdf`);
+};
+
+export const generateInventoryPdf = (inventory: InventoryItem[], vendorMap: Map<string, string>) => {
+    const { jsPDF } = jspdf;
+    const doc = new jsPDF();
+    
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Inventory Report', 105, 20, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
+    
+    const tableColumn = ["SKU", "Name", "Category", "Stock", "On Order", "Reorder Pt.", "Vendor"];
+    const tableRows: (string|number)[][] = [];
+    
+    inventory.forEach(item => {
+        tableRows.push([
+            item.sku,
+            item.name,
+            item.category,
+            item.stock,
+            item.onOrder,
+            item.reorderPoint,
+            vendorMap.get(item.vendorId) || 'N/A'
+        ]);
+    });
+    
+    doc.autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 40,
+        theme: 'striped',
+        headStyles: { fillColor: [41, 128, 185] }
+    });
+    
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for(let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(10);
+        doc.text(`Page ${i} of ${pageCount}`, 190, 285, { align: 'right' });
+    }
+
+    doc.save(`inventory-report-${new Date().toISOString().split('T')[0]}.pdf`);
 };

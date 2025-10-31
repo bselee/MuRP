@@ -6,29 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "supabase:types": "supabase gen types typescript --local > types/supabase.ts",
-    "verify": "./scripts/verify-deployment.sh",
-    "setup:db": "./scripts/setup-database.sh",
-    "deploy:preview": "./scripts/deploy.sh preview",
-    "deploy:prod": "./scripts/deploy.sh production",
-    "deploy": "npm run verify && npm run deploy:prod"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@google/genai": "^1.27.0",
-    "@supabase/ssr": "^0.1.0",
-    "@supabase/supabase-js": "^2.39.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "papaparse": "^5.4.1"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.1",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
-    "supabase": "^1.142.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0",
-    "@types/papaparse": "^5.3.14"
+    "vite": "^6.2.0"
   }
 }
