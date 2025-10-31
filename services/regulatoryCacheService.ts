@@ -71,7 +71,7 @@ export function saveScanToCache(
   expiresAt.setDate(expiresAt.getDate() + 90); // Expire in 90 days
 
   const scan: RegulatoryScan = {
-    id: `scan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `scan-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     productName,
     ingredients: ingredients.map(i => ({ sku: i.sku, name: i.name, quantity: i.quantity })),
     state,

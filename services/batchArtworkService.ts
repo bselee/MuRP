@@ -5,7 +5,8 @@ import type { BatchArtworkResult } from '../types/regulatory';
 import type { BillOfMaterials } from '../types';
 import { verifyArtworkLabel } from './geminiService';
 
-const MAX_CONCURRENT_REQUESTS = 10; // Process 10 images in parallel
+// Configurable concurrency - can be adjusted based on API limits and system resources
+export const MAX_CONCURRENT_REQUESTS = 10; // Process 10 images in parallel
 
 /**
  * Process multiple artwork files in batches

@@ -25,6 +25,7 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const [results, setResults] = useState<BatchArtworkResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -81,9 +82,10 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
       );
 
       setResults(batchResults);
+      setError(null);
     } catch (error) {
       console.error('Batch verification error:', error);
-      alert('An error occurred during batch verification. Please try again.');
+      setError(error instanceof Error ? error.message : 'An error occurred during batch verification. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -126,6 +128,23 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Batch Artwork Verification">
       <div className="space-y-6">
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-900/30 border border-red-500/50 rounded-lg p-4 flex items-start gap-3">
+            <XCircleIcon className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-red-300 font-semibold">Verification Error</p>
+              <p className="text-red-200 text-sm mt-1">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="text-sm text-red-400 hover:text-red-300 mt-2 underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+        
         {/* Upload Section */}
         {!isProcessing && results.length === 0 && (
           <div>
