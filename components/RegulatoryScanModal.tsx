@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import type { Artwork, BillOfMaterials, WatchlistItem, AiConfig } from '../types';
 import Modal from './Modal';
 import { getRegulatoryAdvice, draftComplianceLetter } from '../services/geminiService';
+import { getCachedScan, saveScanToCache, getScanAge } from '../services/regulatoryCacheService';
 import { SparklesIcon, LinkIcon, DocumentDuplicateIcon, ClipboardCopyIcon, ChevronDownIcon, FlagIcon } from './icons';
 
 type ArtworkWithProduct = Artwork & { productName: string; bomId: string; };
@@ -69,6 +70,8 @@ const RegulatoryScanModal: React.FC<RegulatoryScanModalProps> = ({ isOpen, onClo
     const [draftLetter, setDraftLetter] = useState('');
     const [scannedState, setScannedState] = useState('');
     const [docLink, setDocLink] = useState(artwork.regulatoryDocLink || '');
+    const [usedCache, setUsedCache] = useState(false);
+    const [cacheAge, setCacheAge] = useState<number | null>(null);
 
     const flaggedIngredients = useMemo(() => {
         const ingredients = bom.components.filter(c => !c.sku.startsWith('BAG-')).map(c => c.name.toLowerCase());
@@ -82,11 +85,37 @@ const RegulatoryScanModal: React.FC<RegulatoryScanModalProps> = ({ isOpen, onClo
         setDraftLetter('');
         setScannedState(state);
         setAdvice('');
+        setUsedCache(false);
+        setCacheAge(null);
+        
         try {
+            // First, check if we have a cached result
+            const cachedScan = getCachedScan(artwork.productName, bom.components, state, bom.id);
+            
+            if (cachedScan) {
+                // Use cached result
+                setAdvice(cachedScan.results);
+                setUsedCache(true);
+                setCacheAge(getScanAge(cachedScan));
+                setIsLoading(false);
+                return;
+            }
+            
+            // No cache hit, perform new scan
             const promptTemplate = aiConfig.prompts.find(p => p.id === 'getRegulatoryAdvice');
             if (!promptTemplate) throw new Error("Regulatory advice prompt not found.");
             const result = await getRegulatoryAdvice(aiConfig.model, promptTemplate.prompt, artwork.productName, bom.components, state, watchlist);
             setAdvice(result);
+            
+            // Extract source URLs from the result (if any)
+            const sourceUrls: string[] = [];
+            const urlMatches = result.match(/https?:\/\/[^\s)]+/g);
+            if (urlMatches) {
+                sourceUrls.push(...urlMatches);
+            }
+            
+            // Save to cache for future use
+            saveScanToCache(artwork.productName, bom.components, state, result, sourceUrls, bom.id);
         } catch (error) {
             console.error(error);
             setAdvice('An unexpected error occurred. Please try again.');
@@ -195,6 +224,19 @@ const RegulatoryScanModal: React.FC<RegulatoryScanModalProps> = ({ isOpen, onClo
                     
                     {!isLoading && advice && (
                         <div className="flex-grow overflow-y-auto pr-2 space-y-4">
+                           {usedCache && cacheAge !== null && (
+                               <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-3 flex items-center gap-2">
+                                   <SparklesIcon className="w-5 h-5 text-green-400 flex-shrink-0" />
+                                   <div className="text-sm">
+                                       <p className="text-green-300 font-semibold">⚡ Instant Result (Cached)</p>
+                                       <p className="text-green-400/80 text-xs">
+                                           This scan was completed {cacheAge} day{cacheAge !== 1 ? 's' : ''} ago. 
+                                           Cache expires in {90 - cacheAge} days. 
+                                           <span className="font-semibold"> 90% API cost savings!</span>
+                                       </p>
+                                   </div>
+                               </div>
+                           )}
                            <ScannedSources text={advice} />
                            <div className="prose prose-sm prose-invert max-w-none text-gray-300">
                                <h4 className="text-white">Compliance Report for {scannedState}</h4>

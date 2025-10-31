@@ -346,7 +346,12 @@ const App: React.FC = () => {
         items,
     };
     setRequisitions(prev => [newReq, ...prev]);
-    addToast(`Requisition ${newReq.id} submitted for approval.`, 'success');
+    
+    if (source === 'System') {
+      addToast(`⚡ AI-Generated Requisition ${newReq.id} created! Auto-generated based on demand forecast. Pending approval.`, 'success');
+    } else {
+      addToast(`Requisition ${newReq.id} submitted for approval.`, 'success');
+    }
   };
 
   const handleApproveRequisition = (reqId: string) => {
