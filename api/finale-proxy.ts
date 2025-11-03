@@ -235,22 +235,29 @@ async function getSuppliers(config: FinaleConfig) {
   console.log(`[Finale Proxy] CSV data received: ${csvText.length} characters`);
   
   const rawSuppliers = parseCSV(csvText);
-  console.log(`[Finale Proxy] Parsed ${rawSuppliers.length} suppliers from CSV`);
+  console.log(`[Finale Proxy] Parsed ${rawSuppliers.length} raw suppliers from CSV`);
+  
+  // Skip first row if it has placeholder name
+  const validSuppliers = rawSuppliers.filter((row: any, index: number) => {
+    const name = row['Name'] || row['name'] || '';
+    // Skip rows with placeholder or empty names
+    if (name === '--' || name.trim() === '') {
+      console.log(`[Finale Proxy] Skipping row ${index} with placeholder name: "${name}"`);
+      return false;
+    }
+    return true;
+  });
+  
+  console.log(`[Finale Proxy] After filtering: ${validSuppliers.length} valid suppliers`);
   
   // Track name usage to deduplicate
   const nameCount = new Map<string, number>();
   
   // Transform CSV format to expected API format
   // Map Finale CSV report columns to expected fields
-  const suppliers = rawSuppliers.map((row: any, index: number) => {
-    // Generate a UUID from the name + index since CSV doesn't have partyId
-    // Handle duplicate names by appending counter
-    let baseName = row['Name'] || row['name'] || 'Unknown Vendor';
-    
-    // Replace placeholder names
-    if (baseName === '--' || baseName.trim() === '') {
-      baseName = 'Unknown Vendor';
-    }
+  const suppliers = validSuppliers.map((row: any, index: number) => {
+    // Get vendor name
+    const baseName = row['Name'] || row['name'] || 'Unknown Vendor';
     
     // Deduplicate: if we've seen this name before, append number
     const count = nameCount.get(baseName) || 0;
