@@ -134,51 +134,21 @@ async function getProducts(config: FinaleConfig, limit = 100, offset = 0) {
 }
 
 /**
- * Get suppliers (vendors) using GraphQL
+ * Get suppliers (vendors) using REST API
+ * Endpoint: /party with organizationRoleListContains filter
  */
 async function getSuppliers(config: FinaleConfig) {
-  const query = `
-    query GetSuppliers {
-      party(filter: {organizationRoleListContains: "SUPPLIER"}) {
-        totalCount
-        edges {
-          node {
-            id
-            name
-            organizationRoleList
-            contactList {
-              attrName
-              attrValue
-            }
-            addressList {
-              city
-              country
-              line1
-              line2
-              postalCode
-              stateOrProvince
-            }
-            userFieldDataList {
-              attrName
-              attrValue
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  console.log(`[Finale Proxy] Fetching suppliers via GraphQL`);
-  const data = await finaleGraphQL(config, query);
+  console.log(`[Finale Proxy] Fetching suppliers via REST API /party endpoint`);
   
-  // Transform GraphQL response to match expected format
-  if (data.party && data.party.edges) {
-    const suppliers = data.party.edges.map((edge: any) => edge.node);
-    console.log(`[Finale Proxy] Found ${suppliers.length} suppliers`);
-    return suppliers;
+  // Try /party endpoint with SUPPLIER filter
+  try {
+    const result = await finaleGet(config, '/party?organizationRoleListContains=SUPPLIER');
+    console.log(`[Finale Proxy] Found ${result.length || 0} suppliers from /party`);
+    return result;
+  } catch (error) {
+    console.error(`[Finale Proxy] /party endpoint failed:`, error instanceof Error ? error.message : String(error));
+    throw error;
   }
-  
-  return [];
 }
 
 /**
