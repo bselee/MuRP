@@ -55,9 +55,9 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
 
   // Check if already configured on mount
   useEffect(() => {
-    const finaleApiKey = process.env.FINALE_API_KEY || localStorage.getItem('finale_api_key');
-    const finaleApiSecret = process.env.FINALE_API_SECRET || localStorage.getItem('finale_api_secret');
-    const finaleAccountPath = process.env.FINALE_ACCOUNT_PATH || localStorage.getItem('finale_account_path');
+    const finaleApiKey = localStorage.getItem('finale_api_key');
+    const finaleApiSecret = localStorage.getItem('finale_api_secret');
+    const finaleAccountPath = localStorage.getItem('finale_account_path');
     
     if (finaleApiKey && finaleApiSecret && finaleAccountPath) {
       setIsConfigured(true);
