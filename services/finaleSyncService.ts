@@ -781,33 +781,55 @@ export class FinaleSyncService {
     const dedupedVendors = Array.from(byName.values());
     console.log(`[FinaleSyncService] Deduped vendors count: ${dedupedVendors.length}`);
 
-    // Prepare vendor data for Supabase
-    // Note: Only saving fields that exist in the vendors table schema
-    const vendorInserts = dedupedVendors.map(vendor => ({
-      id: vendor.id,
-      name: vendor.name,
-      contact_emails: vendor.contactEmails,
-      address: vendor.address,
-      lead_time_days: vendor.leadTimeDays,
-      updated_at: new Date().toISOString(),
-      // phone: vendor.phone, // Column doesn't exist in DB
-      // website: vendor.website, // Column doesn't exist in DB
-    }));
+    // Partition: existing (by name) vs new (by name)
+    const existingUpdates = dedupedVendors
+      .filter(v => existingByName.has((v.name || '').trim().toLowerCase()))
+      .map(vendor => ({
+        // Do NOT include id here so we don't touch PKs; conflict target is name
+        name: vendor.name,
+        contact_emails: vendor.contactEmails,
+        address: vendor.address,
+        lead_time_days: vendor.leadTimeDays,
+        updated_at: new Date().toISOString(),
+      }));
 
-    // Upsert vendors (insert or update if exists)
-    const { error } = await supabase
-      .from('vendors')
-      .upsert(vendorInserts as any, {
-        // Use primary key conflict; IDs for existing names are preserved above
-        onConflict: 'id',
-        ignoreDuplicates: false,
-      });
+    const newInserts = dedupedVendors
+      .filter(v => !existingByName.has((v.name || '').trim().toLowerCase()))
+      .map(vendor => ({
+        id: vendor.id,
+        name: vendor.name,
+        contact_emails: vendor.contactEmails,
+        address: vendor.address,
+        lead_time_days: vendor.leadTimeDays,
+        updated_at: new Date().toISOString(),
+      }));
 
-    if (error) {
-      throw new Error(`Failed to save vendors: ${error.message}`);
+    console.log(`[FinaleSyncService] Preparing ${existingUpdates.length} updates and ${newInserts.length} inserts`);
+
+    // 1) Update existing rows by unique name (no id provided)
+    if (existingUpdates.length > 0) {
+      const { error: updErr } = await supabase
+        .from('vendors')
+        .upsert(existingUpdates as any, {
+          onConflict: 'name',
+          ignoreDuplicates: false,
+        });
+      if (updErr) {
+        throw new Error(`Failed to update existing vendors: ${updErr.message}`);
+      }
     }
 
-    console.log(`[FinaleSyncService] Successfully saved ${dedupedVendors.length} vendors`);
+    // 2) Insert new rows with IDs
+    if (newInserts.length > 0) {
+      const { error: insErr } = await supabase
+        .from('vendors')
+        .insert(newInserts as any);
+      if (insErr) {
+        throw new Error(`Failed to insert new vendors: ${insErr.message}`);
+      }
+    }
+
+    console.log(`[FinaleSyncService] Successfully saved ${dedupedVendors.length} vendors (${existingUpdates.length} updated, ${newInserts.length} inserted)`);
   }
 
   /**
