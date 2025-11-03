@@ -3,6 +3,7 @@ import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiPrompt } from '../types';
 import { defaultAiConfig } from '../types';
 import AiPromptEditModal from '../components/AiPromptEditModal';
+import FinaleIntegrationPanel from '../components/FinaleIntegrationPanel';
 import { GmailIcon, KeyIcon, ClipboardCopyIcon, RefreshIcon, TrashIcon, ServerStackIcon, LinkIcon, BotIcon, ChevronDownIcon, PencilIcon, UsersIcon } from '../components/icons';
 import UserManagementPanel from '../components/UserManagementPanel';
 
@@ -121,6 +122,9 @@ const Settings: React.FC<SettingsProps> = ({
           <section>
             <h2 className="text-xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4">API & Integrations</h2>
             <div className="space-y-6">
+
+              {/* Finale Inventory Integration */}
+              <FinaleIntegrationPanel addToast={addToast} />
 
               {/* Our API Credentials (Inbound) */}
               <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
