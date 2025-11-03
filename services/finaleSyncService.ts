@@ -749,16 +749,16 @@ export class FinaleSyncService {
     }
 
     // Prepare vendor data for Supabase
-    // Note: 'phone' column doesn't exist in vendors table schema
+    // Note: Only saving fields that exist in the vendors table schema
     const vendorInserts = validVendors.map(vendor => ({
       id: vendor.id,
       name: vendor.name,
       contact_emails: vendor.contactEmails,
-      // phone: vendor.phone, // Column doesn't exist in DB
       address: vendor.address,
-      website: vendor.website,
       lead_time_days: vendor.leadTimeDays,
       updated_at: new Date().toISOString(),
+      // phone: vendor.phone, // Column doesn't exist in DB
+      // website: vendor.website, // Column doesn't exist in DB
     }));
 
     // Upsert vendors (insert or update if exists)
