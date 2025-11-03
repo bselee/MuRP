@@ -735,6 +735,22 @@ export class FinaleSyncService {
 
     console.log(`[FinaleSyncService] Saving ${vendors.length} vendors to Supabase...`);
 
+    // Fetch existing vendors (id + name) to preserve IDs and avoid unique name conflicts
+    const { data: existingRows, error: existingErr } = await supabase
+      .from('vendors')
+      .select('id, name');
+
+    if (existingErr) {
+      throw new Error(`Failed to fetch existing vendors: ${existingErr.message}`);
+    }
+
+    const existingByName = new Map<string, string>(); // nameLower -> id
+    (existingRows || []).forEach(row => {
+      if (row && row.name && row.id) {
+        existingByName.set(String(row.name).trim().toLowerCase(), String(row.id));
+      }
+    });
+
     // Validate vendors
     const validVendors = vendors.filter(vendor => {
       const validation = validateVendor(vendor);
@@ -748,9 +764,26 @@ export class FinaleSyncService {
       throw new Error('No valid vendors to save');
     }
 
+    // Deduplicate vendors by name within this batch, last occurrence wins
+    const byName = new Map<string, Vendor>();
+    for (const v of validVendors) {
+      const key = (v.name || '').trim().toLowerCase();
+      if (!key) continue;
+      // Preserve existing ID if a vendor with this name already exists in DB
+      const existingId = existingByName.get(key);
+      if (existingId) {
+        byName.set(key, { ...v, id: existingId });
+      } else {
+        byName.set(key, v);
+      }
+    }
+
+    const dedupedVendors = Array.from(byName.values());
+    console.log(`[FinaleSyncService] Deduped vendors count: ${dedupedVendors.length}`);
+
     // Prepare vendor data for Supabase
     // Note: Only saving fields that exist in the vendors table schema
-    const vendorInserts = validVendors.map(vendor => ({
+    const vendorInserts = dedupedVendors.map(vendor => ({
       id: vendor.id,
       name: vendor.name,
       contact_emails: vendor.contactEmails,
@@ -765,6 +798,7 @@ export class FinaleSyncService {
     const { error } = await supabase
       .from('vendors')
       .upsert(vendorInserts as any, {
+        // Use primary key conflict; IDs for existing names are preserved above
         onConflict: 'id',
         ignoreDuplicates: false,
       });
@@ -773,7 +807,7 @@ export class FinaleSyncService {
       throw new Error(`Failed to save vendors: ${error.message}`);
     }
 
-    console.log(`[FinaleSyncService] Successfully saved ${validVendors.length} vendors`);
+    console.log(`[FinaleSyncService] Successfully saved ${dedupedVendors.length} vendors`);
   }
 
   /**
