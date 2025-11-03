@@ -240,9 +240,12 @@ async function getSuppliers(config: FinaleConfig) {
   // Transform CSV format to expected API format
   // Map Finale CSV report columns to expected fields
   const suppliers = rawSuppliers.map((row: any) => {
-    // Generate a unique ID from the name since CSV doesn't have partyId
+    // Generate a UUID from the name since CSV doesn't have partyId
     const name = row['Name'] || row['name'] || 'Unknown Vendor';
-    const partyId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    // Create deterministic UUID v5 from name (namespace: DNS)
+    const crypto = require('crypto');
+    const hash = crypto.createHash('md5').update(name).digest('hex');
+    const partyId = `${hash.slice(0,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}-${hash.slice(16,20)}-${hash.slice(20,32)}`;
     
     // Get first non-empty email
     const email = row['Email address 0'] || row['Email address 1'] || 
