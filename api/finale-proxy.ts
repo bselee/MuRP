@@ -134,43 +134,64 @@ async function getProducts(config: FinaleConfig, limit = 100, offset = 0) {
 }
 
 /**
- * Get suppliers (vendors) using GraphQL API
- * The REST endpoint /party doesn't exist in this Finale instance
+ * Parse CSV text to array of objects
+ */
+function parseCSV(csvText: string): any[] {
+  const lines = csvText.trim().split('\n');
+  if (lines.length < 2) return [];
+  
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  const rows: any[] = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    const row: any = {};
+    headers.forEach((header, index) => {
+      row[header] = values[index] || '';
+    });
+    rows.push(row);
+  }
+  
+  return rows;
+}
+
+/**
+ * Get suppliers from Finale CSV report
+ * Uses pre-configured report URL from environment
  */
 async function getSuppliers(config: FinaleConfig) {
-  console.log(`[Finale Proxy] Fetching suppliers via GraphQL API`);
+  console.log(`[Finale Proxy] Fetching suppliers from CSV report`);
   
-  const query = `
-    query GetSuppliers {
-      party(filter: {organizationRoleListContains: "SUPPLIER"}) {
-        urlId
-        partyId
-        name
-        organizationRoleList
-        primaryEmail
-        primaryPhone
-        defaultAddress {
-          address1
-          address2
-          city
-          stateOrProvince
-          postalCode
-          country
-        }
-        isActive
-      }
-    }
-  `;
-  
-  try {
-    const result = await finaleGraphQL(config, query);
-    const suppliers = result.party || [];
-    console.log(`[Finale Proxy] Found ${suppliers.length} suppliers from GraphQL`);
-    return suppliers;
-  } catch (error) {
-    console.error(`[Finale Proxy] GraphQL query failed:`, error instanceof Error ? error.message : String(error));
-    throw error;
+  // Get report URL from environment
+  const reportUrl = process.env.FINALE_VENDORS_REPORT_URL;
+  if (!reportUrl) {
+    throw new Error('FINALE_VENDORS_REPORT_URL not configured');
   }
+  
+  console.log(`[Finale Proxy] Report URL configured: ${reportUrl.substring(0, 80)}...`);
+  
+  // Fetch the CSV report with Basic Auth
+  const authHeader = createAuthHeader(config.apiKey, config.apiSecret);
+  const response = await fetch(reportUrl, {
+    method: 'GET',
+    headers: {
+      'Authorization': authHeader,
+    },
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[Finale Proxy] CSV fetch error:`, errorText);
+    throw new Error(`Failed to fetch vendor report (${response.status}): ${response.statusText}`);
+  }
+  
+  const csvText = await response.text();
+  console.log(`[Finale Proxy] CSV data received: ${csvText.length} characters`);
+  
+  const suppliers = parseCSV(csvText);
+  console.log(`[Finale Proxy] Parsed ${suppliers.length} suppliers from CSV`);
+  
+  return suppliers;
 }
 
 /**
