@@ -202,10 +202,14 @@ async function getSuppliers(config: FinaleConfig) {
   console.log(`[Finale Proxy] Fetching suppliers from CSV report`);
   
   // Get report URL from environment
-  const reportUrl = process.env.FINALE_VENDORS_REPORT_URL;
+  let reportUrl = process.env.FINALE_VENDORS_REPORT_URL;
   if (!reportUrl) {
     throw new Error('FINALE_VENDORS_REPORT_URL not configured');
   }
+  
+  // Fix URL: Replace pivotTableStream with pivotTable for direct API access
+  // Per Finale docs: https://support.finaleinventory.com/hc/en-us/articles/115001687154
+  reportUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
   
   console.log(`[Finale Proxy] Report URL configured: ${reportUrl.substring(0, 80)}...`);
   
