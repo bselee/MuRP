@@ -135,22 +135,61 @@ async function getProducts(config: FinaleConfig, limit = 100, offset = 0) {
 
 /**
  * Parse CSV text to array of objects
+ * Handles quoted fields with commas
  */
 function parseCSV(csvText: string): any[] {
   const lines = csvText.trim().split('\n');
   if (lines.length < 2) return [];
   
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  // Parse CSV line handling quoted fields
+  function parseCsvLine(line: string): string[] {
+    const values: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+      
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          // Escaped quote
+          current += '"';
+          i++; // Skip next quote
+        } else {
+          // Toggle quote state
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        // Field separator
+        values.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    // Add last field
+    values.push(current.trim());
+    
+    return values;
+  }
+  
+  const headers = parseCsvLine(lines[0]);
+  console.log('[Finale Proxy] CSV Headers:', headers);
+  
   const rows: any[] = [];
   
   for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    const values = parseCsvLine(lines[i]);
     const row: any = {};
     headers.forEach((header, index) => {
       row[header] = values[index] || '';
     });
     rows.push(row);
   }
+  
+  console.log('[Finale Proxy] Sample row:', rows[0]);
   
   return rows;
 }
@@ -188,8 +227,29 @@ async function getSuppliers(config: FinaleConfig) {
   const csvText = await response.text();
   console.log(`[Finale Proxy] CSV data received: ${csvText.length} characters`);
   
-  const suppliers = parseCSV(csvText);
-  console.log(`[Finale Proxy] Parsed ${suppliers.length} suppliers from CSV`);
+  const rawSuppliers = parseCSV(csvText);
+  console.log(`[Finale Proxy] Parsed ${rawSuppliers.length} suppliers from CSV`);
+  
+  // Transform CSV format to expected API format
+  // Map common CSV column names to expected fields
+  const suppliers = rawSuppliers.map((row: any) => ({
+    partyId: row['Party Id'] || row['partyId'] || row['ID'] || row['id'] || '',
+    name: row['Name'] || row['name'] || row['Organization Name'] || '',
+    email: row['Email'] || row['email'] || row['Primary Email'] || '',
+    phone: row['Phone'] || row['phone'] || row['Primary Phone'] || '',
+    address: row['Address'] || row['address'] || '',
+    addressLine1: row['Address Line 1'] || row['addressLine1'] || '',
+    city: row['City'] || row['city'] || '',
+    state: row['State'] || row['state'] || row['State/Province'] || '',
+    zip: row['Zip'] || row['zip'] || row['Postal Code'] || '',
+    country: row['Country'] || row['country'] || '',
+    website: row['Website'] || row['website'] || '',
+    leadTimeDays: parseInt(row['Lead Time'] || row['leadTimeDays'] || '7', 10),
+    // Keep original row for debugging
+    _rawRow: row,
+  }));
+  
+  console.log(`[Finale Proxy] Transformed sample supplier:`, suppliers[0]);
   
   return suppliers;
 }
