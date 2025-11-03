@@ -240,13 +240,16 @@ async function getSuppliers(config: FinaleConfig) {
   // Transform CSV format to expected API format
   // Map Finale CSV report columns to expected fields
   const suppliers = rawSuppliers.map((row: any, index: number) => {
-    // Generate a UUID from the name since CSV doesn't have partyId
-    const name = row['Name'] || row['name'] || 'Unknown Vendor';
-    // Create simple deterministic UUID from name hash
-    // Using a simple string hash since this runs in Node.js (Vercel function)
+    // Generate a UUID from the name + index since CSV doesn't have partyId
+    // Include index to handle duplicate names
+    const baseName = row['Name'] || row['name'] || 'Unknown Vendor';
+    const name = baseName === '--' ? `Unknown Vendor ${index + 1}` : baseName;
+    
+    // Create deterministic UUID from name + index to ensure uniqueness
+    const uniqueKey = `${name}-${index}`;
     let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = ((hash << 5) - hash) + name.charCodeAt(i);
+    for (let i = 0; i < uniqueKey.length; i++) {
+      hash = ((hash << 5) - hash) + uniqueKey.charCodeAt(i);
       hash = hash & hash; // Convert to 32bit integer
     }
     const hashHex = Math.abs(hash).toString(16).padStart(8, '0');
