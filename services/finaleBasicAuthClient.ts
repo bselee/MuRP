@@ -44,33 +44,70 @@ interface FinalePurchaseOrder {
 export class FinaleBasicAuthClient {
   private config: FinaleConfig;
   private authHeader: string;
+  private isBrowser: boolean;
 
   constructor(config?: Partial<FinaleConfig>) {
+    // Detect if running in browser
+    this.isBrowser = typeof window !== 'undefined';
+
     // Load from environment variables or use provided config
     this.config = {
-      apiKey: config?.apiKey || process.env.FINALE_API_KEY || '',
-      apiSecret: config?.apiSecret || process.env.FINALE_API_SECRET || '',
-      accountPath: config?.accountPath || process.env.FINALE_ACCOUNT_PATH || '',
-      baseUrl: config?.baseUrl || process.env.FINALE_BASE_URL || 'https://app.finaleinventory.com',
+      apiKey: config?.apiKey || (this.isBrowser ? '' : process.env.FINALE_API_KEY || ''),
+      apiSecret: config?.apiSecret || (this.isBrowser ? '' : process.env.FINALE_API_SECRET || ''),
+      accountPath: config?.accountPath || (this.isBrowser ? '' : process.env.FINALE_ACCOUNT_PATH || ''),
+      baseUrl: config?.baseUrl || (this.isBrowser ? '' : process.env.FINALE_BASE_URL || 'https://app.finaleinventory.com'),
     };
 
-    // Validate configuration
-    if (!this.config.apiKey || !this.config.apiSecret) {
-      throw new Error('Finale API Key and Secret are required');
+    // Validate configuration (skip in browser - will use proxy)
+    if (!this.isBrowser) {
+      if (!this.config.apiKey || !this.config.apiSecret) {
+        throw new Error('Finale API Key and Secret are required');
+      }
+      if (!this.config.accountPath) {
+        throw new Error('Finale Account Path is required');
+      }
+
+      // Create Basic Auth header (Node.js only)
+      const authString = `${this.config.apiKey}:${this.config.apiSecret}`;
+      this.authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
+    } else {
+      this.authHeader = '';
     }
-    if (!this.config.accountPath) {
-      throw new Error('Finale Account Path is required');
+  }
+
+  /**
+   * Call API proxy (for browser environments)
+   */
+  private async callProxy<T = any>(action: string, params: Record<string, any> = {}): Promise<T> {
+    const response = await fetch('/api/finale-proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action,
+        config: this.config,
+        ...params,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Proxy request failed');
     }
 
-    // Create Basic Auth header
-    const authString = `${this.config.apiKey}:${this.config.apiSecret}`;
-    this.authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
+    return response.json();
   }
 
   /**
    * Make a GET request to the Finale API
    */
   private async get<T = any>(endpoint: string): Promise<T> {
+    // In browser, use proxy
+    if (this.isBrowser) {
+      throw new Error('Direct API calls not supported in browser. Use specific methods like getProducts()');
+    }
+
     const url = `${this.config.baseUrl}/${this.config.accountPath}/api${endpoint}`;
 
     console.log(`[Finale] GET ${url}`);
@@ -171,6 +208,10 @@ export class FinaleBasicAuthClient {
    * Get all facilities
    */
   async getFacilities(): Promise<FinaleFacility[]> {
+    if (this.isBrowser) {
+      const result = await this.callProxy<{ facilities?: FinaleFacility[] }>('testConnection');
+      return result.facilities || [];
+    }
     return this.get<FinaleFacility[]>('/facility');
   }
 
@@ -178,6 +219,9 @@ export class FinaleBasicAuthClient {
    * Get all products
    */
   async getProducts(limit = 100, offset = 0): Promise<FinaleProduct[]> {
+    if (this.isBrowser) {
+      return this.callProxy<FinaleProduct[]>('getProducts', { limit, offset });
+    }
     return this.get<FinaleProduct[]>(`/product?limit=${limit}&offset=${offset}`);
   }
 
@@ -185,6 +229,9 @@ export class FinaleBasicAuthClient {
    * Get product by ID
    */
   async getProduct(productId: string): Promise<FinaleProduct> {
+    if (this.isBrowser) {
+      throw new Error('getProduct() not yet supported in browser');
+    }
     return this.get<FinaleProduct>(`/product/${productId}`);
   }
 
@@ -192,6 +239,9 @@ export class FinaleBasicAuthClient {
    * Get all suppliers
    */
   async getSuppliers(): Promise<FinaleSupplier[]> {
+    if (this.isBrowser) {
+      return this.callProxy<FinaleSupplier[]>('getSuppliers');
+    }
     return this.get<FinaleSupplier[]>('/partyGroup?role=SUPPLIER');
   }
 
@@ -199,6 +249,9 @@ export class FinaleBasicAuthClient {
    * Get all purchase orders
    */
   async getPurchaseOrders(limit = 100, offset = 0): Promise<FinalePurchaseOrder[]> {
+    if (this.isBrowser) {
+      return this.callProxy<FinalePurchaseOrder[]>('getPurchaseOrders', { limit, offset });
+    }
     return this.get<FinalePurchaseOrder[]>(`/purchaseOrder?limit=${limit}&offset=${offset}`);
   }
 
@@ -259,6 +312,15 @@ export class FinaleBasicAuthClient {
     error?: string;
   }> {
     try {
+      if (this.isBrowser) {
+        return this.callProxy<{
+          success: boolean;
+          message: string;
+          facilities?: FinaleFacility[];
+          error?: string;
+        }>('testConnection');
+      }
+
       const facilities = await this.getFacilities();
       return {
         success: true,
