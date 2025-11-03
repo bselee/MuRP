@@ -238,23 +238,48 @@ async function getSuppliers(config: FinaleConfig) {
   console.log(`[Finale Proxy] Parsed ${rawSuppliers.length} suppliers from CSV`);
   
   // Transform CSV format to expected API format
-  // Map common CSV column names to expected fields
-  const suppliers = rawSuppliers.map((row: any) => ({
-    partyId: row['Party Id'] || row['partyId'] || row['ID'] || row['id'] || '',
-    name: row['Name'] || row['name'] || row['Organization Name'] || '',
-    email: row['Email'] || row['email'] || row['Primary Email'] || '',
-    phone: row['Phone'] || row['phone'] || row['Primary Phone'] || '',
-    address: row['Address'] || row['address'] || '',
-    addressLine1: row['Address Line 1'] || row['addressLine1'] || '',
-    city: row['City'] || row['city'] || '',
-    state: row['State'] || row['state'] || row['State/Province'] || '',
-    zip: row['Zip'] || row['zip'] || row['Postal Code'] || '',
-    country: row['Country'] || row['country'] || '',
-    website: row['Website'] || row['website'] || '',
-    leadTimeDays: parseInt(row['Lead Time'] || row['leadTimeDays'] || '7', 10),
-    // Keep original row for debugging
-    _rawRow: row,
-  }));
+  // Map Finale CSV report columns to expected fields
+  const suppliers = rawSuppliers.map((row: any) => {
+    // Generate a unique ID from the name since CSV doesn't have partyId
+    const name = row['Name'] || row['name'] || 'Unknown Vendor';
+    const partyId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    
+    // Get first non-empty email
+    const email = row['Email address 0'] || row['Email address 1'] || 
+                  row['Email address 2'] || row['Email address 3'] || '';
+    
+    // Get first non-empty phone
+    const phone = row['Phone number 0'] || row['Phone number 1'] || 
+                  row['Phone number 2'] || row['Phone number 3'] || '';
+    
+    // Build address from components
+    const addressLine1 = row['Address 0 street address'] || '';
+    const city = row['Address 0 city'] || '';
+    const state = row['Address 0 state / region'] || '';
+    const zip = row['Address 0 postal code'] || '';
+    
+    // Combine address parts
+    const addressParts = [addressLine1, city, state, zip].filter(p => p && p !== 'Various');
+    const address = addressParts.join(', ');
+    
+    return {
+      partyId,
+      name,
+      email,
+      phone,
+      address,
+      addressLine1,
+      city,
+      state,
+      zip,
+      country: '', // Not in CSV
+      website: '', // Not in CSV
+      leadTimeDays: 7, // Default
+      notes: row['Notes'] || '',
+      // Keep original row for debugging
+      _rawRow: row,
+    };
+  });
   
   console.log(`[Finale Proxy] Transformed sample supplier:`, suppliers[0]);
   
