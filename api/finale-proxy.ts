@@ -211,10 +211,13 @@ async function getSuppliers(config: FinaleConfig) {
   
   // Fetch the CSV report with Basic Auth
   const authHeader = createAuthHeader(config.apiKey, config.apiSecret);
+  console.log(`[Finale Proxy] Fetching CSV with auth header`);
+  
   const response = await fetch(reportUrl, {
     method: 'GET',
     headers: {
       'Authorization': authHeader,
+      'Accept': 'text/csv, text/plain, */*',
     },
   });
   
