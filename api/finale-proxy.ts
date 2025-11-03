@@ -134,19 +134,41 @@ async function getProducts(config: FinaleConfig, limit = 100, offset = 0) {
 }
 
 /**
- * Get suppliers (vendors) using REST API
- * Endpoint: /party with organizationRoleListContains filter
+ * Get suppliers (vendors) using GraphQL API
+ * The REST endpoint /party doesn't exist in this Finale instance
  */
 async function getSuppliers(config: FinaleConfig) {
-  console.log(`[Finale Proxy] Fetching suppliers via REST API /party endpoint`);
+  console.log(`[Finale Proxy] Fetching suppliers via GraphQL API`);
   
-  // Try /party endpoint with SUPPLIER filter
+  const query = `
+    query GetSuppliers {
+      party(filter: {organizationRoleListContains: "SUPPLIER"}) {
+        urlId
+        partyId
+        name
+        organizationRoleList
+        primaryEmail
+        primaryPhone
+        defaultAddress {
+          address1
+          address2
+          city
+          stateOrProvince
+          postalCode
+          country
+        }
+        isActive
+      }
+    }
+  `;
+  
   try {
-    const result = await finaleGet(config, '/party?organizationRoleListContains=SUPPLIER');
-    console.log(`[Finale Proxy] Found ${result.length || 0} suppliers from /party`);
-    return result;
+    const result = await finaleGraphQL(config, query);
+    const suppliers = result.party || [];
+    console.log(`[Finale Proxy] Found ${suppliers.length} suppliers from GraphQL`);
+    return suppliers;
   } catch (error) {
-    console.error(`[Finale Proxy] /party endpoint failed:`, error instanceof Error ? error.message : String(error));
+    console.error(`[Finale Proxy] GraphQL query failed:`, error instanceof Error ? error.message : String(error));
     throw error;
   }
 }
