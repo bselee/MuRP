@@ -208,9 +208,9 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
         id: vendor.id,
         name: vendor.name,
         contactEmails: vendor.contact_emails || [],
-        phone: vendor.phone || '',
+        phone: '', // Column doesn't exist in DB yet
         address: vendor.address || '',
-        website: vendor.website || '',
+        website: '', // Column doesn't exist in DB yet
         leadTimeDays: vendor.lead_time_days || 7,
       }));
 
