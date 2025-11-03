@@ -135,62 +135,107 @@ async function getProducts(config: FinaleConfig, limit = 100, offset = 0) {
 
 /**
  * Parse CSV text to array of objects
- * Handles quoted fields with commas
+ * Robust parsing: handles quoted commas, escaped quotes, CRLF, and quoted newlines.
+ * Also auto-detects the header row (searching for a row that contains expected columns).
  */
 function parseCSV(csvText: string): any[] {
-  const lines = csvText.trim().split('\n');
-  if (lines.length < 2) return [];
-  
-  // Parse CSV line handling quoted fields
+  if (!csvText || !csvText.trim()) return [];
+
+  // Normalize line endings to \n for consistent processing
+  const text = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // First, split the text into logical rows while respecting quotes
+  const rowsRaw: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+    if (ch === '"') {
+      if (inQuotes && next === '"') {
+        // Escaped quote
+        current += '"';
+        i++; // skip next
+      } else {
+        inQuotes = !inQuotes;
+        current += ch; // keep the quote for field parsing stage
+      }
+    } else if (ch === '\n' && !inQuotes) {
+      rowsRaw.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current.length) rowsRaw.push(current);
+
+  if (rowsRaw.length === 0) return [];
+
+  // Helper: parse a single CSV row into fields (handle commas and quotes)
   function parseCsvLine(line: string): string[] {
     const values: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    
+    let field = '';
+    let inQ = false;
     for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      const nextChar = line[i + 1];
-      
-      if (char === '"') {
-        if (inQuotes && nextChar === '"') {
-          // Escaped quote
-          current += '"';
-          i++; // Skip next quote
+      const c = line[i];
+      const n = line[i + 1];
+      if (c === '"') {
+        if (inQ && n === '"') {
+          field += '"';
+          i++;
         } else {
-          // Toggle quote state
-          inQuotes = !inQuotes;
+          inQ = !inQ;
         }
-      } else if (char === ',' && !inQuotes) {
-        // Field separator
-        values.push(current.trim());
-        current = '';
+      } else if (c === ',' && !inQ) {
+        values.push(field.trim());
+        field = '';
       } else {
-        current += char;
+        field += c;
       }
     }
-    
-    // Add last field
-    values.push(current.trim());
-    
-    return values;
+    values.push(field.trim());
+    // Strip surrounding quotes from each field
+    return values.map(v => v.replace(/^"|"$/g, ''));
   }
-  
-  const headers = parseCsvLine(lines[0]);
+
+  // Detect header row: find the first row that contains "Name" and one of expected columns
+  let headerIndex = 0;
+  let headers: string[] = [];
+  for (let i = 0; i < rowsRaw.length; i++) {
+    const cols = parseCsvLine(rowsRaw[i]);
+    const hasName = cols.some(c => c.trim().toLowerCase() === 'name');
+    const hasExpected = cols.some(c => /email address\s*0|phone number\s*0|address\s*0\s*street\s*address/i.test(c));
+    if (hasName && hasExpected) {
+      headerIndex = i;
+      headers = cols.map(h => h.trim());
+      break;
+    }
+  }
+
+  if (headers.length === 0) {
+    // Fallback to first row
+    headers = parseCsvLine(rowsRaw[0]).map(h => h.trim());
+    headerIndex = 0;
+  }
+
   console.log('[Finale Proxy] CSV Headers:', headers);
-  
+
   const rows: any[] = [];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const values = parseCsvLine(lines[i]);
+  for (let i = headerIndex + 1; i < rowsRaw.length; i++) {
+    // Skip empty lines
+    if (!rowsRaw[i] || !rowsRaw[i].trim()) continue;
+    const values = parseCsvLine(rowsRaw[i]);
     const row: any = {};
-    headers.forEach((header, index) => {
-      row[header] = values[index] || '';
+    headers.forEach((header, idx) => {
+      row[header] = values[idx] ?? '';
     });
     rows.push(row);
   }
-  
-  console.log('[Finale Proxy] Sample row:', rows[0]);
-  
+
+  if (rows.length > 0) {
+    console.log('[Finale Proxy] Sample row:', rows[0]);
+  }
+
   return rows;
 }
 
