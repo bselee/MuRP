@@ -237,13 +237,25 @@ async function getSuppliers(config: FinaleConfig) {
   const rawSuppliers = parseCSV(csvText);
   console.log(`[Finale Proxy] Parsed ${rawSuppliers.length} suppliers from CSV`);
   
+  // Track name usage to deduplicate
+  const nameCount = new Map<string, number>();
+  
   // Transform CSV format to expected API format
   // Map Finale CSV report columns to expected fields
   const suppliers = rawSuppliers.map((row: any, index: number) => {
     // Generate a UUID from the name + index since CSV doesn't have partyId
-    // Include index to handle duplicate names
-    const baseName = row['Name'] || row['name'] || 'Unknown Vendor';
-    const name = baseName === '--' ? `Unknown Vendor ${index + 1}` : baseName;
+    // Handle duplicate names by appending counter
+    let baseName = row['Name'] || row['name'] || 'Unknown Vendor';
+    
+    // Replace placeholder names
+    if (baseName === '--' || baseName.trim() === '') {
+      baseName = 'Unknown Vendor';
+    }
+    
+    // Deduplicate: if we've seen this name before, append number
+    const count = nameCount.get(baseName) || 0;
+    nameCount.set(baseName, count + 1);
+    const name = count > 0 ? `${baseName} (${count})` : baseName;
     
     // Create deterministic UUID from name + index to ensure uniqueness
     const uniqueKey = `${name}-${index}`;
