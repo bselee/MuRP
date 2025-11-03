@@ -252,18 +252,72 @@ async function getSuppliers(config: FinaleConfig) {
   
   // Track name usage to deduplicate
   const nameCount = new Map<string, number>();
+
+  // Helpers to robustly read fields and pick first meaningful values
+  const isMeaningful = (val?: string) => {
+    if (!val) return false;
+    const v = String(val).trim();
+    if (!v) return false;
+    return v.toLowerCase() !== 'various' && v !== '--';
+  };
+
+  const getField = (row: any, key: string): string => {
+    // Try exact key first, then some normalized variants
+    if (row[key] !== undefined) return String(row[key] ?? '').trim();
+    const alt = Object.keys(row).find(k => k.toLowerCase() === key.toLowerCase());
+    return alt ? String(row[alt] ?? '').trim() : '';
+  };
+
+  const pickFirst = (row: any, keys: string[]): string => {
+    for (const k of keys) {
+      const v = getField(row, k);
+      if (isMeaningful(v)) return v;
+    }
+    return '';
+  };
+
+  const pickAddressComponents = (row: any): { addressLine1: string; city: string; state: string; zip: string } => {
+    for (let i = 0; i < 4; i++) {
+      const addressLine1 = pickFirst(row, [
+        `Address ${i} street address`,
+        `Address ${i} line 1`,
+        `Address ${i} address`,
+      ]);
+      const city = pickFirst(row, [
+        `Address ${i} city`,
+      ]);
+      const state = pickFirst(row, [
+        `Address ${i} state / region`,
+        `Address ${i} state/ region`,
+        `Address ${i} state/region`,
+        `Address ${i} state`,
+        `Address ${i} region`,
+      ]);
+      const zip = pickFirst(row, [
+        `Address ${i} postal code`,
+        `Address ${i} zip`,
+        `Address ${i} zip code`,
+        `Address ${i} postcode`,
+      ]);
+
+      if (addressLine1 || city || state || zip) {
+        return { addressLine1, city, state, zip };
+      }
+    }
+    return { addressLine1: '', city: '', state: '', zip: '' };
+  };
   
   // Transform CSV format to expected API format
   // Map Finale CSV report columns to expected fields
   const suppliers = validSuppliers.map((row: any, index: number) => {
     // Get vendor name
-    const baseName = row['Name'] || row['name'] || 'Unknown Vendor';
-    
+    const baseName = getField(row, 'Name') || getField(row, 'name') || 'Unknown Vendor';
+
     // Deduplicate: if we've seen this name before, append number
     const count = nameCount.get(baseName) || 0;
     nameCount.set(baseName, count + 1);
     const name = count > 0 ? `${baseName} (${count})` : baseName;
-    
+
     // Create deterministic UUID from name + index to ensure uniqueness
     const uniqueKey = `${name}-${index}`;
     let hash = 0;
@@ -274,25 +328,28 @@ async function getSuppliers(config: FinaleConfig) {
     const hashHex = Math.abs(hash).toString(16).padStart(8, '0');
     const indexHex = index.toString(16).padStart(4, '0');
     const partyId = `${hashHex}-0000-4000-8000-${indexHex}00000000`.slice(0, 36);
-    
-    // Get first non-empty email
-    const email = row['Email address 0'] || row['Email address 1'] || 
-                  row['Email address 2'] || row['Email address 3'] || '';
-    
-    // Get first non-empty phone
-    const phone = row['Phone number 0'] || row['Phone number 1'] || 
-                  row['Phone number 2'] || row['Phone number 3'] || '';
-    
-    // Build address from components
-    const addressLine1 = row['Address 0 street address'] || '';
-    const city = row['Address 0 city'] || '';
-    const state = row['Address 0 state / region'] || '';
-    const zip = row['Address 0 postal code'] || '';
-    
-    // Combine address parts
-    const addressParts = [addressLine1, city, state, zip].filter(p => p && p !== 'Various');
+
+    // Get first non-empty email (0..3)
+    const email = pickFirst(row, [
+      'Email address 0',
+      'Email address 1',
+      'Email address 2',
+      'Email address 3',
+    ]);
+
+    // Get first non-empty phone (0..3)
+    const phone = pickFirst(row, [
+      'Phone number 0',
+      'Phone number 1',
+      'Phone number 2',
+      'Phone number 3',
+    ]);
+
+    // Build address from first available Address {0-3}
+    const { addressLine1, city, state, zip } = pickAddressComponents(row);
+    const addressParts = [addressLine1, city, state, zip].filter(p => isMeaningful(p));
     const address = addressParts.join(', ');
-    
+
     return {
       partyId,
       name,
@@ -306,7 +363,7 @@ async function getSuppliers(config: FinaleConfig) {
       country: '', // Not in CSV
       website: '', // Not in CSV
       leadTimeDays: 7, // Default
-      notes: row['Notes'] || '',
+      notes: getField(row, 'Notes'),
       // Keep original row for debugging
       _rawRow: row,
     };
