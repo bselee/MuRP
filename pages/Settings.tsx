@@ -5,6 +5,7 @@ import { defaultAiConfig } from '../types';
 import AiPromptEditModal from '../components/AiPromptEditModal';
 import { GmailIcon, KeyIcon, ClipboardCopyIcon, RefreshIcon, TrashIcon, ServerStackIcon, LinkIcon, BotIcon, ChevronDownIcon, PencilIcon, UsersIcon } from '../components/icons';
 import UserManagementPanel from '../components/UserManagementPanel';
+import FinaleSetupPanel from '../components/FinaleSetupPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -204,6 +205,9 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
 
+
+              {/* Finale Inventory Integration */}
+              <FinaleSetupPanel addToast={addToast} />
 
               {/* Gmail Integration */}
               <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">

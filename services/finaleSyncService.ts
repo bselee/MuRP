@@ -1,0 +1,878 @@
+/**
+ * Finale Sync Service
+ * 
+ * World-class data synchronization service that:
+ * - Intelligently syncs data from Finale REST API to Supabase
+ * - Implements smart rate limiting to respect API quotas
+ * - Uses thoughtful refresh intervals (5min for critical, 1hr for stable)
+ * - Provides real-time sync status and progress tracking
+ * - Handles errors gracefully with exponential backoff
+ * - Caches data to minimize API calls
+ */
+
+import { FinaleBasicAuthClient } from './finaleBasicAuthClient';
+import { RateLimiter } from './rateLimiter';
+import { CircuitBreaker } from './circuitBreaker';
+import { retryWithBackoff } from './retryWithBackoff';
+import { supabase } from '../lib/supabase/client';
+import type { Tables } from '../lib/supabase/client';
+import {
+  transformFinaleProductsToInventory,
+  transformFinaleSuppliersToVendors,
+  transformFinalePOsToPurchaseOrders,
+  extractBOMsFromFinaleProducts,
+  validateInventoryItem,
+  validateVendor,
+  validatePurchaseOrder,
+  type FinaleProduct,
+  type FinaleSupplier,
+  type FinalePurchaseOrder as FinalePOType,
+} from '../lib/finale/transformers';
+import type { InventoryItem, Vendor, PurchaseOrder, BillOfMaterials } from '../types';
+
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
+
+export interface SyncStatus {
+  isRunning: boolean;
+  lastSyncTime: Date | null;
+  nextSyncTime: Date | null;
+  lastSyncDuration: number | null; // milliseconds
+  totalItemsSynced: number;
+  errors: SyncError[];
+  progress: SyncProgress;
+}
+
+export interface SyncProgress {
+  phase: 'idle' | 'vendors' | 'inventory' | 'purchase-orders' | 'complete';
+  current: number;
+  total: number;
+  percentage: number;
+  message: string;
+}
+
+export interface SyncError {
+  timestamp: Date;
+  phase: string;
+  message: string;
+  error: any;
+}
+
+export interface SyncConfig {
+  // Sync intervals (milliseconds)
+  inventoryRefreshInterval: number; // Default: 5 minutes
+  vendorsRefreshInterval: number; // Default: 1 hour
+  purchaseOrdersRefreshInterval: number; // Default: 15 minutes
+  
+  // Rate limiting
+  maxRequestsPerMinute: number; // Default: 30
+  
+  // Pagination
+  batchSize: number; // Default: 100 items per request
+  
+  // Error handling
+  maxRetries: number; // Default: 3
+  retryDelayMs: number; // Default: 1000ms
+}
+
+export interface FinaleInventoryItem {
+  productId: string;
+  sku: string;
+  name: string;
+  description?: string;
+  category?: string;
+  quantityOnHand: number;
+  reorderPoint?: number;
+  reorderQuantity?: number;
+  cost?: number;
+  price?: number;
+  supplier?: string;
+  lastUpdated: Date;
+}
+
+export interface FinaleVendor {
+  vendorId: string;
+  name: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  leadTimeDays?: number;
+  terms?: string;
+  lastUpdated: Date;
+}
+
+export interface FinalePurchaseOrder {
+  poId: string;
+  orderNumber: string;
+  vendorId: string;
+  vendorName: string;
+  status: string;
+  orderDate: Date;
+  expectedDate?: Date;
+  totalAmount?: number;
+  items: Array<{
+    productId: string;
+    sku: string;
+    quantity: number;
+    unitCost: number;
+  }>;
+  lastUpdated: Date;
+}
+
+// ============================================================================
+// SYNC SERVICE CLASS
+// ============================================================================
+
+export class FinaleSyncService {
+  private client: FinaleBasicAuthClient;
+  private config: SyncConfig;
+  private status: SyncStatus;
+  private rateLimiter: RateLimiter;
+  private circuitBreaker: CircuitBreaker;
+  private syncIntervals: Map<string, NodeJS.Timeout>;
+  private statusListeners: Set<(status: SyncStatus) => void>;
+
+  constructor(config?: Partial<SyncConfig>) {
+    // Initialize Finale client
+    this.client = new FinaleBasicAuthClient();
+
+    // Default configuration
+    this.config = {
+      inventoryRefreshInterval: 5 * 60 * 1000, // 5 minutes
+      vendorsRefreshInterval: 60 * 60 * 1000, // 1 hour
+      purchaseOrdersRefreshInterval: 15 * 60 * 1000, // 15 minutes
+      maxRequestsPerMinute: 30,
+      batchSize: 100,
+      maxRetries: 3,
+      retryDelayMs: 1000,
+      ...config,
+    };
+
+    // Initialize status
+    this.status = {
+      isRunning: false,
+      lastSyncTime: null,
+      nextSyncTime: null,
+      lastSyncDuration: null,
+      totalItemsSynced: 0,
+      errors: [],
+      progress: {
+        phase: 'idle',
+        current: 0,
+        total: 0,
+        percentage: 0,
+        message: 'Ready to sync',
+      },
+    };
+
+    // Initialize rate limiter (30 requests per minute per user, 100 global)
+    this.rateLimiter = new RateLimiter({
+      perIdentity: {
+        maxRequests: this.config.maxRequestsPerMinute,
+        intervalMs: 60 * 1000,
+      },
+      global: {
+        maxRequests: 100,
+        intervalMs: 60 * 1000,
+      },
+    });
+
+    // Initialize circuit breaker
+    this.circuitBreaker = new CircuitBreaker({
+      failureThreshold: 5,
+      cooldownMs: 60 * 1000,
+    });
+
+    this.syncIntervals = new Map();
+    this.statusListeners = new Set();
+  }
+
+  // ==========================================================================
+  // PUBLIC API
+  // ==========================================================================
+
+  /**
+   * Get current sync status
+   */
+  getStatus(): SyncStatus {
+    return { ...this.status };
+  }
+
+  /**
+   * Subscribe to sync status updates
+   */
+  onStatusChange(callback: (status: SyncStatus) => void): () => void {
+    this.statusListeners.add(callback);
+    // Return unsubscribe function
+    return () => this.statusListeners.delete(callback);
+  }
+
+  /**
+   * Start automatic sync with configured intervals
+   */
+  startAutoSync(): void {
+    console.log('[FinaleSyncService] Starting automatic sync...');
+
+    // Immediate initial sync
+    this.syncAll().catch(console.error);
+
+    // Schedule inventory sync (every 5 minutes)
+    this.syncIntervals.set(
+      'inventory',
+      setInterval(() => {
+        this.syncInventory().catch(console.error);
+      }, this.config.inventoryRefreshInterval)
+    );
+
+    // Schedule vendors sync (every hour)
+    this.syncIntervals.set(
+      'vendors',
+      setInterval(() => {
+        this.syncVendors().catch(console.error);
+      }, this.config.vendorsRefreshInterval)
+    );
+
+    // Schedule purchase orders sync (every 15 minutes)
+    this.syncIntervals.set(
+      'purchase-orders',
+      setInterval(() => {
+        this.syncPurchaseOrders().catch(console.error);
+      }, this.config.purchaseOrdersRefreshInterval)
+    );
+
+    console.log('[FinaleSyncService] Auto-sync started');
+  }
+
+  /**
+   * Stop automatic sync
+   */
+  stopAutoSync(): void {
+    console.log('[FinaleSyncService] Stopping automatic sync...');
+
+    for (const [name, interval] of this.syncIntervals) {
+      clearInterval(interval);
+      console.log(`[FinaleSyncService] Stopped ${name} sync`);
+    }
+
+    this.syncIntervals.clear();
+  }
+
+  /**
+   * Manually trigger a full sync
+   */
+  async syncAll(): Promise<void> {
+    if (this.status.isRunning) {
+      console.warn('[FinaleSyncService] Sync already in progress');
+      return;
+    }
+
+    console.log('[FinaleSyncService] Starting full sync...');
+    const startTime = Date.now();
+
+    this.updateStatus({
+      isRunning: true,
+      progress: {
+        phase: 'vendors',
+        current: 0,
+        total: 3,
+        percentage: 0,
+        message: 'Starting full sync...',
+      },
+    });
+
+    try {
+      // Sync vendors first (needed for inventory supplier references)
+      await this.syncVendors();
+
+      // Then inventory
+      await this.syncInventory();
+
+      // Finally purchase orders
+      await this.syncPurchaseOrders();
+
+      const duration = Date.now() - startTime;
+
+      this.updateStatus({
+        isRunning: false,
+        lastSyncTime: new Date(),
+        lastSyncDuration: duration,
+        nextSyncTime: new Date(Date.now() + this.config.inventoryRefreshInterval),
+        progress: {
+          phase: 'complete',
+          current: 3,
+          total: 3,
+          percentage: 100,
+          message: `Full sync completed in ${(duration / 1000).toFixed(1)}s`,
+        },
+      });
+
+      console.log(`[FinaleSyncService] Full sync completed in ${duration}ms`);
+    } catch (error) {
+      this.handleError('full-sync', error);
+      this.updateStatus({
+        isRunning: false,
+        progress: {
+          phase: 'idle',
+          current: 0,
+          total: 0,
+          percentage: 0,
+          message: 'Sync failed - see errors',
+        },
+      });
+    }
+  }
+
+  /**
+   * Sync vendors from Finale
+   */
+  async syncVendors(): Promise<Vendor[]> {
+    console.log('[FinaleSyncService] Syncing vendors...');
+
+    this.updateProgress({
+      phase: 'vendors',
+      current: 0,
+      total: 2,
+      percentage: 0,
+      message: 'Fetching vendors from Finale...',
+    });
+
+    try {
+      // Fetch from Finale with rate limiting and resilience
+      const rawVendors = await this.rateLimiter.schedule(async () => {
+        return await this.circuitBreaker.execute(async () => {
+          return await retryWithBackoff(
+            async () => await this.client.getSuppliers(),
+            {
+              maxAttempts: this.config.maxRetries,
+              baseDelayMs: this.config.retryDelayMs,
+            }
+          );
+        });
+      }, 'finale-sync');
+
+      console.log(`[FinaleSyncService] Fetched ${rawVendors.length} vendors from Finale`);
+
+      this.updateProgress({
+        phase: 'vendors',
+        current: 1,
+        total: 2,
+        percentage: 50,
+        message: 'Transforming and saving vendors...',
+      });
+
+      // Transform to TGF MRP format
+      const vendors = transformFinaleSuppliersToVendors(rawVendors as FinaleSupplier[]);
+      console.log(`[FinaleSyncService] Transformed ${vendors.length} vendors`);
+
+      // Save to Supabase
+      await this.saveVendorsToSupabase(vendors);
+
+      this.updateProgress({
+        phase: 'vendors',
+        current: 2,
+        total: 2,
+        percentage: 100,
+        message: `Synced ${vendors.length} vendors`,
+      });
+
+      this.status.totalItemsSynced += vendors.length;
+      this.notifyListeners();
+
+      return vendors;
+    } catch (error) {
+      this.handleError('sync-vendors', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync inventory from Finale
+   */
+  async syncInventory(): Promise<{
+    inventory: InventoryItem[];
+    boms: BillOfMaterials[];
+  }> {
+    console.log('[FinaleSyncService] Syncing inventory...');
+
+    this.updateProgress({
+      phase: 'inventory',
+      current: 0,
+      total: 100,
+      percentage: 0,
+      message: 'Fetching inventory from Finale...',
+    });
+
+    try {
+      const allRawProducts: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+
+      // Fetch all products with pagination
+      while (hasMore) {
+        const rawProducts = await this.rateLimiter.schedule(async () => {
+          return await this.circuitBreaker.execute(async () => {
+            return await retryWithBackoff(
+              async () => await this.client.getProducts(this.config.batchSize, offset),
+              {
+                maxAttempts: this.config.maxRetries,
+                baseDelayMs: this.config.retryDelayMs,
+              }
+            );
+          });
+        }, 'finale-sync');
+
+        allRawProducts.push(...rawProducts);
+        offset += this.config.batchSize;
+        hasMore = rawProducts.length === this.config.batchSize;
+
+        this.updateProgress({
+          phase: 'inventory',
+          current: allRawProducts.length,
+          total: allRawProducts.length + (hasMore ? this.config.batchSize : 0),
+          percentage: hasMore ? 40 : 70,
+          message: `Fetched ${allRawProducts.length} products...`,
+        });
+      }
+
+      console.log(`[FinaleSyncService] Fetched ${allRawProducts.length} products from Finale`);
+
+      this.updateProgress({
+        phase: 'inventory',
+        current: allRawProducts.length,
+        total: allRawProducts.length,
+        percentage: 80,
+        message: 'Transforming and saving products...',
+      });
+
+      // Transform to TGF MRP format
+      const inventory = transformFinaleProductsToInventory(allRawProducts as FinaleProduct[]);
+      console.log(`[FinaleSyncService] Transformed ${inventory.length} inventory items`);
+
+      // Extract BOMs from products with components
+      const boms = extractBOMsFromFinaleProducts(allRawProducts as FinaleProduct[]);
+      console.log(`[FinaleSyncService] Extracted ${boms.length} BOMs`);
+
+      // Save to Supabase
+      await this.saveInventoryToSupabase(inventory);
+      if (boms.length > 0) {
+        await this.saveBOMsToSupabase(boms);
+      }
+
+      this.updateProgress({
+        phase: 'inventory',
+        current: allRawProducts.length,
+        total: allRawProducts.length,
+        percentage: 100,
+        message: `Synced ${inventory.length} items and ${boms.length} BOMs`,
+      });
+
+      this.status.totalItemsSynced += inventory.length + boms.length;
+      this.notifyListeners();
+
+      return { inventory, boms };
+    } catch (error) {
+      this.handleError('sync-inventory', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync purchase orders from Finale
+   */
+  async syncPurchaseOrders(): Promise<PurchaseOrder[]> {
+    console.log('[FinaleSyncService] Syncing purchase orders...');
+
+    this.updateProgress({
+      phase: 'purchase-orders',
+      current: 0,
+      total: 100,
+      percentage: 0,
+      message: 'Fetching purchase orders from Finale...',
+    });
+
+    try {
+      const allRawPOs: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+
+      // Fetch all POs with pagination
+      while (hasMore) {
+        const rawPOs = await this.rateLimiter.schedule(async () => {
+          return await this.circuitBreaker.execute(async () => {
+            return await retryWithBackoff(
+              async () => await this.client.getPurchaseOrders(this.config.batchSize, offset),
+              {
+                maxAttempts: this.config.maxRetries,
+                baseDelayMs: this.config.retryDelayMs,
+              }
+            );
+          });
+        }, 'finale-sync');
+
+        allRawPOs.push(...rawPOs);
+        offset += this.config.batchSize;
+        hasMore = rawPOs.length === this.config.batchSize;
+
+        this.updateProgress({
+          phase: 'purchase-orders',
+          current: allRawPOs.length,
+          total: allRawPOs.length + (hasMore ? this.config.batchSize : 0),
+          percentage: hasMore ? 50 : 80,
+          message: `Fetched ${allRawPOs.length} purchase orders...`,
+        });
+      }
+
+      console.log(`[FinaleSyncService] Fetched ${allRawPOs.length} purchase orders from Finale`);
+
+      this.updateProgress({
+        phase: 'purchase-orders',
+        current: allRawPOs.length,
+        total: allRawPOs.length,
+        percentage: 90,
+        message: 'Transforming and saving purchase orders...',
+      });
+
+      // Transform to TGF MRP format
+      const pos = transformFinalePOsToPurchaseOrders(allRawPOs as FinalePOType[]);
+      console.log(`[FinaleSyncService] Transformed ${pos.length} purchase orders`);
+
+      // Save to Supabase
+      await this.savePurchaseOrdersToSupabase(pos);
+
+      this.updateProgress({
+        phase: 'purchase-orders',
+        current: allRawPOs.length,
+        total: allRawPOs.length,
+        percentage: 100,
+        message: `Synced ${pos.length} purchase orders`,
+      });
+
+      this.status.totalItemsSynced += pos.length;
+      this.notifyListeners();
+
+      return pos;
+    } catch (error) {
+      this.handleError('sync-purchase-orders', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Test Finale connection
+   */
+  async testConnection(): Promise<{
+    success: boolean;
+    message: string;
+    facilities?: any[];
+  }> {
+    try {
+      return await this.client.testConnection();
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Connection failed',
+      };
+    }
+  }
+
+  // ==========================================================================
+  // PRIVATE HELPERS
+  // ==========================================================================
+
+  private transformVendors(rawVendors: any[]): FinaleVendor[] {
+    return rawVendors.map(v => ({
+      vendorId: v.partyId || v.id,
+      name: v.name || 'Unknown Vendor',
+      contactName: v.contactName,
+      email: v.email,
+      phone: v.phone,
+      address: v.address,
+      leadTimeDays: v.leadTimeDays,
+      terms: v.terms,
+      lastUpdated: new Date(),
+    }));
+  }
+
+  private transformInventory(rawProducts: any[]): FinaleInventoryItem[] {
+    return rawProducts.map(p => ({
+      productId: p.productId || p.id,
+      sku: p.sku || p.productCode || 'NO-SKU',
+      name: p.name || p.productName || 'Unknown Product',
+      description: p.description,
+      category: p.category,
+      quantityOnHand: p.quantityOnHand || p.stock || 0,
+      reorderPoint: p.reorderPoint,
+      reorderQuantity: p.reorderQuantity,
+      cost: p.cost || p.unitCost,
+      price: p.price || p.salePrice,
+      supplier: p.supplier || p.supplierId,
+      lastUpdated: new Date(),
+    }));
+  }
+
+  private transformPurchaseOrders(rawPOs: any[]): FinalePurchaseOrder[] {
+    return rawPOs.map(po => ({
+      poId: po.purchaseOrderId || po.id,
+      orderNumber: po.orderNumber || po.poNumber || 'NO-PO',
+      vendorId: po.vendorId || po.supplierId,
+      vendorName: po.vendorName || po.supplierName || 'Unknown Vendor',
+      status: po.status || 'PENDING',
+      orderDate: new Date(po.orderDate || Date.now()),
+      expectedDate: po.expectedDate ? new Date(po.expectedDate) : undefined,
+      totalAmount: po.totalAmount || po.total,
+      items: po.items || [],
+      lastUpdated: new Date(),
+    }));
+  }
+
+  private updateStatus(updates: Partial<SyncStatus>): void {
+    Object.assign(this.status, updates);
+    this.notifyListeners();
+  }
+
+  private updateProgress(progress: SyncProgress): void {
+    this.status.progress = progress;
+    this.notifyListeners();
+  }
+
+  private handleError(phase: string, error: any): void {
+    const syncError: SyncError = {
+      timestamp: new Date(),
+      phase,
+      message: error instanceof Error ? error.message : String(error),
+      error,
+    };
+
+    this.status.errors.push(syncError);
+    // Keep only last 10 errors
+    if (this.status.errors.length > 10) {
+      this.status.errors = this.status.errors.slice(-10);
+    }
+
+    console.error(`[FinaleSyncService] Error in ${phase}:`, error);
+    this.notifyListeners();
+  }
+
+  private notifyListeners(): void {
+    const status = this.getStatus();
+    this.statusListeners.forEach(listener => {
+      try {
+        listener(status);
+      } catch (error) {
+        console.error('[FinaleSyncService] Error in status listener:', error);
+      }
+    });
+  }
+
+  // ==========================================================================
+  // SUPABASE PERSISTENCE
+  // ==========================================================================
+
+  /**
+   * Save vendors to Supabase
+   */
+  private async saveVendorsToSupabase(vendors: Vendor[]): Promise<void> {
+    if (vendors.length === 0) {
+      console.log('[FinaleSyncService] No vendors to save');
+      return;
+    }
+
+    console.log(`[FinaleSyncService] Saving ${vendors.length} vendors to Supabase...`);
+
+    // Validate vendors
+    const validVendors = vendors.filter(vendor => {
+      const validation = validateVendor(vendor);
+      if (!validation.valid) {
+        console.warn(`[FinaleSyncService] Invalid vendor ${vendor.id}:`, validation.errors);
+      }
+      return validation.valid;
+    });
+
+    if (validVendors.length === 0) {
+      throw new Error('No valid vendors to save');
+    }
+
+    // Prepare vendor data for Supabase
+    const vendorInserts = validVendors.map(vendor => ({
+      id: vendor.id,
+      name: vendor.name,
+      contact_emails: vendor.contactEmails,
+      phone: vendor.phone,
+      address: vendor.address,
+      website: vendor.website,
+      lead_time_days: vendor.leadTimeDays,
+      updated_at: new Date().toISOString(),
+    }));
+
+    // Upsert vendors (insert or update if exists)
+    const { error } = await supabase
+      .from('vendors')
+      .upsert(vendorInserts as any, {
+        onConflict: 'id',
+        ignoreDuplicates: false,
+      });
+
+    if (error) {
+      throw new Error(`Failed to save vendors: ${error.message}`);
+    }
+
+    console.log(`[FinaleSyncService] Successfully saved ${validVendors.length} vendors`);
+  }
+
+  /**
+   * Save inventory items to Supabase
+   */
+  private async saveInventoryToSupabase(items: InventoryItem[]): Promise<void> {
+    if (items.length === 0) {
+      console.log('[FinaleSyncService] No inventory items to save');
+      return;
+    }
+
+    console.log(`[FinaleSyncService] Saving ${items.length} inventory items to Supabase...`);
+
+    // Validate items
+    const validItems = items.filter(item => {
+      const validation = validateInventoryItem(item);
+      if (!validation.valid) {
+        console.warn(`[FinaleSyncService] Invalid item ${item.sku}:`, validation.errors);
+      }
+      return validation.valid;
+    });
+
+    if (validItems.length === 0) {
+      throw new Error('No valid inventory items to save');
+    }
+
+    // Prepare inventory data for Supabase
+    const inventoryInserts = validItems.map(item => ({
+      sku: item.sku,
+      name: item.name,
+      category: item.category,
+      stock: item.stock,
+      on_order: item.onOrder,
+      reorder_point: item.reorderPoint,
+      vendor_id: item.vendorId,
+      moq: item.moq,
+      updated_at: new Date().toISOString(),
+    }));
+
+    // Upsert inventory items
+    const { error } = await supabase
+      .from('inventory_items')
+      .upsert(inventoryInserts as any, {
+        onConflict: 'sku',
+        ignoreDuplicates: false,
+      });
+
+    if (error) {
+      throw new Error(`Failed to save inventory: ${error.message}`);
+    }
+
+    console.log(`[FinaleSyncService] Successfully saved ${validItems.length} inventory items`);
+  }
+
+  /**
+   * Save purchase orders to Supabase
+   */
+  private async savePurchaseOrdersToSupabase(pos: PurchaseOrder[]): Promise<void> {
+    if (pos.length === 0) {
+      console.log('[FinaleSyncService] No purchase orders to save');
+      return;
+    }
+
+    console.log(`[FinaleSyncService] Saving ${pos.length} purchase orders to Supabase...`);
+
+    // Validate POs
+    const validPOs = pos.filter(po => {
+      const validation = validatePurchaseOrder(po);
+      if (!validation.valid) {
+        console.warn(`[FinaleSyncService] Invalid PO ${po.id}:`, validation.errors);
+      }
+      return validation.valid;
+    });
+
+    if (validPOs.length === 0) {
+      throw new Error('No valid purchase orders to save');
+    }
+
+    // Prepare PO data for Supabase
+    const poInserts = validPOs.map(po => ({
+      id: po.id,
+      vendor_id: po.vendorId,
+      status: po.status,
+      created_at: po.createdAt,
+      items: po.items, // JSONB column
+      expected_date: po.expectedDate,
+      notes: po.notes,
+      requisition_ids: po.requisitionIds,
+      updated_at: new Date().toISOString(),
+    }));
+
+    // Upsert purchase orders
+    const { error } = await supabase
+      .from('purchase_orders')
+      .upsert(poInserts as any, {
+        onConflict: 'id',
+        ignoreDuplicates: false,
+      });
+
+    if (error) {
+      throw new Error(`Failed to save purchase orders: ${error.message}`);
+    }
+
+    console.log(`[FinaleSyncService] Successfully saved ${validPOs.length} purchase orders`);
+  }
+
+  /**
+   * Save BOMs to Supabase
+   */
+  private async saveBOMsToSupabase(boms: BillOfMaterials[]): Promise<void> {
+    if (boms.length === 0) {
+      console.log('[FinaleSyncService] No BOMs to save');
+      return;
+    }
+
+    console.log(`[FinaleSyncService] Saving ${boms.length} BOMs to Supabase...`);
+
+    // Prepare BOM data for Supabase
+    const bomInserts = boms.map(bom => ({
+      id: bom.id,
+      finished_sku: bom.finishedSku,
+      name: bom.name,
+      components: bom.components, // JSONB column
+      artwork: bom.artwork, // JSONB column
+      packaging: bom.packaging, // JSONB column
+      barcode: bom.barcode,
+      updated_at: new Date().toISOString(),
+    }));
+
+    // Upsert BOMs
+    const { error } = await supabase
+      .from('boms')
+      .upsert(bomInserts as any, {
+        onConflict: 'id',
+        ignoreDuplicates: false,
+      });
+
+    if (error) {
+      throw new Error(`Failed to save BOMs: ${error.message}`);
+    }
+
+    console.log(`[FinaleSyncService] Successfully saved ${boms.length} BOMs`);
+  }
+}
+
+// ============================================================================
+// SINGLETON INSTANCE
+// ============================================================================
+
+let syncServiceInstance: FinaleSyncService | null = null;
+
+export function getFinaleSyncService(config?: Partial<SyncConfig>): FinaleSyncService {
+  if (!syncServiceInstance) {
+    syncServiceInstance = new FinaleSyncService(config);
+  }
+  return syncServiceInstance;
+}
