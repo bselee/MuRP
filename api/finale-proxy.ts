@@ -239,13 +239,19 @@ async function getSuppliers(config: FinaleConfig) {
   
   // Transform CSV format to expected API format
   // Map Finale CSV report columns to expected fields
-  const suppliers = rawSuppliers.map((row: any) => {
+  const suppliers = rawSuppliers.map((row: any, index: number) => {
     // Generate a UUID from the name since CSV doesn't have partyId
     const name = row['Name'] || row['name'] || 'Unknown Vendor';
-    // Create deterministic UUID v5 from name (namespace: DNS)
-    const crypto = require('crypto');
-    const hash = crypto.createHash('md5').update(name).digest('hex');
-    const partyId = `${hash.slice(0,8)}-${hash.slice(8,12)}-${hash.slice(12,16)}-${hash.slice(16,20)}-${hash.slice(20,32)}`;
+    // Create simple deterministic UUID from name hash
+    // Using a simple string hash since this runs in Node.js (Vercel function)
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = ((hash << 5) - hash) + name.charCodeAt(i);
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    const hashHex = Math.abs(hash).toString(16).padStart(8, '0');
+    const indexHex = index.toString(16).padStart(4, '0');
+    const partyId = `${hashHex}-0000-4000-8000-${indexHex}00000000`.slice(0, 36);
     
     // Get first non-empty email
     const email = row['Email address 0'] || row['Email address 1'] || 
