@@ -405,15 +405,21 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRejectRequisition = (reqId: string) => {
+  const handleRejectRequisition = async (reqId: string) => {
     const req = requisitions.find(r => r.id === reqId);
     if (!req || !currentUser) return;
 
     if (currentUser.role === 'Admin' || (currentUser.role === 'Manager' && currentUser.department === req.department)) {
-        setRequisitions(prev => prev.map(r => r.id === reqId ? { ...r, status: 'Rejected' } : r));
-        addToast(`Requisition ${reqId} rejected.`, 'info');
+      const { error } = await updateRequisitionStatus(reqId, 'Rejected');
+      if (error) {
+        addToast(`Failed to reject requisition: ${error.message}`, 'error');
+        return;
+      }
+      
+      refetchRequisitions();
+      addToast(`Requisition ${reqId} rejected.`, 'info');
     } else {
-        addToast('You do not have permission to reject this requisition.', 'error');
+      addToast('You do not have permission to reject this requisition.', 'error');
     }
   };
 
