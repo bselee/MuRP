@@ -68,8 +68,14 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
       });
       setCurrentStep('monitor');
       
-      // Initialize sync service and subscribe to status
+      // Initialize sync service with credentials and subscribe to status
       const syncService = getFinaleSyncService();
+      syncService.setCredentials(
+        finaleApiKey,
+        finaleApiSecret,
+        finaleAccountPath,
+        'https://app.finaleinventory.com'
+      );
       const unsubscribe = syncService.onStatusChange(setSyncStatus);
       setSyncStatus(syncService.getStatus());
       
@@ -110,6 +116,15 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
         localStorage.setItem('finale_api_key', credentials.apiKey);
         localStorage.setItem('finale_api_secret', credentials.apiSecret);
         localStorage.setItem('finale_account_path', credentials.accountPath);
+        
+        // Configure sync service with credentials
+        const syncService = getFinaleSyncService();
+        syncService.setCredentials(
+          credentials.apiKey,
+          credentials.apiSecret,
+          credentials.accountPath,
+          'https://app.finaleinventory.com'
+        );
         
         setIsConfigured(true);
       } else {

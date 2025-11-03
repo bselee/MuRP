@@ -126,7 +126,7 @@ export interface FinalePurchaseOrder {
 // ============================================================================
 
 export class FinaleSyncService {
-  private client: FinaleBasicAuthClient;
+  private client: FinaleBasicAuthClient | null;
   private config: SyncConfig;
   private status: SyncStatus;
   private rateLimiter: RateLimiter;
@@ -135,8 +135,8 @@ export class FinaleSyncService {
   private statusListeners: Set<(status: SyncStatus) => void>;
 
   constructor(config?: Partial<SyncConfig>) {
-    // Initialize Finale client
-    this.client = new FinaleBasicAuthClient();
+    // Don't initialize Finale client yet - will be set via setCredentials()
+    this.client = null;
 
     // Default configuration
     this.config = {
@@ -192,6 +192,26 @@ export class FinaleSyncService {
   // ==========================================================================
   // PUBLIC API
   // ==========================================================================
+
+  /**
+   * Set Finale API credentials
+   */
+  setCredentials(apiKey: string, apiSecret: string, accountPath: string, baseUrl?: string): void {
+    this.client = new FinaleBasicAuthClient({
+      apiKey,
+      apiSecret,
+      accountPath,
+      baseUrl: baseUrl || 'https://app.finaleinventory.com',
+    });
+    console.log('[FinaleSyncService] Credentials configured');
+  }
+
+  /**
+   * Check if credentials are configured
+   */
+  isConfigured(): boolean {
+    return this.client !== null;
+  }
 
   /**
    * Get current sync status
@@ -263,6 +283,10 @@ export class FinaleSyncService {
    * Manually trigger a full sync
    */
   async syncAll(): Promise<void> {
+    if (!this.client) {
+      throw new Error('Finale API credentials not configured. Call setCredentials() first.');
+    }
+
     if (this.status.isRunning) {
       console.warn('[FinaleSyncService] Sync already in progress');
       return;
@@ -328,6 +352,10 @@ export class FinaleSyncService {
    * Sync vendors from Finale
    */
   async syncVendors(): Promise<Vendor[]> {
+    if (!this.client) {
+      throw new Error('Finale API credentials not configured. Call setCredentials() first.');
+    }
+
     console.log('[FinaleSyncService] Syncing vendors...');
 
     this.updateProgress({
@@ -394,6 +422,10 @@ export class FinaleSyncService {
     inventory: InventoryItem[];
     boms: BillOfMaterials[];
   }> {
+    if (!this.client) {
+      throw new Error('Finale API credentials not configured. Call setCredentials() first.');
+    }
+
     console.log('[FinaleSyncService] Syncing inventory...');
 
     this.updateProgress({
@@ -482,6 +514,10 @@ export class FinaleSyncService {
    * Sync purchase orders from Finale
    */
   async syncPurchaseOrders(): Promise<PurchaseOrder[]> {
+    if (!this.client) {
+      throw new Error('Finale API credentials not configured. Call setCredentials() first.');
+    }
+
     console.log('[FinaleSyncService] Syncing purchase orders...');
 
     this.updateProgress({
@@ -567,6 +603,13 @@ export class FinaleSyncService {
     message: string;
     facilities?: any[];
   }> {
+    if (!this.client) {
+      return {
+        success: false,
+        message: 'Finale API credentials not configured',
+      };
+    }
+
     try {
       return await this.client.testConnection();
     } catch (error) {
