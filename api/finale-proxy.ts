@@ -30,6 +30,13 @@ async function finaleGet(config: FinaleConfig, endpoint: string) {
   const authHeader = createAuthHeader(config.apiKey, config.apiSecret);
 
   console.log(`[Finale Proxy] GET ${url}`);
+  console.log(`[Finale Proxy] Endpoint: ${endpoint}`);
+  console.log(`[Finale Proxy] Config:`, {
+    baseUrl: config.baseUrl,
+    accountPath: config.accountPath,
+    hasApiKey: !!config.apiKey,
+    hasApiSecret: !!config.apiSecret,
+  });
 
   const response = await fetch(url, {
     method: 'GET',
@@ -40,8 +47,11 @@ async function finaleGet(config: FinaleConfig, endpoint: string) {
     },
   });
 
+  console.log(`[Finale Proxy] Response status: ${response.status}`);
+
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`[Finale Proxy] Error response:`, errorText);
     throw new Error(
       `Finale API error (${response.status}): ${response.statusText}\n${errorText}`
     );
