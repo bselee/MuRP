@@ -123,8 +123,7 @@ const Settings: React.FC<SettingsProps> = ({
             <h2 className="text-xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4">API & Integrations</h2>
             <div className="space-y-6">
 
-              {/* Finale Inventory Integration - Using new setup panel instead */}
-              <FinaleSetupPanel addToast={addToast} />
+              {/* Finale Inventory Integration - See "Finale Setup" tab for configuration */}
 
               {/* Our API Credentials (Inbound) */}
               <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
