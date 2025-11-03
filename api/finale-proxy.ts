@@ -95,16 +95,34 @@ async function getPurchaseOrders(config: FinaleConfig, limit = 100, offset = 0) 
  * Main API handler
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { action, config, ...params } = req.body;
+    // Log request for debugging
+    console.log('[Finale Proxy] Received request:', {
+      method: req.method,
+      hasBody: !!req.body,
+      bodyKeys: req.body ? Object.keys(req.body) : [],
+    });
+
+    const { action, config, ...params } = req.body || {};
 
     // Validate config
     if (!config || !config.apiKey || !config.apiSecret || !config.accountPath) {
+      console.error('[Finale Proxy] Missing config:', { hasConfig: !!config, config });
       return res.status(400).json({
         error: 'Missing required configuration: apiKey, apiSecret, accountPath',
       });
