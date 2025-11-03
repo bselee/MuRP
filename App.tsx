@@ -20,15 +20,24 @@ import ArtworkPage from './pages/Artwork';
 import NewUserSetup from './pages/NewUserSetup';
 import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
+import {
+  useSupabaseInventory,
+  useSupabaseVendors,
+  useSupabaseBOMs,
+  useSupabasePurchaseOrders,
+  useSupabaseBuildOrders,
+  useSupabaseRequisitions,
+  createPurchaseOrder,
+  updateInventoryStock,
+  createBuildOrder,
+  updateBuildOrderStatus,
+  updateBOM,
+  createRequisition,
+  updateRequisitionStatus,
+} from './hooks/useSupabaseData';
 import { 
-    mockBOMs, 
-    mockInventory, 
-    mockVendors, 
-    mockPurchaseOrders, 
     mockHistoricalSales, 
-    mockBuildOrders,
     mockUsers,
-    mockInternalRequisitions,
     mockWatchlist,
     defaultAiConfig,
     mockArtworkFolders,
@@ -62,13 +71,16 @@ export type ToastInfo = {
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = usePersistentState<User | null>('currentUser', null);
 
-  const [boms, setBoms] = usePersistentState<BillOfMaterials[]>('boms', mockBOMs);
-  const [inventory, setInventory] = usePersistentState<InventoryItem[]>('inventory', mockInventory);
-  const [vendors] = usePersistentState<Vendor[]>('vendors', mockVendors);
-  const [purchaseOrders, setPurchaseOrders] = usePersistentState<PurchaseOrder[]>('purchaseOrders', mockPurchaseOrders);
+  // Fetch data from Supabase with real-time updates
+  const { data: boms, refetch: refetchBoms } = useSupabaseBOMs();
+  const { data: inventory, refetch: refetchInventory } = useSupabaseInventory();
+  const { data: vendors } = useSupabaseVendors();
+  const { data: purchaseOrders, refetch: refetchPurchaseOrders } = useSupabasePurchaseOrders();
+  const { data: buildOrders, refetch: refetchBuildOrders } = useSupabaseBuildOrders();
+  const { data: requisitions, refetch: refetchRequisitions } = useSupabaseRequisitions();
+  
+  // Keep these in local state as they're not in Supabase yet
   const [historicalSales] = usePersistentState<HistoricalSale[]>('historicalSales', mockHistoricalSales);
-  const [buildOrders, setBuildOrders] = usePersistentState<BuildOrder[]>('buildOrders', mockBuildOrders);
-  const [requisitions, setRequisitions] = usePersistentState<InternalRequisition[]>('requisitions', mockInternalRequisitions);
   const [users, setUsers] = usePersistentState<User[]>('users', mockUsers);
   const [watchlist] = usePersistentState<WatchlistItem[]>('watchlist', mockWatchlist);
   const [aiConfig, setAiConfig] = usePersistentState<AiConfig>('aiConfig', defaultAiConfig);
@@ -112,7 +124,7 @@ const App: React.FC = () => {
     setCurrentUser(null);
   };
   
-  const handleCreatePo = (
+  const handleCreatePo = async (
     poDetails: Omit<PurchaseOrder, 'id' | 'status' | 'createdAt' | 'items'> & { items: { sku: string; name: string; quantity: number }[] }
   ) => {
     const { vendorId, items, expectedDate, notes, requisitionIds } = poDetails;
@@ -122,11 +134,10 @@ const App: React.FC = () => {
       return;
     }
 
-    const newPo: PurchaseOrder = {
-      id: `PO-${new Date().getFullYear()}-${(purchaseOrders.length + 1).toString().padStart(3, '0')}`,
+    // Create PO in Supabase
+    const { data: newPo, error } = await createPurchaseOrder({
       vendorId,
       status: 'Pending',
-      createdAt: new Date().toISOString(),
       items: items.map(item => ({
         ...item,
         price: Math.random() * 10 + 1 // Mock price for demo
@@ -134,26 +145,30 @@ const App: React.FC = () => {
       expectedDate,
       notes,
       requisitionIds,
-    };
-
-    setPurchaseOrders(prev => [newPo, ...prev]);
-
-    setInventory(prevInventory => {
-      const newInventory = [...prevInventory];
-      items.forEach(item => {
-        const itemIndex = newInventory.findIndex(invItem => invItem.sku === item.sku);
-        if (itemIndex !== -1) {
-          newInventory[itemIndex] = {
-            ...newInventory[itemIndex],
-            onOrder: newInventory[itemIndex].onOrder + item.quantity,
-          };
-        }
-      });
-      return newInventory;
     });
+
+    if (error || !newPo) {
+      addToast(`Failed to create PO: ${error?.message || 'Unknown error'}`, 'error');
+      return;
+    }
+
+    // Update inventory on_order quantities
+    await Promise.all(
+      items.map(item => updateInventoryStock(item.sku, 0, item.quantity))
+    );
     
+    // Update requisition statuses to 'Ordered'
     if (requisitionIds && requisitionIds.length > 0) {
-        setRequisitions(prevReqs => prevReqs.map(req => requisitionIds.includes(req.id) ? { ...req, status: 'Ordered' } : req));
+      await Promise.all(
+        requisitionIds.map(reqId => updateRequisitionStatus(reqId, 'Ordered'))
+      );
+    }
+
+    // Refetch data to get latest state
+    refetchPurchaseOrders();
+    refetchInventory();
+    if (requisitionIds && requisitionIds.length > 0) {
+      refetchRequisitions();
     }
 
     addToast(`Successfully created ${newPo.id} for ${vendor.name}.`, 'success');
@@ -170,109 +185,100 @@ const App: React.FC = () => {
   };
 
 
-  const handleCreateBuildOrder = (sku: string, name: string, quantity: number) => {
-    const newBuildOrder: BuildOrder = {
-      id: `BO-${new Date().getFullYear()}-${(buildOrders.length + 1).toString().padStart(3, '0')}`,
+  const handleCreateBuildOrder = async (sku: string, name: string, quantity: number) => {
+    const { data: newBuildOrder, error } = await createBuildOrder({
       finishedSku: sku,
       name,
       quantity,
       status: 'Pending',
-      createdAt: new Date().toISOString(),
-    };
-    setBuildOrders(prev => [newBuildOrder, ...prev]);
+    });
+
+    if (error || !newBuildOrder) {
+      addToast(`Failed to create build order: ${error?.message || 'Unknown error'}`, 'error');
+      return;
+    }
+
+    refetchBuildOrders();
     addToast(`Successfully created Build Order ${newBuildOrder.id} for ${quantity}x ${name}.`, 'success');
     setCurrentPage('Production');
   };
 
-  const handleCompleteBuildOrder = (buildOrderId: string) => {
-    let completedOrder: BuildOrder | undefined;
-    
-    setBuildOrders(prevOrders => {
-      const newOrders = [...prevOrders];
-      const orderIndex = newOrders.findIndex(bo => bo.id === buildOrderId);
-      if (orderIndex !== -1 && newOrders[orderIndex].status !== 'Completed') {
-        completedOrder = { ...newOrders[orderIndex], status: 'Completed' };
-        newOrders[orderIndex] = completedOrder;
-      }
-      return newOrders;
-    });
-
-    if (completedOrder) {
-      const bom = boms.find(b => b.finishedSku === completedOrder!.finishedSku);
-      if (!bom) {
-        addToast(`Could not complete ${completedOrder.id}: BOM not found.`, 'error');
-        return;
-      }
-
-      setInventory(prevInventory => {
-        const newInventory = [...prevInventory];
-        bom.components.forEach(component => {
-          const itemIndex = newInventory.findIndex(invItem => invItem.sku === component.sku);
-          if (itemIndex !== -1) {
-            newInventory[itemIndex] = {
-              ...newInventory[itemIndex],
-              stock: newInventory[itemIndex].stock - (component.quantity * completedOrder!.quantity),
-            };
-          }
-        });
-
-        const finishedGoodIndex = newInventory.findIndex(invItem => invItem.sku === completedOrder!.finishedSku);
-        if (finishedGoodIndex !== -1) {
-           newInventory[finishedGoodIndex] = {
-              ...newInventory[finishedGoodIndex],
-              stock: newInventory[finishedGoodIndex].stock + completedOrder!.quantity,
-            };
-        } else {
-            newInventory.push({
-                sku: completedOrder!.finishedSku,
-                name: completedOrder!.name,
-                category: 'Finished Goods',
-                stock: completedOrder!.quantity,
-                onOrder: 0,
-                reorderPoint: 0,
-                vendorId: 'N/A'
-            });
-        }
-        return newInventory;
-      });
-
-      addToast(`${completedOrder.id} marked as completed. Inventory updated.`, 'success');
+  const handleCompleteBuildOrder = async (buildOrderId: string) => {
+    const completedOrder = buildOrders.find(bo => bo.id === buildOrderId);
+    if (!completedOrder || completedOrder.status === 'Completed') {
+      return;
     }
+
+    const bom = boms.find(b => b.finishedSku === completedOrder.finishedSku);
+    if (!bom) {
+      addToast(`Could not complete ${completedOrder.id}: BOM not found.`, 'error');
+      return;
+    }
+
+    // Update build order status
+    const { error: statusError } = await updateBuildOrderStatus(buildOrderId, 'Completed');
+    if (statusError) {
+      addToast(`Failed to complete build order: ${statusError.message}`, 'error');
+      return;
+    }
+
+    // Deduct component quantities from inventory
+    await Promise.all(
+      bom.components.map(component =>
+        updateInventoryStock(component.sku, -(component.quantity * completedOrder.quantity), 0)
+      )
+    );
+
+    // Add finished goods to inventory
+    await updateInventoryStock(completedOrder.finishedSku, completedOrder.quantity, 0);
+
+    // Refetch data
+    refetchBuildOrders();
+    refetchInventory();
+
+    addToast(`${completedOrder.id} marked as completed. Inventory updated.`, 'success');
   };
 
-  const handleUpdateBom = (updatedBom: BillOfMaterials) => {
-    setBoms(prevBoms => {
-      const index = prevBoms.findIndex(b => b.id === updatedBom.id);
-      if (index === -1) return prevBoms;
-      const newBoms = [...prevBoms];
-      newBoms[index] = updatedBom;
-      return newBoms;
-    });
+  const handleUpdateBom = async (updatedBom: BillOfMaterials) => {
+    const { error } = await updateBOM(updatedBom);
+    if (error) {
+      addToast(`Failed to update BOM: ${error.message}`, 'error');
+      return;
+    }
+    
+    refetchBoms();
     addToast(`Successfully updated BOM for ${updatedBom.name}.`, 'success');
   };
 
-  const handleAddArtworkToBom = (finishedSku: string, fileName: string) => {
-    setBoms(prevBoms => {
-        const newBoms = [...prevBoms];
-        const bomIndex = newBoms.findIndex(b => b.finishedSku === finishedSku);
-        if (bomIndex !== -1) {
-            const bomToUpdate = newBoms[bomIndex];
-            const highestRevision = bomToUpdate.artwork.reduce((max, art) => Math.max(max, art.revision), 0);
-            
-            const newArtwork: Artwork = {
-                id: `art-${Date.now()}`,
-                fileName,
-                revision: highestRevision + 1,
-                url: `/art/${fileName.replace(/\s+/g, '-').toLowerCase()}-v${highestRevision + 1}.pdf`, // Mock URL
-            };
-            
-            bomToUpdate.artwork.push(newArtwork);
-            addToast(`Added artwork '${fileName}' (Rev ${newArtwork.revision}) to ${bomToUpdate.name}.`, 'success');
-        } else {
-            addToast(`Could not add artwork: BOM with SKU ${finishedSku} not found.`, 'error');
-        }
-        return newBoms;
-    });
+  const handleAddArtworkToBom = async (finishedSku: string, fileName: string) => {
+    const bomToUpdate = boms.find(b => b.finishedSku === finishedSku);
+    if (!bomToUpdate) {
+      addToast(`Could not add artwork: BOM with SKU ${finishedSku} not found.`, 'error');
+      return;
+    }
+
+    const highestRevision = bomToUpdate.artwork.reduce((max, art) => Math.max(max, art.revision), 0);
+    
+    const newArtwork: Artwork = {
+      id: `art-${Date.now()}`,
+      fileName,
+      revision: highestRevision + 1,
+      url: `/art/${fileName.replace(/\s+/g, '-').toLowerCase()}-v${highestRevision + 1}.pdf`, // Mock URL
+    };
+    
+    const updatedBom = {
+      ...bomToUpdate,
+      artwork: [...bomToUpdate.artwork, newArtwork],
+    };
+
+    const { error } = await updateBOM(updatedBom);
+    if (error) {
+      addToast(`Failed to add artwork: ${error.message}`, 'error');
+      return;
+    }
+
+    refetchBoms();
+    addToast(`Added artwork '${fileName}' (Rev ${newArtwork.revision}) to ${bomToUpdate.name}.`, 'success');
     setCurrentPage('Artwork');
   };
 
@@ -318,21 +324,37 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateArtwork = (artworkId: string, bomId: string, updates: Partial<Artwork>) => {
-    setBoms(prevBoms => {
-        const newBoms = JSON.parse(JSON.stringify(prevBoms)); // Deep copy
-        const bomIndex = newBoms.findIndex((b: BillOfMaterials) => b.id === bomId);
-        if (bomIndex !== -1) {
-            const artworkIndex = newBoms[bomIndex].artwork.findIndex((a: Artwork) => a.id === artworkId);
-            if (artworkIndex !== -1) {
-                newBoms[bomIndex].artwork[artworkIndex] = {
-                    ...newBoms[bomIndex].artwork[artworkIndex],
-                    ...updates,
-                };
-            }
-        }
-        return newBoms;
-    });
+  const handleUpdateArtwork = async (artworkId: string, bomId: string, updates: Partial<Artwork>) => {
+    const bomToUpdate = boms.find(b => b.id === bomId);
+    if (!bomToUpdate) {
+      addToast('BOM not found.', 'error');
+      return;
+    }
+
+    const artworkIndex = bomToUpdate.artwork.findIndex(a => a.id === artworkId);
+    if (artworkIndex === -1) {
+      addToast('Artwork not found.', 'error');
+      return;
+    }
+
+    const updatedArtwork = [...bomToUpdate.artwork];
+    updatedArtwork[artworkIndex] = {
+      ...updatedArtwork[artworkIndex],
+      ...updates,
+    };
+
+    const updatedBom = {
+      ...bomToUpdate,
+      artwork: updatedArtwork,
+    };
+
+    const { error } = await updateBOM(updatedBom);
+    if (error) {
+      addToast(`Failed to update artwork: ${error.message}`, 'error');
+      return;
+    }
+
+    refetchBoms();
     addToast('Artwork updated.', 'success');
   };
   
@@ -342,17 +364,21 @@ const App: React.FC = () => {
     addToast(`Folder "${name}" created successfully.`, 'success');
   };
 
-  const handleCreateRequisition = (items: RequisitionItem[], source: 'Manual' | 'System' = 'Manual') => {
-      const newReq: InternalRequisition = {
-        id: `REQ-${new Date().getFullYear()}-${(requisitions.length + 1).toString().padStart(3, '0')}`,
-        requesterId: source === 'Manual' ? currentUser!.id : null,
-        department: source === 'Manual' ? currentUser!.department : 'Purchasing',
-        source,
-        createdAt: new Date().toISOString(),
-        status: 'Pending',
-        items,
-    };
-    setRequisitions(prev => [newReq, ...prev]);
+  const handleCreateRequisition = async (items: RequisitionItem[], source: 'Manual' | 'System' = 'Manual') => {
+    const { data: newReq, error } = await createRequisition({
+      requesterId: source === 'Manual' ? currentUser!.id : null,
+      department: source === 'Manual' ? currentUser!.department : 'Purchasing',
+      source,
+      status: 'Pending',
+      items,
+    });
+
+    if (error || !newReq) {
+      addToast(`Failed to create requisition: ${error?.message || 'Unknown error'}`, 'error');
+      return;
+    }
+
+    refetchRequisitions();
     
     if (source === 'System') {
       addToast(`⚡ AI-Generated Requisition ${newReq.id} created! Auto-generated based on demand forecast. Pending approval.`, 'success');
@@ -361,15 +387,21 @@ const App: React.FC = () => {
     }
   };
 
-  const handleApproveRequisition = (reqId: string) => {
+  const handleApproveRequisition = async (reqId: string) => {
     const req = requisitions.find(r => r.id === reqId);
     if (!req || !currentUser) return;
 
     if (currentUser.role === 'Admin' || (currentUser.role === 'Manager' && currentUser.department === req.department)) {
-        setRequisitions(prev => prev.map(r => r.id === reqId ? { ...r, status: 'Approved' } : r));
-        addToast(`Requisition ${reqId} approved.`, 'success');
+      const { error } = await updateRequisitionStatus(reqId, 'Approved');
+      if (error) {
+        addToast(`Failed to approve requisition: ${error.message}`, 'error');
+        return;
+      }
+      
+      refetchRequisitions();
+      addToast(`Requisition ${reqId} approved.`, 'success');
     } else {
-        addToast('You do not have permission to approve this requisition.', 'error');
+      addToast('You do not have permission to approve this requisition.', 'error');
     }
   };
 
