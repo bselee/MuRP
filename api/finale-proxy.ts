@@ -61,6 +61,52 @@ async function finaleGet(config: FinaleConfig, endpoint: string) {
 }
 
 /**
+ * Make a GraphQL request to Finale API
+ */
+async function finaleGraphQL(config: FinaleConfig, query: string, variables?: Record<string, any>) {
+  const url = `${config.baseUrl}/${config.accountPath}/api/graphql`;
+  const authHeader = createAuthHeader(config.apiKey, config.apiSecret);
+
+  console.log(`[Finale Proxy] GraphQL ${url}`);
+  console.log(`[Finale Proxy] Query:`, query.substring(0, 100) + '...');
+  if (variables) {
+    console.log(`[Finale Proxy] Variables:`, JSON.stringify(variables));
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': authHeader,
+      'Content-Type': 'application/json',
+      'Connection': 'keep-alive',
+    },
+    body: JSON.stringify({
+      query,
+      variables: variables || {},
+    }),
+  });
+
+  console.log(`[Finale Proxy] GraphQL Response status: ${response.status}`);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[Finale Proxy] GraphQL Error response:`, errorText);
+    throw new Error(
+      `Finale GraphQL API error (${response.status}): ${response.statusText}\n${errorText}`
+    );
+  }
+
+  const result = await response.json();
+  
+  if (result.errors) {
+    console.error(`[Finale Proxy] GraphQL Errors:`, result.errors);
+    throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
+  }
+
+  return result.data;
+}
+
+/**
  * Test connection to Finale API
  */
 async function testConnection(config: FinaleConfig) {
@@ -88,34 +134,51 @@ async function getProducts(config: FinaleConfig, limit = 100, offset = 0) {
 }
 
 /**
- * Get suppliers (vendors)
- * Try multiple endpoint variations since /partyGroup returns 404
+ * Get suppliers (vendors) using GraphQL
  */
 async function getSuppliers(config: FinaleConfig) {
-  const endpoints = [
-    '/party?role=SUPPLIER',           // Try singular form
-    '/partyGroup?role=SUPPLIER',      // Original attempt
-    '/organization?role=SUPPLIER',     // Alternative naming
-    '/supplier',                       // Direct supplier endpoint
-    '/vendors',                        // Alternative plural
-  ];
-
-  let lastError: Error | null = null;
-  
-  // Try each endpoint until one works
-  for (const endpoint of endpoints) {
-    try {
-      console.log(`[Finale Proxy] Trying supplier endpoint: ${endpoint}`);
-      return await finaleGet(config, endpoint);
-    } catch (error) {
-      lastError = error as Error;
-      console.log(`[Finale Proxy] Endpoint ${endpoint} failed:`, error instanceof Error ? error.message : String(error));
-      continue;
+  const query = `
+    query GetSuppliers {
+      party(filter: {organizationRoleListContains: "SUPPLIER"}) {
+        totalCount
+        edges {
+          node {
+            id
+            name
+            organizationRoleList
+            contactList {
+              attrName
+              attrValue
+            }
+            addressList {
+              city
+              country
+              line1
+              line2
+              postalCode
+              stateOrProvince
+            }
+            userFieldDataList {
+              attrName
+              attrValue
+            }
+          }
+        }
+      }
     }
+  `;
+
+  console.log(`[Finale Proxy] Fetching suppliers via GraphQL`);
+  const data = await finaleGraphQL(config, query);
+  
+  // Transform GraphQL response to match expected format
+  if (data.party && data.party.edges) {
+    const suppliers = data.party.edges.map((edge: any) => edge.node);
+    console.log(`[Finale Proxy] Found ${suppliers.length} suppliers`);
+    return suppliers;
   }
   
-  // If all endpoints fail, throw the last error
-  throw new Error(`All supplier endpoints failed. Last error: ${lastError?.message || 'Unknown'}`);
+  return [];
 }
 
 /**
