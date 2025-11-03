@@ -310,11 +310,16 @@ export class FinaleSyncService {
       // Sync vendors first (needed for inventory supplier references)
       await this.syncVendors();
 
+      // TODO: Inventory and PO sync require REST API or CSV reports
+      // Skipping for now until REST endpoints work or CSV reports configured
+      console.log('[FinaleSyncService] Skipping inventory sync (REST API unavailable)');
+      console.log('[FinaleSyncService] Skipping purchase order sync (REST API unavailable)');
+
       // Then inventory
-      await this.syncInventory();
+      // await this.syncInventory();
 
       // Finally purchase orders
-      await this.syncPurchaseOrders();
+      // await this.syncPurchaseOrders();
 
       const duration = Date.now() - startTime;
 
@@ -454,6 +459,12 @@ export class FinaleSyncService {
             );
           });
         }, 'finale-sync');
+
+        // Handle case where API returns non-array (error object, etc.)
+        if (!Array.isArray(rawProducts)) {
+          console.error('[FinaleSyncService] getProducts() returned non-array:', rawProducts);
+          throw new Error('Product sync not yet supported - REST /product endpoint unavailable');
+        }
 
         allRawProducts.push(...rawProducts);
         offset += this.config.batchSize;
