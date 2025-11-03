@@ -88,10 +88,34 @@ async function getProducts(config: FinaleConfig, limit = 100, offset = 0) {
 }
 
 /**
- * Get suppliers
+ * Get suppliers (vendors)
+ * Try multiple endpoint variations since /partyGroup returns 404
  */
 async function getSuppliers(config: FinaleConfig) {
-  return finaleGet(config, '/partyGroup?role=SUPPLIER');
+  const endpoints = [
+    '/party?role=SUPPLIER',           // Try singular form
+    '/partyGroup?role=SUPPLIER',      // Original attempt
+    '/organization?role=SUPPLIER',     // Alternative naming
+    '/supplier',                       // Direct supplier endpoint
+    '/vendors',                        // Alternative plural
+  ];
+
+  let lastError: Error | null = null;
+  
+  // Try each endpoint until one works
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`[Finale Proxy] Trying supplier endpoint: ${endpoint}`);
+      return await finaleGet(config, endpoint);
+    } catch (error) {
+      lastError = error as Error;
+      console.log(`[Finale Proxy] Endpoint ${endpoint} failed:`, error instanceof Error ? error.message : String(error));
+      continue;
+    }
+  }
+  
+  // If all endpoints fail, throw the last error
+  throw new Error(`All supplier endpoints failed. Last error: ${lastError?.message || 'Unknown'}`);
 }
 
 /**
