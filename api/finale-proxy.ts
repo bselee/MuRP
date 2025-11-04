@@ -6,6 +6,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { transformVendorsBatch, deduplicateVendors } from '../lib/schema/transformers';
 
 interface FinaleConfig {
   apiKey: string;
@@ -283,9 +284,6 @@ async function getSuppliers(config: FinaleConfig) {
   const rawSuppliers = parseCSV(csvText);
   console.log(`[Finale Proxy] Parsed ${rawSuppliers.length} raw suppliers from CSV`);
   console.log(`[Finale Proxy] CSV Headers:`, Object.keys(rawSuppliers[0] || {}));
-
-  // Use schema-based transformer for robust parsing
-  const { transformVendorsBatch, deduplicateVendors } = require('../lib/schema/transformers');
 
   // Transform all vendors using the new schema-based transformers
   const batchResult = transformVendorsBatch(rawSuppliers);
