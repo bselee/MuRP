@@ -196,8 +196,10 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
       setLoading(true);
       setError(null);
 
+      // Use vendor_details view for enhanced fields and computed columns
+      // This view includes email_count and has_complete_address computed fields
       const { data: vendors, error: fetchError } = await supabase
-        .from('vendors')
+        .from('vendor_details')
         .select('*')
         .order('name');
 

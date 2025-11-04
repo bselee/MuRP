@@ -1,12 +1,14 @@
 /**
  * Finale Inventory API Client - Basic Auth
- * 
+ *
  * Simple REST API client for Finale using HTTP Basic Authentication
  * with API Key and Secret credentials.
- * 
+ *
  * This is an alternative to the OAuth-based finaleIngestion.ts service
  * for accounts using API Key/Secret authentication.
  */
+
+import type { VendorParsed } from '../lib/schema/index';
 
 interface FinaleConfig {
   apiKey: string;
@@ -237,11 +239,22 @@ export class FinaleBasicAuthClient {
 
   /**
    * Get all suppliers
+   *
+   * **IMPORTANT**: Return type differs based on execution context:
+   * - Server mode: Returns `FinaleSupplier[]` (raw API response)
+   * - Browser mode: Returns `VendorParsed[]` (schema-validated vendors from proxy)
+   *
+   * The browser mode proxy applies the schema transformation pipeline:
+   * CSV/API → VendorRaw → VendorParsed (validated, normalized)
+   *
+   * @returns FinaleSupplier[] in server mode, VendorParsed[] in browser mode
    */
-  async getSuppliers(): Promise<FinaleSupplier[]> {
+  async getSuppliers(): Promise<FinaleSupplier[] | VendorParsed[]> {
     if (this.isBrowser) {
-      return this.callProxy<FinaleSupplier[]>('getSuppliers');
+      // Browser mode: Returns schema-parsed vendors from proxy
+      return this.callProxy<VendorParsed[]>('getSuppliers');
     }
+    // Server mode: Returns raw Finale API response
     return this.get<FinaleSupplier[]>('/partyGroup?role=SUPPLIER');
   }
 
