@@ -282,11 +282,20 @@ async function getSuppliers(config: FinaleConfig) {
 
   const rawSuppliers = parseCSV(csvText);
   console.log(`[Finale Proxy] Parsed ${rawSuppliers.length} raw suppliers from CSV`);
-  console.log(`[Finale Proxy] CSV Headers:`, Object.keys(rawSuppliers[0] || {}));
-
-  // Log sample raw supplier
+  
   if (rawSuppliers.length > 0) {
-    console.log(`[Finale Proxy] Sample raw supplier:`, Object.keys(rawSuppliers[0]));
+    console.log(`[Finale Proxy] CSV Headers (${Object.keys(rawSuppliers[0]).length} columns):`, Object.keys(rawSuppliers[0]));
+    console.log(`[Finale Proxy] Sample raw supplier (first 3 fields):`, {
+      Name: rawSuppliers[0]['Name'],
+      'Email address 0': rawSuppliers[0]['Email address 0'],
+      'Phone number 0': rawSuppliers[0]['Phone number 0'],
+    });
+    // Log a few more to see patterns
+    if (rawSuppliers.length > 5) {
+      console.log(`[Finale Proxy] Row 2 Name:`, rawSuppliers[1]['Name']);
+      console.log(`[Finale Proxy] Row 3 Name:`, rawSuppliers[2]['Name']);
+      console.log(`[Finale Proxy] Row 6 Name:`, rawSuppliers[5]['Name']);
+    }
   }
 
   // Return raw data - transformation will happen in the frontend service

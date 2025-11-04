@@ -418,7 +418,10 @@ export class FinaleSyncService {
         console.log(`[FinaleSyncService] Transform results: ${batchResult.successful.length} success, ${batchResult.failed.length} failed`);
         
         if (batchResult.failed.length > 0) {
-          console.warn(`[FinaleSyncService] ${batchResult.failed.length} vendors failed transformation`);
+          console.warn(`[FinaleSyncService] ${batchResult.failed.length} vendors failed transformation:`);
+          batchResult.failed.slice(0, 5).forEach(failure => {
+            console.warn(`  - Row ${failure.index + 1}:`, failure.errors.join('; '));
+          });
         }
         
         // Deduplicate by name
