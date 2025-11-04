@@ -32,6 +32,8 @@ import {
   transformVendorParsedToDatabaseEnhanced,
   transformVendorsBatch,
   deduplicateVendors,
+  transformInventoryBatch,
+  deduplicateInventory,
 } from '../lib/schema/transformers';
 import type { InventoryItem, Vendor, PurchaseOrder, BillOfMaterials } from '../types';
 
@@ -315,16 +317,11 @@ export class FinaleSyncService {
       // Sync vendors first (needed for inventory supplier references)
       await this.syncVendors();
 
-      // TODO: Inventory and PO sync require REST API or CSV reports
-      // Skipping for now until REST endpoints work or CSV reports configured
-      console.log('[FinaleSyncService] Skipping inventory sync (REST API unavailable)');
+      // Then inventory (CSV-based)
+      await this.syncInventoryFromCSV();
+
+      // Purchase orders - still unavailable
       console.log('[FinaleSyncService] Skipping purchase order sync (REST API unavailable)');
-
-      // Then inventory
-      // await this.syncInventory();
-
-      // Finally purchase orders
-      // await this.syncPurchaseOrders();
 
       const duration = Date.now() - startTime;
 
@@ -455,7 +452,90 @@ export class FinaleSyncService {
   }
 
   /**
-   * Sync inventory from Finale
+   * Sync inventory from Finale CSV report (ACTIVE items in SHIPPING warehouse only)
+   */
+  async syncInventoryFromCSV(): Promise<InventoryItem[]> {
+    if (!this.client) {
+      throw new Error('Finale API credentials not configured. Call setCredentials() first.');
+    }
+
+    console.log('[FinaleSyncService] Syncing inventory from CSV...');
+
+    this.updateProgress({
+      phase: 'inventory',
+      current: 0,
+      total: 100,
+      percentage: 0,
+      message: 'Fetching inventory from Finale CSV report...',
+    });
+
+    try {
+      // Fetch inventory CSV data via API proxy
+      const rawInventory = await this.rateLimiter.schedule(async () => {
+        return await this.circuitBreaker.execute(async () => {
+          return await retryWithBackoff(
+            async () => await this.client.getInventory(),
+            {
+              maxAttempts: this.config.maxRetries,
+              baseDelayMs: this.config.retryDelayMs,
+            }
+          );
+        });
+      }, 'finale-sync-inventory');
+
+      console.log(`[FinaleSyncService] Fetched ${rawInventory.length} inventory items from Finale CSV`);
+
+      // Build vendor ID map for inventory transformation
+      const vendors = await this.getVendorsFromSupabase();
+      const vendorIdMap = new Map<string, string>();
+      vendors.forEach(v => {
+        if (v.name) {
+          vendorIdMap.set(v.name.toLowerCase(), v.id);
+        }
+      });
+      console.log(`[FinaleSyncService] Built vendor ID map with ${vendorIdMap.size} entries`);
+
+      // Transform using schema transformers (filters for ACTIVE + SHIPPING)
+      const batchResult = transformInventoryBatch(rawInventory, vendorIdMap);
+      
+      console.log(`[FinaleSyncService] Transform results: ${batchResult.successful.length} success, ${batchResult.failed.length} failed`);
+      
+      if (batchResult.failed.length > 0) {
+        console.warn(`[FinaleSyncService] ${batchResult.failed.length} inventory items failed transformation:`);
+        // Log first 5 failures for debugging
+        batchResult.failed.slice(0, 5).forEach(f => {
+          console.warn(`  - Row ${f.index + 1}: ${f.errors.join('; ')}`);
+        });
+      }
+
+      // Deduplicate by SKU
+      const uniqueInventory = deduplicateInventory(batchResult.successful);
+      console.log(`[FinaleSyncService] After deduplication: ${uniqueInventory.length} unique items`);
+
+      // Save to Supabase
+      console.log(`[FinaleSyncService] Saving ${uniqueInventory.length} inventory items to Supabase...`);
+      const savedItems = await this.saveInventoryToSupabase(uniqueInventory);
+
+      this.updateProgress({
+        phase: 'inventory',
+        current: 2,
+        total: 2,
+        percentage: 100,
+        message: `Synced ${savedItems.length} inventory items`,
+      });
+
+      this.status.totalItemsSynced += savedItems.length;
+      this.notifyListeners();
+
+      return savedItems;
+    } catch (error) {
+      this.handleError('sync-inventory-csv', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync inventory from Finale (Legacy REST API method - currently unavailable)
    */
   async syncInventory(): Promise<{
     inventory: InventoryItem[];
@@ -465,7 +545,7 @@ export class FinaleSyncService {
       throw new Error('Finale API credentials not configured. Call setCredentials() first.');
     }
 
-    console.log('[FinaleSyncService] Syncing inventory...');
+    console.log('[FinaleSyncService] Syncing inventory (REST API)...');
 
     this.updateProgress({
       phase: 'inventory',
@@ -905,46 +985,52 @@ export class FinaleSyncService {
   }
 
   /**
-   * Save inventory items to Supabase
+   * Save inventory items to Supabase (enhanced schema with migration 003 fields)
    */
-  private async saveInventoryToSupabase(items: InventoryItem[]): Promise<void> {
-    if (items.length === 0) {
+  private async saveInventoryToSupabase(parsedItems: any[]): Promise<InventoryItem[]> {
+    if (parsedItems.length === 0) {
       console.log('[FinaleSyncService] No inventory items to save');
-      return;
+      return [];
     }
 
-    console.log(`[FinaleSyncService] Saving ${items.length} inventory items to Supabase...`);
+    console.log(`[FinaleSyncService] Saving ${parsedItems.length} inventory items to Supabase...`);
 
-    // Validate items
-    const validItems = items.filter(item => {
-      const validation = validateInventoryItem(item);
-      if (!validation.valid) {
-        console.warn(`[FinaleSyncService] Invalid item ${item.sku}:`, validation.errors);
-      }
-      return validation.valid;
-    });
-
-    if (validItems.length === 0) {
-      throw new Error('No valid inventory items to save');
-    }
-
-    // Prepare inventory data for Supabase
-    const inventoryInserts = validItems.map(item => ({
-      sku: item.sku,
-      name: item.name,
-      category: item.category,
-      stock: item.stock,
-      on_order: item.onOrder,
-      reorder_point: item.reorderPoint,
-      vendor_id: item.vendorId,
-      moq: item.moq,
+    // Transform parsed items to database format
+    const dbItems = parsedItems.map(parsed => ({
+      sku: parsed.sku,
+      name: parsed.name,
+      description: parsed.description || '',
+      status: parsed.status || 'active',
+      category: parsed.category || 'Uncategorized',
+      stock: parsed.stock || 0,
+      on_order: parsed.onOrder || 0,
+      reorder_point: parsed.reorderPoint || 10,
+      vendor_id: parsed.vendorId || null,
+      moq: parsed.moq || 1,
+      // Enhanced fields from migration 003
+      unit_cost: parsed.unitCost || 0,
+      unit_price: parsed.price || 0,
+      units_in_stock: parsed.stock || 0,
+      units_on_order: parsed.onOrder || 0,
+      units_reserved: parsed.reserved || 0,
+      reorder_variance: parsed.reorderVariance || 0,
+      qty_to_order: parsed.qtyToOrder || 0,
+      sales_velocity_consolidated: parsed.salesVelocity || 0,
+      warehouse_location: parsed.warehouseLocation || 'Shipping',
+      bin_location: parsed.binLocation || '',
+      supplier_sku: parsed.sku, // Use same SKU
+      last_purchase_date: parsed.lastPurchaseDate || null,
+      upc: parsed.barcode || '',
+      data_source: 'csv',
+      last_sync_at: new Date().toISOString(),
+      sync_status: 'synced',
       updated_at: new Date().toISOString(),
     }));
 
     // Upsert inventory items
     const { error } = await supabase
       .from('inventory_items')
-      .upsert(inventoryInserts as any, {
+      .upsert(dbItems as any, {
         onConflict: 'sku',
         ignoreDuplicates: false,
       });
@@ -953,7 +1039,19 @@ export class FinaleSyncService {
       throw new Error(`Failed to save inventory: ${error.message}`);
     }
 
-    console.log(`[FinaleSyncService] Successfully saved ${validItems.length} inventory items`);
+    console.log(`[FinaleSyncService] Successfully saved ${dbItems.length} inventory items`);
+
+    // Return as InventoryItem format for the caller
+    return dbItems.map(db => ({
+      sku: db.sku,
+      name: db.name,
+      category: db.category,
+      stock: db.stock,
+      onOrder: db.on_order,
+      reorderPoint: db.reorder_point,
+      vendorId: db.vendor_id || '',
+      moq: db.moq,
+    }));
   }
 
   /**
@@ -1006,6 +1104,30 @@ export class FinaleSyncService {
     }
 
     console.log(`[FinaleSyncService] Successfully saved ${validPOs.length} purchase orders`);
+  }
+
+  /**
+   * Get vendors from Supabase for building vendor ID map
+   */
+  private async getVendorsFromSupabase(): Promise<Vendor[]> {
+    const { data, error } = await supabase
+      .from('vendors')
+      .select('id, name');
+
+    if (error) {
+      console.error('[FinaleSyncService] Failed to fetch vendors from Supabase:', error);
+      throw new Error(`Failed to fetch vendors: ${error.message}`);
+    }
+
+    return (data || []).map(row => ({
+      id: row.id,
+      name: row.name,
+      contactEmails: [],
+      phone: '',
+      address: '',
+      website: '',
+      leadTimeDays: 0,
+    }));
   }
 
   /**

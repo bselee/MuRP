@@ -318,6 +318,73 @@ async function getSuppliers(config: FinaleConfig) {
 }
 
 /**
+ * Get inventory items from CSV report
+ * Returns raw CSV data for frontend transformation
+ */
+async function getInventory(config: FinaleConfig) {
+  const reportUrl = process.env.FINALE_INVENTORY_REPORT_URL;
+  
+  if (!reportUrl) {
+    throw new Error('FINALE_INVENTORY_REPORT_URL not configured in environment');
+  }
+
+  console.log(`[Finale Proxy] Fetching inventory CSV from report...`);
+
+  const response = await fetch(reportUrl, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`,
+      'Accept': 'text/csv',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[Finale Proxy] Inventory CSV fetch error:`, errorText);
+    throw new Error(`Failed to fetch inventory report (${response.status}): ${response.statusText}`);
+  }
+
+  const csvText = await response.text();
+  console.log(`[Finale Proxy] Inventory CSV data received: ${csvText.length} characters`);
+
+  const rawInventory = parseCSV(csvText);
+  console.log(`[Finale Proxy] Parsed ${rawInventory.length} raw inventory items from CSV`);
+  
+  // Filter out rows with empty SKU or Name (data quality)
+  const validInventory = rawInventory.filter(item => {
+    const sku = item['SKU'] || item['Code'] || item['sku'];
+    const name = item['Name'] || item['Product'] || item['name'];
+    const isValid = sku && 
+                    typeof sku === 'string' && 
+                    sku.trim().length > 0 &&
+                    !sku.trim().startsWith(',') &&
+                    name &&
+                    typeof name === 'string' &&
+                    name.trim().length > 0;
+    
+    if (!isValid) {
+      console.log(`[Finale Proxy] Skipping inventory row with invalid SKU/Name: SKU="${sku}", Name="${name}"`);
+    }
+    return isValid;
+  });
+  
+  console.log(`[Finale Proxy] ${validInventory.length} valid inventory items after filtering (removed ${rawInventory.length - validInventory.length} invalid)`);
+  
+  if (validInventory.length > 0) {
+    console.log(`[Finale Proxy] CSV Headers (${Object.keys(validInventory[0]).length} columns):`, Object.keys(validInventory[0]));
+    console.log(`[Finale Proxy] Sample inventory item:`, {
+      SKU: validInventory[0]['SKU'] || validInventory[0]['Code'],
+      Name: validInventory[0]['Name'] || validInventory[0]['Product'],
+      'In stock': validInventory[0]['In stock'] || validInventory[0]['Units In Stock'],
+      Location: validInventory[0]['Location'] || validInventory[0]['Warehouse'],
+    });
+  }
+
+  // Return filtered data - transformation will happen in the frontend service
+  return validInventory;
+}
+
+/**
  * Get purchase orders with pagination
  */
 async function getPurchaseOrders(config: FinaleConfig, limit = 100, offset = 0) {
@@ -384,6 +451,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       case 'getSuppliers':
         result = await getSuppliers(finaleConfig);
+        break;
+
+      case 'getInventory':
+        result = await getInventory(finaleConfig);
         break;
 
       case 'getPurchaseOrders':

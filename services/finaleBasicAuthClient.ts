@@ -257,6 +257,19 @@ export class FinaleBasicAuthClient {
   }
 
   /**
+   * Get inventory items from CSV report
+   * Returns raw CSV data for transformation in frontend
+   */
+  async getInventory(): Promise<Array<Record<string, any>>> {
+    if (this.isBrowser) {
+      // Browser mode: Call API proxy which fetches and parses CSV
+      return this.callProxy<Array<Record<string, any>>>('getInventory');
+    }
+    // Server mode would need direct CSV fetch (not typically used)
+    throw new Error('Inventory fetch in server mode not implemented - use browser mode');
+  }
+
+  /**
    * Get all purchase orders
    */
   async getPurchaseOrders(limit = 100, offset = 0): Promise<FinalePurchaseOrder[]> {

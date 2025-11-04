@@ -660,6 +660,20 @@ export function deduplicateVendors(vendors: VendorParsed[]): VendorParsed[] {
 }
 
 /**
+ * Deduplicate inventory items by SKU (keep last occurrence)
+ */
+export function deduplicateInventory(items: InventoryParsed[]): InventoryParsed[] {
+  const bySku = new Map<string, InventoryParsed>();
+
+  items.forEach(item => {
+    const key = item.sku.toUpperCase().trim();
+    bySku.set(key, item);
+  });
+
+  return Array.from(bySku.values());
+}
+
+/**
  * Map vendor names to IDs for inventory import
  */
 export function buildVendorNameToIdMap(vendors: VendorParsed[]): Map<string, string> {
