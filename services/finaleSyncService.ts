@@ -28,6 +28,7 @@ import {
   type FinaleSupplier,
   type FinalePurchaseOrder as FinalePOType,
 } from '../lib/finale/transformers';
+import { transformVendorParsedToDatabaseEnhanced } from '../lib/schema/transformers';
 import type { InventoryItem, Vendor, PurchaseOrder, BillOfMaterials } from '../types';
 
 // ============================================================================
@@ -790,9 +791,6 @@ export class FinaleSyncService {
 
     const dedupedVendors = Array.from(byName.values());
     console.log(`[FinaleSyncService] Deduped vendors count: ${dedupedVendors.length}`);
-
-    // Use enhanced transformer if vendor has parsed fields
-    const { transformVendorParsedToDatabaseEnhanced } = require('../lib/schema/transformers');
 
     // Partition: existing (by name) vs new (by name)
     const existingUpdates = dedupedVendors
