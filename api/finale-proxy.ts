@@ -283,24 +283,38 @@ async function getSuppliers(config: FinaleConfig) {
   const rawSuppliers = parseCSV(csvText);
   console.log(`[Finale Proxy] Parsed ${rawSuppliers.length} raw suppliers from CSV`);
   
-  if (rawSuppliers.length > 0) {
-    console.log(`[Finale Proxy] CSV Headers (${Object.keys(rawSuppliers[0]).length} columns):`, Object.keys(rawSuppliers[0]));
-    console.log(`[Finale Proxy] Sample raw supplier (first 3 fields):`, {
-      Name: rawSuppliers[0]['Name'],
-      'Email address 0': rawSuppliers[0]['Email address 0'],
-      'Phone number 0': rawSuppliers[0]['Phone number 0'],
-    });
-    // Log a few more to see patterns
-    if (rawSuppliers.length > 5) {
-      console.log(`[Finale Proxy] Row 2 Name:`, rawSuppliers[1]['Name']);
-      console.log(`[Finale Proxy] Row 3 Name:`, rawSuppliers[2]['Name']);
-      console.log(`[Finale Proxy] Row 6 Name:`, rawSuppliers[5]['Name']);
+  // Filter out rows with empty or invalid Name fields to prevent data shift issues
+  // Finale CSV sometimes has rows where Name is blank, causing address data to appear as name
+  const validSuppliers = rawSuppliers.filter(supplier => {
+    const name = supplier['Name'];
+    const isValid = name && 
+                    typeof name === 'string' && 
+                    name.trim().length > 0 &&
+                    !name.trim().startsWith(',') &&  // Not just address data
+                    !name.trim().startsWith('.') &&
+                    name.trim() !== '--' &&
+                    name.trim().toLowerCase() !== 'various';
+    
+    if (!isValid) {
+      console.log(`[Finale Proxy] Skipping row with invalid Name: "${name}" (likely empty in CSV)`);
     }
+    return isValid;
+  });
+  
+  console.log(`[Finale Proxy] ${validSuppliers.length} valid suppliers after filtering (removed ${rawSuppliers.length - validSuppliers.length} invalid)`);
+  
+  if (validSuppliers.length > 0) {
+    console.log(`[Finale Proxy] CSV Headers (${Object.keys(validSuppliers[0]).length} columns):`, Object.keys(validSuppliers[0]));
+    console.log(`[Finale Proxy] Sample valid supplier:`, {
+      Name: validSuppliers[0]['Name'],
+      'Email address 0': validSuppliers[0]['Email address 0'],
+      'Phone number 0': validSuppliers[0]['Phone number 0'],
+    });
   }
 
-  // Return raw data - transformation will happen in the frontend service
+  // Return filtered data - transformation will happen in the frontend service
   // This avoids dependency issues in the serverless function
-  return rawSuppliers;
+  return validSuppliers;
 }
 
 /**
