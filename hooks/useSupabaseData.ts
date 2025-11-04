@@ -208,10 +208,22 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
         id: vendor.id,
         name: vendor.name,
         contactEmails: vendor.contact_emails || [],
-        phone: '', // Column doesn't exist in DB yet
+        phone: vendor.phone || '',
         address: vendor.address || '',
-        website: '', // Column doesn't exist in DB yet
+        website: vendor.website || '',
         leadTimeDays: vendor.lead_time_days || 7,
+        // Enhanced address fields (from migration 002_enhance_vendor_schema)
+        addressLine1: vendor.address_line1 || '',
+        addressLine2: vendor.address_line2 || '',
+        city: vendor.city || '',
+        state: vendor.state || '',
+        postalCode: vendor.postal_code || '',
+        country: vendor.country || '',
+        // Additional fields
+        notes: vendor.notes || '',
+        dataSource: vendor.data_source || 'manual',
+        lastSyncAt: vendor.last_sync_at,
+        syncStatus: vendor.sync_status || 'synced',
       }));
 
       setData(transformed);

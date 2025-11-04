@@ -56,6 +56,18 @@ export interface Vendor {
     address: string;
     website: string;
     leadTimeDays: number;
+    // Enhanced address fields (from migration 002_enhance_vendor_schema)
+    addressLine1?: string;
+    addressLine2?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+    // Additional fields
+    notes?: string;
+    dataSource?: 'manual' | 'csv' | 'api';
+    lastSyncAt?: string;
+    syncStatus?: 'synced' | 'pending' | 'error';
 }
 
 export interface PurchaseOrderItem {
