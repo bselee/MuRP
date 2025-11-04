@@ -28,7 +28,11 @@ import {
   type FinaleSupplier,
   type FinalePurchaseOrder as FinalePOType,
 } from '../lib/finale/transformers';
-import { transformVendorParsedToDatabaseEnhanced } from '../lib/schema/transformers';
+import {
+  transformVendorParsedToDatabaseEnhanced,
+  transformVendorsBatch,
+  deduplicateVendors,
+} from '../lib/schema/transformers';
 import type { InventoryItem, Vendor, PurchaseOrder, BillOfMaterials } from '../types';
 
 // ============================================================================
@@ -397,15 +401,31 @@ export class FinaleSyncService {
       });
 
       // Transform to TGF MRP format
-      // If proxy already returned schema-parsed vendors (with enhanced fields), skip legacy transform
+      // Check what format the data is in
       let vendors: any[];
       const first = Array.isArray(rawVendors) && rawVendors.length > 0 ? rawVendors[0] : null;
       const looksSchemaParsed = !!first && (('addressLine1' in first) || ('postalCode' in first) || ('source' in first));
+      const looksRawCSV = !!first && (('Name' in first) || ('Email Address 0' in first));
 
       if (looksSchemaParsed) {
+        // Already transformed by proxy (old behavior)
         vendors = rawVendors as any[];
-        console.log(`[FinaleSyncService] Detected schema-parsed vendors from proxy; skipping legacy transform`);
+        console.log(`[FinaleSyncService] Detected schema-parsed vendors from proxy; skipping transform`);
+      } else if (looksRawCSV) {
+        // Raw CSV data from proxy - apply schema transformers here
+        console.log(`[FinaleSyncService] Detected raw CSV data; applying schema transformers`);
+        const batchResult = transformVendorsBatch(rawVendors);
+        console.log(`[FinaleSyncService] Transform results: ${batchResult.successful.length} success, ${batchResult.failed.length} failed`);
+        
+        if (batchResult.failed.length > 0) {
+          console.warn(`[FinaleSyncService] ${batchResult.failed.length} vendors failed transformation`);
+        }
+        
+        // Deduplicate by name
+        vendors = deduplicateVendors(batchResult.successful);
+        console.log(`[FinaleSyncService] After deduplication: ${vendors.length} unique vendors`);
       } else {
+        // Legacy Finale API format
         vendors = transformFinaleSuppliersToVendors(rawVendors as FinaleSupplier[]);
         console.log(`[FinaleSyncService] Transformed ${vendors.length} vendors using legacy transformer`);
       }

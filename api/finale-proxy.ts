@@ -6,7 +6,6 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { transformVendorsBatch, deduplicateVendors } from '../lib/schema/transformers';
 
 interface FinaleConfig {
   apiKey: string;
@@ -285,58 +284,14 @@ async function getSuppliers(config: FinaleConfig) {
   console.log(`[Finale Proxy] Parsed ${rawSuppliers.length} raw suppliers from CSV`);
   console.log(`[Finale Proxy] CSV Headers:`, Object.keys(rawSuppliers[0] || {}));
 
-  // Transform all vendors using the new schema-based transformers
-  const batchResult = transformVendorsBatch(rawSuppliers);
-
-  console.log(`[Finale Proxy] Transformation results:`, {
-    successful: batchResult.successful.length,
-    failed: batchResult.failed.length,
-    warnings: batchResult.totalWarnings.length,
-  });
-
-  // Log failed transformations for debugging
-  if (batchResult.failed.length > 0) {
-    console.warn(`[Finale Proxy] Failed to transform ${batchResult.failed.length} vendors:`);
-    batchResult.failed.slice(0, 5).forEach(failure => {
-      console.warn(`  Row ${failure.index + 1}:`, failure.errors.join('; '));
-    });
+  // Log sample raw supplier
+  if (rawSuppliers.length > 0) {
+    console.log(`[Finale Proxy] Sample raw supplier:`, Object.keys(rawSuppliers[0]));
   }
 
-  // Log warnings
-  if (batchResult.totalWarnings.length > 0) {
-    console.warn(`[Finale Proxy] Transformation warnings (first 10):`,
-      batchResult.totalWarnings.slice(0, 10));
-  }
-
-  // Deduplicate by name
-  const dedupedVendors = deduplicateVendors(batchResult.successful);
-  console.log(`[Finale Proxy] After deduplication: ${dedupedVendors.length} unique vendors`);
-
-  // Log sample vendor with all fields
-  if (dedupedVendors.length > 0) {
-    const sample = dedupedVendors[0];
-    console.log(`[Finale Proxy] Sample vendor (with all fields):`, {
-      id: sample.id,
-      name: sample.name,
-      emails: sample.contactEmails,
-      phone: sample.phone,
-      address: {
-        line1: sample.addressLine1,
-        city: sample.city,
-        state: sample.state,
-        zip: sample.postalCode,
-        country: sample.country,
-        display: sample.addressDisplay,
-      },
-      website: sample.website,
-      leadTime: sample.leadTimeDays,
-      notes: sample.notes?.substring(0, 50) || '',
-      source: sample.source,
-    });
-  }
-
-  // Return in the format expected by finaleSyncService (VendorParsed objects)
-  return dedupedVendors;
+  // Return raw data - transformation will happen in the frontend service
+  // This avoids dependency issues in the serverless function
+  return rawSuppliers;
 }
 
 /**
