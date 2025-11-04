@@ -242,26 +242,27 @@ function parseCSV(csvText: string): any[] {
 /**
  * Get suppliers from Finale CSV report
  * Uses pre-configured report URL from environment
+ * NOW USING SCHEMA-BASED TRANSFORMERS FOR ROBUST PARSING
  */
 async function getSuppliers(config: FinaleConfig) {
   console.log(`[Finale Proxy] Fetching suppliers from CSV report`);
-  
+
   // Get report URL from environment
   let reportUrl = process.env.FINALE_VENDORS_REPORT_URL;
   if (!reportUrl) {
     throw new Error('FINALE_VENDORS_REPORT_URL not configured');
   }
-  
+
   // Fix URL: Replace pivotTableStream with pivotTable for direct API access
   // Per Finale docs: https://support.finaleinventory.com/hc/en-us/articles/115001687154
   reportUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
-  
+
   console.log(`[Finale Proxy] Report URL configured: ${reportUrl.substring(0, 80)}...`);
-  
+
   // Fetch the CSV report with Basic Auth
   const authHeader = createAuthHeader(config.apiKey, config.apiSecret);
   console.log(`[Finale Proxy] Fetching CSV with auth header`);
-  
+
   const response = await fetch(reportUrl, {
     method: 'GET',
     headers: {
@@ -269,154 +270,75 @@ async function getSuppliers(config: FinaleConfig) {
       'Accept': 'text/csv, text/plain, */*',
     },
   });
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`[Finale Proxy] CSV fetch error:`, errorText);
     throw new Error(`Failed to fetch vendor report (${response.status}): ${response.statusText}`);
   }
-  
+
   const csvText = await response.text();
   console.log(`[Finale Proxy] CSV data received: ${csvText.length} characters`);
-  
+
   const rawSuppliers = parseCSV(csvText);
   console.log(`[Finale Proxy] Parsed ${rawSuppliers.length} raw suppliers from CSV`);
-  
-  // Skip first row if it has placeholder name
-  const validSuppliers = rawSuppliers.filter((row: any, index: number) => {
-    const name = row['Name'] || row['name'] || '';
-    // Skip rows with placeholder or empty names
-    if (name === '--' || name.trim() === '') {
-      console.log(`[Finale Proxy] Skipping row ${index} with placeholder name: "${name}"`);
-      return false;
-    }
-    return true;
+  console.log(`[Finale Proxy] CSV Headers:`, Object.keys(rawSuppliers[0] || {}));
+
+  // Use schema-based transformer for robust parsing
+  const { transformVendorsBatch, deduplicateVendors } = require('../lib/schema/transformers');
+
+  // Transform all vendors using the new schema-based transformers
+  const batchResult = transformVendorsBatch(rawSuppliers);
+
+  console.log(`[Finale Proxy] Transformation results:`, {
+    successful: batchResult.successful.length,
+    failed: batchResult.failed.length,
+    warnings: batchResult.totalWarnings.length,
   });
-  
-  console.log(`[Finale Proxy] After filtering: ${validSuppliers.length} valid suppliers`);
-  
-  // Track name usage to deduplicate
-  const nameCount = new Map<string, number>();
 
-  // Helpers to robustly read fields and pick first meaningful values
-  const isMeaningful = (val?: string) => {
-    if (!val) return false;
-    const v = String(val).trim();
-    if (!v) return false;
-    return v.toLowerCase() !== 'various' && v !== '--';
-  };
+  // Log failed transformations for debugging
+  if (batchResult.failed.length > 0) {
+    console.warn(`[Finale Proxy] Failed to transform ${batchResult.failed.length} vendors:`);
+    batchResult.failed.slice(0, 5).forEach(failure => {
+      console.warn(`  Row ${failure.index + 1}:`, failure.errors.join('; '));
+    });
+  }
 
-  const getField = (row: any, key: string): string => {
-    // Try exact key first, then some normalized variants
-    if (row[key] !== undefined) return String(row[key] ?? '').trim();
-    const alt = Object.keys(row).find(k => k.toLowerCase() === key.toLowerCase());
-    return alt ? String(row[alt] ?? '').trim() : '';
-  };
+  // Log warnings
+  if (batchResult.totalWarnings.length > 0) {
+    console.warn(`[Finale Proxy] Transformation warnings (first 10):`,
+      batchResult.totalWarnings.slice(0, 10));
+  }
 
-  const pickFirst = (row: any, keys: string[]): string => {
-    for (const k of keys) {
-      const v = getField(row, k);
-      if (isMeaningful(v)) return v;
-    }
-    return '';
-  };
+  // Deduplicate by name
+  const dedupedVendors = deduplicateVendors(batchResult.successful);
+  console.log(`[Finale Proxy] After deduplication: ${dedupedVendors.length} unique vendors`);
 
-  const pickAddressComponents = (row: any): { addressLine1: string; city: string; state: string; zip: string } => {
-    for (let i = 0; i < 4; i++) {
-      const addressLine1 = pickFirst(row, [
-        `Address ${i} street address`,
-        `Address ${i} line 1`,
-        `Address ${i} address`,
-      ]);
-      const city = pickFirst(row, [
-        `Address ${i} city`,
-      ]);
-      const state = pickFirst(row, [
-        `Address ${i} state / region`,
-        `Address ${i} state/ region`,
-        `Address ${i} state/region`,
-        `Address ${i} state`,
-        `Address ${i} region`,
-      ]);
-      const zip = pickFirst(row, [
-        `Address ${i} postal code`,
-        `Address ${i} zip`,
-        `Address ${i} zip code`,
-        `Address ${i} postcode`,
-      ]);
+  // Log sample vendor with all fields
+  if (dedupedVendors.length > 0) {
+    const sample = dedupedVendors[0];
+    console.log(`[Finale Proxy] Sample vendor (with all fields):`, {
+      id: sample.id,
+      name: sample.name,
+      emails: sample.contactEmails,
+      phone: sample.phone,
+      address: {
+        line1: sample.addressLine1,
+        city: sample.city,
+        state: sample.state,
+        zip: sample.postalCode,
+        country: sample.country,
+        display: sample.addressDisplay,
+      },
+      website: sample.website,
+      leadTime: sample.leadTimeDays,
+      notes: sample.notes?.substring(0, 50) || '',
+      source: sample.source,
+    });
+  }
 
-      if (addressLine1 || city || state || zip) {
-        return { addressLine1, city, state, zip };
-      }
-    }
-    return { addressLine1: '', city: '', state: '', zip: '' };
-  };
-  
-  // Transform CSV format to expected API format
-  // Map Finale CSV report columns to expected fields
-  const suppliers = validSuppliers.map((row: any, index: number) => {
-    // Get vendor name
-    const baseName = getField(row, 'Name') || getField(row, 'name') || 'Unknown Vendor';
-
-    // Deduplicate: if we've seen this name before, append number
-    const count = nameCount.get(baseName) || 0;
-    nameCount.set(baseName, count + 1);
-    const name = count > 0 ? `${baseName} (${count})` : baseName;
-
-    // Create deterministic UUID from name + index to ensure uniqueness
-    const uniqueKey = `${name}-${index}`;
-    let hash = 0;
-    for (let i = 0; i < uniqueKey.length; i++) {
-      hash = ((hash << 5) - hash) + uniqueKey.charCodeAt(i);
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    const hashHex = Math.abs(hash).toString(16).padStart(8, '0');
-    const indexHex = index.toString(16).padStart(4, '0');
-    const partyId = `${hashHex}-0000-4000-8000-${indexHex}00000000`.slice(0, 36);
-
-    // Get first non-empty email (0..3)
-    const email = pickFirst(row, [
-      'Email address 0',
-      'Email address 1',
-      'Email address 2',
-      'Email address 3',
-    ]);
-
-    // Get first non-empty phone (0..3)
-    const phone = pickFirst(row, [
-      'Phone number 0',
-      'Phone number 1',
-      'Phone number 2',
-      'Phone number 3',
-    ]);
-
-    // Build address from first available Address {0-3}
-    const { addressLine1, city, state, zip } = pickAddressComponents(row);
-    const addressParts = [addressLine1, city, state, zip].filter(p => isMeaningful(p));
-    const address = addressParts.join(', ');
-
-    return {
-      partyId,
-      name,
-      email,
-      phone,
-      address,
-      addressLine1,
-      city,
-      state,
-      zip,
-      country: '', // Not in CSV
-      website: '', // Not in CSV
-      leadTimeDays: 7, // Default
-      notes: getField(row, 'Notes'),
-      // Keep original row for debugging
-      _rawRow: row,
-    };
-  });
-  
-  console.log(`[Finale Proxy] Transformed sample supplier:`, suppliers[0]);
-  
-  return suppliers;
+  // Return in the format expected by finaleSyncService (VendorParsed objects)
+  return dedupedVendors;
 }
 
 /**

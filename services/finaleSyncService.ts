@@ -781,30 +781,69 @@ export class FinaleSyncService {
     const dedupedVendors = Array.from(byName.values());
     console.log(`[FinaleSyncService] Deduped vendors count: ${dedupedVendors.length}`);
 
+    // Use enhanced transformer if vendor has parsed fields
+    const { transformVendorParsedToDatabaseEnhanced } = require('../lib/schema/transformers');
+
     // Partition: existing (by name) vs new (by name)
     const existingUpdates = dedupedVendors
       .filter(v => existingByName.has((v.name || '').trim().toLowerCase()))
-      .map(vendor => ({
-        // Do NOT include id here so we don't touch PKs; conflict target is name
-        name: vendor.name,
-        contact_emails: vendor.contactEmails,
-        address: vendor.address,
-        lead_time_days: vendor.leadTimeDays,
-        updated_at: new Date().toISOString(),
-      }));
+      .map(vendor => {
+        // Check if this vendor has enhanced fields (from new schema)
+        const hasEnhancedFields = 'addressLine1' in vendor || 'postalCode' in vendor || 'notes' in vendor;
+
+        if (hasEnhancedFields) {
+          // Use enhanced transformer for complete data
+          const enhanced = transformVendorParsedToDatabaseEnhanced(vendor as any);
+          // Remove id for updates (conflict target is name)
+          const { id, ...updateData } = enhanced;
+          return updateData;
+        } else {
+          // Legacy format (backward compatibility)
+          return {
+            name: vendor.name,
+            contact_emails: vendor.contactEmails,
+            address: vendor.address,
+            phone: vendor.phone || '',
+            website: vendor.website || '',
+            lead_time_days: vendor.leadTimeDays,
+            updated_at: new Date().toISOString(),
+          };
+        }
+      });
 
     const newInserts = dedupedVendors
       .filter(v => !existingByName.has((v.name || '').trim().toLowerCase()))
-      .map(vendor => ({
-        id: vendor.id,
-        name: vendor.name,
-        contact_emails: vendor.contactEmails,
-        address: vendor.address,
-        lead_time_days: vendor.leadTimeDays,
-        updated_at: new Date().toISOString(),
-      }));
+      .map(vendor => {
+        // Check if this vendor has enhanced fields
+        const hasEnhancedFields = 'addressLine1' in vendor || 'postalCode' in vendor || 'notes' in vendor;
+
+        if (hasEnhancedFields) {
+          // Use enhanced transformer for complete data
+          return transformVendorParsedToDatabaseEnhanced(vendor as any);
+        } else {
+          // Legacy format (backward compatibility)
+          return {
+            id: vendor.id,
+            name: vendor.name,
+            contact_emails: vendor.contactEmails,
+            address: vendor.address,
+            phone: vendor.phone || '',
+            website: vendor.website || '',
+            lead_time_days: vendor.leadTimeDays,
+            updated_at: new Date().toISOString(),
+          };
+        }
+      });
 
     console.log(`[FinaleSyncService] Preparing ${existingUpdates.length} updates and ${newInserts.length} inserts`);
+
+    // Log sample data to verify enhanced fields
+    if (existingUpdates.length > 0) {
+      console.log(`[FinaleSyncService] Sample update data (first vendor):`, Object.keys(existingUpdates[0]));
+    }
+    if (newInserts.length > 0) {
+      console.log(`[FinaleSyncService] Sample insert data (first vendor):`, Object.keys(newInserts[0]));
+    }
 
     // 1) Update existing rows by unique name (no id provided)
     if (existingUpdates.length > 0) {
@@ -817,6 +856,7 @@ export class FinaleSyncService {
       if (updErr) {
         throw new Error(`Failed to update existing vendors: ${updErr.message}`);
       }
+      console.log(`[FinaleSyncService] ✓ Updated ${existingUpdates.length} existing vendors`);
     }
 
     // 2) Insert new rows with IDs
@@ -827,6 +867,7 @@ export class FinaleSyncService {
       if (insErr) {
         throw new Error(`Failed to insert new vendors: ${insErr.message}`);
       }
+      console.log(`[FinaleSyncService] ✓ Inserted ${newInserts.length} new vendors`);
     }
 
     console.log(`[FinaleSyncService] Successfully saved ${dedupedVendors.length} vendors (${existingUpdates.length} updated, ${newInserts.length} inserted)`);
