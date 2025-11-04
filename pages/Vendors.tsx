@@ -47,7 +47,16 @@ const Vendors: React.FC<VendorsProps> = ({ vendors }) => {
                                     <td className="px-6 py-4 text-sm text-gray-300">
                                         {vendor.contactEmails.length > 0 ? (
                                             vendor.contactEmails.map(email => (
-                                                <a key={email} href={`mailto:${email}`} className="block text-indigo-400 hover:underline">{email}</a>
+                                                <a 
+                                                    key={email} 
+                                                    href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="block text-indigo-400 hover:underline hover:text-indigo-300"
+                                                    title={`Compose email to ${email} in Gmail`}
+                                                >
+                                                    {email}
+                                                </a>
                                             ))
                                         ) : (
                                             <span className="text-gray-500 italic">No email</span>
