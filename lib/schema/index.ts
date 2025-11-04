@@ -182,23 +182,49 @@ export const InventoryRawSchema = z.object({
 export type InventoryRaw = z.infer<typeof InventoryRawSchema>;
 
 /**
- * Parsed Inventory Schema
+ * Parsed Inventory Schema - Enhanced for Finale Integration
  */
 export const InventoryParsedSchema = z.object({
+  // Core identification
   sku: z.string().min(1),
   name: z.string().min(1),
   description: z.string().default(''),
   category: z.string().default('Uncategorized'),
+  status: z.string().default('active'),
+  
+  // Stock quantities
   stock: z.number().int().min(0).default(0),
   onOrder: z.number().int().min(0).default(0),
+  reserved: z.number().int().min(0).default(0),
+  remaining: z.number().int().min(0).default(0),
+  
+  // Reorder intelligence
   reorderPoint: z.number().int().min(0).default(10),
+  reorderVariance: z.number().default(0),
+  qtyToOrder: z.number().int().min(0).default(0),
+  
+  // Sales data
+  salesVelocity: z.number().default(0),
+  
+  // Vendor info
   vendorId: z.string().default(''),
   vendorName: z.string().default(''),
   moq: z.number().int().min(1).default(1),
+  
+  // Pricing
   unitCost: z.number().min(0).default(0),
   price: z.number().min(0).default(0),
+  
+  // Location
+  warehouseLocation: z.string().default('Shipping'),
+  binLocation: z.string().default(''),
+  
+  // Product info
   barcode: z.string().default(''),
+  lastPurchaseDate: z.string().nullable().default(null),
   notes: z.string().default(''),
+  
+  // Metadata
   source: z.enum(['csv', 'api', 'manual']).default('csv'),
   rawData: z.record(z.any()).optional(),
 });
@@ -206,17 +232,41 @@ export const InventoryParsedSchema = z.object({
 export type InventoryParsed = z.infer<typeof InventoryParsedSchema>;
 
 /**
- * Database Inventory Schema
+ * Database Inventory Schema - Enhanced for Migration 003
  */
 export const InventoryDatabaseSchema = z.object({
+  // Core fields
   sku: z.string(),
   name: z.string(),
+  description: z.string().optional(),
+  status: z.string().optional(),
   category: z.string(),
+  
+  // Legacy fields (mapped to new schema)
   stock: z.number(),
   on_order: z.number(),
   reorder_point: z.number(),
-  vendor_id: z.string(),
+  vendor_id: z.string().nullable(),
   moq: z.number(),
+  
+  // Enhanced schema fields (from migration 003)
+  unit_cost: z.number().optional(),
+  unit_price: z.number().optional(),
+  units_in_stock: z.number().optional(),
+  units_on_order: z.number().optional(),
+  units_reserved: z.number().optional(),
+  reorder_variance: z.number().optional(),
+  qty_to_order: z.number().optional(),
+  sales_velocity_consolidated: z.number().optional(),
+  warehouse_location: z.string().optional(),
+  bin_location: z.string().optional(),
+  supplier_sku: z.string().optional(),
+  last_purchase_date: z.string().nullable().optional(),
+  upc: z.string().optional(),
+  data_source: z.string().optional(),
+  last_sync_at: z.string().optional(),
+  sync_status: z.string().optional(),
+  
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
