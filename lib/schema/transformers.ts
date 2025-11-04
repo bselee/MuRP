@@ -50,19 +50,21 @@ export function transformVendorRawToParsed(
   try {
     // Extract name (required)
     const name = extractFirst(raw, ['Name', 'name', 'Vendor Name', 'Company Name']);
-    if (!name) {
+    
+    // Skip vendors without names or with placeholder names
+    if (!name || name.trim() === '' || name === '--' || name.toLowerCase() === 'various') {
       return {
         success: false,
-        errors: ['Vendor name is required'],
+        errors: [`Skipping vendor: no valid name (got: "${name || 'empty'}")`],
         warnings: [],
       };
     }
 
-    // Skip placeholder vendors
-    if (name === '--' || name.toLowerCase() === 'various' || name.trim() === '') {
+    // Skip vendors that start with special characters (data errors)
+    if (/^[,.\-_]+/.test(name)) {
       return {
         success: false,
-        errors: [`Skipping placeholder vendor: "${name}"`],
+        errors: [`Skipping malformed vendor name: "${name}"`],
         warnings: [],
       };
     }
@@ -318,7 +320,7 @@ export function transformInventoryRawToParsed(
   try {
     // Extract SKU (required)
     const sku = extractFirst(raw, ['SKU', 'sku', 'Product Code', 'Item Code']);
-    if (!sku) {
+    if (!sku || sku.trim() === '') {
       return {
         success: false,
         errors: ['SKU is required'],
@@ -326,8 +328,24 @@ export function transformInventoryRawToParsed(
       };
     }
 
-    // Extract name
-    const name = extractFirst(raw, ['Name', 'name', 'Product Name', 'Item Name']) || 'Unnamed Product';
+    // Skip items with malformed SKUs (start with special chars)
+    if (/^[,.\-_]+/.test(sku)) {
+      return {
+        success: false,
+        errors: [`Skipping malformed SKU: "${sku}"`],
+        warnings: [],
+      };
+    }
+
+    // Extract name (required for active items)
+    const name = extractFirst(raw, ['Name', 'name', 'Product Name', 'Item Name']);
+    if (!name || name.trim() === '') {
+      return {
+        success: false,
+        errors: [`Skipping item with no name (SKU: ${sku})`],
+        warnings: [],
+      };
+    }
 
     // Extract description
     const description = extractFirst(raw, ['Description', 'description', 'Details']) || '';
