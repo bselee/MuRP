@@ -396,8 +396,18 @@ export class FinaleSyncService {
       });
 
       // Transform to TGF MRP format
-      const vendors = transformFinaleSuppliersToVendors(rawVendors as FinaleSupplier[]);
-      console.log(`[FinaleSyncService] Transformed ${vendors.length} vendors`);
+      // If proxy already returned schema-parsed vendors (with enhanced fields), skip legacy transform
+      let vendors: any[];
+      const first = Array.isArray(rawVendors) && rawVendors.length > 0 ? rawVendors[0] : null;
+      const looksSchemaParsed = !!first && (('addressLine1' in first) || ('postalCode' in first) || ('source' in first));
+
+      if (looksSchemaParsed) {
+        vendors = rawVendors as any[];
+        console.log(`[FinaleSyncService] Detected schema-parsed vendors from proxy; skipping legacy transform`);
+      } else {
+        vendors = transformFinaleSuppliersToVendors(rawVendors as FinaleSupplier[]);
+        console.log(`[FinaleSyncService] Transformed ${vendors.length} vendors using legacy transformer`);
+      }
 
       // Save to Supabase
       await this.saveVendorsToSupabase(vendors);
