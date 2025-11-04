@@ -66,6 +66,17 @@ export interface Database {
           address: string
           website: string
           lead_time_days: number
+          // Enhanced schema fields (from 002_enhance_vendor_schema.sql)
+          address_line1: string
+          address_line2: string
+          city: string
+          state: string
+          postal_code: string
+          country: string
+          notes: string
+          data_source: 'manual' | 'csv' | 'api'
+          last_sync_at?: string
+          sync_status: 'synced' | 'pending' | 'error'
           created_at?: string
           updated_at?: string
         }
@@ -77,6 +88,17 @@ export interface Database {
           address?: string
           website?: string
           lead_time_days?: number
+          // Enhanced schema fields
+          address_line1?: string
+          address_line2?: string
+          city?: string
+          state?: string
+          postal_code?: string
+          country?: string
+          notes?: string
+          data_source?: 'manual' | 'csv' | 'api'
+          last_sync_at?: string
+          sync_status?: 'synced' | 'pending' | 'error'
           created_at?: string
           updated_at?: string
         }
@@ -87,6 +109,17 @@ export interface Database {
           address?: string
           website?: string
           lead_time_days?: number
+          // Enhanced schema fields
+          address_line1?: string
+          address_line2?: string
+          city?: string
+          state?: string
+          postal_code?: string
+          country?: string
+          notes?: string
+          data_source?: 'manual' | 'csv' | 'api'
+          last_sync_at?: string
+          sync_status?: 'synced' | 'pending' | 'error'
           updated_at?: string
         }
       }

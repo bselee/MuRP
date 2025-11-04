@@ -14,7 +14,10 @@ ADD COLUMN IF NOT EXISTS address_line2 TEXT DEFAULT '',
 ADD COLUMN IF NOT EXISTS city TEXT DEFAULT '',
 ADD COLUMN IF NOT EXISTS state TEXT DEFAULT '',
 ADD COLUMN IF NOT EXISTS postal_code TEXT DEFAULT '',
-ADD COLUMN IF NOT EXISTS country TEXT DEFAULT '';
+ADD COLUMN IF NOT EXISTS country TEXT DEFAULT '',
+-- Common contact fields expected by the application/UI
+ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT '',
+ADD COLUMN IF NOT EXISTS website TEXT DEFAULT '';
 
 -- Add notes field for internal vendor information
 ALTER TABLE vendors

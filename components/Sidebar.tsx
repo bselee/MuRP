@@ -83,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
         <aside className={`bg-gray-800 border-r border-gray-700 flex-shrink-0 flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
             <div className={`h-16 flex items-center border-b border-gray-700 relative ${isCollapsed ? 'justify-center' : 'px-4'}`}>
                 <BoxIcon className={`w-8 h-8 text-indigo-400 transition-all duration-300 ${isCollapsed ? 'mr-0' : 'mr-2'}`} />
-                <h1 className={`text-xl font-bold text-white tracking-tight whitespace-nowrap transition-opacity duration-200 ${isCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>TGF MRP</h1>
+                <div className={`text-xl font-bold text-white tracking-tight whitespace-nowrap transition-opacity duration-200 ${isCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>TGF MRP</div>
                 <button 
                     onClick={onToggle} 
                     className="absolute -right-3 top-1/2 -translate-y-1/2 bg-gray-600 hover:bg-indigo-600 text-white rounded-full p-1 border-2 border-gray-800 transition-transform z-10"

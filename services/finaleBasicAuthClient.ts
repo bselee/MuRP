@@ -240,14 +240,12 @@ export class FinaleBasicAuthClient {
   /**
    * Get all suppliers
    *
-   * **IMPORTANT**: Return type differs based on execution context:
-   * - Server mode: Returns `FinaleSupplier[]` (raw API response)
-   * - Browser mode: Returns `VendorParsed[]` (schema-validated vendors from proxy)
+   * IMPORTANT: Return type differs based on execution context:
+   * - Server mode: Returns FinaleSupplier[] (raw API response)
+   * - Browser mode: Returns VendorParsed[] (schema-validated vendors from proxy)
    *
-   * The browser mode proxy applies the schema transformation pipeline:
+   * The browser proxy applies the schema transformation pipeline:
    * CSV/API → VendorRaw → VendorParsed (validated, normalized)
-   *
-   * @returns FinaleSupplier[] in server mode, VendorParsed[] in browser mode
    */
   async getSuppliers(): Promise<FinaleSupplier[] | VendorParsed[]> {
     if (this.isBrowser) {

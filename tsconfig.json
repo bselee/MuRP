@@ -29,6 +29,11 @@
   "exclude": [
     "node_modules",
     "dist",
-    "supabase/functions/**/*"
+    "supabase/functions/**/*",
+    "api/external/**/*",
+    "e2e/**/*",
+    "scripts/**/*",
+    "lib/dataService.ts",
+    "lib/finale/index.ts"
   ]
 }

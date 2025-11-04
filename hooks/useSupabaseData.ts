@@ -196,36 +196,45 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
       setLoading(true);
       setError(null);
 
-      // Use vendor_details view for enhanced fields and computed columns
-      // This view includes email_count and has_complete_address computed fields
-      const { data: vendors, error: fetchError } = await supabase
-        .from('vendor_details')
-        .select('*')
-        .order('name');
+      // Prefer enhanced view if available; fallback to base table
+      let vendors: any[] | null = null;
+      let fetchError: any = null;
+
+      // Try vendor_details view first
+      const viewRes = await supabase.from('vendor_details' as any).select('*').order('name');
+      if (viewRes.error) {
+        // Fallback to vendors table
+        const tableRes = await supabase.from('vendors').select('*').order('name');
+        vendors = tableRes.data as any[] | null;
+        fetchError = tableRes.error;
+      } else {
+        vendors = viewRes.data as any[] | null;
+        fetchError = viewRes.error;
+      }
 
       if (fetchError) throw fetchError;
 
       // Transform from snake_case to camelCase
-      const transformed: Vendor[] = (vendors || []).map((vendor: any) => ({
-        id: vendor.id,
-        name: vendor.name,
-        contactEmails: vendor.contact_emails || [],
-        phone: vendor.phone || '',
-        address: vendor.address || '',
-        website: vendor.website || '',
-        leadTimeDays: vendor.lead_time_days || 7,
-        // Enhanced address fields (from migration 002_enhance_vendor_schema)
-        addressLine1: vendor.address_line1 || '',
-        addressLine2: vendor.address_line2 || '',
-        city: vendor.city || '',
-        state: vendor.state || '',
-        postalCode: vendor.postal_code || '',
-        country: vendor.country || '',
-        // Additional fields
-        notes: vendor.notes || '',
-        dataSource: vendor.data_source || 'manual',
-        lastSyncAt: vendor.last_sync_at,
-        syncStatus: vendor.sync_status || 'synced',
+      const transformed: Vendor[] = (vendors || []).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        contactEmails: row.contact_emails || [],
+        phone: row.phone || '',
+        address: (row.address_display || row.address || ''),
+        website: row.website || '',
+        leadTimeDays: row.lead_time_days || 7,
+        // Enhanced address fields (present when migration applied or when selecting from vendor_details)
+        addressLine1: row.address_line1 || '',
+        addressLine2: row.address_line2 || '',
+        city: row.city || '',
+        state: row.state || '',
+        postalCode: row.postal_code || '',
+        country: row.country || '',
+        // Additional metadata (if available)
+        notes: row.notes || '',
+        dataSource: row.data_source || undefined,
+        lastSyncAt: row.last_sync_at || undefined,
+        syncStatus: row.sync_status || undefined,
       }));
 
       setData(transformed);

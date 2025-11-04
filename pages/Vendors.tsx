@@ -23,11 +23,11 @@ const Vendors: React.FC<VendorsProps> = ({ vendors }) => {
                     <table className="min-w-full divide-y divide-gray-700">
                         <thead className="bg-gray-800">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact Info</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Address</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Lead Time</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Source</th>
+                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor Name</th>
+                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact Info</th>
+                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Address</th>
+                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Lead Time</th>
+                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Source</th>
                             </tr>
                         </thead>
                         <tbody className="bg-gray-800 divide-y divide-gray-700">

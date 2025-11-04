@@ -314,8 +314,10 @@ export function runTransformerTests() {
   }
 }
 
-// Run tests if executed directly
-if (require.main === module) {
+// Run tests if executed directly (CommonJS only); safe in ESM imports
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+if (typeof require !== 'undefined' && require.main === module) {
   const success = runTransformerTests();
   process.exit(success ? 0 : 1);
 }

@@ -18,7 +18,7 @@
  * - Lossless transformation (all fields preserved)
  */
 
-import { z } from 'zod';
+import { z } from 'zod/v3';
 
 // ============================================================================
 // VENDOR SCHEMAS
@@ -476,17 +476,4 @@ export const SchemaRegistry = {
 // TYPE EXPORTS
 // ============================================================================
 
-export type {
-  VendorRaw,
-  VendorParsed,
-  VendorDatabase,
-  VendorDisplay,
-  InventoryRaw,
-  InventoryParsed,
-  InventoryDatabase,
-  BOMRaw,
-  BOMParsed,
-  BOMDatabase,
-  BOMComponentRaw,
-  BOMComponentParsed,
-};
+// Types above are already exported via type aliases; avoid duplicate re-exports

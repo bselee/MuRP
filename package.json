@@ -6,7 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:transformers": "tsx lib/schema/transformers.smoke.ts",
+    "test:transformers:all": "tsx lib/schema/transformers.runner.ts",
+    "test": "npm run -s test:transformers && npm run -s test:transformers:all",
+    "e2e": "npm run -s build && playwright test",
+    "e2e:ui": "npm run -s build && playwright test --ui"
   },
   "dependencies": {
     "@google/genai": "^1.27.0",
@@ -17,9 +22,12 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@playwright/test": "^1.48.2",
     "@types/node": "^22.14.0",
     "@vercel/node": "^5.5.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

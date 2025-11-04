@@ -1,7 +1,7 @@
 
 
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import AiAssistant from './components/AiAssistant';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -103,6 +103,51 @@ const App: React.FC = () => {
   const [apiKey, setApiKey] = usePersistentState<string | null>('apiKey', null);
   const [externalConnections, setExternalConnections] = usePersistentState<ExternalConnection[]>('externalConnections', []);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
+
+  // Lightweight URL-based routing + e2e auto-login support
+  useEffect(() => {
+    try {
+      const { pathname, search } = window.location;
+      const params = new URLSearchParams(search);
+
+      // If running e2e, auto-login a mock admin user and skip onboarding
+      if (params.get('e2e') === '1' && !currentUser) {
+        setCurrentUser({
+          id: 'e2e-admin',
+          name: 'E2E Admin',
+          email: 'e2e.admin@example.com',
+          role: 'Admin',
+          department: 'Purchasing',
+          onboardingComplete: true,
+        } as User);
+      }
+
+      // Basic path-to-page mapping so tests can hit deep links like /vendors
+      const path = pathname.replace(/\/$/, '');
+      const map: Record<string, Page> = {
+        '': 'Dashboard',
+        '/': 'Dashboard',
+        '/dashboard': 'Dashboard',
+        '/inventory': 'Inventory',
+        '/purchase-orders': 'Purchase Orders',
+        '/purchaseorders': 'Purchase Orders',
+        '/vendors': 'Vendors',
+        '/production': 'Production',
+        '/boms': 'BOMs',
+        '/settings': 'Settings',
+        '/api': 'API Documentation',
+        '/artwork': 'Artwork',
+      };
+      const nextPage = map[path] ?? 'Dashboard';
+      if (nextPage !== currentPage) {
+        setCurrentPage(nextPage);
+      }
+    } catch (err) {
+      // No-op: best-effort only for e2e/dev
+      console.warn('[App] URL routing init skipped:', err);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   const addToast = (message: string, type: ToastInfo['type'] = 'info') => {

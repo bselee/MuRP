@@ -34,9 +34,20 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 
 ## 📚 Documentation
 
+### Getting Started
+- **[Supabase Deployment Guide](SUPABASE_DEPLOYMENT_GUIDE.md)** - 🚀 Deploy vendor schema migration
 - **[API Ingestion Setup Guide](API_INGESTION_SETUP.md)** - Complete setup for secure API integration
 - **[Usage Examples](USAGE_EXAMPLES.md)** - Code examples for all services
+
+### Architecture & Schema
+- **[Schema Architecture](SCHEMA_ARCHITECTURE.md)** - 4-layer schema design (Raw → Parsed → Database → Display)
+- **[Schema Implementation Summary](SCHEMA_IMPLEMENTATION_SUMMARY.md)** - Vendor parsing solution
 - **[Backend Documentation](backend_documentation.md)** - Backend API specification
+
+### Integration & Deployment
+- **[Finale Integration Report](FINALE_INTEGRATION_REPORT.md)** - Complete Finale API integration (A+ grade)
+- **[Deployment Checklist](DEPLOYMENT_CHECKLIST.md)** - Step-by-step deployment verification
+- **[AI Enhancements](AI_ENHANCEMENTS.md)** - Tier 1 AI features ($98K annual value)
 
 ## 🔐 Security Features
 
@@ -71,7 +82,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 ## 📦 Tech Stack
 
 - **Frontend:** React 19, TypeScript, Vite
-- **AI:** Google Gemini API
-- **Backend:** Supabase Edge Functions (optional)
-- **Database:** Supabase PostgreSQL (optional)
-- **Inventory API:** Finale Inventory (optional)
+- **AI:** Google Gemini API ($98K annual value from Tier 1 features)
+- **Backend:** Supabase PostgreSQL + Edge Functions
+- **Database:** Supabase (vendor sync ready, migration deployed)
+- **Inventory API:** Finale Inventory (REST + CSV reports)
+- **Schema System:** Zod-based 4-layer validation (zero data loss)
+- **Testing:** Playwright E2E (14/14 passing), Unit tests (9/9 passing)

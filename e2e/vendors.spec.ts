@@ -8,9 +8,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Vendors Page', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the vendors page
-    // Adjust the URL based on your local dev server or deployment URL
-    await page.goto('/vendors');
+    // Navigate to the vendors page and enable e2e mode to bypass login
+    await page.goto('/vendors?e2e=1');
   });
 
   test('should display the Vendors page header', async ({ page }) => {
@@ -241,7 +240,7 @@ test.describe('Vendors Page', () => {
 
 test.describe('Vendors Page - Accessibility', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/vendors');
+    await page.goto('/vendors?e2e=1');
   });
 
   test('should have proper semantic HTML', async ({ page }) => {
@@ -278,7 +277,7 @@ test.describe('Vendors Page - Performance', () => {
   test('should load within reasonable time', async ({ page }) => {
     const startTime = Date.now();
 
-    await page.goto('/vendors');
+  await page.goto('/vendors?e2e=1');
 
     // Wait for vendors to be visible
     await page.waitForSelector('table tbody tr', { timeout: 5000 });
