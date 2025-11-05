@@ -330,6 +330,7 @@ async function getInventory(config: FinaleConfig) {
 
   console.log(`[Finale Proxy] Fetching inventory CSV from report...`);
 
+  // Use the report URL as-is (don't modify it)
   const response = await fetch(reportUrl, {
     method: 'GET',
     headers: {
@@ -421,6 +422,7 @@ async function getBOMs(config: FinaleConfig) {
   console.log(`[Finale Proxy] Fetching BOM CSV from report...`);
   console.log(`[Finale Proxy] BOM Report URL (first 150 chars):`, reportUrl.substring(0, 150));
 
+  // Use the report URL as-is (don't modify it)
   const response = await fetch(reportUrl, {
     method: 'GET',
     headers: {
