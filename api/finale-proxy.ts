@@ -374,38 +374,9 @@ async function getInventory(config: FinaleConfig) {
     console.log(`[Finale Proxy] 📋 Sample first row:`, rawInventory[0]);
   }
 
-  // Filter out rows with empty SKU or Name (data quality)
-  const validInventory = rawInventory.filter(item => {
-    const sku = item['SKU'] || item['Code'] || item['sku'];
-    const name = item['Name'] || item['Product'] || item['name'];
-    const isValid = sku && 
-                    typeof sku === 'string' && 
-                    sku.trim().length > 0 &&
-                    !sku.trim().startsWith(',') &&
-                    name &&
-                    typeof name === 'string' &&
-                    name.trim().length > 0;
-    
-    if (!isValid) {
-      console.log(`[Finale Proxy] Skipping inventory row with invalid SKU/Name: SKU="${sku}", Name="${name}"`);
-    }
-    return isValid;
-  });
-  
-  console.log(`[Finale Proxy] ${validInventory.length} valid inventory items after filtering (removed ${rawInventory.length - validInventory.length} invalid)`);
-  
-  if (validInventory.length > 0) {
-    const headers = Object.keys(validInventory[0]);
-    console.log(`[Finale Proxy] CSV Headers (${headers.length} columns):`, headers);
-    console.log(`[Finale Proxy] Sample inventory item (first row):`, validInventory[0]);
-  } else if (rawInventory.length > 0) {
-    // Show headers even if all rows were filtered out
-    console.log(`[Finale Proxy] CSV Headers (${Object.keys(rawInventory[0]).length} columns):`, Object.keys(rawInventory[0]));
-    console.log(`[Finale Proxy] All ${rawInventory.length} rows filtered out. Sample row:`, rawInventory[0]);
-  }
-
-  // Return filtered data - transformation will happen in the frontend service
-  return validInventory;
+  // Return ALL raw data - schema transformers on frontend will handle validation and filtering
+  // The transformers check for 'SKU' or 'Product Code', 'Name' or 'Product Name', etc.
+  return rawInventory;
 }
 
 /**
@@ -475,38 +446,9 @@ async function getBOMs(config: FinaleConfig) {
     console.log(`[Finale Proxy] 📋 Sample first row:`, rawBOMs[0]);
   }
 
-  // Filter out rows with empty Product ID or Name (data quality)
-  const validBOMs = rawBOMs.filter(item => {
-    const productId = item['Product ID'] || item['Finished SKU'] || item['SKU'];
-    const name = item['Name'] || item['Product Name'];
-    const isValid = productId &&
-                    typeof productId === 'string' &&
-                    productId.trim().length > 0 &&
-                    !productId.trim().startsWith(',') &&
-                    name &&
-                    typeof name === 'string' &&
-                    name.trim().length > 0;
-
-    if (!isValid) {
-      console.log(`[Finale Proxy] Skipping BOM row with invalid Product ID/Name: ID="${productId}", Name="${name}"`);
-    }
-    return isValid;
-  });
-
-  console.log(`[Finale Proxy] ${validBOMs.length} valid BOM rows after filtering (removed ${rawBOMs.length - validBOMs.length} invalid)`);
-
-  if (validBOMs.length > 0) {
-    console.log(`[Finale Proxy] CSV Headers (${Object.keys(validBOMs[0]).length} columns):`, Object.keys(validBOMs[0]));
-    console.log(`[Finale Proxy] Sample BOM row:`, {
-      ProductID: validBOMs[0]['Product ID'] || validBOMs[0]['Finished SKU'],
-      Name: validBOMs[0]['Name'] || validBOMs[0]['Product Name'],
-      Component: validBOMs[0]['Component \n Product ID'] || validBOMs[0]['Component Product ID'],
-      BOMQty: validBOMs[0]['BOM \n Quantity'] || validBOMs[0]['BOM Quantity'],
-    });
-  }
-
-  // Return filtered data - transformation will happen in the frontend service
-  return validBOMs;
+  // Return ALL raw data - schema transformers on frontend will handle validation and filtering
+  // The transformers check for 'Product ID', 'Name', 'Component SKU', etc.
+  return rawBOMs;
 }
 
 /**
