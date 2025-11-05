@@ -378,13 +378,13 @@ async function getInventory(config: FinaleConfig) {
   console.log(`[Finale Proxy] ${validInventory.length} valid inventory items after filtering (removed ${rawInventory.length - validInventory.length} invalid)`);
   
   if (validInventory.length > 0) {
-    console.log(`[Finale Proxy] CSV Headers (${Object.keys(validInventory[0]).length} columns):`, Object.keys(validInventory[0]));
-    console.log(`[Finale Proxy] Sample inventory item:`, {
-      SKU: validInventory[0]['SKU'] || validInventory[0]['Code'],
-      Name: validInventory[0]['Name'] || validInventory[0]['Product'],
-      'In stock': validInventory[0]['In stock'] || validInventory[0]['Units In Stock'],
-      Location: validInventory[0]['Location'] || validInventory[0]['Warehouse'],
-    });
+    const headers = Object.keys(validInventory[0]);
+    console.log(`[Finale Proxy] CSV Headers (${headers.length} columns):`, headers);
+    console.log(`[Finale Proxy] Sample inventory item (first row):`, validInventory[0]);
+  } else if (rawInventory.length > 0) {
+    // Show headers even if all rows were filtered out
+    console.log(`[Finale Proxy] CSV Headers (${Object.keys(rawInventory[0]).length} columns):`, Object.keys(rawInventory[0]));
+    console.log(`[Finale Proxy] All ${rawInventory.length} rows filtered out. Sample row:`, rawInventory[0]);
   }
 
   // Return filtered data - transformation will happen in the frontend service
