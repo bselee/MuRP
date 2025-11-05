@@ -39,6 +39,10 @@ const Settings: React.FC<SettingsProps> = ({
     const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
     const [selectedPrompt, setSelectedPrompt] = useState<AiPrompt | null>(null);
     
+    // Collapsible section states
+    const [isUserManagementOpen, setIsUserManagementOpen] = useState(true);
+    const [isApiIntegrationsOpen, setIsApiIntegrationsOpen] = useState(true);
+    
     // State for the "Add New Connection" form
     const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
 
@@ -104,24 +108,44 @@ const Settings: React.FC<SettingsProps> = ({
           {/* User Management Section */}
           {(currentUser.role === 'Admin' || currentUser.role === 'Manager') && (
             <section>
-                <h2 className="text-xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4 flex items-center gap-2">
-                    <UsersIcon className="w-6 h-6" />
-                    User Management
-                </h2>
-                <UserManagementPanel
-                    currentUser={currentUser}
-                    users={users}
-                    onInviteUser={onInviteUser}
-                    onUpdateUser={onUpdateUser}
-                    onDeleteUser={onDeleteUser}
-                />
+                <button 
+                  onClick={() => setIsUserManagementOpen(!isUserManagementOpen)}
+                  className="w-full flex justify-between items-center text-left border-b border-gray-700 pb-3 hover:border-gray-600 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <UsersIcon className="w-6 h-6 text-indigo-400" />
+                    <h2 className="text-xl font-semibold text-gray-300">User Management</h2>
+                  </div>
+                  <ChevronDownIcon className={`w-6 h-6 text-gray-400 transition-transform ${isUserManagementOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isUserManagementOpen && (
+                  <div className="mt-4">
+                    <UserManagementPanel
+                        currentUser={currentUser}
+                        users={users}
+                        onInviteUser={onInviteUser}
+                        onUpdateUser={onUpdateUser}
+                        onDeleteUser={onDeleteUser}
+                    />
+                  </div>
+                )}
             </section>
           )}
 
           {/* API & Integrations Section */}
           <section>
-            <h2 className="text-xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4">API & Integrations</h2>
-            <div className="space-y-6">
+            <button 
+              onClick={() => setIsApiIntegrationsOpen(!isApiIntegrationsOpen)}
+              className="w-full flex justify-between items-center text-left border-b border-gray-700 pb-3 hover:border-gray-600 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <LinkIcon className="w-6 h-6 text-blue-400" />
+                <h2 className="text-xl font-semibold text-gray-300">API & Integrations</h2>
+              </div>
+              <ChevronDownIcon className={`w-6 h-6 text-gray-400 transition-transform ${isApiIntegrationsOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isApiIntegrationsOpen && (
+              <div className="mt-4 space-y-6">
 
               {/* Finale Inventory Integration - See "Finale Setup" tab for configuration */}
 
@@ -249,13 +273,20 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
             </div>
+            )}
           </section>
 
            {/* Developer Settings Section (Admin only) */}
            {currentUser.role === 'Admin' && (
              <section>
-                <button onClick={() => setIsDevSettingsOpen(!isDevSettingsOpen)} className="w-full flex justify-between items-center text-left">
-                    <h2 className="text-xl font-semibold text-gray-300">Developer Settings</h2>
+                <button 
+                  onClick={() => setIsDevSettingsOpen(!isDevSettingsOpen)} 
+                  className="w-full flex justify-between items-center text-left border-b border-gray-700 pb-3 hover:border-gray-600 transition-colors"
+                >
+                    <div className="flex items-center gap-3">
+                      <BotIcon className="w-6 h-6 text-purple-400" />
+                      <h2 className="text-xl font-semibold text-gray-300">Developer Settings</h2>
+                    </div>
                     <ChevronDownIcon className={`w-6 h-6 text-gray-400 transition-transform ${isDevSettingsOpen ? 'rotate-180' : ''}`} />
                 </button>
                  {isDevSettingsOpen && (
