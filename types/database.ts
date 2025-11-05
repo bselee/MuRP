@@ -133,6 +133,34 @@ export interface Database {
           reorder_point: number
           vendor_id: string
           moq: number
+          // Enhanced fields from migration 003
+          description?: string
+          status?: 'active' | 'inactive' | 'discontinued'
+          unit_cost?: number
+          unit_price?: number
+          currency?: string
+          units_in_stock?: number
+          units_on_order?: number
+          units_reserved?: number
+          reorder_variance?: number
+          qty_to_order?: number
+          sales_velocity_consolidated?: number
+          sales_last_30_days?: number
+          sales_last_90_days?: number
+          warehouse_location?: string
+          bin_location?: string
+          facility_id?: string
+          supplier_sku?: string
+          last_purchase_date?: string
+          weight?: number
+          weight_unit?: string
+          dimensions?: string
+          upc?: string
+          lot_tracking?: boolean
+          data_source?: 'manual' | 'csv' | 'api'
+          last_sync_at?: string
+          sync_status?: 'synced' | 'pending' | 'error'
+          sync_errors?: string
           created_at?: string
           updated_at?: string
         }
@@ -145,6 +173,34 @@ export interface Database {
           reorder_point?: number
           vendor_id?: string
           moq?: number
+          // Enhanced fields
+          description?: string
+          status?: 'active' | 'inactive' | 'discontinued'
+          unit_cost?: number
+          unit_price?: number
+          currency?: string
+          units_in_stock?: number
+          units_on_order?: number
+          units_reserved?: number
+          reorder_variance?: number
+          qty_to_order?: number
+          sales_velocity_consolidated?: number
+          sales_last_30_days?: number
+          sales_last_90_days?: number
+          warehouse_location?: string
+          bin_location?: string
+          facility_id?: string
+          supplier_sku?: string
+          last_purchase_date?: string
+          weight?: number
+          weight_unit?: string
+          dimensions?: string
+          upc?: string
+          lot_tracking?: boolean
+          data_source?: 'manual' | 'csv' | 'api'
+          last_sync_at?: string
+          sync_status?: 'synced' | 'pending' | 'error'
+          sync_errors?: string
           created_at?: string
           updated_at?: string
         }
@@ -156,6 +212,34 @@ export interface Database {
           reorder_point?: number
           vendor_id?: string
           moq?: number
+          // Enhanced fields
+          description?: string
+          status?: 'active' | 'inactive' | 'discontinued'
+          unit_cost?: number
+          unit_price?: number
+          currency?: string
+          units_in_stock?: number
+          units_on_order?: number
+          units_reserved?: number
+          reorder_variance?: number
+          qty_to_order?: number
+          sales_velocity_consolidated?: number
+          sales_last_30_days?: number
+          sales_last_90_days?: number
+          warehouse_location?: string
+          bin_location?: string
+          facility_id?: string
+          supplier_sku?: string
+          last_purchase_date?: string
+          weight?: number
+          weight_unit?: string
+          dimensions?: string
+          upc?: string
+          lot_tracking?: boolean
+          data_source?: 'manual' | 'csv' | 'api'
+          last_sync_at?: string
+          sync_status?: 'synced' | 'pending' | 'error'
+          sync_errors?: string
           updated_at?: string
         }
       }

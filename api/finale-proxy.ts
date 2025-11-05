@@ -354,6 +354,13 @@ async function getInventory(config: FinaleConfig) {
     console.error(`[Finale Proxy] ERROR: CSV text is empty!`);
   }
 
+  // Enhanced debugging: show first 500 chars of CSV
+  if (csvText.length > 0) {
+    console.log(`[Finale Proxy] CSV Preview (first 500 chars):`, csvText.substring(0, 500));
+  } else {
+    console.error(`[Finale Proxy] WARNING: CSV text is empty!`);
+  }
+
   const rawInventory = parseCSV(csvText);
   console.log(`[Finale Proxy] Parsed ${rawInventory.length} raw inventory items from CSV`);
   

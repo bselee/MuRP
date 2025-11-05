@@ -66,7 +66,7 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
 
       if (fetchError) throw fetchError;
 
-      // Transform from snake_case to camelCase
+      // Transform from snake_case to camelCase (including enhanced fields from migration 003)
       const transformed: InventoryItem[] = (items || []).map((item: any) => ({
         sku: item.sku,
         name: item.name,
@@ -76,6 +76,17 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
         reorderPoint: item.reorder_point,
         vendorId: item.vendor_id,
         moq: item.moq,
+        // Enhanced fields
+        description: item.description,
+        status: item.status,
+        unitCost: item.unit_cost,
+        unitPrice: item.unit_price,
+        warehouseLocation: item.warehouse_location,
+        binLocation: item.bin_location,
+        salesVelocity: item.sales_velocity_consolidated,
+        dataSource: item.data_source,
+        lastSyncAt: item.last_sync_at,
+        syncStatus: item.sync_status,
       }));
 
       setData(transformed);
@@ -158,6 +169,17 @@ export function useSupabaseInventoryItem(sku: string): UseSupabaseSingleResult<I
           reorderPoint: item.reorder_point,
           vendorId: item.vendor_id,
           moq: item.moq,
+          // Enhanced fields
+          description: item.description,
+          status: item.status,
+          unitCost: item.unit_cost,
+          unitPrice: item.unit_price,
+          warehouseLocation: item.warehouse_location,
+          binLocation: item.bin_location,
+          salesVelocity: item.sales_velocity_consolidated,
+          dataSource: item.data_source,
+          lastSyncAt: item.last_sync_at,
+          syncStatus: item.sync_status,
         });
       } else {
         setData(null);
