@@ -9,6 +9,7 @@ interface InventoryProps {
     inventory: InventoryItem[];
     vendors: Vendor[];
     boms: BillOfMaterials[];
+    onNavigateToBom?: (bomSku: string) => void;
 }
 
 type SortKeys = keyof InventoryItem | 'status';
@@ -45,7 +46,7 @@ const SortableHeader: React.FC<{
 };
 
 
-const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms }) => {
+const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState({ category: '', status: '', vendor: '' });
     const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
@@ -267,7 +268,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms }) => {
                                                 <div className="text-sm font-mono font-medium text-white">{item.sku}</div>
                                                 <div className="flex gap-1">
                                                     {bomSkuSet.has(item.sku) && (
-                                                        <span className="text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full">BOM</span>
+                                                        <button
+                                                            onClick={() => onNavigateToBom?.(item.sku)}
+                                                            className="text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full hover:bg-blue-500/30 hover:border-blue-400/50 transition-colors cursor-pointer"
+                                                            title="View BOM"
+                                                        >
+                                                            BOM
+                                                        </button>
                                                     )}
                                                     {item.dataSource && (
                                                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${

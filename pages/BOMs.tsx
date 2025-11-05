@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { BillOfMaterials, User } from '../types';
 import { PencilIcon, ChevronDownIcon } from '../components/icons';
 import BomEditModal from '../components/BomEditModal';
@@ -15,6 +15,7 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
   const [expandedBoms, setExpandedBoms] = useState<Set<string>>(new Set());
+  const bomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const canEdit = currentUser.role === 'Admin';
 
@@ -27,6 +28,35 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
     }
     setExpandedBoms(newExpanded);
   };
+
+  // Check for selectedBomSku from localStorage (navigation from Inventory)
+  useEffect(() => {
+    const selectedSku = localStorage.getItem('selectedBomSku');
+    if (selectedSku) {
+      // Find the BOM with this SKU
+      const targetBom = boms.find(b => b.finishedSku === selectedSku);
+      if (targetBom) {
+        // Expand this BOM
+        setExpandedBoms(new Set([targetBom.id]));
+        
+        // Scroll to it after a short delay
+        setTimeout(() => {
+          const element = bomRefs.current.get(targetBom.id);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Flash effect
+            element.classList.add('ring-2', 'ring-blue-500');
+            setTimeout(() => {
+              element.classList.remove('ring-2', 'ring-blue-500');
+            }, 2000);
+          }
+        }, 100);
+      }
+      
+      // Clear the localStorage
+      localStorage.removeItem('selectedBomSku');
+    }
+  }, [boms]);
 
   const handleEditClick = (bom: BillOfMaterials) => {
     setSelectedBom(bom);
@@ -57,7 +87,12 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
     const isExpanded = expandedBoms.has(bom.id);
     
     return (
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
+      <div 
+        ref={(el) => {
+          if (el) bomRefs.current.set(bom.id, el);
+        }}
+        className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden transition-all"
+      >
         <div className="p-4 bg-gray-800 flex justify-between items-center">
           <div className="flex-1">
             <h3 className="font-semibold text-white">{bom.name}</h3>
@@ -112,6 +147,7 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
           <p className="text-sm text-gray-300">{bom.packaging.bagType} w/ {bom.packaging.labelType}</p>
           <p className="text-xs text-gray-500 mt-1"><i>Instructions: {bom.packaging.specialInstructions}</i></p>
         </div>
+          </div>
         )}
       </div>
     );
