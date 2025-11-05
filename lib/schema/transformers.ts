@@ -349,25 +349,15 @@ export function transformInventoryRawToParsed(
       };
     }
 
-    // FILTER 1: Active items only
-    const status = extractFirst(raw, ['Status', 'status', 'Product Status', 'State']) || '';
-    if (status && !status.toLowerCase().includes('active')) {
-      return {
-        success: false,
-        errors: [`FILTER: Skipping inactive item: ${sku} (status: "${status}")`],
-        warnings: [],
-      };
-    }
+    // FILTER 1: Active items only (report already filters for PRODUCT_ACTIVE)
+    // The new inventory report (data=product) is pre-filtered in Finale for active products
+    // So we don't need to filter here - trust the report filter
+    const status = extractFirst(raw, ['Status', 'status', 'Product Status', 'State']) || 'active';
 
-    // FILTER 2: Shipping warehouse only
+    // FILTER 2: Warehouse location (optional - report may not include location)
+    // The new master inventory report doesn't have location data since it's data=product not data=productLocation
+    // Location filtering is handled by the report configuration in Finale
     const location = extractFirst(raw, ['Location', 'location', 'Warehouse', 'Facility']) || '';
-    if (location && !location.toLowerCase().includes('shipping')) {
-      return {
-        success: false,
-        errors: [`FILTER: Skipping non-shipping location: ${sku} (location: "${location}")`],
-        warnings: [],
-      };
-    }
 
     // Extract description
     const description = extractFirst(raw, ['Description', 'description', 'Details', 'Product Description']) || '';
