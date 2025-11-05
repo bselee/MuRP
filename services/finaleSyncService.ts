@@ -485,6 +485,16 @@ export class FinaleSyncService {
 
       console.log(`[FinaleSyncService] Fetched ${rawInventory.length} inventory items from Finale CSV`);
 
+      // Check if CSV is empty
+      if (rawInventory.length === 0) {
+        console.warn(`[FinaleSyncService] ⚠️  WARNING: No inventory items returned from CSV!`);
+        console.warn(`[FinaleSyncService] Possible causes:`);
+        console.warn(`  1. The FINALE_INVENTORY_REPORT_URL might be pointing to an empty report`);
+        console.warn(`  2. The report URL might be expired (Finale reports can expire)`);
+        console.warn(`  3. The CSV file might be empty or incorrectly formatted`);
+        console.warn(`[FinaleSyncService] Please check your Finale Inventory Report and regenerate the URL if needed`);
+      }
+
       // Build vendor ID map for inventory transformation
       const vendors = await this.getVendorsFromSupabase();
       const vendorIdMap = new Map<string, string>();

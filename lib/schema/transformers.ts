@@ -353,7 +353,7 @@ export function transformInventoryRawToParsed(
     if (status && !status.toLowerCase().includes('active')) {
       return {
         success: false,
-        errors: [`Skipping inactive item: ${sku} (status: ${status})`],
+        errors: [`FILTER: Skipping inactive item: ${sku} (status: "${status}")`],
         warnings: [],
       };
     }
@@ -363,7 +363,7 @@ export function transformInventoryRawToParsed(
     if (location && !location.toLowerCase().includes('shipping')) {
       return {
         success: false,
-        errors: [`Skipping non-shipping location: ${sku} (location: ${location})`],
+        errors: [`FILTER: Skipping non-shipping location: ${sku} (location: "${location}")`],
         warnings: [],
       };
     }
@@ -615,6 +615,14 @@ export function transformInventoryBatch(
   const failed: Array<{ index: number; errors: string[]; warnings: string[]; raw: any }> = [];
   const totalWarnings: string[] = [];
 
+  // Track filtering statistics
+  const filterStats = {
+    inactiveItems: 0,
+    nonShippingLocation: 0,
+    missingData: 0,
+    other: 0,
+  };
+
   rawInventory.forEach((raw, index) => {
     const result = transformInventoryRawToParsed(raw, vendorIdMap);
 
@@ -624,6 +632,18 @@ export function transformInventoryBatch(
         totalWarnings.push(...result.warnings.map(w => `Row ${index + 1}: ${w}`));
       }
     } else {
+      // Track why items failed
+      const errorMsg = result.errors[0] || '';
+      if (errorMsg.includes('FILTER: Skipping inactive')) {
+        filterStats.inactiveItems++;
+      } else if (errorMsg.includes('FILTER: Skipping non-shipping')) {
+        filterStats.nonShippingLocation++;
+      } else if (errorMsg.includes('no name') || errorMsg.includes('SKU is required')) {
+        filterStats.missingData++;
+      } else {
+        filterStats.other++;
+      }
+
       failed.push({
         index,
         errors: result.errors,
@@ -632,6 +652,15 @@ export function transformInventoryBatch(
       });
     }
   });
+
+  // Log filter statistics
+  console.log('[Inventory Transform] Filter Statistics:');
+  console.log(`  - Total rows processed: ${rawInventory.length}`);
+  console.log(`  - ✓ Successful: ${successful.length}`);
+  console.log(`  - ✗ Inactive items filtered: ${filterStats.inactiveItems}`);
+  console.log(`  - ✗ Non-shipping location filtered: ${filterStats.nonShippingLocation}`);
+  console.log(`  - ✗ Missing data: ${filterStats.missingData}`);
+  console.log(`  - ✗ Other errors: ${filterStats.other}`);
 
   return {
     successful,
