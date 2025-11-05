@@ -323,17 +323,23 @@ async function getSuppliers(config: FinaleConfig) {
  */
 async function getInventory(config: FinaleConfig) {
   const reportUrl = process.env.FINALE_INVENTORY_REPORT_URL;
-  
+
+  console.log(`[Finale Proxy] getInventory() called`);
+  console.log(`[Finale Proxy] Environment variable exists: ${!!reportUrl}`);
+  console.log(`[Finale Proxy] URL length: ${reportUrl?.length || 0}`);
+
   if (!reportUrl) {
     throw new Error('FINALE_INVENTORY_REPORT_URL not configured in environment');
   }
 
   console.log(`[Finale Proxy] Fetching inventory CSV from report...`);
+  console.log(`[Finale Proxy] Original URL (first 100 chars): ${reportUrl.substring(0, 100)}...`);
 
   // Fix URL: Replace pivotTableStream with pivotTable for direct API access
   // Per Finale docs: https://support.finaleinventory.com/hc/en-us/articles/115001687154
   const fixedUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
-  console.log(`[Finale Proxy] Using report URL (first 80 chars): ${fixedUrl.substring(0, 80)}...`);
+  console.log(`[Finale Proxy] Fixed URL (first 100 chars): ${fixedUrl.substring(0, 100)}...`);
+  console.log(`[Finale Proxy] URL was modified: ${reportUrl !== fixedUrl}`);
 
   const response = await fetch(fixedUrl, {
     method: 'GET',
@@ -350,23 +356,16 @@ async function getInventory(config: FinaleConfig) {
   }
 
   const csvText = await response.text();
-  console.log(`[Finale Proxy] Inventory CSV data received: ${csvText.length} characters`);
-  
-  // Debug: Show first 500 characters of CSV to verify format
-  if (csvText.length > 0) {
-    console.log(`[Finale Proxy] CSV Preview (first 500 chars):`, csvText.substring(0, 500));
-  } else {
-    console.error(`[Finale Proxy] ERROR: CSV text is empty!`);
-  }
+  console.log(`[Finale Proxy] ✅ Inventory CSV data received: ${csvText.length} characters`);
+  console.log(`[Finale Proxy] CSV starts with: ${csvText.substring(0, 100)}`);
 
-  // Enhanced debugging: show first 500 chars of CSV
-  if (csvText.length > 0) {
-    console.log(`[Finale Proxy] CSV Preview (first 500 chars):`, csvText.substring(0, 500));
-  } else {
-    console.error(`[Finale Proxy] WARNING: CSV text is empty!`);
+  if (csvText.length === 0) {
+    console.error(`[Finale Proxy] ⚠️ ERROR: CSV text is EMPTY! Check if report URL is expired or empty.`);
+    return [];
   }
 
   const rawInventory = parseCSV(csvText);
+  console.log(`[Finale Proxy] ✅ Parsed ${rawInventory.length} raw rows from CSV`);
   console.log(`[Finale Proxy] Parsed ${rawInventory.length} raw inventory items from CSV`);
   
   // Filter out rows with empty SKU or Name (data quality)
@@ -417,16 +416,22 @@ async function getPurchaseOrders(config: FinaleConfig, limit = 100, offset = 0) 
 async function getBOMs(config: FinaleConfig) {
   const reportUrl = process.env.FINALE_BOM_REPORT_URL;
 
+  console.log(`[Finale Proxy] getBOMs() called`);
+  console.log(`[Finale Proxy] Environment variable exists: ${!!reportUrl}`);
+  console.log(`[Finale Proxy] URL length: ${reportUrl?.length || 0}`);
+
   if (!reportUrl) {
     throw new Error('FINALE_BOM_REPORT_URL not configured in environment');
   }
 
   console.log(`[Finale Proxy] Fetching BOM CSV from report...`);
+  console.log(`[Finale Proxy] Original URL (first 100 chars): ${reportUrl.substring(0, 100)}...`);
 
   // Fix URL: Replace pivotTableStream with pivotTable for direct API access
   // Per Finale docs: https://support.finaleinventory.com/hc/en-us/articles/115001687154
   const fixedUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
-  console.log(`[Finale Proxy] Using report URL (first 80 chars): ${fixedUrl.substring(0, 80)}...`);
+  console.log(`[Finale Proxy] Fixed URL (first 100 chars): ${fixedUrl.substring(0, 100)}...`);
+  console.log(`[Finale Proxy] URL was modified: ${reportUrl !== fixedUrl}`);
 
   const response = await fetch(fixedUrl, {
     method: 'GET',
@@ -443,16 +448,16 @@ async function getBOMs(config: FinaleConfig) {
   }
 
   const csvText = await response.text();
-  console.log(`[Finale Proxy] BOM CSV data received: ${csvText.length} characters`);
+  console.log(`[Finale Proxy] ✅ BOM CSV data received: ${csvText.length} characters`);
+  console.log(`[Finale Proxy] CSV starts with: ${csvText.substring(0, 100)}`);
 
-  // Enhanced debugging: show first 500 chars of CSV
-  if (csvText.length > 0) {
-    console.log(`[Finale Proxy] CSV Preview (first 500 chars):`, csvText.substring(0, 500));
-  } else {
-    console.error(`[Finale Proxy] WARNING: BOM CSV text is empty!`);
+  if (csvText.length === 0) {
+    console.error(`[Finale Proxy] ⚠️ ERROR: BOM CSV text is EMPTY! Check if report URL is expired or empty.`);
+    return [];
   }
 
   const rawBOMs = parseCSV(csvText);
+  console.log(`[Finale Proxy] ✅ Parsed ${rawBOMs.length} raw rows from CSV`);
   console.log(`[Finale Proxy] Parsed ${rawBOMs.length} raw BOM rows from CSV`);
 
   // Filter out rows with empty Product ID or Name (data quality)
