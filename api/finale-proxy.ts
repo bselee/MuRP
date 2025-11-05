@@ -345,20 +345,22 @@ async function getInventory(config: FinaleConfig) {
   }
 
   const csvText = await response.text();
-  console.log(`[Finale Proxy] Inventory CSV data received: ${csvText.length} characters`);
+  console.log(`[Finale Proxy] Inventory CSV Response:`, {
+    status: response.status,
+    statusText: response.statusText,
+    contentType: response.headers.get('content-type'),
+    contentLength: response.headers.get('content-length'),
+    dataLength: csvText.length,
+    firstChars: csvText.substring(0, 200),
+  });
   
-  // Debug: Show first 500 characters of CSV to verify format
-  if (csvText.length > 0) {
-    console.log(`[Finale Proxy] CSV Preview (first 500 chars):`, csvText.substring(0, 500));
-  } else {
-    console.error(`[Finale Proxy] ERROR: CSV text is empty!`);
-  }
-
-  // Enhanced debugging: show first 500 chars of CSV
-  if (csvText.length > 0) {
-    console.log(`[Finale Proxy] CSV Preview (first 500 chars):`, csvText.substring(0, 500));
-  } else {
-    console.error(`[Finale Proxy] WARNING: CSV text is empty!`);
+  if (csvText.length === 0) {
+    console.error(`[Finale Proxy] EMPTY CSV RESPONSE!`);
+    console.error(`[Finale Proxy] Report URL:`, reportUrl.substring(0, 100));
+    console.error(`[Finale Proxy] This usually means:`);
+    console.error(`  1. The report has no data matching the filters`);
+    console.error(`  2. The report URL needs /pivotTable/ instead of /pivotTableStream/`);
+    console.error(`  3. The report was deleted or expired in Finale`);
   }
 
   const rawInventory = parseCSV(csvText);
@@ -436,13 +438,18 @@ async function getBOMs(config: FinaleConfig) {
   }
 
   const csvText = await response.text();
-  console.log(`[Finale Proxy] BOM CSV data received: ${csvText.length} characters`);
-
-  // Enhanced debugging: show first 500 chars of CSV
-  if (csvText.length > 0) {
-    console.log(`[Finale Proxy] CSV Preview (first 500 chars):`, csvText.substring(0, 500));
-  } else {
-    console.error(`[Finale Proxy] WARNING: BOM CSV text is empty!`);
+  console.log(`[Finale Proxy] BOM CSV Response:`, {
+    status: response.status,
+    statusText: response.statusText,
+    contentType: response.headers.get('content-type'),
+    contentLength: response.headers.get('content-length'),
+    dataLength: csvText.length,
+    firstChars: csvText.substring(0, 200),
+  });
+  
+  if (csvText.length === 0) {
+    console.error(`[Finale Proxy] EMPTY BOM CSV RESPONSE!`);
+    console.error(`[Finale Proxy] Report URL:`, fixedUrl.substring(0, 100));
   }
 
   const rawBOMs = parseCSV(csvText);
