@@ -198,24 +198,40 @@ function parseCSV(csvText: string): any[] {
     return values.map(v => v.replace(/^"|"$/g, ''));
   }
 
-  // Detect header row: find the first row that contains "Name" and one of expected columns
+  // Detect header row: find the first row that contains common CSV header patterns
   let headerIndex = 0;
   let headers: string[] = [];
   for (let i = 0; i < rowsRaw.length; i++) {
     const cols = parseCsvLine(rowsRaw[i]);
-    const hasName = cols.some(c => c.trim().toLowerCase() === 'name');
-    const hasExpected = cols.some(c => /email address\s*0|phone number\s*0|address\s*0\s*street\s*address/i.test(c));
-    if (hasName && hasExpected) {
+    const colsLower = cols.map(c => c.trim().toLowerCase());
+
+    // Check for common header indicators across all CSV types
+    const hasName = colsLower.some(c => c === 'name' || c === 'product name');
+    const hasIdentifier = colsLower.some(c =>
+      c === 'sku' ||
+      c === 'product id' ||
+      c === 'product code' ||
+      c === 'email address 0' || // vendor
+      c === 'finished sku' || // BOM
+      c.includes('product id') // flexible match
+    );
+
+    // Header row should have at least 3 non-empty columns and key identifiers
+    const hasEnoughColumns = cols.filter(c => c.trim().length > 0).length >= 3;
+
+    if (hasEnoughColumns && (hasName || hasIdentifier)) {
       headerIndex = i;
       headers = cols.map(h => h.trim());
+      console.log(`[Finale Proxy] Detected header row at line ${i + 1}`);
       break;
     }
   }
 
   if (headers.length === 0) {
-    // Fallback to first row
+    // Fallback to first non-empty row
     headers = parseCsvLine(rowsRaw[0]).map(h => h.trim());
     headerIndex = 0;
+    console.log('[Finale Proxy] Using first row as headers (fallback)');
   }
 
   console.log('[Finale Proxy] CSV Headers:', headers);
