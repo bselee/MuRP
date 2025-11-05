@@ -278,68 +278,112 @@ export type InventoryDatabase = z.infer<typeof InventoryDatabaseSchema>;
 // ============================================================================
 
 /**
- * Raw BOM Component Schema - CSV columns
- */
-export const BOMComponentRawSchema = z.object({
-  'Component SKU': z.string().optional(),
-  'Component Name': z.string().optional(),
-  'Quantity': z.string().optional(),
-  'Quantity Required': z.string().optional(),
-}).passthrough();
-
-export type BOMComponentRaw = z.infer<typeof BOMComponentRawSchema>;
-
-/**
- * Parsed BOM Component Schema
- */
-export const BOMComponentParsedSchema = z.object({
-  sku: z.string().min(1),
-  name: z.string().min(1),
-  quantity: z.number().min(0),
-});
-
-export type BOMComponentParsed = z.infer<typeof BOMComponentParsedSchema>;
-
-/**
- * Raw BOM Schema
+ * Raw BOM Schema - CSV columns from Finale BOM report
+ * Maps directly to "Build BOM Report-Inv Master" columns
  */
 export const BOMRawSchema = z.object({
-  'Finished SKU': z.string().optional(),
+  // Finished product info
+  'Product ID': z.string().optional(),
+  'Name': z.string().optional(),
   'Product Name': z.string().optional(),
+
+  // Build quantities
+  'Potential \n Build \n Qty': z.string().optional(),
+  'Potential Build Qty': z.string().optional(),
+  'BOM Quantity': z.string().optional(),
+  'BOM \n Quantity': z.string().optional(),
+
+  // Component info
+  'Component \n Product ID': z.string().optional(),
+  'Component Product ID': z.string().optional(),
+  'Component Name': z.string().optional(),
+  'Component \n Name': z.string().optional(),
+
+  // Stock and cost info
+  'Component product \n Remaining': z.string().optional(),
+  'Component product Remaining': z.string().optional(),
+  'BOM \n Average cost': z.string().optional(),
+  'BOM Average cost': z.string().optional(),
+
+  // Additional fields
   'Barcode': z.string().optional(),
-  'Components': z.string().optional(), // JSON string
+  'Category': z.string().optional(),
+  'Status': z.string().optional(),
+  'Product Status': z.string().optional(),
+
+  // Allow any other fields from the report
 }).passthrough();
 
 export type BOMRaw = z.infer<typeof BOMRawSchema>;
 
 /**
- * Parsed BOM Schema
+ * Parsed BOM Component Schema - Individual component within a BOM
+ */
+export const BOMComponentParsedSchema = z.object({
+  sku: z.string().min(1),
+  name: z.string().min(1),
+  quantity: z.number().min(0),
+  // Enhanced fields for MRP
+  unitCost: z.number().optional(),
+  remaining: z.number().optional(), // Stock remaining for this component
+  supplierSku: z.string().optional(),
+  leadTimeDays: z.number().optional(),
+});
+
+export type BOMComponentParsed = z.infer<typeof BOMComponentParsedSchema>;
+
+/**
+ * Parsed BOM Schema - Validated and normalized Bill of Materials
  */
 export const BOMParsedSchema = z.object({
   id: z.string().min(1),
   finishedSku: z.string().min(1),
   name: z.string().min(1),
-  components: z.array(BOMComponentParsedSchema),
+  components: z.array(BOMComponentParsedSchema).default([]),
+
+  // Artwork/Labels/Bags/Documents (will be populated separately or from additional columns)
   artwork: z.array(z.any()).default([]),
+
+  // Packaging specifications
   packaging: z.object({
-    bagType: z.string(),
-    labelType: z.string(),
-    specialInstructions: z.string(),
+    bagType: z.string().default('Standard'),
+    labelType: z.string().default('Standard'),
+    specialInstructions: z.string().default(''),
+    bagSku: z.string().optional(),
+    labelSku: z.string().optional(),
+    boxSku: z.string().optional(),
+    insertSku: z.string().optional(),
+    weight: z.number().optional(),
+    weightUnit: z.string().optional(),
+    dimensions: z.string().optional(),
   }).default({
     bagType: 'Standard',
     labelType: 'Standard',
     specialInstructions: '',
   }),
+
+  // Enhanced fields for MRP
   barcode: z.string().optional(),
+  description: z.string().default(''),
+  category: z.string().default(''),
+  yieldQuantity: z.number().default(1), // How many units this BOM produces
+  potentialBuildQty: z.number().optional(), // From Finale report
+  averageCost: z.number().optional(), // BOM average cost
+
+  // Sync tracking (like vendors/inventory)
+  dataSource: z.enum(['csv', 'api', 'manual']).default('csv'),
+  lastSyncAt: z.string().optional(),
+  syncStatus: z.enum(['synced', 'pending', 'error']).default('synced'),
   notes: z.string().default(''),
-  source: z.enum(['csv', 'api', 'manual']).default('csv'),
+
+  // Preserve raw data for debugging
   rawData: z.record(z.any()).optional(),
 });
 
 export type BOMParsed = z.infer<typeof BOMParsedSchema>;
 
 /**
- * Database BOM Schema
+ * Database BOM Schema - Maps to Supabase boms table
  */
 export const BOMDatabaseSchema = z.object({
   id: z.string(),
@@ -349,6 +393,17 @@ export const BOMDatabaseSchema = z.object({
   artwork: z.any(), // JSONB
   packaging: z.any(), // JSONB
   barcode: z.string().optional(),
+  // Enhanced fields for MRP
+  description: z.string().optional(),
+  category: z.string().optional(),
+  yield_quantity: z.number().optional(),
+  potential_build_qty: z.number().optional(),
+  average_cost: z.number().optional(),
+  // Sync tracking
+  data_source: z.string().optional(),
+  last_sync_at: z.string().optional(),
+  sync_status: z.string().optional(),
+  notes: z.string().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });

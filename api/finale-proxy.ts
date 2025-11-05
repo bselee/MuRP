@@ -406,6 +406,83 @@ async function getPurchaseOrders(config: FinaleConfig, limit = 100, offset = 0) 
 }
 
 /**
+ * Get Bills of Materials from CSV report
+ * Returns raw CSV data for frontend transformation
+ */
+async function getBOMs(config: FinaleConfig) {
+  const reportUrl = process.env.FINALE_BOM_REPORT_URL;
+
+  if (!reportUrl) {
+    throw new Error('FINALE_BOM_REPORT_URL not configured in environment');
+  }
+
+  console.log(`[Finale Proxy] Fetching BOM CSV from report...`);
+
+  // Fix URL: Replace pivotTableStream with pivotTable
+  const fixedUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
+
+  const response = await fetch(fixedUrl, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`,
+      'Accept': 'text/csv',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[Finale Proxy] BOM CSV fetch error:`, errorText);
+    throw new Error(`Failed to fetch BOM report (${response.status}): ${response.statusText}`);
+  }
+
+  const csvText = await response.text();
+  console.log(`[Finale Proxy] BOM CSV data received: ${csvText.length} characters`);
+
+  // Enhanced debugging: show first 500 chars of CSV
+  if (csvText.length > 0) {
+    console.log(`[Finale Proxy] CSV Preview (first 500 chars):`, csvText.substring(0, 500));
+  } else {
+    console.error(`[Finale Proxy] WARNING: BOM CSV text is empty!`);
+  }
+
+  const rawBOMs = parseCSV(csvText);
+  console.log(`[Finale Proxy] Parsed ${rawBOMs.length} raw BOM rows from CSV`);
+
+  // Filter out rows with empty Product ID or Name (data quality)
+  const validBOMs = rawBOMs.filter(item => {
+    const productId = item['Product ID'] || item['Finished SKU'] || item['SKU'];
+    const name = item['Name'] || item['Product Name'];
+    const isValid = productId &&
+                    typeof productId === 'string' &&
+                    productId.trim().length > 0 &&
+                    !productId.trim().startsWith(',') &&
+                    name &&
+                    typeof name === 'string' &&
+                    name.trim().length > 0;
+
+    if (!isValid) {
+      console.log(`[Finale Proxy] Skipping BOM row with invalid Product ID/Name: ID="${productId}", Name="${name}"`);
+    }
+    return isValid;
+  });
+
+  console.log(`[Finale Proxy] ${validBOMs.length} valid BOM rows after filtering (removed ${rawBOMs.length - validBOMs.length} invalid)`);
+
+  if (validBOMs.length > 0) {
+    console.log(`[Finale Proxy] CSV Headers (${Object.keys(validBOMs[0]).length} columns):`, Object.keys(validBOMs[0]));
+    console.log(`[Finale Proxy] Sample BOM row:`, {
+      ProductID: validBOMs[0]['Product ID'] || validBOMs[0]['Finished SKU'],
+      Name: validBOMs[0]['Name'] || validBOMs[0]['Product Name'],
+      Component: validBOMs[0]['Component \n Product ID'] || validBOMs[0]['Component Product ID'],
+      BOMQty: validBOMs[0]['BOM \n Quantity'] || validBOMs[0]['BOM Quantity'],
+    });
+  }
+
+  // Return filtered data - transformation will happen in the frontend service
+  return validBOMs;
+}
+
+/**
  * Main API handler
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -477,6 +554,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           params.limit || 100,
           params.offset || 0
         );
+        break;
+
+      case 'getBOMs':
+        result = await getBOMs(finaleConfig);
         break;
 
       default:

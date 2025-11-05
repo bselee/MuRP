@@ -21,6 +21,7 @@ import {
   InventoryDatabase,
   BOMRaw,
   BOMParsed,
+  BOMComponentParsed,
   BOMDatabase,
   SchemaRegistry,
   ParseResult,
@@ -667,6 +668,243 @@ export function transformInventoryBatch(
     failed,
     totalWarnings,
   };
+}
+
+// ============================================================================
+// BOM TRANSFORMERS
+// ============================================================================
+
+/**
+ * Transform raw CSV BOM data to parsed BOM object
+ * Note: Finale BOM reports may have one row per component, so we need to group by finished SKU
+ */
+export function transformBOMRawToParsed(
+  raw: Record<string, any>,
+  inventoryMap: Map<string, any> = new Map()
+): ParseResult<{finishedSku: string; name: string; component?: BOMComponentParsed; potentialBuildQty?: number; averageCost?: number; category?: string}> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  try {
+    // Extract finished product SKU (required)
+    const finishedSku = extractFirst(raw, ['Product ID', 'Finished SKU', 'SKU']);
+    if (!finishedSku || finishedSku.trim() === '') {
+      return {
+        success: false,
+        errors: ['Product ID is required'],
+        warnings: [],
+      };
+    }
+
+    // Extract finished product name (required)
+    const name = extractFirst(raw, ['Name', 'Product Name']);
+    if (!name || name.trim() === '') {
+      return {
+        success: false,
+        errors: [`Product Name is required for SKU: ${finishedSku}`],
+        warnings: [],
+      };
+    }
+
+    // Extract potential build quantity
+    const potentialBuildRaw = extractFirst(raw, ['Potential \n Build \n Qty', 'Potential Build Qty']);
+    const potentialBuildQty = parseNumber(potentialBuildRaw, undefined);
+
+    // Extract BOM average cost
+    const avgCostRaw = extractFirst(raw, ['BOM \n Average cost', 'BOM Average cost']);
+    const averageCost = parseNumber(avgCostRaw, undefined);
+
+    // Extract category
+    const category = extractFirst(raw, ['Category', 'Product Category']) || '';
+
+    // Extract component info (if this row has component data)
+    const componentSku = extractFirst(raw, ['Component \n Product ID', 'Component Product ID', 'Component SKU']);
+    const componentName = extractFirst(raw, ['Component \n Name', 'Component Name']);
+    const componentQtyRaw = extractFirst(raw, ['BOM \n Quantity', 'BOM Quantity', 'Quantity']);
+    const componentRemainingRaw = extractFirst(raw, ['Component product \n Remaining', 'Component product Remaining']);
+
+    let component: BOMComponentParsed | undefined;
+
+    if (componentSku && componentName) {
+      const quantity = parseNumber(componentQtyRaw, 1);
+      const remaining = parseNumber(componentRemainingRaw, undefined);
+
+      // Get additional component info from inventory if available
+      const inventoryItem = inventoryMap.get(componentSku.toUpperCase().trim());
+
+      component = {
+        sku: componentSku,
+        name: componentName,
+        quantity,
+        remaining,
+        unitCost: inventoryItem?.unitCost,
+        supplierSku: inventoryItem?.supplierSku,
+        leadTimeDays: inventoryItem?.leadTimeDays,
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        finishedSku,
+        name,
+        component,
+        potentialBuildQty,
+        averageCost,
+        category,
+      },
+      errors: [],
+      warnings,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      errors: [`Error transforming BOM: ${error.message}`],
+      warnings,
+    };
+  }
+}
+
+/**
+ * Transform batch of raw BOM rows and group by finished SKU
+ * Each row in Finale BOM report represents one component of a BOM
+ */
+export function transformBOMsBatch(
+  rawBOMs: Record<string, any>[],
+  inventoryMap: Map<string, any> = new Map()
+): BatchTransformResult<BOMParsed> {
+  const successful: BOMParsed[] = [];
+  const failed: Array<{ index: number; errors: string[]; warnings: string[]; raw: any }> = [];
+  const totalWarnings: string[] = [];
+
+  // Group rows by finished SKU
+  const bomGroups = new Map<string, {
+    name: string;
+    components: BOMComponentParsed[];
+    potentialBuildQty?: number;
+    averageCost?: number;
+    category?: string;
+    rawRows: any[];
+  }>();
+
+  rawBOMs.forEach((raw, index) => {
+    const result = transformBOMRawToParsed(raw, inventoryMap);
+
+    if (result.success && result.data) {
+      const { finishedSku, name, component, potentialBuildQty, averageCost, category } = result.data;
+
+      if (!bomGroups.has(finishedSku)) {
+        bomGroups.set(finishedSku, {
+          name,
+          components: [],
+          potentialBuildQty,
+          averageCost,
+          category,
+          rawRows: [],
+        });
+      }
+
+      const group = bomGroups.get(finishedSku)!;
+      if (component) {
+        group.components.push(component);
+      }
+      group.rawRows.push(raw);
+
+      // Collect warnings
+      if (result.warnings.length > 0) {
+        totalWarnings.push(...result.warnings.map(w => `Row ${index + 1}: ${w}`));
+      }
+    } else {
+      failed.push({
+        index,
+        errors: result.errors,
+        warnings: result.warnings,
+        raw,
+      });
+    }
+  });
+
+  // Create BOMParsed objects from groups
+  for (const [finishedSku, group] of bomGroups.entries()) {
+    const id = generateDeterministicId(finishedSku);
+
+    const bomParsed: BOMParsed = {
+      id,
+      finishedSku,
+      name: group.name,
+      components: group.components,
+      artwork: [], // Will be populated from separate sources
+      packaging: {
+        bagType: 'Standard',
+        labelType: 'Standard',
+        specialInstructions: '',
+      },
+      description: '',
+      category: group.category || '',
+      yieldQuantity: 1,
+      potentialBuildQty: group.potentialBuildQty,
+      averageCost: group.averageCost,
+      dataSource: 'csv',
+      lastSyncAt: new Date().toISOString(),
+      syncStatus: 'synced',
+      notes: '',
+      rawData: group.rawRows[0], // Keep first row as reference
+    };
+
+    successful.push(bomParsed);
+  }
+
+  console.log('[BOM Transform] Statistics:');
+  console.log(`  - Total rows processed: ${rawBOMs.length}`);
+  console.log(`  - ✓ Unique BOMs created: ${successful.length}`);
+  console.log(`  - ✗ Failed rows: ${failed.length}`);
+
+  return {
+    successful,
+    failed,
+    totalWarnings,
+  };
+}
+
+/**
+ * Transform parsed BOM to database format
+ */
+export function transformBOMParsedToDatabase(
+  parsed: BOMParsed
+): Record<string, any> {
+  return {
+    id: parsed.id,
+    finished_sku: parsed.finishedSku,
+    name: parsed.name,
+    components: parsed.components, // JSONB
+    artwork: parsed.artwork, // JSONB
+    packaging: parsed.packaging, // JSONB
+    barcode: parsed.barcode,
+    description: parsed.description,
+    category: parsed.category,
+    yield_quantity: parsed.yieldQuantity,
+    potential_build_qty: parsed.potentialBuildQty,
+    average_cost: parsed.averageCost,
+    data_source: parsed.dataSource,
+    last_sync_at: parsed.lastSyncAt || new Date().toISOString(),
+    sync_status: parsed.syncStatus,
+    notes: parsed.notes,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Deduplicate BOMs by finished SKU (keep last occurrence)
+ */
+export function deduplicateBOMs(boms: BOMParsed[]): BOMParsed[] {
+  const byFinishedSku = new Map<string, BOMParsed>();
+
+  boms.forEach(bom => {
+    const key = bom.finishedSku.toUpperCase().trim();
+    byFinishedSku.set(key, bom);
+  });
+
+  return Array.from(byFinishedSku.values());
 }
 
 // ============================================================================
