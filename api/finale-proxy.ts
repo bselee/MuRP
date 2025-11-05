@@ -444,19 +444,38 @@ async function getBOMs(config: FinaleConfig) {
     return [];
   }
 
-  const rawBOMs = parseCSV(csvText);
-  console.log(`[Finale Proxy] ✅ Parsed ${rawBOMs.length} raw rows from CSV`);
+  // Parse CSV manually to handle duplicate "Description" column
+  // Column order: Product ID, Description (parent), Potential Build Qty, BOM Quantity, 
+  //               Component Product ID, Description (component), Component Remaining, Component Note, BOM Average Cost
+  const lines = csvText.split('\n').filter(l => l.trim());
+  const rawBOMs: any[] = [];
+  
+  for (let i = 1; i < lines.length; i++) { // Skip header row
+    const values = lines[i].split(',').map(v => v.replace(/^"|"$/g, '').trim());
+    
+    rawBOMs.push({
+      'Product ID': values[0] || '',
+      'Parent Description': values[1] || '', // First Description is parent
+      'Potential Build Qty': values[2] || '',
+      'BOM Quantity': values[3] || '',
+      'Component Product ID': values[4] || '',
+      'Component Description': values[5] || '', // Second Description is component
+      'Component Remaining': values[6] || '',
+      'Component Note': values[7] || '',
+      'BOM Average Cost': values[8] || '',
+    });
+  }
 
-  // Show actual column names from CSV
+  console.log(`[Finale Proxy] ✅ Parsed ${rawBOMs.length} raw rows from CSV (manual parse for duplicate columns)`);
+
+  // Show sample
   if (rawBOMs.length > 0) {
-    const actualColumns = Object.keys(rawBOMs[0]);
-    console.log(`[Finale Proxy] 📋 Actual BOM CSV columns (${actualColumns.length}):`, actualColumns);
     console.log(`[Finale Proxy] 📋 Sample first row:`, rawBOMs[0]);
   }
 
   // Transform hierarchical CSV format to flat format
-  // Parent rows have: Product ID, Description, Potential Build Qty
-  // Component rows have: empty first 3 cols, then BOM Quantity, Component Product ID, etc.
+  // Parent rows have: Product ID, Parent Description, Potential Build Qty
+  // Component rows have: empty first 3 cols, then BOM Quantity, Component Product ID, Component Description, etc.
   const flatBOMs: any[] = [];
   let currentParent: any = null;
   let parentCount = 0;
@@ -467,15 +486,15 @@ async function getBOMs(config: FinaleConfig) {
 
   for (const row of rawBOMs) {
     const productId = row['Product ID']?.trim();
-    const componentId = row['Component Product ID']?.trim() || row['Component \n Product ID']?.trim();
+    const componentId = row['Component Product ID']?.trim();
 
     // If row has Product ID, it's a parent product
     if (productId) {
       parentCount++;
       currentParent = {
         productId: productId,
-        productName: row['Description']?.trim() || '',
-        potentialBuildQty: row['Potential Build \n Qty']?.trim() || row['Potential Build Qty']?.trim() || '',
+        productName: row['Parent Description']?.trim() || productId, // Use parent description
+        potentialBuildQty: row['Potential Build Qty']?.trim() || '',
       };
       if (parentCount <= 3) {
         console.log(`[Finale Proxy] 📦 Found parent product: ${productId} - ${currentParent.productName}`);
@@ -486,18 +505,18 @@ async function getBOMs(config: FinaleConfig) {
       componentCount++;
       const flatRow = {
         'Product ID': currentParent.productId,
-        'Product Name': currentParent.productName || currentParent.productId, // Fallback to ID if name is empty
+        'Product Name': currentParent.productName,
         'Potential Build Qty': currentParent.potentialBuildQty,
         'BOM Quantity': row['BOM Quantity']?.trim() || '',
         'Component Product ID': componentId,
-        'Component Name': row['Description']?.trim() || '',
-        'Component Remaining': row['Component product \n Remaining']?.trim() || row['Component product Remaining']?.trim() || '',
-        'Component Note': row['Component note']?.trim() || row['Component Note']?.trim() || '',
-        'BOM Average Cost': row['BOM Average cost']?.trim() || row['BOM Average Cost']?.trim() || '',
+        'Component Name': row['Component Description']?.trim() || '', // Use component description
+        'Component Remaining': row['Component Remaining']?.trim() || '',
+        'Component Note': row['Component Note']?.trim() || '',
+        'BOM Average Cost': row['BOM Average Cost']?.trim() || '',
       };
       flatBOMs.push(flatRow);
       if (componentCount <= 3) {
-        console.log(`[Finale Proxy] 🔧 Added component: ${componentId} for parent ${currentParent.productId}`);
+        console.log(`[Finale Proxy] 🔧 Added component: ${componentId} (${flatRow['Component Name']}) for parent ${currentParent.productId} (${currentParent.productName})`);
       }
     }
     else {
