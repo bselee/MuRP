@@ -52,6 +52,9 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   // Sync status
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
+  
+  // Multi-select sync
+  const [selectedSyncSources, setSelectedSyncSources] = useState<Set<string>>(new Set(['vendors', 'inventory', 'boms']));
 
   // Check if already configured on mount
   useEffect(() => {
@@ -177,16 +180,50 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   };
 
   const handleManualSync = async () => {
+    if (selectedSyncSources.size === 0) {
+      addToast('Please select at least one data source to sync', 'error');
+      return;
+    }
+
     const syncService = getFinaleSyncService();
-    addToast('🔄 Starting manual sync...', 'info');
+    const sources = Array.from(selectedSyncSources);
+    addToast(`🔄 Starting sync for: ${sources.join(', ')}...`, 'info');
     
     try {
-      await syncService.syncAll();
+      // Sync selected sources in order: vendors → inventory → BOMs
+      if (selectedSyncSources.has('vendors')) {
+        await syncService.syncVendors();
+      }
+      if (selectedSyncSources.has('inventory')) {
+        await syncService.syncInventoryFromCSV();
+      }
+      if (selectedSyncSources.has('boms')) {
+        await syncService.syncBOMsFromCSV();
+      }
+      
       addToast('✅ Sync completed!', 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sync failed';
       addToast('❌ Sync failed: ' + message, 'error');
     }
+  };
+
+  const toggleSyncSource = (source: string) => {
+    const newSelection = new Set(selectedSyncSources);
+    if (newSelection.has(source)) {
+      newSelection.delete(source);
+    } else {
+      newSelection.add(source);
+    }
+    setSelectedSyncSources(newSelection);
+  };
+
+  const selectAllSyncSources = () => {
+    setSelectedSyncSources(new Set(['vendors', 'inventory', 'boms']));
+  };
+
+  const deselectAllSyncSources = () => {
+    setSelectedSyncSources(new Set());
   };
 
   const formatDuration = (ms: number | null) => {
@@ -436,14 +473,77 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 </div>
               )}
 
+              {/* Multi-select sync sources */}
+              <div className="p-4 bg-gray-900/50 rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-white">Select Data Sources</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={selectAllSyncSources}
+                      className="text-xs text-indigo-400 hover:text-indigo-300"
+                    >
+                      Select All
+                    </button>
+                    <span className="text-gray-600">|</span>
+                    <button
+                      onClick={deselectAllSyncSources}
+                      className="text-xs text-gray-400 hover:text-white"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={selectedSyncSources.has('vendors')}
+                      onChange={() => toggleSyncSource('vendors')}
+                      className="w-4 h-4 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm text-white group-hover:text-indigo-300">Vendors</span>
+                      <p className="text-xs text-gray-500">Supplier information and contacts</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={selectedSyncSources.has('inventory')}
+                      onChange={() => toggleSyncSource('inventory')}
+                      className="w-4 h-4 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm text-white group-hover:text-indigo-300">Inventory</span>
+                      <p className="text-xs text-gray-500">Stock levels, costs, and locations</p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={selectedSyncSources.has('boms')}
+                      onChange={() => toggleSyncSource('boms')}
+                      className="w-4 h-4 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm text-white group-hover:text-indigo-300">Bills of Materials</span>
+                      <p className="text-xs text-gray-500">Product recipes and components</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
               {/* Manual sync button */}
               <button
                 onClick={handleManualSync}
-                disabled={syncStatus?.isRunning}
-                className="w-full bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={syncStatus?.isRunning || selectedSyncSources.size === 0}
+                className="w-full bg-indigo-600 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <RefreshIcon className={`w-5 h-5 ${syncStatus?.isRunning ? 'animate-spin' : ''}`} />
-                {syncStatus?.isRunning ? 'Syncing...' : 'Run Manual Sync Now'}
+                {syncStatus?.isRunning ? 'Syncing...' : `Sync Selected (${selectedSyncSources.size})`}
               </button>
 
               {/* Errors */}
