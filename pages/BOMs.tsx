@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import type { BillOfMaterials, User } from '../types';
-import { PencilIcon } from '../components/icons';
+import { PencilIcon, ChevronDownIcon } from '../components/icons';
 import BomEditModal from '../components/BomEditModal';
 
 interface BOMsProps {
@@ -14,8 +14,19 @@ interface BOMsProps {
 const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateToArtwork }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
+  const [expandedBoms, setExpandedBoms] = useState<Set<string>>(new Set());
 
   const canEdit = currentUser.role === 'Admin';
+
+  const toggleBomExpanded = (bomId: string) => {
+    const newExpanded = new Set(expandedBoms);
+    if (newExpanded.has(bomId)) {
+      newExpanded.delete(bomId);
+    } else {
+      newExpanded.add(bomId);
+    }
+    setExpandedBoms(newExpanded);
+  };
 
   const handleEditClick = (bom: BillOfMaterials) => {
     setSelectedBom(bom);
@@ -42,21 +53,34 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
   const displayManufacturedProducts = manufacturedProducts.length > 0 ? manufacturedProducts : boms;
   const displaySubAssemblies = subAssemblies;
 
-  const BomCard: React.FC<{ bom: BillOfMaterials }> = ({ bom }) => (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-      <div className="p-4 bg-gray-800 flex justify-between items-center">
-        <div>
-          <h3 className="font-semibold text-white">{bom.name}</h3>
-          <p className="text-sm text-gray-400">{bom.finishedSku}</p>
+  const BomCard: React.FC<{ bom: BillOfMaterials }> = ({ bom }) => {
+    const isExpanded = expandedBoms.has(bom.id);
+    
+    return (
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
+        <div className="p-4 bg-gray-800 flex justify-between items-center">
+          <div className="flex-1">
+            <h3 className="font-semibold text-white">{bom.name}</h3>
+            <p className="text-sm text-gray-400">{bom.finishedSku}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => toggleBomExpanded(bom.id)}
+              className="p-2 hover:bg-gray-700 rounded-md transition-colors"
+              title={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              <ChevronDownIcon className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+            </button>
+            {canEdit && (
+              <button onClick={() => handleEditClick(bom)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors">
+                <PencilIcon className="w-4 h-4" />
+                Edit
+              </button>
+            )}
+          </div>
         </div>
-        {canEdit && (
-          <button onClick={() => handleEditClick(bom)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors">
-            <PencilIcon className="w-4 h-4" />
-            Edit
-          </button>
-        )}
-      </div>
-      <div className="p-4 space-y-4">
+        {isExpanded && (
+          <div className="p-4 space-y-4 border-t border-gray-700">
         <div>
           <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Components</h4>
           <ul className="space-y-1 text-sm">
@@ -88,9 +112,10 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
           <p className="text-sm text-gray-300">{bom.packaging.bagType} w/ {bom.packaging.labelType}</p>
           <p className="text-xs text-gray-500 mt-1"><i>Instructions: {bom.packaging.specialInstructions}</i></p>
         </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-8">
