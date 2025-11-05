@@ -322,19 +322,26 @@ async function getSuppliers(config: FinaleConfig) {
  * Returns raw CSV data for frontend transformation
  */
 async function getInventory(config: FinaleConfig) {
-  let reportUrl = process.env.FINALE_INVENTORY_REPORT_URL;
-  
+  const reportUrl = process.env.FINALE_INVENTORY_REPORT_URL;
+
+  console.log(`[Finale Proxy] getInventory() called`);
+  console.log(`[Finale Proxy] Environment variable exists: ${!!reportUrl}`);
+  console.log(`[Finale Proxy] URL length: ${reportUrl?.length || 0}`);
+
   if (!reportUrl) {
     throw new Error('FINALE_INVENTORY_REPORT_URL not configured in environment');
   }
 
-  // Fix URL: Replace pivotTableStream with pivotTable for direct API access
-  reportUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
-
   console.log(`[Finale Proxy] Fetching inventory CSV from report...`);
-  console.log(`[Finale Proxy] Inventory Report URL (first 150 chars):`, reportUrl.substring(0, 150));
+  console.log(`[Finale Proxy] Original URL (first 100 chars): ${reportUrl.substring(0, 100)}...`);
 
-  const response = await fetch(reportUrl, {
+  // Fix URL: Replace pivotTableStream with pivotTable for direct API access
+  // Per Finale docs: https://support.finaleinventory.com/hc/en-us/articles/115001687154
+  const fixedUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
+  console.log(`[Finale Proxy] Fixed URL (first 100 chars): ${fixedUrl.substring(0, 100)}...`);
+  console.log(`[Finale Proxy] URL was modified: ${reportUrl !== fixedUrl}`);
+
+  const response = await fetch(fixedUrl, {
     method: 'GET',
     headers: {
       'Authorization': `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`,
@@ -349,59 +356,27 @@ async function getInventory(config: FinaleConfig) {
   }
 
   const csvText = await response.text();
-  console.log(`[Finale Proxy] Inventory CSV Response:`, {
-    status: response.status,
-    statusText: response.statusText,
-    contentType: response.headers.get('content-type'),
-    contentLength: response.headers.get('content-length'),
-    dataLength: csvText.length,
-    firstChars: csvText.substring(0, 200),
-  });
-  
+  console.log(`[Finale Proxy] ✅ Inventory CSV data received: ${csvText.length} characters`);
+  console.log(`[Finale Proxy] CSV starts with: ${csvText.substring(0, 100)}`);
+
   if (csvText.length === 0) {
-    console.error(`[Finale Proxy] EMPTY CSV RESPONSE!`);
-    console.error(`[Finale Proxy] Report URL:`, reportUrl.substring(0, 100));
-    console.error(`[Finale Proxy] This usually means:`);
-    console.error(`  1. The report has no data matching the filters`);
-    console.error(`  2. The report URL needs /pivotTable/ instead of /pivotTableStream/`);
-    console.error(`  3. The report was deleted or expired in Finale`);
+    console.error(`[Finale Proxy] ⚠️ ERROR: CSV text is EMPTY! Check if report URL is expired or empty.`);
+    return [];
   }
 
   const rawInventory = parseCSV(csvText);
-  console.log(`[Finale Proxy] Parsed ${rawInventory.length} raw inventory items from CSV`);
-  
-  // Filter out rows with empty SKU or Name (data quality)
-  const validInventory = rawInventory.filter(item => {
-    const sku = item['SKU'] || item['Code'] || item['sku'];
-    const name = item['Name'] || item['Product'] || item['name'];
-    const isValid = sku && 
-                    typeof sku === 'string' && 
-                    sku.trim().length > 0 &&
-                    !sku.trim().startsWith(',') &&
-                    name &&
-                    typeof name === 'string' &&
-                    name.trim().length > 0;
-    
-    if (!isValid) {
-      console.log(`[Finale Proxy] Skipping inventory row with invalid SKU/Name: SKU="${sku}", Name="${name}"`);
-    }
-    return isValid;
-  });
-  
-  console.log(`[Finale Proxy] ${validInventory.length} valid inventory items after filtering (removed ${rawInventory.length - validInventory.length} invalid)`);
-  
-  if (validInventory.length > 0) {
-    const headers = Object.keys(validInventory[0]);
-    console.log(`[Finale Proxy] CSV Headers (${headers.length} columns):`, headers);
-    console.log(`[Finale Proxy] Sample inventory item (first row):`, validInventory[0]);
-  } else if (rawInventory.length > 0) {
-    // Show headers even if all rows were filtered out
-    console.log(`[Finale Proxy] CSV Headers (${Object.keys(rawInventory[0]).length} columns):`, Object.keys(rawInventory[0]));
-    console.log(`[Finale Proxy] All ${rawInventory.length} rows filtered out. Sample row:`, rawInventory[0]);
+  console.log(`[Finale Proxy] ✅ Parsed ${rawInventory.length} raw rows from CSV`);
+
+  // Show actual column names from CSV
+  if (rawInventory.length > 0) {
+    const actualColumns = Object.keys(rawInventory[0]);
+    console.log(`[Finale Proxy] 📋 Actual CSV columns (${actualColumns.length}):`, actualColumns);
+    console.log(`[Finale Proxy] 📋 Sample first row:`, rawInventory[0]);
   }
 
-  // Return filtered data - transformation will happen in the frontend service
-  return validInventory;
+  // Return ALL raw data - schema transformers on frontend will handle validation and filtering
+  // The transformers check for 'SKU' or 'Product Code', 'Name' or 'Product Name', etc.
+  return rawInventory;
 }
 
 /**
@@ -416,19 +391,26 @@ async function getPurchaseOrders(config: FinaleConfig, limit = 100, offset = 0) 
  * Returns raw CSV data for frontend transformation
  */
 async function getBOMs(config: FinaleConfig) {
-  let reportUrl = process.env.FINALE_BOM_REPORT_URL;
+  const reportUrl = process.env.FINALE_BOM_REPORT_URL;
+
+  console.log(`[Finale Proxy] getBOMs() called`);
+  console.log(`[Finale Proxy] Environment variable exists: ${!!reportUrl}`);
+  console.log(`[Finale Proxy] URL length: ${reportUrl?.length || 0}`);
 
   if (!reportUrl) {
     throw new Error('FINALE_BOM_REPORT_URL not configured in environment');
   }
 
-  // Fix URL: Replace pivotTableStream with pivotTable for direct API access
-  reportUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
-
   console.log(`[Finale Proxy] Fetching BOM CSV from report...`);
-  console.log(`[Finale Proxy] BOM Report URL (first 150 chars):`, reportUrl.substring(0, 150));
+  console.log(`[Finale Proxy] Original URL (first 100 chars): ${reportUrl.substring(0, 100)}...`);
 
-  const response = await fetch(reportUrl, {
+  // Fix URL: Replace pivotTableStream with pivotTable for direct API access
+  // Per Finale docs: https://support.finaleinventory.com/hc/en-us/articles/115001687154
+  const fixedUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
+  console.log(`[Finale Proxy] Fixed URL (first 100 chars): ${fixedUrl.substring(0, 100)}...`);
+  console.log(`[Finale Proxy] URL was modified: ${reportUrl !== fixedUrl}`);
+
+  const response = await fetch(fixedUrl, {
     method: 'GET',
     headers: {
       'Authorization': `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`,
@@ -438,60 +420,35 @@ async function getBOMs(config: FinaleConfig) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`[Finale Proxy] BOM CSV fetch error:`, errorText);
+    console.error(`[Finale Proxy] ❌ BOM CSV fetch failed!`);
+    console.error(`[Finale Proxy] Status: ${response.status} ${response.statusText}`);
+    console.error(`[Finale Proxy] Response body:`, errorText.substring(0, 500));
+    console.error(`[Finale Proxy] This usually means the report URL is invalid or expired`);
     throw new Error(`Failed to fetch BOM report (${response.status}): ${response.statusText}`);
   }
 
   const csvText = await response.text();
-  console.log(`[Finale Proxy] BOM CSV Response:`, {
-    status: response.status,
-    statusText: response.statusText,
-    contentType: response.headers.get('content-type'),
-    contentLength: response.headers.get('content-length'),
-    dataLength: csvText.length,
-    firstChars: csvText.substring(0, 200),
-  });
-  
+  console.log(`[Finale Proxy] ✅ BOM CSV data received: ${csvText.length} characters`);
+  console.log(`[Finale Proxy] CSV starts with: ${csvText.substring(0, 100)}`);
+
   if (csvText.length === 0) {
-    console.error(`[Finale Proxy] EMPTY BOM CSV RESPONSE!`);
-    console.error(`[Finale Proxy] Report URL:`, reportUrl.substring(0, 100));
+    console.error(`[Finale Proxy] ⚠️ ERROR: BOM CSV text is EMPTY! Check if report URL is expired or empty.`);
+    return [];
   }
 
   const rawBOMs = parseCSV(csvText);
-  console.log(`[Finale Proxy] Parsed ${rawBOMs.length} raw BOM rows from CSV`);
+  console.log(`[Finale Proxy] ✅ Parsed ${rawBOMs.length} raw rows from CSV`);
 
-  // Filter out rows with empty Product ID or Name (data quality)
-  const validBOMs = rawBOMs.filter(item => {
-    const productId = item['Product ID'] || item['Finished SKU'] || item['SKU'];
-    const name = item['Name'] || item['Product Name'];
-    const isValid = productId &&
-                    typeof productId === 'string' &&
-                    productId.trim().length > 0 &&
-                    !productId.trim().startsWith(',') &&
-                    name &&
-                    typeof name === 'string' &&
-                    name.trim().length > 0;
-
-    if (!isValid) {
-      console.log(`[Finale Proxy] Skipping BOM row with invalid Product ID/Name: ID="${productId}", Name="${name}"`);
-    }
-    return isValid;
-  });
-
-  console.log(`[Finale Proxy] ${validBOMs.length} valid BOM rows after filtering (removed ${rawBOMs.length - validBOMs.length} invalid)`);
-
-  if (validBOMs.length > 0) {
-    console.log(`[Finale Proxy] CSV Headers (${Object.keys(validBOMs[0]).length} columns):`, Object.keys(validBOMs[0]));
-    console.log(`[Finale Proxy] Sample BOM row:`, {
-      ProductID: validBOMs[0]['Product ID'] || validBOMs[0]['Finished SKU'],
-      Name: validBOMs[0]['Name'] || validBOMs[0]['Product Name'],
-      Component: validBOMs[0]['Component \n Product ID'] || validBOMs[0]['Component Product ID'],
-      BOMQty: validBOMs[0]['BOM \n Quantity'] || validBOMs[0]['BOM Quantity'],
-    });
+  // Show actual column names from CSV
+  if (rawBOMs.length > 0) {
+    const actualColumns = Object.keys(rawBOMs[0]);
+    console.log(`[Finale Proxy] 📋 Actual BOM CSV columns (${actualColumns.length}):`, actualColumns);
+    console.log(`[Finale Proxy] 📋 Sample first row:`, rawBOMs[0]);
   }
 
-  // Return filtered data - transformation will happen in the frontend service
-  return validBOMs;
+  // Return ALL raw data - schema transformers on frontend will handle validation and filtering
+  // The transformers check for 'Product ID', 'Name', 'Component SKU', etc.
+  return rawBOMs;
 }
 
 /**
