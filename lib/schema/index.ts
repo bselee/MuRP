@@ -317,6 +317,13 @@ export const BOMRawSchema = z.object({
 export type BOMRaw = z.infer<typeof BOMRawSchema>;
 
 /**
+ * Raw BOM Component Schema - Component data from CSV before parsing
+ * This is derived from BOMRawSchema since components are embedded in each BOM row
+ */
+export const BOMComponentRawSchema = BOMRawSchema;
+export type BOMComponentRaw = z.infer<typeof BOMComponentRawSchema>;
+
+/**
  * Parsed BOM Component Schema - Individual component within a BOM
  */
 export const BOMComponentParsedSchema = z.object({
@@ -571,7 +578,6 @@ export const SchemaRegistry = {
     Parsed: BOMParsedSchema,
     Database: BOMDatabaseSchema,
     Component: {
-      Raw: BOMComponentRawSchema,
       Parsed: BOMComponentParsedSchema,
     },
   },
