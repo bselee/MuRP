@@ -330,8 +330,12 @@ async function getInventory(config: FinaleConfig) {
 
   console.log(`[Finale Proxy] Fetching inventory CSV from report...`);
 
-  // Use the report URL as-is (don't modify it)
-  const response = await fetch(reportUrl, {
+  // Fix URL: Replace pivotTableStream with pivotTable for direct API access
+  // Per Finale docs: https://support.finaleinventory.com/hc/en-us/articles/115001687154
+  const fixedUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
+  console.log(`[Finale Proxy] Using report URL (first 80 chars): ${fixedUrl.substring(0, 80)}...`);
+
+  const response = await fetch(fixedUrl, {
     method: 'GET',
     headers: {
       'Authorization': `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`,
@@ -419,8 +423,12 @@ async function getBOMs(config: FinaleConfig) {
 
   console.log(`[Finale Proxy] Fetching BOM CSV from report...`);
 
-  // Use the report URL as-is (don't modify it)
-  const response = await fetch(reportUrl, {
+  // Fix URL: Replace pivotTableStream with pivotTable for direct API access
+  // Per Finale docs: https://support.finaleinventory.com/hc/en-us/articles/115001687154
+  const fixedUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
+  console.log(`[Finale Proxy] Using report URL (first 80 chars): ${fixedUrl.substring(0, 80)}...`);
+
+  const response = await fetch(fixedUrl, {
     method: 'GET',
     headers: {
       'Authorization': `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`,
