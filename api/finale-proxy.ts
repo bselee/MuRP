@@ -419,11 +419,9 @@ async function getBOMs(config: FinaleConfig) {
   }
 
   console.log(`[Finale Proxy] Fetching BOM CSV from report...`);
+  console.log(`[Finale Proxy] BOM Report URL (first 150 chars):`, reportUrl.substring(0, 150));
 
-  // Fix URL: Replace pivotTableStream with pivotTable
-  const fixedUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
-
-  const response = await fetch(fixedUrl, {
+  const response = await fetch(reportUrl, {
     method: 'GET',
     headers: {
       'Authorization': `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`,
@@ -449,7 +447,7 @@ async function getBOMs(config: FinaleConfig) {
   
   if (csvText.length === 0) {
     console.error(`[Finale Proxy] EMPTY BOM CSV RESPONSE!`);
-    console.error(`[Finale Proxy] Report URL:`, fixedUrl.substring(0, 100));
+    console.error(`[Finale Proxy] Report URL:`, reportUrl.substring(0, 100));
   }
 
   const rawBOMs = parseCSV(csvText);
