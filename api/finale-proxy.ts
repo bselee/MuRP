@@ -374,9 +374,17 @@ async function getInventory(config: FinaleConfig) {
     console.log(`[Finale Proxy] 📋 Sample first row:`, rawInventory[0]);
   }
 
-  // Return ALL raw data - schema transformers on frontend will handle validation and filtering
-  // The transformers check for 'SKU' or 'Product Code', 'Name' or 'Product Name', etc.
-  return rawInventory;
+  // Add SKU alias for Product ID (frontend expects "SKU" field)
+  const mappedInventory = rawInventory.map(row => ({
+    ...row,
+    'SKU': row['Product ID'] || row['SKU'], // Add SKU field as alias
+    'Name': row['Description'] || row['Name'], // Add Name field as alias
+  }));
+
+  console.log(`[Finale Proxy] ✅ Mapped ${mappedInventory.length} inventory rows with SKU and Name aliases`);
+
+  // Return mapped data with SKU/Name fields that frontend expects
+  return mappedInventory;
 }
 
 /**
@@ -478,7 +486,7 @@ async function getBOMs(config: FinaleConfig) {
       componentCount++;
       const flatRow = {
         'Product ID': currentParent.productId,
-        'Product Name': currentParent.productName,
+        'Product Name': currentParent.productName || currentParent.productId, // Fallback to ID if name is empty
         'Potential Build Qty': currentParent.potentialBuildQty,
         'BOM Quantity': row['BOM Quantity']?.trim() || '',
         'Component Product ID': componentId,
