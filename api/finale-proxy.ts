@@ -330,6 +330,7 @@ async function getInventory(config: FinaleConfig) {
 
   console.log(`[Finale Proxy] Fetching inventory CSV from report...`);
 
+  // Use the report URL as-is (don't modify it)
   const response = await fetch(reportUrl, {
     method: 'GET',
     headers: {
@@ -418,10 +419,8 @@ async function getBOMs(config: FinaleConfig) {
 
   console.log(`[Finale Proxy] Fetching BOM CSV from report...`);
 
-  // Fix URL: Replace pivotTableStream with pivotTable
-  const fixedUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
-
-  const response = await fetch(fixedUrl, {
+  // Use the report URL as-is (don't modify it)
+  const response = await fetch(reportUrl, {
     method: 'GET',
     headers: {
       'Authorization': `Basic ${Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString('base64')}`,
