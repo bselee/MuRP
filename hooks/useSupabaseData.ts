@@ -388,10 +388,16 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
         id: bom.id,
         finishedSku: bom.finished_sku,
         name: bom.name,
-        components: bom.components as any, // JSONB field
+        description: bom.description || '',
+        category: bom.category || 'Uncategorized',
+        yieldQuantity: bom.yield_quantity || 1,
+        potentialBuildQty: bom.potential_build_qty || 0,
+        averageCost: bom.average_cost || 0,
+        components: bom.components as any || [], // JSONB field
         artwork: bom.artwork as any || [], // JSONB field
-        packaging: bom.packaging as any, // JSONB field
-        barcode: bom.barcode,
+        packaging: bom.packaging as any || {}, // JSONB field
+        barcode: bom.barcode || '',
+        notes: bom.notes || '',
       }));
 
       setData(transformed);
@@ -469,10 +475,16 @@ export function useSupabaseBOM(id: string): UseSupabaseSingleResult<BillOfMateri
           id: bom.id,
           finishedSku: bom.finished_sku,
           name: bom.name,
-          components: bom.components as any,
+          description: bom.description || '',
+          category: bom.category || 'Uncategorized',
+          yieldQuantity: bom.yield_quantity || 1,
+          potentialBuildQty: bom.potential_build_qty || 0,
+          averageCost: bom.average_cost || 0,
+          components: bom.components as any || [],
           artwork: bom.artwork as any || [],
-          packaging: bom.packaging as any,
-          barcode: bom.barcode,
+          packaging: bom.packaging as any || {},
+          barcode: bom.barcode || '',
+          notes: bom.notes || '',
         });
       } else {
         setData(null);
