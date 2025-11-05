@@ -4,6 +4,10 @@ export interface BOMComponent {
   sku: string;
   quantity: number;
   name: string;
+  // Enhanced fields for MRP
+  unitCost?: number;
+  supplierSku?: string;
+  leadTimeDays?: number;
 }
 
 export interface Artwork {
@@ -14,6 +18,12 @@ export interface Artwork {
   regulatoryDocLink?: string;
   barcode?: string;
   folderId?: string;
+  // Enhanced tracking
+  fileType?: 'label' | 'bag' | 'document' | 'regulatory' | 'artwork' | 'other';
+  status?: 'draft' | 'approved' | 'archived';
+  approvedBy?: string;
+  approvedDate?: string;
+  notes?: string;
 }
 
 export interface ArtworkFolder {
@@ -25,6 +35,14 @@ export interface Packaging {
   bagType: string;
   labelType: string;
   specialInstructions: string;
+  // Enhanced packaging specs
+  bagSku?: string;
+  labelSku?: string;
+  boxSku?: string;
+  insertSku?: string;
+  weight?: number;
+  weightUnit?: string;
+  dimensions?: string;
 }
 
 export interface BillOfMaterials {
@@ -35,6 +53,14 @@ export interface BillOfMaterials {
   artwork: Artwork[];
   packaging: Packaging;
   barcode?: string;
+  // Enhanced fields for sync and tracking
+  description?: string;
+  category?: string;
+  yieldQuantity?: number; // How many units this BOM produces
+  dataSource?: 'manual' | 'csv' | 'api';
+  lastSyncAt?: string;
+  syncStatus?: 'synced' | 'pending' | 'error';
+  notes?: string;
 }
 
 export interface InventoryItem {
