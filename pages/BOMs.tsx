@@ -27,8 +27,20 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
     setSelectedBom(null);
   };
 
-  const manufacturedProducts = boms.filter(b => b.finishedSku.startsWith('PROD-'));
-  const subAssemblies = boms.filter(b => b.finishedSku.startsWith('SUB-'));
+  // Separate BOMs by category or show all as finished goods if no clear distinction
+  const manufacturedProducts = boms.filter(b => 
+    b.category?.toLowerCase().includes('finished') || 
+    b.category?.toLowerCase().includes('product') ||
+    (!b.category?.toLowerCase().includes('sub') && !b.category?.toLowerCase().includes('assembly'))
+  );
+  const subAssemblies = boms.filter(b => 
+    b.category?.toLowerCase().includes('sub') || 
+    b.category?.toLowerCase().includes('assembly')
+  );
+  
+  // If no clear categorization, show all in finished goods
+  const displayManufacturedProducts = manufacturedProducts.length > 0 ? manufacturedProducts : boms;
+  const displaySubAssemblies = subAssemblies;
 
   const BomCard: React.FC<{ bom: BillOfMaterials }> = ({ bom }) => (
     <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
@@ -96,16 +108,22 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
       <section>
         <h2 className="text-xl font-semibold mb-4 text-gray-300">Finished Goods</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {manufacturedProducts.map(bom => <BomCard key={bom.id} bom={bom} />)}
+          {displayManufacturedProducts.length > 0 ? (
+            displayManufacturedProducts.map(bom => <BomCard key={bom.id} bom={bom} />)
+          ) : (
+            <p className="text-gray-400 col-span-full">No finished goods BOMs found.</p>
+          )}
         </div>
       </section>
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4 text-gray-300">Sub-Assemblies</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {subAssemblies.map(bom => <BomCard key={bom.id} bom={bom} />)}
-        </div>
-      </section>
+      {displaySubAssemblies.length > 0 && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4 text-gray-300">Sub-Assemblies</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {displaySubAssemblies.map(bom => <BomCard key={bom.id} bom={bom} />)}
+          </div>
+        </section>
+      )}
       
       {selectedBom && (
         <BomEditModal 

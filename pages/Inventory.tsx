@@ -246,12 +246,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms }) => {
                         <table className="min-w-full divide-y divide-gray-700">
                             <thead className="bg-gray-800">
                                 <tr>
-                                    <SortableHeader title="Item" sortKey="name" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <SortableHeader title="SKU" sortKey="sku" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <SortableHeader title="Name" sortKey="name" sortConfig={sortConfig} requestSort={requestSort} />
                                     <SortableHeader title="Category" sortKey="category" sortConfig={sortConfig} requestSort={requestSort} />
-                                    <SortableHeader title="Stock Level" sortKey="stock" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <SortableHeader title="Stock" sortKey="stock" sortConfig={sortConfig} requestSort={requestSort} />
                                     <SortableHeader title="On Order" sortKey="onOrder" sortConfig={sortConfig} requestSort={requestSort} />
-                                    <SortableHeader title="Reorder Point" sortKey="reorderPoint" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <SortableHeader title="Reorder Pt" sortKey="reorderPoint" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <SortableHeader title="Location" sortKey="warehouseLocation" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <SortableHeader title="Unit Cost" sortKey="unitCost" sortConfig={sortConfig} requestSort={requestSort} />
+                                    <SortableHeader title="Unit Price" sortKey="unitPrice" sortConfig={sortConfig} requestSort={requestSort} />
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-gray-800 divide-y divide-gray-700">
@@ -259,10 +264,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms }) => {
                                     <tr key={item.sku} className="hover:bg-gray-700/50 transition-colors duration-200">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-2">
-                                                <div>
-                                                    <div className="text-sm font-medium text-white">{item.name}</div>
-                                                    <div className="text-xs text-gray-400">{item.sku}</div>
-                                                </div>
+                                                <div className="text-sm font-mono font-medium text-white">{item.sku}</div>
                                                 <div className="flex gap-1">
                                                     {bomSkuSet.has(item.sku) && (
                                                         <span className="text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full">BOM</span>
@@ -279,6 +281,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms }) => {
                                                 </div>
                                             </div>
                                         </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-medium text-white max-w-xs truncate" title={item.name}>
+                                                {item.name}
+                                            </div>
+                                            {item.description && (
+                                                <div className="text-xs text-gray-400 max-w-xs truncate" title={item.description}>
+                                                    {item.description}
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.category}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-white mb-1">{item.stock}</div>
@@ -286,6 +298,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms }) => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.onOrder}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.reorderPoint}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                            {item.warehouseLocation || '-'}
+                                            {item.binLocation && <div className="text-xs text-gray-500">Bin: {item.binLocation}</div>}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-mono">
+                                            {item.unitCost ? `$${item.unitCost.toFixed(2)}` : '-'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-mono">
+                                            {item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : '-'}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {(() => {
                                                 const vendor = vendorById.get(item.vendorId);
@@ -312,6 +334,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms }) => {
                                                     </div>
                                                 );
                                             })()}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                                                item.status === 'active' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                                                item.status === 'inactive' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
+                                                item.status === 'discontinued' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
+                                                'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                                            }`}>
+                                                {item.status || 'Unknown'}
+                                            </span>
                                         </td>
                                     </tr>
                                 ))}
