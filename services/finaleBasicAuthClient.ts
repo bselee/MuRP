@@ -270,6 +270,19 @@ export class FinaleBasicAuthClient {
   }
 
   /**
+   * Get BOMs from CSV report
+   * Returns raw CSV data for transformation in frontend
+   */
+  async getBOMs(): Promise<Array<Record<string, any>>> {
+    if (this.isBrowser) {
+      // Browser mode: Call API proxy which fetches and parses CSV
+      return this.callProxy<Array<Record<string, any>>>('getBOMs');
+    }
+    // Server mode would need direct CSV fetch (not typically used)
+    throw new Error('BOMs fetch in server mode not implemented - use browser mode');
+  }
+
+  /**
    * Get all purchase orders
    */
   async getPurchaseOrders(limit = 100, offset = 0): Promise<FinalePurchaseOrder[]> {

@@ -34,6 +34,8 @@ import {
   deduplicateVendors,
   transformInventoryBatch,
   deduplicateInventory,
+  transformBOMsBatch,
+  deduplicateBOMs,
 } from '../lib/schema/transformers';
 import type { InventoryItem, Vendor, PurchaseOrder, BillOfMaterials } from '../types';
 
@@ -52,7 +54,7 @@ export interface SyncStatus {
 }
 
 export interface SyncProgress {
-  phase: 'idle' | 'vendors' | 'inventory' | 'purchase-orders' | 'complete';
+  phase: 'idle' | 'vendors' | 'inventory' | 'boms' | 'purchase-orders' | 'complete';
   current: number;
   total: number;
   percentage: number;
@@ -317,8 +319,11 @@ export class FinaleSyncService {
       // Sync vendors first (needed for inventory supplier references)
       await this.syncVendors();
 
-      // Then inventory (CSV-based)
+      // Then inventory (CSV-based, needed for BOM component references)
       await this.syncInventoryFromCSV();
+
+      // Then BOMs (CSV-based, depends on inventory)
+      await this.syncBOMsFromCSV();
 
       // Purchase orders - still unavailable
       console.log('[FinaleSyncService] Skipping purchase order sync (REST API unavailable)');
@@ -332,8 +337,8 @@ export class FinaleSyncService {
         nextSyncTime: new Date(Date.now() + this.config.inventoryRefreshInterval),
         progress: {
           phase: 'complete',
-          current: 3,
-          total: 3,
+          current: 4,
+          total: 4,
           percentage: 100,
           message: `Full sync completed in ${(duration / 1000).toFixed(1)}s`,
         },
@@ -540,6 +545,98 @@ export class FinaleSyncService {
       return savedItems;
     } catch (error) {
       this.handleError('sync-inventory-csv', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync BOMs from Finale CSV report (ACTIVE products only)
+   */
+  async syncBOMsFromCSV(): Promise<BillOfMaterials[]> {
+    if (!this.client) {
+      throw new Error('Finale API credentials not configured. Call setCredentials() first.');
+    }
+
+    console.log('[FinaleSyncService] Syncing BOMs from CSV...');
+
+    this.updateProgress({
+      phase: 'boms',
+      current: 0,
+      total: 100,
+      percentage: 0,
+      message: 'Fetching BOMs from Finale CSV report...',
+    });
+
+    try {
+      // Fetch BOM CSV data via API proxy
+      const rawBOMs = await this.rateLimiter.schedule(async () => {
+        return await this.circuitBreaker.execute(async () => {
+          return await retryWithBackoff(
+            async () => await this.client.getBOMs(),
+            {
+              maxAttempts: this.config.maxRetries,
+              baseDelayMs: this.config.retryDelayMs,
+            }
+          );
+        });
+      }, 'finale-sync-boms');
+
+      console.log(`[FinaleSyncService] Fetched ${rawBOMs.length} BOM rows from Finale CSV`);
+
+      if (rawBOMs.length === 0) {
+        console.warn(`[FinaleSyncService] ⚠️  WARNING: No BOM data returned from CSV!`);
+        return [];
+      }
+
+      // Get inventory items for component enrichment
+      const { data: inventoryItems, error: invError } = await supabase
+        .from('inventory_items')
+        .select('*');
+
+      if (invError) {
+        console.error('[FinaleSyncService] Error fetching inventory for BOM enrichment:', invError);
+        throw invError;
+      }
+
+      const inventoryMap = new Map(
+        (inventoryItems || []).map(item => [item.sku?.toUpperCase(), item])
+      );
+      console.log(`[FinaleSyncService] Built inventory map with ${inventoryMap.size} items for component enrichment`);
+
+      // Transform using schema transformers (groups by finished product SKU)
+      const batchResult = transformBOMsBatch(rawBOMs, inventoryMap);
+      
+      console.log(`[FinaleSyncService] Transform results: ${batchResult.successful.length} BOMs created, ${batchResult.failed.length} rows failed`);
+      
+      if (batchResult.failed.length > 0) {
+        console.warn(`[FinaleSyncService] ${batchResult.failed.length} BOM rows failed transformation:`);
+        batchResult.failed.slice(0, 5).forEach(f => {
+          console.warn(`  - Row ${f.index + 1}: ${f.errors.join('; ')}`);
+        });
+      }
+
+      // Deduplicate by finished product SKU
+      const uniqueBOMs = deduplicateBOMs(batchResult.successful);
+      console.log(`[FinaleSyncService] After deduplication: ${uniqueBOMs.length} unique BOMs`);
+
+      // Save to Supabase
+      console.log(`[FinaleSyncService] Saving ${uniqueBOMs.length} BOMs to Supabase...`);
+      const savedBOMs = await this.saveBOMsToSupabase(uniqueBOMs);
+
+      this.updateProgress({
+        phase: 'boms',
+        current: 2,
+        total: 2,
+        percentage: 100,
+        message: `Synced ${savedBOMs.length} BOMs`,
+      });
+
+      this.status.totalItemsSynced += savedBOMs.length;
+      this.notifyListeners();
+
+      return savedBOMs;
+    } catch (error) {
+      this.handleError('sync-boms-csv', error);
       throw error;
     }
   }
@@ -1066,6 +1163,7 @@ export class FinaleSyncService {
 
   /**
    * Save purchase orders to Supabase
+```
    */
   private async savePurchaseOrdersToSupabase(pos: PurchaseOrder[]): Promise<void> {
     if (pos.length === 0) {
@@ -1143,31 +1241,38 @@ export class FinaleSyncService {
   /**
    * Save BOMs to Supabase
    */
-  private async saveBOMsToSupabase(boms: BillOfMaterials[]): Promise<void> {
+  private async saveBOMsToSupabase(boms: any[]): Promise<BillOfMaterials[]> {
     if (boms.length === 0) {
       console.log('[FinaleSyncService] No BOMs to save');
-      return;
+      return [];
     }
 
     console.log(`[FinaleSyncService] Saving ${boms.length} BOMs to Supabase...`);
 
-    // Prepare BOM data for Supabase
+    // Prepare BOM data for Supabase - use finished_sku as unique identifier
     const bomInserts = boms.map(bom => ({
-      id: bom.id,
       finished_sku: bom.finishedSku,
-      name: bom.name,
-      components: bom.components, // JSONB column
-      artwork: bom.artwork, // JSONB column
-      packaging: bom.packaging, // JSONB column
-      barcode: bom.barcode,
+      name: bom.name || `BOM for ${bom.finishedSku}`,
+      description: bom.description || '',
+      category: bom.category || 'Uncategorized',
+      yield_quantity: bom.yieldQuantity || 1,
+      potential_build_qty: bom.potentialBuildQty || 0,
+      average_cost: bom.averageCost || 0,
+      components: bom.components || [], // JSONB column
+      artwork: bom.artwork || [], // JSONB column
+      packaging: bom.packaging || {}, // JSONB column
+      barcode: bom.barcode || '',
+      data_source: 'csv',
+      last_sync_at: new Date().toISOString(),
+      sync_status: 'synced',
       updated_at: new Date().toISOString(),
     }));
 
-    // Upsert BOMs
+    // Upsert BOMs using finished_sku
     const { error } = await supabase
       .from('boms')
       .upsert(bomInserts as any, {
-        onConflict: 'id',
+        onConflict: 'finished_sku',
         ignoreDuplicates: false,
       });
 
@@ -1176,6 +1281,34 @@ export class FinaleSyncService {
     }
 
     console.log(`[FinaleSyncService] Successfully saved ${boms.length} BOMs`);
+
+    // Fetch saved BOMs with IDs
+    const { data: savedBOMs, error: fetchError } = await supabase
+      .from('boms')
+      .select('*')
+      .in('finished_sku', bomInserts.map(b => b.finished_sku));
+
+    if (fetchError) {
+      console.error('[FinaleSyncService] Error fetching saved BOMs:', fetchError);
+      throw fetchError;
+    }
+
+    // Return as BillOfMaterials format
+    return (savedBOMs || []).map(db => ({
+      id: db.id,
+      finishedSku: db.finished_sku,
+      name: db.name,
+      description: db.description || '',
+      category: db.category || 'Uncategorized',
+      yieldQuantity: db.yield_quantity || 1,
+      potentialBuildQty: db.potential_build_qty || 0,
+      averageCost: db.average_cost || 0,
+      components: db.components || [],
+      artwork: db.artwork || [],
+      packaging: db.packaging || {},
+      barcode: db.barcode || '',
+      notes: db.notes || '',
+    }));
   }
 }
 
