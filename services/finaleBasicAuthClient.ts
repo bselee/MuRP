@@ -81,6 +81,8 @@ export class FinaleBasicAuthClient {
    * Call API proxy (for browser environments)
    */
   private async callProxy<T = any>(action: string, params: Record<string, any> = {}): Promise<T> {
+    console.log(`[FinaleClient] Calling proxy action: ${action}`);
+    
     const response = await fetch('/api/finale-proxy', {
       method: 'POST',
       headers: {
@@ -93,12 +95,26 @@ export class FinaleBasicAuthClient {
       }),
     });
 
+    console.log(`[FinaleClient] Proxy response for ${action}:`, {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+    });
+
     if (!response.ok) {
       const error = await response.json();
+      console.error(`[FinaleClient] Proxy error for ${action}:`, error);
       throw new Error(error.error || 'Proxy request failed');
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log(`[FinaleClient] Proxy result for ${action}:`, {
+      isArray: Array.isArray(result),
+      length: Array.isArray(result) ? result.length : 'N/A',
+      firstItem: Array.isArray(result) && result.length > 0 ? Object.keys(result[0]).slice(0, 5) : null,
+    });
+
+    return result;
   }
 
   /**
