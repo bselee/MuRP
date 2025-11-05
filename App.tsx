@@ -609,7 +609,7 @@ const App: React.FC = () => {
           aiConfig={aiConfig}
         />;
       case 'Inventory':
-        return <Inventory inventory={inventory} vendorMap={new Map(vendors.map(v => [v.id, v.name]))} boms={boms} />;
+        return <Inventory inventory={inventory} vendors={vendors} boms={boms} />;
       case 'Purchase Orders':
         return <PurchaseOrders 
                     purchaseOrders={purchaseOrders} 

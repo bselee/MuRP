@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { InventoryItem, BillOfMaterials } from '../types';
+import type { InventoryItem, BillOfMaterials, Vendor } from '../types';
 import { SearchIcon, ChevronUpIcon, ChevronDownIcon, ArrowsUpDownIcon } from '../components/icons';
 import ImportExportModal from '../components/ImportExportModal';
 import { exportToCsv, exportToJson, exportToXls } from '../services/exportService';
@@ -7,7 +7,7 @@ import { generateInventoryPdf } from '../services/pdfService';
 
 interface InventoryProps {
     inventory: InventoryItem[];
-    vendorMap: Map<string, string>;
+    vendors: Vendor[];
     boms: BillOfMaterials[];
 }
 
@@ -45,13 +45,17 @@ const SortableHeader: React.FC<{
 };
 
 
-const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => {
+const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState({ category: '', status: '', vendor: '' });
     const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
     const [suggestions, setSuggestions] = useState<InventoryItem[]>([]);
     const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
     const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
+
+    // Create vendor lookup maps
+    const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
+    const vendorById = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
 
     const bomSkuSet = useMemo(() => {
         const skus = new Set<string>();
@@ -63,9 +67,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => 
 
     const filterOptions = useMemo(() => {
         const categories = [...new Set(inventory.map(item => item.category))].sort();
-        const vendors = [...new Set(inventory.map(item => item.vendorId).filter(id => id && id !== 'N/A'))];
+        const vendorIds = [...new Set(inventory.map(item => item.vendorId).filter(id => id && id !== 'N/A'))];
         const statuses = ['In Stock', 'Low Stock', 'Out of Stock'];
-        return { categories, vendors, statuses };
+        return { categories, vendors: vendorIds, statuses };
     }, [inventory]);
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -254,14 +258,25 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => 
                                 {processedInventory.map((item) => (
                                     <tr key={item.sku} className="hover:bg-gray-700/50 transition-colors duration-200">
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center">
+                                            <div className="flex items-center gap-2">
                                                 <div>
                                                     <div className="text-sm font-medium text-white">{item.name}</div>
                                                     <div className="text-xs text-gray-400">{item.sku}</div>
                                                 </div>
-                                                {bomSkuSet.has(item.sku) && (
-                                                    <span className="ml-2 text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full">BOM</span>
-                                                )}
+                                                <div className="flex gap-1">
+                                                    {bomSkuSet.has(item.sku) && (
+                                                        <span className="text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full">BOM</span>
+                                                    )}
+                                                    {item.dataSource && (
+                                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                                            item.dataSource === 'csv' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                                                            item.dataSource === 'api' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                                                            'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+                                                        }`}>
+                                                            {item.dataSource === 'csv' ? 'CSV' : item.dataSource === 'api' ? 'API' : 'Manual'}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.category}</td>
@@ -271,7 +286,33 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendorMap, boms }) => 
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.onOrder}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.reorderPoint}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{vendorMap.get(item.vendorId) || 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {(() => {
+                                                const vendor = vendorById.get(item.vendorId);
+                                                if (!vendor) {
+                                                    return <span className="text-sm text-gray-400">N/A</span>;
+                                                }
+
+                                                const primaryEmail = vendor.contactEmails?.[0];
+
+                                                return (
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-sm text-gray-300">{vendor.name}</span>
+                                                        {primaryEmail && (
+                                                            <a
+                                                                href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(primaryEmail)}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-xs text-indigo-400 hover:underline hover:text-indigo-300"
+                                                                title={`Compose email to ${primaryEmail} in Gmail`}
+                                                            >
+                                                                {primaryEmail}
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

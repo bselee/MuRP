@@ -46,6 +46,17 @@ export interface InventoryItem {
   reorderPoint: number;
   vendorId: string;
   moq?: number;
+  // Enhanced fields from migration 003
+  description?: string;
+  status?: 'active' | 'inactive' | 'discontinued';
+  unitCost?: number;
+  unitPrice?: number;
+  warehouseLocation?: string;
+  binLocation?: string;
+  salesVelocity?: number;
+  dataSource?: 'manual' | 'csv' | 'api';
+  lastSyncAt?: string;
+  syncStatus?: 'synced' | 'pending' | 'error';
 }
 
 export interface Vendor {
