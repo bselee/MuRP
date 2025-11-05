@@ -446,9 +446,48 @@ async function getBOMs(config: FinaleConfig) {
     console.log(`[Finale Proxy] 📋 Sample first row:`, rawBOMs[0]);
   }
 
-  // Return ALL raw data - schema transformers on frontend will handle validation and filtering
-  // The transformers check for 'Product ID', 'Name', 'Component SKU', etc.
-  return rawBOMs;
+  // Transform hierarchical CSV format to flat format
+  // Parent rows have: Product ID, Description, Potential Build Qty
+  // Component rows have: empty first 3 cols, then BOM Quantity, Component Product ID, etc.
+  const flatBOMs: any[] = [];
+  let currentParent: any = null;
+
+  for (const row of rawBOMs) {
+    const productId = row['Product ID']?.trim();
+    const componentId = row['Component Product ID']?.trim();
+
+    // If row has Product ID, it's a parent product
+    if (productId) {
+      currentParent = {
+        productId: productId,
+        productName: row['Description']?.trim() || '',
+        potentialBuildQty: row['Potential Build \n Qty']?.trim() || row['Potential Build Qty']?.trim() || '',
+      };
+      console.log(`[Finale Proxy] 📦 Found parent product: ${productId} - ${currentParent.productName}`);
+    }
+    // If row has Component Product ID, it's a component (child)
+    else if (componentId && currentParent) {
+      const flatRow = {
+        'Product ID': currentParent.productId,
+        'Product Name': currentParent.productName,
+        'Potential Build Qty': currentParent.potentialBuildQty,
+        'BOM Quantity': row['BOM Quantity']?.trim() || '',
+        'Component Product ID': componentId,
+        'Component Name': row['Description']?.trim() || '',
+        'Component Remaining': row['Component product \n Remaining']?.trim() || row['Component product Remaining']?.trim() || '',
+        'Component Note': row['Component note']?.trim() || '',
+        'BOM Average Cost': row['BOM Average cost']?.trim() || '',
+      };
+      flatBOMs.push(flatRow);
+    }
+  }
+
+  console.log(`[Finale Proxy] ✅ Converted ${rawBOMs.length} hierarchical rows to ${flatBOMs.length} flat BOM component rows`);
+  if (flatBOMs.length > 0) {
+    console.log(`[Finale Proxy] 📋 Sample flat row:`, flatBOMs[0]);
+  }
+
+  return flatBOMs;
 }
 
 /**
