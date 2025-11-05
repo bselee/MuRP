@@ -322,15 +322,18 @@ async function getSuppliers(config: FinaleConfig) {
  * Returns raw CSV data for frontend transformation
  */
 async function getInventory(config: FinaleConfig) {
-  const reportUrl = process.env.FINALE_INVENTORY_REPORT_URL;
+  let reportUrl = process.env.FINALE_INVENTORY_REPORT_URL;
   
   if (!reportUrl) {
     throw new Error('FINALE_INVENTORY_REPORT_URL not configured in environment');
   }
 
-  console.log(`[Finale Proxy] Fetching inventory CSV from report...`);
+  // Fix URL: Replace pivotTableStream with pivotTable for direct API access
+  reportUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
 
-  // Use the report URL as-is (don't modify it)
+  console.log(`[Finale Proxy] Fetching inventory CSV from report...`);
+  console.log(`[Finale Proxy] Inventory Report URL (first 150 chars):`, reportUrl.substring(0, 150));
+
   const response = await fetch(reportUrl, {
     method: 'GET',
     headers: {
@@ -413,16 +416,18 @@ async function getPurchaseOrders(config: FinaleConfig, limit = 100, offset = 0) 
  * Returns raw CSV data for frontend transformation
  */
 async function getBOMs(config: FinaleConfig) {
-  const reportUrl = process.env.FINALE_BOM_REPORT_URL;
+  let reportUrl = process.env.FINALE_BOM_REPORT_URL;
 
   if (!reportUrl) {
     throw new Error('FINALE_BOM_REPORT_URL not configured in environment');
   }
 
+  // Fix URL: Replace pivotTableStream with pivotTable for direct API access
+  reportUrl = reportUrl.replace('/pivotTableStream/', '/pivotTable/');
+
   console.log(`[Finale Proxy] Fetching BOM CSV from report...`);
   console.log(`[Finale Proxy] BOM Report URL (first 150 chars):`, reportUrl.substring(0, 150));
 
-  // Use the report URL as-is (don't modify it)
   const response = await fetch(reportUrl, {
     method: 'GET',
     headers: {
