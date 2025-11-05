@@ -451,22 +451,31 @@ async function getBOMs(config: FinaleConfig) {
   // Component rows have: empty first 3 cols, then BOM Quantity, Component Product ID, etc.
   const flatBOMs: any[] = [];
   let currentParent: any = null;
+  let parentCount = 0;
+  let componentCount = 0;
+  let skippedCount = 0;
+
+  console.log(`[Finale Proxy] 🔄 Starting BOM flattening process...`);
 
   for (const row of rawBOMs) {
     const productId = row['Product ID']?.trim();
-    const componentId = row['Component Product ID']?.trim();
+    const componentId = row['Component Product ID']?.trim() || row['Component \n Product ID']?.trim();
 
     // If row has Product ID, it's a parent product
     if (productId) {
+      parentCount++;
       currentParent = {
         productId: productId,
         productName: row['Description']?.trim() || '',
         potentialBuildQty: row['Potential Build \n Qty']?.trim() || row['Potential Build Qty']?.trim() || '',
       };
-      console.log(`[Finale Proxy] 📦 Found parent product: ${productId} - ${currentParent.productName}`);
+      if (parentCount <= 3) {
+        console.log(`[Finale Proxy] 📦 Found parent product: ${productId} - ${currentParent.productName}`);
+      }
     }
     // If row has Component Product ID, it's a component (child)
     else if (componentId && currentParent) {
+      componentCount++;
       const flatRow = {
         'Product ID': currentParent.productId,
         'Product Name': currentParent.productName,
@@ -475,12 +484,27 @@ async function getBOMs(config: FinaleConfig) {
         'Component Product ID': componentId,
         'Component Name': row['Description']?.trim() || '',
         'Component Remaining': row['Component product \n Remaining']?.trim() || row['Component product Remaining']?.trim() || '',
-        'Component Note': row['Component note']?.trim() || '',
-        'BOM Average Cost': row['BOM Average cost']?.trim() || '',
+        'Component Note': row['Component note']?.trim() || row['Component Note']?.trim() || '',
+        'BOM Average Cost': row['BOM Average cost']?.trim() || row['BOM Average Cost']?.trim() || '',
       };
       flatBOMs.push(flatRow);
+      if (componentCount <= 3) {
+        console.log(`[Finale Proxy] 🔧 Added component: ${componentId} for parent ${currentParent.productId}`);
+      }
+    }
+    else {
+      skippedCount++;
+      if (skippedCount <= 3) {
+        console.log(`[Finale Proxy] ⏭️  Skipped row - ProductID: "${productId}", ComponentID: "${componentId}", HasParent: ${!!currentParent}`);
+      }
     }
   }
+
+  console.log(`[Finale Proxy] 📊 BOM Flattening Summary:`);
+  console.log(`[Finale Proxy]   - Total rows processed: ${rawBOMs.length}`);
+  console.log(`[Finale Proxy]   - Parent products found: ${parentCount}`);
+  console.log(`[Finale Proxy]   - Components extracted: ${componentCount}`);
+  console.log(`[Finale Proxy]   - Rows skipped: ${skippedCount}`);
 
   console.log(`[Finale Proxy] ✅ Converted ${rawBOMs.length} hierarchical rows to ${flatBOMs.length} flat BOM component rows`);
   if (flatBOMs.length > 0) {
