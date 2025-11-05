@@ -366,8 +366,14 @@ async function getInventory(config: FinaleConfig) {
 
   const rawInventory = parseCSV(csvText);
   console.log(`[Finale Proxy] ✅ Parsed ${rawInventory.length} raw rows from CSV`);
-  console.log(`[Finale Proxy] Parsed ${rawInventory.length} raw inventory items from CSV`);
-  
+
+  // Show actual column names from CSV
+  if (rawInventory.length > 0) {
+    const actualColumns = Object.keys(rawInventory[0]);
+    console.log(`[Finale Proxy] 📋 Actual CSV columns (${actualColumns.length}):`, actualColumns);
+    console.log(`[Finale Proxy] 📋 Sample first row:`, rawInventory[0]);
+  }
+
   // Filter out rows with empty SKU or Name (data quality)
   const validInventory = rawInventory.filter(item => {
     const sku = item['SKU'] || item['Code'] || item['sku'];
@@ -443,7 +449,10 @@ async function getBOMs(config: FinaleConfig) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`[Finale Proxy] BOM CSV fetch error:`, errorText);
+    console.error(`[Finale Proxy] ❌ BOM CSV fetch failed!`);
+    console.error(`[Finale Proxy] Status: ${response.status} ${response.statusText}`);
+    console.error(`[Finale Proxy] Response body:`, errorText.substring(0, 500));
+    console.error(`[Finale Proxy] This usually means the report URL is invalid or expired`);
     throw new Error(`Failed to fetch BOM report (${response.status}): ${response.statusText}`);
   }
 
@@ -458,7 +467,13 @@ async function getBOMs(config: FinaleConfig) {
 
   const rawBOMs = parseCSV(csvText);
   console.log(`[Finale Proxy] ✅ Parsed ${rawBOMs.length} raw rows from CSV`);
-  console.log(`[Finale Proxy] Parsed ${rawBOMs.length} raw BOM rows from CSV`);
+
+  // Show actual column names from CSV
+  if (rawBOMs.length > 0) {
+    const actualColumns = Object.keys(rawBOMs[0]);
+    console.log(`[Finale Proxy] 📋 Actual BOM CSV columns (${actualColumns.length}):`, actualColumns);
+    console.log(`[Finale Proxy] 📋 Sample first row:`, rawBOMs[0]);
+  }
 
   // Filter out rows with empty Product ID or Name (data quality)
   const validBOMs = rawBOMs.filter(item => {
