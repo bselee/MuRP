@@ -27,8 +27,11 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
     console.log('[BOMs] Props received:');
     console.log('  - boms:', boms?.length || 0, 'items');
     console.log('  - inventory:', inventory?.length || 0, 'items');
-    console.log('  - Sample BOM:', boms?.[0]);
-    console.log('  - Sample Inventory:', inventory?.[0]);
+    if (inventory?.length > 0) {
+      console.log('  - Inventory items with stock > 0:', inventory.filter(i => i.stock > 0).length);
+      const withStock = inventory.filter(i => i.stock > 0).slice(0, 5);
+      console.log('  - Sample items WITH stock:', withStock.map(i => ({ sku: i.sku, stock: i.stock })));
+    }
     console.log('======================================');
   }, [boms, inventory]);
 
@@ -44,11 +47,13 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
     const map = new Map<string, InventoryItem>();
     inventory.forEach(item => map.set(item.sku, item));
     console.log('=== INVENTORY DEBUG ===');
-    console.log('[BOMs] Inventory array:', inventory);
     console.log('[BOMs] Inventory count:', inventory.length);
     console.log('[BOMs] InventoryMap size:', map.size);
     if (inventory.length > 0) {
-      console.log('[BOMs] Sample inventory items:', inventory.slice(0, 5).map(i => ({ sku: i.sku, name: i.name, stock: i.stock })));
+      console.log('[BOMs] First 10 inventory items with stock data:');
+      inventory.slice(0, 10).forEach(i => {
+        console.log(`  SKU: ${i.sku} | Stock: ${i.stock} | Name: ${i.name}`);
+      });
     }
     console.log('======================');
     return map;
@@ -56,11 +61,7 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
 
   // Calculate buildability for a BOM
   const calculateBuildability = (bom: BillOfMaterials) => {
-    console.log('=== CALCULATING BUILDABILITY FOR:', bom.finishedSku, '===');
-    console.log('[BOMs] BOM components:', bom.components);
-    
     if (!bom.components || bom.components.length === 0) {
-      console.log('[BOMs] No components found');
       return { maxBuildable: 0, limitingComponents: [] };
     }
 
@@ -68,14 +69,10 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
     const limitingComponents: Array<{ sku: string; name: string; available: number; needed: number; canBuild: number }> = [];
 
     bom.components.forEach(component => {
-      console.log('[BOMs] Looking up component:', component);
       const inventoryItem = inventoryMap.get(component.sku);
-      console.log('[BOMs] Found inventory item:', inventoryItem);
       const available = inventoryItem?.stock || 0;
       const needed = component.quantity || 1;
       const canBuild = Math.floor(available / needed);
-
-      console.log('[BOMs] Component SKU:', component.sku, '| Found:', !!inventoryItem, '| Stock:', available, '| Needed:', needed, '| CanBuild:', canBuild);
 
       if (canBuild < maxBuildable) {
         maxBuildable = canBuild;
