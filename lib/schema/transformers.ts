@@ -367,9 +367,13 @@ export function transformInventoryRawToParsed(
     const category = extractFirst(raw, ['Category', 'category', 'Product Category', 'Type']) || 'Uncategorized';
 
     // DEBUG: Log available columns for first item
-    if (index === 0) {
-      console.log('[Inventory Transform] CSV Columns available:', Object.keys(raw));
-      console.log('[Inventory Transform] Sample raw data:', raw);
+    try {
+      if (index === 0) {
+        console.log('[Inventory Transform] CSV Columns available:', Object.keys(raw));
+        console.log('[Inventory Transform] Sample raw data (first 5 keys):', Object.keys(raw).slice(0, 10));
+      }
+    } catch (debugError) {
+      console.warn('[Inventory Transform] Debug logging failed:', debugError);
     }
 
     // Extract stock quantities (Finale specific columns)
@@ -379,8 +383,12 @@ export function transformInventoryRawToParsed(
     const stock = parseNumber(stockRaw, 0);
     
     // DEBUG: Log stock extraction for first few items
-    if (index !== undefined && index < 3) {
-      console.log(`[Inventory Transform] Item ${index} (${sku}): stockRaw="${stockRaw}", parsed stock=${stock}`);
+    try {
+      if (index !== undefined && index < 3) {
+        console.log(`[Inventory Transform] Item ${index} (${sku}): stockRaw="${stockRaw}", parsed stock=${stock}`);
+      }
+    } catch (debugError) {
+      console.warn('[Inventory Transform] Stock debug failed:', debugError);
     }
 
     const onOrderRaw = extractFirst(raw, ['Units On Order', 'On Order', 'on_order', 'Quantity On Order']);
