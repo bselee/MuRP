@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
-import type { BillOfMaterials, User, WatchlistItem } from '../types';
+import type { BillOfMaterials, User, WatchlistItem, Artwork } from '../types';
 import type { ComplianceStatus } from '../types/regulatory';
-import { PencilIcon, ChevronDownIcon } from '../components/icons';
+import { PencilIcon, ChevronDownIcon, EyeIcon } from '../components/icons';
 import BomEditModal from '../components/BomEditModal';
+import BomDetailModal from '../components/BomDetailModal';
 import ComplianceDashboard from '../components/ComplianceDashboard';
 import ComplianceDetailModal from '../components/ComplianceDetailModal';
 
@@ -13,11 +14,21 @@ interface BOMsProps {
   watchlist: WatchlistItem[];
   onUpdateBom: (updatedBom: BillOfMaterials) => void;
   onNavigateToArtwork: (filter: string) => void;
+  onUploadArtwork?: (bomId: string, artwork: Omit<Artwork, 'id'>) => void;
 }
 
-const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, watchlist, onUpdateBom, onNavigateToArtwork }) => {
+const BOMs: React.FC<BOMsProps> = ({
+  boms,
+  currentUser,
+  watchlist,
+  onUpdateBom,
+  onNavigateToArtwork,
+  onUploadArtwork
+}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedDetailBom, setSelectedDetailBom] = useState<BillOfMaterials | null>(null);
   const [isComplianceDetailOpen, setIsComplianceDetailOpen] = useState(false);
   const [selectedComplianceStatus, setSelectedComplianceStatus] = useState<ComplianceStatus | null>(null);
   const [showComplianceDashboard, setShowComplianceDashboard] = useState(true);
@@ -46,23 +57,53 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, watchlist, onUpdateBom, 
     setSelectedBom(null);
   };
 
+  const handleViewDetails = (bom: BillOfMaterials) => {
+    setSelectedDetailBom(bom);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedDetailBom(null);
+  };
+
   const manufacturedProducts = boms.filter(b => b.finishedSku.startsWith('PROD-'));
   const subAssemblies = boms.filter(b => b.finishedSku.startsWith('SUB-'));
 
-  const BomCard: React.FC<{ bom: BillOfMaterials }> = ({ bom }) => (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-      <div className="p-4 bg-gray-800 flex justify-between items-center">
-        <div>
-          <h3 className="font-semibold text-white">{bom.name}</h3>
-          <p className="text-sm text-gray-400">{bom.finishedSku}</p>
+  const BomCard: React.FC<{ bom: BillOfMaterials }> = ({ bom }) => {
+    const labelCount = bom.artwork.filter(art => art.fileType === 'label').length;
+
+    return (
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
+        <div className="p-4 bg-gray-800 flex justify-between items-center">
+          <div>
+            <h3 className="font-semibold text-white">{bom.name}</h3>
+            <p className="text-sm text-gray-400">{bom.finishedSku}</p>
+            {labelCount > 0 && (
+              <p className="text-xs text-indigo-400 mt-1">
+                {labelCount} label{labelCount !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleViewDetails(bom)}
+              className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
+            >
+              <EyeIcon className="w-4 h-4" />
+              View
+            </button>
+            {canEdit && (
+              <button
+                onClick={() => handleEditClick(bom)}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
+              >
+                <PencilIcon className="w-4 h-4" />
+                Edit
+              </button>
+            )}
+          </div>
         </div>
-        {canEdit && (
-          <button onClick={() => handleEditClick(bom)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors">
-            <PencilIcon className="w-4 h-4" />
-            Edit
-          </button>
-        )}
-      </div>
       <div className="p-4 space-y-4">
         <div>
           <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Components</h4>
@@ -97,7 +138,8 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, watchlist, onUpdateBom, 
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -163,6 +205,16 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, watchlist, onUpdateBom, 
         bom={selectedBom}
         status={selectedComplianceStatus}
       />
+
+      {selectedDetailBom && (
+        <BomDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={handleCloseDetailModal}
+          bom={selectedDetailBom}
+          onUploadArtwork={onUploadArtwork}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   );
 };
