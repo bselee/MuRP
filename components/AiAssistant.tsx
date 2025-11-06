@@ -50,11 +50,17 @@ const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, boms, invent
         throw new Error("Inventory assistant prompt not found.");
       }
       const response = await askAboutInventory(aiConfig.model, promptTemplate.prompt, input, boms, inventory, vendors, purchaseOrders);
+
+      // Check if response is a formatted error message (quota exceeded, etc.)
       const botMessage: Message = { sender: 'bot', text: response };
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error(error);
-      const errorMessage: Message = { sender: 'bot', text: 'Sorry, I encountered an error. Please try again.' };
+      // Provide helpful error message
+      const errorMessage: Message = {
+        sender: 'bot',
+        text: 'Sorry, I encountered an error. Please try again in a moment.'
+      };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
