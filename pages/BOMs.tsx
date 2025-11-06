@@ -9,9 +9,10 @@ interface BOMsProps {
   currentUser: User;
   onUpdateBom: (updatedBom: BillOfMaterials) => void;
   onNavigateToArtwork: (filter: string) => void;
+  onNavigateToInventory?: (sku: string) => void;
 }
 
-const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateToArtwork }) => {
+const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateToArtwork, onNavigateToInventory }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
   const [expandedBoms, setExpandedBoms] = useState<Set<string>>(new Set());
@@ -95,8 +96,8 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
       >
         <div className="p-4 bg-gray-800 flex justify-between items-center">
           <div className="flex-1">
-            <h3 className="font-semibold text-white">{bom.name}</h3>
-            <p className="text-sm text-gray-400">{bom.finishedSku}</p>
+            <h3 className="font-semibold text-white font-mono">{bom.finishedSku}</h3>
+            <p className="text-sm text-gray-400">{bom.name}</p>
           </div>
           <div className="flex items-center gap-2">
             <button 
@@ -118,11 +119,23 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
           <div className="p-4 space-y-4 border-t border-gray-700">
         <div>
           <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Components</h4>
-          <ul className="space-y-1 text-sm">
+          <ul className="space-y-2 text-sm">
             {bom.components.map(c => (
-              <li key={c.sku} className="flex justify-between">
-                <span className="text-gray-300">{c.name}</span>
-                <span className="text-gray-400 font-mono">x{c.quantity}</span>
+              <li key={c.sku} className="flex justify-between items-start">
+                <div className="flex-1">
+                  {onNavigateToInventory ? (
+                    <button
+                      onClick={() => onNavigateToInventory(c.sku)}
+                      className="font-semibold font-mono text-indigo-400 hover:text-indigo-300 hover:underline"
+                    >
+                      {c.sku}
+                    </button>
+                  ) : (
+                    <span className="font-semibold font-mono text-white">{c.sku}</span>
+                  )}
+                  <span className="text-gray-400 ml-2">/ {c.name}</span>
+                </div>
+                <span className="text-gray-400 font-mono ml-4">x{c.quantity}</span>
               </li>
             ))}
           </ul>

@@ -609,7 +609,16 @@ const App: React.FC = () => {
           aiConfig={aiConfig}
         />;
       case 'Inventory':
-        return <Inventory inventory={inventory} vendors={vendors} boms={boms} />;
+        return <Inventory 
+          inventory={inventory} 
+          vendors={vendors} 
+          boms={boms}
+          onNavigateToBom={(bomSku) => {
+            setCurrentPage('BOMs');
+            // Store the BOM SKU to highlight/expand
+            localStorage.setItem('selectedBomSku', bomSku);
+          }}
+        />;
       case 'Purchase Orders':
         return <PurchaseOrders 
                     purchaseOrders={purchaseOrders} 
@@ -633,7 +642,17 @@ const App: React.FC = () => {
       case 'Production':
         return <Production buildOrders={buildOrders} onCompleteBuildOrder={handleCompleteBuildOrder} />;
       case 'BOMs':
-        return <BOMs boms={boms} currentUser={currentUser} onUpdateBom={handleUpdateBom} onNavigateToArtwork={navigateToArtwork}/>;
+        return <BOMs 
+          boms={boms} 
+          currentUser={currentUser} 
+          onUpdateBom={handleUpdateBom} 
+          onNavigateToArtwork={navigateToArtwork}
+          onNavigateToInventory={(sku) => {
+            setCurrentPage('Inventory');
+            // Store the SKU to filter/highlight in inventory
+            localStorage.setItem('selectedInventorySku', sku);
+          }}
+        />;
       case 'Artwork':
         return <ArtworkPage 
             boms={boms}
