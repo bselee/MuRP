@@ -54,6 +54,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
     const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
 
+    // Debug inventory data
+    useMemo(() => {
+        console.log('=== INVENTORY PAGE DEBUG ===');
+        console.log('[Inventory] Total items:', inventory.length);
+        const withStock = inventory.filter(i => i.stock > 0);
+        console.log('[Inventory] Items with stock > 0:', withStock.length);
+        console.log('[Inventory] Sample items:', inventory.slice(0, 5).map(i => ({ sku: i.sku, stock: i.stock, name: i.name })));
+        console.log('===========================');
+    }, [inventory]);
+
     // Create vendor lookup maps
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
     const vendorById = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
