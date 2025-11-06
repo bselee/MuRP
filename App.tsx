@@ -40,19 +40,19 @@ import {
   createRequisition,
   updateRequisitionStatus,
 } from './hooks/useSupabaseMutations';
-import { 
-    mockHistoricalSales, 
+import {
+    mockHistoricalSales,
     mockUsers,
     mockWatchlist,
     defaultAiConfig,
     mockArtworkFolders,
 } from './types';
-import type { 
-    BillOfMaterials, 
-    InventoryItem, 
-    Vendor, 
-    PurchaseOrder, 
-    HistoricalSale, 
+import type {
+    BillOfMaterials,
+    InventoryItem,
+    Vendor,
+    PurchaseOrder,
+    HistoricalSale,
     BuildOrder,
     User,
     InternalRequisition,
@@ -63,7 +63,9 @@ import type {
     WatchlistItem,
     AiConfig,
     ArtworkFolder,
+    AiSettings,
 } from './types';
+import { getDefaultAiSettings } from './services/tokenCounter';
 
 export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'Artwork';
 
@@ -89,6 +91,7 @@ const App: React.FC = () => {
   const [users, setUsers] = usePersistentState<User[]>('users', mockUsers);
   const [watchlist] = usePersistentState<WatchlistItem[]>('watchlist', mockWatchlist);
   const [aiConfig, setAiConfig] = usePersistentState<AiConfig>('aiConfig', defaultAiConfig);
+  const [aiSettings, setAiSettings] = usePersistentState<AiSettings>('aiSettings', getDefaultAiSettings());
   const [artworkFolders, setArtworkFolders] = usePersistentState<ArtworkFolder[]>('artworkFolders', mockArtworkFolders);
   
   const {
@@ -525,6 +528,11 @@ const App: React.FC = () => {
         addToast(`Simulating email send for ${poId}.`, 'info');
     }
   };
+
+  const handleUpdateAiSettings = (settings: AiSettings) => {
+    setAiSettings(settings);
+    addToast('AI settings updated successfully.', 'success');
+  };
   
   const generateApiKey = () => {
     const newKey = `tgfmrp_live_${[...Array(32)].map(() => Math.random().toString(36)[2]).join('')}`;
@@ -650,10 +658,12 @@ const App: React.FC = () => {
       case 'API Documentation':
           return <ApiDocs />;
       case 'Settings':
-        return <Settings 
+        return <Settings
             currentUser={currentUser}
             aiConfig={aiConfig}
             setAiConfig={setAiConfig}
+            aiSettings={aiSettings}
+            onUpdateAiSettings={handleUpdateAiSettings}
             gmailConnection={gmailConnection}
             onGmailConnect={handleGmailConnect}
             onGmailDisconnect={handleGmailDisconnect}
@@ -732,12 +742,14 @@ const App: React.FC = () => {
       
       <AiAssistant
         isOpen={isAiAssistantOpen}
-  onClose={closeAiAssistant}
+        onClose={closeAiAssistant}
         boms={boms}
         inventory={inventory}
         vendors={vendors}
         purchaseOrders={purchaseOrders}
         aiConfig={aiConfig}
+        aiSettings={aiSettings}
+        onUpdateAiSettings={handleUpdateAiSettings}
       />
     </div>
   );

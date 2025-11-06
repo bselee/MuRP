@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import type { Page } from '../App';
-import type { GmailConnection, ExternalConnection, User, AiConfig, AiPrompt } from '../types';
+import type { GmailConnection, ExternalConnection, User, AiConfig, AiPrompt, AiSettings } from '../types';
 import { defaultAiConfig } from '../types';
 import AiPromptEditModal from '../components/AiPromptEditModal';
 import { GmailIcon, KeyIcon, ClipboardCopyIcon, RefreshIcon, TrashIcon, ServerStackIcon, LinkIcon, BotIcon, ChevronDownIcon, PencilIcon, UsersIcon } from '../components/icons';
 import UserManagementPanel from '../components/UserManagementPanel';
 import FinaleSetupPanel from '../components/FinaleSetupPanel';
+import AiSettingsPanel from '../components/AiSettingsPanel';
 
 interface SettingsProps {
     currentUser: User;
     aiConfig: AiConfig;
     setAiConfig: (config: AiConfig) => void;
+    aiSettings: AiSettings;
+    onUpdateAiSettings: (settings: AiSettings) => void;
     gmailConnection: GmailConnection;
     onGmailConnect: () => void;
     onGmailDisconnect: () => void;
@@ -27,8 +30,8 @@ interface SettingsProps {
     onDeleteUser: (userId: string) => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ 
-    currentUser, aiConfig, setAiConfig,
+const Settings: React.FC<SettingsProps> = ({
+    currentUser, aiConfig, setAiConfig, aiSettings, onUpdateAiSettings,
     gmailConnection, onGmailConnect, onGmailDisconnect,
     apiKey, onGenerateApiKey, onRevokeApiKey, addToast,
     setCurrentPage, externalConnections, onSetExternalConnections,
@@ -249,6 +252,12 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               </div>
             </div>
+          </section>
+
+          {/* AI Assistant Settings Section */}
+          <section>
+            <h2 className="text-xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4">AI Assistant</h2>
+            <AiSettingsPanel aiSettings={aiSettings} onUpdateSettings={onUpdateAiSettings} />
           </section>
 
            {/* Developer Settings Section (Admin only) */}

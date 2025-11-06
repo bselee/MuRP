@@ -197,6 +197,27 @@ export interface AiConfig {
     prompts: AiPrompt[];
 }
 
+export interface AiSettings {
+    // Model Configuration
+    model: string; // e.g., 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'
+
+    // Usage Tracking
+    tokensUsedThisMonth: number;
+    queriesThisMonth: number;
+    lastResetDate: string; // ISO date of last monthly reset
+
+    // Quota Management
+    monthlyTokenLimit: number; // e.g., 250000 for free tier
+    alertThreshold: number; // Percentage (0-100) to trigger warning
+
+    // Optimization Controls
+    maxContextItems: number; // Max items per data type (10-100)
+    enableSmartFiltering: boolean; // Use keyword-based relevance filtering
+
+    // Cost Tracking (for display purposes)
+    estimatedMonthlyCost: number; // In USD
+}
+
 
 export const mockWatchlist: WatchlistItem[] = [
     { id: 'watch-1', type: 'Ingredient', term: 'Neem Seed Meal', reason: 'Potential pesticide registration requirements in some states.' },
