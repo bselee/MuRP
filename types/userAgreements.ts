@@ -41,28 +41,10 @@ export interface RegulatoryUserAgreement {
 }
 
 export interface LetterDraftDisclaimer {
-  // Shown every time letter drafting is used
+  // Minimal disclaimer shown when drafting letters
+  // Main legal protection is covered by the regulatory user agreement
   version: string;
-  lastUpdated: string;
-
-  content: {
-    title: string;
-    warnings: string[];
-    requirements: string[];
-    legalDisclaimer: string;
-    recommendedReviews: string[];
-  };
-
-  // Reduced to single checkbox to avoid checkbox fatigue
-  // Combined the key acknowledgments into one comprehensive checkbox
-  requiredAcknowledgments: Array<{
-    id: string;
-    text: string;
-    required: boolean;
-  }>;
-
-  // Visible reminders (show as warning text, no checkbox required)
-  visibleReminders?: string[];
+  checkboxText: string; // Single checkbox text to acknowledge before generating letter
 }
 
 export interface LetterDraftReview {
@@ -303,62 +285,40 @@ If you do not agree to these terms, do not use the Regulatory Compliance feature
   }
 };
 
-// Letter drafting specific disclaimer
+// Letter drafting disclaimer - minimal, just single checkbox per letter
+// Comprehensive legal protection is covered by the main regulatory user agreement
 export const LETTER_DRAFTING_DISCLAIMER = {
   version: "1.0",
+
+  // Single checkbox - clean and simple
+  checkboxText: "I understand this is AI-generated (not legal advice), requires thorough review and verification, and I take full responsibility for any letter I send"
+};
+
+// Data retention and deletion policy
+export const DATA_RETENTION_AGREEMENT = {
+  version: "1.0",
   lastUpdated: "2025-11-06",
+  title: "Data Retention and Deletion Policy",
 
-  title: "⚠️ AI LETTER DRAFTING - REVIEW REQUIRED",
+  content: `
+**Data Storage:**
+Your data is stored locally and/or in cloud services (Supabase) as configured.
+You are responsible for backing up your data.
 
-  warnings: [
-    "This letter is AI-generated and may contain errors or inaccuracies",
-    "DO NOT send this letter without thorough review and verification",
-    "AI may include incorrect facts, misstate your situation, or make inappropriate recommendations",
-    "This draft should be reviewed by appropriate personnel before sending",
-    "Consider having important letters reviewed by a regulatory attorney or consultant"
-  ],
+**Data Deletion:**
+We are not responsible for accidental or intentional deletion of data. You should
+maintain regular backups of critical business information.
 
-  requirements: [
-    "Verify all facts and dates are correct",
-    "Ensure the letter accurately represents your situation",
-    "Check that all referenced documents are actually enclosed",
-    "Confirm contact information is current",
-    "Review tone and professionalism",
-    "Check for any admissions of liability or violations"
-  ],
+**Data Retention:**
+Data is retained until explicitly deleted by users with appropriate permissions.
+No automatic deletion occurs unless configured by your organization.
 
-  legalDisclaimer: `
-This AI-generated letter draft is provided as a starting point only.
-It is NOT legal advice and has NOT been reviewed by an attorney.
+**Your Responsibilities:**
+- Maintain backups of critical data
+- Implement appropriate user permissions
+- Train users on proper data management
+- Document your data retention policies
 
-You are solely responsible for all content in letters you send to
-regulatory agencies. Review carefully and modify as needed.
-
-FOR IMPORTANT COMMUNICATIONS: Have a qualified attorney review before sending.
-`,
-
-  recommendedReviews: [
-    "Company management",
-    "Regulatory consultant",
-    "Legal counsel (for significant issues)"
-  ],
-
-  // Reduced to single checkbox per letter to avoid checkbox fatigue
-  // while still providing legal protection
-  requiredAcknowledgments: [
-    {
-      id: "acknowledge_and_review",
-      text: "I understand this is AI-generated (not legal advice), requires thorough review and verification, and I take full responsibility for any letter I send",
-      required: true
-    }
-  ],
-
-  // Optional: Show these as visible reminders but not requiring clicks
-  // Implementation can display these as warning text without checkboxes
-  visibleReminders: [
-    "⚠️ This is NOT legal advice - it's an AI-generated draft",
-    "✓ Verify all facts, dates, and referenced documents",
-    "✓ Review tone and ensure it accurately represents your situation",
-    "⚠️ For important matters, have an attorney review before sending"
-  ]
+By using this system, you acknowledge and accept these terms.
+`
 };

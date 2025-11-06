@@ -107,6 +107,19 @@ const Settings: React.FC<SettingsProps> = ({
     const handleAcceptAgreement = (agreement: Omit<RegulatoryUserAgreement, 'userId'>) => {
         const updatedUser: User = {
             ...currentUser,
+            agreements: {
+                ...currentUser.agreements,
+                regulatory: {
+                    accepted: true,
+                    acceptedAt: agreement.acceptedAt,
+                    version: agreement.version,
+                    fullName: agreement.fullName,
+                    title: agreement.title,
+                    companyName: agreement.companyName,
+                    electronicSignature: agreement.electronicSignature,
+                }
+            },
+            // Keep legacy field for backward compatibility
             regulatoryAgreement: {
                 accepted: true,
                 acceptedAt: agreement.acceptedAt,
@@ -130,12 +143,24 @@ const Settings: React.FC<SettingsProps> = ({
     const handleRevokeAgreement = () => {
         const updatedUser: User = {
             ...currentUser,
+            agreements: {
+                ...currentUser.agreements,
+                regulatory: {
+                    accepted: false,
+                }
+            },
+            // Keep legacy field for backward compatibility
             regulatoryAgreement: {
                 accepted: false,
             },
         };
         onUpdateUser(updatedUser);
         addToast('Regulatory Compliance Agreement revoked. Compliance features are now disabled.', 'info');
+    };
+
+    // Helper to get regulatory agreement (checks new structure first, then legacy)
+    const getRegulatoryAgreement = () => {
+        return currentUser.agreements?.regulatory || currentUser.regulatoryAgreement;
     };
 
   return (
@@ -321,51 +346,51 @@ const Settings: React.FC<SettingsProps> = ({
             </h2>
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
               <div className="flex items-start gap-4 mb-4">
-                {currentUser.regulatoryAgreement?.accepted ? (
+                {getRegulatoryAgreement()?.accepted ? (
                   <CheckCircleIcon className="w-8 h-8 text-green-400 flex-shrink-0" />
                 ) : (
                   <ExclamationCircleIcon className="w-8 h-8 text-yellow-500 flex-shrink-0" />
                 )}
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white">
-                    {currentUser.regulatoryAgreement?.accepted ? 'Agreement Accepted' : 'Agreement Required'}
+                    {getRegulatoryAgreement()?.accepted ? 'Agreement Accepted' : 'Agreement Required'}
                   </h3>
                   <p className="text-sm text-gray-400 mt-1">
-                    {currentUser.regulatoryAgreement?.accepted
+                    {getRegulatoryAgreement()?.accepted
                       ? 'You have accepted the Regulatory Compliance Agreement and can use compliance features.'
                       : 'You must accept the Regulatory Compliance Agreement to use state regulatory research, compliance scanning, and letter drafting features.'}
                   </p>
                 </div>
               </div>
 
-              {currentUser.regulatoryAgreement?.accepted ? (
+              {getRegulatoryAgreement()?.accepted ? (
                 <div className="space-y-4">
                   {/* Agreement Details */}
                   <div className="bg-gray-900/50 rounded-lg p-4 space-y-2">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-gray-400">Accepted By:</span>
-                        <span className="ml-2 text-white font-semibold">{currentUser.regulatoryAgreement.fullName}</span>
+                        <span className="ml-2 text-white font-semibold">{getRegulatoryAgreement()?.fullName}</span>
                       </div>
                       <div>
                         <span className="text-gray-400">Title:</span>
-                        <span className="ml-2 text-white">{currentUser.regulatoryAgreement.title}</span>
+                        <span className="ml-2 text-white">{getRegulatoryAgreement()?.title}</span>
                       </div>
                       <div>
                         <span className="text-gray-400">Company:</span>
-                        <span className="ml-2 text-white">{currentUser.regulatoryAgreement.companyName}</span>
+                        <span className="ml-2 text-white">{getRegulatoryAgreement()?.companyName}</span>
                       </div>
                       <div>
                         <span className="text-gray-400">Date:</span>
                         <span className="ml-2 text-white">
-                          {currentUser.regulatoryAgreement.acceptedAt
-                            ? new Date(currentUser.regulatoryAgreement.acceptedAt).toLocaleDateString()
+                          {getRegulatoryAgreement()?.acceptedAt
+                            ? new Date(getRegulatoryAgreement()!.acceptedAt!).toLocaleDateString()
                             : 'N/A'}
                         </span>
                       </div>
                       <div>
                         <span className="text-gray-400">Version:</span>
-                        <span className="ml-2 text-white">{currentUser.regulatoryAgreement.version || '1.0'}</span>
+                        <span className="ml-2 text-white">{getRegulatoryAgreement()?.version || '1.0'}</span>
                       </div>
                       <div>
                         <span className="text-gray-400">Status:</span>

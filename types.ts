@@ -149,6 +149,27 @@ export interface User {
     role: 'Admin' | 'Manager' | 'Staff';
     department: 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV';
     onboardingComplete?: boolean;
+
+    // User agreements - stored for review in Settings
+    agreements?: {
+        regulatory?: {
+            accepted: boolean;
+            acceptedAt?: string;
+            version?: string;
+            fullName?: string;
+            title?: string;
+            companyName?: string;
+            electronicSignature?: string;
+        };
+        dataRetention?: {
+            accepted: boolean;
+            acceptedAt?: string;
+            version?: string;
+        };
+        // Additional agreements can be added here (terms of service, privacy policy, etc.)
+    };
+
+    // Legacy field for backward compatibility - will be removed in future version
     regulatoryAgreement?: {
         accepted: boolean;
         acceptedAt?: string;
