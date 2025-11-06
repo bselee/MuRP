@@ -370,7 +370,11 @@ export function transformInventoryRawToParsed(
     try {
       if (index === 0) {
         console.log('[Inventory Transform] CSV Columns available:', Object.keys(raw));
-        console.log('[Inventory Transform] Sample raw data (first 5 keys):', Object.keys(raw).slice(0, 10));
+        console.log('[Inventory Transform] Full raw data sample:', raw);
+        // Show values for stock-related columns
+        const stockCols = ['In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'];
+        console.log('[Inventory Transform] Stock column values:', 
+          Object.fromEntries(stockCols.map(col => [col, raw[col]])));
       }
     } catch (debugError) {
       console.warn('[Inventory Transform] Debug logging failed:', debugError);
