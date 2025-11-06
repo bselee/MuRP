@@ -14,16 +14,74 @@ export interface Artwork {
   id: string;
   fileName: string;
   revision: number;
-  url: string; // Mock URL to the file
+  url: string; // File URL (Supabase storage) or base64 data
   regulatoryDocLink?: string;
   barcode?: string;
   folderId?: string;
+
   // Enhanced tracking
   fileType?: 'label' | 'bag' | 'document' | 'regulatory' | 'artwork' | 'other';
   status?: 'draft' | 'approved' | 'archived';
   approvedBy?: string;
   approvedDate?: string;
   notes?: string;
+
+  // File metadata
+  fileSize?: number; // bytes
+  mimeType?: string; // 'application/pdf', 'application/postscript' (.ai files)
+  uploadedAt?: string;
+  uploadedBy?: string;
+
+  // AI Label Scanning
+  scanStatus?: 'pending' | 'scanning' | 'completed' | 'failed';
+  scanCompletedAt?: string;
+  scanError?: string;
+
+  // Extracted label data from AI
+  extractedData?: {
+    productName?: string;
+    netWeight?: string;
+    barcode?: string;
+
+    ingredients?: Array<{
+      name: string;
+      percentage?: string;
+      order: number; // Position on label (1st, 2nd, 3rd ingredient)
+      confidence: number; // AI confidence 0-1
+    }>;
+
+    guaranteedAnalysis?: {
+      nitrogen?: string; // e.g., "10.0%"
+      phosphate?: string; // e.g., "5.0%"
+      potassium?: string; // e.g., "8.0%"
+      otherNutrients?: Record<string, string>; // Micronutrients
+    };
+
+    claims?: string[]; // ["OMRI Listed", "Organic", "100% Natural"]
+    warnings?: string[]; // Safety warnings, keep out of reach
+    directions?: string; // Application instructions
+    otherText?: string[]; // Any other notable text
+  };
+
+  // Ingredient comparison with BOM
+  ingredientComparison?: {
+    comparedAt: string;
+    matchedIngredients: number;
+    missingFromLabel: string[]; // In BOM but not on label
+    missingFromBOM: string[]; // On label but not in BOM
+    orderMatches: boolean; // Do ingredients appear in same order?
+    percentageVariances?: Array<{
+      ingredient: string;
+      labelValue: string;
+      bomValue: string;
+      variance: number;
+    }>;
+  };
+
+  // Verification
+  verified: boolean; // User confirmed extraction is accurate
+  verifiedBy?: string;
+  verifiedAt?: string;
 }
 
 export interface ArtworkFolder {
@@ -45,6 +103,42 @@ export interface Packaging {
   dimensions?: string;
 }
 
+// State Registration Tracking
+export interface ProductRegistration {
+  id: string;
+  bomId: string; // Links to BillOfMaterials
+  stateCode: string; // "CA", "OR", "WA", etc.
+  stateName: string; // "California", "Oregon", etc.
+
+  registrationNumber: string; // State-issued registration number
+  registeredDate: string; // ISO date
+  expirationDate: string; // ISO date
+
+  // Renewal tracking
+  renewalStatus: 'current' | 'due_soon' | 'urgent' | 'expired';
+  daysUntilExpiration?: number; // Calculated field
+
+  // Fees
+  registrationFee?: number;
+  renewalFee?: number;
+  currency?: string; // 'USD' by default
+
+  // Documents
+  certificateUrl?: string; // PDF of registration certificate
+  certificateFileName?: string;
+
+  // Alert tracking
+  dueSoonAlertSent?: boolean; // 90-day alert
+  urgentAlertSent?: boolean; // 30-day alert
+
+  // Metadata
+  notes?: string;
+  createdAt: string;
+  createdBy?: string;
+  lastUpdated: string;
+  updatedBy?: string;
+}
+
 export interface BillOfMaterials {
   id: string;
   finishedSku: string;
@@ -63,6 +157,8 @@ export interface BillOfMaterials {
   notes?: string;
   // Regulatory compliance status (Phase 1.5+)
   complianceStatusId?: string; // Links to ComplianceStatus in regulatory cache
+  // State registrations (Phase 2)
+  registrations?: ProductRegistration[];
 }
 
 export interface InventoryItem {

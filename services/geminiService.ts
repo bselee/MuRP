@@ -116,11 +116,28 @@ Please wait 1 minute before trying again, or upgrade your plan.
   }
 }
 
-export async function callGemini(model: string, prompt: string, isJson = false) {
+export async function callGemini(model: string, prompt: string, isJson = false, imageBase64?: string) {
     try {
+        let contents: any;
+
+        // If image provided, use multimodal format
+        if (imageBase64) {
+            const imagePart = {
+                inlineData: {
+                    mimeType: 'image/png', // Default to PNG, works for most images
+                    data: imageBase64,
+                },
+            };
+            const textPart = { text: prompt };
+            contents = { parts: [imagePart, textPart] };
+        } else {
+            // Text-only
+            contents = prompt;
+        }
+
         const response = await ai.models.generateContent({
             model: model,
-            contents: prompt,
+            contents: contents,
         });
 
         // FIX: Directly access the .text property as per Gemini API guidelines.
