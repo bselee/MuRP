@@ -11,6 +11,13 @@ interface UploadArtworkModalProps {
     currentUser?: { id: string; email: string };
 }
 
+interface FileUploadStatus {
+    file: File;
+    status: 'pending' | 'uploading' | 'scanning' | 'completed' | 'failed';
+    progress: string;
+    error?: string;
+}
+
 const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
     isOpen,
     onClose,
@@ -19,48 +26,47 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
     currentUser
 }) => {
     const [selectedBomId, setSelectedBomId] = useState<string>('');
-    const [file, setFile] = useState<File | null>(null);
-    const [filePreview, setFilePreview] = useState<string>('');
+    const [files, setFiles] = useState<FileUploadStatus[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [uploading, setUploading] = useState(false);
-    const [scanning, setScanning] = useState(false);
-    const [scanProgress, setScanProgress] = useState<string>('');
     const [version, setVersion] = useState('1.0');
     const [notes, setNotes] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileSelect = async (selectedFile: File) => {
-        // Validate file type
-        const validTypes = ['application/pdf', 'application/postscript', 'image/png', 'image/jpeg'];
-        const isValidType = validTypes.includes(selectedFile.type) ||
-                           selectedFile.name.endsWith('.ai') ||
-                           selectedFile.name.endsWith('.pdf');
+    const handleFilesSelect = async (selectedFiles: FileList | File[]) => {
+        const newFiles: FileUploadStatus[] = [];
 
-        if (!isValidType) {
-            alert('Please upload a PDF or Adobe Illustrator (.ai) file');
-            return;
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
+
+            // Validate file type
+            const validTypes = ['application/pdf', 'application/postscript', 'image/png', 'image/jpeg'];
+            const isValidType = validTypes.includes(file.type) ||
+                               file.name.endsWith('.ai') ||
+                               file.name.endsWith('.pdf');
+
+            if (!isValidType) {
+                continue; // Skip invalid files
+            }
+
+            // Validate file size (max 50MB)
+            const maxSize = 50 * 1024 * 1024; // 50MB
+            if (file.size > maxSize) {
+                continue; // Skip large files
+            }
+
+            newFiles.push({
+                file,
+                status: 'pending',
+                progress: 'Ready to upload'
+            });
         }
 
-        // Validate file size (max 50MB)
-        const maxSize = 50 * 1024 * 1024; // 50MB
-        if (selectedFile.size > maxSize) {
-            alert('File size must be less than 50MB');
-            return;
-        }
+        setFiles(prev => [...prev, ...newFiles]);
+    };
 
-        setFile(selectedFile);
-
-        // Create preview for PDFs (first page) or images
-        if (selectedFile.type === 'application/pdf' || selectedFile.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                setFilePreview(e.target?.result as string);
-            };
-            reader.readAsDataURL(selectedFile);
-        } else {
-            // For .ai files, show icon only
-            setFilePreview('');
-        }
+    const handleRemoveFile = (index: number) => {
+        setFiles(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -76,104 +82,119 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
         e.preventDefault();
         setIsDragging(false);
 
-        const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile) {
-            handleFileSelect(droppedFile);
+        const droppedFiles = e.dataTransfer.files;
+        if (droppedFiles && droppedFiles.length > 0) {
+            handleFilesSelect(droppedFiles);
         }
     };
 
     const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0];
-        if (selectedFile) {
-            handleFileSelect(selectedFile);
+        const selectedFiles = e.target.files;
+        if (selectedFiles && selectedFiles.length > 0) {
+            handleFilesSelect(selectedFiles);
         }
     };
 
     const handleSubmit = async () => {
-        if (!selectedBomId || !file) {
-            alert('Please select a product and upload a file');
+        if (!selectedBomId || files.length === 0) {
+            alert('Please select a product and upload at least one file');
             return;
         }
 
         setUploading(true);
-        setScanProgress('Uploading file...');
 
-        try {
-            // Convert file to base64 for storage
-            const base64Data = await fileToBase64(file);
-            const dataUrl = `data:${file.type};base64,${base64Data}`;
+        // Process each file
+        for (let i = 0; i < files.length; i++) {
+            const fileStatus = files[i];
 
-            // Get file type
-            let fileType: Artwork['fileType'] = 'artwork';
-            if (file.name.toLowerCase().includes('label')) fileType = 'label';
-            else if (file.name.toLowerCase().includes('bag')) fileType = 'bag';
-            else if (file.name.toLowerCase().includes('doc')) fileType = 'document';
+            if (fileStatus.status !== 'pending') continue; // Skip already processed
 
-            // Create artwork object
-            const newArtwork: Omit<Artwork, 'id'> = {
-                fileName: file.name,
-                revision: parseFloat(version),
-                url: dataUrl, // Store as base64 data URL
-                fileType,
-                fileSize: file.size,
-                mimeType: file.type || 'application/octet-stream',
-                uploadedAt: new Date().toISOString(),
-                uploadedBy: currentUser?.id,
-                status: 'draft',
-                scanStatus: 'pending',
-                verified: false,
-                notes: notes || undefined
-            };
+            // Update status to uploading
+            setFiles(prev => prev.map((f, idx) =>
+                idx === i ? { ...f, status: 'uploading', progress: 'Uploading...' } : f
+            ));
 
-            // Check if this is a label - if so, trigger AI scan
-            if (fileType === 'label') {
-                setScanning(true);
-                setScanProgress('Scanning label with AI...');
+            try {
+                const file = fileStatus.file;
 
-                try {
-                    const extractedData = await scanLabelImage(base64Data);
+                // Convert file to base64
+                const base64Data = await fileToBase64(file);
+                const dataUrl = `data:${file.type};base64,${base64Data}`;
 
-                    newArtwork.extractedData = extractedData;
-                    newArtwork.scanStatus = 'completed';
-                    newArtwork.scanCompletedAt = new Date().toISOString();
+                // Get file type
+                let fileType: Artwork['fileType'] = 'artwork';
+                if (file.name.toLowerCase().includes('label')) fileType = 'label';
+                else if (file.name.toLowerCase().includes('bag')) fileType = 'bag';
+                else if (file.name.toLowerCase().includes('doc')) fileType = 'document';
 
-                    // If barcode found, add to artwork
-                    if (extractedData?.barcode) {
-                        newArtwork.barcode = extractedData.barcode;
+                // Create artwork object
+                const newArtwork: Omit<Artwork, 'id'> = {
+                    fileName: file.name,
+                    revision: parseFloat(version),
+                    url: dataUrl,
+                    fileType,
+                    fileSize: file.size,
+                    mimeType: file.type || 'application/octet-stream',
+                    uploadedAt: new Date().toISOString(),
+                    uploadedBy: currentUser?.id,
+                    status: 'draft',
+                    scanStatus: 'pending',
+                    verified: false,
+                    notes: notes || undefined
+                };
+
+                // If label, scan with AI
+                if (fileType === 'label') {
+                    setFiles(prev => prev.map((f, idx) =>
+                        idx === i ? { ...f, status: 'scanning', progress: 'Scanning with AI...' } : f
+                    ));
+
+                    try {
+                        const extractedData = await scanLabelImage(base64Data);
+                        newArtwork.extractedData = extractedData;
+                        newArtwork.scanStatus = 'completed';
+                        newArtwork.scanCompletedAt = new Date().toISOString();
+
+                        if (extractedData?.barcode) {
+                            newArtwork.barcode = extractedData.barcode;
+                        }
+                    } catch (scanError) {
+                        console.error('Scan error:', scanError);
+                        newArtwork.scanStatus = 'failed';
+                        newArtwork.scanError = scanError instanceof Error ? scanError.message : 'Scan failed';
                     }
-
-                    setScanProgress('Scan completed successfully!');
-                } catch (scanError) {
-                    console.error('Scan error:', scanError);
-                    newArtwork.scanStatus = 'failed';
-                    newArtwork.scanError = scanError instanceof Error ? scanError.message : 'Scan failed';
-                    setScanProgress('Scan failed, but file uploaded successfully');
                 }
+
+                // Upload
+                onUpload(selectedBomId, newArtwork);
+
+                // Mark as completed
+                setFiles(prev => prev.map((f, idx) =>
+                    idx === i ? { ...f, status: 'completed', progress: 'Complete!' } : f
+                ));
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                setFiles(prev => prev.map((f, idx) =>
+                    idx === i ? {
+                        ...f,
+                        status: 'failed',
+                        progress: 'Failed',
+                        error: error instanceof Error ? error.message : 'Upload failed'
+                    } : f
+                ));
             }
-
-            // Call parent handler
-            onUpload(selectedBomId, newArtwork);
-
-            // Reset and close
-            setTimeout(() => {
-                setUploading(false);
-                setScanning(false);
-                setScanProgress('');
-                setFile(null);
-                setFilePreview('');
-                setSelectedBomId('');
-                setVersion('1.0');
-                setNotes('');
-                onClose();
-            }, 1500);
-
-        } catch (error) {
-            console.error('Upload error:', error);
-            alert('Failed to upload file. Please try again.');
-            setUploading(false);
-            setScanning(false);
-            setScanProgress('');
         }
+
+        // Close after all files processed
+        setTimeout(() => {
+            setUploading(false);
+            setFiles([]);
+            setSelectedBomId('');
+            setVersion('1.0');
+            setNotes('');
+            onClose();
+        }, 1500);
     };
 
     return (
@@ -235,7 +256,7 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                 {/* File Upload Area */}
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Upload File (PDF or .ai) <span className="text-red-400">*</span>
+                        Upload Files (PDF or .ai) <span className="text-red-400">*</span>
                     </label>
                     <div
                         className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-colors cursor-pointer ${
@@ -249,51 +270,15 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                         onClick={() => !uploading && fileInputRef.current?.click()}
                     >
                         <div className="space-y-2 text-center">
-                            {file ? (
-                                <>
-                                    {filePreview && (
-                                        <img
-                                            src={filePreview}
-                                            alt="Preview"
-                                            className="mx-auto h-24 w-auto rounded border border-gray-600"
-                                        />
-                                    )}
-                                    <div className="flex items-center justify-center gap-2">
-                                        <svg className="h-8 w-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <div className="text-sm">
-                                            <p className="font-medium text-white">{file.name}</p>
-                                            <p className="text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                                        </div>
-                                    </div>
-                                    {!uploading && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setFile(null);
-                                                setFilePreview('');
-                                            }}
-                                            className="text-xs text-red-400 hover:text-red-300"
-                                        >
-                                            Remove file
-                                        </button>
-                                    )}
-                                </>
-                            ) : (
-                                <>
-                                    <svg className="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    <div className="text-sm text-gray-400">
-                                        <p className="font-semibold text-indigo-400">Click to upload</p>
-                                        <p>or drag and drop</p>
-                                        <p className="text-xs mt-1">PDF or Adobe Illustrator (.ai) files</p>
-                                        <p className="text-xs">Maximum file size: 50MB</p>
-                                    </div>
-                                </>
-                            )}
+                            <svg className="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                            <div className="text-sm text-gray-400">
+                                <p className="font-semibold text-indigo-400">Click to upload or drag and drop</p>
+                                <p className="text-xs mt-1">PDF or Adobe Illustrator (.ai) files</p>
+                                <p className="text-xs">Maximum file size: 50MB per file</p>
+                                <p className="text-xs font-semibold text-green-400 mt-2">✨ Supports multiple files!</p>
+                            </div>
                         </div>
                     </div>
                     <input
@@ -303,20 +288,53 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                         onChange={handleFileInputChange}
                         className="hidden"
                         disabled={uploading}
+                        multiple
                     />
                 </div>
 
-                {/* Progress Indicator */}
-                {(uploading || scanning) && (
-                    <div className="bg-indigo-900/20 border border-indigo-700 rounded-lg p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-400"></div>
-                            <div className="text-sm">
-                                <p className="font-semibold text-indigo-400">
-                                    {scanning ? 'AI Scanning Label...' : 'Uploading...'}
-                                </p>
-                                <p className="text-gray-400 text-xs">{scanProgress}</p>
-                            </div>
+                {/* Files List */}
+                {files.length > 0 && (
+                    <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                        <h4 className="text-sm font-semibold text-white mb-3">
+                            Files to Upload ({files.length})
+                        </h4>
+                        <div className="space-y-2">
+                            {files.map((fileStatus, idx) => (
+                                <div
+                                    key={idx}
+                                    className="flex items-center justify-between p-3 bg-gray-900/50 rounded border border-gray-700"
+                                >
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        {fileStatus.status === 'completed' ? (
+                                            <svg className="h-5 w-5 text-green-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        ) : fileStatus.status === 'failed' ? (
+                                            <svg className="h-5 w-5 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        ) : fileStatus.status === 'uploading' || fileStatus.status === 'scanning' ? (
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-400 flex-shrink-0"></div>
+                                        ) : (
+                                            <svg className="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-white truncate">{fileStatus.file.name}</p>
+                                            <p className="text-xs text-gray-400">{fileStatus.progress}</p>
+                                        </div>
+                                    </div>
+                                    {!uploading && fileStatus.status === 'pending' && (
+                                        <button
+                                            onClick={() => handleRemoveFile(idx)}
+                                            className="ml-3 text-red-400 hover:text-red-300 text-xs"
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -340,10 +358,10 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                     </button>
                     <button
                         onClick={handleSubmit}
-                        disabled={!selectedBomId || !file || uploading}
+                        disabled={!selectedBomId || files.length === 0 || uploading}
                         className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
                     >
-                        {uploading ? (scanning ? 'Scanning...' : 'Uploading...') : 'Upload & Scan'}
+                        {uploading ? 'Processing...' : 'Upload & Scan'}
                     </button>
                 </div>
             </div>

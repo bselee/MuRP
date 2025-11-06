@@ -4,25 +4,35 @@
 import React, { useState, useEffect } from 'react';
 import type { Artwork, BillOfMaterials } from '../types';
 import { compareIngredientsWithBOM } from '../services/labelScanningService';
-import { CheckCircleIcon, ExclamationCircleIcon, XCircleIcon } from './icons';
+import { CheckCircleIcon, ExclamationCircleIcon, XCircleIcon, PencilSquareIcon, TrashIcon, PlusCircleIcon } from './icons';
+import Barcode from './Barcode';
 
 interface LabelScanResultsProps {
   artwork: Artwork;
   bom?: BillOfMaterials; // Optional: for comparison
   onVerify?: (artworkId: string) => void;
   onRescan?: (artworkId: string) => void;
+  onSave?: (artworkId: string, updatedData: Artwork['extractedData']) => void;
 }
 
 const LabelScanResults: React.FC<LabelScanResultsProps> = ({
   artwork,
   bom,
   onVerify,
-  onRescan
+  onRescan,
+  onSave
 }) => {
   const [showComparison, setShowComparison] = useState(true);
   const [comparison, setComparison] = useState<Artwork['ingredientComparison']>();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedData, setEditedData] = useState<Artwork['extractedData']>(artwork.extractedData);
 
-  const extractedData = artwork.extractedData;
+  const extractedData = isEditing ? editedData : artwork.extractedData;
+
+  // Sync edited data when artwork changes
+  useEffect(() => {
+    setEditedData(artwork.extractedData);
+  }, [artwork.extractedData]);
 
   // Calculate comparison if BOM available and ingredients extracted
   useEffect(() => {
@@ -31,6 +41,51 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
       setComparison(result);
     }
   }, [bom, extractedData?.ingredients]);
+
+  const handleSave = () => {
+    if (onSave && editedData) {
+      onSave(artwork.id, editedData);
+      setIsEditing(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedData(artwork.extractedData);
+    setIsEditing(false);
+  };
+
+  const handleAddIngredient = () => {
+    if (!editedData) return;
+    const newIngredient = {
+      name: '',
+      percentage: '',
+      order: (editedData.ingredients?.length || 0) + 1,
+      confidence: 1.0
+    };
+    setEditedData({
+      ...editedData,
+      ingredients: [...(editedData.ingredients || []), newIngredient]
+    });
+  };
+
+  const handleRemoveIngredient = (index: number) => {
+    if (!editedData?.ingredients) return;
+    const newIngredients = editedData.ingredients.filter((_, i) => i !== index);
+    setEditedData({
+      ...editedData,
+      ingredients: newIngredients
+    });
+  };
+
+  const handleIngredientChange = (index: number, field: string, value: any) => {
+    if (!editedData?.ingredients) return;
+    const newIngredients = [...editedData.ingredients];
+    (newIngredients[index] as any)[field] = value;
+    setEditedData({
+      ...editedData,
+      ingredients: newIngredients
+    });
+  };
 
   if (!extractedData) {
     return (
@@ -80,91 +135,204 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
             )}
           </div>
 
-          {artwork.verified ? (
-            <div className="flex items-center gap-2 bg-green-900/30 px-4 py-2 rounded-lg border border-green-700">
-              <CheckCircleIcon className="w-5 h-5 text-green-400" />
-              <span className="text-sm font-semibold text-green-300">Verified</span>
-            </div>
-          ) : (
-            onVerify && (
-              <button
-                onClick={() => onVerify(artwork.id)}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-semibold"
-              >
-                Mark as Verified
-              </button>
-            )
-          )}
+          <div className="flex items-center gap-3">
+            {isEditing ? (
+              <>
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-md transition-colors font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors font-semibold"
+                >
+                  Save Changes
+                </button>
+              </>
+            ) : (
+              <>
+                {artwork.verified ? (
+                  <div className="flex items-center gap-2 bg-green-900/30 px-4 py-2 rounded-lg border border-green-700">
+                    <CheckCircleIcon className="w-5 h-5 text-green-400" />
+                    <span className="text-sm font-semibold text-green-300">Verified</span>
+                  </div>
+                ) : (
+                  onVerify && (
+                    <button
+                      onClick={() => onVerify(artwork.id)}
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-semibold"
+                    >
+                      Mark as Verified
+                    </button>
+                  )
+                )}
+                {onSave && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors font-semibold"
+                  >
+                    <PencilSquareIcon className="w-5 h-5" />
+                    Edit
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Product Info */}
-      {(extractedData.productName || extractedData.netWeight || extractedData.barcode) && (
+      {(extractedData?.productName || extractedData?.netWeight || extractedData?.barcode || isEditing) && (
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <h3 className="text-lg font-semibold text-white mb-4">Product Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {extractedData.productName && (
-              <div>
-                <p className="text-sm text-gray-400">Product Name</p>
-                <p className="text-white font-semibold mt-1">{extractedData.productName}</p>
-              </div>
-            )}
-            {extractedData.netWeight && (
-              <div>
-                <p className="text-sm text-gray-400">Net Weight</p>
-                <p className="text-white font-semibold mt-1">{extractedData.netWeight}</p>
-              </div>
-            )}
-            {extractedData.barcode && (
-              <div>
-                <p className="text-sm text-gray-400">Barcode</p>
-                <p className="text-white font-mono font-semibold mt-1">{extractedData.barcode}</p>
-              </div>
-            )}
+            <div>
+              <p className="text-sm text-gray-400 mb-2">Product Name</p>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={editedData?.productName || ''}
+                  onChange={(e) => setEditedData({ ...editedData, productName: e.target.value })}
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Product name..."
+                />
+              ) : (
+                <p className="text-white font-semibold">{extractedData?.productName || '-'}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-gray-400 mb-2">Net Weight</p>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={editedData?.netWeight || ''}
+                  onChange={(e) => setEditedData({ ...editedData, netWeight: e.target.value })}
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g., 50 lbs"
+                />
+              ) : (
+                <p className="text-white font-semibold">{extractedData?.netWeight || '-'}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-gray-400 mb-2">Barcode</p>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={editedData?.barcode || ''}
+                  onChange={(e) => setEditedData({ ...editedData, barcode: e.target.value })}
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g., 012345678901"
+                />
+              ) : (
+                <>
+                  <p className="text-white font-mono font-semibold mb-2">{extractedData?.barcode || '-'}</p>
+                  {extractedData?.barcode && (
+                    <div className="mt-3 p-3 bg-white rounded inline-block">
+                      <Barcode value={extractedData.barcode} width={2} height={60} displayValue={false} />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
+          {extractedData?.barcode && !isEditing && (
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              <p className="text-xs text-gray-400 mb-2">Visual Barcode:</p>
+              <div className="flex justify-center p-4 bg-white rounded-lg">
+                <Barcode value={extractedData.barcode} width={3} height={100} displayValue={true} />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Ingredients */}
-      {extractedData.ingredients && extractedData.ingredients.length > 0 && (
+      {(extractedData?.ingredients && extractedData.ingredients.length > 0) || isEditing && (
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">
-              Ingredients ({extractedData.ingredients.length})
+              Ingredients ({extractedData?.ingredients?.length || 0})
             </h3>
-            {bom && (
-              <button
-                onClick={() => setShowComparison(!showComparison)}
-                className="text-sm text-indigo-400 hover:text-indigo-300"
-              >
-                {showComparison ? 'Hide' : 'Show'} BOM Comparison
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {isEditing && (
+                <button
+                  onClick={handleAddIngredient}
+                  className="flex items-center gap-2 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded transition-colors"
+                >
+                  <PlusCircleIcon className="w-4 h-4" />
+                  Add Ingredient
+                </button>
+              )}
+              {bom && !isEditing && (
+                <button
+                  onClick={() => setShowComparison(!showComparison)}
+                  className="text-sm text-indigo-400 hover:text-indigo-300"
+                >
+                  {showComparison ? 'Hide' : 'Show'} BOM Comparison
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
-            {extractedData.ingredients.map((ing, idx) => (
+            {extractedData?.ingredients?.map((ing, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-3 bg-gray-900/50 rounded-md border border-gray-700"
+                className="flex items-center gap-3 p-3 bg-gray-900/50 rounded-md border border-gray-700"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-400 font-mono text-sm">{ing.order}.</span>
-                  <span className="text-white font-medium">{ing.name}</span>
-                  {ing.percentage && (
-                    <span className="text-indigo-400 text-sm font-semibold">{ing.percentage}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">
-                    {Math.round(ing.confidence * 100)}% confident
-                  </span>
-                  {ing.confidence > 0.85 ? (
-                    <CheckCircleIcon className="w-4 h-4 text-green-400" />
-                  ) : (
-                    <ExclamationCircleIcon className="w-4 h-4 text-yellow-500" />
-                  )}
-                </div>
+                {isEditing ? (
+                  <>
+                    <input
+                      type="number"
+                      value={ing.order}
+                      onChange={(e) => handleIngredientChange(idx, 'order', parseInt(e.target.value) || 1)}
+                      className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      min="1"
+                    />
+                    <input
+                      type="text"
+                      value={ing.name}
+                      onChange={(e) => handleIngredientChange(idx, 'name', e.target.value)}
+                      className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-1 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Ingredient name..."
+                    />
+                    <input
+                      type="text"
+                      value={ing.percentage || ''}
+                      onChange={(e) => handleIngredientChange(idx, 'percentage', e.target.value)}
+                      className="w-24 bg-gray-700 border border-gray-600 rounded px-3 py-1 text-indigo-400 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="%"
+                    />
+                    <button
+                      onClick={() => handleRemoveIngredient(idx)}
+                      className="p-2 text-red-400 hover:bg-red-900/20 rounded transition-colors"
+                      title="Remove ingredient"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-gray-400 font-mono text-sm w-8">{ing.order}.</span>
+                    <span className="text-white font-medium flex-1">{ing.name}</span>
+                    {ing.percentage && (
+                      <span className="text-indigo-400 text-sm font-semibold w-24 text-right">{ing.percentage}</span>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">
+                        {Math.round(ing.confidence * 100)}%
+                      </span>
+                      {ing.confidence > 0.85 ? (
+                        <CheckCircleIcon className="w-4 h-4 text-green-400" />
+                      ) : (
+                        <ExclamationCircleIcon className="w-4 h-4 text-yellow-500" />
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
