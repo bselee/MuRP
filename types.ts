@@ -149,6 +149,15 @@ export interface User {
     role: 'Admin' | 'Manager' | 'Staff';
     department: 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV';
     onboardingComplete?: boolean;
+    regulatoryAgreement?: {
+        accepted: boolean;
+        acceptedAt?: string;
+        version?: string;
+        fullName?: string;
+        title?: string;
+        companyName?: string;
+        electronicSignature?: string;
+    };
 }
 
 export interface RequisitionItem {

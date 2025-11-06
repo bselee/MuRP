@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiPrompt, AiSettings, InventoryItem, BillOfMaterials, Vendor } from '../types';
+import type { RegulatoryUserAgreement } from '../types/userAgreements';
 import { defaultAiConfig } from '../types';
 import AiPromptEditModal from '../components/AiPromptEditModal';
-import { GmailIcon, KeyIcon, ClipboardCopyIcon, RefreshIcon, TrashIcon, ServerStackIcon, LinkIcon, BotIcon, ChevronDownIcon, PencilIcon, UsersIcon } from '../components/icons';
+import RegulatoryAgreementModal from '../components/RegulatoryAgreementModal';
+import { GmailIcon, KeyIcon, ClipboardCopyIcon, RefreshIcon, TrashIcon, ServerStackIcon, LinkIcon, BotIcon, ChevronDownIcon, PencilIcon, UsersIcon, ShieldCheckIcon, ExclamationCircleIcon, CheckCircleIcon } from '../components/icons';
 import UserManagementPanel from '../components/UserManagementPanel';
 import FinaleSetupPanel from '../components/FinaleSetupPanel';
 import AiSettingsPanel from '../components/AiSettingsPanel';
@@ -46,7 +48,8 @@ const Settings: React.FC<SettingsProps> = ({
     const [isDevSettingsOpen, setIsDevSettingsOpen] = useState(false);
     const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
     const [selectedPrompt, setSelectedPrompt] = useState<AiPrompt | null>(null);
-    
+    const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(false);
+
     // State for the "Add New Connection" form
     const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
 
@@ -99,6 +102,40 @@ const Settings: React.FC<SettingsProps> = ({
     const handleResetPrompts = () => {
         setAiConfig({ ...aiConfig, prompts: defaultAiConfig.prompts });
         addToast('All prompts have been reset to their default values.', 'info');
+    };
+
+    const handleAcceptAgreement = (agreement: Omit<RegulatoryUserAgreement, 'userId'>) => {
+        const updatedUser: User = {
+            ...currentUser,
+            regulatoryAgreement: {
+                accepted: true,
+                acceptedAt: agreement.acceptedAt,
+                version: agreement.version,
+                fullName: agreement.fullName,
+                title: agreement.title,
+                companyName: agreement.companyName,
+                electronicSignature: agreement.electronicSignature,
+            },
+        };
+        onUpdateUser(updatedUser);
+        setIsAgreementModalOpen(false);
+        addToast('Regulatory Compliance Agreement accepted. You can now access compliance features.', 'success');
+    };
+
+    const handleDeclineAgreement = () => {
+        setIsAgreementModalOpen(false);
+        addToast('You must accept the agreement to use regulatory compliance features.', 'info');
+    };
+
+    const handleRevokeAgreement = () => {
+        const updatedUser: User = {
+            ...currentUser,
+            regulatoryAgreement: {
+                accepted: false,
+            },
+        };
+        onUpdateUser(updatedUser);
+        addToast('Regulatory Compliance Agreement revoked. Compliance features are now disabled.', 'info');
     };
 
   return (
@@ -276,6 +313,136 @@ const Settings: React.FC<SettingsProps> = ({
             />
           </section>
 
+          {/* Regulatory Compliance Agreement Section */}
+          <section>
+            <h2 className="text-xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4 flex items-center gap-2">
+              <ShieldCheckIcon className="w-6 h-6" />
+              Regulatory Compliance Agreement
+            </h2>
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+              <div className="flex items-start gap-4 mb-4">
+                {currentUser.regulatoryAgreement?.accepted ? (
+                  <CheckCircleIcon className="w-8 h-8 text-green-400 flex-shrink-0" />
+                ) : (
+                  <ExclamationCircleIcon className="w-8 h-8 text-yellow-500 flex-shrink-0" />
+                )}
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-white">
+                    {currentUser.regulatoryAgreement?.accepted ? 'Agreement Accepted' : 'Agreement Required'}
+                  </h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    {currentUser.regulatoryAgreement?.accepted
+                      ? 'You have accepted the Regulatory Compliance Agreement and can use compliance features.'
+                      : 'You must accept the Regulatory Compliance Agreement to use state regulatory research, compliance scanning, and letter drafting features.'}
+                  </p>
+                </div>
+              </div>
+
+              {currentUser.regulatoryAgreement?.accepted ? (
+                <div className="space-y-4">
+                  {/* Agreement Details */}
+                  <div className="bg-gray-900/50 rounded-lg p-4 space-y-2">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-400">Accepted By:</span>
+                        <span className="ml-2 text-white font-semibold">{currentUser.regulatoryAgreement.fullName}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Title:</span>
+                        <span className="ml-2 text-white">{currentUser.regulatoryAgreement.title}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Company:</span>
+                        <span className="ml-2 text-white">{currentUser.regulatoryAgreement.companyName}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Date:</span>
+                        <span className="ml-2 text-white">
+                          {currentUser.regulatoryAgreement.acceptedAt
+                            ? new Date(currentUser.regulatoryAgreement.acceptedAt).toLocaleDateString()
+                            : 'N/A'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Version:</span>
+                        <span className="ml-2 text-white">{currentUser.regulatoryAgreement.version || '1.0'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Status:</span>
+                        <span className="ml-2 text-green-400 font-semibold">Active</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-between items-center pt-4 border-t border-gray-700">
+                    <button
+                      onClick={() => setIsAgreementModalOpen(true)}
+                      className="text-sm text-indigo-400 hover:text-indigo-300 font-semibold"
+                    >
+                      View Full Agreement
+                    </button>
+                    <button
+                      onClick={handleRevokeAgreement}
+                      className="text-sm bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+                    >
+                      Revoke Agreement
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Warning Box */}
+                  <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4">
+                    <h4 className="text-sm font-bold text-yellow-400 mb-2">⚠️ Legal Agreement Required</h4>
+                    <p className="text-xs text-gray-300 leading-relaxed">
+                      Our regulatory compliance features provide AI-generated research and guidance about
+                      state-level agriculture regulations. This is <strong>NOT legal advice</strong> and
+                      requires careful verification. You must read and accept the full agreement to proceed.
+                    </p>
+                  </div>
+
+                  {/* Features Covered */}
+                  <div className="bg-gray-900/50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-gray-300 mb-3">Features Covered by This Agreement:</h4>
+                    <ul className="space-y-2 text-xs text-gray-400">
+                      <li className="flex items-start gap-2">
+                        <span className="text-indigo-400 mt-1">•</span>
+                        <span>AI-powered state regulatory research (all 50 states)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-indigo-400 mt-1">•</span>
+                        <span>Proactive BOM compliance scanning</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-indigo-400 mt-1">•</span>
+                        <span>State agency contact database and research</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-indigo-400 mt-1">•</span>
+                        <span>Letter upload and AI analysis</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-indigo-400 mt-1">•</span>
+                        <span>AI-assisted draft letter generation</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Accept Button */}
+                  <div className="flex justify-center pt-2">
+                    <button
+                      onClick={() => setIsAgreementModalOpen(true)}
+                      className="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition-colors font-semibold"
+                    >
+                      Review and Accept Agreement
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
            {/* Developer Settings Section (Admin only) */}
            {currentUser.role === 'Admin' && (
              <section>
@@ -336,11 +503,17 @@ const Settings: React.FC<SettingsProps> = ({
              </section>
            )}
         </div>
-        <AiPromptEditModal 
+        <AiPromptEditModal
             isOpen={isPromptModalOpen}
             onClose={() => setIsPromptModalOpen(false)}
             prompt={selectedPrompt}
             onSave={handleSavePrompt}
+        />
+        <RegulatoryAgreementModal
+            isOpen={isAgreementModalOpen}
+            onAccept={handleAcceptAgreement}
+            onDecline={handleDeclineAgreement}
+            currentUser={currentUser}
         />
     </>
   );
