@@ -643,7 +643,8 @@ const App: React.FC = () => {
         return <Production buildOrders={buildOrders} onCompleteBuildOrder={handleCompleteBuildOrder} />;
       case 'BOMs':
         return <BOMs 
-          boms={boms} 
+          boms={boms}
+          inventory={inventory}
           currentUser={currentUser} 
           onUpdateBom={handleUpdateBom} 
           onNavigateToArtwork={navigateToArtwork}

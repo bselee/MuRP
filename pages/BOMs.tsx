@@ -1,24 +1,74 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import type { BillOfMaterials, User } from '../types';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import type { BillOfMaterials, User, InventoryItem } from '../types';
 import { PencilIcon, ChevronDownIcon } from '../components/icons';
 import BomEditModal from '../components/BomEditModal';
 
 interface BOMsProps {
   boms: BillOfMaterials[];
+  inventory: InventoryItem[];
   currentUser: User;
   onUpdateBom: (updatedBom: BillOfMaterials) => void;
   onNavigateToArtwork: (filter: string) => void;
   onNavigateToInventory?: (sku: string) => void;
 }
 
-const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateToArtwork, onNavigateToInventory }) => {
+const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, onNavigateToArtwork, onNavigateToInventory }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
   const [expandedBoms, setExpandedBoms] = useState<Set<string>>(new Set());
   const bomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const canEdit = currentUser.role === 'Admin';
+
+  // Create inventory lookup map
+  const inventoryMap = useMemo(() => {
+    const map = new Map<string, InventoryItem>();
+    inventory.forEach(item => map.set(item.sku, item));
+    return map;
+  }, [inventory]);
+
+  // Calculate buildability for a BOM
+  const calculateBuildability = (bom: BillOfMaterials) => {
+    if (!bom.components || bom.components.length === 0) {
+      return { maxBuildable: 0, limitingComponents: [] };
+    }
+
+    let maxBuildable = Infinity;
+    const limitingComponents: Array<{ sku: string; name: string; available: number; needed: number; canBuild: number }> = [];
+
+    bom.components.forEach(component => {
+      const inventoryItem = inventoryMap.get(component.sku);
+      const available = inventoryItem?.stock || 0;
+      const needed = component.quantity || 1;
+      const canBuild = Math.floor(available / needed);
+
+      if (canBuild < maxBuildable) {
+        maxBuildable = canBuild;
+        limitingComponents.length = 0; // Clear previous limiting components
+        limitingComponents.push({
+          sku: component.sku,
+          name: component.name,
+          available,
+          needed,
+          canBuild
+        });
+      } else if (canBuild === maxBuildable && maxBuildable < Infinity) {
+        limitingComponents.push({
+          sku: component.sku,
+          name: component.name,
+          available,
+          needed,
+          canBuild
+        });
+      }
+    });
+
+    return {
+      maxBuildable: maxBuildable === Infinity ? 0 : maxBuildable,
+      limitingComponents
+    };
+  };
 
   const toggleBomExpanded = (bomId: string) => {
     const newExpanded = new Set(expandedBoms);
@@ -86,6 +136,9 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
 
   const BomCard: React.FC<{ bom: BillOfMaterials }> = ({ bom }) => {
     const isExpanded = expandedBoms.has(bom.id);
+    const finishedItem = inventoryMap.get(bom.finishedSku);
+    const finishedStock = finishedItem?.stock || 0;
+    const buildability = calculateBuildability(bom);
     
     return (
       <div 
@@ -96,7 +149,20 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
       >
         <div className="p-4 bg-gray-800 flex justify-between items-center">
           <div className="flex-1">
-            <h3 className="font-semibold text-white font-mono">{bom.finishedSku}</h3>
+            <div className="flex items-center gap-3">
+              <h3 className="font-semibold text-white font-mono">{bom.finishedSku}</h3>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Stock:</span>
+                <span className={`text-sm font-semibold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {finishedStock}
+                </span>
+                <span className="text-gray-600">|</span>
+                <span className="text-xs text-gray-500">Buildable:</span>
+                <span className={`text-sm font-semibold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {buildability.maxBuildable}
+                </span>
+              </div>
+            </div>
             <p className="text-sm text-gray-400">{bom.name}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -120,24 +186,49 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
         <div>
           <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Components</h4>
           <ul className="space-y-2 text-sm">
-            {bom.components.map(c => (
-              <li key={c.sku} className="flex justify-between items-start">
-                <div className="flex-1">
-                  {onNavigateToInventory ? (
-                    <button
-                      onClick={() => onNavigateToInventory(c.sku)}
-                      className="font-semibold font-mono text-indigo-400 hover:text-indigo-300 hover:underline"
-                    >
-                      {c.sku}
-                    </button>
-                  ) : (
-                    <span className="font-semibold font-mono text-white">{c.sku}</span>
-                  )}
-                  <span className="text-gray-400 ml-2">/ {c.name}</span>
-                </div>
-                <span className="text-gray-400 font-mono ml-4">x{c.quantity}</span>
-              </li>
-            ))}
+            {bom.components.map(c => {
+              const componentItem = inventoryMap.get(c.sku);
+              const available = componentItem?.stock || 0;
+              const needed = c.quantity || 1;
+              const canBuild = Math.floor(available / needed);
+              const isLimiting = buildability.limitingComponents.some(lc => lc.sku === c.sku);
+              
+              return (
+                <li key={c.sku} className={`flex justify-between items-start p-2 rounded ${isLimiting ? 'bg-red-900/20 border border-red-700/30' : ''}`}>
+                  <div className="flex-1">
+                    {onNavigateToInventory ? (
+                      <button
+                        onClick={() => onNavigateToInventory(c.sku)}
+                        className="font-semibold font-mono text-indigo-400 hover:text-indigo-300 hover:underline"
+                      >
+                        {c.sku}
+                      </button>
+                    ) : (
+                      <span className="font-semibold font-mono text-white">{c.sku}</span>
+                    )}
+                    <span className="text-gray-400 ml-2">/ {c.name}</span>
+                    <div className="text-xs mt-1 flex items-center gap-2">
+                      <span className={`font-semibold ${available >= needed ? 'text-green-400' : 'text-red-400'}`}>
+                        Stock: {available}
+                      </span>
+                      <span className="text-gray-600">|</span>
+                      <span className="text-gray-500">Need: {needed}</span>
+                      <span className="text-gray-600">|</span>
+                      <span className={`font-semibold ${canBuild > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        Can build: {canBuild}
+                      </span>
+                      {isLimiting && (
+                        <>
+                          <span className="text-gray-600">|</span>
+                          <span className="text-red-400 font-semibold">⚠️ LIMITING</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-gray-400 font-mono ml-4">x{c.quantity}</span>
+                </li>
+              );
+            })}
           </ul>
         </div>
         {bom.artwork.length > 0 && (
