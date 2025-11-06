@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import type { Page } from '../App';
-import type { GmailConnection, ExternalConnection, User, AiConfig, AiPrompt, AiSettings } from '../types';
+import type { GmailConnection, ExternalConnection, User, AiConfig, AiPrompt, AiSettings, InventoryItem, BillOfMaterials, Vendor } from '../types';
 import { defaultAiConfig } from '../types';
 import AiPromptEditModal from '../components/AiPromptEditModal';
 import { GmailIcon, KeyIcon, ClipboardCopyIcon, RefreshIcon, TrashIcon, ServerStackIcon, LinkIcon, BotIcon, ChevronDownIcon, PencilIcon, UsersIcon } from '../components/icons';
 import UserManagementPanel from '../components/UserManagementPanel';
 import FinaleSetupPanel from '../components/FinaleSetupPanel';
 import AiSettingsPanel from '../components/AiSettingsPanel';
+import SemanticSearchSettings from '../components/SemanticSearchSettings';
 
 interface SettingsProps {
     currentUser: User;
@@ -28,6 +29,9 @@ interface SettingsProps {
     onInviteUser: (email: string, role: User['role'], department: User['department']) => void;
     onUpdateUser: (updatedUser: User) => void;
     onDeleteUser: (userId: string) => void;
+    inventory: InventoryItem[];
+    boms: BillOfMaterials[];
+    vendors: Vendor[];
 }
 
 const Settings: React.FC<SettingsProps> = ({
@@ -35,7 +39,8 @@ const Settings: React.FC<SettingsProps> = ({
     gmailConnection, onGmailConnect, onGmailDisconnect,
     apiKey, onGenerateApiKey, onRevokeApiKey, addToast,
     setCurrentPage, externalConnections, onSetExternalConnections,
-    users, onInviteUser, onUpdateUser, onDeleteUser
+    users, onInviteUser, onUpdateUser, onDeleteUser,
+    inventory, boms, vendors
 }) => {
     const [showApiKey, setShowApiKey] = useState(false);
     const [isDevSettingsOpen, setIsDevSettingsOpen] = useState(false);
@@ -258,6 +263,17 @@ const Settings: React.FC<SettingsProps> = ({
           <section>
             <h2 className="text-xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4">AI Assistant</h2>
             <AiSettingsPanel aiSettings={aiSettings} onUpdateSettings={onUpdateAiSettings} />
+          </section>
+
+          {/* Semantic Search Section */}
+          <section>
+            <h2 className="text-xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4">Semantic Search</h2>
+            <SemanticSearchSettings
+              inventory={inventory}
+              boms={boms}
+              vendors={vendors}
+              addToast={addToast}
+            />
           </section>
 
            {/* Developer Settings Section (Admin only) */}

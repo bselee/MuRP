@@ -678,6 +678,9 @@ const App: React.FC = () => {
             onInviteUser={handleInviteUser}
             onUpdateUser={handleUpdateUser}
             onDeleteUser={handleDeleteUser}
+            inventory={inventory}
+            boms={boms}
+            vendors={vendors}
         />;
       default:
         return <Dashboard 

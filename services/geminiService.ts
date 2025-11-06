@@ -3,6 +3,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, BOMComponent, WatchlistItem } from '../types';
 import type { Forecast } from './forecastingService';
+import { searchInventory, searchBOMs, searchVendors, getEmbeddingStats } from './semanticSearch';
 
 // Support both import.meta.env (Vite) and process.env (Node cli/backends)
 const envApiKey = import.meta.env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? (process as any).env?.API_KEY : undefined);
@@ -151,16 +152,51 @@ export async function askAboutInventory(
   vendors: Vendor[],
   purchaseOrders: PurchaseOrder[]
 ): Promise<string> {
-  // PHASE 0 FIX: Limit data sent to reduce token usage by 95%
-  // Only send the most relevant items based on the question
-  const relevantBOMs = smartFilter(boms, question, 20);
-  const relevantInventory = smartFilter(inventory, question, 20);
-  const relevantVendors = smartFilter(vendors, question, 10);
-  const relevantPOs = smartFilter(purchaseOrders, question, 10);
+  // Check if semantic search embeddings are available
+  const embeddingStats = getEmbeddingStats();
+  const useSemanticSearch = embeddingStats.total > 0;
 
-  console.log(`[AI Assistant] Smart filtering: ${inventory.length} → ${relevantInventory.length} inventory items`);
-  console.log(`[AI Assistant] Smart filtering: ${boms.length} → ${relevantBOMs.length} BOMs`);
-  console.log(`[AI Assistant] Smart filtering: ${vendors.length} → ${relevantVendors.length} vendors`);
+  let relevantBOMs: BillOfMaterials[];
+  let relevantInventory: InventoryItem[];
+  let relevantVendors: Vendor[];
+  let relevantPOs: PurchaseOrder[];
+
+  if (useSemanticSearch) {
+    console.log(`[AI Assistant] Using SEMANTIC SEARCH (${embeddingStats.total} embeddings available)`);
+
+    try {
+      // Use semantic search for better relevance
+      relevantInventory = await searchInventory(question, inventory, 20);
+      relevantBOMs = await searchBOMs(question, boms, 20);
+      relevantVendors = await searchVendors(question, vendors, 10);
+      relevantPOs = smartFilter(purchaseOrders, question, 10); // POs still use keyword filtering
+
+      console.log(`[AI Assistant] Semantic search: ${inventory.length} → ${relevantInventory.length} inventory items`);
+      console.log(`[AI Assistant] Semantic search: ${boms.length} → ${relevantBOMs.length} BOMs`);
+      console.log(`[AI Assistant] Semantic search: ${vendors.length} → ${relevantVendors.length} vendors`);
+    } catch (error) {
+      console.error('[AI Assistant] Semantic search failed, falling back to keyword filtering:', error);
+      useSemanticSearch && console.log('[AI Assistant] Fallback to KEYWORD FILTERING');
+
+      // Fallback to keyword filtering
+      relevantBOMs = smartFilter(boms, question, 20);
+      relevantInventory = smartFilter(inventory, question, 20);
+      relevantVendors = smartFilter(vendors, question, 10);
+      relevantPOs = smartFilter(purchaseOrders, question, 10);
+    }
+  } else {
+    console.log(`[AI Assistant] Using KEYWORD FILTERING (no embeddings available)`);
+
+    // Use keyword-based smart filtering (Phase 0)
+    relevantBOMs = smartFilter(boms, question, 20);
+    relevantInventory = smartFilter(inventory, question, 20);
+    relevantVendors = smartFilter(vendors, question, 10);
+    relevantPOs = smartFilter(purchaseOrders, question, 10);
+
+    console.log(`[AI Assistant] Keyword filtering: ${inventory.length} → ${relevantInventory.length} inventory items`);
+    console.log(`[AI Assistant] Keyword filtering: ${boms.length} → ${relevantBOMs.length} BOMs`);
+    console.log(`[AI Assistant] Keyword filtering: ${vendors.length} → ${relevantVendors.length} vendors`);
+  }
 
   const finalPrompt = promptTemplate
     .replace('{{question}}', question)
