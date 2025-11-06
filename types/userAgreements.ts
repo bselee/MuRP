@@ -53,12 +53,16 @@ export interface LetterDraftDisclaimer {
     recommendedReviews: string[];
   };
 
-  // User must check these boxes each time
+  // Reduced to single checkbox to avoid checkbox fatigue
+  // Combined the key acknowledgments into one comprehensive checkbox
   requiredAcknowledgments: Array<{
     id: string;
     text: string;
     required: boolean;
   }>;
+
+  // Visible reminders (show as warning text, no checkbox required)
+  visibleReminders?: string[];
 }
 
 export interface LetterDraftReview {
@@ -339,26 +343,22 @@ FOR IMPORTANT COMMUNICATIONS: Have a qualified attorney review before sending.
     "Legal counsel (for significant issues)"
   ],
 
+  // Reduced to single checkbox per letter to avoid checkbox fatigue
+  // while still providing legal protection
   requiredAcknowledgments: [
     {
-      id: "review_required",
-      text: "I understand this letter requires thorough review before sending",
-      required: true
-    },
-    {
-      id: "verify_facts",
-      text: "I will verify all facts and information in this letter",
-      required: true
-    },
-    {
-      id: "my_responsibility",
-      text: "I take full responsibility for the content of any letter I send",
-      required: true
-    },
-    {
-      id: "not_legal_advice",
-      text: "I understand this is not legal advice",
+      id: "acknowledge_and_review",
+      text: "I understand this is AI-generated (not legal advice), requires thorough review and verification, and I take full responsibility for any letter I send",
       required: true
     }
+  ],
+
+  // Optional: Show these as visible reminders but not requiring clicks
+  // Implementation can display these as warning text without checkboxes
+  visibleReminders: [
+    "⚠️ This is NOT legal advice - it's an AI-generated draft",
+    "✓ Verify all facts, dates, and referenced documents",
+    "✓ Review tone and ensure it accurately represents your situation",
+    "⚠️ For important matters, have an attorney review before sending"
   ]
 };
