@@ -641,7 +641,7 @@ const App: React.FC = () => {
       case 'Production':
         return <Production buildOrders={buildOrders} onCompleteBuildOrder={handleCompleteBuildOrder} />;
       case 'BOMs':
-        return <BOMs boms={boms} currentUser={currentUser} onUpdateBom={handleUpdateBom} onNavigateToArtwork={navigateToArtwork}/>;
+        return <BOMs boms={boms} currentUser={currentUser} watchlist={watchlist} onUpdateBom={handleUpdateBom} onNavigateToArtwork={navigateToArtwork}/>;
       case 'Artwork':
         return <ArtworkPage 
             boms={boms}

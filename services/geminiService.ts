@@ -115,7 +115,7 @@ Please wait 1 minute before trying again, or upgrade your plan.
   }
 }
 
-async function callGemini(model: string, prompt: string, isJson = false) {
+export async function callGemini(model: string, prompt: string, isJson = false) {
     try {
         const response = await ai.models.generateContent({
             model: model,

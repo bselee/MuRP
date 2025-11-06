@@ -32,3 +32,40 @@ export interface BatchArtworkResult {
     issues: string[];
   };
 }
+
+// Enhanced Regulatory Compliance Types (Phase 1.5+)
+
+export type ComplianceRiskLevel = 'clear' | 'low' | 'medium' | 'high' | 'critical' | 'unknown';
+
+export interface ComplianceIssue {
+  ingredient: string; // Ingredient name that triggered the issue
+  state: string; // State abbreviation (e.g., "CA", "OR", "WA")
+  riskLevel: ComplianceRiskLevel;
+  issue: string; // Short description (e.g., "Requires pesticide registration")
+  recommendation: string; // What to do (e.g., "Register with CA Dept of Agriculture")
+  regulationUrl?: string; // Link to specific regulation
+  detectedAt: string; // ISO timestamp
+}
+
+export interface ComplianceStatus {
+  bomId: string;
+  lastScanDate: string; // ISO timestamp
+  overallRisk: ComplianceRiskLevel; // Highest risk across all issues
+  issueCount: number; // Total number of issues found
+  issues: ComplianceIssue[]; // Detailed issues
+  statesScanned: string[]; // List of states that have been checked
+  expiresAt: string; // ISO timestamp - 90 days from lastScanDate
+}
+
+export interface ComplianceDashboardStats {
+  totalBOMs: number;
+  scannedBOMs: number;
+  clearBOMs: number; // No issues
+  lowRiskBOMs: number;
+  mediumRiskBOMs: number;
+  highRiskBOMs: number;
+  criticalRiskBOMs: number;
+  unknownBOMs: number; // Not scanned yet
+  topIngredients: Array<{ ingredient: string; issueCount: number }>;
+  topStates: Array<{ state: string; issueCount: number }>;
+}

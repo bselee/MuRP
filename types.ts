@@ -61,6 +61,8 @@ export interface BillOfMaterials {
   lastSyncAt?: string;
   syncStatus?: 'synced' | 'pending' | 'error';
   notes?: string;
+  // Regulatory compliance status (Phase 1.5+)
+  complianceStatusId?: string; // Links to ComplianceStatus in regulatory cache
 }
 
 export interface InventoryItem {

@@ -1,21 +1,40 @@
 
 import React, { useState } from 'react';
-import type { BillOfMaterials, User } from '../types';
-import { PencilIcon } from '../components/icons';
+import type { BillOfMaterials, User, WatchlistItem } from '../types';
+import type { ComplianceStatus } from '../types/regulatory';
+import { PencilIcon, ChevronDownIcon } from '../components/icons';
 import BomEditModal from '../components/BomEditModal';
+import ComplianceDashboard from '../components/ComplianceDashboard';
+import ComplianceDetailModal from '../components/ComplianceDetailModal';
 
 interface BOMsProps {
   boms: BillOfMaterials[];
   currentUser: User;
+  watchlist: WatchlistItem[];
   onUpdateBom: (updatedBom: BillOfMaterials) => void;
   onNavigateToArtwork: (filter: string) => void;
 }
 
-const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateToArtwork }) => {
+const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, watchlist, onUpdateBom, onNavigateToArtwork }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
+  const [isComplianceDetailOpen, setIsComplianceDetailOpen] = useState(false);
+  const [selectedComplianceStatus, setSelectedComplianceStatus] = useState<ComplianceStatus | null>(null);
+  const [showComplianceDashboard, setShowComplianceDashboard] = useState(true);
 
   const canEdit = currentUser.role === 'Admin';
+
+  const handleViewComplianceDetails = (bom: BillOfMaterials, status: ComplianceStatus) => {
+    setSelectedBom(bom);
+    setSelectedComplianceStatus(status);
+    setIsComplianceDetailOpen(true);
+  };
+
+  const handleCloseComplianceDetail = () => {
+    setIsComplianceDetailOpen(false);
+    setSelectedBom(null);
+    setSelectedComplianceStatus(null);
+  };
 
   const handleEditClick = (bom: BillOfMaterials) => {
     setSelectedBom(bom);
@@ -86,12 +105,34 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
         <h1 className="text-3xl font-bold text-white tracking-tight">Bills of Materials (BOMs)</h1>
         <p className="text-gray-400 mt-1">Manage the recipes and specifications for all manufactured items.</p>
       </header>
-      
+
       {!canEdit && (
         <div className="bg-yellow-900/50 border border-yellow-700 text-yellow-300 text-sm rounded-lg p-4">
             You do not have permission to edit Bills of Materials. This action is restricted to Administrators.
         </div>
       )}
+
+      {/* Compliance Dashboard Section */}
+      <section>
+        <button
+          onClick={() => setShowComplianceDashboard(!showComplianceDashboard)}
+          className="w-full flex justify-between items-center text-left mb-4"
+        >
+          <h2 className="text-2xl font-semibold text-gray-300">Regulatory Compliance</h2>
+          <ChevronDownIcon
+            className={`w-6 h-6 text-gray-400 transition-transform ${
+              showComplianceDashboard ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
+        {showComplianceDashboard && (
+          <ComplianceDashboard
+            boms={boms}
+            watchlist={watchlist}
+            onViewDetails={handleViewComplianceDetails}
+          />
+        )}
+      </section>
 
       <section>
         <h2 className="text-xl font-semibold mb-4 text-gray-300">Finished Goods</h2>
@@ -108,13 +149,20 @@ const BOMs: React.FC<BOMsProps> = ({ boms, currentUser, onUpdateBom, onNavigateT
       </section>
       
       {selectedBom && (
-        <BomEditModal 
+        <BomEditModal
             isOpen={isModalOpen}
             onClose={handleCloseModal}
             bom={selectedBom}
             onSave={onUpdateBom}
         />
       )}
+
+      <ComplianceDetailModal
+        isOpen={isComplianceDetailOpen}
+        onClose={handleCloseComplianceDetail}
+        bom={selectedBom}
+        status={selectedComplianceStatus}
+      />
     </div>
   );
 };
