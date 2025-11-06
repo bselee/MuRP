@@ -365,11 +365,22 @@ export function transformInventoryRawToParsed(
     // Extract category
     const category = extractFirst(raw, ['Category', 'category', 'Product Category', 'Type']) || 'Uncategorized';
 
+    // DEBUG: Log available columns for first item
+    if (index === 0) {
+      console.log('[Inventory Transform] CSV Columns available:', Object.keys(raw));
+      console.log('[Inventory Transform] Sample raw data:', raw);
+    }
+
     // Extract stock quantities (Finale specific columns)
     const stockRaw = extractFirst(raw, [
       'Units In Stock', 'In stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'
     ]);
     const stock = parseNumber(stockRaw, 0);
+    
+    // DEBUG: Log stock extraction for first few items
+    if (index !== undefined && index < 3) {
+      console.log(`[Inventory Transform] Item ${index} (${sku}): stockRaw="${stockRaw}", parsed stock=${stock}`);
+    }
 
     const onOrderRaw = extractFirst(raw, ['Units On Order', 'On Order', 'on_order', 'Quantity On Order']);
     const onOrder = parseNumber(onOrderRaw, 0);
