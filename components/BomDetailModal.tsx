@@ -70,6 +70,29 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
     // TODO: Implement rescan functionality
   };
 
+  const handleSaveLabel = (artworkId: string, updatedData: Artwork['extractedData']) => {
+    if (!onUpdateBom) return;
+
+    // Find and update the artwork with the new extracted data
+    const updatedArtwork = bom.artwork.map(art =>
+      art.id === artworkId
+        ? { ...art, extractedData: updatedData }
+        : art
+    );
+
+    const updatedBom: BillOfMaterials = {
+      ...bom,
+      artwork: updatedArtwork
+    };
+
+    onUpdateBom(updatedBom);
+
+    // Update selected label if it's the one being edited
+    if (selectedLabel?.id === artworkId) {
+      setSelectedLabel({ ...selectedLabel, extractedData: updatedData });
+    }
+  };
+
   const handleAddRegistration = (registration: Omit<ProductRegistration, 'id'>) => {
     if (!onUpdateBom) return;
 
@@ -485,6 +508,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                         bom={bom}
                         onVerify={handleVerifyLabel}
                         onRescan={handleRescan}
+                        onSave={handleSaveLabel}
                       />
                     </div>
                   </>
