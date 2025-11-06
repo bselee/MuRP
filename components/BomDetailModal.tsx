@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import type { BillOfMaterials, Artwork, ProductRegistration } from '../types';
+import type { BillOfMaterials, Artwork, ProductRegistration, ProductDataSheet, Label } from '../types';
 import Modal from './Modal';
 import LabelScanResults from './LabelScanResults';
 import UploadArtworkModal from './UploadArtworkModal';
 import RegistrationManagement from './RegistrationManagement';
 import AddRegistrationModal from './AddRegistrationModal';
+import ProductDataSheetGenerator from './ProductDataSheetGenerator';
 import {
   CheckCircleIcon,
   ExclamationCircleIcon,
@@ -14,7 +15,8 @@ import {
   DocumentTextIcon,
   PackageIcon,
   BeakerIcon,
-  ClipboardDocumentListIcon
+  ClipboardDocumentListIcon,
+  SparklesIcon
 } from './icons';
 
 interface BomDetailModalProps {
@@ -26,7 +28,7 @@ interface BomDetailModalProps {
   currentUser?: { id: string; email: string };
 }
 
-type TabType = 'components' | 'packaging' | 'labels' | 'registrations';
+type TabType = 'components' | 'packaging' | 'labels' | 'datasheets' | 'registrations';
 
 const BomDetailModal: React.FC<BomDetailModalProps> = ({
   bom,
@@ -41,6 +43,8 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAddRegistrationModalOpen, setIsAddRegistrationModalOpen] = useState(false);
   const [selectedRegistration, setSelectedRegistration] = useState<ProductRegistration | null>(null);
+  const [isGeneratingDataSheet, setIsGeneratingDataSheet] = useState(false);
+  const [dataSheets, setDataSheets] = useState<ProductDataSheet[]>([]);
 
   // Filter artwork to show only labels
   const labels = bom.artwork.filter(art => art.fileType === 'label');
@@ -151,6 +155,15 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
     }
   };
 
+  const handleDataSheetComplete = (dataSheet: ProductDataSheet) => {
+    setDataSheets([...dataSheets, dataSheet]);
+    setIsGeneratingDataSheet(false);
+  };
+
+  const handleCancelGeneration = () => {
+    setIsGeneratingDataSheet(false);
+  };
+
   const getScanStatusBadge = (label: Artwork) => {
     if (label.verified) {
       return (
@@ -198,6 +211,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
     { id: 'components' as TabType, label: 'Components', icon: BeakerIcon },
     { id: 'packaging' as TabType, label: 'Packaging', icon: PackageIcon },
     { id: 'labels' as TabType, label: 'Labels', icon: DocumentTextIcon, count: labels.length },
+    { id: 'datasheets' as TabType, label: 'Data Sheets', icon: SparklesIcon, count: dataSheets.length },
     { id: 'registrations' as TabType, label: 'Registrations', icon: ClipboardDocumentListIcon, count: bom.registrations?.length || 0 }
   ];
 
@@ -512,6 +526,152 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                       />
                     </div>
                   </>
+                )}
+              </div>
+            )}
+
+            {/* Data Sheets Tab */}
+            {activeTab === 'datasheets' && (
+              <div className="space-y-6">
+                {!isGeneratingDataSheet ? (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">Product Data Sheets</h3>
+                        <p className="text-sm text-gray-400 mt-1">
+                          AI-generated documentation: SDS, spec sheets, compliance docs
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setIsGeneratingDataSheet(true)}
+                        className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                      >
+                        <SparklesIcon className="w-5 h-5" />
+                        Generate with AI
+                      </button>
+                    </div>
+
+                    {dataSheets.length === 0 ? (
+                      <div className="bg-gray-800/30 rounded-lg border-2 border-dashed border-gray-700 p-12 text-center">
+                        <SparklesIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                        <h4 className="text-lg font-medium text-gray-400 mb-2">No data sheets generated yet</h4>
+                        <p className="text-sm text-gray-500 mb-6">
+                          Generate comprehensive product documentation with AI using label data, BOM ingredients, and compliance records
+                        </p>
+                        <button
+                          onClick={() => setIsGeneratingDataSheet(true)}
+                          className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                        >
+                          <SparklesIcon className="w-5 h-5" />
+                          Generate Your First Data Sheet
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {dataSheets.map((sheet) => (
+                          <div
+                            key={sheet.id}
+                            className="bg-gray-800/30 rounded-lg border border-gray-700 p-4 hover:bg-gray-800/50 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-3">
+                                  <DocumentTextIcon className="w-8 h-8 text-purple-400 flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="text-sm font-medium text-white truncate">
+                                      {sheet.title}
+                                    </h4>
+                                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                                      <span className="capitalize">{sheet.documentType.replace('_', ' ')}</span>
+                                      <span>•</span>
+                                      <span>v{sheet.version}</span>
+                                      {sheet.createdAt && (
+                                        <>
+                                          <span>•</span>
+                                          <span>
+                                            Created {new Date(sheet.createdAt).toLocaleDateString()}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3 ml-4">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
+                                    sheet.status === 'published'
+                                      ? 'bg-green-900/30 text-green-300 border border-green-700'
+                                      : sheet.status === 'approved'
+                                      ? 'bg-blue-900/30 text-blue-300 border border-blue-700'
+                                      : 'bg-gray-700 text-gray-300 border border-gray-600'
+                                  }`}
+                                >
+                                  {sheet.status === 'published' && <CheckCircleIcon className="w-4 h-4" />}
+                                  {sheet.status.charAt(0).toUpperCase() + sheet.status.slice(1)}
+                                </span>
+
+                                {sheet.pdfUrl && (
+                                  <a
+                                    href={sheet.pdfUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                  >
+                                    Download PDF
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+
+                            {sheet.description && (
+                              <div className="mt-3 pt-3 border-t border-gray-700">
+                                <p className="text-xs text-gray-400">{sheet.description}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <ProductDataSheetGenerator
+                    bom={bom}
+                    labels={labels.map(artwork => ({
+                      id: artwork.id,
+                      fileName: artwork.fileName,
+                      fileUrl: artwork.url,
+                      fileSize: artwork.fileSize,
+                      mimeType: artwork.mimeType,
+                      barcode: artwork.barcode || undefined,
+                      productName: bom.name,
+                      bomId: bom.id,
+                      scanStatus: artwork.scanStatus || 'pending',
+                      extractedData: artwork.extractedData,
+                      verified: artwork.verified,
+                      uploadedBy: currentUser?.id,
+                      createdAt: artwork.uploadedAt || new Date().toISOString(),
+                      updatedAt: artwork.updatedAt || new Date().toISOString()
+                    }))}
+                    complianceRecords={bom.registrations?.map(reg => ({
+                      id: reg.id,
+                      bomId: bom.id,
+                      state: reg.state,
+                      registrationType: reg.registrationType,
+                      registrationNumber: reg.registrationNumber,
+                      status: reg.status,
+                      submittedDate: reg.submittedDate,
+                      approvalDate: reg.approvalDate,
+                      expirationDate: reg.expirationDate,
+                      createdBy: currentUser?.id,
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString()
+                    })) || []}
+                    currentUser={currentUser}
+                    onComplete={handleDataSheetComplete}
+                    onCancel={handleCancelGeneration}
+                  />
                 )}
               </div>
             )}
