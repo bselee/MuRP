@@ -378,7 +378,7 @@ export function transformInventoryRawToParsed(
 
     // Extract stock quantities (Finale specific columns)
     const stockRaw = extractFirst(raw, [
-      'Units In Stock', 'In stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'
+      'In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'
     ]);
     const stock = parseNumber(stockRaw, 0);
     
