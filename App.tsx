@@ -18,6 +18,7 @@ import Toast from './components/Toast';
 import ApiDocs from './pages/ApiDocs';
 import ArtworkPage from './pages/Artwork';
 import NewUserSetup from './pages/NewUserSetup';
+import ManualLabelScanner from './components/ManualLabelScanner';
 import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
 import {
@@ -67,7 +68,7 @@ import type {
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'Artwork';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner';
 
 export type ToastInfo = {
   id: number;
@@ -140,6 +141,8 @@ const App: React.FC = () => {
         '/settings': 'Settings',
         '/api': 'API Documentation',
         '/artwork': 'Artwork',
+        '/label-scanner': 'Label Scanner',
+        '/labels': 'Label Scanner',
       };
       const nextPage = map[path] ?? 'Dashboard';
       if (nextPage !== currentPage) {
@@ -657,6 +660,11 @@ const App: React.FC = () => {
         />;
       case 'API Documentation':
           return <ApiDocs />;
+      case 'Label Scanner':
+        return <ManualLabelScanner
+          boms={boms}
+          currentUser={currentUser}
+        />;
       case 'Settings':
         return <Settings
             currentUser={currentUser}
