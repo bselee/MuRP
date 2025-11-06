@@ -103,38 +103,330 @@ export interface Packaging {
   dimensions?: string;
 }
 
-// State Registration Tracking
-export interface ProductRegistration {
+// ============================================================================
+// Enhanced Types for Product Data Management System
+// ============================================================================
+
+// Label - Dedicated type for scanned labels with AI-extracted data
+export interface Label {
   id: string;
-  bomId: string; // Links to BillOfMaterials
-  stateCode: string; // "CA", "OR", "WA", etc.
-  stateName: string; // "California", "Oregon", etc.
 
-  registrationNumber: string; // State-issued registration number
-  registeredDate: string; // ISO date
-  expirationDate: string; // ISO date
+  // File information
+  fileName: string;
+  fileUrl: string;
+  fileSize?: number;
+  mimeType?: string;
 
-  // Renewal tracking
-  renewalStatus: 'current' | 'due_soon' | 'urgent' | 'expired';
-  daysUntilExpiration?: number; // Calculated field
+  // Label metadata
+  barcode?: string;
+  productName?: string;
+  netWeight?: string;
+  revision?: number;
 
-  // Fees
-  registrationFee?: number;
-  renewalFee?: number;
-  currency?: string; // 'USD' by default
+  // Associations
+  bomId?: string;
 
-  // Documents
-  certificateUrl?: string; // PDF of registration certificate
-  certificateFileName?: string;
+  // AI Scanning status
+  scanStatus: 'pending' | 'scanning' | 'completed' | 'failed';
+  scanCompletedAt?: string;
+  scanError?: string;
 
-  // Alert tracking
-  dueSoonAlertSent?: boolean; // 90-day alert
-  urgentAlertSent?: boolean; // 30-day alert
+  // Extracted data from AI
+  extractedData?: {
+    productName?: string;
+    netWeight?: string;
+    barcode?: string;
+    ingredients?: Array<{
+      name: string;
+      percentage?: string;
+      order: number;
+      confidence: number;
+    }>;
+    guaranteedAnalysis?: {
+      nitrogen?: string;
+      phosphate?: string;
+      potassium?: string;
+      otherNutrients?: Record<string, string>;
+    };
+    claims?: string[];
+    warnings?: string[];
+    directions?: string;
+    otherText?: string[];
+  };
+
+  // Ingredient comparison with BOM
+  ingredientComparison?: {
+    comparedAt: string;
+    matchedIngredients: number;
+    missingFromLabel: string[];
+    missingFromBOM: string[];
+    orderMatches: boolean;
+    percentageVariances?: Array<{
+      ingredient: string;
+      labelValue: string;
+      bomValue: string;
+      variance: number;
+    }>;
+  };
+
+  // Verification tracking
+  verified: boolean;
+  verifiedBy?: string;
+  verifiedAt?: string;
+
+  // File type and status
+  fileType?: 'label' | 'regulatory' | 'other';
+  status?: 'draft' | 'approved' | 'archived';
+
+  // Approval tracking
+  approvedBy?: string;
+  approvedDate?: string;
+
+  // Notes
+  notes?: string;
+
+  // Audit trail
+  uploadedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Product Data Sheet - AI-generated and editable product documentation
+export interface ProductDataSheet {
+  id: string;
+
+  // Associations
+  bomId: string;
+  labelId?: string;
+
+  // Document information
+  documentType: 'sds' | 'spec_sheet' | 'product_info' | 'compliance_doc' | 'custom';
+  title: string;
+  version: number;
+  description?: string;
+
+  // AI-generated content (structured)
+  content: {
+    productIdentification?: {
+      productName?: string;
+      sku?: string;
+      barcode?: string;
+      manufacturer?: string;
+      manufacturerAddress?: string;
+      emergencyPhone?: string;
+      productUse?: string;
+    };
+    composition?: {
+      ingredients?: Array<{
+        name: string;
+        percentage?: string;
+        casNumber?: string;
+        function?: string;
+      }>;
+      guaranteedAnalysis?: {
+        totalNitrogen?: string;
+        availablePhosphate?: string;
+        soluablePotash?: string;
+        [key: string]: string | undefined;
+      };
+    };
+    hazardsIdentification?: {
+      hazardClassification?: string;
+      labelElements?: string[];
+      warningStatements?: string[];
+      firstAidMeasures?: {
+        inhalation?: string;
+        skinContact?: string;
+        eyeContact?: string;
+        ingestion?: string;
+      };
+    };
+    storageAndHandling?: {
+      storageConditions?: string;
+      temperatureRange?: string;
+      shelfLife?: string;
+      handlingPrecautions?: string[];
+      incompatibilities?: string;
+    };
+    regulatoryInformation?: {
+      stateRegistrations?: Array<{
+        state: string;
+        registrationNumber: string;
+        expirationDate: string;
+        status: string;
+      }>;
+      certifications?: string[];
+      epaRegistration?: string;
+      tsca?: string;
+    };
+    technicalData?: {
+      applicationRates?: Record<string, string>;
+      directions?: string;
+      compatibility?: string;
+      physicalProperties?: {
+        appearance?: string;
+        odor?: string;
+        pH?: string;
+        solubility?: string;
+        density?: string;
+      };
+    };
+    manufacturingInformation?: {
+      bomComponents?: Array<{
+        sku: string;
+        name: string;
+        quantity: number;
+        unit: string;
+      }>;
+      packagingSpecs?: {
+        bagType?: string;
+        labelType?: string;
+        netWeight?: string;
+      };
+      yieldInformation?: {
+        batchSize?: string;
+        unitsPerBatch?: number;
+        manufactureDate?: string;
+      };
+    };
+    customSections?: Array<{
+      title: string;
+      content: string;
+    }>;
+  };
+
+  // PDF generation
+  pdfUrl?: string;
+  pdfGeneratedAt?: string;
+  pdfFileSize?: number;
+
+  // Document status
+  status: 'draft' | 'review' | 'approved' | 'published' | 'archived';
+
+  // Approval workflow
+  approvedBy?: string;
+  approvedAt?: string;
+  approvalNotes?: string;
+
+  // Generation tracking
+  isAiGenerated: boolean;
+  aiModelUsed?: string;
+  generationPrompt?: string;
+
+  // Edit tracking
+  lastEditedBy?: string;
+  editCount: number;
+  editHistory?: Array<{
+    timestamp: string;
+    userId: string;
+    action: string;
+    section?: string;
+    changes: string;
+  }>;
+
+  // Publishing
+  publishedAt?: string;
+  publishedVersion?: number;
 
   // Metadata
+  tags?: string[];
   notes?: string;
-  createdAt: string;
+
+  // Audit trail
   createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Compliance Record - Comprehensive compliance tracking
+export interface ComplianceRecord {
+  id: string;
+
+  // Associations
+  bomId: string;
+  labelId?: string;
+
+  // Compliance type
+  complianceType: 'state_registration' | 'organic_cert' | 'omri' | 'epa' | 'wsda' | 'cdfa' | 'custom';
+  category?: string;
+
+  // Registration/certification details
+  issuingAuthority?: string;
+  stateCode?: string;
+  stateName?: string;
+  registrationNumber: string;
+  licenseNumber?: string;
+
+  // Important dates
+  registeredDate?: string;
+  effectiveDate?: string;
+  expirationDate?: string;
+  renewalDate?: string;
+  lastRenewedDate?: string;
+
+  // Status tracking
+  status: 'current' | 'due_soon' | 'urgent' | 'expired' | 'pending' | 'suspended' | 'cancelled' | 'renewed';
+  daysUntilExpiration?: number;
+
+  // Financial information
+  registrationFee?: number;
+  renewalFee?: number;
+  lateFee?: number;
+  currency?: string;
+  paymentStatus?: 'paid' | 'pending' | 'overdue';
+
+  // Documents
+  certificateUrl?: string;
+  certificateFileName?: string;
+  certificateFileSize?: number;
+  additionalDocuments?: Array<{
+    name: string;
+    url: string;
+    uploadedAt: string;
+  }>;
+
+  // Alert tracking
+  dueSoonAlertSent?: boolean;
+  urgentAlertSent?: boolean;
+  expirationAlertSent?: boolean;
+  alertEmailAddresses?: string[];
+
+  // Requirements and conditions
+  requirements?: string;
+  restrictions?: string;
+  conditions?: {
+    annualReportRequired?: boolean;
+    reportDueDate?: string;
+    inspectionRequired?: boolean;
+    labelApprovalRequired?: boolean;
+    [key: string]: any;
+  };
+
+  // Contact information
+  contactPerson?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  authorityWebsite?: string;
+
+  // Internal tracking
+  assignedTo?: string;
+  priority?: 'low' | 'normal' | 'high' | 'critical';
+  notes?: string;
+  internalNotes?: string;
+
+  // Audit trail
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  lastVerifiedAt?: string;
+  lastVerifiedBy?: string;
+}
+
+// Legacy type - kept for backward compatibility, will be deprecated
+// Use ComplianceRecord instead
+export interface ProductRegistration extends ComplianceRecord {
+  bomId: string;
+  renewalStatus: 'current' | 'due_soon' | 'urgent' | 'expired';
   lastUpdated: string;
   updatedBy?: string;
 }
@@ -155,10 +447,20 @@ export interface BillOfMaterials {
   lastSyncAt?: string;
   syncStatus?: 'synced' | 'pending' | 'error';
   notes?: string;
-  // Regulatory compliance status (Phase 1.5+)
+
+  // Product data management (new in Phase 1)
+  primaryLabelId?: string; // References labels table
+  primaryDataSheetId?: string; // References product_data_sheets table
+
+  // Compliance tracking (new in Phase 1)
+  complianceStatus?: 'compliant' | 'due_soon' | 'urgent' | 'non_compliant' | 'unknown';
+  totalStateRegistrations?: number;
+  expiringRegistrationsCount?: number;
+  complianceLastChecked?: string;
+
+  // Legacy compliance fields (deprecated, use compliance_records table instead)
   complianceStatusId?: string; // Links to ComplianceStatus in regulatory cache
-  // State registrations (Phase 2)
-  registrations?: ProductRegistration[];
+  registrations?: ProductRegistration[]; // Use ComplianceRecord[] instead
 }
 
 export interface InventoryItem {
