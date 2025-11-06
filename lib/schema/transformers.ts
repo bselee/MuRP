@@ -314,7 +314,8 @@ export function transformVendorParsedToDatabaseEnhanced(
  */
 export function transformInventoryRawToParsed(
   raw: Record<string, any>,
-  vendorIdMap: Map<string, string> = new Map()
+  vendorIdMap: Map<string, string> = new Map(),
+  index?: number
 ): ParseResult<InventoryParsed> {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -626,7 +627,7 @@ export function transformInventoryBatch(
   };
 
   rawInventory.forEach((raw, index) => {
-    const result = transformInventoryRawToParsed(raw, vendorIdMap);
+    const result = transformInventoryRawToParsed(raw, vendorIdMap, index);
 
     if (result.success && result.data) {
       successful.push(result.data);
