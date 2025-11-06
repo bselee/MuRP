@@ -21,16 +21,46 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
 
   const canEdit = currentUser.role === 'Admin';
 
+  // Debug on mount and prop changes
+  useEffect(() => {
+    console.log('=== BOMs COMPONENT MOUNTED/UPDATED ===');
+    console.log('[BOMs] Props received:');
+    console.log('  - boms:', boms?.length || 0, 'items');
+    console.log('  - inventory:', inventory?.length || 0, 'items');
+    console.log('  - Sample BOM:', boms?.[0]);
+    console.log('  - Sample Inventory:', inventory?.[0]);
+    console.log('======================================');
+  }, [boms, inventory]);
+
+  // Filter BOMs to remove those with only one component
+  const filteredBoms = useMemo(() => {
+    const filtered = boms.filter(bom => bom.components && bom.components.length > 1);
+    console.log(`[BOMs] Filtered ${boms.length} BOMs down to ${filtered.length} (removed ${boms.length - filtered.length} single-component BOMs)`);
+    return filtered;
+  }, [boms]);
+
   // Create inventory lookup map
   const inventoryMap = useMemo(() => {
     const map = new Map<string, InventoryItem>();
     inventory.forEach(item => map.set(item.sku, item));
+    console.log('=== INVENTORY DEBUG ===');
+    console.log('[BOMs] Inventory array:', inventory);
+    console.log('[BOMs] Inventory count:', inventory.length);
+    console.log('[BOMs] InventoryMap size:', map.size);
+    if (inventory.length > 0) {
+      console.log('[BOMs] Sample inventory items:', inventory.slice(0, 5).map(i => ({ sku: i.sku, name: i.name, stock: i.stock })));
+    }
+    console.log('======================');
     return map;
   }, [inventory]);
 
   // Calculate buildability for a BOM
   const calculateBuildability = (bom: BillOfMaterials) => {
+    console.log('=== CALCULATING BUILDABILITY FOR:', bom.finishedSku, '===');
+    console.log('[BOMs] BOM components:', bom.components);
+    
     if (!bom.components || bom.components.length === 0) {
+      console.log('[BOMs] No components found');
       return { maxBuildable: 0, limitingComponents: [] };
     }
 
@@ -38,10 +68,14 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
     const limitingComponents: Array<{ sku: string; name: string; available: number; needed: number; canBuild: number }> = [];
 
     bom.components.forEach(component => {
+      console.log('[BOMs] Looking up component:', component);
       const inventoryItem = inventoryMap.get(component.sku);
+      console.log('[BOMs] Found inventory item:', inventoryItem);
       const available = inventoryItem?.stock || 0;
       const needed = component.quantity || 1;
       const canBuild = Math.floor(available / needed);
+
+      console.log('[BOMs] Component SKU:', component.sku, '| Found:', !!inventoryItem, '| Stock:', available, '| Needed:', needed, '| CanBuild:', canBuild);
 
       if (canBuild < maxBuildable) {
         maxBuildable = canBuild;
@@ -120,18 +154,18 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
   };
 
   // Separate BOMs by category or show all as finished goods if no clear distinction
-  const manufacturedProducts = boms.filter(b => 
+  const manufacturedProducts = filteredBoms.filter(b => 
     b.category?.toLowerCase().includes('finished') || 
     b.category?.toLowerCase().includes('product') ||
     (!b.category?.toLowerCase().includes('sub') && !b.category?.toLowerCase().includes('assembly'))
   );
-  const subAssemblies = boms.filter(b => 
+  const subAssemblies = filteredBoms.filter(b => 
     b.category?.toLowerCase().includes('sub') || 
     b.category?.toLowerCase().includes('assembly')
   );
   
   // If no clear categorization, show all in finished goods
-  const displayManufacturedProducts = manufacturedProducts.length > 0 ? manufacturedProducts : boms;
+  const displayManufacturedProducts = manufacturedProducts.length > 0 ? manufacturedProducts : filteredBoms;
   const displaySubAssemblies = subAssemblies;
 
   const BomCard: React.FC<{ bom: BillOfMaterials }> = ({ bom }) => {
