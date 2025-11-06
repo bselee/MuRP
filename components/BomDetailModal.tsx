@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import type { BillOfMaterials, Artwork } from '../types';
+import type { BillOfMaterials, Artwork, ProductRegistration } from '../types';
 import Modal from './Modal';
 import LabelScanResults from './LabelScanResults';
 import UploadArtworkModal from './UploadArtworkModal';
+import RegistrationManagement from './RegistrationManagement';
+import AddRegistrationModal from './AddRegistrationModal';
 import {
   CheckCircleIcon,
   ExclamationCircleIcon,
@@ -20,6 +22,7 @@ interface BomDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUploadArtwork?: (bomId: string, artwork: Omit<Artwork, 'id'>) => void;
+  onUpdateBom?: (updatedBom: BillOfMaterials) => void;
   currentUser?: { id: string; email: string };
 }
 
@@ -30,11 +33,14 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
   isOpen,
   onClose,
   onUploadArtwork,
+  onUpdateBom,
   currentUser
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('components');
   const [selectedLabel, setSelectedLabel] = useState<Artwork | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isAddRegistrationModalOpen, setIsAddRegistrationModalOpen] = useState(false);
+  const [selectedRegistration, setSelectedRegistration] = useState<ProductRegistration | null>(null);
 
   // Filter artwork to show only labels
   const labels = bom.artwork.filter(art => art.fileType === 'label');
@@ -62,6 +68,64 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
   const handleRescan = (artworkId: string) => {
     console.log('Rescan label:', artworkId);
     // TODO: Implement rescan functionality
+  };
+
+  const handleAddRegistration = (registration: Omit<ProductRegistration, 'id'>) => {
+    if (!onUpdateBom) return;
+
+    const newRegistration: ProductRegistration = {
+      ...registration,
+      id: `reg-${Date.now()}`
+    } as ProductRegistration;
+
+    const updatedBom: BillOfMaterials = {
+      ...bom,
+      registrations: [...(bom.registrations || []), newRegistration]
+    };
+
+    onUpdateBom(updatedBom);
+    setIsAddRegistrationModalOpen(false);
+    setSelectedRegistration(null);
+  };
+
+  const handleEditRegistration = (registration: ProductRegistration) => {
+    if (!onUpdateBom) return;
+
+    const updatedRegistrations = (bom.registrations || []).map(reg =>
+      reg.id === registration.id ? registration : reg
+    );
+
+    const updatedBom: BillOfMaterials = {
+      ...bom,
+      registrations: updatedRegistrations
+    };
+
+    onUpdateBom(updatedBom);
+    setIsAddRegistrationModalOpen(false);
+    setSelectedRegistration(null);
+  };
+
+  const handleDeleteRegistration = (registrationId: string) => {
+    if (!onUpdateBom) return;
+
+    const updatedRegistrations = (bom.registrations || []).filter(
+      reg => reg.id !== registrationId
+    );
+
+    const updatedBom: BillOfMaterials = {
+      ...bom,
+      registrations: updatedRegistrations
+    };
+
+    onUpdateBom(updatedBom);
+  };
+
+  const handleSaveRegistration = (registration: Omit<ProductRegistration, 'id'> | ProductRegistration) => {
+    if ('id' in registration) {
+      handleEditRegistration(registration);
+    } else {
+      handleAddRegistration(registration);
+    }
   };
 
   const getScanStatusBadge = (label: Artwork) => {
@@ -430,33 +494,18 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
 
             {/* Registrations Tab */}
             {activeTab === 'registrations' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">State Registrations</h3>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Track product registrations and renewal deadlines
-                    </p>
-                  </div>
-                  <button
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-                    disabled
-                  >
-                    <PlusCircleIcon className="w-5 h-5" />
-                    Add Registration
-                  </button>
-                </div>
-
-                {/* Placeholder for registrations feature */}
-                <div className="bg-gray-800/30 rounded-lg border-2 border-dashed border-gray-700 p-12 text-center">
-                  <ClipboardDocumentListIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                  <h4 className="text-lg font-medium text-gray-400 mb-2">Registrations Coming Soon</h4>
-                  <p className="text-sm text-gray-500 max-w-md mx-auto">
-                    Track state-by-state product registrations, renewal deadlines, and compliance certificates.
-                    This feature will be available in the next release.
-                  </p>
-                </div>
-              </div>
+              <RegistrationManagement
+                bom={bom}
+                onAddRegistration={() => {
+                  setSelectedRegistration(null);
+                  setIsAddRegistrationModalOpen(true);
+                }}
+                onEditRegistration={(registration) => {
+                  setSelectedRegistration(registration);
+                  setIsAddRegistrationModalOpen(true);
+                }}
+                onDeleteRegistration={handleDeleteRegistration}
+              />
             )}
           </div>
         </div>
@@ -470,6 +519,21 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
           boms={[bom]} // Pre-select this BOM
           onUpload={handleUploadComplete}
           currentUser={currentUser}
+        />
+      )}
+
+      {/* Add/Edit Registration Modal */}
+      {isAddRegistrationModalOpen && (
+        <AddRegistrationModal
+          isOpen={isAddRegistrationModalOpen}
+          onClose={() => {
+            setIsAddRegistrationModalOpen(false);
+            setSelectedRegistration(null);
+          }}
+          onSave={handleSaveRegistration}
+          bomId={bom.id}
+          existingRegistration={selectedRegistration}
+          currentUserId={currentUser?.id}
         />
       )}
     </>

@@ -212,6 +212,7 @@ const BOMs: React.FC<BOMsProps> = ({
           onClose={handleCloseDetailModal}
           bom={selectedDetailBom}
           onUploadArtwork={onUploadArtwork}
+          onUpdateBom={onUpdateBom}
           currentUser={currentUser}
         />
       )}
