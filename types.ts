@@ -4,6 +4,7 @@ export interface BOMComponent {
   sku: string;
   quantity: number;
   name: string;
+  unit?: string; // e.g., 'lbs', 'kg', 'gallons', 'each'
   // Enhanced fields for MRP
   unitCost?: number;
   supplierSku?: string;
@@ -735,7 +736,7 @@ export const mockBOMs: BillOfMaterials[] = [
       { sku: "BAG-SML", name: "Small Burlap Bag (1 cu ft)", quantity: 1 },
     ],
     artwork: [
-      { id: "art-001", fileName: "premium-potting-mix-label-5x6.ai", revision: 3, url: "/art/premium-label-v3.pdf", regulatoryDocLink: "https://example.com/docs/reg/prod-a", barcode: "850012345011", folderId: "folder-1" }
+      { id: "art-001", fileName: "premium-potting-mix-label-5x6.ai", revision: 3, url: "/art/premium-label-v3.pdf", verified: false, regulatoryDocLink: "https://example.com/docs/reg/prod-a", barcode: "850012345011", folderId: "folder-1" }
     ],
     packaging: {
       bagType: "Printed Burlap Sack",
@@ -754,8 +755,8 @@ export const mockBOMs: BillOfMaterials[] = [
       { sku: "BAG-MED", name: "Medium Burlap Bag (2 cu ft)", quantity: 1 },
     ],
     artwork: [
-        { id: "art-002a", fileName: "super-soil-front-6x5.5.png", revision: 1, url: "/art/super-soil-front-v1.pdf", folderId: "folder-1" },
-        { id: "art-002b", fileName: "super-soil-back-6x5.5.png", revision: 2, url: "/art/super-soil-back-v2.pdf", folderId: "folder-1" }
+        { id: "art-002a", fileName: "super-soil-front-6x5.5.png", revision: 1, url: "/art/super-soil-front-v1.pdf", verified: false, folderId: "folder-1" },
+        { id: "art-002b", fileName: "super-soil-back-6x5.5.png", revision: 2, url: "/art/super-soil-back-v2.pdf", verified: false, folderId: "folder-1" }
     ],
     packaging: {
         bagType: "Heavy-duty poly bag",
@@ -792,7 +793,7 @@ export const mockBOMs: BillOfMaterials[] = [
       { sku: "BAG-SML", name: "Small Burlap Bag (1 cu ft)", quantity: 1 },
     ],
     artwork: [
-        { id: "art-004", fileName: "seed-start-label-5x6.svg", revision: 5, url: "/art/seed-start-v5.pdf", regulatoryDocLink: "https://example.com/docs/reg/prod-d", folderId: "folder-2" }
+        { id: "art-004", fileName: "seed-start-label-5x6.svg", revision: 5, url: "/art/seed-start-v5.pdf", verified: false, regulatoryDocLink: "https://example.com/docs/reg/prod-d", folderId: "folder-2" }
     ],
     packaging: {
         bagType: "Printed Burlap Sack",
@@ -809,7 +810,7 @@ export const mockBOMs: BillOfMaterials[] = [
         { sku: "COMP-007", name: "Mycorrhizal Fungi Inoculant", quantity: 1 },
     ],
     artwork: [
-         { id: "art-005", fileName: "starter-kit-sticker.ai", revision: 1, url: "/art/starter-kit-sticker-v1.pdf", folderId: "folder-2" }
+         { id: "art-005", fileName: "starter-kit-sticker.ai", revision: 1, url: "/art/starter-kit-sticker-v1.pdf", verified: false, folderId: "folder-2" }
     ],
     packaging: {
         bagType: "Small plastic ziplock",

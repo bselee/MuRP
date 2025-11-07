@@ -28,12 +28,13 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       contents: text,
     });
 
-    if (!response.embedding) {
+    if (!response.embeddings || response.embeddings.length === 0) {
       throw new Error('No embedding returned from API');
     }
 
     // Gemini embedding API returns a 768-dimensional vector
-    return response.embedding;
+    // API changed from 'embedding' to 'embeddings' array
+    return response.embeddings[0].values;
   } catch (error) {
     console.error('[Embedding Service] Error generating embedding:', error);
     throw error;

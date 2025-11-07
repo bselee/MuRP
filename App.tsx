@@ -341,12 +341,16 @@ const App: React.FC = () => {
     }
 
     const highestRevision = bom.artwork.reduce((max, art) => Math.max(max, art.revision), 0);
-    
+
     const newArtwork: Artwork = {
       id: `art-${Date.now()}`,
       fileName,
       revision: highestRevision + 1,
       url: `/art/${fileName.replace(/\s+/g, '-').toLowerCase()}-v${highestRevision + 1}.pdf`, // Mock URL
+      verified: false,
+      fileType: 'artwork',
+      uploadedBy: currentUser?.id,
+      uploadedAt: new Date().toISOString(),
     };
     
     const updatedBom = {
