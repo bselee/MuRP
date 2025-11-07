@@ -78,13 +78,13 @@ export const MOCK_BOM_WITH_MISMATCH: BillOfMaterials = {
   barcode: '012345678901',
 
   components: [
-    { id: 'c1', sku: 'ING-001', name: 'Blood Meal, Organic', quantity: 22.5, unit: 'lbs' },
-    { id: 'c2', sku: 'ING-002', name: 'Bone Meal', quantity: 12.5, unit: 'lbs' },
-    { id: 'c3', sku: 'ING-003', name: 'Kelp Powder', quantity: 7.5, unit: 'lbs' },
-    { id: 'c4', sku: 'ING-004', name: 'Rock Phosphate', quantity: 5.0, unit: 'lbs' },
-    { id: 'c5', sku: 'ING-005', name: 'Potassium Sulfate', quantity: 2.5, unit: 'lbs' },
+    { sku: 'ING-001', name: 'Blood Meal, Organic', quantity: 22.5, unit: 'lbs' },
+    { sku: 'ING-002', name: 'Bone Meal', quantity: 12.5, unit: 'lbs' },
+    { sku: 'ING-003', name: 'Kelp Powder', quantity: 7.5, unit: 'lbs' },
+    { sku: 'ING-004', name: 'Rock Phosphate', quantity: 5.0, unit: 'lbs' },
+    { sku: 'ING-005', name: 'Potassium Sulfate', quantity: 2.5, unit: 'lbs' },
     // This one is in BOM but NOT on label (intentional mismatch for testing)
-    { id: 'c6', sku: 'ING-006', name: 'Humic Acid', quantity: 0.5, unit: 'lbs' },
+    { sku: 'ING-006', name: 'Humic Acid', quantity: 0.5, unit: 'lbs' },
   ],
 
   artwork: [MOCK_SCANNED_LABEL],
@@ -107,11 +107,11 @@ export const MOCK_PERFECT_MATCH_BOM: BillOfMaterials = {
   barcode: '012345678901',
 
   components: [
-    { id: 'c1', sku: 'ING-001', name: 'Blood Meal', quantity: 22.5, unit: 'lbs' },
-    { id: 'c2', sku: 'ING-002', name: 'Bone Meal', quantity: 12.5, unit: 'lbs' },
-    { id: 'c3', sku: 'ING-003', name: 'Kelp Powder', quantity: 7.5, unit: 'lbs' },
-    { id: 'c4', sku: 'ING-004', name: 'Rock Phosphate', quantity: 5.0, unit: 'lbs' },
-    { id: 'c5', sku: 'ING-005', name: 'Potassium Sulfate', quantity: 2.5, unit: 'lbs' },
+    { sku: 'ING-001', name: 'Blood Meal', quantity: 22.5, unit: 'lbs' },
+    { sku: 'ING-002', name: 'Bone Meal', quantity: 12.5, unit: 'lbs' },
+    { sku: 'ING-003', name: 'Kelp Powder', quantity: 7.5, unit: 'lbs' },
+    { sku: 'ING-004', name: 'Rock Phosphate', quantity: 5.0, unit: 'lbs' },
+    { sku: 'ING-005', name: 'Potassium Sulfate', quantity: 2.5, unit: 'lbs' },
   ],
 
   artwork: [MOCK_SCANNED_LABEL],

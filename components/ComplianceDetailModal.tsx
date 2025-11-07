@@ -122,7 +122,7 @@ const ComplianceDetailModal: React.FC<ComplianceDetailModalProps> = ({
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-white">Compliance Issues by State</h3>
 
-              {Object.entries(issuesByState).map(([state, issues]) => (
+              {Object.entries(issuesByState).map(([state, issues]: [string, ComplianceIssue[]]) => (
                 <div key={state} className="bg-gray-800/50 rounded-lg p-5 border border-gray-700">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-md font-semibold text-white">
