@@ -9,12 +9,15 @@ import React, { useState } from 'react';
 import type { BillOfMaterials, Label, ComplianceRecord, ProductDataSheet } from '../types';
 import { generateProductDataSheet, generateDataSheetSummary } from '../services/productDataSheetService';
 import { createProductDataSheet } from '../services/labelDataService';
+import { generatePDF, downloadPDF, generatePDFFilename } from '../services/pdfGenerationService';
+import { uploadPDFToStorage, updateDataSheetPDFUrl } from '../services/pdfStorageService';
 import {
   DocumentTextIcon,
   SparklesIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ClockIcon
+  ClockIcon,
+  ArrowDownTrayIcon
 } from './icons';
 
 interface ProductDataSheetGeneratorProps {
@@ -48,6 +51,8 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
   const [progress, setProgress] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [generatedContent, setGeneratedContent] = useState<ProductDataSheet['content'] | null>(null);
+  const [savedDataSheet, setSavedDataSheet] = useState<ProductDataSheet | null>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   // Handle document type change
   const handleDocumentTypeChange = (type: ProductDataSheet['documentType']) => {
@@ -123,6 +128,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
 
       const saved = await createProductDataSheet(dataSheet);
 
+      setSavedDataSheet(saved);
       setProgress('Saved successfully!');
       setCurrentStep('complete');
 
@@ -130,17 +136,61 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
         onComplete(saved);
       }
 
-      // Auto-close after 2 seconds
-      setTimeout(() => {
-        if (onClose) {
-          onClose();
-        }
-      }, 2000);
-
     } catch (err) {
       console.error('Save error:', err);
       setError(err instanceof Error ? err.message : 'Failed to save data sheet');
       setCurrentStep('error');
+    }
+  };
+
+  // Generate and download PDF
+  const handleDownloadPDF = async () => {
+    if (!savedDataSheet) return;
+
+    setIsGeneratingPDF(true);
+    setProgress('Generating PDF...');
+
+    try {
+      const pdfBlob = await generatePDF(savedDataSheet);
+      const filename = generatePDFFilename(savedDataSheet);
+
+      downloadPDF(pdfBlob, filename);
+      setProgress('PDF downloaded successfully!');
+
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate PDF');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  // Generate PDF and upload to Supabase
+  const handleGenerateAndUploadPDF = async () => {
+    if (!savedDataSheet) return;
+
+    setIsGeneratingPDF(true);
+    setProgress('Generating PDF...');
+
+    try {
+      const pdfBlob = await generatePDF(savedDataSheet);
+
+      setProgress('Uploading to storage...');
+      const pdfUrl = await uploadPDFToStorage(savedDataSheet, pdfBlob);
+
+      setProgress('Updating database...');
+      await updateDataSheetPDFUrl(savedDataSheet.id, pdfUrl);
+
+      // Update local state
+      setSavedDataSheet({ ...savedDataSheet, pdfUrl });
+
+      setProgress('PDF generated and uploaded successfully!');
+
+    } catch (err) {
+      console.error('PDF upload error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload PDF');
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
 
@@ -493,11 +543,91 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
 
       {/* Complete Step */}
       {currentStep === 'complete' && (
-        <div className="text-center space-y-6 py-12">
-          <CheckCircleIcon className="w-16 h-16 text-green-400 mx-auto" />
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">Complete!</h3>
-            <p className="text-gray-400">Product data sheet saved successfully</p>
+        <div className="space-y-6 py-8">
+          <div className="text-center space-y-4">
+            <CheckCircleIcon className="w-16 h-16 text-green-400 mx-auto" />
+            <div>
+              <h3 className="text-xl font-semibold text-white mb-2">Complete!</h3>
+              <p className="text-gray-400">Product data sheet saved successfully</p>
+              {savedDataSheet && (
+                <p className="text-sm text-gray-500 mt-2">
+                  ID: {savedDataSheet.id} • Version {savedDataSheet.version}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* PDF Generation Section */}
+          <div className="bg-indigo-900/20 border border-indigo-700 rounded-lg p-6">
+            <h4 className="text-sm font-semibold text-indigo-300 mb-4">Generate PDF Document</h4>
+            <p className="text-sm text-gray-400 mb-4">
+              Create a professional PDF version of your data sheet with proper formatting and branding.
+            </p>
+
+            {isGeneratingPDF ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-400 mx-auto mb-2"></div>
+                <p className="text-sm text-gray-400">{progress}</p>
+              </div>
+            ) : (
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={!savedDataSheet}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                >
+                  <ArrowDownTrayIcon className="w-5 h-5" />
+                  Download PDF
+                </button>
+
+                <button
+                  onClick={handleGenerateAndUploadPDF}
+                  disabled={!savedDataSheet}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                >
+                  <ArrowDownTrayIcon className="w-5 h-5" />
+                  Generate & Store PDF
+                </button>
+              </div>
+            )}
+
+            {savedDataSheet?.pdfUrl && (
+              <div className="mt-4 p-3 bg-green-900/20 border border-green-700 rounded-lg">
+                <p className="text-xs text-green-300 mb-2">
+                  ✓ PDF already generated and stored
+                </p>
+                <a
+                  href={savedDataSheet.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-green-400 hover:text-green-300 underline"
+                >
+                  View stored PDF
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 justify-end pt-4 border-t border-gray-700">
+            <button
+              onClick={() => {
+                setCurrentStep('config');
+                setGeneratedContent(null);
+                setSavedDataSheet(null);
+              }}
+              className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
+            >
+              Generate Another
+            </button>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            )}
           </div>
         </div>
       )}
