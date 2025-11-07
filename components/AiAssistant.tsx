@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { askAboutInventory } from '../services/geminiService';
-import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, AiConfig } from '../types';
+import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, AiConfig, AiSettings } from '../types';
 import { BotIcon, CloseIcon, SendIcon } from './icons';
+import { trackUsage } from '../services/tokenCounter';
 
 interface AiAssistantProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface AiAssistantProps {
   vendors: Vendor[];
   purchaseOrders: PurchaseOrder[];
   aiConfig: AiConfig;
+  aiSettings: AiSettings;
+  onUpdateAiSettings: (settings: AiSettings) => void;
 }
 
 type Message = {
@@ -18,7 +21,7 @@ type Message = {
   text: string;
 };
 
-const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, boms, inventory, vendors, purchaseOrders, aiConfig }) => {
+const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, boms, inventory, vendors, purchaseOrders, aiConfig, aiSettings, onUpdateAiSettings }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -41,6 +44,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, boms, invent
 
     const userMessage: Message = { sender: 'user', text: input };
     setMessages(prev => [...prev, userMessage]);
+    const question = input; // Save input for usage tracking
     setInput('');
     setIsLoading(true);
 
@@ -49,12 +53,39 @@ const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, boms, invent
       if (!promptTemplate) {
         throw new Error("Inventory assistant prompt not found.");
       }
-      const response = await askAboutInventory(aiConfig.model, promptTemplate.prompt, input, boms, inventory, vendors, purchaseOrders);
+
+      // Build context string for usage tracking (approximation of what was sent)
+      const context = JSON.stringify({
+        boms: boms.slice(0, aiSettings.maxContextItems),
+        inventory: inventory.slice(0, aiSettings.maxContextItems),
+        vendors: vendors.slice(0, Math.floor(aiSettings.maxContextItems / 2)),
+        purchaseOrders: purchaseOrders.slice(0, Math.floor(aiSettings.maxContextItems / 2)),
+      });
+
+      const response = await askAboutInventory(
+        aiSettings.model, // Use model from aiSettings instead of aiConfig
+        promptTemplate.prompt,
+        question,
+        boms,
+        inventory,
+        vendors,
+        purchaseOrders
+      );
+
+      // Check if response is a formatted error message (quota exceeded, etc.)
       const botMessage: Message = { sender: 'bot', text: response };
       setMessages(prev => [...prev, botMessage]);
+
+      // Track usage and update settings (Phase 1.5)
+      const updatedSettings = trackUsage(question, context, response, aiSettings);
+      onUpdateAiSettings(updatedSettings);
     } catch (error) {
       console.error(error);
-      const errorMessage: Message = { sender: 'bot', text: 'Sorry, I encountered an error. Please try again.' };
+      // Provide helpful error message
+      const errorMessage: Message = {
+        sender: 'bot',
+        text: 'Sorry, I encountered an error. Please try again in a moment.'
+      };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);

@@ -1,27 +1,55 @@
+/**
+ * BOMs Page - MERGED VERSION
+ *
+ * Combines:
+ * - Inventory integration from main (buildability, stock levels, limiting components)
+ * - Compliance features from our branch (dashboard, alerts, data sheets)
+ */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { BillOfMaterials, User, InventoryItem } from '../types';
-import { PencilIcon, ChevronDownIcon } from '../components/icons';
+import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork } from '../types';
+import type { ComplianceStatus } from '../types/regulatory';
+import { PencilIcon, ChevronDownIcon, EyeIcon } from '../components/icons';
 import BomEditModal from '../components/BomEditModal';
+import BomDetailModal from '../components/BomDetailModal';
+import ComplianceDashboard from '../components/ComplianceDashboard';
+import ComplianceDetailModal from '../components/ComplianceDetailModal';
+import EnhancedBomCard from '../components/EnhancedBomCard';
 
 interface BOMsProps {
   boms: BillOfMaterials[];
   inventory: InventoryItem[];
   currentUser: User;
+  watchlist: WatchlistItem[];
   onUpdateBom: (updatedBom: BillOfMaterials) => void;
   onNavigateToArtwork: (filter: string) => void;
   onNavigateToInventory?: (sku: string) => void;
+  onUploadArtwork?: (bomId: string, artwork: Omit<Artwork, 'id'>) => void;
 }
 
-const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, onNavigateToArtwork, onNavigateToInventory }) => {
+const BOMs: React.FC<BOMsProps> = ({
+  boms,
+  inventory,
+  currentUser,
+  watchlist,
+  onUpdateBom,
+  onNavigateToArtwork,
+  onNavigateToInventory,
+  onUploadArtwork
+}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedDetailBom, setSelectedDetailBom] = useState<BillOfMaterials | null>(null);
+  const [isComplianceDetailOpen, setIsComplianceDetailOpen] = useState(false);
+  const [selectedComplianceStatus, setSelectedComplianceStatus] = useState<ComplianceStatus | null>(null);
+  const [showComplianceDashboard, setShowComplianceDashboard] = useState(true);
   const [expandedBoms, setExpandedBoms] = useState<Set<string>>(new Set());
   const bomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const canEdit = currentUser.role === 'Admin';
 
-  // Debug on mount and prop changes
+  // Debug inventory integration
   useEffect(() => {
     console.log('=== BOMs COMPONENT MOUNTED/UPDATED ===');
     console.log('[BOMs] Props received:');
@@ -29,8 +57,6 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
     console.log('  - inventory:', inventory?.length || 0, 'items');
     if (inventory?.length > 0) {
       console.log('  - Inventory items with stock > 0:', inventory.filter(i => i.stock > 0).length);
-      const withStock = inventory.filter(i => i.stock > 0).slice(0, 5);
-      console.log('  - Sample items WITH stock:', withStock.map(i => ({ sku: i.sku, stock: i.stock })));
     }
     console.log('======================================');
   }, [boms, inventory]);
@@ -38,35 +64,32 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
   // Filter BOMs to remove those with only one component
   const filteredBoms = useMemo(() => {
     const filtered = boms.filter(bom => bom.components && bom.components.length > 1);
-    console.log(`[BOMs] Filtered ${boms.length} BOMs down to ${filtered.length} (removed ${boms.length - filtered.length} single-component BOMs)`);
+    console.log(`[BOMs] Filtered ${boms.length} BOMs down to ${filtered.length}`);
     return filtered;
   }, [boms]);
 
-  // Create inventory lookup map
+  // Create inventory lookup map for O(1) access
   const inventoryMap = useMemo(() => {
     const map = new Map<string, InventoryItem>();
     inventory.forEach(item => map.set(item.sku, item));
-    console.log('=== INVENTORY DEBUG ===');
-    console.log('[BOMs] Inventory count:', inventory.length);
     console.log('[BOMs] InventoryMap size:', map.size);
-    if (inventory.length > 0) {
-      console.log('[BOMs] First 10 inventory items with stock data:');
-      inventory.slice(0, 10).forEach(i => {
-        console.log(`  SKU: ${i.sku} | Stock: ${i.stock} | Name: ${i.name}`);
-      });
-    }
-    console.log('======================');
     return map;
   }, [inventory]);
 
-  // Calculate buildability for a BOM
+  // Calculate buildability for a BOM - CRITICAL MRP FUNCTION
   const calculateBuildability = (bom: BillOfMaterials) => {
     if (!bom.components || bom.components.length === 0) {
       return { maxBuildable: 0, limitingComponents: [] };
     }
 
     let maxBuildable = Infinity;
-    const limitingComponents: Array<{ sku: string; name: string; available: number; needed: number; canBuild: number }> = [];
+    const limitingComponents: Array<{
+      sku: string;
+      name: string;
+      available: number;
+      needed: number;
+      canBuild: number
+    }> = [];
 
     bom.components.forEach(component => {
       const inventoryItem = inventoryMap.get(component.sku);
@@ -111,22 +134,18 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
     setExpandedBoms(newExpanded);
   };
 
-  // Check for selectedBomSku from localStorage (navigation from Inventory)
+  // Navigation from Inventory page - auto-scroll to BOM
   useEffect(() => {
     const selectedSku = localStorage.getItem('selectedBomSku');
     if (selectedSku) {
-      // Find the BOM with this SKU
       const targetBom = boms.find(b => b.finishedSku === selectedSku);
       if (targetBom) {
-        // Expand this BOM
         setExpandedBoms(new Set([targetBom.id]));
-        
-        // Scroll to it after a short delay
+
         setTimeout(() => {
           const element = bomRefs.current.get(targetBom.id);
           if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Flash effect
             element.classList.add('ring-2', 'ring-blue-500');
             setTimeout(() => {
               element.classList.remove('ring-2', 'ring-blue-500');
@@ -134,11 +153,22 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
           }
         }, 100);
       }
-      
-      // Clear the localStorage
+
       localStorage.removeItem('selectedBomSku');
     }
   }, [boms]);
+
+  const handleViewComplianceDetails = (bom: BillOfMaterials, status: ComplianceStatus) => {
+    setSelectedBom(bom);
+    setSelectedComplianceStatus(status);
+    setIsComplianceDetailOpen(true);
+  };
+
+  const handleCloseComplianceDetail = () => {
+    setIsComplianceDetailOpen(false);
+    setSelectedBom(null);
+    setSelectedComplianceStatus(null);
+  };
 
   const handleEditClick = (bom: BillOfMaterials) => {
     setSelectedBom(bom);
@@ -150,18 +180,27 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
     setSelectedBom(null);
   };
 
-  // Separate BOMs by category or show all as finished goods if no clear distinction
-  const manufacturedProducts = filteredBoms.filter(b => 
-    b.category?.toLowerCase().includes('finished') || 
+  const handleViewDetails = (bom: BillOfMaterials) => {
+    setSelectedDetailBom(bom);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedDetailBom(null);
+  };
+
+  // Categorize BOMs
+  const manufacturedProducts = filteredBoms.filter(b =>
+    b.category?.toLowerCase().includes('finished') ||
     b.category?.toLowerCase().includes('product') ||
     (!b.category?.toLowerCase().includes('sub') && !b.category?.toLowerCase().includes('assembly'))
   );
-  const subAssemblies = filteredBoms.filter(b => 
-    b.category?.toLowerCase().includes('sub') || 
+  const subAssemblies = filteredBoms.filter(b =>
+    b.category?.toLowerCase().includes('sub') ||
     b.category?.toLowerCase().includes('assembly')
   );
-  
-  // If no clear categorization, show all in finished goods
+
   const displayManufacturedProducts = manufacturedProducts.length > 0 ? manufacturedProducts : filteredBoms;
   const displaySubAssemblies = subAssemblies;
 
@@ -170,163 +209,109 @@ const BOMs: React.FC<BOMsProps> = ({ boms, inventory, currentUser, onUpdateBom, 
     const finishedItem = inventoryMap.get(bom.finishedSku);
     const finishedStock = finishedItem?.stock || 0;
     const buildability = calculateBuildability(bom);
-    
+
     return (
-      <div 
+      <div
         ref={(el) => {
           if (el) bomRefs.current.set(bom.id, el);
         }}
-        className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden transition-all"
       >
-        <div className="p-4 bg-gray-800 flex justify-between items-center">
-          <div className="flex-1">
-            <div className="flex items-center gap-3">
-              <h3 className="font-semibold text-white font-mono">{bom.finishedSku}</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Stock:</span>
-                <span className={`text-sm font-semibold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {finishedStock}
-                </span>
-                <span className="text-gray-600">|</span>
-                <span className="text-xs text-gray-500">Buildable:</span>
-                <span className={`text-sm font-semibold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {buildability.maxBuildable}
-                </span>
-              </div>
-            </div>
-            <p className="text-sm text-gray-400">{bom.name}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => toggleBomExpanded(bom.id)}
-              className="p-2 hover:bg-gray-700 rounded-md transition-colors"
-              title={isExpanded ? 'Collapse' : 'Expand'}
-            >
-              <ChevronDownIcon className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-            </button>
-            {canEdit && (
-              <button onClick={() => handleEditClick(bom)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors">
-                <PencilIcon className="w-4 h-4" />
-                Edit
-              </button>
-            )}
-          </div>
-        </div>
-        {isExpanded && (
-          <div className="p-4 space-y-4 border-t border-gray-700">
-        <div>
-          <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Components</h4>
-          <ul className="space-y-2 text-sm">
-            {bom.components.map(c => {
-              const componentItem = inventoryMap.get(c.sku);
-              const available = componentItem?.stock || 0;
-              const needed = c.quantity || 1;
-              const canBuild = Math.floor(available / needed);
-              const isLimiting = buildability.limitingComponents.some(lc => lc.sku === c.sku);
-              
-              return (
-                <li key={c.sku} className={`flex justify-between items-start p-2 rounded ${isLimiting ? 'bg-red-900/20 border border-red-700/30' : ''}`}>
-                  <div className="flex-1">
-                    {onNavigateToInventory ? (
-                      <button
-                        onClick={() => onNavigateToInventory(c.sku)}
-                        className="font-semibold font-mono text-indigo-400 hover:text-indigo-300 hover:underline"
-                      >
-                        {c.sku}
-                      </button>
-                    ) : (
-                      <span className="font-semibold font-mono text-white">{c.sku}</span>
-                    )}
-                    <span className="text-gray-400 ml-2">/ {c.name}</span>
-                    <div className="text-xs mt-1 flex items-center gap-2">
-                      <span className={`font-semibold ${available >= needed ? 'text-green-400' : 'text-red-400'}`}>
-                        Stock: {available}
-                      </span>
-                      <span className="text-gray-600">|</span>
-                      <span className="text-gray-500">Need: {needed}</span>
-                      <span className="text-gray-600">|</span>
-                      <span className={`font-semibold ${canBuild > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        Can build: {canBuild}
-                      </span>
-                      {isLimiting && (
-                        <>
-                          <span className="text-gray-600">|</span>
-                          <span className="text-red-400 font-semibold">⚠️ LIMITING</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-gray-400 font-mono ml-4">x{c.quantity}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-        {bom.artwork.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Artwork</h4>
-            <ul className="space-y-1 text-sm">
-              {bom.artwork.map(art => (
-                <li key={art.id} className="flex justify-between">
-                  <button onClick={() => onNavigateToArtwork(art.fileName)} className="text-indigo-400 hover:underline text-left truncate">
-                    {art.fileName}
-                  </button>
-                  <span className="text-gray-400 font-mono ml-2">Rev {art.revision}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div>
-          <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Packaging</h4>
-          <p className="text-sm text-gray-300">{bom.packaging.bagType} w/ {bom.packaging.labelType}</p>
-          <p className="text-xs text-gray-500 mt-1"><i>Instructions: {bom.packaging.specialInstructions}</i></p>
-        </div>
-          </div>
-        )}
+        <EnhancedBomCard
+          bom={bom}
+          isExpanded={isExpanded}
+          finishedStock={finishedStock}
+          buildability={buildability}
+          inventoryMap={inventoryMap}
+          canEdit={canEdit}
+          userRole={currentUser.role}
+          onToggleExpand={() => toggleBomExpanded(bom.id)}
+          onViewDetails={() => handleViewDetails(bom)}
+          onEdit={() => handleEditClick(bom)}
+          onNavigateToInventory={onNavigateToInventory}
+        />
       </div>
     );
   };
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-bold text-white tracking-tight">Bills of Materials (BOMs)</h1>
-        <p className="text-gray-400 mt-1">Manage the recipes and specifications for all manufactured items.</p>
-      </header>
-      
-      {!canEdit && (
-        <div className="bg-yellow-900/50 border border-yellow-700 text-yellow-300 text-sm rounded-lg p-4">
-            You do not have permission to edit Bills of Materials. This action is restricted to Administrators.
+    <div className="container mx-auto p-4 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-white">Bills of Materials</h1>
+        <div className="flex items-center gap-2 text-sm text-gray-400">
+          <span>Inventory items: {inventory.length}</span>
+          <span>•</span>
+          <span>BOMs: {filteredBoms.length}</span>
+        </div>
+      </div>
+
+      {/* Compliance Dashboard */}
+      {showComplianceDashboard && (
+        <div className="mb-6">
+          <ComplianceDashboard
+            boms={boms}
+            watchlist={watchlist}
+            onViewDetails={handleViewComplianceDetails}
+          />
         </div>
       )}
 
-      <section>
-        <h2 className="text-xl font-semibold mb-4 text-gray-300">Finished Goods</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {displayManufacturedProducts.length > 0 ? (
-            displayManufacturedProducts.map(bom => <BomCard key={bom.id} bom={bom} />)
-          ) : (
-            <p className="text-gray-400 col-span-full">No finished goods BOMs found.</p>
-          )}
-        </div>
-      </section>
-
-      {displaySubAssemblies.length > 0 && (
-        <section>
-          <h2 className="text-xl font-semibold mb-4 text-gray-300">Sub-Assemblies</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {displaySubAssemblies.map(bom => <BomCard key={bom.id} bom={bom} />)}
+      {/* Manufactured Products */}
+      {displayManufacturedProducts.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-gray-300">
+            Finished Products ({displayManufacturedProducts.length})
+          </h2>
+          <div className="grid gap-4">
+            {displayManufacturedProducts.map(bom => (
+              <BomCard key={bom.id} bom={bom} />
+            ))}
           </div>
-        </section>
+        </div>
       )}
-      
-      {selectedBom && (
-        <BomEditModal 
-            isOpen={isModalOpen}
-            onClose={handleCloseModal}
-            bom={selectedBom}
-            onSave={onUpdateBom}
+
+      {/* Sub-Assemblies */}
+      {displaySubAssemblies.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-gray-300">
+            Sub-Assemblies ({displaySubAssemblies.length})
+          </h2>
+          <div className="grid gap-4">
+            {displaySubAssemblies.map(bom => (
+              <BomCard key={bom.id} bom={bom} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {isModalOpen && selectedBom && (
+        <BomEditModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          bom={selectedBom}
+          onUpdateBom={onUpdateBom}
+        />
+      )}
+
+      {/* Detail Modal (Labels, Registrations, Data Sheets) */}
+      {isDetailModalOpen && selectedDetailBom && (
+        <BomDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={handleCloseDetailModal}
+          bom={selectedDetailBom}
+          onUploadArtwork={onUploadArtwork}
+          onUpdateBom={onUpdateBom}
+          currentUser={currentUser}
+        />
+      )}
+
+      {/* Compliance Detail Modal */}
+      {isComplianceDetailOpen && selectedBom && selectedComplianceStatus && (
+        <ComplianceDetailModal
+          isOpen={isComplianceDetailOpen}
+          onClose={handleCloseComplianceDetail}
+          bom={selectedBom}
+          complianceStatus={selectedComplianceStatus}
         />
       )}
     </div>

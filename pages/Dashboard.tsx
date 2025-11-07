@@ -5,11 +5,12 @@ import type { Page } from '../App';
 import type { BillOfMaterials, InventoryItem, HistoricalSale, Vendor, InternalRequisition, User, AiConfig, RequisitionItem } from '../types';
 import ExecutiveSummary from '../components/ExecutiveSummary';
 import BuildabilityTable from '../components/BuildabilityTable';
+import RenewalAlertsWidget from '../components/RenewalAlertsWidget';
 import { calculateAllBuildability } from '../services/buildabilityService';
 import { generateForecast } from '../services/forecastingService';
 import type { Forecast } from '../services/forecastingService';
 import { getAiPlanningInsight } from '../services/geminiService';
-import { ChevronDownIcon, LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon } from '../components/icons';
+import { ChevronDownIcon, LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, ClipboardDocumentListIcon } from '../components/icons';
 
 interface DashboardProps {
   inventory: InventoryItem[];
@@ -56,6 +57,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
   const [openSections, setOpenSections] = useState({
     buildability: true,
     shortages: true,
+    renewals: true,
     requisitions: true,
     todos: false,
     forecast: false,
@@ -194,7 +196,23 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
         >
           {criticalShortagesContent}
         </CollapsibleSection>
-        
+
+        <CollapsibleSection
+          id="renewals"
+          title="Registration Renewal Alerts"
+          icon={<ClipboardDocumentListIcon className="w-6 h-6 text-orange-400"/>}
+          isOpen={openSections.renewals}
+          onToggle={() => toggleSection('renewals')}
+        >
+          <RenewalAlertsWidget
+            boms={boms}
+            onViewDetails={(bomId) => {
+              setCurrentPage('BOMs');
+              // TODO: Could add navigation to specific BOM detail modal
+            }}
+          />
+        </CollapsibleSection>
+
         <CollapsibleSection
           id="requisitions"
           title="Pending Requisitions"

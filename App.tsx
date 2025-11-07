@@ -18,6 +18,7 @@ import Toast from './components/Toast';
 import ApiDocs from './pages/ApiDocs';
 import ArtworkPage from './pages/Artwork';
 import NewUserSetup from './pages/NewUserSetup';
+import ManualLabelScanner from './components/ManualLabelScanner';
 import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
 import {
@@ -40,19 +41,19 @@ import {
   createRequisition,
   updateRequisitionStatus,
 } from './hooks/useSupabaseMutations';
-import { 
-    mockHistoricalSales, 
+import {
+    mockHistoricalSales,
     mockUsers,
     mockWatchlist,
     defaultAiConfig,
     mockArtworkFolders,
 } from './types';
-import type { 
-    BillOfMaterials, 
-    InventoryItem, 
-    Vendor, 
-    PurchaseOrder, 
-    HistoricalSale, 
+import type {
+    BillOfMaterials,
+    InventoryItem,
+    Vendor,
+    PurchaseOrder,
+    HistoricalSale,
     BuildOrder,
     User,
     InternalRequisition,
@@ -63,9 +64,11 @@ import type {
     WatchlistItem,
     AiConfig,
     ArtworkFolder,
+    AiSettings,
 } from './types';
+import { getDefaultAiSettings } from './services/tokenCounter';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'Artwork';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner';
 
 export type ToastInfo = {
   id: number;
@@ -89,6 +92,7 @@ const App: React.FC = () => {
   const [users, setUsers] = usePersistentState<User[]>('users', mockUsers);
   const [watchlist] = usePersistentState<WatchlistItem[]>('watchlist', mockWatchlist);
   const [aiConfig, setAiConfig] = usePersistentState<AiConfig>('aiConfig', defaultAiConfig);
+  const [aiSettings, setAiSettings] = usePersistentState<AiSettings>('aiSettings', getDefaultAiSettings());
   const [artworkFolders, setArtworkFolders] = usePersistentState<ArtworkFolder[]>('artworkFolders', mockArtworkFolders);
   
   const {
@@ -137,6 +141,8 @@ const App: React.FC = () => {
         '/settings': 'Settings',
         '/api': 'API Documentation',
         '/artwork': 'Artwork',
+        '/label-scanner': 'Label Scanner',
+        '/labels': 'Label Scanner',
       };
       const nextPage = map[path] ?? 'Dashboard';
       if (nextPage !== currentPage) {
@@ -525,6 +531,11 @@ const App: React.FC = () => {
         addToast(`Simulating email send for ${poId}.`, 'info');
     }
   };
+
+  const handleUpdateAiSettings = (settings: AiSettings) => {
+    setAiSettings(settings);
+    addToast('AI settings updated successfully.', 'success');
+  };
   
   const generateApiKey = () => {
     const newKey = `tgfmrp_live_${[...Array(32)].map(() => Math.random().toString(36)[2]).join('')}`;
@@ -590,6 +601,11 @@ const App: React.FC = () => {
     setCurrentPage('Artwork');
   };
 
+  const handleNavigateToInventory = (sku: string) => {
+    localStorage.setItem('selectedInventorySku', sku);
+    setCurrentPage('Inventory');
+  };
+
   const renderPage = () => {
     if (!currentUser) return null;
     
@@ -642,17 +658,15 @@ const App: React.FC = () => {
       case 'Production':
         return <Production buildOrders={buildOrders} onCompleteBuildOrder={handleCompleteBuildOrder} />;
       case 'BOMs':
-        return <BOMs 
+        return <BOMs
           boms={boms}
           inventory={inventory}
-          currentUser={currentUser} 
-          onUpdateBom={handleUpdateBom} 
+          currentUser={currentUser}
+          watchlist={watchlist}
+          onUpdateBom={handleUpdateBom}
           onNavigateToArtwork={navigateToArtwork}
-          onNavigateToInventory={(sku) => {
-            setCurrentPage('Inventory');
-            // Store the SKU to filter/highlight in inventory
-            localStorage.setItem('selectedInventorySku', sku);
-          }}
+          onNavigateToInventory={handleNavigateToInventory}
+          onUploadArtwork={handleAddArtworkToBom}
         />;
       case 'Artwork':
         return <ArtworkPage 
@@ -669,11 +683,18 @@ const App: React.FC = () => {
         />;
       case 'API Documentation':
           return <ApiDocs />;
+      case 'Label Scanner':
+        return <ManualLabelScanner
+          boms={boms}
+          currentUser={currentUser}
+        />;
       case 'Settings':
-        return <Settings 
+        return <Settings
             currentUser={currentUser}
             aiConfig={aiConfig}
             setAiConfig={setAiConfig}
+            aiSettings={aiSettings}
+            onUpdateAiSettings={handleUpdateAiSettings}
             gmailConnection={gmailConnection}
             onGmailConnect={handleGmailConnect}
             onGmailDisconnect={handleGmailDisconnect}
@@ -688,6 +709,9 @@ const App: React.FC = () => {
             onInviteUser={handleInviteUser}
             onUpdateUser={handleUpdateUser}
             onDeleteUser={handleDeleteUser}
+            inventory={inventory}
+            boms={boms}
+            vendors={vendors}
         />;
       default:
         return <Dashboard 
@@ -752,12 +776,14 @@ const App: React.FC = () => {
       
       <AiAssistant
         isOpen={isAiAssistantOpen}
-  onClose={closeAiAssistant}
+        onClose={closeAiAssistant}
         boms={boms}
         inventory={inventory}
         vendors={vendors}
         purchaseOrders={purchaseOrders}
         aiConfig={aiConfig}
+        aiSettings={aiSettings}
+        onUpdateAiSettings={handleUpdateAiSettings}
       />
     </div>
   );
