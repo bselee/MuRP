@@ -14,6 +14,7 @@ import BomEditModal from '../components/BomEditModal';
 import BomDetailModal from '../components/BomDetailModal';
 import ComplianceDashboard from '../components/ComplianceDashboard';
 import ComplianceDetailModal from '../components/ComplianceDetailModal';
+import EnhancedBomCard from '../components/EnhancedBomCard';
 
 interface BOMsProps {
   boms: BillOfMaterials[];
@@ -208,152 +209,25 @@ const BOMs: React.FC<BOMsProps> = ({
     const finishedItem = inventoryMap.get(bom.finishedSku);
     const finishedStock = finishedItem?.stock || 0;
     const buildability = calculateBuildability(bom);
-    const labelCount = bom.artwork.filter(art => art.fileType === 'label').length;
-    const hasRegistrations = (bom.registrations?.length || 0) > 0;
 
     return (
       <div
         ref={(el) => {
           if (el) bomRefs.current.set(bom.id, el);
         }}
-        className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden transition-all"
       >
-        <div className="p-4 bg-gray-800 flex justify-between items-center">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-1">
-              <h3 className="font-semibold text-white font-mono">{bom.finishedSku}</h3>
-
-              {/* INVENTORY INTEGRATION: Stock & Buildability Display */}
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-gray-500">Stock:</span>
-                <span className={`font-semibold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {finishedStock}
-                </span>
-                <span className="text-gray-600">|</span>
-                <span className="text-gray-500">Buildable:</span>
-                <span className={`font-semibold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {buildability.maxBuildable}
-                </span>
-              </div>
-
-              {/* COMPLIANCE INTEGRATION: Labels & Registrations Badges */}
-              {labelCount > 0 && (
-                <span className="px-2 py-0.5 text-xs rounded-full bg-blue-900/30 text-blue-300 border border-blue-700">
-                  {labelCount} {labelCount === 1 ? 'label' : 'labels'}
-                </span>
-              )}
-              {hasRegistrations && (
-                <span className="px-2 py-0.5 text-xs rounded-full bg-purple-900/30 text-purple-300 border border-purple-700">
-                  {bom.registrations?.length} {bom.registrations?.length === 1 ? 'registration' : 'registrations'}
-                </span>
-              )}
-            </div>
-
-            <p className="text-sm text-gray-400">{bom.name}</p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleViewDetails(bom)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
-              title="View full details, labels, registrations, and data sheets"
-            >
-              <EyeIcon className="w-4 h-4" />
-              View
-            </button>
-
-            <button
-              onClick={() => toggleBomExpanded(bom.id)}
-              className="p-2 hover:bg-gray-700 rounded-md transition-colors"
-              title={isExpanded ? 'Collapse components' : 'Expand components'}
-            >
-              <ChevronDownIcon className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-            </button>
-
-            {canEdit && (
-              <button
-                onClick={() => handleEditClick(bom)}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
-              >
-                <PencilIcon className="w-4 h-4" />
-                Edit
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* EXPANDED VIEW: Component-Level Stock Details */}
-        {isExpanded && (
-          <div className="p-4 space-y-4 border-t border-gray-700">
-            <div>
-              <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Components</h4>
-              <ul className="space-y-2 text-sm">
-                {bom.components.map(c => {
-                  const componentItem = inventoryMap.get(c.sku);
-                  const available = componentItem?.stock || 0;
-                  const needed = c.quantity || 1;
-                  const canBuild = Math.floor(available / needed);
-                  const isLimiting = buildability.limitingComponents.some(lc => lc.sku === c.sku);
-
-                  return (
-                    <li
-                      key={c.sku}
-                      className={`flex justify-between items-start p-2 rounded ${
-                        isLimiting ? 'bg-red-900/20 border border-red-700/30' : ''
-                      }`}
-                    >
-                      <div className="flex-1">
-                        {onNavigateToInventory ? (
-                          <button
-                            onClick={() => onNavigateToInventory(c.sku)}
-                            className="font-semibold font-mono text-indigo-400 hover:text-indigo-300 hover:underline"
-                          >
-                            {c.sku}
-                          </button>
-                        ) : (
-                          <span className="font-semibold font-mono text-white">{c.sku}</span>
-                        )}
-                        <span className="text-gray-400 ml-2">/ {c.name}</span>
-
-                        {/* Component Stock Details */}
-                        <div className="text-xs mt-1 flex items-center gap-2">
-                          <span className={`font-semibold ${available >= needed ? 'text-green-400' : 'text-red-400'}`}>
-                            Stock: {available}
-                          </span>
-                          <span className="text-gray-600">|</span>
-                          <span className="text-gray-500">Need: {needed}</span>
-                          <span className="text-gray-600">|</span>
-                          <span className={`font-semibold ${canBuild > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            Can build: {canBuild}
-                          </span>
-                          {isLimiting && (
-                            <>
-                              <span className="text-gray-600">|</span>
-                              <span className="text-red-400 font-semibold">⚠ Limiting</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <span className="text-gray-500 ml-4">{c.unit}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
-            {/* Buildability Warning */}
-            {buildability.maxBuildable === 0 && (
-              <div className="bg-red-900/20 border border-red-700 rounded-lg p-3">
-                <p className="text-red-400 text-sm font-medium">
-                  ⚠ Cannot build - insufficient inventory
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Limiting components: {buildability.limitingComponents.map(lc => lc.sku).join(', ')}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+        <EnhancedBomCard
+          bom={bom}
+          isExpanded={isExpanded}
+          finishedStock={finishedStock}
+          buildability={buildability}
+          inventoryMap={inventoryMap}
+          canEdit={canEdit}
+          onToggleExpand={() => toggleBomExpanded(bom.id)}
+          onViewDetails={() => handleViewDetails(bom)}
+          onEdit={() => handleEditClick(bom)}
+          onNavigateToInventory={onNavigateToInventory}
+        />
       </div>
     );
   };
