@@ -710,7 +710,22 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_upcoming_renewals: {
+        Args: {
+          p_days_ahead: number
+        }
+        Returns: {
+          id: string
+          bom_id: string
+          compliance_type: string
+          state_name: string | null
+          registration_number: string
+          expiration_date: string | null
+          days_until_expiration: number | null
+          status: string
+          assigned_to: string | null
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
