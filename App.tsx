@@ -601,6 +601,11 @@ const App: React.FC = () => {
     setCurrentPage('Artwork');
   };
 
+  const handleNavigateToInventory = (sku: string) => {
+    localStorage.setItem('selectedInventorySku', sku);
+    setCurrentPage('Inventory');
+  };
+
   const renderPage = () => {
     if (!currentUser) return null;
     
@@ -644,7 +649,16 @@ const App: React.FC = () => {
       case 'Production':
         return <Production buildOrders={buildOrders} onCompleteBuildOrder={handleCompleteBuildOrder} />;
       case 'BOMs':
-        return <BOMs boms={boms} currentUser={currentUser} watchlist={watchlist} onUpdateBom={handleUpdateBom} onNavigateToArtwork={navigateToArtwork}/>;
+        return <BOMs
+          boms={boms}
+          inventory={inventory}
+          currentUser={currentUser}
+          watchlist={watchlist}
+          onUpdateBom={handleUpdateBom}
+          onNavigateToArtwork={navigateToArtwork}
+          onNavigateToInventory={handleNavigateToInventory}
+          onUploadArtwork={handleAddArtworkToBom}
+        />;
       case 'Artwork':
         return <ArtworkPage 
             boms={boms}
