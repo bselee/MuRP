@@ -39,6 +39,7 @@ interface EnhancedBomCardProps {
   };
   inventoryMap: Map<string, InventoryItem>;
   canEdit: boolean;
+  userRole: 'Admin' | 'Manager' | 'User'; // Role-based display
   onToggleExpand: () => void;
   onViewDetails: () => void;
   onEdit: () => void;
@@ -54,6 +55,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   buildability,
   inventoryMap,
   canEdit,
+  userRole,
   onToggleExpand,
   onViewDetails,
   onEdit,
@@ -61,6 +63,9 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   onQuickBuild,
   onQuickOrder
 }) => {
+  // Determine display mode
+  const isAdmin = userRole === 'Admin';
+  const isManager = userRole === 'Manager';
   // Calculate metrics
   const labelCount = bom.artwork?.filter(art => art.fileType === 'label').length || 0;
   const verifiedLabels = bom.artwork?.filter(art => art.fileType === 'label' && art.verified).length || 0;
@@ -131,63 +136,65 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             {/* Product Name */}
             <h4 className="text-sm font-medium text-gray-200 mb-3">{bom.name}</h4>
 
-            {/* KEY METRICS ROW */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-              {/* Inventory Status */}
+            {/* KEY METRICS ROW - Role-based display */}
+            <div className={`grid gap-3 text-xs ${isManager ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'}`}>
+              {/* Inventory Status - Both roles */}
               <div className="bg-gray-900/50 rounded p-2 border border-gray-700">
                 <div className="text-gray-500 mb-1">Inventory</div>
                 <div className="flex items-baseline gap-2">
-                  <span className={`text-lg font-bold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`${isManager ? 'text-2xl' : 'text-lg'} font-bold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {finishedStock}
                   </span>
-                  <span className="text-gray-400">units</span>
+                  <span className="text-gray-400">{isManager ? '' : 'units'}</span>
                 </div>
               </div>
 
-              {/* Buildability */}
+              {/* Buildability - Both roles */}
               <div className="bg-gray-900/50 rounded p-2 border border-gray-700">
-                <div className="text-gray-500 mb-1">Buildable</div>
+                <div className="text-gray-500 mb-1">Can Build</div>
                 <div className="flex items-baseline gap-2">
-                  <span className={`text-lg font-bold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`${isManager ? 'text-2xl' : 'text-lg'} font-bold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {buildability.maxBuildable}
                   </span>
-                  <span className="text-gray-400">units</span>
+                  <span className="text-gray-400">{isManager ? '' : 'units'}</span>
                 </div>
               </div>
 
-              {/* Yield */}
+              {/* Yield - Both roles */}
               <div className="bg-gray-900/50 rounded p-2 border border-gray-700">
                 <div className="text-gray-500 mb-1">Yield</div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-lg font-bold text-blue-400">{bom.yieldQuantity || 1}</span>
-                  <span className="text-gray-400">per batch</span>
+                  <span className={`${isManager ? 'text-2xl' : 'text-lg'} font-bold text-blue-400`}>{bom.yieldQuantity || 1}</span>
+                  <span className="text-gray-400">{isManager ? '/batch' : 'per batch'}</span>
                 </div>
               </div>
 
-              {/* Components */}
-              <div className="bg-gray-900/50 rounded p-2 border border-gray-700">
-                <div className="text-gray-500 mb-1">Components</div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-lg font-bold text-purple-400">{bom.components.length}</span>
-                  <span className="text-gray-400">items</span>
+              {/* Components - Admin only (technical detail) */}
+              {isAdmin && (
+                <div className="bg-gray-900/50 rounded p-2 border border-gray-700">
+                  <div className="text-gray-500 mb-1">Components</div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-lg font-bold text-purple-400">{bom.components.length}</span>
+                    <span className="text-gray-400">items</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
           {/* RIGHT: Status Indicators & Actions */}
           <div className="flex flex-col gap-2 items-end">
-            {/* Status Badges */}
+            {/* Status Badges - Role-aware display */}
             <div className="flex flex-wrap gap-2 justify-end">
-              {/* NPK Ratio */}
-              {npkRatio && (
+              {/* NPK Ratio - Admin only (technical) */}
+              {isAdmin && npkRatio && (
                 <div className="px-2 py-1 rounded text-xs font-mono bg-green-900/30 text-green-300 border border-green-700">
                   <BeakerIcon className="w-3 h-3 inline mr-1" />
                   {npkRatio}
                 </div>
               )}
 
-              {/* Artwork Status */}
+              {/* Artwork Status - Both roles, simplified text for managers */}
               <div className={`px-2 py-1 rounded text-xs font-medium border ${
                 artworkStatus.color === 'green' ? 'bg-green-900/30 text-green-300 border-green-700' :
                 artworkStatus.color === 'yellow' ? 'bg-yellow-900/30 text-yellow-300 border-yellow-700' :
@@ -195,10 +202,10 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 'bg-gray-700 text-gray-300 border-gray-600'
               }`}>
                 <DocumentTextIcon className="w-3 h-3 inline mr-1" />
-                {labelCount > 0 ? `${verifiedLabels}/${labelCount} Labels` : artworkStatus.label}
+                {isManager ? artworkStatus.label : (labelCount > 0 ? `${verifiedLabels}/${labelCount} Labels` : artworkStatus.label)}
               </div>
 
-              {/* Compliance Status */}
+              {/* Compliance Status - Both roles, emphasis for managers */}
               <div className={`px-2 py-1 rounded text-xs font-medium border ${
                 complianceStatus.color === 'green' ? 'bg-green-900/30 text-green-300 border-green-700' :
                 complianceStatus.color === 'orange' ? 'bg-orange-900/30 text-orange-300 border-orange-700' :
@@ -208,94 +215,91 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 {complianceStatus.color === 'green' && <CheckCircleIcon className="w-3 h-3 inline mr-1" />}
                 {complianceStatus.color === 'orange' && <ExclamationCircleIcon className="w-3 h-3 inline mr-1" />}
                 {complianceStatus.color === 'red' && <XCircleIcon className="w-3 h-3 inline mr-1" />}
-                {hasRegistrations ? `${bom.registrations?.length} Reg` : 'No Reg'}
+                {isManager ? complianceStatus.label : (hasRegistrations ? `${bom.registrations?.length} Reg` : 'No Reg')}
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Buttons - DATA MANAGEMENT FOCUS (no production triggers) */}
             <div className="flex gap-1">
-              {onQuickBuild && buildability.maxBuildable > 0 && (
-                <button
-                  onClick={onQuickBuild}
-                  className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded transition-colors"
-                  title="Quick build order"
-                >
-                  Build
-                </button>
-              )}
-
-              {onQuickOrder && buildability.maxBuildable === 0 && (
-                <button
-                  onClick={onQuickOrder}
-                  className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded transition-colors"
-                  title="Order limiting components"
-                >
-                  Order
-                </button>
-              )}
-
+              {/* View Details - Prominent for both roles */}
               <button
                 onClick={onViewDetails}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded transition-colors"
-                title="View full details"
+                className={`flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded transition-colors ${isManager ? 'text-sm px-5' : ''}`}
+                title="View all product details, labels, registrations, and data sheets"
               >
-                <EyeIcon className="w-3.5 h-3.5" />
+                <EyeIcon className={`${isManager ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} />
+                {isManager && <span>Details</span>}
               </button>
 
+              {/* Expand/Collapse - Both roles */}
               <button
                 onClick={onToggleExpand}
                 className="px-2 py-1.5 hover:bg-gray-700 rounded transition-colors"
-                title={isExpanded ? 'Collapse' : 'Expand components'}
+                title={isExpanded ? 'Collapse components' : 'Expand components'}
               >
                 <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
               </button>
 
-              {canEdit && (
+              {/* Edit - Admin only */}
+              {isAdmin && canEdit && (
                 <button
                   onClick={onEdit}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded transition-colors"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded transition-colors"
+                  title="Edit BOM configuration"
                 >
                   <PencilIcon className="w-3.5 h-3.5" />
+                  <span>Edit</span>
                 </button>
               )}
             </div>
           </div>
         </div>
 
-        {/* SECONDARY INFO BAR */}
-        <div className="mt-4 pt-3 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-          {/* Packaging */}
-          <div>
-            <div className="text-gray-500 mb-1 flex items-center gap-1">
-              <PackageIcon className="w-3 h-3" />
-              Packaging
-            </div>
-            <div className="text-gray-300">
-              {bom.packaging?.bagType || 'Not specified'}
-            </div>
-            {totalMaterialWeight > 0 && (
-              <div className="text-gray-500 text-xs mt-0.5">
-                {totalMaterialWeight} lbs material
+        {/* SECONDARY INFO BAR - Simplified for managers, detailed for admins */}
+        {isAdmin ? (
+          <div className="mt-4 pt-3 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+            {/* Packaging - Admin gets details */}
+            <div>
+              <div className="text-gray-500 mb-1 flex items-center gap-1">
+                <PackageIcon className="w-3 h-3" />
+                Packaging
               </div>
-            )}
-          </div>
+              <div className="text-gray-300">
+                {bom.packaging?.bagType || 'Not specified'}
+              </div>
+              {totalMaterialWeight > 0 && (
+                <div className="text-gray-500 text-xs mt-0.5">
+                  {totalMaterialWeight} lbs material
+                </div>
+              )}
+            </div>
 
-          {/* Label Type */}
-          <div>
-            <div className="text-gray-500 mb-1">Label Type</div>
-            <div className="text-gray-300">
-              {bom.packaging?.labelType || 'Not specified'}
+            {/* Label Type */}
+            <div>
+              <div className="text-gray-500 mb-1">Label Type</div>
+              <div className="text-gray-300">
+                {bom.packaging?.labelType || 'Not specified'}
+              </div>
+            </div>
+
+            {/* Description Preview */}
+            <div className="col-span-2">
+              <div className="text-gray-500 mb-1">Description</div>
+              <div className="text-gray-300 text-xs line-clamp-2">
+                {bom.description || 'No description provided'}
+              </div>
             </div>
           </div>
-
-          {/* Description Preview */}
-          <div className="col-span-2">
-            <div className="text-gray-500 mb-1">Description</div>
-            <div className="text-gray-300 text-xs line-clamp-2">
-              {bom.description || 'No description provided'}
+        ) : (
+          /* Manager View - Just description */
+          bom.description && (
+            <div className="mt-4 pt-3 border-t border-gray-700">
+              <div className="text-gray-400 text-xs line-clamp-2">
+                {bom.description}
+              </div>
             </div>
-          </div>
-        </div>
+          )
+        )}
 
         {/* LIMITING COMPONENT WARNING */}
         {buildability.maxBuildable === 0 && buildability.limitingComponents.length > 0 && (

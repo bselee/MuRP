@@ -223,6 +223,7 @@ const BOMs: React.FC<BOMsProps> = ({
           buildability={buildability}
           inventoryMap={inventoryMap}
           canEdit={canEdit}
+          userRole={currentUser.role}
           onToggleExpand={() => toggleBomExpanded(bom.id)}
           onViewDetails={() => handleViewDetails(bom)}
           onEdit={() => handleEditClick(bom)}
