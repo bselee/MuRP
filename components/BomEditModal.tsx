@@ -40,7 +40,10 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
         id: `art-${Date.now()}`,
         fileName: 'new-file-name-WxH.pdf',
         revision: 1,
-        url: '/art/new-file.pdf'
+        url: '/art/new-file.pdf',
+        verified: false,
+        fileType: 'artwork',
+        uploadedAt: new Date().toISOString(),
     };
     handleFieldChange('artwork', [...editedBom.artwork, newArtwork]);
   };

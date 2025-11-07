@@ -390,6 +390,10 @@ export async function getUpcomingRenewals(daysAhead: number = 90): Promise<Compl
     throw new Error(`Failed to get upcoming renewals: ${error.message}`);
   }
 
+  if (!data) {
+    return [];
+  }
+
   return data.map(mapComplianceRecordFromDb);
 }
 
