@@ -372,7 +372,7 @@ export function transformInventoryRawToParsed(
         console.log('[Inventory Transform] CSV Columns available:', Object.keys(raw));
         console.log('[Inventory Transform] Full raw data sample:', raw);
         // Show values for stock-related columns
-        const stockCols = ['In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'];
+        const stockCols = ['Units in stock', 'In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'];
         console.log('[Inventory Transform] Stock column values:', 
           Object.fromEntries(stockCols.map(col => [col, raw[col]])));
       }
@@ -382,7 +382,7 @@ export function transformInventoryRawToParsed(
 
     // Extract stock quantities (Finale specific columns)
     const stockRaw = extractFirst(raw, [
-      'In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'
+      'Units in stock', 'In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'
     ]);
     const stock = parseNumber(stockRaw, 0);
     
@@ -401,7 +401,12 @@ export function transformInventoryRawToParsed(
     const reservedRaw = extractFirst(raw, ['Units Reserved', 'Reserved', 'reserved']);
     const reserved = parseNumber(reservedRaw, 0);
 
-    const remainingRaw = extractFirst(raw, ['Units Remain', 'Available', 'remaining']);
+    const remainingRaw = extractFirst(raw, [
+      'Remaining after reservations units BuildASoilShipping', 
+      'Units Remain', 
+      'Available', 
+      'remaining'
+    ]);
     const remaining = parseNumber(remainingRaw, 0);
 
     // Extract reorder intelligence (Finale specific)
