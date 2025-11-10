@@ -59,6 +59,7 @@ export interface Database {
           onboarding_complete?: boolean
           updated_at?: string
         }
+        Relationships: []
       }
       vendors: {
         Row: {
@@ -125,6 +126,7 @@ export interface Database {
           sync_status?: 'synced' | 'pending' | 'error'
           updated_at?: string
         }
+        Relationships: []
       }
       inventory_items: {
         Row: {
@@ -245,6 +247,7 @@ export interface Database {
           sync_errors?: string
           updated_at?: string
         }
+        Relationships: []
       }
       boms: {
         Row: {
@@ -255,6 +258,21 @@ export interface Database {
           artwork: Json
           packaging: Json
           barcode?: string
+          description?: string
+          category?: string
+          yield_quantity?: number
+          potential_build_qty?: number
+          average_cost?: number
+          notes?: string
+          data_source?: 'manual' | 'csv' | 'api'
+          last_sync_at?: string
+          sync_status?: 'synced' | 'pending' | 'error'
+          primary_label_id?: string
+          primary_data_sheet_id?: string
+          compliance_status?: string
+          total_state_registrations?: number
+          expiring_registrations_count?: number
+          compliance_last_checked?: string
           created_at?: string
           updated_at?: string
         }
@@ -266,6 +284,21 @@ export interface Database {
           artwork?: Json
           packaging: Json
           barcode?: string
+          description?: string
+          category?: string
+          yield_quantity?: number
+          potential_build_qty?: number
+          average_cost?: number
+          notes?: string
+          data_source?: 'manual' | 'csv' | 'api'
+          last_sync_at?: string
+          sync_status?: 'synced' | 'pending' | 'error'
+          primary_label_id?: string
+          primary_data_sheet_id?: string
+          compliance_status?: string
+          total_state_registrations?: number
+          expiring_registrations_count?: number
+          compliance_last_checked?: string
           created_at?: string
           updated_at?: string
         }
@@ -276,8 +309,24 @@ export interface Database {
           artwork?: Json
           packaging?: Json
           barcode?: string
+          description?: string
+          category?: string
+          yield_quantity?: number
+          potential_build_qty?: number
+          average_cost?: number
+          notes?: string
+          data_source?: 'manual' | 'csv' | 'api'
+          last_sync_at?: string
+          sync_status?: 'synced' | 'pending' | 'error'
+          primary_label_id?: string
+          primary_data_sheet_id?: string
+          compliance_status?: string
+          total_state_registrations?: number
+          expiring_registrations_count?: number
+          compliance_last_checked?: string
           updated_at?: string
         }
+        Relationships: []
       }
       purchase_orders: {
         Row: {
@@ -311,6 +360,7 @@ export interface Database {
           requisition_ids?: string[]
           updated_at?: string
         }
+        Relationships: []
       }
       requisitions: {
         Row: {
@@ -341,6 +391,7 @@ export interface Database {
           notes?: string
           updated_at?: string
         }
+        Relationships: []
       }
       build_orders: {
         Row: {
@@ -371,6 +422,7 @@ export interface Database {
           completed_at?: string
           updated_at?: string
         }
+        Relationships: []
       }
       artwork_folders: {
         Row: {
@@ -389,6 +441,7 @@ export interface Database {
           name?: string
           updated_at?: string
         }
+        Relationships: []
       }
       labels: {
         Row: {
@@ -472,6 +525,7 @@ export interface Database {
           notes?: string
           updated_at?: string
         }
+        Relationships: []
       }
       product_data_sheets: {
         Row: {
@@ -561,6 +615,7 @@ export interface Database {
           notes?: string
           updated_at?: string
         }
+        Relationships: []
       }
       compliance_records: {
         Row: {
@@ -704,6 +759,7 @@ export interface Database {
           last_verified_at?: string
           last_verified_by?: string
         }
+        Relationships: []
       }
     }
     Views: {
