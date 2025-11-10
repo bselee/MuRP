@@ -1,6 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { InventoryItem, BillOfMaterials, Vendor } from '../types';
-import { SearchIcon, ChevronUpIcon, ChevronDownIcon, ArrowsUpDownIcon } from '../components/icons';
+import { 
+  SearchIcon, 
+  ChevronUpIcon, 
+  ChevronDownIcon, 
+  ArrowsUpDownIcon,
+  AdjustmentsHorizontalIcon,
+  EyeIcon,
+  EyeSlashIcon
+} from '../components/icons';
 import ImportExportModal from '../components/ImportExportModal';
 import { exportToCsv, exportToJson, exportToXls } from '../services/exportService';
 import { generateInventoryPdf } from '../services/pdfService';
@@ -12,7 +20,32 @@ interface InventoryProps {
     onNavigateToBom?: (bomSku: string) => void;
 }
 
-type SortKeys = keyof InventoryItem | 'status';
+type ColumnKey = 'sku' | 'name' | 'category' | 'stock' | 'onOrder' | 'reorderPoint' | 'vendor' | 'status' | 'salesVelocity' | 'sales30Days' | 'sales60Days' | 'sales90Days' | 'unitCost';
+
+interface ColumnConfig {
+  key: ColumnKey;
+  label: string;
+  visible: boolean;
+  sortable: boolean;
+}
+
+const DEFAULT_COLUMNS: ColumnConfig[] = [
+  { key: 'sku', label: 'SKU', visible: true, sortable: true },
+  { key: 'name', label: 'Name', visible: true, sortable: true },
+  { key: 'category', label: 'Category', visible: true, sortable: true },
+  { key: 'stock', label: 'Stock', visible: true, sortable: true },
+  { key: 'onOrder', label: 'On Order', visible: true, sortable: true },
+  { key: 'reorderPoint', label: 'Reorder Point', visible: true, sortable: true },
+  { key: 'vendor', label: 'Vendor', visible: true, sortable: true },
+  { key: 'status', label: 'Status', visible: true, sortable: false },
+  { key: 'salesVelocity', label: 'Sales Velocity', visible: false, sortable: true },
+  { key: 'sales30Days', label: 'Sales (30d)', visible: false, sortable: true },
+  { key: 'sales60Days', label: 'Sales (60d)', visible: false, sortable: true },
+  { key: 'sales90Days', label: 'Sales (90d)', visible: false, sortable: true },
+  { key: 'unitCost', label: 'Unit Cost', visible: false, sortable: true },
+];
+
+type SortKeys = keyof InventoryItem | 'status' | 'vendor';
 
 const getStockStatus = (item: InventoryItem): 'In Stock' | 'Low Stock' | 'Out of Stock' => {
     if (item.stock <= 0) return 'Out of Stock';
@@ -45,28 +78,33 @@ const SortableHeader: React.FC<{
     );
 };
 
-
 const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [filters, setFilters] = useState({ category: '', status: '', vendor: '' });
+    const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+    const [filters, setFilters] = useState({ status: '', vendor: '' });
     const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
     const [suggestions, setSuggestions] = useState<InventoryItem[]>([]);
     const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
     const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
+    const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+    const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
+    
+    const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
-    // Debug inventory data
-    useMemo(() => {
-        console.log('=== INVENTORY PAGE DEBUG ===');
-        console.log('[Inventory] Total items:', inventory.length);
-        const withStock = inventory.filter(i => i.stock > 0);
-        console.log('[Inventory] Items with stock > 0:', withStock.length);
-        console.log('[Inventory] Sample items:', inventory.slice(0, 5).map(i => ({ sku: i.sku, stock: i.stock, name: i.name })));
-        console.log('===========================');
-    }, [inventory]);
+    // Close category dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+                setIsCategoryDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Create vendor lookup maps
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
-    const vendorById = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
 
     const bomSkuSet = useMemo(() => {
         const skus = new Set<string>();
@@ -104,8 +142,41 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         setIsSuggestionsVisible(false);
     };
 
+    const toggleCategory = (category: string) => {
+        const newSelected = new Set(selectedCategories);
+        if (newSelected.has(category)) {
+            newSelected.delete(category);
+        } else {
+            newSelected.add(category);
+        }
+        setSelectedCategories(newSelected);
+    };
+
+    const selectAllCategories = () => {
+        setSelectedCategories(new Set(filterOptions.categories));
+    };
+
+    const clearAllCategories = () => {
+        setSelectedCategories(new Set());
+    };
+
     const handleFilterChange = (filterType: keyof typeof filters, value: string) => {
         setFilters(prev => ({ ...prev, [filterType]: value }));
+    };
+
+    const toggleColumn = (key: ColumnKey) => {
+        setColumns(prev => prev.map(col => 
+            col.key === key ? { ...col, visible: !col.visible } : col
+        ));
+    };
+
+    const moveColumn = (index: number, direction: 'up' | 'down') => {
+        if ((direction === 'up' && index === 0) || (direction === 'down' && index === columns.length - 1)) return;
+        
+        const newColumns = [...columns];
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        [newColumns[index], newColumns[targetIndex]] = [newColumns[targetIndex], newColumns[index]];
+        setColumns(newColumns);
     };
 
     const requestSort = (key: SortKeys) => {
@@ -119,9 +190,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const processedInventory = useMemo(() => {
         let filteredItems = [...inventory];
 
-        if (filters.category) {
-            filteredItems = filteredItems.filter(item => item.category === filters.category);
+        // Multi-select category filter
+        if (selectedCategories.size > 0) {
+            filteredItems = filteredItems.filter(item => selectedCategories.has(item.category));
         }
+
         if (filters.status) {
             filteredItems = filteredItems.filter(item => getStockStatus(item) === filters.status);
         }
@@ -138,8 +211,19 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
         if (sortConfig !== null) {
             filteredItems.sort((a, b) => {
-                const aVal = sortConfig.key === 'status' ? getStockStatus(a) : a[sortConfig.key as keyof InventoryItem];
-                const bVal = sortConfig.key === 'status' ? getStockStatus(b) : b[sortConfig.key as keyof InventoryItem];
+                let aVal: any;
+                let bVal: any;
+
+                if (sortConfig.key === 'status') {
+                    aVal = getStockStatus(a);
+                    bVal = getStockStatus(b);
+                } else if (sortConfig.key === 'vendor') {
+                    aVal = vendorMap.get(a.vendorId) || '';
+                    bVal = vendorMap.get(b.vendorId) || '';
+                } else {
+                    aVal = a[sortConfig.key as keyof InventoryItem] ?? '';
+                    bVal = b[sortConfig.key as keyof InventoryItem] ?? '';
+                }
 
                 if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
                 if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
@@ -147,7 +231,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
             });
         }
         return filteredItems;
-    }, [inventory, filters, searchTerm, sortConfig]);
+    }, [inventory, selectedCategories, filters, searchTerm, sortConfig, vendorMap]);
 
     const handleExportCsv = () => {
         exportToCsv(processedInventory, `inventory-export-${new Date().toISOString().split('T')[0]}.csv`);
@@ -179,6 +263,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         );
     };
 
+    const visibleColumns = columns.filter(col => col.visible);
+
     return (
         <>
             <div className="space-y-6">
@@ -187,13 +273,21 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         <h1 className="text-3xl font-bold text-white tracking-tight">Inventory</h1>
                         <p className="text-gray-400 mt-1">Search, filter, and manage all your stock items.</p>
                     </div>
-                    <div className="flex-shrink-0">
+                    <div className="flex gap-2 flex-shrink-0">
+                        <button
+                            onClick={() => setIsColumnModalOpen(true)}
+                            className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
+                            title="Manage columns"
+                        >
+                            <AdjustmentsHorizontalIcon className="w-5 h-5" />
+                            <span className="hidden sm:inline">Columns</span>
+                        </button>
                         <button
                             onClick={() => setIsImportExportModalOpen(true)}
                             className="flex items-center gap-2 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
                         >
                             <ArrowsUpDownIcon className="w-5 h-5" />
-                            <span>Import / Export</span>
+                            <span className="hidden sm:inline">Import / Export</span>
                         </button>
                     </div>
                 </header>
@@ -228,13 +322,59 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 )}
                             </div>
                         </div>
-                        <div>
-                            <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-1">Category</label>
-                            <select id="filter-category" value={filters.category} onChange={(e) => handleFilterChange('category', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
-                                <option value="">All Categories</option>
-                                {filterOptions.categories.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                        
+                        {/* Multi-select Category Filter */}
+                        <div ref={categoryDropdownRef} className="relative">
+                            <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-1">
+                                Categories {selectedCategories.size > 0 && <span className="text-indigo-400">({selectedCategories.size})</span>}
+                            </label>
+                            <button
+                                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                                className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 text-left flex justify-between items-center"
+                            >
+                                <span className="truncate">
+                                    {selectedCategories.size === 0 
+                                        ? 'All Categories' 
+                                        : selectedCategories.size === filterOptions.categories.length
+                                        ? 'All Categories'
+                                        : `${selectedCategories.size} selected`}
+                                </span>
+                                <ChevronDownIcon className="w-4 h-4 ml-2" />
+                            </button>
+                            {isCategoryDropdownOpen && (
+                                <div className="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-80 overflow-auto">
+                                    <div className="sticky top-0 bg-gray-700 p-2 border-b border-gray-600 flex gap-2">
+                                        <button
+                                            onClick={selectAllCategories}
+                                            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
+                                        >
+                                            Select All
+                                        </button>
+                                        <button
+                                            onClick={clearAllCategories}
+                                            className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                    {filterOptions.categories.map(category => (
+                                        <label 
+                                            key={category} 
+                                            className="flex items-center p-2 hover:bg-gray-600 cursor-pointer"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedCategories.has(category)}
+                                                onChange={() => toggleCategory(category)}
+                                                className="w-4 h-4 mr-2 rounded border-gray-500 text-indigo-600 focus:ring-indigo-500"
+                                            />
+                                            <span className="text-sm text-white">{category}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
                         </div>
+
                         <div>
                             <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-1">Stock Status</label>
                             <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
@@ -250,125 +390,153 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             </select>
                         </div>
                     </div>
+                    <div className="mt-4 text-sm text-gray-400">
+                        Showing <span className="font-semibold text-white">{processedInventory.length}</span> of <span className="font-semibold text-white">{inventory.length}</span> items
+                    </div>
                 </div>
 
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-700">
-                            <thead className="bg-gray-800">
+                            <thead className="bg-gray-900/50">
                                 <tr>
-                                    <SortableHeader title="SKU" sortKey="sku" sortConfig={sortConfig} requestSort={requestSort} />
-                                    <SortableHeader title="Name" sortKey="name" sortConfig={sortConfig} requestSort={requestSort} />
-                                    <SortableHeader title="Category" sortKey="category" sortConfig={sortConfig} requestSort={requestSort} />
-                                    <SortableHeader title="Stock" sortKey="stock" sortConfig={sortConfig} requestSort={requestSort} />
-                                    <SortableHeader title="On Order" sortKey="onOrder" sortConfig={sortConfig} requestSort={requestSort} />
-                                    <SortableHeader title="Reorder Pt" sortKey="reorderPoint" sortConfig={sortConfig} requestSort={requestSort} />
-                                    <SortableHeader title="Location" sortKey="warehouseLocation" sortConfig={sortConfig} requestSort={requestSort} />
-                                    <SortableHeader title="Unit Cost" sortKey="unitCost" sortConfig={sortConfig} requestSort={requestSort} />
-                                    <SortableHeader title="Unit Price" sortKey="unitPrice" sortConfig={sortConfig} requestSort={requestSort} />
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                    {visibleColumns.map(col => {
+                                        if (!col.sortable) {
+                                            return (
+                                                <th key={col.key} className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                                    {col.label}
+                                                </th>
+                                            );
+                                        }
+                                        const sortKey = col.key === 'vendor' ? 'vendor' : col.key as SortKeys;
+                                        return <SortableHeader key={col.key} title={col.label} sortKey={sortKey} sortConfig={sortConfig} requestSort={requestSort} />;
+                                    })}
                                 </tr>
                             </thead>
-                            <tbody className="bg-gray-800 divide-y divide-gray-700">
-                                {processedInventory.map((item) => (
-                                    <tr key={item.sku} className="hover:bg-gray-700/50 transition-colors duration-200">
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                <div className="text-sm font-mono font-medium text-white">{item.sku}</div>
-                                                <div className="flex gap-1">
-                                                    {bomSkuSet.has(item.sku) && (
-                                                        <button
-                                                            onClick={() => onNavigateToBom?.(item.sku)}
-                                                            className="text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full hover:bg-blue-500/30 hover:border-blue-400/50 transition-colors cursor-pointer"
-                                                            title="View BOM"
-                                                        >
-                                                            BOM
-                                                        </button>
-                                                    )}
-                                                    {item.dataSource && (
-                                                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                                            item.dataSource === 'csv' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
-                                                            item.dataSource === 'api' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
-                                                            'bg-gray-500/20 text-gray-300 border border-gray-500/30'
-                                                        }`}>
-                                                            {item.dataSource === 'csv' ? 'CSV' : item.dataSource === 'api' ? 'API' : 'Manual'}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="text-sm font-medium text-white max-w-xs truncate" title={item.name}>
-                                                {item.name}
-                                            </div>
-                                            {item.description && (
-                                                <div className="text-xs text-gray-400 max-w-xs truncate" title={item.description}>
-                                                    {item.description}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.category}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-white mb-1">{item.stock}</div>
-                                            <StockIndicator item={item} />
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.onOrder}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.reorderPoint}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                                            {item.warehouseLocation || '-'}
-                                            {item.binLocation && <div className="text-xs text-gray-500">Bin: {item.binLocation}</div>}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-mono">
-                                            {item.unitCost ? `$${item.unitCost.toFixed(2)}` : '-'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300 font-mono">
-                                            {item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : '-'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            {(() => {
-                                                const vendor = vendorById.get(item.vendorId);
-                                                if (!vendor) {
-                                                    return <span className="text-sm text-gray-400">N/A</span>;
+                            <tbody className="divide-y divide-gray-700">
+                                {processedInventory.map(item => {
+                                    const stockStatus = getStockStatus(item);
+                                    const vendor = vendorMap.get(item.vendorId);
+                                    const isComponent = bomSkuSet.has(item.sku);
+
+                                    return (
+                                        <tr key={item.sku} className="hover:bg-gray-700/50 transition-colors">
+                                            {visibleColumns.map(col => {
+                                                switch (col.key) {
+                                                    case 'sku':
+                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm font-mono text-indigo-400">{item.sku}</td>;
+                                                    case 'name':
+                                                        return (
+                                                            <td key={col.key} className="px-6 py-4 text-sm text-white">
+                                                                <div className="font-medium">{item.name}</div>
+                                                                {isComponent && <span className="text-xs text-blue-400">⚙️ Used in BOM</span>}
+                                                            </td>
+                                                        );
+                                                    case 'category':
+                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.category}</td>;
+                                                    case 'stock':
+                                                        return (
+                                                            <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                                                                <div className="mb-1 font-semibold">{item.stock.toLocaleString()}</div>
+                                                                <StockIndicator item={item} />
+                                                            </td>
+                                                        );
+                                                    case 'onOrder':
+                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.onOrder.toLocaleString()}</td>;
+                                                    case 'reorderPoint':
+                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.reorderPoint.toLocaleString()}</td>;
+                                                    case 'vendor':
+                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{vendor || 'N/A'}</td>;
+                                                    case 'status':
+                                                        return (
+                                                            <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm">
+                                                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                                    stockStatus === 'In Stock' ? 'bg-green-500/20 text-green-400' :
+                                                                    stockStatus === 'Low Stock' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                                    'bg-red-500/20 text-red-400'
+                                                                }`}>
+                                                                    {stockStatus}
+                                                                </span>
+                                                            </td>
+                                                        );
+                                                    case 'salesVelocity':
+                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
+                                                    case 'sales30Days':
+                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.sales30Days || 0}</td>;
+                                                    case 'sales60Days':
+                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.sales60Days || 0}</td>;
+                                                    case 'sales90Days':
+                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.sales90Days || 0}</td>;
+                                                    case 'unitCost':
+                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${item.unitCost?.toFixed(2) || '0.00'}</td>;
+                                                    default:
+                                                        return null;
                                                 }
-
-                                                const primaryEmail = vendor.contactEmails?.[0];
-
-                                                return (
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-sm text-gray-300">{vendor.name}</span>
-                                                        {primaryEmail && (
-                                                            <a
-                                                                href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(primaryEmail)}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="text-xs text-indigo-400 hover:underline hover:text-indigo-300"
-                                                                title={`Compose email to ${primaryEmail} in Gmail`}
-                                                            >
-                                                                {primaryEmail}
-                                                            </a>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })()}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
-                                                item.status === 'active' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
-                                                item.status === 'inactive' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
-                                                item.status === 'discontinued' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
-                                                'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                                            }`}>
-                                                {item.status || 'Unknown'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
+                                            })}
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
+
+            {/* Column Management Modal */}
+            {isColumnModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
+                        <div className="p-6 border-b border-gray-700">
+                            <h2 className="text-xl font-bold text-white">Manage Columns</h2>
+                            <p className="text-sm text-gray-400 mt-1">Show/hide and reorder columns</p>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-2">
+                            {columns.map((col, index) => (
+                                <div key={col.key} className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg">
+                                    <div className="flex flex-col gap-1">
+                                        <button
+                                            onClick={() => moveColumn(index, 'up')}
+                                            disabled={index === 0}
+                                            className="p-1 hover:bg-gray-600 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                                        >
+                                            <ChevronUpIcon className="w-4 h-4 text-gray-300" />
+                                        </button>
+                                        <button
+                                            onClick={() => moveColumn(index, 'down')}
+                                            disabled={index === columns.length - 1}
+                                            className="p-1 hover:bg-gray-600 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                                        >
+                                            <ChevronDownIcon className="w-4 h-4 text-gray-300" />
+                                        </button>
+                                    </div>
+                                    <button
+                                        onClick={() => toggleColumn(col.key)}
+                                        className="flex-1 flex items-center gap-3 text-left"
+                                    >
+                                        {col.visible ? (
+                                            <EyeIcon className="w-5 h-5 text-green-400" />
+                                        ) : (
+                                            <EyeSlashIcon className="w-5 h-5 text-gray-500" />
+                                        )}
+                                        <span className={`text-sm font-medium ${col.visible ? 'text-white' : 'text-gray-500'}`}>
+                                            {col.label}
+                                        </span>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-6 border-t border-gray-700">
+                            <button
+                                onClick={() => setIsColumnModalOpen(false)}
+                                className="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <ImportExportModal
                 isOpen={isImportExportModalOpen}
                 onClose={() => setIsImportExportModalOpen(false)}

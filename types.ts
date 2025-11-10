@@ -481,6 +481,9 @@ export interface InventoryItem {
   warehouseLocation?: string;
   binLocation?: string;
   salesVelocity?: number;
+  sales30Days?: number;
+  sales60Days?: number;
+  sales90Days?: number;
   dataSource?: 'manual' | 'csv' | 'api';
   lastSyncAt?: string;
   syncStatus?: 'synced' | 'pending' | 'error';
