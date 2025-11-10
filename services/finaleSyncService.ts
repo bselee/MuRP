@@ -1303,9 +1303,9 @@ export class FinaleSyncService {
       yieldQuantity: db.yield_quantity || 1,
       potentialBuildQty: db.potential_build_qty || 0,
       averageCost: db.average_cost || 0,
-      components: db.components || [],
-      artwork: db.artwork || [],
-      packaging: db.packaging || {},
+      components: (db.components as any) || [],
+      artwork: (db.artwork as any) || [],
+      packaging: (db.packaging as any) || {},
       barcode: db.barcode || '',
       notes: db.notes || '',
     }));
