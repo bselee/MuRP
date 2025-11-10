@@ -205,6 +205,9 @@ export const InventoryParsedSchema = z.object({
   
   // Sales data
   salesVelocity: z.number().default(0),
+  sales30Days: z.number().default(0),
+  sales60Days: z.number().default(0),
+  sales90Days: z.number().default(0),
   
   // Vendor info
   vendorId: z.string().default(''),

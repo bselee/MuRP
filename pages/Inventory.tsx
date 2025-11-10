@@ -106,12 +106,18 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     // Create vendor lookup maps
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
 
-    const bomSkuSet = useMemo(() => {
-        const skus = new Set<string>();
+    // Track which BOMs use each component SKU and count how many
+    const bomUsageMap = useMemo(() => {
+        const usageMap = new Map<string, string[]>();
         boms.forEach(bom => {
-            bom.components.forEach(comp => skus.add(comp.sku));
+            bom.components.forEach(comp => {
+                if (!usageMap.has(comp.sku)) {
+                    usageMap.set(comp.sku, []);
+                }
+                usageMap.get(comp.sku)!.push(bom.sku);
+            });
         });
-        return skus;
+        return usageMap;
     }, [boms]);
 
     const filterOptions = useMemo(() => {
@@ -140,6 +146,20 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const handleSuggestionClick = (item: InventoryItem) => {
         setSearchTerm(item.name);
         setIsSuggestionsVisible(false);
+    };
+
+    const handleBomClick = (componentSku: string) => {
+        const bomSkus = bomUsageMap.get(componentSku);
+        if (!bomSkus || bomSkus.length === 0) return;
+        
+        // If only one BOM uses this component, navigate directly
+        if (bomSkus.length === 1 && onNavigateToBom) {
+            onNavigateToBom(bomSkus[0]);
+        } else if (bomSkus.length > 1 && onNavigateToBom) {
+            // For now, navigate to the first BOM
+            // TODO: Could show a modal to select which BOM to view
+            onNavigateToBom(bomSkus[0]);
+        }
     };
 
     const toggleCategory = (category: string) => {
@@ -417,7 +437,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 {processedInventory.map(item => {
                                     const stockStatus = getStockStatus(item);
                                     const vendor = vendorMap.get(item.vendorId);
-                                    const isComponent = bomSkuSet.has(item.sku);
+                                    const bomSkus = bomUsageMap.get(item.sku);
+                                    const bomCount = bomSkus ? bomSkus.length : 0;
 
                                     return (
                                         <tr key={item.sku} className="hover:bg-gray-700/50 transition-colors">
@@ -428,8 +449,18 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                     case 'name':
                                                         return (
                                                             <td key={col.key} className="px-6 py-4 text-sm text-white">
-                                                                <div className="font-medium">{item.name}</div>
-                                                                {isComponent && <span className="text-xs text-blue-400">⚙️ Used in BOM</span>}
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-medium">{item.name}</span>
+                                                                    {bomCount > 0 && (
+                                                                        <button
+                                                                            onClick={() => handleBomClick(item.sku)}
+                                                                            className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full text-xs hover:bg-blue-500/30 transition-colors"
+                                                                            title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
+                                                                        >
+                                                                            BOM {bomCount > 1 ? `(${bomCount})` : ''}
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             </td>
                                                         );
                                                     case 'category':

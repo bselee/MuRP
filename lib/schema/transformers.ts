@@ -421,9 +421,22 @@ export function transformInventoryRawToParsed(
 
     // Extract sales velocity (Finale specific)
     const salesVelocityRaw = extractFirst(raw, [
-      'productSalesVelocityConsolidate', 'Sales Velocity', 'sales_velocity'
+      'BuildASoil sales velocity',
+      'productSalesVelocityConsolidate', 
+      'Sales Velocity', 
+      'sales_velocity'
     ]);
     const salesVelocity = parseNumber(salesVelocityRaw, 0);
+
+    // Extract sales history
+    const sales30DaysRaw = extractFirst(raw, ['Sales last 30 days', 'sales_last_30_days', 'Sales 30d']);
+    const sales30Days = parseNumber(sales30DaysRaw, 0);
+
+    const sales60DaysRaw = extractFirst(raw, ['Sales last 60 days', 'sales_last_60_days', 'Sales 60d']);
+    const sales60Days = parseNumber(sales60DaysRaw, 0);
+
+    const sales90DaysRaw = extractFirst(raw, ['Sales last 90 days', 'sales_last_90_days', 'Sales 90d']);
+    const sales90Days = parseNumber(sales90DaysRaw, 0);
 
     // Extract vendor info
     const vendorName = extractFirst(raw, ['Supplier', 'Vendor', 'vendor', 'supplier']);
@@ -482,6 +495,9 @@ export function transformInventoryRawToParsed(
       reorderVariance,
       qtyToOrder,
       salesVelocity,
+      sales30Days,
+      sales60Days,
+      sales90Days,
       vendorId,
       vendorName,
       moq,
