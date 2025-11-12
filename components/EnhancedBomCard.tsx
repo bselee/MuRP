@@ -246,7 +246,15 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 
               {/* Expand/Collapse - Both roles */}
               <button
-                onClick={onToggleExpand}
+                onClick={(e) => {
+                  console.log('[EnhancedBomCard] EXPAND BUTTON CLICKED!', {
+                    bomId: bom.id,
+                    bomName: bom.name,
+                    currentIsExpanded: isExpanded,
+                    componentsCount: bom.components?.length || 0
+                  });
+                  onToggleExpand();
+                }}
                 className="px-2 py-1.5 hover:bg-gray-700 rounded transition-colors"
                 title={isExpanded ? 'Collapse components' : 'Expand components'}
               >
@@ -335,10 +343,16 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
       {/* EXPANDED VIEW: Component Details */}
       {isExpanded && (
         <div className="p-4 space-y-4 border-t border-gray-700 bg-gray-900/30">
+          {console.log('[EnhancedBomCard] EXPANDED VIEW IS RENDERING!', {
+            bomName: bom.name,
+            componentsCount: bom.components?.length || 0,
+            inventoryMapSize: inventoryMap.size,
+            firstComponent: bom.components?.[0]
+          })}
           <div>
             <h4 className="text-xs font-semibold text-gray-400 uppercase mb-3 flex items-center gap-2">
               <BeakerIcon className="w-4 h-4" />
-              Component Breakdown
+              Component Breakdown ({bom.components?.length || 0} components)
             </h4>
             <div className="space-y-2">
               {bom.components.map(c => {
