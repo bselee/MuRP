@@ -427,8 +427,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
                             </button>
                             {isCategoryDropdownOpen && (
-                                <div className="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-600 rounded-md shadow-xl max-h-80 overflow-auto backdrop-blur-sm">
-                                    <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2">
+                                <div className="absolute z-50 w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-auto" style={{ backgroundColor: 'rgb(17, 24, 39)' }}>
+                                    <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2" style={{ backgroundColor: 'rgb(17, 24, 39)' }}>
                                         <button
                                             onClick={selectAllCategories}
                                             className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
@@ -445,7 +445,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     {filterOptions.categories.map(category => (
                                         <label 
                                             key={category} 
-                                            className="flex items-center p-2 hover:bg-gray-600 cursor-pointer"
+                                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer"
+                                            style={{ backgroundColor: 'rgb(17, 24, 39)' }}
                                         >
                                             <input
                                                 type="checkbox"
@@ -482,8 +483,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
                             </button>
                             {isVendorDropdownOpen && (
-                                <div className="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-600 rounded-md shadow-xl max-h-80 overflow-auto backdrop-blur-sm">
-                                    <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2">
+                                <div className="absolute z-50 w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-auto" style={{ backgroundColor: 'rgb(17, 24, 39)' }}>
+                                    <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2" style={{ backgroundColor: 'rgb(17, 24, 39)' }}>
                                         <button
                                             onClick={selectAllVendors}
                                             className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
@@ -500,7 +501,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     {filterOptions.vendors.map(vendorId => (
                                         <label 
                                             key={vendorId} 
-                                            className="flex items-center p-2 hover:bg-gray-600 cursor-pointer"
+                                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer"
+                                            style={{ backgroundColor: 'rgb(17, 24, 39)' }}
                                         >
                                             <input
                                                 type="checkbox"
