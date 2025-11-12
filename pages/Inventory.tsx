@@ -141,7 +141,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     // Create vendor lookup maps
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
 
-    // Track which BOMs use each component SKU and count how many
+    // Track which BOMs use each component SKU and count how many (for the BOM link in table)
     const bomUsageMap = useMemo(() => {
         const usageMap = new Map<string, string[]>();
         boms.forEach(bom => {
@@ -153,6 +153,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
             });
         });
         return usageMap;
+    }, [boms]);
+
+    // Track which SKUs ARE finished products (have their own BOM with constituents)
+    const bomFinishedSkuSet = useMemo(() => {
+        return new Set(boms.map(bom => bom.finishedSku));
     }, [boms]);
 
     const filterOptions = useMemo(() => {
@@ -279,8 +284,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         // BOM filter
         if (bomFilter !== 'all') {
             filteredItems = filteredItems.filter(item => {
-                const hasBom = bomUsageMap.has(item.sku);
-                return bomFilter === 'with-bom' ? hasBom : !hasBom;
+                const isFinishedProduct = bomFinishedSkuSet.has(item.sku);
+                return bomFilter === 'with-bom' ? isFinishedProduct : !isFinishedProduct;
             });
         }
 
@@ -313,7 +318,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
             });
         }
         return filteredItems;
-    }, [inventory, selectedCategories, selectedVendors, bomFilter, bomUsageMap, filters, searchTerm, sortConfig, vendorMap]);
+    }, [inventory, selectedCategories, selectedVendors, bomFilter, bomFinishedSkuSet, filters, searchTerm, sortConfig, vendorMap]);
 
     const handleExportCsv = () => {
         exportToCsv(processedInventory, `inventory-export-${new Date().toISOString().split('T')[0]}.csv`);
