@@ -64,6 +64,7 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
       const { data: items, error: fetchError } = await supabase
         .from('inventory_items')
         .select('*')
+        .limit(50000)  // Override Supabase's default 1000 limit - fetch all inventory
         .order('name');
 
       if (fetchError) throw fetchError;
