@@ -67,6 +67,8 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
         .limit(50000)  // Override Supabase's default 1000 limit - fetch all inventory
         .order('name');
 
+      // Debug: log how many items Supabase returned so we can verify deployed behavior
+      console.log('[useSupabaseInventory] Supabase returned items count:', Array.isArray(items) ? items.length : 0);
       if (fetchError) throw fetchError;
 
       // Transform from snake_case to camelCase (including enhanced fields from migration 003)
