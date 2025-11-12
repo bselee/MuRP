@@ -451,8 +451,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
                             </button>
                             {isCategoryDropdownOpen && (
-                                <div className="absolute z-50 w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-auto" style={{ backgroundColor: 'rgb(17, 24, 39)' }}>
-                                    <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2" style={{ backgroundColor: 'rgb(17, 24, 39)' }}>
+                                <div className="absolute z-50 w-full mt-1 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-auto bg-gray-900">
+                                    <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2 bg-gray-900">
                                         <button
                                             onClick={selectAllCategories}
                                             className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
@@ -469,8 +469,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     {filterOptions.categories.map(category => (
                                         <label 
                                             key={category} 
-                                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer"
-                                            style={{ backgroundColor: 'rgb(17, 24, 39)' }}
+                                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
                                         >
                                             <input
                                                 type="checkbox"
@@ -507,8 +506,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
                             </button>
                             {isVendorDropdownOpen && (
-                                <div className="absolute z-50 w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-auto" style={{ backgroundColor: 'rgb(17, 24, 39)' }}>
-                                    <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2" style={{ backgroundColor: 'rgb(17, 24, 39)' }}>
+                                <div className="absolute z-50 w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-auto">
+                                    <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2">
                                         <button
                                             onClick={selectAllVendors}
                                             className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
@@ -525,8 +524,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     {filterOptions.vendors.map(vendorId => (
                                         <label 
                                             key={vendorId} 
-                                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer"
-                                            style={{ backgroundColor: 'rgb(17, 24, 39)' }}
+                                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
                                         >
                                             <input
                                                 type="checkbox"
@@ -603,9 +601,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                 switch (col.key) {
                                                     case 'sku':
                                                         return (
-                                                            <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm font-mono">
+                                                            <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm font-mono">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-indigo-400">{item.sku}</span>
+                                                                    <span className="text-white font-bold">{item.sku}</span>
                                                                     {bomCount > 0 && (
                                                                         <button
                                                                             onClick={() => handleBomClick(item.sku)}
@@ -620,30 +618,33 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     case 'name':
                                                         return (
-                                                            <td key={col.key} className="px-4 py-4 text-sm text-white max-w-xs group relative">
-                                                                <span className="font-medium truncate group-hover:whitespace-normal group-hover:absolute group-hover:bg-gray-800 group-hover:p-2 group-hover:rounded group-hover:shadow-lg group-hover:z-10 group-hover:border group-hover:border-gray-600">
+                                                            <td key={col.key} className="px-4 py-3 text-sm text-white max-w-xs group relative">
+                                                                <span className="font-medium truncate block">
                                                                     {item.name}
                                                                 </span>
+                                                                <div className="hidden group-hover:block absolute left-0 top-full mt-1 bg-gray-800 text-white p-3 rounded-lg shadow-xl z-50 border border-gray-600 max-w-md whitespace-normal">
+                                                                    {item.name}
+                                                                </div>
                                                             </td>
                                                         );
                                                     case 'category':
-                                                        return <td key={col.key} className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{item.category}</td>;
+                                                        return <td key={col.key} className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">{item.category}</td>;
                                                     case 'stock':
                                                         return (
-                                                            <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-white">
+                                                            <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-white">
                                                                 <div className="mb-1 font-semibold">{item.stock.toLocaleString()}</div>
                                                                 <StockIndicator item={item} />
                                                             </td>
                                                         );
                                                     case 'onOrder':
-                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.onOrder.toLocaleString()}</td>;
+                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.onOrder.toLocaleString()}</td>;
                                                     case 'reorderPoint':
-                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.reorderPoint.toLocaleString()}</td>;
+                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.reorderPoint.toLocaleString()}</td>;
                                                     case 'vendor':
-                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{vendor || 'N/A'}</td>;
+                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{vendor || 'N/A'}</td>;
                                                     case 'status':
                                                         return (
-                                                            <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm">
+                                                            <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm">
                                                                 <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                                                     stockStatus === 'In Stock' ? 'bg-green-500/20 text-green-400' :
                                                                     stockStatus === 'Low Stock' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -654,15 +655,15 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                             </td>
                                                         );
                                                     case 'salesVelocity':
-                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
+                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
                                                     case 'sales30Days':
-                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.sales30Days || 0}</td>;
+                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.sales30Days || 0}</td>;
                                                     case 'sales60Days':
-                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.sales60Days || 0}</td>;
+                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.sales60Days || 0}</td>;
                                                     case 'sales90Days':
-                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.sales90Days || 0}</td>;
+                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.sales90Days || 0}</td>;
                                                     case 'unitCost':
-                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${item.unitCost?.toFixed(2) || '0.00'}</td>;
+                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">${item.unitCost?.toFixed(2) || '0.00'}</td>;
                                                     default:
                                                         return null;
                                                 }
