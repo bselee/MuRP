@@ -61,15 +61,37 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
       setLoading(true);
       setError(null);
 
-      const { data: items, error: fetchError } = await supabase
-        .from('inventory_items')
-        .select('*')
-        .limit(50000)  // Override Supabase's default 1000 limit - fetch all inventory
-        .order('name');
+      // CRITICAL FIX: Fetch ALL inventory items using pagination
+      // Supabase PostgREST has max-rows header that can override .limit()
+      // Solution: Use range-based pagination to guarantee all items
+      let allItems: any[] = [];
+      let rangeStart = 0;
+      const rangeSize = 1000; // Fetch in chunks of 1000
+      let hasMore = true;
 
-      // Debug: log how many items Supabase returned so we can verify deployed behavior
-      console.log('[useSupabaseInventory] Supabase returned items count:', Array.isArray(items) ? items.length : 0);
-      if (fetchError) throw fetchError;
+      console.log('[useSupabaseInventory] Starting pagination fetch...');
+
+      while (hasMore) {
+        const { data: chunk, error: fetchError, count } = await supabase
+          .from('inventory_items')
+          .select('*', { count: 'exact' })
+          .range(rangeStart, rangeStart + rangeSize - 1)
+          .order('name');
+
+        if (fetchError) throw fetchError;
+
+        if (chunk && chunk.length > 0) {
+          allItems = allItems.concat(chunk);
+          rangeStart += rangeSize;
+          hasMore = chunk.length === rangeSize; // Continue if we got a full chunk
+          console.log(`[useSupabaseInventory] Fetched ${chunk.length} items (total so far: ${allItems.length})`);
+        } else {
+          hasMore = false;
+        }
+      }
+
+      console.log(`[useSupabaseInventory] ✅ FINAL COUNT: ${allItems.length} inventory items fetched`);
+      const items = allItems;
 
       // Transform from snake_case to camelCase (including enhanced fields from migration 003)
       const transformed: InventoryItem[] = (items || []).map((item: any) => ({
