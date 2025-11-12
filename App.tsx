@@ -684,6 +684,7 @@ const App: React.FC = () => {
             aiConfig={aiConfig}
             artworkFolders={artworkFolders}
             onCreateArtworkFolder={handleCreateArtworkFolder}
+            currentUser={currentUser}
         />;
       case 'API Documentation':
           return <ApiDocs />;

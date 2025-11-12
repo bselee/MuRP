@@ -2,9 +2,10 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder } from '../types';
-import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon } from '../components/icons';
+import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon, QrCodeIcon } from '../components/icons';
 import RegulatoryScanModal from '../components/RegulatoryScanModal';
 import BatchArtworkVerificationModal from '../components/BatchArtworkVerificationModal';
+import ManualLabelScanner from '../components/ManualLabelScanner';
 
 type ArtworkWithProduct = Artwork & {
     productName: string;
@@ -23,11 +24,13 @@ interface ArtworkPageProps {
     aiConfig: AiConfig;
     artworkFolders: ArtworkFolder[];
     onCreateArtworkFolder: (name: string) => void;
+    currentUser?: { id: string; email: string };
 }
 
-const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, onUpdateArtwork, initialFilter, onClearFilter, watchlist, aiConfig, artworkFolders, onCreateArtworkFolder }) => {
+const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, onUpdateArtwork, initialFilter, onClearFilter, watchlist, aiConfig, artworkFolders, onCreateArtworkFolder, currentUser }) => {
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [isBatchVerificationModalOpen, setIsBatchVerificationModalOpen] = useState(false);
+    const [isLabelScannerOpen, setIsLabelScannerOpen] = useState(false);
     const [selectedArtworkForScan, setSelectedArtworkForScan] = useState<ArtworkWithProduct | null>(null);
     const [searchTerm, setSearchTerm] = useState(initialFilter);
     const [selectedArtworkIds, setSelectedArtworkIds] = useState<string[]>([]);
@@ -141,6 +144,13 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                             </div>
                             <div className="flex gap-2">
                                 <button 
+                                    onClick={() => setIsLabelScannerOpen(true)}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2"
+                                >
+                                    <QrCodeIcon className="w-5 h-5" />
+                                    Scan Labels
+                                </button>
+                                <button 
                                     onClick={() => setIsBatchVerificationModalOpen(true)}
                                     className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2"
                                 >
@@ -183,6 +193,32 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                 boms={boms}
                 aiConfig={aiConfig}
             />
+
+            {/* Label Scanner Modal */}
+            {isLabelScannerOpen && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 rounded-lg shadow-2xl border border-gray-700 w-full max-w-6xl max-h-[90vh] overflow-auto">
+                        <div className="sticky top-0 bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center z-10">
+                            <h2 className="text-2xl font-bold text-white">Label Scanner</h2>
+                            <button
+                                onClick={() => setIsLabelScannerOpen(false)}
+                                className="text-gray-400 hover:text-white transition-colors"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <ManualLabelScanner
+                                boms={boms}
+                                currentUser={currentUser}
+                                onClose={() => setIsLabelScannerOpen(false)}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };
