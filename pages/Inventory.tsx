@@ -31,7 +31,7 @@ interface ColumnConfig {
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: 'sku', label: 'SKU', visible: true, sortable: true },
-  { key: 'name', label: 'Name', visible: true, sortable: true },
+  { key: 'name', label: 'Description', visible: true, sortable: true },
   { key: 'category', label: 'Category', visible: true, sortable: true },
   { key: 'stock', label: 'Stock', visible: true, sortable: true },
   { key: 'onOrder', label: 'On Order', visible: true, sortable: true },
@@ -412,8 +412,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             </label>
                             <button
                                 onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                                className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 text-left flex justify-between items-center"
+                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-indigo-500/50' : ''}`}
                             >
+                                {selectedCategories.size > 0 && (
+                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-500 rounded-full"></span>
+                                )}
                                 <span className="truncate">
                                     {selectedCategories.size === 0 
                                         ? 'All Categories' 
@@ -464,8 +467,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             </label>
                             <button
                                 onClick={() => setIsVendorDropdownOpen(!isVendorDropdownOpen)}
-                                className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 text-left flex justify-between items-center"
+                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 text-left flex justify-between items-center relative ${selectedVendors.size > 0 ? 'ring-2 ring-indigo-500/50' : ''}`}
                             >
+                                {selectedVendors.size > 0 && (
+                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-500 rounded-full"></span>
+                                )}
                                 <span className="truncate">
                                     {selectedVendors.size === 0 
                                         ? 'All Vendors' 
@@ -517,13 +523,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             </select>
                         </div>
                         
-                        <div>
+                        <div className="relative">
                             <label htmlFor="filter-bom" className="block text-sm font-medium text-gray-300 mb-1">BOM Status</label>
-                            <select id="filter-bom" value={bomFilter} onChange={(e) => setBomFilter(e.target.value as any)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                            <select id="filter-bom" value={bomFilter} onChange={(e) => setBomFilter(e.target.value as any)} className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 ${bomFilter !== 'all' ? 'ring-2 ring-indigo-500/50' : ''}`}>
                                 <option value="all">All Items</option>
-                                <option value="with-bom">With BOM</option>
-                                <option value="without-bom">Without BOM</option>
+                                <option value="with-bom">Has Constituents (BOM)</option>
+                                <option value="without-bom">No BOM</option>
                             </select>
+                            {bomFilter !== 'all' && (
+                                <span className="absolute top-6 right-2 w-3 h-3 bg-indigo-500 rounded-full pointer-events-none"></span>
+                            )}
                         </div>
                     </div>
                     <div className="mt-4 text-sm text-gray-400">
@@ -533,7 +542,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-700">
+                        <table className="w-full divide-y divide-gray-700 table-auto">
                             <thead className="bg-gray-900/50">
                                 <tr>
                                     {visibleColumns.map(col => {
@@ -564,13 +573,15 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm font-mono text-indigo-400">{item.sku}</td>;
                                                     case 'name':
                                                         return (
-                                                            <td key={col.key} className="px-6 py-4 text-sm text-white">
+                                                            <td key={col.key} className="px-4 py-4 text-sm text-white max-w-xs group relative">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="font-medium">{item.name}</span>
+                                                                    <span className="font-medium truncate group-hover:whitespace-normal group-hover:absolute group-hover:bg-gray-800 group-hover:p-2 group-hover:rounded group-hover:shadow-lg group-hover:z-10 group-hover:border group-hover:border-gray-600">
+                                                                        {item.name}
+                                                                    </span>
                                                                     {bomCount > 0 && (
                                                                         <button
                                                                             onClick={() => handleBomClick(item.sku)}
-                                                                            className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full text-xs hover:bg-blue-500/30 transition-colors"
+                                                                            className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full text-xs hover:bg-blue-500/30 transition-colors flex-shrink-0"
                                                                             title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
                                                                         >
                                                                             BOM {bomCount > 1 ? `(${bomCount})` : ''}
@@ -580,7 +591,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                             </td>
                                                         );
                                                     case 'category':
-                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{item.category}</td>;
+                                                        return <td key={col.key} className="px-4 py-4 whitespace-nowrap text-sm text-gray-300">{item.category}</td>;
                                                     case 'stock':
                                                         return (
                                                             <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm text-white">
