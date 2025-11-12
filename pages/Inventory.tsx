@@ -313,7 +313,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
             });
         }
         return filteredItems;
-    }, [inventory, selectedCategories, filters, searchTerm, sortConfig, vendorMap]);
+    }, [inventory, selectedCategories, selectedVendors, bomFilter, bomUsageMap, filters, searchTerm, sortConfig, vendorMap]);
 
     const handleExportCsv = () => {
         exportToCsv(processedInventory, `inventory-export-${new Date().toISOString().split('T')[0]}.csv`);
@@ -427,8 +427,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
                             </button>
                             {isCategoryDropdownOpen && (
-                                <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-80 overflow-auto">
-                                    <div className="sticky top-0 bg-gray-800 p-2 border-b border-gray-600 flex gap-2">
+                                <div className="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-600 rounded-md shadow-xl max-h-80 overflow-auto backdrop-blur-sm">
+                                    <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2">
                                         <button
                                             onClick={selectAllCategories}
                                             className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
@@ -482,8 +482,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
                             </button>
                             {isVendorDropdownOpen && (
-                                <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-80 overflow-auto">
-                                    <div className="sticky top-0 bg-gray-800 p-2 border-b border-gray-600 flex gap-2">
+                                <div className="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-600 rounded-md shadow-xl max-h-80 overflow-auto backdrop-blur-sm">
+                                    <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2">
                                         <button
                                             onClick={selectAllVendors}
                                             className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
