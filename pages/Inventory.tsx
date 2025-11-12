@@ -99,6 +99,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
     const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
+    const [categorySearchTerm, setCategorySearchTerm] = useState('');
+    const [vendorSearchTerm, setVendorSearchTerm] = useState('');
     const [columns, setColumns] = useState<ColumnConfig[]>(() => {
         const saved = localStorage.getItem('inventory-columns');
         return saved ? JSON.parse(saved) : DEFAULT_COLUMNS;
@@ -185,6 +187,24 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         const statuses = ['In Stock', 'Low Stock', 'Out of Stock'];
         return { categories, vendors: vendorIds, statuses };
     }, [inventory]);
+
+    // Filter categories based on search term
+    const filteredCategories = useMemo(() => {
+        if (!categorySearchTerm) return filterOptions.categories;
+        return filterOptions.categories.filter(cat => 
+            cat.toLowerCase().includes(categorySearchTerm.toLowerCase())
+        );
+    }, [filterOptions.categories, categorySearchTerm]);
+
+    // Filter vendors based on search term
+    const filteredVendors = useMemo(() => {
+        if (!vendorSearchTerm) return filterOptions.vendors;
+        return filterOptions.vendors.filter(vendorId => {
+            const vendorName = vendorMap.get(vendorId) || vendorId;
+            return vendorName.toLowerCase().includes(vendorSearchTerm.toLowerCase()) ||
+                   vendorId.toLowerCase().includes(vendorSearchTerm.toLowerCase());
+        });
+    }, [filterOptions.vendors, vendorSearchTerm, vendorMap]);
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -451,7 +471,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
                             </button>
                             {isCategoryDropdownOpen && (
-                                <div className="absolute z-50 w-full mt-1 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-auto bg-gray-900">
+                                <div className="absolute z-50 w-full mt-1 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden bg-gray-900">
                                     <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2 bg-gray-900">
                                         <button
                                             onClick={selectAllCategories}
@@ -466,20 +486,36 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             Clear
                                         </button>
                                     </div>
-                                    {filterOptions.categories.map(category => (
-                                        <label 
-                                            key={category} 
-                                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedCategories.has(category)}
-                                                onChange={() => toggleCategory(category)}
-                                                className="w-4 h-4 mr-2 rounded border-gray-500 text-indigo-600 focus:ring-indigo-500"
-                                            />
-                                            <span className="text-sm text-white">{category}</span>
-                                        </label>
-                                    ))}
+                                    <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
+                                        <input
+                                            type="text"
+                                            value={categorySearchTerm}
+                                            onChange={(e) => setCategorySearchTerm(e.target.value)}
+                                            placeholder="Search categories..."
+                                            className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none border border-gray-600"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                    <div className="max-h-60 overflow-auto">
+                                        {filteredCategories.length === 0 ? (
+                                            <div className="p-3 text-center text-gray-400 text-sm">No categories found</div>
+                                        ) : (
+                                            filteredCategories.map(category => (
+                                                <label 
+                                                    key={category} 
+                                                    className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedCategories.has(category)}
+                                                        onChange={() => toggleCategory(category)}
+                                                        className="w-4 h-4 mr-2 rounded border-gray-500 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <span className="text-sm text-white">{category}</span>
+                                                </label>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -506,7 +542,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
                             </button>
                             {isVendorDropdownOpen && (
-                                <div className="absolute z-50 w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-auto">
+                                <div className="absolute z-50 w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden">
                                     <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2">
                                         <button
                                             onClick={selectAllVendors}
@@ -521,20 +557,36 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             Clear
                                         </button>
                                     </div>
-                                    {filterOptions.vendors.map(vendorId => (
-                                        <label 
-                                            key={vendorId} 
-                                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedVendors.has(vendorId)}
-                                                onChange={() => toggleVendor(vendorId)}
-                                                className="w-4 h-4 mr-2 rounded border-gray-500 text-indigo-600 focus:ring-indigo-500"
-                                            />
-                                            <span className="text-sm text-white">{vendorMap.get(vendorId) || vendorId}</span>
-                                        </label>
-                                    ))}
+                                    <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
+                                        <input
+                                            type="text"
+                                            value={vendorSearchTerm}
+                                            onChange={(e) => setVendorSearchTerm(e.target.value)}
+                                            placeholder="Search vendors..."
+                                            className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none border border-gray-600"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                    <div className="max-h-60 overflow-auto">
+                                        {filteredVendors.length === 0 ? (
+                                            <div className="p-3 text-center text-gray-400 text-sm">No vendors found</div>
+                                        ) : (
+                                            filteredVendors.map(vendorId => (
+                                                <label 
+                                                    key={vendorId} 
+                                                    className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedVendors.has(vendorId)}
+                                                        onChange={() => toggleVendor(vendorId)}
+                                                        className="w-4 h-4 mr-2 rounded border-gray-500 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <span className="text-sm text-white">{vendorMap.get(vendorId) || vendorId}</span>
+                                                </label>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
