@@ -20,6 +20,8 @@ import type {
   PurchaseOrder,
   BuildOrder,
   InternalRequisition,
+  Label,
+  ComplianceRecord,
 } from '../types';
 
 // ============================================================================
@@ -907,4 +909,250 @@ export function useSupabasePendingPOs(): UseSupabaseDataResult<PurchaseOrder> {
   }, [fetchPendingPOs]);
 
   return { data, loading, error, refetch: fetchPendingPOs };
+}
+
+// ============================================================================
+// LABELS HOOKS
+// ============================================================================
+
+/**
+ * Fetch and subscribe to labels for a specific BOM
+ * Real-time updates when labels change in database
+ */
+export function useSupabaseLabels(bomId?: string): UseSupabaseDataResult<Label> {
+  const [data, setData] = useState<Label[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+
+  const fetchLabels = useCallback(async () => {
+    if (!bomId) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data: labels, error: fetchError } = await supabase
+        .from('labels')
+        .select('*')
+        .eq('bom_id', bomId)
+        .order('created_at', { ascending: false });
+
+      if (fetchError) throw fetchError;
+
+      // Transform from snake_case to camelCase
+      const transformed: Label[] = (labels || []).map((label: any) => ({
+        id: label.id,
+        fileName: label.file_name,
+        fileUrl: label.file_url,
+        fileSize: label.file_size,
+        mimeType: label.mime_type,
+        barcode: label.barcode,
+        productName: label.product_name,
+        netWeight: label.net_weight,
+        revision: label.revision,
+        bomId: label.bom_id,
+        scanStatus: label.scan_status,
+        scanCompletedAt: label.scan_completed_at,
+        scanError: label.scan_error,
+        extractedData: label.extracted_data,
+        ingredientComparison: label.ingredient_comparison,
+        verified: label.verified,
+        verifiedBy: label.verified_by,
+        verifiedAt: label.verified_at,
+        fileType: label.file_type,
+        status: label.status,
+        approvedBy: label.approved_by,
+        approvedDate: label.approved_date,
+        notes: label.notes,
+        uploadedBy: label.uploaded_by,
+        createdAt: label.created_at,
+        updatedAt: label.updated_at,
+      }));
+
+      setData(transformed);
+    } catch (err) {
+      console.error('[useSupabaseLabels] Error:', err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch labels'));
+    } finally {
+      setLoading(false);
+    }
+  }, [bomId]);
+
+  useEffect(() => {
+    if (!bomId) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
+    // Initial fetch
+    fetchLabels();
+
+    // Set up real-time subscription
+    const newChannel = supabase
+      .channel('labels-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'labels',
+          filter: `bom_id=eq.${bomId}`,
+        },
+        (payload) => {
+          console.log('[useSupabaseLabels] Real-time update:', payload);
+          fetchLabels();
+        }
+      )
+      .subscribe();
+
+    setChannel(newChannel);
+
+    // Cleanup
+    return () => {
+      if (newChannel) {
+        supabase.removeChannel(newChannel);
+      }
+    };
+  }, [fetchLabels, bomId]);
+
+  return { data, loading, error, refetch: fetchLabels };
+}
+
+// ============================================================================
+// COMPLIANCE RECORDS HOOKS
+// ============================================================================
+
+/**
+ * Fetch and subscribe to compliance records for a specific BOM
+ * Real-time updates when compliance records change in database
+ */
+export function useSupabaseComplianceRecords(bomId?: string): UseSupabaseDataResult<ComplianceRecord> {
+  const [data, setData] = useState<ComplianceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+
+  const fetchComplianceRecords = useCallback(async () => {
+    if (!bomId) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data: records, error: fetchError } = await supabase
+        .from('compliance_records')
+        .select('*')
+        .eq('bom_id', bomId)
+        .order('expiration_date', { ascending: true });
+
+      if (fetchError) throw fetchError;
+
+      // Transform from snake_case to camelCase
+      const transformed: ComplianceRecord[] = (records || []).map((record: any) => ({
+        id: record.id,
+        bomId: record.bom_id,
+        labelId: record.label_id,
+        complianceType: record.compliance_type,
+        category: record.category,
+        issuingAuthority: record.issuing_authority,
+        stateCode: record.state_code,
+        stateName: record.state_name,
+        registrationNumber: record.registration_number,
+        licenseNumber: record.license_number,
+        registeredDate: record.registered_date,
+        effectiveDate: record.effective_date,
+        expirationDate: record.expiration_date,
+        renewalDate: record.renewal_date,
+        lastRenewedDate: record.last_renewed_date,
+        status: record.status,
+        daysUntilExpiration: record.days_until_expiration,
+        registrationFee: record.registration_fee,
+        renewalFee: record.renewal_fee,
+        lateFee: record.late_fee,
+        currency: record.currency,
+        paymentStatus: record.payment_status,
+        certificateUrl: record.certificate_url,
+        certificateFileName: record.certificate_file_name,
+        certificateFileSize: record.certificate_file_size,
+        additionalDocuments: record.additional_documents,
+        dueSoonAlertSent: record.due_soon_alert_sent,
+        urgentAlertSent: record.urgent_alert_sent,
+        expirationAlertSent: record.expiration_alert_sent,
+        alertEmailAddresses: record.alert_email_addresses,
+        requirements: record.requirements,
+        restrictions: record.restrictions,
+        conditions: record.conditions,
+        contactPerson: record.contact_person,
+        contactEmail: record.contact_email,
+        contactPhone: record.contact_phone,
+        authorityWebsite: record.authority_website,
+        assignedTo: record.assigned_to,
+        priority: record.priority,
+        notes: record.notes,
+        internalNotes: record.internal_notes,
+        createdBy: record.created_by,
+        createdAt: record.created_at,
+        updatedAt: record.updated_at,
+        lastVerifiedAt: record.last_verified_at,
+        lastVerifiedBy: record.last_verified_by,
+      }));
+
+      setData(transformed);
+    } catch (err) {
+      console.error('[useSupabaseComplianceRecords] Error:', err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch compliance records'));
+    } finally {
+      setLoading(false);
+    }
+  }, [bomId]);
+
+  useEffect(() => {
+    if (!bomId) {
+      setData([]);
+      setLoading(false);
+      return;
+    }
+
+    // Initial fetch
+    fetchComplianceRecords();
+
+    // Set up real-time subscription
+    const newChannel = supabase
+      .channel('compliance-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'compliance_records',
+          filter: `bom_id=eq.${bomId}`,
+        },
+        (payload) => {
+          console.log('[useSupabaseComplianceRecords] Real-time update:', payload);
+          fetchComplianceRecords();
+        }
+      )
+      .subscribe();
+
+    setChannel(newChannel);
+
+    // Cleanup
+    return () => {
+      if (newChannel) {
+        supabase.removeChannel(newChannel);
+      }
+    };
+  }, [fetchComplianceRecords, bomId]);
+
+  return { data, loading, error, refetch: fetchComplianceRecords };
 }
