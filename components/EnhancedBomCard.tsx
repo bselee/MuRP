@@ -125,7 +125,13 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
           <div className="flex-1 min-w-0">
             {/* SKU and Category */}
             <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-lg font-bold text-white font-mono">{bom.finishedSku}</h3>
+              <button
+                onClick={() => onNavigateToInventory?.(bom.finishedSku)}
+                className="text-lg font-bold text-white font-mono hover:text-indigo-400 transition-colors cursor-pointer underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400"
+                title="View this product in Inventory"
+              >
+                {bom.finishedSku}
+              </button>
               {bom.category && (
                 <span className="px-2 py-0.5 text-xs rounded bg-gray-700 text-gray-300 border border-gray-600">
                   {bom.category}

@@ -106,6 +106,25 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     
     const categoryDropdownRef = useRef<HTMLDivElement>(null);
     const vendorDropdownRef = useRef<HTMLDivElement>(null);
+    const inventoryRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+
+    // Navigation from BOM page - auto-scroll to inventory item
+    useEffect(() => {
+        const selectedSku = localStorage.getItem('selectedInventorySku');
+        if (selectedSku) {
+            setTimeout(() => {
+                const element = inventoryRowRefs.current.get(selectedSku);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    element.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-900/20');
+                    setTimeout(() => {
+                        element.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-900/20');
+                    }, 3000);
+                }
+            }, 100);
+            localStorage.removeItem('selectedInventorySku');
+        }
+    }, [inventory]);
 
     // Save preferences to localStorage
     useEffect(() => {
@@ -573,7 +592,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     const bomCount = bomSkus ? bomSkus.length : 0;
 
                                     return (
-                                        <tr key={item.sku} className="hover:bg-gray-700/50 transition-colors">
+                                        <tr 
+                                            key={item.sku} 
+                                            ref={(el) => {
+                                                if (el) inventoryRowRefs.current.set(item.sku, el);
+                                            }}
+                                            className="hover:bg-gray-700/50 transition-colors"
+                                        >
                                             {visibleColumns.map(col => {
                                                 switch (col.key) {
                                                     case 'sku':
