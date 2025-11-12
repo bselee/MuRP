@@ -1123,6 +1123,9 @@ export class FinaleSyncService {
       reorder_variance: parsed.reorderVariance || 0,
       qty_to_order: parsed.qtyToOrder || 0,
       sales_velocity_consolidated: parsed.salesVelocity || 0,
+      sales_last_30_days: parsed.sales30Days || 0,
+      sales_last_60_days: parsed.sales60Days || 0,
+      sales_last_90_days: parsed.sales90Days || 0,
       warehouse_location: parsed.warehouseLocation || 'Shipping',
       bin_location: parsed.binLocation || '',
       supplier_sku: parsed.sku, // Use same SKU
