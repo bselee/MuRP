@@ -384,7 +384,7 @@ export function transformInventoryRawToParsed(
     const stockRaw = extractFirst(raw, [
       'Units in stock', 'In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'
     ]);
-    const stock = parseNumber(stockRaw, 0);
+    const stock = Math.floor(parseNumber(stockRaw, 0)); // Round down to integer
     
     // DEBUG: Log stock extraction for first few items
     try {
@@ -396,10 +396,10 @@ export function transformInventoryRawToParsed(
     }
 
     const onOrderRaw = extractFirst(raw, ['Units On Order', 'On Order', 'on_order', 'Quantity On Order']);
-    const onOrder = parseNumber(onOrderRaw, 0);
+    const onOrder = Math.floor(parseNumber(onOrderRaw, 0));
 
     const reservedRaw = extractFirst(raw, ['Units Reserved', 'Reserved', 'reserved']);
-    const reserved = parseNumber(reservedRaw, 0);
+    const reserved = Math.floor(parseNumber(reservedRaw, 0));
 
     const remainingRaw = extractFirst(raw, [
       'Remaining after reservations units BuildASoilShipping', 
@@ -407,17 +407,17 @@ export function transformInventoryRawToParsed(
       'Available', 
       'remaining'
     ]);
-    const remaining = parseNumber(remainingRaw, 0);
+    const remaining = Math.floor(parseNumber(remainingRaw, 0));
 
     // Extract reorder intelligence (Finale specific)
     const reorderRaw = extractFirst(raw, ['ReOr point', 'Reorder Point', 'reorder_point', 'Reorder Level']);
-    const reorderPoint = parseNumber(reorderRaw, 10);
+    const reorderPoint = Math.floor(parseNumber(reorderRaw, 10));
 
     const reorderVarRaw = extractFirst(raw, ['ReOr var', 'Reorder Variance', 'reorder_variance']);
-    const reorderVariance = parseNumber(reorderVarRaw, 0);
+    const reorderVariance = Math.floor(parseNumber(reorderVarRaw, 0));
 
     const qtyToOrderRaw = extractFirst(raw, ['Qty to Order', 'Quantity to Order', 'qty_to_order']);
-    const qtyToOrder = parseNumber(qtyToOrderRaw, 0);
+    const qtyToOrder = Math.floor(parseNumber(qtyToOrderRaw, 0));
 
     // Extract sales velocity (Finale specific)
     const salesVelocityRaw = extractFirst(raw, [
@@ -430,13 +430,13 @@ export function transformInventoryRawToParsed(
 
     // Extract sales history
     const sales30DaysRaw = extractFirst(raw, ['Sales last 30 days', 'sales_last_30_days', 'Sales 30d']);
-    const sales30Days = parseNumber(sales30DaysRaw, 0);
+    const sales30Days = Math.floor(parseNumber(sales30DaysRaw, 0));
 
     const sales60DaysRaw = extractFirst(raw, ['Sales last 60 days', 'sales_last_60_days', 'Sales 60d']);
-    const sales60Days = parseNumber(sales60DaysRaw, 0);
+    const sales60Days = Math.floor(parseNumber(sales60DaysRaw, 0));
 
     const sales90DaysRaw = extractFirst(raw, ['Sales last 90 days', 'sales_last_90_days', 'Sales 90d']);
-    const sales90Days = parseNumber(sales90DaysRaw, 0);
+    const sales90Days = Math.floor(parseNumber(sales90DaysRaw, 0));
 
     // Extract vendor info
     const vendorName = extractFirst(raw, ['Supplier 1', 'Supplier', 'Vendor', 'vendor', 'supplier']);
@@ -455,7 +455,7 @@ export function transformInventoryRawToParsed(
 
     // Extract MOQ
     const moqRaw = extractFirst(raw, ['MOQ', 'moq', 'Minimum Order Quantity', 'Min Order']);
-    const moq = parseNumber(moqRaw, 1);
+    const moq = Math.floor(parseNumber(moqRaw, 1));
 
     // Extract pricing
     const unitCostRaw = extractFirst(raw, ['Unit Cost', 'unit_cost', 'Cost', 'cost']);
