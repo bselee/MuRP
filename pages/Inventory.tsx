@@ -602,14 +602,10 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             {visibleColumns.map(col => {
                                                 switch (col.key) {
                                                     case 'sku':
-                                                        return <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm font-mono text-indigo-400">{item.sku}</td>;
-                                                    case 'name':
                                                         return (
-                                                            <td key={col.key} className="px-4 py-4 text-sm text-white max-w-xs group relative">
+                                                            <td key={col.key} className="px-6 py-4 whitespace-nowrap text-sm font-mono">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="font-medium truncate group-hover:whitespace-normal group-hover:absolute group-hover:bg-gray-800 group-hover:p-2 group-hover:rounded group-hover:shadow-lg group-hover:z-10 group-hover:border group-hover:border-gray-600">
-                                                                        {item.name}
-                                                                    </span>
+                                                                    <span className="text-indigo-400">{item.sku}</span>
                                                                     {bomCount > 0 && (
                                                                         <button
                                                                             onClick={() => handleBomClick(item.sku)}
@@ -620,6 +616,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                         </button>
                                                                     )}
                                                                 </div>
+                                                            </td>
+                                                        );
+                                                    case 'name':
+                                                        return (
+                                                            <td key={col.key} className="px-4 py-4 text-sm text-white max-w-xs group relative">
+                                                                <span className="font-medium truncate group-hover:whitespace-normal group-hover:absolute group-hover:bg-gray-800 group-hover:p-2 group-hover:rounded group-hover:shadow-lg group-hover:z-10 group-hover:border group-hover:border-gray-600">
+                                                                    {item.name}
+                                                                </span>
                                                             </td>
                                                         );
                                                     case 'category':
