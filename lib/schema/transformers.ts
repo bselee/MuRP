@@ -439,7 +439,7 @@ export function transformInventoryRawToParsed(
     const sales90Days = parseNumber(sales90DaysRaw, 0);
 
     // Extract vendor info
-    const vendorName = extractFirst(raw, ['Supplier', 'Vendor', 'vendor', 'supplier']);
+    const vendorName = extractFirst(raw, ['Supplier 1', 'Supplier', 'Vendor', 'vendor', 'supplier']);
     const vendorIdRaw = extractFirst(raw, ['Vendor ID', 'vendor_id', 'Supplier ID', 'supplier_id']);
 
     // Map vendor name to ID if we have the mapping
