@@ -196,7 +196,7 @@ export const InventoryParsedSchema = z.object({
   stock: z.number().int().min(0).default(0),
   onOrder: z.number().int().min(0).default(0),
   reserved: z.number().int().min(0).default(0),
-  remaining: z.number().int().min(0).default(0),
+  remaining: z.number().int().default(0), // Allow negative to show over-allocation
   
   // Reorder intelligence
   reorderPoint: z.number().int().min(0).default(10),

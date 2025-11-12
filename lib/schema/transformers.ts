@@ -407,7 +407,7 @@ export function transformInventoryRawToParsed(
       'Available', 
       'remaining'
     ]);
-    const remaining = Math.max(0, Math.floor(parseNumber(remainingRaw, 0))); // Clamp to 0 minimum
+    const remaining = Math.floor(parseNumber(remainingRaw, 0)); // Allow negative to show over-allocation
 
     // Extract reorder intelligence (Finale specific)
     const reorderRaw = extractFirst(raw, ['ReOr point', 'Reorder Point', 'reorder_point', 'Reorder Level']);
