@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder } from '../types';
-import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon, QrCodeIcon } from '../components/icons';
+import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon, QrCodeIcon, CheckCircleIcon } from '../components/icons';
 import RegulatoryScanModal from '../components/RegulatoryScanModal';
 import BatchArtworkVerificationModal from '../components/BatchArtworkVerificationModal';
 import ManualLabelScanner from '../components/ManualLabelScanner';
@@ -32,6 +32,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
     const [isBatchVerificationModalOpen, setIsBatchVerificationModalOpen] = useState(false);
     const [isLabelScannerOpen, setIsLabelScannerOpen] = useState(false);
     const [selectedArtworkForScan, setSelectedArtworkForScan] = useState<ArtworkWithProduct | null>(null);
+    const [selectedArtworkForDetails, setSelectedArtworkForDetails] = useState<ArtworkWithProduct | null>(null);
     const [searchTerm, setSearchTerm] = useState(initialFilter);
     const [selectedArtworkIds, setSelectedArtworkIds] = useState<string[]>([]);
     const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -102,7 +103,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
         <>
             <div className="flex gap-6 h-full">
                 {/* Folder Sidebar */}
-                <aside className="w-64 bg-gray-800/50 p-4 rounded-lg border border-gray-700 flex-shrink-0 flex flex-col">
+                <aside className="w-64 bg-gray-800/50 p-4 rounded-lg border border-gray-700 flex-shrink-0 flex flex-col" style={{ minHeight: '600px' }}>
                     <h2 className="text-lg font-semibold text-white mb-4">Folders</h2>
                     <nav className="space-y-1 flex-grow">
                         <FolderButton folderId={null} name="All Artwork" />
@@ -170,9 +171,142 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                         </div>
                     </header>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {processedArtwork.map(art => <ArtworkCard key={art.id} art={art} selectedArtworkIds={selectedArtworkIds} onCheckboxChange={handleCheckboxChange} onScanClick={handleScanClick} onUpdateArtwork={onUpdateArtwork} artworkFolders={artworkFolders}/> )}
+                        {processedArtwork.map(art => (
+                            <ArtworkCard 
+                                key={art.id} 
+                                art={art} 
+                                selectedArtworkIds={selectedArtworkIds} 
+                                onCheckboxChange={handleCheckboxChange} 
+                                onScanClick={handleScanClick} 
+                                onUpdateArtwork={onUpdateArtwork} 
+                                artworkFolders={artworkFolders}
+                                onSelect={() => setSelectedArtworkForDetails(art)}
+                                isSelected={selectedArtworkForDetails?.id === art.id}
+                            />
+                        ))}
                     </div>
                 </main>
+
+                {/* Details Panel - Right Side */}
+                {selectedArtworkForDetails && (
+                    <aside className="w-80 bg-gray-800/50 p-6 rounded-lg border border-gray-700 flex-shrink-0 overflow-auto" style={{ maxHeight: '90vh' }}>
+                        <div className="flex justify-between items-start mb-4">
+                            <h2 className="text-lg font-semibold text-white">Artwork Details</h2>
+                            <button
+                                onClick={() => setSelectedArtworkForDetails(null)}
+                                className="text-gray-400 hover:text-white transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Preview */}
+                        <div className="mb-6 bg-gray-900 rounded-lg p-4 flex items-center justify-center aspect-square">
+                            <PhotoIcon className="w-20 h-20 text-gray-600" />
+                        </div>
+
+                        {/* File Information */}
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs text-gray-500 uppercase tracking-wide">File Name</label>
+                                <p className="text-sm text-white mt-1 break-words">{selectedArtworkForDetails.fileName}</p>
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-gray-500 uppercase tracking-wide">Product</label>
+                                <p className="text-sm text-white mt-1">{selectedArtworkForDetails.productName}</p>
+                                <p className="text-xs text-indigo-400 mt-0.5">{selectedArtworkForDetails.productSku}</p>
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-gray-500 uppercase tracking-wide">Revision</label>
+                                <p className="text-sm text-white mt-1">Rev {selectedArtworkForDetails.revision}</p>
+                            </div>
+
+                            {selectedArtworkForDetails.fileType && (
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Type</label>
+                                    <p className="text-sm text-white mt-1 capitalize">{selectedArtworkForDetails.fileType}</p>
+                                </div>
+                            )}
+
+                            {selectedArtworkForDetails.status && (
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Status</label>
+                                    <span className={`inline-block mt-1 px-2 py-1 text-xs rounded-full ${
+                                        selectedArtworkForDetails.status === 'approved' ? 'bg-green-900/30 text-green-300 border border-green-700' :
+                                        selectedArtworkForDetails.status === 'draft' ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-700' :
+                                        'bg-gray-700 text-gray-300 border border-gray-600'
+                                    }`}>
+                                        {selectedArtworkForDetails.status}
+                                    </span>
+                                </div>
+                            )}
+
+                            {selectedArtworkForDetails.barcode && (
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Barcode</label>
+                                    <p className="text-sm text-white mt-1 font-mono">{selectedArtworkForDetails.barcode}</p>
+                                </div>
+                            )}
+
+                            {selectedArtworkForDetails.verified && (
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Verification</label>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <CheckCircleIcon className="w-4 h-4 text-green-400" />
+                                        <span className="text-sm text-green-300">Verified</span>
+                                    </div>
+                                    {selectedArtworkForDetails.verifiedBy && (
+                                        <p className="text-xs text-gray-400 mt-1">By {selectedArtworkForDetails.verifiedBy}</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {selectedArtworkForDetails.fileSize && (
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wide">File Size</label>
+                                    <p className="text-sm text-white mt-1">{(selectedArtworkForDetails.fileSize / 1024 / 1024).toFixed(2)} MB</p>
+                                </div>
+                            )}
+
+                            {selectedArtworkForDetails.uploadedAt && (
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Uploaded</label>
+                                    <p className="text-sm text-white mt-1">{new Date(selectedArtworkForDetails.uploadedAt).toLocaleDateString()}</p>
+                                </div>
+                            )}
+
+                            {selectedArtworkForDetails.notes && (
+                                <div>
+                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Notes</label>
+                                    <p className="text-sm text-white mt-1 whitespace-pre-wrap">{selectedArtworkForDetails.notes}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="mt-6 pt-6 border-t border-gray-700 space-y-2">
+                            <a 
+                                href={selectedArtworkForDetails.url} 
+                                download 
+                                className="flex items-center justify-center gap-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                            >
+                                <ArrowDownTrayIcon className="w-5 h-5" />
+                                Download
+                            </a>
+                            <button 
+                                onClick={() => handleScanClick(selectedArtworkForDetails)}
+                                className="flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                            >
+                                <SparklesIcon className="w-5 h-5" />
+                                AI Scan
+                            </button>
+                        </div>
+                    </aside>
+                )}
             </div>
             
             {selectedArtworkForScan && (
@@ -223,7 +357,16 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
     );
 };
 
-const ArtworkCard: React.FC<{art: ArtworkWithProduct; selectedArtworkIds: string[]; onCheckboxChange: (id: string, checked: boolean) => void; onScanClick: (art: ArtworkWithProduct) => void; onUpdateArtwork: (artworkId: string, bomId: string, updates: Partial<Artwork>) => void; artworkFolders: ArtworkFolder[]}> = ({art, selectedArtworkIds, onCheckboxChange, onScanClick, onUpdateArtwork, artworkFolders}) => {
+const ArtworkCard: React.FC<{
+    art: ArtworkWithProduct; 
+    selectedArtworkIds: string[]; 
+    onCheckboxChange: (id: string, checked: boolean) => void; 
+    onScanClick: (art: ArtworkWithProduct) => void; 
+    onUpdateArtwork: (artworkId: string, bomId: string, updates: Partial<Artwork>) => void; 
+    artworkFolders: ArtworkFolder[];
+    onSelect: () => void;
+    isSelected: boolean;
+}> = ({art, selectedArtworkIds, onCheckboxChange, onScanClick, onUpdateArtwork, artworkFolders, onSelect, isSelected}) => {
     
     const handleMove = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newFolderId = e.target.value === 'unassigned' ? undefined : e.target.value;
@@ -231,17 +374,29 @@ const ArtworkCard: React.FC<{art: ArtworkWithProduct; selectedArtworkIds: string
     };
 
     return (
-        <div key={art.id} className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden group flex flex-col">
+        <div 
+            key={art.id} 
+            onClick={onSelect}
+            className={`bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden group flex flex-col cursor-pointer transition-all hover:shadow-xl ${
+                isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/50' : 'border-gray-700 hover:border-gray-600'
+            }`}
+        >
             <div className="relative aspect-square bg-gray-900 flex items-center justify-center">
                 <PhotoIcon className="w-16 h-16 text-gray-600" />
-                <input type="checkbox" checked={selectedArtworkIds.includes(art.id)} onChange={(e) => onCheckboxChange(art.id, e.target.checked)} className="absolute top-2 left-2 h-5 w-5 rounded bg-gray-700 text-indigo-500 focus:ring-indigo-600 border-gray-600" />
+                <input 
+                    type="checkbox" 
+                    checked={selectedArtworkIds.includes(art.id)} 
+                    onChange={(e) => onCheckboxChange(art.id, e.target.checked)} 
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-2 left-2 h-5 w-5 rounded bg-gray-700 text-indigo-500 focus:ring-indigo-600 border-gray-600" 
+                />
             </div>
             <div className="p-3 flex-grow">
                 <p className="text-sm font-semibold text-white truncate" title={art.fileName}>{art.fileName}</p>
                 <p className="text-xs text-gray-400">Rev {art.revision}</p>
                 <p className="text-xs text-indigo-300 mt-1 truncate" title={art.productName}>{art.productName}</p>
             </div>
-             <div className="p-2 bg-gray-800 border-t border-gray-700 space-y-2">
+             <div className="p-2 bg-gray-800 border-t border-gray-700 space-y-2" onClick={(e) => e.stopPropagation()}>
                 <div>
                      <select onChange={handleMove} value={art.folderId || 'unassigned'} className="w-full text-xs bg-gray-700 p-1.5 rounded-md focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
                         <option value="unassigned">Move to...</option>
@@ -252,7 +407,7 @@ const ArtworkCard: React.FC<{art: ArtworkWithProduct; selectedArtworkIds: string
                     <a href={art.url} download className="flex items-center justify-center gap-2 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors">
                         <ArrowDownTrayIcon className="w-4 h-4" /> <span>Download</span>
                     </a>
-                    <button onClick={() => onScanClick(art)} className="flex items-center justify-center gap-2 w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors">
+                    <button onClick={(e) => { e.stopPropagation(); onScanClick(art); }} className="flex items-center justify-center gap-2 w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors">
                         <SparklesIcon className="w-4 h-4" /> <span>Scan</span>
                     </button>
                 </div>
