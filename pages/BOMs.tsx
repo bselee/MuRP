@@ -126,12 +126,20 @@ const BOMs: React.FC<BOMsProps> = ({
   };
 
   const toggleBomExpanded = (bomId: string) => {
+    console.log('[BOMs] toggleBomExpanded CALLED!', {
+      bomId,
+      currentExpandedBoms: Array.from(expandedBoms),
+      wasExpanded: expandedBoms.has(bomId)
+    });
     const newExpanded = new Set(expandedBoms);
     if (newExpanded.has(bomId)) {
+      console.log('[BOMs] COLLAPSING BOM');
       newExpanded.delete(bomId);
     } else {
+      console.log('[BOMs] EXPANDING BOM');
       newExpanded.add(bomId);
     }
+    console.log('[BOMs] New expandedBoms:', Array.from(newExpanded));
     setExpandedBoms(newExpanded);
   };
 
