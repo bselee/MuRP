@@ -80,23 +80,58 @@ const SortableHeader: React.FC<{
 
 const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
-    const [filters, setFilters] = useState({ status: '', vendor: '' });
+    const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
+        const saved = localStorage.getItem('inventory-selected-categories');
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+    });
+    const [selectedVendors, setSelectedVendors] = useState<Set<string>>(() => {
+        const saved = localStorage.getItem('inventory-selected-vendors');
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+    });
+    const [bomFilter, setBomFilter] = useState<'all' | 'with-bom' | 'without-bom'>(() => {
+        return (localStorage.getItem('inventory-bom-filter') as any) || 'all';
+    });
+    const [filters, setFilters] = useState({ status: '' });
     const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
     const [suggestions, setSuggestions] = useState<InventoryItem[]>([]);
     const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
     const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
     const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-    const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
+    const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
+    const [columns, setColumns] = useState<ColumnConfig[]>(() => {
+        const saved = localStorage.getItem('inventory-columns');
+        return saved ? JSON.parse(saved) : DEFAULT_COLUMNS;
+    });
     
     const categoryDropdownRef = useRef<HTMLDivElement>(null);
+    const vendorDropdownRef = useRef<HTMLDivElement>(null);
 
-    // Close category dropdown when clicking outside
+    // Save preferences to localStorage
+    useEffect(() => {
+        localStorage.setItem('inventory-columns', JSON.stringify(columns));
+    }, [columns]);
+
+    useEffect(() => {
+        localStorage.setItem('inventory-selected-categories', JSON.stringify(Array.from(selectedCategories)));
+    }, [selectedCategories]);
+
+    useEffect(() => {
+        localStorage.setItem('inventory-selected-vendors', JSON.stringify(Array.from(selectedVendors)));
+    }, [selectedVendors]);
+
+    useEffect(() => {
+        localStorage.setItem('inventory-bom-filter', bomFilter);
+    }, [bomFilter]);
+
+    // Close dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
                 setIsCategoryDropdownOpen(false);
+            }
+            if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target as Node)) {
+                setIsVendorDropdownOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -163,13 +198,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     };
 
     const toggleCategory = (category: string) => {
-        const newSelected = new Set(selectedCategories);
-        if (newSelected.has(category)) {
-            newSelected.delete(category);
+        const newSet = new Set(selectedCategories);
+        if (newSet.has(category)) {
+            newSet.delete(category);
         } else {
-            newSelected.add(category);
+            newSet.add(category);
         }
-        setSelectedCategories(newSelected);
+        setSelectedCategories(newSet);
     };
 
     const selectAllCategories = () => {
@@ -178,6 +213,24 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
     const clearAllCategories = () => {
         setSelectedCategories(new Set());
+    };
+
+    const toggleVendor = (vendorId: string) => {
+        const newSet = new Set(selectedVendors);
+        if (newSet.has(vendorId)) {
+            newSet.delete(vendorId);
+        } else {
+            newSet.add(vendorId);
+        }
+        setSelectedVendors(newSet);
+    };
+
+    const selectAllVendors = () => {
+        setSelectedVendors(new Set(filterOptions.vendors));
+    };
+
+    const clearAllVendors = () => {
+        setSelectedVendors(new Set());
     };
 
     const handleFilterChange = (filterType: keyof typeof filters, value: string) => {
@@ -218,8 +271,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         if (filters.status) {
             filteredItems = filteredItems.filter(item => getStockStatus(item) === filters.status);
         }
-        if (filters.vendor) {
-            filteredItems = filteredItems.filter(item => item.vendorId === filters.vendor);
+        // Vendor filter
+        if (selectedVendors.size > 0) {
+            filteredItems = filteredItems.filter(item => selectedVendors.has(item.vendorId));
+        }
+
+        // BOM filter
+        if (bomFilter !== 'all') {
+            filteredItems = filteredItems.filter(item => {
+                const hasBom = bomUsageMap.has(item.sku);
+                return bomFilter === 'with-bom' ? hasBom : !hasBom;
+            });
         }
 
         if (searchTerm) {
@@ -313,7 +375,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 </header>
                 
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                         <div className="relative lg:col-span-1">
                             <label htmlFor="search-inventory" className="block text-sm font-medium text-gray-300 mb-1">Search by name or SKU</label>
                             <div className="relative">
@@ -362,8 +424,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
                             </button>
                             {isCategoryDropdownOpen && (
-                                <div className="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg max-h-80 overflow-auto">
-                                    <div className="sticky top-0 bg-gray-700 p-2 border-b border-gray-600 flex gap-2">
+                                <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-80 overflow-auto">
+                                    <div className="sticky top-0 bg-gray-800 p-2 border-b border-gray-600 flex gap-2">
                                         <button
                                             onClick={selectAllCategories}
                                             className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
@@ -395,6 +457,58 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             )}
                         </div>
 
+                        {/* Multi-select Vendor Filter */}
+                        <div ref={vendorDropdownRef} className="relative">
+                            <label htmlFor="filter-vendor" className="block text-sm font-medium text-gray-300 mb-1">
+                                Vendors {selectedVendors.size > 0 && <span className="text-indigo-400">({selectedVendors.size})</span>}
+                            </label>
+                            <button
+                                onClick={() => setIsVendorDropdownOpen(!isVendorDropdownOpen)}
+                                className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 text-left flex justify-between items-center"
+                            >
+                                <span className="truncate">
+                                    {selectedVendors.size === 0 
+                                        ? 'All Vendors' 
+                                        : selectedVendors.size === filterOptions.vendors.length
+                                        ? 'All Vendors'
+                                        : `${selectedVendors.size} selected`}
+                                </span>
+                                <ChevronDownIcon className="w-4 h-4 ml-2" />
+                            </button>
+                            {isVendorDropdownOpen && (
+                                <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-600 rounded-md shadow-lg max-h-80 overflow-auto">
+                                    <div className="sticky top-0 bg-gray-800 p-2 border-b border-gray-600 flex gap-2">
+                                        <button
+                                            onClick={selectAllVendors}
+                                            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
+                                        >
+                                            Select All
+                                        </button>
+                                        <button
+                                            onClick={clearAllVendors}
+                                            className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                    {filterOptions.vendors.map(vendorId => (
+                                        <label 
+                                            key={vendorId} 
+                                            className="flex items-center p-2 hover:bg-gray-600 cursor-pointer"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedVendors.has(vendorId)}
+                                                onChange={() => toggleVendor(vendorId)}
+                                                className="w-4 h-4 mr-2 rounded border-gray-500 text-indigo-600 focus:ring-indigo-500"
+                                            />
+                                            <span className="text-sm text-white">{vendorMap.get(vendorId) || vendorId}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         <div>
                             <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-1">Stock Status</label>
                             <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
@@ -402,11 +516,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
+                        
                         <div>
-                            <label htmlFor="filter-vendor" className="block text-sm font-medium text-gray-300 mb-1">Vendor</label>
-                            <select id="filter-vendor" value={filters.vendor} onChange={(e) => handleFilterChange('vendor', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
-                                <option value="">All Vendors</option>
-                                {filterOptions.vendors.map(vId => <option key={vId} value={vId}>{vendorMap.get(vId) || vId}</option>)}
+                            <label htmlFor="filter-bom" className="block text-sm font-medium text-gray-300 mb-1">BOM Status</label>
+                            <select id="filter-bom" value={bomFilter} onChange={(e) => setBomFilter(e.target.value as any)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                                <option value="all">All Items</option>
+                                <option value="with-bom">With BOM</option>
+                                <option value="without-bom">Without BOM</option>
                             </select>
                         </div>
                     </div>
