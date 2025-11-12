@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import type { BillOfMaterials, InventoryItem } from '../types';
+import type { BillOfMaterials, InventoryItem, Label, ComplianceRecord } from '../types';
 import {
   PencilIcon,
   ChevronDownIcon,
@@ -40,6 +40,8 @@ interface EnhancedBomCardProps {
   inventoryMap: Map<string, InventoryItem>;
   canEdit: boolean;
   userRole: 'Admin' | 'Manager' | 'User'; // Role-based display
+  labels?: Label[]; // Labels from relational table
+  complianceRecords?: ComplianceRecord[]; // Compliance records from relational table
   onToggleExpand: () => void;
   onViewDetails: () => void;
   onEdit: () => void;
@@ -56,6 +58,8 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   inventoryMap,
   canEdit,
   userRole,
+  labels = [],
+  complianceRecords = [],
   onToggleExpand,
   onViewDetails,
   onEdit,
@@ -66,26 +70,29 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   // Determine display mode
   const isAdmin = userRole === 'Admin';
   const isManager = userRole === 'Manager';
-  // Calculate metrics
-  const labelCount = bom.artwork?.filter(art => art.fileType === 'label').length || 0;
-  const verifiedLabels = bom.artwork?.filter(art => art.fileType === 'label' && art.verified).length || 0;
-  const hasRegistrations = (bom.registrations?.length || 0) > 0;
-  const expiredRegistrations = bom.registrations?.filter(r =>
+
+  // Calculate metrics from relational data (labels table)
+  const labelCount = labels.filter(l => l.fileType === 'label').length;
+  const verifiedLabels = labels.filter(l => l.fileType === 'label' && l.verified).length;
+
+  // Calculate compliance metrics from relational data (compliance_records table)
+  const hasRegistrations = complianceRecords.length > 0;
+  const expiredRegistrations = complianceRecords.filter(r =>
     r.expirationDate && new Date(r.expirationDate) < new Date()
-  ).length || 0;
-  const urgentRegistrations = bom.registrations?.filter(r => {
+  ).length;
+  const urgentRegistrations = complianceRecords.filter(r => {
     if (!r.expirationDate) return false;
     const daysUntil = Math.floor((new Date(r.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
     return daysUntil > 0 && daysUntil <= 30;
-  }).length || 0;
+  }).length;
 
-  // Extract guaranteed analysis if available
-  const guaranteedAnalysis = bom.artwork
-    ?.find(art => art.fileType === 'label' && art.extractedData?.guaranteedAnalysis)
+  // Extract guaranteed analysis if available from labels
+  const guaranteedAnalysis = labels
+    .find(l => l.fileType === 'label' && l.extractedData?.guaranteedAnalysis)
     ?.extractedData?.guaranteedAnalysis;
 
   const npkRatio = guaranteedAnalysis
-    ? `${guaranteedAnalysis.totalNitrogen || 0}-${guaranteedAnalysis.availablePhosphate || 0}-${guaranteedAnalysis.soluablePotash || 0}`
+    ? `${guaranteedAnalysis.totalNitrogen || guaranteedAnalysis.nitrogen || 0}-${guaranteedAnalysis.availablePhosphate || guaranteedAnalysis.phosphate || 0}-${guaranteedAnalysis.soluablePotash || guaranteedAnalysis.potassium || 0}`
     : null;
 
   // Compliance status
@@ -215,7 +222,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 {complianceStatus.color === 'green' && <CheckCircleIcon className="w-3 h-3 inline mr-1" />}
                 {complianceStatus.color === 'orange' && <ExclamationCircleIcon className="w-3 h-3 inline mr-1" />}
                 {complianceStatus.color === 'red' && <XCircleIcon className="w-3 h-3 inline mr-1" />}
-                {isManager ? complianceStatus.label : (hasRegistrations ? `${bom.registrations?.length} Reg` : 'No Reg')}
+                {isManager ? complianceStatus.label : (hasRegistrations ? `${complianceRecords.length} Reg` : 'No Reg')}
               </div>
             </div>
 

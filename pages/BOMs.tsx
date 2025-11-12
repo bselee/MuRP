@@ -15,6 +15,7 @@ import BomDetailModal from '../components/BomDetailModal';
 import ComplianceDashboard from '../components/ComplianceDashboard';
 import ComplianceDetailModal from '../components/ComplianceDetailModal';
 import EnhancedBomCard from '../components/EnhancedBomCard';
+import { useSupabaseLabels, useSupabaseComplianceRecords } from '../hooks/useSupabaseData';
 
 interface BOMsProps {
   boms: BillOfMaterials[];
@@ -210,6 +211,10 @@ const BOMs: React.FC<BOMsProps> = ({
     const finishedStock = finishedItem?.stock || 0;
     const buildability = calculateBuildability(bom);
 
+    // Fetch labels and compliance records from relational tables
+    const { data: labels } = useSupabaseLabels(bom.id);
+    const { data: complianceRecords } = useSupabaseComplianceRecords(bom.id);
+
     return (
       <div
         ref={(el) => {
@@ -224,6 +229,8 @@ const BOMs: React.FC<BOMsProps> = ({
           inventoryMap={inventoryMap}
           canEdit={canEdit}
           userRole={currentUser.role}
+          labels={labels}
+          complianceRecords={complianceRecords}
           onToggleExpand={() => toggleBomExpanded(bom.id)}
           onViewDetails={() => handleViewDetails(bom)}
           onEdit={() => handleEditClick(bom)}
