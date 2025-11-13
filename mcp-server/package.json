@@ -1,0 +1,32 @@
+{
+  "name": "tgf-compliance-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for state regulation monitoring and compliance checking",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "inspector": "npx @modelcontextprotocol/inspector dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.6.5",
+    "cheerio": "^1.0.0-rc.12",
+    "pdf-parse": "^1.1.1",
+    "dotenv": "^16.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "@types/pdf-parse": "^1.1.4",
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "mcp",
+    "compliance",
+    "regulations",
+    "agriculture"
+  ]
+}

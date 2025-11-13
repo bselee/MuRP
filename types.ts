@@ -339,6 +339,93 @@ export interface ProductDataSheet {
   updatedAt: string;
 }
 
+// State Regulation - Individual regulatory requirement
+export interface StateRegulation {
+  id: string;
+  state: string;
+  state_name?: string;
+  category: string;
+  subcategory?: string;
+  rule_title: string;
+  rule_text: string;
+  rule_summary?: string;
+  regulation_code?: string;
+  statute_reference?: string;
+  source_url: string;
+  source_type?: string;
+  agency_name?: string;
+  agency_contact_email?: string;
+  agency_contact_phone?: string;
+  effective_date?: string;
+  expiration_date?: string;
+  last_verified_at?: string;
+  extraction_method?: string;
+  confidence_score?: number;
+  keywords?: string[];
+  status?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Compliance Check Result - Result of checking a label against regulations
+export interface ComplianceCheck {
+  id: string;
+  artwork_id?: string;
+  label_id?: string;
+  bom_id?: string;
+  check_date: string;
+  states_checked: string[];
+  categories_checked?: string[];
+  extracted_text?: any;
+  extracted_claims?: string[];
+  extracted_ingredients?: string[];
+  extracted_warnings?: string[];
+  product_name?: string;
+  net_weight?: string;
+  overall_status: 'pass' | 'warning' | 'fail' | 'requires_review';
+  violations: ComplianceViolation[];
+  warnings: ComplianceWarning[];
+  recommendations: ComplianceRecommendation[];
+  ai_model_used?: string;
+  ai_confidence_score?: number;
+  compliance_score?: number;
+  risk_level?: 'low' | 'medium' | 'high' | 'critical';
+  reviewed_by?: string;
+  reviewed_at?: string;
+  review_notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ComplianceViolation {
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  state: string;
+  category: string;
+  regulation_id: string;
+  issue: string;
+  regulation_text?: string;
+  regulation_code?: string;
+  recommendation: string;
+}
+
+export interface ComplianceWarning {
+  severity: 'high' | 'medium' | 'low';
+  state: string;
+  category: string;
+  regulation_id: string;
+  issue: string;
+  recommendation?: string;
+}
+
+export interface ComplianceRecommendation {
+  severity: 'low' | 'medium' | 'high';
+  state: string;
+  category: string;
+  regulation_id?: string;
+  issue: string;
+  recommendation: string;
+}
+
 // Compliance Record - Comprehensive compliance tracking
 export interface ComplianceRecord {
   id: string;
