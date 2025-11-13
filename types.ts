@@ -1066,13 +1066,22 @@ INVENTORY DATA (Current Stock Levels, On Order, Reorder Points):
 BILLS OF MATERIALS (BOMs) DATA (Recipes for finished products):
 {{boms}}
 
+BUILDABILITY STATUS (Production readiness for each BOM):
+This shows which products CAN be built right now based on current inventory:
+- "buildable: true" = Can produce this product now
+- "buildable: false" = Missing components (see limitingComponent)
+- "componentStatus" = Detailed breakdown of each component's availability
+{{buildability}}
+
 VENDORS DATA:
 {{vendors}}
 
 PURCHASE ORDERS DATA:
 {{purchaseOrders}}
 
-USER QUESTION: {{question}}`
+USER QUESTION: {{question}}
+
+When answering questions about production, shortages, or "what can be built", always reference the BUILDABILITY STATUS data first.`
         },
         {
             id: 'getAiPlanningInsight',

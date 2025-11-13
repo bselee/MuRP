@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import type { Page } from '../App';
 import type { BillOfMaterials, InventoryItem, HistoricalSale, Vendor, InternalRequisition, User, AiConfig, RequisitionItem } from '../types';
+import CollapsibleSection from '../components/CollapsibleSection';
 import ExecutiveSummary from '../components/ExecutiveSummary';
 import BuildabilityTable from '../components/BuildabilityTable';
 import RenewalAlertsWidget from '../components/RenewalAlertsWidget';
@@ -10,7 +11,7 @@ import { calculateAllBuildability } from '../services/buildabilityService';
 import { generateForecast } from '../services/forecastingService';
 import type { Forecast } from '../services/forecastingService';
 import { getAiPlanningInsight } from '../services/geminiService';
-import { ChevronDownIcon, LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, ClipboardDocumentListIcon } from '../components/icons';
+import { LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, BellIcon, CheckCircleIcon, ChartBarIcon, ClipboardDocumentListIcon } from '../components/icons';
 
 interface DashboardProps {
   inventory: InventoryItem[];
@@ -25,31 +26,6 @@ interface DashboardProps {
   setCurrentPage: (page: Page) => void;
   aiConfig: AiConfig;
 }
-
-const CollapsibleSection: React.FC<{
-  title: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-  isOpen: boolean;
-  onToggle: () => void;
-  id: string;
-}> = ({ title, icon, children, isOpen, onToggle, id }) => (
-    <section id={id} className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden scroll-mt-20">
-        <button onClick={onToggle} className="w-full flex justify-between items-center p-4 bg-gray-800 hover:bg-gray-700/50 transition-colors">
-            <h2 className="text-xl font-semibold text-gray-300 flex items-center gap-3">
-              {icon}
-              {title}
-            </h2>
-            <ChevronDownIcon className={`w-6 h-6 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-        {isOpen && (
-            <div className="p-4 md:p-6 border-t border-gray-700">
-                {children}
-            </div>
-        )}
-    </section>
-);
-
 
 const Dashboard: React.FC<DashboardProps> = (props) => {
   const { inventory, boms, requisitions, users, currentUser, setCurrentPage } = props;
@@ -180,7 +156,8 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
         <CollapsibleSection
           id="buildability"
           title="Buildability Status"
-          icon={<BeakerIcon className="w-6 h-6 text-indigo-400"/>}
+          icon={<CheckCircleIcon className="w-6 h-6 text-green-400"/>}
+          variant="card"
           isOpen={openSections.buildability}
           onToggle={() => toggleSection('buildability')}
         >
@@ -191,6 +168,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
           id="shortages"
           title="Critical Shortages"
           icon={<ExclamationCircleIcon className="w-6 h-6 text-red-400"/>}
+          variant="card"
           isOpen={openSections.shortages}
           onToggle={() => toggleSection('shortages')}
         >
@@ -200,7 +178,8 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
         <CollapsibleSection
           id="renewals"
           title="Registration Renewal Alerts"
-          icon={<ClipboardDocumentListIcon className="w-6 h-6 text-orange-400"/>}
+          icon={<BellIcon className="w-6 h-6 text-orange-400"/>}
+          variant="card"
           isOpen={openSections.renewals}
           onToggle={() => toggleSection('renewals')}
         >
@@ -217,6 +196,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
           id="requisitions"
           title="Pending Requisitions"
           icon={<ClipboardListIcon className="w-6 h-6 text-yellow-400"/>}
+          variant="card"
           isOpen={openSections.requisitions}
           onToggle={() => toggleSection('requisitions')}
         >
@@ -227,6 +207,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
           id="todos"
           title="Compliance & Artwork Todos"
           icon={<BeakerIcon className="w-6 h-6 text-blue-400"/>}
+          variant="card"
           isOpen={openSections.todos}
           onToggle={() => toggleSection('todos')}
         >
@@ -234,11 +215,12 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
         </CollapsibleSection>
 
         <CollapsibleSection
-          title="Planning & Forecast"
           id="forecast"
+          title="Planning & Forecast"
+          icon={<ChartBarIcon className="w-6 h-6 text-purple-400" />}
+          variant="card"
           isOpen={openSections.forecast}
           onToggle={() => toggleSection('forecast')}
-          icon={<LightBulbIcon className="w-6 h-6 text-yellow-300" />}
         >
           <PlanningForecastContent {...props} />
         </CollapsibleSection>

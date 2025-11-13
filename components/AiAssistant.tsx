@@ -33,7 +33,10 @@ const AiAssistant: React.FC<AiAssistantProps> = ({ isOpen, onClose, boms, invent
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-        setMessages([{sender: 'bot', text: "Hello! How can I help you with your inventory today? You can ask things like 'Which items are below their reorder point?' or 'What is the status of PO-2024-002?'"}]);
+        setMessages([{
+          sender: 'bot', 
+          text: "Hello! I'm your AI assistant with access to your complete MRP system. I can help with:\n\n• Inventory levels & reorder points\n• BOM buildability & shortages\n• Purchase order status\n• Compliance & regulatory questions\n• Production planning\n\nTry asking: 'What's blocking production?' or 'Which products have compliance issues?'"
+        }]);
     }
   }, [isOpen, messages]);
 

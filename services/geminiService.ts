@@ -169,6 +169,35 @@ export async function askAboutInventory(
   vendors: Vendor[],
   purchaseOrders: PurchaseOrder[]
 ): Promise<string> {
+  // Calculate buildability for all BOMs (enhanced context)
+  const buildabilityData = boms.map(bom => {
+    const inventoryMap = new Map(inventory.map(item => [item.sku, item]));
+    const componentStatus = bom.components.map(comp => {
+      const invItem = inventoryMap.get(comp.sku);
+      const available = invItem?.stock || 0;
+      const needed = comp.quantity;
+      return {
+        sku: comp.sku,
+        name: comp.name,
+        needed,
+        available,
+        shortfall: Math.max(0, needed - available),
+        sufficient: available >= needed
+      };
+    });
+    
+    const buildable = componentStatus.every(c => c.sufficient);
+    const limitingComponent = componentStatus.find(c => !c.sufficient);
+    
+    return {
+      sku: bom.finishedSku,
+      name: bom.name,
+      buildable,
+      limitingComponent: limitingComponent ? limitingComponent.sku : null,
+      componentStatus: componentStatus.slice(0, 5) // Limit details to prevent context overflow
+    };
+  });
+
   // Check if semantic search embeddings are available
   const embeddingStats = getEmbeddingStats();
   const useSemanticSearch = embeddingStats.total > 0;
@@ -215,12 +244,18 @@ export async function askAboutInventory(
     console.log(`[AI Assistant] Keyword filtering: ${vendors.length} → ${relevantVendors.length} vendors`);
   }
 
+  // Get relevant buildability data based on the BOMs in context
+  const relevantBuildability = buildabilityData.filter(b => 
+    relevantBOMs.some(bom => bom.finishedSku === b.sku)
+  );
+
   const finalPrompt = promptTemplate
     .replace('{{question}}', question)
     .replace('{{boms}}', JSON.stringify(relevantBOMs, null, 2))
     .replace('{{inventory}}', JSON.stringify(relevantInventory, null, 2))
     .replace('{{vendors}}', JSON.stringify(relevantVendors, null, 2))
-    .replace('{{purchaseOrders}}', JSON.stringify(relevantPOs, null, 2));
+    .replace('{{purchaseOrders}}', JSON.stringify(relevantPOs, null, 2))
+    .replace('{{buildability}}', JSON.stringify(relevantBuildability, null, 2));
 
   return callGemini(model, finalPrompt);
 }
