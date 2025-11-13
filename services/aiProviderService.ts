@@ -3,7 +3,7 @@
 // Supports: Gemini (default), OpenAI, Anthropic, Azure OpenAI
 // ============================================================================
 
-import { supabase } from './supabaseClient';
+import { supabase } from '../lib/supabase/client';
 
 // AI Provider Types
 export type AIProvider = 'gemini' | 'openai' | 'anthropic' | 'azure';

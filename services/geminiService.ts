@@ -4,6 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, BOMComponent, WatchlistItem } from '../types';
 import type { Forecast } from './forecastingService';
 import { searchInventory, searchBOMs, searchVendors, getEmbeddingStats } from './semanticSearch';
+import { isComplianceQuestion, routeComplianceQuestion, isMcpServerAvailable } from './mcpService';
 
 // Support both import.meta.env (Vite) and process.env (Node cli/backends)
 const envApiKey = import.meta.env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? (process as any).env?.API_KEY : undefined);
@@ -169,6 +170,38 @@ export async function askAboutInventory(
   vendors: Vendor[],
   purchaseOrders: PurchaseOrder[]
 ): Promise<string> {
+  // Check if this is a compliance-related question
+  if (isComplianceQuestion(question)) {
+    console.log('[AI Assistant] Detected compliance question, checking MCP server...');
+    
+    const mcpAvailable = await isMcpServerAvailable();
+    
+    if (mcpAvailable) {
+      console.log('[AI Assistant] Routing to MCP server tools');
+      try {
+        // Extract context from question if possible
+        const context = {
+          productName: boms.length > 0 ? boms[0].name : undefined,
+          productType: 'soil_amendment', // Default, could be smarter
+          targetStates: ['CO', 'CA', 'WA'], // Default, could extract from question
+        };
+        
+        const mcpResponse = await routeComplianceQuestion('current-user', question, context);
+        
+        // Prepend MCP response with AI explanation
+        return `🔍 **Compliance Analysis**\n\n${mcpResponse}\n\n---\n\n💡 *This response was generated using state-by-state regulatory tools. For specific legal advice, consult with a compliance attorney.*`;
+      } catch (error) {
+        console.error('[AI Assistant] MCP routing failed:', error);
+        return `⚠️ Unable to access compliance tools. ${error instanceof Error ? error.message : 'Unknown error'}`;
+      }
+    } else {
+      console.log('[AI Assistant] MCP server not available, using standard AI');
+      // Fall through to standard AI response with compliance note
+      const note = '\n\n⚠️ **Note:** For detailed compliance checking, configure MCP server in Settings → API & Integrations.';
+      promptTemplate = promptTemplate + note;
+    }
+  }
+
   // Calculate buildability for all BOMs (enhanced context)
   const buildabilityData = boms.map(bom => {
     const inventoryMap = new Map(inventory.map(item => [item.sku, item]));

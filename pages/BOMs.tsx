@@ -17,8 +17,11 @@ import {
   AdjustmentsHorizontalIcon,
   Squares2X2Icon,
   ListBulletIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  ShieldCheckIcon,
+  PackageIcon
 } from '../components/icons';
+import CollapsibleSection from '../components/CollapsibleSection';
 import BomEditModal from '../components/BomEditModal';
 import BomDetailModal from '../components/BomDetailModal';
 import ComplianceDashboard from '../components/ComplianceDashboard';
@@ -67,6 +70,11 @@ const BOMs: React.FC<BOMsProps> = ({
   const [sortBy, setSortBy] = useState<SortOption>('name');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [showCriticalAlerts, setShowCriticalAlerts] = useState(true);
+  
+  // Collapsible sections state
+  const [isAlertsOpen, setIsAlertsOpen] = useState(true);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const [isComplianceOpen, setIsComplianceOpen] = useState(false);
 
   const canEdit = currentUser.role === 'Admin';
 
@@ -325,50 +333,59 @@ const BOMs: React.FC<BOMsProps> = ({
 
   return (
     <div className="container mx-auto p-4 space-y-4">
+      {/* Page Header */}
+      <header className="mb-6">
+        <h1 className="text-3xl font-bold text-white tracking-tight">Bills of Materials</h1>
+        <p className="text-gray-400 mt-1">Manage product recipes, buildability, and compliance status</p>
+      </header>
+
       {/* Critical Alerts Banner */}
-      {showCriticalAlerts && criticalBoms.length > 0 && (
-        <div className="bg-red-900/20 border-2 border-red-700 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <ExclamationTriangleIcon className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="text-red-400 font-semibold text-lg mb-1">Critical Alerts</h3>
-              <p className="text-gray-300 text-sm mb-3">
-                {criticalBoms.length} product{criticalBoms.length > 1 ? 's' : ''} cannot be built and have zero inventory
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {criticalBoms.map(bom => (
-                  <button
-                    key={bom.id}
-                    onClick={() => {
-                      const element = bomRefs.current.get(bom.id);
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        element.classList.add('ring-2', 'ring-red-500');
-                        setTimeout(() => element.classList.remove('ring-2', 'ring-red-500'), 2000);
-                      }
-                    }}
-                    className="px-3 py-1.5 bg-red-900/40 hover:bg-red-900/60 text-red-300 text-sm rounded-md border border-red-700 transition-colors"
-                  >
-                    {bom.finishedSku}
-                  </button>
-                ))}
-              </div>
+      {criticalBoms.length > 0 && (
+        <CollapsibleSection
+          title={`Critical Alerts (${criticalBoms.length})`}
+          icon={<ExclamationTriangleIcon className="w-6 h-6 text-red-400" />}
+          variant="card"
+          isOpen={isAlertsOpen}
+          onToggle={() => setIsAlertsOpen(!isAlertsOpen)}
+        >
+          <div className="bg-red-900/20 border-2 border-red-700 rounded-lg p-4">
+            <p className="text-gray-300 text-sm mb-3">
+              {criticalBoms.length} product{criticalBoms.length > 1 ? 's' : ''} cannot be built and have zero inventory
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {criticalBoms.map(bom => (
+                <button
+                  key={bom.id}
+                  onClick={() => {
+                    const element = bomRefs.current.get(bom.id);
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      element.classList.add('ring-2', 'ring-red-500');
+                      setTimeout(() => element.classList.remove('ring-2', 'ring-red-500'), 2000);
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-red-900/40 hover:bg-red-900/60 text-red-300 text-sm rounded-md border border-red-700 transition-colors"
+                >
+                  {bom.finishedSku}
+                </button>
+              ))}
             </div>
-            <button
-              onClick={() => setShowCriticalAlerts(false)}
-              className="text-gray-400 hover:text-gray-300"
-              aria-label="Dismiss alerts"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
+      {/* Compliance Dashboard - Coming Soon */}
+      {/* TODO: Load all compliance records for dashboard view */}
+
       {/* Search, Filters, and Controls */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+      <CollapsibleSection
+        title="Search & Filters"
+        icon={<AdjustmentsHorizontalIcon className="w-6 h-6 text-blue-400" />}
+        variant="card"
+        isOpen={isFiltersOpen}
+        onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
+      >
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search Bar */}
           <div className="flex-1">
@@ -465,6 +482,7 @@ const BOMs: React.FC<BOMsProps> = ({
           {searchQuery && <span> matching "{searchQuery}"</span>}
         </div>
       </div>
+      </CollapsibleSection>
 
       {/* BOM Cards/Table */}
       {processedBoms.length === 0 ? (
