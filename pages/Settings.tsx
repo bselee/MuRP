@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import UserManagementPanel from '../components/UserManagementPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
@@ -9,6 +9,7 @@ import APIIntegrationsPanel from '../components/APIIntegrationsPanel';
 import RegulatoryAgreementPanel from '../components/RegulatoryAgreementPanel';
 import AiSettingsPanel from '../components/AiSettingsPanel';
 import SemanticSearchSettings from '../components/SemanticSearchSettings';
+import { MCPServerPanel } from '../components/MCPServerPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -49,6 +50,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isAiConfigOpen, setIsAiConfigOpen] = useState(false);
     const [isApiIntegrationsOpen, setIsApiIntegrationsOpen] = useState(false);
     const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
+    const [isMcpServerOpen, setIsMcpServerOpen] = useState(false);
     
     // API key visibility state
     const [showApiKey, setShowApiKey] = useState(false);
@@ -158,6 +160,18 @@ const Settings: React.FC<SettingsProps> = ({
               addToast={addToast}
             />
           </CollapsibleSection>
+
+          {/* 6. MCP Server Configuration (Admin only) */}
+          {currentUser.role === 'Admin' && (
+            <CollapsibleSection
+              title="MCP Server Configuration"
+              icon={<ServerStackIcon className="w-6 h-6 text-cyan-400" />}
+              isOpen={isMcpServerOpen}
+              onToggle={() => setIsMcpServerOpen(!isMcpServerOpen)}
+            >
+              <MCPServerPanel />
+            </CollapsibleSection>
+          )}
         </div>
     </>
   );

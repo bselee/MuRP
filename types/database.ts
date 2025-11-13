@@ -761,6 +761,308 @@ export interface Database {
         }
         Relationships: []
       }
+      app_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_category: string
+          setting_value: Json
+          display_name?: string
+          description?: string
+          is_sensitive: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_category: string
+          setting_value: Json
+          display_name?: string
+          description?: string
+          is_sensitive?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          setting_key?: string
+          setting_category?: string
+          setting_value?: Json
+          display_name?: string
+          description?: string
+          is_sensitive?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mcp_server_configs: {
+        Row: {
+          id: string
+          server_name: string
+          server_type: string
+          display_name: string
+          is_local: boolean
+          server_url: string
+          api_key?: string
+          anthropic_api_key?: string
+          is_enabled: boolean
+          health_status: string
+          last_health_check?: string
+          available_tools?: Json
+          tool_permissions?: Json
+          rate_limit_per_hour: number
+          timeout_seconds: number
+          retry_attempts: number
+          notes?: string
+          created_by?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          server_name: string
+          server_type?: string
+          display_name: string
+          is_local?: boolean
+          server_url: string
+          api_key?: string
+          anthropic_api_key?: string
+          is_enabled?: boolean
+          health_status?: string
+          last_health_check?: string
+          available_tools?: Json
+          tool_permissions?: Json
+          rate_limit_per_hour?: number
+          timeout_seconds?: number
+          retry_attempts?: number
+          notes?: string
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          server_name?: string
+          server_type?: string
+          display_name?: string
+          is_local?: boolean
+          server_url?: string
+          api_key?: string
+          anthropic_api_key?: string
+          is_enabled?: boolean
+          health_status?: string
+          last_health_check?: string
+          available_tools?: Json
+          tool_permissions?: Json
+          rate_limit_per_hour?: number
+          timeout_seconds?: number
+          retry_attempts?: number
+          notes?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_compliance_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          email: string
+          profile_type: string
+          onboarded_at: string
+          regulatory_sources: Json
+          compliance_level: string
+          upgrade_requested_at?: string
+          upgraded_at?: string
+          last_compliance_check?: string
+          total_checks_performed: number
+          failed_checks_count: number
+          is_active: boolean
+          notes?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          email: string
+          profile_type?: string
+          onboarded_at?: string
+          regulatory_sources?: Json
+          compliance_level?: string
+          upgrade_requested_at?: string
+          upgraded_at?: string
+          last_compliance_check?: string
+          total_checks_performed?: number
+          failed_checks_count?: number
+          is_active?: boolean
+          notes?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          email?: string
+          profile_type?: string
+          regulatory_sources?: Json
+          compliance_level?: string
+          upgrade_requested_at?: string
+          upgraded_at?: string
+          last_compliance_check?: string
+          total_checks_performed?: number
+          failed_checks_count?: number
+          is_active?: boolean
+          notes?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mcp_tool_calls: {
+        Row: {
+          id: string
+          server_name: string
+          tool_name: string
+          user_id?: string
+          session_id?: string
+          input_params?: Json
+          output_result?: Json
+          status: string
+          error_message?: string
+          execution_time_ms?: number
+          tokens_used?: number
+          cost_usd?: number
+          called_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          server_name: string
+          tool_name: string
+          user_id?: string
+          session_id?: string
+          input_params?: Json
+          output_result?: Json
+          status: string
+          error_message?: string
+          execution_time_ms?: number
+          tokens_used?: number
+          cost_usd?: number
+          called_at?: string
+          created_at?: string
+        }
+        Update: {
+          server_name?: string
+          tool_name?: string
+          user_id?: string
+          session_id?: string
+          input_params?: Json
+          output_result?: Json
+          status?: string
+          error_message?: string
+          execution_time_ms?: number
+          tokens_used?: number
+          cost_usd?: number
+          called_at?: string
+        }
+        Relationships: []
+      }
+      scraping_configs: {
+        Row: {
+          id: string
+          config_name: string
+          base_url: string
+          selectors: Json
+          rate_limit_ms: number
+          user_agent?: string
+          headers?: Json
+          is_enabled: boolean
+          last_successful_scrape?: string
+          total_scrapes: number
+          failed_scrapes: number
+          notes?: string
+          created_by?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          config_name: string
+          base_url: string
+          selectors: Json
+          rate_limit_ms?: number
+          user_agent?: string
+          headers?: Json
+          is_enabled?: boolean
+          last_successful_scrape?: string
+          total_scrapes?: number
+          failed_scrapes?: number
+          notes?: string
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          config_name?: string
+          base_url?: string
+          selectors?: Json
+          rate_limit_ms?: number
+          user_agent?: string
+          headers?: Json
+          is_enabled?: boolean
+          last_successful_scrape?: string
+          total_scrapes?: number
+          failed_scrapes?: number
+          notes?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      scraping_jobs: {
+        Row: {
+          id: string
+          config_id?: string
+          job_type: string
+          url: string
+          status: string
+          started_at?: string
+          completed_at?: string
+          duration_ms?: number
+          scraped_data?: Json
+          error_message?: string
+          retry_count: number
+          triggered_by?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          config_id?: string
+          job_type: string
+          url: string
+          status?: string
+          started_at?: string
+          completed_at?: string
+          duration_ms?: number
+          scraped_data?: Json
+          error_message?: string
+          retry_count?: number
+          triggered_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          config_id?: string
+          job_type?: string
+          url?: string
+          status?: string
+          started_at?: string
+          completed_at?: string
+          duration_ms?: number
+          scraped_data?: Json
+          error_message?: string
+          retry_count?: number
+          triggered_by?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
