@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS app_settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_app_settings_key ON app_settings(setting_key);
-CREATE INDEX idx_app_settings_category ON app_settings(setting_category);
+CREATE INDEX IF NOT EXISTS idx_app_settings_key ON app_settings(setting_key);
+CREATE INDEX IF NOT EXISTS idx_app_settings_category ON app_settings(setting_category);
 
 -- =============================================================================
 -- 2. MCP SERVER CONFIGURATIONS TABLE
@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS mcp_server_configs (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_mcp_server_name ON mcp_server_configs(server_name);
-CREATE INDEX idx_mcp_enabled ON mcp_server_configs(is_enabled);
+CREATE INDEX IF NOT EXISTS idx_mcp_server_name ON mcp_server_configs(server_name);
+CREATE INDEX IF NOT EXISTS idx_mcp_enabled ON mcp_server_configs(is_enabled);
 
 -- =============================================================================
 -- 3. USER COMPLIANCE PROFILES TABLE
@@ -57,7 +57,7 @@ CREATE INDEX idx_mcp_enabled ON mcp_server_configs(is_enabled);
 -- Tracks which users have been onboarded to the MCP compliance system
 CREATE TABLE IF NOT EXISTS user_compliance_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
   email TEXT NOT NULL,
   profile_type TEXT NOT NULL DEFAULT 'standard', -- 'standard', 'enhanced', 'enterprise'
   onboarded_at TIMESTAMPTZ DEFAULT NOW(),
@@ -75,8 +75,13 @@ CREATE TABLE IF NOT EXISTS user_compliance_profiles (
   UNIQUE(user_id)
 );
 
-CREATE INDEX idx_compliance_user ON user_compliance_profiles(user_id);
-CREATE INDEX idx_compliance_active ON user_compliance_profiles(is_active);
+-- Add foreign key constraint separately after table creation
+ALTER TABLE user_compliance_profiles 
+  ADD CONSTRAINT fk_user_compliance_profiles_user_id 
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_compliance_user ON user_compliance_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_compliance_active ON user_compliance_profiles(is_active);
 
 -- =============================================================================
 -- 4. MCP TOOL CALLS LOG TABLE
@@ -99,10 +104,10 @@ CREATE TABLE IF NOT EXISTS mcp_tool_calls (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_mcp_calls_server ON mcp_tool_calls(server_name);
-CREATE INDEX idx_mcp_calls_tool ON mcp_tool_calls(tool_name);
-CREATE INDEX idx_mcp_calls_user ON mcp_tool_calls(user_id);
-CREATE INDEX idx_mcp_calls_date ON mcp_tool_calls(called_at);
+CREATE INDEX IF NOT EXISTS idx_mcp_calls_server ON mcp_tool_calls(server_name);
+CREATE INDEX IF NOT EXISTS idx_mcp_calls_tool ON mcp_tool_calls(tool_name);
+CREATE INDEX IF NOT EXISTS idx_mcp_calls_user ON mcp_tool_calls(user_id);
+CREATE INDEX IF NOT EXISTS idx_mcp_calls_date ON mcp_tool_calls(called_at);
 
 -- =============================================================================
 -- 5. SCRAPING CONFIGURATIONS TABLE
@@ -126,8 +131,8 @@ CREATE TABLE IF NOT EXISTS scraping_configs (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_scraping_config_name ON scraping_configs(config_name);
-CREATE INDEX idx_scraping_enabled ON scraping_configs(is_enabled);
+CREATE INDEX IF NOT EXISTS idx_scraping_config_name ON scraping_configs(config_name);
+CREATE INDEX IF NOT EXISTS idx_scraping_enabled ON scraping_configs(is_enabled);
 
 -- =============================================================================
 -- 6. SCRAPING JOBS TABLE
@@ -150,9 +155,9 @@ CREATE TABLE IF NOT EXISTS scraping_jobs (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_scraping_jobs_config ON scraping_jobs(config_id);
-CREATE INDEX idx_scraping_jobs_status ON scraping_jobs(status);
-CREATE INDEX idx_scraping_jobs_date ON scraping_jobs(created_at);
+CREATE INDEX IF NOT EXISTS idx_scraping_jobs_config ON scraping_jobs(config_id);
+CREATE INDEX IF NOT EXISTS idx_scraping_jobs_status ON scraping_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_scraping_jobs_date ON scraping_jobs(created_at);
 
 -- =============================================================================
 -- UPDATED_AT TRIGGERS
@@ -165,18 +170,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_app_settings_updated_at ON app_settings;
 CREATE TRIGGER update_app_settings_updated_at BEFORE UPDATE ON app_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_mcp_server_configs_updated_at ON mcp_server_configs;
 CREATE TRIGGER update_mcp_server_configs_updated_at BEFORE UPDATE ON mcp_server_configs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_compliance_profiles_updated_at ON user_compliance_profiles;
 CREATE TRIGGER update_user_compliance_profiles_updated_at BEFORE UPDATE ON user_compliance_profiles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_scraping_configs_updated_at ON scraping_configs;
 CREATE TRIGGER update_scraping_configs_updated_at BEFORE UPDATE ON scraping_configs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_scraping_jobs_updated_at ON scraping_jobs;
 CREATE TRIGGER update_scraping_jobs_updated_at BEFORE UPDATE ON scraping_jobs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
