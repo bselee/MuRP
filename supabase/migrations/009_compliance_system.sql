@@ -413,14 +413,226 @@ CREATE POLICY "Allow read access to extraction_prompts" ON extraction_prompts
 CREATE POLICY "Allow authenticated write on extraction_prompts" ON extraction_prompts
   FOR ALL USING (auth.role() = 'authenticated');
 
+-- ============================================================================
+-- TWO-TIER SYSTEM: User Profiles & Industry Intelligence
+-- ============================================================================
+
+-- User Compliance Profiles
+-- Tracks user subscription tier and preferences
+CREATE TABLE IF NOT EXISTS user_compliance_profiles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL UNIQUE, -- Links to your auth system
+  email TEXT NOT NULL,
+  
+  -- Subscription tier
+  compliance_tier TEXT NOT NULL DEFAULT 'basic', -- 'basic' (free) or 'full_ai' ($49/mo)
+  subscription_status TEXT DEFAULT 'active', -- 'active', 'trial', 'cancelled', 'expired'
+  trial_checks_remaining INTEGER DEFAULT 5, -- Free AI checks for trial
+  
+  -- Industry context
+  industry TEXT NOT NULL, -- 'organic_agriculture', 'fertilizer_manufacturing', 'soil_amendments'
+  target_states TEXT[] NOT NULL, -- States user sells in ['CA', 'OR', 'WA']
+  product_types TEXT[], -- ['soil_amendment', 'fertilizer', 'compost']
+  certifications_held TEXT[], -- ['OMRI', 'USDA_Organic', 'State_Registration']
+  
+  -- Usage tracking
+  checks_this_month INTEGER DEFAULT 0,
+  last_check_at TIMESTAMP WITH TIME ZONE,
+  total_checks_lifetime INTEGER DEFAULT 0,
+  
+  -- Billing
+  stripe_customer_id TEXT,
+  subscription_start_date TIMESTAMP WITH TIME ZONE,
+  subscription_renewal_date TIMESTAMP WITH TIME ZONE,
+  monthly_check_limit INTEGER DEFAULT 50, -- For full_ai tier
+  
+  -- Onboarding
+  onboarding_completed BOOLEAN DEFAULT FALSE,
+  onboarding_step INTEGER DEFAULT 1,
+  
+  -- Audit
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for user_compliance_profiles
+CREATE INDEX idx_user_profiles_user_id ON user_compliance_profiles(user_id);
+CREATE INDEX idx_user_profiles_tier ON user_compliance_profiles(compliance_tier);
+CREATE INDEX idx_user_profiles_industry ON user_compliance_profiles(industry);
+
+-- Industry Settings
+-- Pre-configured intelligence for each industry
+CREATE TABLE IF NOT EXISTS industry_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  industry TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  
+  -- Product configuration
+  default_product_types TEXT[] NOT NULL,
+  common_certifications TEXT[] NOT NULL,
+  
+  -- Compliance focus
+  focus_areas TEXT[] NOT NULL, -- Key things to check for this industry
+  search_keywords TEXT[] NOT NULL, -- Keywords for finding regulations
+  
+  -- AI optimization
+  industry_prompt_context TEXT NOT NULL, -- Custom context for AI prompts
+  example_violations TEXT[], -- Common violations to watch for
+  
+  -- Display
+  icon TEXT, -- Icon name for UI
+  description TEXT,
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Seed industry settings
+INSERT INTO industry_settings (industry, display_name, default_product_types, common_certifications, focus_areas, search_keywords, industry_prompt_context, example_violations) VALUES
+(
+  'organic_agriculture',
+  'Organic Agriculture',
+  ARRAY['soil_amendment', 'compost', 'potting_mix', 'growing_media'],
+  ARRAY['OMRI', 'USDA_Organic', 'CDFA_Organic'],
+  ARRAY['OMRI certification number', 'Organic percentage claims', 'USDA Organic seal usage', 'Prohibited substance list', 'NOP compliance'],
+  ARRAY['organic', 'OMRI', 'NOP', 'USDA organic', 'certified organic', 'organic materials'],
+  'Focus on OMRI certification requirements, USDA NOP compliance, organic percentage claims accuracy, and prohibited substance restrictions. Check for proper OMRI logo usage and certification number display.',
+  ARRAY['Missing OMRI certification number', 'Organic % claim without certification', 'Improper USDA seal placement', 'Using prohibited substances']
+),
+(
+  'fertilizer_manufacturing',
+  'Fertilizer Manufacturing', 
+  ARRAY['fertilizer', 'plant_food', 'nutrient_blend'],
+  ARRAY['State_Registration', 'EPA_Registration'],
+  ARRAY['Guaranteed analysis format', 'NPK values', 'State registration numbers', 'Heavy metal limits', 'Micronutrient declarations', 'Net weight'],
+  ARRAY['fertilizer', 'NPK', 'guaranteed analysis', 'nitrogen', 'phosphate', 'potash', 'registration'],
+  'Focus on guaranteed analysis accuracy and format (N-P-K order), state fertilizer registration numbers, heavy metal content disclosure, proper net weight declaration, and micronutrient claims.',
+  ARRAY['Incorrect NPK format', 'Missing state registration', 'Heavy metal limits exceeded', 'Net weight not prominent']
+),
+(
+  'soil_amendments',
+  'Soil Amendment Manufacturing',
+  ARRAY['soil_amendment', 'soil_conditioner', 'compost', 'biochar', 'humus'],
+  ARRAY['State_Registration', 'USDA_Organic', 'Compost_Certification'],
+  ARRAY['Material source disclosure', 'Pathogen reduction', 'Heavy metal testing', 'Organic matter content', 'pH range', 'Moisture content'],
+  ARRAY['soil amendment', 'compost', 'biochar', 'humus', 'organic matter', 'pathogen reduction'],
+  'Focus on material source disclosure, pathogen reduction compliance (especially for compost), heavy metal test results, organic matter percentages, pH ranges, and moisture content declarations.',
+  ARRAY['Missing pathogen test results', 'Heavy metals above limits', 'Vague source materials', 'No organic matter %']
+);
+
+-- User Regulatory Sources (Basic Mode)
+-- Allows users to manage their own regulation links
+CREATE TABLE IF NOT EXISTS user_regulatory_sources (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL REFERENCES user_compliance_profiles(user_id),
+  
+  -- Source information
+  state_code TEXT NOT NULL,
+  regulation_type TEXT NOT NULL, -- 'organic', 'fertilizer', 'labeling', 'testing'
+  source_url TEXT NOT NULL,
+  source_title TEXT NOT NULL,
+  source_description TEXT,
+  
+  -- Organization
+  tags TEXT[],
+  is_favorite BOOLEAN DEFAULT FALSE,
+  last_accessed_at TIMESTAMP WITH TIME ZONE,
+  
+  -- Notes
+  user_notes TEXT,
+  key_requirements TEXT, -- User's summary of key requirements
+  
+  -- Metadata
+  added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_sources_user_id ON user_regulatory_sources(user_id);
+CREATE INDEX idx_user_sources_state ON user_regulatory_sources(state_code);
+
+-- Compliance Check History (Enhanced)
+-- Add tier tracking to existing compliance_checks
+ALTER TABLE compliance_checks ADD COLUMN IF NOT EXISTS user_id TEXT;
+ALTER TABLE compliance_checks ADD COLUMN IF NOT EXISTS check_tier TEXT DEFAULT 'full_ai'; -- 'basic' or 'full_ai'
+ALTER TABLE compliance_checks ADD COLUMN IF NOT EXISTS industry TEXT;
+ALTER TABLE compliance_checks ADD COLUMN IF NOT EXISTS product_type TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_compliance_checks_user ON compliance_checks(user_id);
+CREATE INDEX IF NOT EXISTS idx_compliance_checks_tier ON compliance_checks(check_tier);
+
+-- Usage Analytics
+-- Track feature usage for conversion optimization
+CREATE TABLE IF NOT EXISTS usage_analytics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL REFERENCES user_compliance_profiles(user_id),
+  
+  -- Event tracking
+  event_type TEXT NOT NULL, -- 'check_run', 'source_added', 'upgrade_viewed', 'trial_check_used'
+  event_data JSONB,
+  
+  -- Context
+  compliance_tier TEXT NOT NULL,
+  page_location TEXT,
+  
+  -- Timing
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_usage_analytics_user ON usage_analytics(user_id);
+CREATE INDEX idx_usage_analytics_event ON usage_analytics(event_type);
+CREATE INDEX idx_usage_analytics_date ON usage_analytics(created_at DESC);
+
+-- Suggested Regulations (Curated)
+-- Pre-populated helpful links for each industry/state combo
+CREATE TABLE IF NOT EXISTS suggested_regulations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Targeting
+  industry TEXT NOT NULL,
+  state_code TEXT NOT NULL,
+  regulation_type TEXT NOT NULL,
+  
+  -- Content
+  title TEXT NOT NULL,
+  url TEXT NOT NULL,
+  description TEXT,
+  agency_name TEXT,
+  
+  -- Relevance
+  relevance_score FLOAT DEFAULT 1.0,
+  is_official BOOLEAN DEFAULT TRUE,
+  
+  -- Display
+  display_order INTEGER DEFAULT 0,
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_suggested_regs_industry ON suggested_regulations(industry);
+CREATE INDEX idx_suggested_regs_state ON suggested_regulations(state_code);
+
+-- Seed some suggested regulations
+INSERT INTO suggested_regulations (industry, state_code, regulation_type, title, url, description, agency_name) VALUES
+('organic_agriculture', 'CA', 'organic', 'California Organic Program', 'https://www.cdfa.ca.gov/is/i_&_c/organic.html', 'State organic certification requirements', 'CDFA'),
+('organic_agriculture', 'OR', 'organic', 'Oregon Tilth Organic Certification', 'https://tilth.org/', 'OMRI and organic certification resources', 'Oregon Tilth'),
+('fertilizer_manufacturing', 'CA', 'fertilizer', 'California Fertilizer Registration', 'https://www.cdfa.ca.gov/is/ffldrs/', 'Fertilizer product registration requirements', 'CDFA'),
+('fertilizer_manufacturing', 'WA', 'fertilizer', 'Washington Fertilizer Regulations', 'https://agr.wa.gov/departments/pesticides-and-fertilizers/fertilizers', 'WA state fertilizer rules', 'WSDA'),
+('soil_amendments', 'CA', 'testing', 'California Compost Quality Standards', 'https://www.calrecycle.ca.gov/organics/compostmulch/', 'Pathogen reduction and heavy metal limits', 'CalRecycle');
+
 -- Comments for documentation
 COMMENT ON TABLE state_regulations IS 'Stores state-by-state regulatory requirements for product compliance';
 COMMENT ON TABLE compliance_checks IS 'Records compliance scans performed on labels and products';
 COMMENT ON TABLE extraction_prompts IS 'Reusable AI prompt templates for regulation extraction and compliance checking';
 COMMENT ON TABLE regulation_changes IS 'Audit log of regulation updates and changes';
 COMMENT ON TABLE regulation_update_jobs IS 'Tracks scheduled and manual regulation update tasks';
+COMMENT ON TABLE user_compliance_profiles IS 'User subscription tiers, industry settings, and usage tracking';
+COMMENT ON TABLE industry_settings IS 'Pre-configured intelligence for each industry vertical';
+COMMENT ON TABLE user_regulatory_sources IS 'User-managed regulatory links (Basic Mode)';
+COMMENT ON TABLE usage_analytics IS 'Feature usage tracking for conversion optimization';
+COMMENT ON TABLE suggested_regulations IS 'Curated regulation links by industry and state';
 
 COMMENT ON COLUMN state_regulations.confidence_score IS 'AI confidence in extraction accuracy (0.0-1.0)';
 COMMENT ON COLUMN state_regulations.search_vector IS 'Full-text search index for fast querying';
 COMMENT ON COLUMN compliance_checks.violations IS 'Array of violation objects with severity, state, and recommendations';
 COMMENT ON COLUMN compliance_checks.compliance_score IS 'Overall compliance score 0-100';
+COMMENT ON COLUMN user_compliance_profiles.compliance_tier IS 'basic (free) or full_ai ($49/mo)';
+COMMENT ON COLUMN user_compliance_profiles.trial_checks_remaining IS 'Free AI checks before requiring upgrade';

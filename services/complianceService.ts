@@ -15,16 +15,252 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export interface UserComplianceProfile {
+  id: string;
+  user_id: string;
+  email: string;
+  compliance_tier: 'basic' | 'full_ai';
+  subscription_status: string;
+  trial_checks_remaining: number;
+  industry: string;
+  target_states: string[];
+  product_types?: string[];
+  certifications_held?: string[];
+  checks_this_month: number;
+/**
+ * Get user compliance profile
+ */
+export async function getUserProfile(userId: string): Promise<UserComplianceProfile | null> {
+  const { data, error } = await supabase
+    .from('user_compliance_profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    console.error('Failed to fetch user profile:', error);
+    return null;
+  }
+
+  return data as UserComplianceProfile;
+}
+
+/**
+ * Create or update user compliance profile
+ */
+export async function upsertUserProfile(profile: Partial<UserComplianceProfile>): Promise<UserComplianceProfile> {
+  const { data, error } = await supabase
+    .from('user_compliance_profiles')
+    .upsert(profile, { onConflict: 'user_id' })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to save user profile: ${error.message}`);
+  }
+
+  return data as UserComplianceProfile;
+}
+
+/**
+ * Get industry settings
+ */
+export async function getIndustrySettings(industry?: string): Promise<IndustrySettings[]> {
+  let query = supabase.from('industry_settings').select('*');
+
+  if (industry) {
+    query = query.eq('industry', industry);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Failed to fetch industry settings: ${error.message}`);
+  }
+
+  return (data || []) as IndustrySettings[];
+}
+
+/**
+ * Basic Mode: Add regulatory source
+ */
+export async function addRegulatorySource(
+  userId: string,
+  source: Omit<UserRegulatorySource, 'id' | 'user_id' | 'added_at' | 'updated_at'>
+): Promise<UserRegulatorySource> {
+  const { data, error } = await supabase
+    .from('user_regulatory_sources')
+    .insert({
+      ...source,
+      user_id: userId,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to add regulatory source: ${error.message}`);
+  }
+
+  return data as UserRegulatorySource;
+}
+
+/**
+ * Basic Mode: Get user's regulatory sources
+ */
+export async function getUserRegulatorySources(
+  userId: string,
+  stateCode?: string
+): Promise<UserRegulatorySource[]> {
+  let query = supabase
+    .from('user_regulatory_sources')
+    .select('*')
+    .eq('user_id', userId)
+    .order('state_code', { ascending: true })
+    .order('added_at', { ascending: false });
+
+  if (stateCode) {
+    query = query.eq('state_code', stateCode);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(`Failed to fetch regulatory sources: ${error.message}`);
+  }
+
+  return (data || []) as UserRegulatorySource[];
+}
+
+/**
+ * Get suggested regulations for industry/state
+ */
+export async function getSuggestedRegulations(
+  industry: string,
+  states: string[]
+): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('suggested_regulations')
+    .select('*')
+    .eq('industry', industry)
+    .in('state_code', states)
+    .order('display_order', { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to fetch suggested regulations: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
+ * Basic Mode: Run manual compliance check
+ * Returns checklist and sources to verify against (no AI)
+ */
+export async function basicComplianceCheck(
+  userId: string,
+  productName: string,
+  productType: string,
+  targetStates: string[]
+): Promise<BasicComplianceCheckResult> {
+  // Get user profile for industry context
+  const profile = await getUserProfile(userId);
+  if (!profile) {
+    throw new Error('User profile not found');
+  }
+
+  // Get user's saved regulatory sources
+  const userSources = await getUserRegulatorySources(userId);
+  
+  // Get suggested sources for their industry/states
+  const suggestedSources = await getSuggestedRegulations(profile.industry, targetStates);
+
+  // Get industry settings for checklist
+  const [industrySettings] = await getIndustrySettings(profile.industry);
+
+  // Organize sources by state
+  const sourcesByState: Record<string, UserRegulatorySource[]> = {};
+  const suggestedByState: Record<string, any[]> = {};
+
+  for (const state of targetStates) {
+    sourcesByState[state] = userSources.filter(s => s.state_code === state);
+    suggestedByState[state] = suggestedSources.filter(s => s.state_code === state);
+  }
+
+  // Generate checklist from industry focus areas
+  const checklist = industrySettings?.focus_areas || [
+    'Product registration requirements',
+    'Label format and content',
+    'Required statements and warnings',
+    'Font size and prominence rules',
+    'Net weight declaration',
+    'Manufacturer contact information',
+  ];
+
+  return {
+    user_id: userId,
+    product_name: productName,
+    target_states: targetStates,
+    regulatory_sources_by_state: sourcesByState,
+    suggested_sources_by_state: suggestedByState,
+    checklist_items: checklist,
+    created_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Full AI Mode: Check label compliance against state regulations with AI analysis
+ */
+export async function checkLabelCompliance(
+  request: LabelComplianceRequest
+): Promise<ComplianceCheck> {
+  display_name: string;
+  default_product_types: string[];
+  common_certifications: string[];
+  focus_areas: string[];
+  search_keywords: string[];
+  industry_prompt_context: string;
+  example_violations?: string[];
+}
+
+export interface UserRegulatorySource {
+  id: string;
+  user_id: string;
+  state_code: string;
+  regulation_type: string;
+  source_url: string;
+  source_title: string;
+  source_description?: string;
+  user_notes?: string;
+  key_requirements?: string;
+  tags?: string[];
+  is_favorite: boolean;
+}
+
 export interface LabelComplianceRequest {
   product_name: string;
+  product_type?: string;
   ingredients?: string[];
   claims?: string[];
   warnings?: string[];
   net_weight?: string;
+  certifications?: string[];
   states: string[]; // State codes to check against
   label_id?: string;
   artwork_id?: string;
   bom_id?: string;
+  user_id?: string; // For tier checking
+  check_tier?: 'basic' | 'full_ai';
+  industry?: string;
+}
+
+export interface BasicComplianceCheckResult {
+  user_id: string;
+  product_name: string;
+  target_states: string[];
+  regulatory_sources_by_state: Record<string, UserRegulatorySource[]>;
+  suggested_sources_by_state: Record<string, any[]>;
+  checklist_items: string[];
+  created_at: string;
 }
 
 /**
@@ -34,16 +270,78 @@ export async function checkLabelCompliance(
   request: LabelComplianceRequest
 ): Promise<ComplianceCheck> {
   try {
+    // Check tier and usage limits if user_id provided
+    if (request.user_id) {
+      const profile = await getUserProfile(request.user_id);
+      
+      if (profile) {
+        // Check if user has access to Full AI
+        if (profile.compliance_tier === 'basic' && profile.trial_checks_remaining <= 0) {
+          throw new Error('Upgrade to Full AI mode to use automated compliance checking');
+        }
+
+        // Check monthly limits for paid users
+        if (profile.compliance_tier === 'full_ai' && 
+            profile.checks_this_month >= profile.monthly_check_limit) {
+          throw new Error('Monthly check limit reached. Contact support to increase your limit.');
+        }
+
+        // Decrement trial checks or increment usage
+        if (profile.compliance_tier === 'basic') {
+          await supabase
+            .from('user_compliance_profiles')
+            .update({ 
+              trial_checks_remaining: profile.trial_checks_remaining - 1,
+              last_check_at: new Date().toISOString()
+            })
+            .eq('user_id', request.user_id);
+        } else {
+          await supabase
+            .from('user_compliance_profiles')
+            .update({ 
+              checks_this_month: profile.checks_this_month + 1,
+              total_checks_lifetime: profile.total_checks_lifetime + 1,
+              last_check_at: new Date().toISOString()
+            })
+            .eq('user_id', request.user_id);
+        }
+      }
+    }
+
+    // Get industry settings for AI context
+    let industryContext = '';
+    if (request.industry) {
+      const [settings] = await getIndustrySettings(request.industry);
+      if (settings) {
+        industryContext = settings.industry_prompt_context;
+      }
+    }
+
     // Fetch active regulations for specified states
-    const { data: regulations, error: regError } = await supabase
+    // Filter by keywords if industry is known
+    let regQuery = supabase
       .from('state_regulations')
       .select('*')
       .in('state', request.states)
       .eq('status', 'active');
 
+    // Add keyword filtering for better relevance
+    if (request.industry) {
+      const [settings] = await getIndustrySettings(request.industry);
+      if (settings && settings.search_keywords.length > 0) {
+        // Use full-text search with industry keywords
+        const searchQuery = settings.search_keywords.slice(0, 3).join(' | ');
+        regQuery = regQuery.textSearch('search_vector', searchQuery);
+      }
+    }
+
+    const { data: regulations, error: regError } = await regQuery.limit(100);
+
     if (regError) {
       throw new Error(`Failed to fetch regulations: ${regError.message}`);
     }
+
+    console.log(`Found ${regulations?.length || 0} relevant regulations for ${request.states.join(', ')}`);
 
     // Perform compliance checks
     const violations: any[] = [];
@@ -67,6 +365,10 @@ export async function checkLabelCompliance(
       artwork_id: request.artwork_id,
       label_id: request.label_id,
       bom_id: request.bom_id,
+      user_id: request.user_id,
+      check_tier: request.check_tier || 'full_ai',
+      industry: request.industry,
+      product_type: request.product_type,
       check_date: new Date().toISOString(),
       states_checked: request.states,
       extracted_claims: request.claims || [],
@@ -82,6 +384,21 @@ export async function checkLabelCompliance(
       risk_level: riskLevel,
       ai_model_used: 'compliance-checker-frontend-v1',
     };
+
+    // Track analytics
+    if (request.user_id) {
+      await supabase.from('usage_analytics').insert({
+        user_id: request.user_id,
+        event_type: 'check_run',
+        event_data: {
+          check_tier: request.check_tier || 'full_ai',
+          states_count: request.states.length,
+          compliance_score: complianceScore,
+          risk_level: riskLevel,
+        },
+        compliance_tier: request.check_tier || 'full_ai',
+      });
+    }
 
     const { data: savedCheck, error: saveError } = await supabase
       .from('compliance_checks')
@@ -247,11 +564,76 @@ function calculateComplianceScore(violations: any[], warnings: any[]): number {
 
 function determineOverallStatus(violations: any[], warnings: any[]): 'pass' | 'warning' | 'fail' | 'requires_review' {
   const critical = violations.filter((v: any) => v.severity === 'critical').length;
-  const high = violations.filter((v: any) => v.severity === 'high').length;
+/**
+ * Upgrade user to Full AI tier
+ */
+export async function upgradeToFullAI(
+  userId: string,
+  stripeCustomerId?: string
+): Promise<UserComplianceProfile> {
+  const { data, error } = await supabase
+    .from('user_compliance_profiles')
+    .update({
+      compliance_tier: 'full_ai',
+      subscription_status: 'active',
+      subscription_start_date: new Date().toISOString(),
+      stripe_customer_id: stripeCustomerId,
+      checks_this_month: 0,
+      monthly_check_limit: 50,
+    })
+    .eq('user_id', userId)
+    .select()
+    .single();
 
-  if (critical > 0) return 'fail';
-  if (high > 0) return 'fail';
-  if (violations.length > 0) return 'warning';
+  if (error) {
+    throw new Error(`Failed to upgrade user: ${error.message}`);
+  }
+
+  // Track upgrade event
+  await supabase.from('usage_analytics').insert({
+    user_id: userId,
+    event_type: 'upgraded_to_full_ai',
+    event_data: { timestamp: new Date().toISOString() },
+    compliance_tier: 'full_ai',
+  });
+
+  return data as UserComplianceProfile;
+}
+
+/**
+ * Track when user views upgrade prompt (for conversion analytics)
+ */
+export async function trackUpgradeView(userId: string, location: string): Promise<void> {
+  await supabase.from('usage_analytics').insert({
+    user_id: userId,
+    event_type: 'upgrade_viewed',
+    event_data: { location },
+    compliance_tier: 'basic',
+    page_location: location,
+  });
+}
+
+export default {
+  // User management
+  getUserProfile,
+  upsertUserProfile,
+  upgradeToFullAI,
+  trackUpgradeView,
+  
+  // Industry intelligence
+  getIndustrySettings,
+  getSuggestedRegulations,
+  
+  // Basic Mode
+  addRegulatorySource,
+  getUserRegulatorySources,
+  basicComplianceCheck,
+  
+  // Full AI Mode
+  checkLabelCompliance,
+  getComplianceChecks,
+  getStateRegulations,
+};if (violations.length > 0) return 'warning';
   if (warnings.length > 0) return 'warning';
   return 'pass';
 }
