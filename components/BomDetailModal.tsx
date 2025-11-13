@@ -398,7 +398,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                         >
                           <CloudUploadIcon className="w-5 h-5" />
-                          Upload Label
+                          Upload Artwork
                         </button>
                       )}
                     </div>

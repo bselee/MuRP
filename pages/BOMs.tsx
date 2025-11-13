@@ -584,7 +584,8 @@ const BOMs: React.FC<BOMsProps> = ({
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           bom={selectedBom}
-          onUpdateBom={onUpdateBom}
+          onSave={onUpdateBom}
+          inventory={inventory}
         />
       )}
 
