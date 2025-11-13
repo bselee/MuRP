@@ -219,7 +219,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                   onClick={handleAddNewConnection}
                   className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
                 >
-                  Save Connection
+                  Add Connection
                 </button>
               </div>
             </div>

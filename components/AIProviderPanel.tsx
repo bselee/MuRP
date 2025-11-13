@@ -222,12 +222,16 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
                   max="2"
                   step="0.1"
                   value={providerConfig.temperature || 0.3}
-                  onChange={(e) =>
-                    setProviderConfig({
-                      ...providerConfig,
-                      temperature: parseFloat(e.target.value),
-                    })
-                  }
+                  onChange={async (e) => {
+                    const newTemp = parseFloat(e.target.value);
+                    const updated = { ...providerConfig, temperature: newTemp };
+                    setProviderConfig(updated);
+                    try {
+                      await updateAIProviderSettings(updated);
+                    } catch (error: any) {
+                      console.error('Auto-save temperature failed:', error);
+                    }
+                  }}
                   className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 />
               </div>
@@ -241,47 +245,56 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
                   max="32768"
                   step="256"
                   value={providerConfig.maxTokens || 4096}
-                  onChange={(e) =>
-                    setProviderConfig({
-                      ...providerConfig,
-                      maxTokens: parseInt(e.target.value),
-                    })
-                  }
+                  onChange={async (e) => {
+                    const newMax = parseInt(e.target.value);
+                    const updated = { ...providerConfig, maxTokens: newMax };
+                    setProviderConfig(updated);
+                    try {
+                      await updateAIProviderSettings(updated);
+                    } catch (error: any) {
+                      console.error('Auto-save maxTokens failed:', error);
+                    }
+                  }}
                   className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                 />
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-3 pt-4 border-t border-gray-700">
-              <button
-                onClick={handleTestProvider}
-                disabled={testingProvider || !providerConfig.apiKey}
-                className="bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50 text-sm"
-              >
-                {testingProvider ? 'Testing...' : 'Test Connection'}
-              </button>
-              <button
-                onClick={handleSaveProvider}
-                disabled={!providerConfig.apiKey}
-                className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
-              >
-                Save Provider Settings
-              </button>
-              {providerTestResult && (
-                <div
-                  className={`flex items-center gap-2 text-sm ${
-                    providerTestResult === 'success' ? 'text-green-400' : 'text-red-400'
-                  }`}
+            <div className="flex flex-col gap-2 pt-4 border-t border-gray-700">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleTestProvider}
+                  disabled={testingProvider || !providerConfig.apiKey}
+                  className="bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50 text-sm"
                 >
-                  {providerTestResult === 'success' ? (
-                    <CheckCircleIcon className="w-4 h-4" />
-                  ) : (
-                    <ExclamationCircleIcon className="w-4 h-4" />
-                  )}
-                  {providerTestResult === 'success' ? 'Connected' : 'Failed'}
-                </div>
-              )}
+                  {testingProvider ? 'Testing...' : 'Test Connection'}
+                </button>
+                <button
+                  onClick={handleSaveProvider}
+                  disabled={!providerConfig.apiKey}
+                  className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
+                >
+                  Save Provider & API Key
+                </button>
+                {providerTestResult && (
+                  <div
+                    className={`flex items-center gap-2 text-sm ${
+                      providerTestResult === 'success' ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  >
+                    {providerTestResult === 'success' ? (
+                      <CheckCircleIcon className="w-4 h-4" />
+                    ) : (
+                      <ExclamationCircleIcon className="w-4 h-4" />
+                    )}
+                    {providerTestResult === 'success' ? 'Connected' : 'Failed'}
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                Temperature and Max Tokens save automatically. Provider, Model, and API Key require clicking Save.
+              </p>
             </div>
           </div>
         )}
