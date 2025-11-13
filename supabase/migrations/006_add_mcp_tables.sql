@@ -76,16 +76,13 @@ CREATE TABLE IF NOT EXISTS user_compliance_profiles (
 );
 
 -- Add foreign key constraint separately after table creation
-DO $$ 
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'fk_user_compliance_profiles_user_id'
-  ) THEN
-    ALTER TABLE user_compliance_profiles 
-      ADD CONSTRAINT fk_user_compliance_profiles_user_id 
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-  END IF;
-END $$;
+-- First drop existing constraint if it exists (in case of re-run with different type)
+ALTER TABLE user_compliance_profiles DROP CONSTRAINT IF EXISTS fk_user_compliance_profiles_user_id;
+
+-- Now add the constraint with correct type
+ALTER TABLE user_compliance_profiles 
+  ADD CONSTRAINT fk_user_compliance_profiles_user_id 
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
 CREATE INDEX IF NOT EXISTS idx_compliance_user ON user_compliance_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_compliance_active ON user_compliance_profiles(is_active);

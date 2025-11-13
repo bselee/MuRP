@@ -90,6 +90,7 @@ const Settings: React.FC<SettingsProps> = ({
           >
             <RegulatoryAgreementPanel
               currentUser={currentUser}
+              onUpdateUser={onUpdateUser}
               addToast={addToast}
             />
           </CollapsibleSection>
