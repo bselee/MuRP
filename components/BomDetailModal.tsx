@@ -209,8 +209,8 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
 
   const tabs = [
     { id: 'components' as TabType, label: 'Components', icon: BeakerIcon },
-    { id: 'packaging' as TabType, label: 'Packaging', icon: PackageIcon },
-    { id: 'labels' as TabType, label: 'Labels', icon: DocumentTextIcon, count: labels.length },
+    { id: 'packaging' as TabType, label: 'Packaging Specs', icon: PackageIcon },
+    { id: 'labels' as TabType, label: 'Packaging & Labels', icon: DocumentTextIcon, count: labels.length },
     { id: 'datasheets' as TabType, label: 'Data Sheets', icon: SparklesIcon, count: dataSheets.length },
     { id: 'registrations' as TabType, label: 'Registrations', icon: ClipboardDocumentListIcon, count: bom.registrations?.length || 0 }
   ];
@@ -379,17 +379,17 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
               </div>
             )}
 
-            {/* Labels Tab */}
+            {/* Packaging & Labels Tab */}
             {activeTab === 'labels' && (
               <div className="space-y-6">
                 {!selectedLabel ? (
                   <>
-                    {/* Labels List View */}
+                    {/* Packaging & Labels List View */}
                     <div className="flex justify-between items-center">
                       <div>
-                        <h3 className="text-lg font-semibold text-white">Product Labels</h3>
+                        <h3 className="text-lg font-semibold text-white">Packaging & Labels</h3>
                         <p className="text-sm text-gray-400 mt-1">
-                          AI-scanned labels with ingredient verification
+                          AI-scanned packaging materials, labels, and bag designs with ingredient verification
                         </p>
                       </div>
                       {onUploadArtwork && (
@@ -406,9 +406,9 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                     {labels.length === 0 ? (
                       <div className="bg-gray-800/30 rounded-lg border-2 border-dashed border-gray-700 p-12 text-center">
                         <DocumentTextIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                        <h4 className="text-lg font-medium text-gray-400 mb-2">No labels uploaded yet</h4>
+                        <h4 className="text-lg font-medium text-gray-400 mb-2">No packaging/labels uploaded yet</h4>
                         <p className="text-sm text-gray-500 mb-6">
-                          Upload a label file to extract ingredients, barcode, and NPK analysis with AI
+                          Upload packaging materials, labels, or bag designs to extract ingredients, barcodes, and NPK analysis with AI
                         </p>
                         {onUploadArtwork && (
                           <button
@@ -416,7 +416,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                             className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                           >
                             <CloudUploadIcon className="w-5 h-5" />
-                            Upload Your First Label
+                            Upload Packaging/Label
                           </button>
                         )}
                       </div>

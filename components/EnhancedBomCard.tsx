@@ -149,46 +149,78 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             {/* Product Name */}
             <h4 className="text-sm font-medium text-gray-200 mb-3">{bom.name}</h4>
 
-            {/* KEY METRICS ROW - Role-based display */}
+            {/* KEY METRICS ROW - Role-based display with Progress Bars */}
             <div className={`grid gap-3 text-xs ${isManager ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'}`}>
-              {/* Inventory Status - Both roles */}
-              <div className="bg-gray-900/50 rounded p-2 border border-gray-700">
-                <div className="text-gray-500 mb-1">Inventory</div>
-                <div className="flex items-baseline gap-2">
-                  <span className={`${isManager ? 'text-2xl' : 'text-lg'} font-bold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {/* Inventory Status with Progress Bar - Both roles */}
+              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-gray-500">Inventory</div>
+                  {inventoryMap.get(bom.finishedSku)?.reorderPoint && (
+                    <div className="text-xs text-gray-600">
+                      Reorder: {inventoryMap.get(bom.finishedSku)?.reorderPoint}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {finishedStock}
                   </span>
-                  <span className="text-gray-400">{isManager ? '' : 'units'}</span>
+                  <span className="text-gray-400 text-xs">{isManager ? '' : 'units'}</span>
                 </div>
+                {/* Progress bar for inventory */}
+                {inventoryMap.get(bom.finishedSku)?.reorderPoint && (
+                  <div className="w-full bg-gray-800 rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full transition-all ${
+                        finishedStock >= (inventoryMap.get(bom.finishedSku)?.reorderPoint || 0)
+                          ? 'bg-green-500'
+                          : 'bg-red-500'
+                      }`}
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (finishedStock / (inventoryMap.get(bom.finishedSku)?.reorderPoint || 1)) * 100
+                        )}%`
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
-              {/* Buildability - Both roles */}
-              <div className="bg-gray-900/50 rounded p-2 border border-gray-700">
-                <div className="text-gray-500 mb-1">Can Build</div>
-                <div className="flex items-baseline gap-2">
-                  <span className={`${isManager ? 'text-2xl' : 'text-lg'} font-bold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {/* Buildability with Visual Indicator - Both roles */}
+              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+                <div className="text-gray-500 mb-2">Can Build</div>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {buildability.maxBuildable}
                   </span>
-                  <span className="text-gray-400">{isManager ? '' : 'units'}</span>
+                  <span className="text-gray-400 text-xs">{isManager ? '' : 'units'}</span>
+                </div>
+                {/* Simple status indicator */}
+                <div className="flex items-center gap-1">
+                  <div className={`h-1.5 flex-1 rounded-full ${buildability.maxBuildable > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <span className="text-xs text-gray-600">
+                    {buildability.maxBuildable > 0 ? 'Ready' : 'Blocked'}
+                  </span>
                 </div>
               </div>
 
               {/* Yield - Both roles */}
-              <div className="bg-gray-900/50 rounded p-2 border border-gray-700">
-                <div className="text-gray-500 mb-1">Yield</div>
+              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+                <div className="text-gray-500 mb-2">Yield</div>
                 <div className="flex items-baseline gap-2">
-                  <span className={`${isManager ? 'text-2xl' : 'text-lg'} font-bold text-blue-400`}>{bom.yieldQuantity || 1}</span>
-                  <span className="text-gray-400">{isManager ? '/batch' : 'per batch'}</span>
+                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold text-blue-400`}>{bom.yieldQuantity || 1}</span>
+                  <span className="text-gray-400 text-xs">{isManager ? '/batch' : 'per batch'}</span>
                 </div>
               </div>
 
               {/* Components - Admin only (technical detail) */}
               {isAdmin && (
-                <div className="bg-gray-900/50 rounded p-2 border border-gray-700">
-                  <div className="text-gray-500 mb-1">Components</div>
+                <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+                  <div className="text-gray-500 mb-2">Components</div>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-bold text-purple-400">{bom.components.length}</span>
-                    <span className="text-gray-400">items</span>
+                    <span className="text-xl font-bold text-purple-400">{bom.components.length}</span>
+                    <span className="text-gray-400 text-xs">items</span>
                   </div>
                 </div>
               )}
