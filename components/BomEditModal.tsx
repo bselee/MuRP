@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { BillOfMaterials, BOMComponent, Artwork, Packaging, InventoryItem } from '../types';
 import Modal from './Modal';
-import { TrashIcon, PlusCircleIcon, MagnifyingGlassIcon, XCircleIcon } from './icons';
+import { TrashIcon, PlusCircleIcon, MagnifyingGlassIcon, XCircleIcon, ExclamationTriangleIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from './icons';
 
 interface BomEditModalProps {
   bom: BillOfMaterials;
@@ -18,6 +18,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItem | null>(null);
   const [newComponentQuantity, setNewComponentQuantity] = useState<number>(1);
   const [newComponentUnit, setNewComponentUnit] = useState<string>('lbs');
+  const [duplicateWarning, setDuplicateWarning] = useState<string>('');
 
   useEffect(() => {
     // Reset state when the modal is opened with a new BOM
@@ -27,13 +28,13 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
     setSelectedInventoryItem(null);
     setNewComponentQuantity(1);
     setNewComponentUnit('lbs');
+    setDuplicateWarning('');
   }, [bom, isOpen]);
 
-  // Filter inventory items for component selection (exclude items already in BOM)
+  // Show all inventory items (don't exclude already-used ones)
   const availableInventory = useMemo(() => {
-    const usedSkus = new Set(editedBom.components.map(c => c.sku));
-    return inventory.filter(item => !usedSkus.has(item.sku));
-  }, [inventory, editedBom.components]);
+    return inventory;
+  }, [inventory]);
 
   // Search filtered inventory
   const filteredInventory = useMemo(() => {
@@ -90,6 +91,13 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
   const addComponent = () => {
     if (!selectedInventoryItem) return;
 
+    // Check if component already exists in BOM
+    const existingComponent = editedBom.components.find(c => c.sku === selectedInventoryItem.sku);
+    if (existingComponent) {
+      setDuplicateWarning(`${selectedInventoryItem.sku} is already in this BOM. Please adjust quantities in the table above instead.`);
+      return;
+    }
+
     const newComponent: BOMComponent = {
       id: `comp-${Date.now()}`,
       sku: selectedInventoryItem.sku,
@@ -104,6 +112,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
     setComponentSearchQuery('');
     setNewComponentQuantity(1);
     setNewComponentUnit('lbs');
+    setDuplicateWarning('');
   };
 
   const removeComponent = (index: number) => {
@@ -114,6 +123,113 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
   const handleSaveChanges = () => {
     onSave(editedBom);
     onClose();
+  };
+
+  // Export BOM to CSV
+  const exportToCSV = () => {
+    const headers = ['SKU', 'Component Name', 'Quantity', 'Unit'];
+    const rows = editedBom.components.map(c => [c.sku, c.name, c.quantity, c.unit]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `BOM_${bom.finishedSku}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Download CSV Template
+  const downloadTemplate = () => {
+    const headers = ['SKU', 'Component Name', 'Quantity', 'Unit'];
+    const exampleRows = [
+      ['SKU-001', 'Example Component 1', '10', 'lbs'],
+      ['SKU-002', 'Example Component 2', '5.5', 'kg'],
+      ['SKU-003', 'Example Component 3', '2', 'gal']
+    ];
+
+    const csvContent = [
+      headers.join(','),
+      ...exampleRows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `BOM_Template.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Import from CSV
+  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const lines = text.split('\n').filter(line => line.trim());
+
+      // Skip header row
+      const dataLines = lines.slice(1);
+
+      const importedComponents: BOMComponent[] = [];
+      const errors: string[] = [];
+
+      dataLines.forEach((line, index) => {
+        // Parse CSV line (handle quoted fields)
+        const matches = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
+        if (!matches || matches.length < 4) {
+          errors.push(`Row ${index + 2}: Invalid format`);
+          return;
+        }
+
+        const [sku, name, quantity, unit] = matches.map(m => m.replace(/^"|"$/g, '').trim());
+
+        if (!sku || !name || !quantity || !unit) {
+          errors.push(`Row ${index + 2}: Missing required fields`);
+          return;
+        }
+
+        const quantityNum = parseFloat(quantity);
+        if (isNaN(quantityNum) || quantityNum <= 0) {
+          errors.push(`Row ${index + 2}: Invalid quantity`);
+          return;
+        }
+
+        importedComponents.push({
+          id: `comp-${Date.now()}-${index}`,
+          sku,
+          name,
+          quantity: quantityNum,
+          unit
+        });
+      });
+
+      if (errors.length > 0) {
+        alert(`Import completed with errors:\n${errors.join('\n')}`);
+      }
+
+      if (importedComponents.length > 0) {
+        // Replace existing components
+        handleFieldChange('components', importedComponents);
+      }
+    };
+
+    reader.readAsText(file);
+    // Reset input
+    event.target.value = '';
   };
 
   return (
@@ -157,18 +273,48 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
 
         {/* Components Section - MRP Style */}
         <div className="bg-gray-900/30 rounded-lg p-4 border border-gray-700">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
             <div>
               <h3 className="text-lg font-medium text-gray-200">Bill of Materials</h3>
               <p className="text-xs text-gray-500 mt-1">Components required to manufacture this product</p>
             </div>
-            <button
-              onClick={() => setShowAddComponent(!showAddComponent)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
-            >
-              <PlusCircleIcon className="w-5 h-5" />
-              Add Component
-            </button>
+            <div className="flex flex-wrap gap-2">
+              {/* Import/Export Buttons */}
+              <button
+                onClick={downloadTemplate}
+                className="flex items-center gap-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold rounded-lg transition-colors"
+                title="Download BOM template"
+              >
+                <ArrowDownTrayIcon className="w-4 h-4" />
+                Template
+              </button>
+              <button
+                onClick={exportToCSV}
+                className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                title="Export BOM to CSV"
+              >
+                <ArrowDownTrayIcon className="w-4 h-4" />
+                Export CSV
+              </button>
+              <label className="flex items-center gap-1 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                title="Import BOM from CSV">
+                <ArrowUpTrayIcon className="w-4 h-4" />
+                Import CSV
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleImportCSV}
+                  className="hidden"
+                />
+              </label>
+              <button
+                onClick={() => setShowAddComponent(!showAddComponent)}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+              >
+                <PlusCircleIcon className="w-5 h-5" />
+                Add Component
+              </button>
+            </div>
           </div>
 
           {/* Add Component Panel */}
@@ -258,6 +404,16 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
                 </div>
               )}
 
+              {/* Duplicate Warning */}
+              {duplicateWarning && (
+                <div className="mb-3 p-3 bg-yellow-900/20 border border-yellow-700 rounded-md">
+                  <div className="flex items-start gap-2">
+                    <ExclamationTriangleIcon className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-yellow-300">{duplicateWarning}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex gap-2">
                 <button
@@ -272,6 +428,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
                     setShowAddComponent(false);
                     setSelectedInventoryItem(null);
                     setComponentSearchQuery('');
+                    setDuplicateWarning('');
                   }}
                   className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm font-semibold rounded-md transition-colors"
                 >
