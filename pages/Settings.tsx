@@ -10,6 +10,15 @@ import UserManagementPanel from '../components/UserManagementPanel';
 import FinaleSetupPanel from '../components/FinaleSetupPanel';
 import AiSettingsPanel from '../components/AiSettingsPanel';
 import SemanticSearchSettings from '../components/SemanticSearchSettings';
+import { 
+  AIProvider,
+  getAIProviderSettings,
+  updateAIProviderSettings,
+  testAIProviderConnection,
+  getAvailableModels,
+  validateAPIKey,
+  type AIProviderConfig
+} from '../services/aiProviderService';
 
 interface SettingsProps {
     currentUser: User;
@@ -58,6 +67,11 @@ const Settings: React.FC<SettingsProps> = ({
 
     // State for the "Add New Connection" form
     const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
+
+    // AI Provider Settings state
+    const [providerConfig, setProviderConfig] = useState<AIProviderConfig | null>(null);
+    const [testingProvider, setTestingProvider] = useState(false);
+    const [providerTestResult, setProviderTestResult] = useState<'success' | 'error' | null>(null);
 
     const handleCopyApiKey = () => {
         if (apiKey) {
@@ -167,6 +181,57 @@ const Settings: React.FC<SettingsProps> = ({
     // Helper to get regulatory agreement (checks new structure first, then legacy)
     const getRegulatoryAgreement = () => {
         return currentUser.agreements?.regulatory || currentUser.regulatoryAgreement;
+    };
+
+    // Load AI provider settings
+    React.useEffect(() => {
+        loadProviderSettings();
+    }, []);
+
+    const loadProviderSettings = async () => {
+        try {
+            const settings = await getAIProviderSettings();
+            setProviderConfig(settings);
+        } catch (error) {
+            console.error('Failed to load AI provider settings:', error);
+        }
+    };
+
+    const handleProviderChange = (provider: AIProvider) => {
+        if (!providerConfig) return;
+        const models = getAvailableModels(provider);
+        setProviderConfig({
+            ...providerConfig,
+            provider,
+            model: models[0], // Set first model as default
+        });
+        setProviderTestResult(null);
+    };
+
+    const handleSaveProvider = async () => {
+        if (!providerConfig) return;
+        try {
+            await updateAIProviderSettings(providerConfig);
+            addToast('AI provider settings saved successfully', 'success');
+        } catch (error: any) {
+            addToast(`Failed to save: ${error.message}`, 'error');
+        }
+    };
+
+    const handleTestProvider = async () => {
+        if (!providerConfig) return;
+        setTestingProvider(true);
+        setProviderTestResult(null);
+        try {
+            const success = await testAIProviderConnection(providerConfig);
+            setProviderTestResult(success ? 'success' : 'error');
+            addToast(success ? 'Provider connection successful!' : 'Provider connection failed', success ? 'success' : 'error');
+        } catch (error: any) {
+            setProviderTestResult('error');
+            addToast(`Test failed: ${error.message}`, 'error');
+        } finally {
+            setTestingProvider(false);
+        }
     };
 
   return (
@@ -510,13 +575,146 @@ const Settings: React.FC<SettingsProps> = ({
                 </button>
                  {isDevSettingsOpen && (
                     <div className="mt-4 border-t border-gray-700 pt-4 space-y-6">
-                        {/* AI Model Configuration */}
+                        {/* AI Provider Configuration */}
+                         <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                            <div className="flex items-center gap-4 mb-4">
+                              <BotIcon className="w-8 h-8 text-indigo-400" />
+                              <div>
+                                <h3 className="text-lg font-semibold text-white">AI Provider Configuration</h3>
+                                <p className="text-sm text-gray-400 mt-1">Configure the AI provider for the entire application. Defaults to Gemini.</p>
+                              </div>
+                            </div>
+                            
+                            {providerConfig && (
+                              <div className="mt-4 pt-4 border-t border-gray-700/50 space-y-4">
+                                {/* Provider Selection */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-300 mb-2">AI Provider</label>
+                                  <div className="grid grid-cols-4 gap-2">
+                                    {(['gemini', 'openai', 'anthropic', 'azure'] as AIProvider[]).map((provider) => (
+                                      <button
+                                        key={provider}
+                                        onClick={() => handleProviderChange(provider)}
+                                        className={`p-3 rounded-md border-2 transition-all ${
+                                          providerConfig.provider === provider
+                                            ? 'border-indigo-600 bg-indigo-900/30'
+                                            : 'border-gray-700 hover:border-gray-600'
+                                        }`}
+                                      >
+                                        <div className="font-medium text-white capitalize text-sm">{provider}</div>
+                                        {provider === 'gemini' && <div className="text-xs text-gray-500 mt-1">Default</div>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Model Selection */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-300 mb-2">Model</label>
+                                  <select 
+                                    value={providerConfig.model}
+                                    onChange={(e) => setProviderConfig({ ...providerConfig, model: e.target.value })}
+                                    className="w-full md:w-1/2 bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                  >
+                                    {getAvailableModels(providerConfig.provider).map((model) => (
+                                      <option key={model} value={model}>{model}</option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                {/* API Key */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    API Key
+                                    {providerConfig.apiKey && validateAPIKey(providerConfig.provider, providerConfig.apiKey) && (
+                                      <CheckCircleIcon className="inline w-4 h-4 ml-2 text-green-400" />
+                                    )}
+                                  </label>
+                                  <input
+                                    type="password"
+                                    value={providerConfig.apiKey}
+                                    onChange={(e) => setProviderConfig({ ...providerConfig, apiKey: e.target.value })}
+                                    placeholder={`Enter your ${providerConfig.provider} API key`}
+                                    className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                  />
+                                </div>
+
+                                {/* Azure Endpoint (only for Azure) */}
+                                {providerConfig.provider === 'azure' && (
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Azure Endpoint</label>
+                                    <input
+                                      type="text"
+                                      value={providerConfig.endpoint || ''}
+                                      onChange={(e) => setProviderConfig({ ...providerConfig, endpoint: e.target.value })}
+                                      placeholder="https://your-resource.openai.azure.com"
+                                      className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Advanced Settings */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Temperature</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="2"
+                                      step="0.1"
+                                      value={providerConfig.temperature || 0.3}
+                                      onChange={(e) => setProviderConfig({ ...providerConfig, temperature: parseFloat(e.target.value) })}
+                                      className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">Max Tokens</label>
+                                    <input
+                                      type="number"
+                                      min="256"
+                                      max="32768"
+                                      step="256"
+                                      value={providerConfig.maxTokens || 4096}
+                                      onChange={(e) => setProviderConfig({ ...providerConfig, maxTokens: parseInt(e.target.value) })}
+                                      className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-3 pt-4 border-t border-gray-700">
+                                  <button
+                                    onClick={handleTestProvider}
+                                    disabled={testingProvider || !providerConfig.apiKey}
+                                    className="bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50 text-sm"
+                                  >
+                                    {testingProvider ? 'Testing...' : 'Test Connection'}
+                                  </button>
+                                  <button
+                                    onClick={handleSaveProvider}
+                                    disabled={!providerConfig.apiKey}
+                                    className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
+                                  >
+                                    Save Provider Settings
+                                  </button>
+                                  {providerTestResult && (
+                                    <div className={`flex items-center gap-2 text-sm ${providerTestResult === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                                      {providerTestResult === 'success' ? <CheckCircleIcon className="w-4 h-4" /> : <ExclamationCircleIcon className="w-4 h-4" />}
+                                      {providerTestResult === 'success' ? 'Connected' : 'Failed'}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                        </div>
+
+                        {/* Legacy Gemini Model Configuration */}
                          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
                             <div className="flex items-center gap-4">
                               <BotIcon className="w-8 h-8 text-indigo-400" />
                               <div>
-                                <h3 className="text-lg font-semibold text-white">AI Model Configuration</h3>
-                                <p className="text-sm text-gray-400 mt-1">Select the base Gemini model for all AI features.</p>
+                                <h3 className="text-lg font-semibold text-white">Legacy: Gemini Model Selection</h3>
+                                <p className="text-sm text-gray-400 mt-1">For backwards compatibility with existing features.</p>
                               </div>
                             </div>
                             <div className="mt-4 pt-4 border-t border-gray-700/50">

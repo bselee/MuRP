@@ -27,6 +27,9 @@ export interface UserComplianceProfile {
   product_types?: string[];
   certifications_held?: string[];
   checks_this_month: number;
+  monthly_check_limit: number;
+  total_checks_lifetime: number;
+}
 /**
  * Get user compliance profile
  */
@@ -208,11 +211,10 @@ export async function basicComplianceCheck(
 }
 
 /**
- * Full AI Mode: Check label compliance against state regulations with AI analysis
+ * Industry settings interface
  */
-export async function checkLabelCompliance(
-  request: LabelComplianceRequest
-): Promise<ComplianceCheck> {
+export interface IndustrySettings {
+  industry: string;
   display_name: string;
   default_product_types: string[];
   common_certifications: string[];
@@ -564,6 +566,14 @@ function calculateComplianceScore(violations: any[], warnings: any[]): number {
 
 function determineOverallStatus(violations: any[], warnings: any[]): 'pass' | 'warning' | 'fail' | 'requires_review' {
   const critical = violations.filter((v: any) => v.severity === 'critical').length;
+  const high = violations.filter((v: any) => v.severity === 'high').length;
+
+  if (critical > 0) return 'fail';
+  if (high > 0 || warnings.length > 3) return 'requires_review';
+  if (warnings.length > 0) return 'warning';
+  return 'pass';
+}
+
 /**
  * Upgrade user to Full AI tier
  */
@@ -648,8 +658,227 @@ function determineRiskLevel(violations: any[]): 'low' | 'medium' | 'high' | 'cri
   return 'low';
 }
 
+/**
+ * Get state strictness rankings for compliance planning
+ */
+export async function getStateStrictnessRankings(
+  filterLevel?: string,
+  states?: string[]
+): Promise<any> {
+  try {
+    let query = supabase
+      .from('state_compliance_ratings')
+      .select('*')
+      .order('strictness_score', { ascending: false });
+
+    if (filterLevel) {
+      query = query.eq('strictness_level', filterLevel);
+    }
+
+    if (states && states.length > 0) {
+      query = query.in('state_code', states);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    // Group by strictness level
+    const grouped = {
+      'Very Strict': [] as any[],
+      'Strict': [] as any[],
+      'Moderate': [] as any[],
+      'Lenient': [] as any[],
+      'Very Lenient': [] as any[],
+    };
+
+    data?.forEach((state) => {
+      grouped[state.strictness_level as keyof typeof grouped].push(state);
+    });
+
+    return {
+      total_states: data?.length || 0,
+      grouped_by_strictness: grouped,
+      all_states: data,
+      recommendation:
+        'Start with Very Strict states (CA, OR, WA). Meeting their requirements will typically satisfy less strict states.',
+    };
+  } catch (error) {
+    console.error('Error fetching state strictness rankings:', error);
+    throw error;
+  }
+}
+
+/**
+ * Check compliance across multiple states (prioritizes strictest)
+ */
+export async function checkMultiStateCompliance(
+  userId: string,
+  productName: string,
+  productType: string,
+  targetStates: string[],
+  labelImageUrl?: string,
+  ingredients?: string[],
+  claims?: string[],
+  certifications?: string[],
+  prioritizeStrict: boolean = true
+): Promise<any> {
+  try {
+    // Get user profile
+    const profile = await getUserProfile(userId);
+    if (!profile) {
+      throw new Error('User profile not found');
+    }
+
+    // Check tier and usage limits
+    if (profile.compliance_tier === 'basic' && profile.trial_checks_remaining <= 0) {
+      return {
+        error: 'Upgrade to Full AI mode required',
+        trial_checks_remaining: 0,
+        upgrade_url: '/settings/compliance',
+      };
+    }
+
+    if (
+      profile.compliance_tier === 'full_ai' &&
+      profile.checks_this_month >= profile.monthly_check_limit
+    ) {
+      return {
+        error: 'Monthly check limit reached',
+        limit: profile.monthly_check_limit,
+        upgrade_url: '/settings/compliance',
+      };
+    }
+
+    // Get state ratings for target states
+    const { data: stateRatings, error: stateError } = await supabase
+      .from('state_compliance_ratings')
+      .select('*')
+      .in('state_code', targetStates);
+
+    if (stateError) throw stateError;
+
+    if (!stateRatings || stateRatings.length === 0) {
+      throw new Error('No state ratings found for target states');
+    }
+
+    // Sort by strictness if requested
+    const sortedStates = prioritizeStrict
+      ? [...stateRatings].sort((a, b) => b.strictness_score - a.strictness_score)
+      : stateRatings;
+
+    // Get regulations for all states
+    const regulationsByState: Record<string, any> = {};
+
+    for (const state of sortedStates) {
+      const { data: regs } = await supabase
+        .from('state_regulations')
+        .select('*')
+        .eq('state', state.state_code)
+        .eq('status', 'active')
+        .limit(20);
+
+      regulationsByState[state.state_code] = {
+        state_name: state.state_name,
+        strictness_level: state.strictness_level,
+        strictness_score: state.strictness_score,
+        key_focus_areas: state.key_focus_areas,
+        regulations: regs || [],
+        registration_required: state.registration_required,
+        labeling_requirements: state.labeling_requirements,
+      };
+    }
+
+    // Identify strictest requirements
+    const strictestState = sortedStates[0];
+
+    // Save check record
+    const { data: checkRecord } = await supabase
+      .from('compliance_checks')
+      .insert({
+        user_id: userId,
+        product_name: productName,
+        product_type: productType,
+        check_tier: profile.compliance_tier,
+        industry: profile.industry,
+        states_checked: targetStates,
+        extracted_ingredients: ingredients || [],
+        extracted_claims: claims || [],
+        overall_status: 'pending', // Will be updated by AI analysis
+      })
+      .select()
+      .single();
+
+    // Update usage
+    if (profile.compliance_tier === 'basic') {
+      await supabase
+        .from('user_compliance_profiles')
+        .update({
+          trial_checks_remaining: profile.trial_checks_remaining - 1,
+        })
+        .eq('user_id', userId);
+    } else {
+      await supabase
+        .from('user_compliance_profiles')
+        .update({
+          checks_this_month: profile.checks_this_month + 1,
+          total_checks_lifetime: profile.total_checks_lifetime + 1,
+        })
+        .eq('user_id', userId);
+    }
+
+    // Track analytics
+    await supabase.from('usage_analytics').insert({
+      user_id: userId,
+      event_type: 'multi_state_check',
+      event_data: {
+        states: targetStates,
+        product_type: productType,
+      },
+      compliance_tier: profile.compliance_tier,
+    });
+
+    return {
+      success: true,
+      check_id: checkRecord?.id,
+      product_name: productName,
+      states_analyzed: targetStates.length,
+      strictest_state: {
+        code: strictestState.state_code,
+        name: strictestState.state_name,
+        level: strictestState.strictness_level,
+        score: strictestState.strictness_score,
+        key_focus_areas: strictestState.key_focus_areas,
+      },
+      state_breakdown: regulationsByState,
+      recommendation: `Focus on meeting ${strictestState.state_name} requirements first. As the strictest state (Level: ${strictestState.strictness_level}), compliance there will likely satisfy most other states.`,
+      user_tier: profile.compliance_tier,
+      checks_remaining:
+        profile.compliance_tier === 'basic'
+          ? profile.trial_checks_remaining - 1
+          : null,
+      checks_this_month:
+        profile.compliance_tier === 'full_ai'
+          ? profile.checks_this_month + 1
+          : null,
+    };
+  } catch (error) {
+    console.error('Error in multi-state compliance check:', error);
+    throw error;
+  }
+}
+
 export default {
   checkLabelCompliance,
   getComplianceChecks,
   getStateRegulations,
+  getStateStrictnessRankings,
+  checkMultiStateCompliance,
+  getUserProfile,
+  upsertUserProfile,
+  upgradeToFullAI,
+  trackUpgradeView,
+  basicComplianceCheck,
+  addRegulatorySource,
+  getUserRegulatorySources,
 };

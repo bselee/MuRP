@@ -636,3 +636,217 @@ COMMENT ON COLUMN compliance_checks.violations IS 'Array of violation objects wi
 COMMENT ON COLUMN compliance_checks.compliance_score IS 'Overall compliance score 0-100';
 COMMENT ON COLUMN user_compliance_profiles.compliance_tier IS 'basic (free) or full_ai ($49/mo)';
 COMMENT ON COLUMN user_compliance_profiles.trial_checks_remaining IS 'Free AI checks before requiring upgrade';
+
+-- ============================================================================
+-- State Compliance Ratings Table
+-- Categorizes all US states by regulatory strictness
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS state_compliance_ratings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    state_code TEXT UNIQUE NOT NULL,
+    state_name TEXT NOT NULL,
+    strictness_level TEXT NOT NULL CHECK (strictness_level IN ('Very Strict', 'Strict', 'Moderate', 'Lenient', 'Very Lenient')),
+    strictness_score INTEGER NOT NULL CHECK (strictness_score BETWEEN 1 AND 5),
+    key_focus_areas TEXT[] DEFAULT '{}',
+    regulatory_agencies TEXT[] DEFAULT '{}',
+    registration_required BOOLEAN DEFAULT false,
+    labeling_requirements TEXT,
+    notes TEXT,
+    last_updated TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_state_ratings_strictness ON state_compliance_ratings(strictness_score DESC);
+CREATE INDEX idx_state_ratings_code ON state_compliance_ratings(state_code);
+
+COMMENT ON TABLE state_compliance_ratings IS 'Categorizes all 50 US states by regulatory strictness for prioritization';
+COMMENT ON COLUMN state_compliance_ratings.strictness_score IS '5=Very Strict (CA,OR,WA), 3=Moderate, 1=Very Lenient';
+
+-- Seed all 50 states + DC with compliance ratings
+INSERT INTO state_compliance_ratings (state_code, state_name, strictness_level, strictness_score, key_focus_areas, regulatory_agencies, registration_required, labeling_requirements, notes) VALUES
+    -- VERY STRICT (Score 5)
+    ('CA', 'California', 'Very Strict', 5, 
+        ARRAY['Heavy metal testing', 'NPK accuracy', 'Organic certification', 'Ingredient disclosure', 'Pathogen testing'],
+        ARRAY['CDFA', 'California EPA', 'County Agricultural Commissioners'],
+        true, 'Must display registration number, guaranteed analysis, heavy metal content, pathogen warnings, OMRI number if organic.',
+        'Most comprehensive fertilizer regulations in US. Requires annual product registration, quarterly testing, pathogen analysis for organics.'
+    ),
+    ('OR', 'Oregon', 'Very Strict', 5,
+        ARRAY['Compost testing', 'Heavy metals', 'Pathogen analysis', 'Organic claims', 'Source verification'],
+        ARRAY['Oregon Department of Agriculture', 'ODA Fertilizer Program'],
+        true, 'Registration number required. Detailed ingredient listing. Pathogen and heavy metal test results on file.',
+        'Strict compost and organic amendment rules. Requires microbial testing and source documentation.'
+    ),
+    ('WA', 'Washington', 'Very Strict', 5,
+        ARRAY['Heavy metal limits', 'Organic certification', 'Registration', 'Net weight accuracy'],
+        ARRAY['Washington State Department of Agriculture', 'WSDA Fertilizer Program'],
+        true, 'Must display WSDA registration number, guaranteed analysis, manufacturer info.',
+        'Comprehensive fertilizer law. Annual registration, strict organic rules, heavy metal testing required.'
+    ),
+    -- STRICT (Score 4)
+    ('NY', 'New York', 'Strict', 4,
+        ARRAY['Product registration', 'Labeling accuracy', 'Heavy metal testing', 'Organic claims'],
+        ARRAY['New York State Department of Agriculture and Markets'], true,
+        'Registration number, guaranteed analysis, net weight, manufacturer name required.',
+        'Requires product registration but less stringent testing than West Coast states.'
+    ),
+    ('CO', 'Colorado', 'Strict', 4,
+        ARRAY['Organic certification', 'OMRI verification', 'Labeling compliance', 'Heavy metals'],
+        ARRAY['Colorado Department of Agriculture', 'CDA Plant Industry Division'], true,
+        'Must display CDA registration number. OMRI products must show certification number.',
+        'Strong organic program. Requires OMRI certification number on labels.'
+    ),
+    ('TX', 'Texas', 'Strict', 4,
+        ARRAY['Product registration', 'Labeling requirements', 'Guaranteed analysis'],
+        ARRAY['Texas Department of Agriculture'], true,
+        'TDA registration number required. Guaranteed analysis must be accurate.',
+        'Robust fertilizer program with annual registration and inspection.'
+    ),
+    ('FL', 'Florida', 'Strict', 4,
+        ARRAY['Registration', 'Labeling', 'Grade accuracy', 'Moisture content'],
+        ARRAY['Florida Department of Agriculture and Consumer Services'], true,
+        'Registration number, grade, guaranteed analysis, weight required.',
+        'Active enforcement program. Important for citrus/agriculture market.'
+    ),
+    ('MI', 'Michigan', 'Strict', 4,
+        ARRAY['Registration', 'Labeling', 'Heavy metals'],
+        ARRAY['Michigan Department of Agriculture'], true,
+        'Registration number required. Heavy metal content disclosure.',
+        'Strong agricultural state with comprehensive fertilizer program.'
+    ),
+    ('PA', 'Pennsylvania', 'Strict', 4,
+        ARRAY['Registration', 'Labeling compliance', 'Organic certification'],
+        ARRAY['Pennsylvania Department of Agriculture'], true,
+        'Registration number, guaranteed analysis, manufacturer info required.',
+        'Active fertilizer enforcement. Important market for organic products.'
+    ),
+    -- MODERATE (Score 3)
+    ('AZ', 'Arizona', 'Moderate', 3, ARRAY['Product registration', 'Labeling'],
+        ARRAY['Arizona Department of Agriculture'], true,
+        'Registration number and guaranteed analysis required.', 'Standard fertilizer program.'
+    ),
+    ('CT', 'Connecticut', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Connecticut DEEP'], true, 'Standard labeling requirements.', 'Moderate regulations.'
+    ),
+    ('GA', 'Georgia', 'Moderate', 3, ARRAY['Registration', 'Grade accuracy'],
+        ARRAY['Georgia Department of Agriculture'], true, 'Registration and guaranteed analysis.', 'Standard program.'
+    ),
+    ('IL', 'Illinois', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Illinois Department of Agriculture'], true, 'Standard labeling.', 'Standard Midwest program.'
+    ),
+    ('IN', 'Indiana', 'Moderate', 3, ARRAY['Registration', 'Grade verification'],
+        ARRAY['Indiana State Chemist'], true, 'Standard labeling rules.', 'State Chemist oversees program.'
+    ),
+    ('IA', 'Iowa', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Iowa Department of Agriculture'], true, 'Standard requirements.', 'Major agricultural state.'
+    ),
+    ('KY', 'Kentucky', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Kentucky Department of Agriculture'], true, 'Standard labeling.', 'Moderate program.'
+    ),
+    ('ME', 'Maine', 'Moderate', 3, ARRAY['Registration', 'Environmental standards'],
+        ARRAY['Maine Department of Agriculture'], true, 'Standard with environmental focus.', 'Growing organic market.'
+    ),
+    ('MD', 'Maryland', 'Moderate', 3, ARRAY['Registration', 'Water quality'],
+        ARRAY['Maryland Department of Agriculture'], true, 'Standard requirements.', 'Chesapeake Bay focus.'
+    ),
+    ('MA', 'Massachusetts', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Massachusetts MDAR'], true, 'Standard labeling.', 'Moderate program.'
+    ),
+    ('MN', 'Minnesota', 'Moderate', 3, ARRAY['Registration', 'Grade accuracy'],
+        ARRAY['Minnesota Department of Agriculture'], true, 'Standard labeling.', 'Strong agricultural oversight.'
+    ),
+    ('NV', 'Nevada', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Nevada Department of Agriculture'], true, 'Standard requirements.', 'Standard Western program.'
+    ),
+    ('NH', 'New Hampshire', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['New Hampshire Department of Agriculture'], true, 'Standard labeling.', 'Moderate program.'
+    ),
+    ('NJ', 'New Jersey', 'Moderate', 3, ARRAY['Registration', 'Environmental standards'],
+        ARRAY['New Jersey Department of Agriculture'], true, 'Standard with environmental focus.', 'Moderate program.'
+    ),
+    ('NM', 'New Mexico', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['New Mexico Department of Agriculture'], true, 'Standard requirements.', 'Standard program.'
+    ),
+    ('NC', 'North Carolina', 'Moderate', 3, ARRAY['Registration', 'Grade verification'],
+        ARRAY['North Carolina Department of Agriculture'], true, 'Standard labeling.', 'Active agricultural state.'
+    ),
+    ('OH', 'Ohio', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Ohio Department of Agriculture'], true, 'Standard requirements.', 'Standard Midwest program.'
+    ),
+    ('OK', 'Oklahoma', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Oklahoma Department of Agriculture'], true, 'Standard requirements.', 'Standard program.'
+    ),
+    ('RI', 'Rhode Island', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Rhode Island DEM'], true, 'Standard requirements.', 'Small state program.'
+    ),
+    ('TN', 'Tennessee', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Tennessee Department of Agriculture'], true, 'Standard requirements.', 'Standard program.'
+    ),
+    ('UT', 'Utah', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Utah Department of Agriculture'], true, 'Standard requirements.', 'Standard Western program.'
+    ),
+    ('VT', 'Vermont', 'Moderate', 3, ARRAY['Registration', 'Organic focus'],
+        ARRAY['Vermont Agency of Agriculture'], true, 'Standard labeling.', 'Growing organic market.'
+    ),
+    ('VA', 'Virginia', 'Moderate', 3, ARRAY['Registration', 'Labeling'],
+        ARRAY['Virginia Department of Agriculture'], true, 'Standard requirements.', 'Standard Mid-Atlantic program.'
+    ),
+    ('WI', 'Wisconsin', 'Moderate', 3, ARRAY['Registration', 'Grade accuracy'],
+        ARRAY['Wisconsin Department of Agriculture'], true, 'Standard labeling.', 'Strong agricultural state.'
+    ),
+    -- LENIENT (Score 2)
+    ('AL', 'Alabama', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['Alabama Department of Agriculture'], true, 'Basic labeling.', 'Lenient program.'
+    ),
+    ('AR', 'Arkansas', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['Arkansas State Plant Board'], true, 'Basic labeling.', 'Lenient program.'
+    ),
+    ('DE', 'Delaware', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['Delaware Department of Agriculture'], true, 'Basic labeling.', 'Small state program.'
+    ),
+    ('ID', 'Idaho', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['Idaho Department of Agriculture'], true, 'Basic labeling.', 'Lenient Western program.'
+    ),
+    ('KS', 'Kansas', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['Kansas Department of Agriculture'], true, 'Basic labeling.', 'Lenient agricultural state.'
+    ),
+    ('LA', 'Louisiana', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['Louisiana Department of Agriculture'], true, 'Basic labeling.', 'Lenient Southern program.'
+    ),
+    ('MS', 'Mississippi', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['Mississippi Department of Agriculture'], true, 'Basic labeling.', 'Lenient program.'
+    ),
+    ('MO', 'Missouri', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['Missouri Department of Agriculture'], true, 'Basic labeling.', 'Lenient Midwest program.'
+    ),
+    ('MT', 'Montana', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['Montana Department of Agriculture'], true, 'Basic labeling.', 'Lenient Western program.'
+    ),
+    ('NE', 'Nebraska', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['Nebraska Department of Agriculture'], true, 'Basic labeling.', 'Lenient agricultural state.'
+    ),
+    ('ND', 'North Dakota', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['North Dakota Department of Agriculture'], true, 'Basic labeling.', 'Lenient program.'
+    ),
+    ('SC', 'South Carolina', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['South Carolina Department of Agriculture'], true, 'Basic labeling.', 'Lenient Southern program.'
+    ),
+    ('SD', 'South Dakota', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['South Dakota Department of Agriculture'], true, 'Basic labeling.', 'Lenient program.'
+    ),
+    ('WV', 'West Virginia', 'Lenient', 2, ARRAY['Basic registration'],
+        ARRAY['West Virginia Department of Agriculture'], true, 'Basic labeling.', 'Lenient Appalachian program.'
+    ),
+    -- VERY LENIENT (Score 1)
+    ('AK', 'Alaska', 'Very Lenient', 1, ARRAY['Minimal oversight'],
+        ARRAY['Alaska DNR'], false, 'Minimal labeling.', 'Very lenient due to small market.'
+    ),
+    ('HI', 'Hawaii', 'Very Lenient', 1, ARRAY['Basic labeling'],
+        ARRAY['Hawaii Department of Agriculture'], false, 'Basic labeling.', 'Island state with minimal oversight.'
+    ),
+    ('WY', 'Wyoming', 'Very Lenient', 1, ARRAY['Minimal requirements'],
+        ARRAY['Wyoming Department of Agriculture'], false, 'Minimal labeling.', 'Very lenient due to small population.'
+    ),
+    ('DC', 'District of Columbia', 'Very Lenient', 1, ARRAY['Minimal urban requirements'],
+        ARRAY['DC DOEE'], false, 'Minimal requirements.', 'Urban jurisdiction with minimal oversight.'
+    );
