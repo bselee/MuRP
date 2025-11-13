@@ -35,19 +35,19 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 ## 📚 Documentation
 
 ### Getting Started
-- **[Supabase Deployment Guide](SUPABASE_DEPLOYMENT_GUIDE.md)** - 🚀 Deploy vendor schema migration
+- **[Supabase Deployment Guide](SUPABASE_DEPLOYMENT_GUIDE.md)** - 🚀 Deploy database migrations
 - **[API Ingestion Setup Guide](API_INGESTION_SETUP.md)** - Complete setup for secure API integration
+- **[BOM Setup Guide](BOM_SETUP_GUIDE.md)** - Bill of Materials configuration and usage
 - **[Usage Examples](USAGE_EXAMPLES.md)** - Code examples for all services
 
 ### Architecture & Schema
 - **[Schema Architecture](SCHEMA_ARCHITECTURE.md)** - 4-layer schema design (Raw → Parsed → Database → Display)
-- **[Schema Implementation Summary](SCHEMA_IMPLEMENTATION_SUMMARY.md)** - Vendor parsing solution
 - **[Backend Documentation](backend_documentation.md)** - Backend API specification
 
-### Integration & Deployment
-- **[Finale Integration Report](FINALE_INTEGRATION_REPORT.md)** - Complete Finale API integration (A+ grade)
-- **[Deployment Checklist](DEPLOYMENT_CHECKLIST.md)** - Step-by-step deployment verification
-- **[AI Enhancements](AI_ENHANCEMENTS.md)** - Tier 1 AI features ($98K annual value)
+### Compliance & MCP System
+- **[Compliance System Architecture](docs/COMPLIANCE_SYSTEM_ARCHITECTURE.md)** - Multi-state regulatory compliance
+- **[MCP Setup Guide](docs/MCP_SETUP_GUIDE.md)** - Admin guide for MCP server configuration
+- **[Session Summary](docs/SESSION_SUMMARY_2025-11-13.md)** - Latest development session details
 
 ## 🔐 Security Features
 
