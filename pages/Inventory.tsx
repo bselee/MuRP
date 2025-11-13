@@ -471,7 +471,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
                             </button>
                             {isCategoryDropdownOpen && (
-                                <div className="absolute z-50 w-full mt-1 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden bg-gray-900">
+                                <div className="absolute z-[100] w-full mt-1 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden bg-gray-900">
                                     <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2 bg-gray-900">
                                         <button
                                             onClick={selectAllCategories}
@@ -542,7 +542,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
                             </button>
                             {isVendorDropdownOpen && (
-                                <div className="absolute z-50 w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden">
+                                <div className="absolute z-[100] w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden">
                                     <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2">
                                         <button
                                             onClick={selectAllVendors}

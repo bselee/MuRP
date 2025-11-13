@@ -57,7 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_mcp_enabled ON mcp_server_configs(is_enabled);
 -- Tracks which users have been onboarded to the MCP compliance system
 CREATE TABLE IF NOT EXISTS user_compliance_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL,
+  user_id UUID NOT NULL,
   email TEXT NOT NULL,
   profile_type TEXT NOT NULL DEFAULT 'standard', -- 'standard', 'enhanced', 'enterprise'
   onboarded_at TIMESTAMPTZ DEFAULT NOW(),
@@ -76,9 +76,16 @@ CREATE TABLE IF NOT EXISTS user_compliance_profiles (
 );
 
 -- Add foreign key constraint separately after table creation
-ALTER TABLE user_compliance_profiles 
-  ADD CONSTRAINT fk_user_compliance_profiles_user_id 
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_user_compliance_profiles_user_id'
+  ) THEN
+    ALTER TABLE user_compliance_profiles 
+      ADD CONSTRAINT fk_user_compliance_profiles_user_id 
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_compliance_user ON user_compliance_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_compliance_active ON user_compliance_profiles(is_active);
@@ -91,7 +98,7 @@ CREATE TABLE IF NOT EXISTS mcp_tool_calls (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   server_name TEXT NOT NULL,
   tool_name TEXT NOT NULL,
-  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   session_id TEXT,
   input_params JSONB,
   output_result JSONB,
