@@ -191,6 +191,17 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
     }
   };
 
+  const handleToggleAutoBackup = (enabled: boolean) => {
+    setAutoBackupEnabled(enabled);
+    localStorage.setItem('google_sheets_auto_backup', String(enabled));
+    addToast(
+      enabled 
+        ? 'Automatic backups enabled. Inventory will backup to Google Sheets after each Finale sync.' 
+        : 'Automatic backups disabled',
+      'success'
+    );
+  };
+
   return (
     <div className="google-sheets-panel">
       <h2>Google Sheets Integration</h2>
