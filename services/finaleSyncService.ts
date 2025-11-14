@@ -28,6 +28,7 @@ import {
   type FinaleSupplier,
   type FinalePurchaseOrder as FinalePOType,
 } from '../lib/finale/transformers';
+import { createBackupService } from './backupService';
 import {
   transformVendorParsedToDatabaseEnhanced,
   transformVendorsBatch,
@@ -142,6 +143,7 @@ export class FinaleSyncService {
   private circuitBreaker: CircuitBreaker;
   private syncIntervals: Map<string, NodeJS.Timeout>;
   private statusListeners: Set<(status: SyncStatus) => void>;
+  private backupService = createBackupService();
 
   constructor(config?: Partial<SyncConfig>) {
     // Don't initialize Finale client yet - will be set via setCredentials()
