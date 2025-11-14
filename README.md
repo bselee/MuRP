@@ -47,6 +47,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 ### Compliance & MCP System
 - **[Compliance System Architecture](docs/COMPLIANCE_SYSTEM_ARCHITECTURE.md)** - Multi-state regulatory compliance
 - **[MCP Setup Guide](docs/MCP_SETUP_GUIDE.md)** - Admin guide for MCP server configuration
+- **[AI Gateway Integration](docs/AI_GATEWAY_INTEGRATION.md)** - ✨ Vercel AI Gateway with tier-based routing
 - **[Session Summary](docs/SESSION_SUMMARY_2025-11-13.md)** - Latest development session details
 
 ## 🔐 Security Features
@@ -60,6 +61,12 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 
 ## 🛠️ Key Features
 
+### AI-Powered Intelligence ✨ NEW
+- **Vercel AI Gateway Integration** - Tier-based access to GPT-4o, Claude, and Gemini
+- **Usage Tracking Dashboard** - Real-time analytics and cost monitoring
+- **Automatic Fallbacks** - 99.9% uptime with multi-provider redundancy
+- **Smart Tier System** - Basic (100 msg/month free) and Full AI (unlimited)
+
 ### API Ingestion & Integration
 - **Finale Inventory Integration** - Sync inventory, vendors, and purchase orders
 - **Secure API Client** - Frontend-safe client routing through backend proxy
@@ -68,6 +75,8 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 - **Retry Logic** - Smart exponential backoff with configurable limits
 
 ### Services
+- `services/aiGatewayService.ts` - 🆕 Unified AI service with tier-based routing
+- `services/usageTrackingService.ts` - 🆕 Comprehensive usage analytics
 - `services/rateLimiter.ts` - Rate limiting with queuing
 - `services/circuitBreaker.ts` - Circuit breaker pattern
 - `services/retryWithBackoff.ts` - Exponential backoff retry
@@ -82,7 +91,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 ## 📦 Tech Stack
 
 - **Frontend:** React 19, TypeScript, Vite
-- **AI:** Google Gemini API ($98K annual value from Tier 1 features)
+- **AI:** Vercel AI Gateway (GPT-4o, Claude 3.5, Gemini 2.0) with tier-based routing
 - **Backend:** Supabase PostgreSQL + Edge Functions
 - **Database:** Supabase (vendor sync ready, migration deployed)
 - **Inventory API:** Finale Inventory (REST + CSV reports)
