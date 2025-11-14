@@ -954,7 +954,16 @@ export class FinaleSyncService {
       return;
     }
 
+    const startTime = new Date();
     console.log(`[FinaleSyncService] Saving ${vendors.length} vendors to Supabase...`);
+
+    try {
+      // SAFETY CHECK 1: Validate data before saving
+      await this.validateSyncData('vendors', vendors);
+
+      // SAFETY CHECK 2: Create backup before overwriting
+      const backupId = await this.createBackup('vendors', 'pre-vendors-sync');
+      console.log(`[FinaleSyncService] Backup created with ID: ${backupId}`);
 
     // Fetch existing vendors (id + name) to preserve IDs and avoid unique name conflicts
     const { data: existingRows, error: existingErr } = await supabase
@@ -1063,32 +1072,56 @@ export class FinaleSyncService {
       console.log(`[FinaleSyncService] Sample insert data (first vendor):`, Object.keys(newInserts[0]));
     }
 
-    // 1) Update existing rows by unique name (no id provided)
-    if (existingUpdates.length > 0) {
-      const { error: updErr } = await supabase
-        .from('vendors')
-        .upsert(existingUpdates as any, {
-          onConflict: 'name',
-          ignoreDuplicates: false,
-        });
-      if (updErr) {
-        throw new Error(`Failed to update existing vendors: ${updErr.message}`);
+      // 1) Update existing rows by unique name (no id provided)
+      if (existingUpdates.length > 0) {
+        const { error: updErr } = await supabase
+          .from('vendors')
+          .upsert(existingUpdates as any, {
+            onConflict: 'name',
+            ignoreDuplicates: false,
+          });
+        if (updErr) {
+          throw new Error(`Failed to update existing vendors: ${updErr.message}`);
+        }
+        console.log(`[FinaleSyncService] ✓ Updated ${existingUpdates.length} existing vendors`);
       }
-      console.log(`[FinaleSyncService] ✓ Updated ${existingUpdates.length} existing vendors`);
-    }
 
-    // 2) Insert new rows with IDs
-    if (newInserts.length > 0) {
-      const { error: insErr } = await supabase
-        .from('vendors')
-        .insert(newInserts as any);
-      if (insErr) {
-        throw new Error(`Failed to insert new vendors: ${insErr.message}`);
+      // 2) Insert new rows with IDs
+      if (newInserts.length > 0) {
+        const { error: insErr } = await supabase
+          .from('vendors')
+          .insert(newInserts as any);
+        if (insErr) {
+          throw new Error(`Failed to insert new vendors: ${insErr.message}`);
+        }
+        console.log(`[FinaleSyncService] ✓ Inserted ${newInserts.length} new vendors`);
       }
-      console.log(`[FinaleSyncService] ✓ Inserted ${newInserts.length} new vendors`);
-    }
 
-    console.log(`[FinaleSyncService] Successfully saved ${dedupedVendors.length} vendors (${existingUpdates.length} updated, ${newInserts.length} inserted)`);
+      console.log(`[FinaleSyncService] Successfully saved ${dedupedVendors.length} vendors (${existingUpdates.length} updated, ${newInserts.length} inserted)`);
+
+      // Log successful sync
+      await this.logSyncAudit({
+        syncType: 'finale',
+        operation: 'import',
+        tableName: 'vendors',
+        itemsAffected: dedupedVendors.length,
+        success: true,
+        metadata: { backupId, updated: existingUpdates.length, inserted: newInserts.length },
+        startedAt: startTime,
+      });
+    } catch (error) {
+      // Log failed sync
+      await this.logSyncAudit({
+        syncType: 'finale',
+        operation: 'import',
+        tableName: 'vendors',
+        itemsAffected: 0,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        startedAt: startTime,
+      });
+      throw error;
+    }
   }
 
   /**
@@ -1100,7 +1133,16 @@ export class FinaleSyncService {
       return [];
     }
 
+    const startTime = new Date();
     console.log(`[FinaleSyncService] Saving ${parsedItems.length} inventory items to Supabase...`);
+
+    try {
+      // SAFETY CHECK 1: Validate data before saving
+      await this.validateSyncData('inventory_items', parsedItems);
+
+      // SAFETY CHECK 2: Create backup before overwriting
+      const backupId = await this.createBackup('inventory_items', 'pre-inventory-sync');
+      console.log(`[FinaleSyncService] Backup created with ID: ${backupId}`);
 
     // Transform parsed items to database format
     const dbItems = parsedItems.map(parsed => ({
@@ -1137,31 +1179,55 @@ export class FinaleSyncService {
       updated_at: new Date().toISOString(),
     }));
 
-    // Upsert inventory items
-    const { error } = await supabase
-      .from('inventory_items')
-      .upsert(dbItems as any, {
-        onConflict: 'sku',
-        ignoreDuplicates: false,
+      // Upsert inventory items
+      const { error } = await supabase
+        .from('inventory_items')
+        .upsert(dbItems as any, {
+          onConflict: 'sku',
+          ignoreDuplicates: false,
+        });
+
+      if (error) {
+        throw new Error(`Failed to save inventory: ${error.message}`);
+      }
+
+      console.log(`[FinaleSyncService] Successfully saved ${dbItems.length} inventory items`);
+
+      // Log successful sync
+      await this.logSyncAudit({
+        syncType: 'finale',
+        operation: 'import',
+        tableName: 'inventory_items',
+        itemsAffected: dbItems.length,
+        success: true,
+        metadata: { backupId },
+        startedAt: startTime,
       });
 
-    if (error) {
-      throw new Error(`Failed to save inventory: ${error.message}`);
+      // Return as InventoryItem format for the caller
+      return dbItems.map(db => ({
+        sku: db.sku,
+        name: db.name,
+        category: db.category,
+        stock: db.stock,
+        onOrder: db.on_order,
+        reorderPoint: db.reorder_point,
+        vendorId: db.vendor_id || '',
+        moq: db.moq,
+      }));
+    } catch (error) {
+      // Log failed sync
+      await this.logSyncAudit({
+        syncType: 'finale',
+        operation: 'import',
+        tableName: 'inventory_items',
+        itemsAffected: 0,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        startedAt: startTime,
+      });
+      throw error;
     }
-
-    console.log(`[FinaleSyncService] Successfully saved ${dbItems.length} inventory items`);
-
-    // Return as InventoryItem format for the caller
-    return dbItems.map(db => ({
-      sku: db.sku,
-      name: db.name,
-      category: db.category,
-      stock: db.stock,
-      onOrder: db.on_order,
-      reorderPoint: db.reorder_point,
-      vendorId: db.vendor_id || '',
-      moq: db.moq,
-    }));
   }
 
   /**
@@ -1312,6 +1378,208 @@ export class FinaleSyncService {
       barcode: db.barcode || '',
       notes: db.notes || '',
     }));
+  }
+
+  // ============================================================================
+  // SAFETY & BACKUP METHODS
+  // ============================================================================
+
+  /**
+   * Validate sync data before saving to prevent data loss
+   * Aborts if new data is suspiciously small compared to existing data
+   */
+  private async validateSyncData(
+    tableName: 'inventory_items' | 'vendors' | 'boms',
+    newData: any[]
+  ): Promise<boolean> {
+    // Get current count from database
+    const { count: existingCount, error } = await supabase
+      .from(tableName)
+      .select('*', { count: 'exact', head: true });
+
+    if (error) {
+      console.warn(`[FinaleSyncService] Warning: Could not fetch existing count for ${tableName}:`, error);
+      // If we can't get existing count, allow sync to proceed (could be first sync)
+      return true;
+    }
+
+    const existing = existingCount || 0;
+    const incoming = newData.length;
+
+    console.log(`[FinaleSyncService] Validation: ${tableName} has ${existing} existing items, receiving ${incoming} new items`);
+
+    // CRITICAL: Abort if new data is less than 10% of existing data
+    if (existing > 10 && incoming < existing * 0.1) {
+      const errorMsg =
+        `⛔ SYNC ABORTED: Safety check failed for ${tableName}\n` +
+        `  Existing items: ${existing}\n` +
+        `  New items: ${incoming}\n` +
+        `  Difference: ${existing - incoming} items would be lost\n` +
+        `  This suggests CSV expired or data corruption.\n` +
+        `  Please verify your Finale CSV URLs are valid.`;
+
+      console.error(`[FinaleSyncService] ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+
+    // Minimum item threshold
+    if (incoming === 0 && existing > 0) {
+      const errorMsg =
+        `⛔ SYNC ABORTED: Received 0 items for ${tableName}\n` +
+        `  Existing items: ${existing}\n` +
+        `  This would delete all data.\n` +
+        `  CSV likely expired or is empty.`;
+
+      console.error(`[FinaleSyncService] ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+
+    // Warning if significant reduction but not critical
+    if (existing > 10 && incoming < existing * 0.5) {
+      console.warn(
+        `[FinaleSyncService] ⚠️ WARNING: ${tableName} sync will reduce data by ${Math.round((1 - incoming / existing) * 100)}%\n` +
+        `  This is allowed but unusual. Existing: ${existing}, New: ${incoming}`
+      );
+    }
+
+    console.log(`[FinaleSyncService] ✓ Validation passed for ${tableName}`);
+    return true;
+  }
+
+  /**
+   * Create backup before sync operation
+   * Returns backup ID for potential rollback
+   */
+  private async createBackup(
+    tableName: 'inventory_items' | 'vendors',
+    reason: string = 'pre-sync-backup'
+  ): Promise<string> {
+    console.log(`[FinaleSyncService] Creating backup for ${tableName}...`);
+
+    try {
+      const functionName = tableName === 'inventory_items'
+        ? 'backup_inventory_items'
+        : 'backup_vendors';
+
+      const { data, error } = await supabase.rpc(functionName, {
+        p_backup_reason: reason,
+        p_backup_source: 'finale-sync'
+      });
+
+      if (error) {
+        throw new Error(`Backup failed: ${error.message}`);
+      }
+
+      const backupInfo = Array.isArray(data) && data.length > 0 ? data[0] : data;
+      const backupId = backupInfo?.backup_id;
+      const itemsBackedUp = backupInfo?.items_backed_up || 0;
+      const timestamp = backupInfo?.backup_timestamp;
+
+      if (!backupId) {
+        throw new Error('Backup function did not return backup_id');
+      }
+
+      console.log(
+        `[FinaleSyncService] ✓ Created backup for ${tableName}\n` +
+        `  Backup ID: ${backupId}\n` +
+        `  Items backed up: ${itemsBackedUp}\n` +
+        `  Timestamp: ${timestamp}`
+      );
+
+      return backupId;
+    } catch (error) {
+      console.error(`[FinaleSyncService] Failed to create backup for ${tableName}:`, error);
+      throw new Error(`Backup creation failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Check CSV health before syncing
+   * Verifies URL is reachable and returns non-empty content
+   */
+  private async checkCSVHealth(url: string, description: string): Promise<boolean> {
+    if (!url) {
+      console.warn(`[FinaleSyncService] No URL provided for ${description}`);
+      return false;
+    }
+
+    try {
+      console.log(`[FinaleSyncService] Checking CSV health for ${description}...`);
+
+      // Note: HEAD requests might not work for all CSV URLs
+      // Some servers require GET requests
+      const response = await fetch(url, {
+        method: 'HEAD',
+        // Don't follow redirects automatically
+        redirect: 'manual'
+      });
+
+      // Check for redirects (could indicate expired URL)
+      if (response.status === 301 || response.status === 302) {
+        console.warn(`[FinaleSyncService] ⚠️ CSV URL for ${description} redirects (may be expired)`);
+        return false;
+      }
+
+      if (!response.ok) {
+        console.warn(`[FinaleSyncService] ⚠️ CSV URL for ${description} returned ${response.status}`);
+        return false;
+      }
+
+      // Check content length if available
+      const contentLength = parseInt(response.headers.get('content-length') || '0');
+      if (contentLength > 0 && contentLength < 100) {
+        console.warn(
+          `[FinaleSyncService] ⚠️ CSV for ${description} appears empty (${contentLength} bytes)\n` +
+          `  This may indicate the CSV report has no data or the URL is expired.`
+        );
+        return false;
+      }
+
+      console.log(`[FinaleSyncService] ✓ CSV health check passed for ${description}`);
+      return true;
+    } catch (error) {
+      console.error(`[FinaleSyncService] CSV health check failed for ${description}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Log sync audit record
+   */
+  private async logSyncAudit(params: {
+    syncType: 'finale' | 'google_sheets' | 'manual';
+    operation: 'import' | 'export' | 'backup' | 'restore';
+    tableName: string;
+    itemsAffected: number;
+    success: boolean;
+    errorMessage?: string;
+    metadata?: Record<string, any>;
+    startedAt: Date;
+  }): Promise<void> {
+    try {
+      const duration = Date.now() - params.startedAt.getTime();
+
+      const { error } = await supabase
+        .from('sync_audit_log')
+        .insert({
+          sync_type: params.syncType,
+          operation: params.operation,
+          table_name: params.tableName,
+          items_affected: params.itemsAffected,
+          success: params.success,
+          error_message: params.errorMessage,
+          sync_metadata: params.metadata || {},
+          started_at: params.startedAt.toISOString(),
+          completed_at: new Date().toISOString(),
+          duration_ms: duration,
+        });
+
+      if (error) {
+        console.warn('[FinaleSyncService] Failed to log sync audit:', error);
+      }
+    } catch (error) {
+      console.warn('[FinaleSyncService] Error logging sync audit:', error);
+    }
   }
 }
 
