@@ -31,6 +31,11 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
 
   // Export state
   const [exportResult, setExportResult] = useState<{ spreadsheetUrl?: string; itemsExported: number } | null>(null);
+  
+  // Auto-backup state
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => {
+    return localStorage.getItem('google_sheets_auto_backup') === 'true';
+  });
 
   const authService = getGoogleAuthService();
   const syncService = getGoogleSheetsSyncService();
@@ -295,16 +300,41 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
       {/* Backup Section */}
       {authStatus?.isAuthenticated && (
         <div className="section">
-          <h3>4. Create Backup</h3>
-          <p>Create a complete backup of inventory and vendors in Google Sheets</p>
+          <h3>4. Automatic Backups</h3>
+          <p>Automatically backup inventory to Google Sheets after each Finale sync</p>
 
-          <button
-            onClick={handleCreateBackup}
-            disabled={isLoading}
-            className="btn-secondary"
-          >
-            {isLoading ? 'Creating Backup...' : 'Create Backup Now'}
-          </button>
+          <div className="auto-backup-toggle">
+            <label className="toggle-container">
+              <input
+                type="checkbox"
+                checked={autoBackupEnabled}
+                onChange={(e) => handleToggleAutoBackup(e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+              <span className="toggle-label">
+                {autoBackupEnabled ? 'Auto-Backup Enabled' : 'Auto-Backup Disabled'}
+              </span>
+            </label>
+            <p className="toggle-description">
+              {autoBackupEnabled 
+                ? '✓ Inventory will be automatically backed up to Google Sheets after Finale syncs' 
+                : 'Enable to create automatic backups after each Finale sync'}
+            </p>
+          </div>
+
+          <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e0e0e0' }}>
+            <h4 style={{ fontSize: '1em', marginBottom: '10px' }}>Manual Backup</h4>
+            <p style={{ fontSize: '0.9em', color: '#666', marginBottom: '10px' }}>
+              Create a backup right now without waiting for next Finale sync
+            </p>
+            <button
+              onClick={handleCreateBackup}
+              disabled={isLoading}
+              className="btn-secondary"
+            >
+              {isLoading ? 'Creating Backup...' : 'Create Backup Now'}
+            </button>
+          </div>
         </div>
       )}
 
