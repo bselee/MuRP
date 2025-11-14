@@ -56,34 +56,31 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   // Multi-select sync
   const [selectedSyncSources, setSelectedSyncSources] = useState<Set<string>>(new Set(['vendors', 'inventory', 'boms']));
 
-  // Check if already configured on mount
+  // Check if backend is configured on mount
   useEffect(() => {
-    const finaleApiKey = localStorage.getItem('finale_api_key');
-    const finaleApiSecret = localStorage.getItem('finale_api_secret');
-    const finaleAccountPath = localStorage.getItem('finale_account_path');
+    // Check if backend API has Finale credentials configured
+    const checkBackendConfig = async () => {
+      try {
+        const response = await fetch('/api/finale-proxy?action=test-connection');
+        const result = await response.json();
+        
+        if (result.configured || result.success) {
+          setIsConfigured(true);
+          setCurrentStep('sync');
+          
+          // Initialize sync service and subscribe to status
+          const syncService = getFinaleSyncService();
+          const unsubscribe = syncService.onStatusChange(setSyncStatus);
+          setSyncStatus(syncService.getStatus());
+          
+          return () => unsubscribe();
+        }
+      } catch (error) {
+        console.log('[FinaleSetupPanel] Backend not configured yet');
+      }
+    };
     
-    if (finaleApiKey && finaleApiSecret && finaleAccountPath) {
-      setIsConfigured(true);
-      setCredentials({
-        apiKey: finaleApiKey,
-        apiSecret: finaleApiSecret,
-        accountPath: finaleAccountPath,
-      });
-      setCurrentStep('monitor');
-      
-      // Initialize sync service with credentials and subscribe to status
-      const syncService = getFinaleSyncService();
-      syncService.setCredentials(
-        finaleApiKey,
-        finaleApiSecret,
-        finaleAccountPath,
-        'https://app.finaleinventory.com'
-      );
-      const unsubscribe = syncService.onStatusChange(setSyncStatus);
-      setSyncStatus(syncService.getStatus());
-      
-      return () => unsubscribe();
-    }
+    checkBackendConfig();
   }, []);
 
   const handleCredentialChange = (field: keyof typeof credentials, value: string) => {
@@ -284,15 +281,40 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
       </div>
 
       <div className="mt-6 pt-6 border-t border-gray-700/50 space-y-6">
-        {/* Step 1: Credentials */}
-        <div className={currentStep === 'credentials' ? '' : 'opacity-60'}>
+        {/* Configuration Status */}
+        {!isConfigured && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+            <p className="text-sm text-yellow-300 font-medium mb-2">⚙️ Configuration Required</p>
+            <p className="text-xs text-gray-400">
+              Finale API credentials must be configured in your backend environment variables by an administrator.
+              Contact your system administrator to set up <code className="text-blue-400">FINALE_API_KEY</code>, 
+              <code className="text-blue-400"> FINALE_API_SECRET</code>, and 
+              <code className="text-blue-400"> FINALE_ACCOUNT_PATH</code>.
+            </p>
+          </div>
+        )}
+
+        {/* Step 1: Sync Data */}
+        <div className={isConfigured ? '' : 'opacity-40 pointer-events-none'}>
+          {!isConfigured ? (
+            <>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-500/20 text-gray-400 font-semibold text-sm">
+                  1
+                </div>
+                <h4 className="text-md font-semibold text-gray-400">Waiting for Backend Configuration</h4>
+              </div>
+            </>
+          ) : (
+            <>
           <div className="flex items-center gap-3 mb-4">
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 font-semibold text-sm">
               1
             </div>
-            <h4 className="text-md font-semibold text-white">Enter Finale API Credentials</h4>
+            <h4 className="text-md font-semibold text-white">Sync Finale Data</h4>
           </div>
           
+          {!isConfigured && (
           <div className="ml-11 space-y-4">
             <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4">
               <p className="text-sm text-blue-300 font-medium mb-2">📍 Where to find your credentials:</p>
@@ -382,6 +404,9 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
               )}
             </div>
           </div>
+          )}
+          </>
+          )}
         </div>
 
         {/* Step 2: Initial Sync */}
