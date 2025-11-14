@@ -25,8 +25,8 @@ const EmailComposerModal: React.FC<EmailComposerModalProps> = ({ isOpen, onClose
     useEffect(() => {
         if (isOpen) {
             setTo(vendor.contactEmails[0] || '');
-            setFrom(gmailConnection.isConnected ? gmailConnection.email! : 'procurement@goodestfungus.com (simulation)');
-            setSubject(`Purchase Order #${purchaseOrder.id} from The Goodest Fungus Co.`);
+            setFrom(gmailConnection.isConnected ? gmailConnection.email! : 'procurement@murp.app (simulation)');
+            setSubject(`Purchase Order #${purchaseOrder.id} from MuRP`);
             setBody(
 `Hello ${vendor.name} Team,
 
@@ -36,7 +36,7 @@ Kindly confirm receipt and provide an estimated shipping date at your earliest c
 
 Thank you,
 
-The Goodest Fungus Co.
+MuRP
 Procurement Team`
             );
         }

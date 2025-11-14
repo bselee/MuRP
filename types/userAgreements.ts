@@ -89,7 +89,7 @@ export const REGULATORY_AGREEMENT_TEXT = {
   title: "Regulatory Compliance Features - User Agreement",
 
   introduction: `
-This agreement governs your use of the Regulatory Compliance features in TGF-MRP, including but not limited to:
+This agreement governs your use of the Regulatory Compliance features in MuRP, including but not limited to:
 - AI-powered regulatory research
 - State agency contact information
 - Compliance issue identification
@@ -184,7 +184,7 @@ We are not responsible for:
     {
       title: "6. LIABILITY RELEASE",
       content: `
-TO THE MAXIMUM EXTENT PERMITTED BY LAW, you release and hold harmless TGF-MRP, its owners, employees, and affiliates from any and all claims, damages, losses, or expenses arising from:
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, you release and hold harmless MuRP, its owners, employees, and affiliates from any and all claims, damages, losses, or expenses arising from:
 
 - Use of AI-generated regulatory information
 - Reliance on compliance recommendations
@@ -270,7 +270,7 @@ BY CLICKING "I ACCEPT" BELOW, YOU ACKNOWLEDGE THAT:
 ✓ You will consult with qualified legal professionals
 ✓ You understand this is not legal advice
 ✓ You use these features at your own risk
-✓ You release TGF-MRP from liability as stated above
+✓ You release MuRP from liability as stated above
 
 If you do not agree to these terms, do not use the Regulatory Compliance features.
 `,

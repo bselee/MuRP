@@ -1,6 +1,6 @@
 import React from 'react';
 import type { User } from '../types';
-import { BoxIcon, UsersIcon } from '../components/icons';
+import { MushroomLogo, UsersIcon } from '../components/icons';
 
 interface LoginScreenProps {
   users: User[];
@@ -12,8 +12,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin }) => {
     <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <BoxIcon className="w-16 h-16 text-indigo-400 mx-auto mb-4" />
-          <h1 className="text-4xl font-bold text-white">TGF MRP</h1>
+          <MushroomLogo className="w-16 h-16 mx-auto mb-4" />
+          <h1 className="text-4xl font-bold text-white">MuRP</h1>
           <p className="text-gray-400 mt-2">Please select your user profile to continue.</p>
         </div>
         

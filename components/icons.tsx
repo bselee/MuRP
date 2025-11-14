@@ -1,5 +1,42 @@
 import React from 'react';
 
+// MuRP Logo - Snazzy Mushroom Icon
+export const MushroomLogo = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 64 64" fill="none">
+    {/* Mushroom cap - gradient effect */}
+    <defs>
+      <linearGradient id="capGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style={{ stopColor: '#a78bfa', stopOpacity: 1 }} />
+        <stop offset="100%" style={{ stopColor: '#7c3aed', stopOpacity: 1 }} />
+      </linearGradient>
+      <linearGradient id="stemGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style={{ stopColor: '#e5e7eb', stopOpacity: 1 }} />
+        <stop offset="100%" style={{ stopColor: '#d1d5db', stopOpacity: 1 }} />
+      </linearGradient>
+    </defs>
+    
+    {/* Mushroom cap */}
+    <ellipse cx="32" cy="22" rx="24" ry="16" fill="url(#capGradient)" />
+    <path d="M 8 22 Q 12 28, 32 28 Q 52 28, 56 22" fill="url(#capGradient)" opacity="0.8" />
+    
+    {/* Cap spots */}
+    <circle cx="20" cy="18" r="3" fill="white" opacity="0.4" />
+    <circle cx="32" cy="14" r="2.5" fill="white" opacity="0.5" />
+    <circle cx="44" cy="18" r="3.5" fill="white" opacity="0.4" />
+    <circle cx="26" cy="22" r="2" fill="white" opacity="0.3" />
+    <circle cx="40" cy="20" r="2.5" fill="white" opacity="0.35" />
+    
+    {/* Mushroom stem */}
+    <rect x="24" y="28" width="16" height="24" rx="2" fill="url(#stemGradient)" />
+    
+    {/* Gill/ring detail */}
+    <ellipse cx="32" cy="30" rx="10" ry="3" fill="white" opacity="0.2" />
+    
+    {/* Base/ground */}
+    <ellipse cx="32" cy="52" rx="14" ry="3" fill="#374151" opacity="0.6" />
+  </svg>
+);
+
 export const BoxIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-14L4 7v10l8 4m0-14V3" />

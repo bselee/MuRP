@@ -22,10 +22,10 @@ export const generatePoPdf = (po: PurchaseOrder, vendor: Vendor) => {
     doc.setFont('helvetica', 'bold');
     doc.text('FROM:', 20, 60);
     doc.setFont('helvetica', 'normal');
-    doc.text('The Goodest Fungus Co.', 20, 65);
+    doc.text('MuRP', 20, 65);
     doc.text('123 Mushroom Lane', 20, 70);
     doc.text('Mycelia, CA, 90210', 20, 75);
-    doc.text('contact@goodestfungus.com', 20, 80);
+    doc.text('contact@murp.app', 20, 80);
 
     // --- Vendor Info (To) ---
     doc.setFont('helvetica', 'bold');

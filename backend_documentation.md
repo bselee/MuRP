@@ -1,6 +1,6 @@
-# TGF MRP - Backend Documentation & API Specification
+# MuRP - Backend Documentation & API Specification
 
-This document outlines the required backend services, data models, and API endpoints to support the TGF MRP frontend application. The goal is to provide a clear roadmap for backend developers to build a scalable and secure server that mirrors the frontend's logic.
+This document outlines the required backend services, data models, and API endpoints to support the MuRP frontend application. The goal is to provide a clear roadmap for backend developers to build a scalable and secure server that mirrors the frontend's logic.
 
 ## 1. Authentication
 

@@ -35,8 +35,8 @@ const NewUserSetup: React.FC<NewUserSetupProps> = ({ user, onSetupComplete }) =>
         <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
             <div className="w-full max-w-lg">
                 <div className="text-center mb-8">
-                    <BoxIcon className="w-16 h-16 text-indigo-400 mx-auto mb-4" />
-                    <h1 className="text-4xl font-bold text-white">Welcome to TGF MRP</h1>
+                    <MushroomLogo className="w-16 h-16 mx-auto mb-4" />
+                    <h1 className="text-4xl font-bold text-white">Welcome to MuRP</h1>
                     <p className="text-gray-400 mt-2">Let's get your account set up, {user.name.split(' ')[0]}.</p>
                 </div>
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 p-8 space-y-6">

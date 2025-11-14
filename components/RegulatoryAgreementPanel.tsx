@@ -41,7 +41,7 @@ const RegulatoryAgreementPanel: React.FC<RegulatoryAgreementPanelProps> = ({
             version: '1.0',
             fullName: currentUser.name,
             title: currentUser.role,
-            companyName: 'The Goodest Fungus',
+            companyName: 'MuRP',
             electronicSignature: currentUser.name,
           },
         },
@@ -52,7 +52,7 @@ const RegulatoryAgreementPanel: React.FC<RegulatoryAgreementPanelProps> = ({
           version: '1.0',
           fullName: currentUser.name,
           title: currentUser.role,
-          companyName: 'The Goodest Fungus',
+          companyName: 'MuRP',
           electronicSignature: currentUser.name,
         },
       };

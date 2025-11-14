@@ -45,8 +45,8 @@ const ApiDocs: React.FC = () => {
   return (
     <div className="space-y-12 max-w-5xl mx-auto">
       <header>
-        <h1 className="text-4xl font-bold text-white tracking-tight">API Documentation</h1>
-        <p className="text-gray-400 mt-2">Integrate external systems with the TGF MRP application using this REST API.</p>
+        <h1 className="text-3xl font-bold text-white tracking-tight">API Documentation</h1>
+        <p className="text-gray-400 mt-2">Integrate external systems with the MuRP application using this REST API.</p>
       </header>
 
       {/* --- Authentication --- */}

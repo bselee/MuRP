@@ -1,4 +1,4 @@
-const STORAGE_PREFIX = 'tgf-mrp::';
+const STORAGE_PREFIX = 'murp::';
 
 const hasWindow = (): boolean => typeof window !== 'undefined';
 
