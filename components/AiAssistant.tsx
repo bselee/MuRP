@@ -21,7 +21,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { sendChatMessage, type ChatRequest } from '../services/aiGatewayService';
 import { getUserProfile } from '../services/complianceService';
 import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, AiConfig, AiSettings } from '../types';
-import { BotIcon, CloseIcon, SendIcon } from './icons';
+import { BotIcon, CloseIcon, SendIcon, SquirrelIcon } from './icons';
 
 interface AiAssistantProps {
   isOpen: boolean;
@@ -194,7 +194,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
         {/* Header */}
         <header className="flex items-center justify-between p-4 bg-gray-900/50 border-b border-gray-700">
           <div className="flex items-center gap-3">
-            <BotIcon className="w-6 h-6 text-indigo-400" />
+            <SquirrelIcon className="w-6 h-6 text-indigo-400" />
             <div>
               <h2 className="text-lg font-semibold text-white">AI Assistant</h2>
               {messagesRemaining !== null && (
@@ -241,7 +241,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
             >
               {msg.sender === 'bot' && (
                 <div className="w-8 h-8 rounded-full bg-indigo-500 flex-shrink-0 flex items-center justify-center">
-                  <BotIcon className="w-5 h-5 text-white" />
+                  <SquirrelIcon className="w-5 h-5 text-white" />
                 </div>
               )}
               <div className="flex flex-col gap-1 max-w-xs md:max-w-md">
@@ -266,7 +266,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
           {isLoading && (
             <div className="flex gap-3 justify-start">
               <div className="w-8 h-8 rounded-full bg-indigo-500 flex-shrink-0 flex items-center justify-center">
-                <BotIcon className="w-5 h-5 text-white" />
+                <SquirrelIcon className="w-5 h-5 text-white" />
               </div>
               <div className="max-w-xs md:max-w-md p-3 rounded-lg bg-gray-700 text-gray-200">
                 <div className="flex items-center space-x-1">
