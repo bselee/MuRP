@@ -418,7 +418,13 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
               <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-500/20 text-green-400 font-semibold text-sm">
                 ✓
               </div>
-              <h4 className="text-md font-semibold text-white">Sync Status & Controls</h4>
+              <h4 className="text-md font-semibold text-white flex-1">Sync Status & Controls</h4>
+              <button
+                onClick={() => setCurrentStep('credentials')}
+                className="text-xs text-blue-400 hover:text-blue-300 font-medium"
+              >
+                Reconfigure Credentials
+              </button>
             </div>
 
             <div className="ml-11 space-y-4">

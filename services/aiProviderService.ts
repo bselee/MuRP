@@ -38,7 +38,7 @@ export interface AIResponse {
 
 // Default model configurations
 const DEFAULT_MODELS: Record<AIProvider, string> = {
-  gemini: 'gemini-2.0-flash-exp',
+  gemini: 'gemini-1.5-flash-latest',
   openai: 'gpt-4o',
   anthropic: 'claude-3-5-sonnet-20241022',
   azure: 'gpt-4o', // User must configure deployment name
@@ -403,10 +403,11 @@ export async function callAI(
 export function getAvailableModels(provider: AIProvider): string[] {
   const models: Record<AIProvider, string[]> = {
     gemini: [
-      'gemini-2.0-flash-exp',
-      'gemini-1.5-pro-latest',
       'gemini-1.5-flash-latest',
+      'gemini-1.5-pro-latest',
       'gemini-1.5-flash-8b-latest',
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
     ],
     openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
     anthropic: [
