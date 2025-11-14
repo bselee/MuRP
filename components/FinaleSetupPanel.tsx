@@ -205,7 +205,25 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sync failed';
       addToast('❌ Sync failed: ' + message, 'error');
+      console.error('[FinaleSetupPanel] Sync error:', error);
     }
+  };
+
+  const handleResetSyncStatus = () => {
+    const syncService = getFinaleSyncService();
+    // Force reset the sync status to allow manual sync again
+    (syncService as any).status.isRunning = false;
+    (syncService as any).updateStatus({
+      isRunning: false,
+      progress: {
+        phase: 'idle',
+        current: 0,
+        total: 0,
+        percentage: 0,
+        message: 'Ready to sync',
+      },
+    });
+    addToast('Sync status reset', 'info');
   };
 
   const toggleSyncSource = (source: string) => {
@@ -537,14 +555,35 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
               </div>
 
               {/* Manual sync button */}
-              <button
-                onClick={handleManualSync}
-                disabled={syncStatus?.isRunning || selectedSyncSources.size === 0}
-                className="w-full bg-indigo-600 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                <RefreshIcon className={`w-5 h-5 ${syncStatus?.isRunning ? 'animate-spin' : ''}`} />
-                {syncStatus?.isRunning ? 'Syncing...' : `Sync Selected (${selectedSyncSources.size})`}
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={handleManualSync}
+                  disabled={syncStatus?.isRunning || selectedSyncSources.size === 0}
+                  className="w-full bg-indigo-600 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <RefreshIcon className={`w-5 h-5 ${syncStatus?.isRunning ? 'animate-spin' : ''}`} />
+                  {syncStatus?.isRunning ? 'Syncing...' : `Sync Selected (${selectedSyncSources.size})`}
+                </button>
+
+                {/* Reset button if stuck in running state */}
+                {syncStatus?.isRunning && (
+                  <button
+                    onClick={handleResetSyncStatus}
+                    className="w-full bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
+                  >
+                    Reset Sync Status (if stuck)
+                  </button>
+                )}
+
+                {/* Debug info */}
+                {syncStatus && (
+                  <div className="text-xs text-gray-500 text-center">
+                    Status: {syncStatus.isRunning ? 'Running' : 'Idle'} | 
+                    Sources: {selectedSyncSources.size} | 
+                    Phase: {syncStatus.progress.phase}
+                  </div>
+                )}
+              </div>
 
               {/* Errors */}
               {syncStatus && syncStatus.errors.length > 0 && (
