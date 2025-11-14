@@ -643,7 +643,16 @@ export default {
   checkLabelCompliance,
   getComplianceChecks,
   getStateRegulations,
-};if (violations.length > 0) return 'warning';
+  getStateStrictnessRankings,
+  checkMultiStateCompliance,
+  
+  // Helper functions
+  determineComplianceStatus,
+  determineRiskLevel,
+};
+
+function determineComplianceStatus(violations: any[], warnings: any[]): 'pass' | 'warning' | 'fail' {
+  if (violations.length > 0) return 'fail';
   if (warnings.length > 0) return 'warning';
   return 'pass';
 }
@@ -867,18 +876,3 @@ export async function checkMultiStateCompliance(
     throw error;
   }
 }
-
-export default {
-  checkLabelCompliance,
-  getComplianceChecks,
-  getStateRegulations,
-  getStateStrictnessRankings,
-  checkMultiStateCompliance,
-  getUserProfile,
-  upsertUserProfile,
-  upgradeToFullAI,
-  trackUpgradeView,
-  basicComplianceCheck,
-  addRegulatorySource,
-  getUserRegulatorySources,
-};
