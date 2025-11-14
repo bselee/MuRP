@@ -79,6 +79,18 @@ CREATE TABLE IF NOT EXISTS user_compliance_profiles (
 -- user_id will be populated from application code (localStorage/session)
 -- If using Supabase Auth, user_id should match auth.users.id (UUID)
 
+-- Add missing columns if table already exists
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT FROM pg_tables WHERE tablename = 'user_compliance_profiles') THEN
+    -- Add is_active column if it doesn't exist
+    IF NOT EXISTS (SELECT FROM information_schema.columns 
+                   WHERE table_name = 'user_compliance_profiles' AND column_name = 'is_active') THEN
+      ALTER TABLE user_compliance_profiles ADD COLUMN is_active BOOLEAN DEFAULT true;
+    END IF;
+  END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_compliance_user ON user_compliance_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_compliance_active ON user_compliance_profiles(is_active);
 
