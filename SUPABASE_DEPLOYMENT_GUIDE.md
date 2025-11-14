@@ -51,7 +51,7 @@ ORDER BY ordinal_position;
 
 ### Step 4: Test Vendor Sync
 
-1. Open https://tgf-mrp.vercel.app
+1. Open https://murp.app
 2. Navigate to **Settings** → **Finale Integration**
 3. Click **"Sync Data"** button
 4. Watch for success toast: "✅ Synced X vendors"
