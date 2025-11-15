@@ -34,11 +34,11 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   const [currentStep, setCurrentStep] = useState<SetupStep>('credentials');
   const [isConfigured, setIsConfigured] = useState(false);
   
-  // Credentials
+  // Credentials - Initialize from environment variables if available
   const [credentials, setCredentials] = useState({
-    apiKey: '',
-    apiSecret: '',
-    accountPath: '',
+    apiKey: import.meta.env.VITE_FINALE_API_KEY || '',
+    apiSecret: import.meta.env.VITE_FINALE_API_SECRET || '',
+    accountPath: import.meta.env.VITE_FINALE_ACCOUNT_PATH || '',
   });
   
   // Connection test
@@ -60,27 +60,37 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   useEffect(() => {
     const checkStoredCredentials = async () => {
       try {
-        // Check localStorage for stored credentials
-        const storedApiKey = localStorage.getItem('finale_api_key');
-        const storedApiSecret = localStorage.getItem('finale_api_secret');
-        const storedAccountPath = localStorage.getItem('finale_account_path');
+        // First priority: Check localStorage for stored credentials
+        let apiKey = localStorage.getItem('finale_api_key');
+        let apiSecret = localStorage.getItem('finale_api_secret');
+        let accountPath = localStorage.getItem('finale_account_path');
         
-        if (storedApiKey && storedApiSecret && storedAccountPath) {
-          console.log('[FinaleSetupPanel] Found stored credentials');
+        // Second priority: Use environment variables if localStorage is empty
+        if (!apiKey && import.meta.env.VITE_FINALE_API_KEY) {
+          apiKey = import.meta.env.VITE_FINALE_API_KEY;
+          apiSecret = import.meta.env.VITE_FINALE_API_SECRET;
+          accountPath = import.meta.env.VITE_FINALE_ACCOUNT_PATH;
+          console.log('[FinaleSetupPanel] Using credentials from environment variables');
+        }
+        
+        if (apiKey && apiSecret && accountPath) {
+          console.log('[FinaleSetupPanel] Found credentials, testing connection...');
           
-          // Restore credentials to form
-          setCredentials({
-            apiKey: storedApiKey,
-            apiSecret: storedApiSecret,
-            accountPath: storedAccountPath,
-          });
+          // Update form with found credentials (already done in useState for env vars)
+          if (!credentials.apiKey) {
+            setCredentials({
+              apiKey,
+              apiSecret,
+              accountPath,
+            });
+          }
           
-          // Test the stored credentials
+          // Test the credentials
           try {
             const client = new FinaleBasicAuthClient({
-              apiKey: storedApiKey,
-              apiSecret: storedApiSecret,
-              accountPath: storedAccountPath,
+              apiKey,
+              apiSecret,
+              accountPath,
               baseUrl: 'https://app.finaleinventory.com',
             });
             
@@ -90,29 +100,35 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
               setIsConfigured(true);
               setCurrentStep('sync');
               
+              // Save to localStorage for future use
+              localStorage.setItem('finale_api_key', apiKey);
+              localStorage.setItem('finale_api_secret', apiSecret);
+              localStorage.setItem('finale_account_path', accountPath);
+              
               // Configure sync service
               const syncService = getFinaleSyncService();
-              syncService.setCredentials(storedApiKey, storedApiSecret, storedAccountPath);
+              syncService.setCredentials(apiKey, apiSecret, accountPath);
               const unsubscribe = syncService.onStatusChange(setSyncStatus);
               setSyncStatus(syncService.getStatus());
               
-              console.log('[FinaleSetupPanel] Credentials restored and verified');
+              console.log('[FinaleSetupPanel] Credentials verified and configured');
               
               return () => unsubscribe();
             } else {
-              console.warn('[FinaleSetupPanel] Stored credentials are invalid, clearing...');
+              console.warn('[FinaleSetupPanel] Credentials are invalid:', result.message);
+              // Clear localStorage if they were stored there
               localStorage.removeItem('finale_api_key');
               localStorage.removeItem('finale_api_secret');
               localStorage.removeItem('finale_account_path');
             }
           } catch (error) {
-            console.error('[FinaleSetupPanel] Error testing stored credentials:', error);
+            console.error('[FinaleSetupPanel] Error testing credentials:', error);
           }
         } else {
-          console.log('[FinaleSetupPanel] No stored credentials found - user needs to enter them');
+          console.log('[FinaleSetupPanel] No credentials found - user needs to enter them');
         }
       } catch (error) {
-        console.error('[FinaleSetupPanel] Error checking stored credentials:', error);
+        console.error('[FinaleSetupPanel] Error checking credentials:', error);
       }
     };
     
