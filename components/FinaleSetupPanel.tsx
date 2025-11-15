@@ -179,7 +179,22 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   };
 
   const handleStartSync = async () => {
+    if (!isConfigured) {
+      addToast('❌ Please test connection first', 'error');
+      return;
+    }
+
     const syncService = getFinaleSyncService();
+    
+    // Ensure credentials are set
+    if (!syncService.isConfigured()) {
+      syncService.setCredentials(
+        credentials.apiKey,
+        credentials.apiSecret,
+        credentials.accountPath,
+        'https://app.finaleinventory.com'
+      );
+    }
     
     // Subscribe to sync status updates
     const unsubscribe = syncService.onStatusChange(setSyncStatus);
@@ -192,6 +207,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
       setCurrentStep('monitor');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sync failed';
+      console.error('[FinaleSetupPanel] Sync error:', error);
       addToast('❌ Sync failed: ' + message, 'error');
     }
     
@@ -199,7 +215,22 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   };
 
   const handleToggleAutoSync = () => {
+    if (!isConfigured) {
+      addToast('❌ Please test connection first', 'error');
+      return;
+    }
+
     const syncService = getFinaleSyncService();
+    
+    // Ensure credentials are set
+    if (!syncService.isConfigured()) {
+      syncService.setCredentials(
+        credentials.apiKey,
+        credentials.apiSecret,
+        credentials.accountPath,
+        'https://app.finaleinventory.com'
+      );
+    }
     
     if (autoSyncEnabled) {
       syncService.stopAutoSync();
@@ -218,7 +249,23 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
       return;
     }
 
+    if (!isConfigured) {
+      addToast('❌ Please test connection first', 'error');
+      return;
+    }
+
     const syncService = getFinaleSyncService();
+    
+    // Ensure credentials are set
+    if (!syncService.isConfigured()) {
+      syncService.setCredentials(
+        credentials.apiKey,
+        credentials.apiSecret,
+        credentials.accountPath,
+        'https://app.finaleinventory.com'
+      );
+    }
+    
     const sources = Array.from(selectedSyncSources);
     addToast(`🔄 Starting sync for: ${sources.join(', ')}...`, 'info');
     
