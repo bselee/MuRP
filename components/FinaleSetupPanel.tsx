@@ -56,8 +56,10 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   // Multi-select sync
   const [selectedSyncSources, setSelectedSyncSources] = useState<Set<string>>(new Set(['vendors', 'inventory', 'boms']));
 
-  // Check if credentials are stored in localStorage on mount
+  // Check if credentials are stored in localStorage on mount AND subscribe to sync status
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    
     const checkStoredCredentials = async () => {
       try {
         // First priority: Check localStorage for stored credentials
@@ -76,53 +78,45 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
         if (apiKey && apiSecret && accountPath) {
           console.log('[FinaleSetupPanel] Found credentials, testing connection...');
           
-          // Update form with found credentials (already done in useState for env vars)
-          if (!credentials.apiKey) {
-            setCredentials({
-              apiKey,
-              apiSecret,
-              accountPath,
-            });
-          }
+          // Update form with found credentials
+          setCredentials({
+            apiKey,
+            apiSecret,
+            accountPath,
+          });
           
           // Test the credentials
-          try {
-            const client = new FinaleBasicAuthClient({
-              apiKey,
-              apiSecret,
-              accountPath,
-              baseUrl: 'https://app.finaleinventory.com',
-            });
+          const client = new FinaleBasicAuthClient({
+            apiKey,
+            apiSecret,
+            accountPath,
+            baseUrl: 'https://app.finaleinventory.com',
+          });
+          
+          const result = await client.testConnection();
+          
+          if (result.success) {
+            setIsConfigured(true);
+            setCurrentStep('sync');
             
-            const result = await client.testConnection();
+            // Save to localStorage for future use
+            localStorage.setItem('finale_api_key', apiKey);
+            localStorage.setItem('finale_api_secret', apiSecret);
+            localStorage.setItem('finale_account_path', accountPath);
             
-            if (result.success) {
-              setIsConfigured(true);
-              setCurrentStep('sync');
-              
-              // Save to localStorage for future use
-              localStorage.setItem('finale_api_key', apiKey);
-              localStorage.setItem('finale_api_secret', apiSecret);
-              localStorage.setItem('finale_account_path', accountPath);
-              
-              // Configure sync service
-              const syncService = getFinaleSyncService();
-              syncService.setCredentials(apiKey, apiSecret, accountPath);
-              const unsubscribe = syncService.onStatusChange(setSyncStatus);
-              setSyncStatus(syncService.getStatus());
-              
-              console.log('[FinaleSetupPanel] Credentials verified and configured');
-              
-              return () => unsubscribe();
-            } else {
-              console.warn('[FinaleSetupPanel] Credentials are invalid:', result.message);
-              // Clear localStorage if they were stored there
-              localStorage.removeItem('finale_api_key');
-              localStorage.removeItem('finale_api_secret');
-              localStorage.removeItem('finale_account_path');
-            }
-          } catch (error) {
-            console.error('[FinaleSetupPanel] Error testing credentials:', error);
+            // Configure sync service and subscribe to status changes
+            const syncService = getFinaleSyncService();
+            syncService.setCredentials(apiKey, apiSecret, accountPath);
+            unsubscribe = syncService.onStatusChange(setSyncStatus);
+            setSyncStatus(syncService.getStatus());
+            
+            console.log('[FinaleSetupPanel] ✅ Credentials verified, sync service configured');
+          } else {
+            console.warn('[FinaleSetupPanel] Credentials are invalid:', result.message);
+            // Clear localStorage if they were stored there
+            localStorage.removeItem('finale_api_key');
+            localStorage.removeItem('finale_api_secret');
+            localStorage.removeItem('finale_account_path');
           }
         } else {
           console.log('[FinaleSetupPanel] No credentials found - user needs to enter them');
@@ -133,6 +127,13 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
     };
     
     checkStoredCredentials();
+    
+    // Cleanup subscription on unmount
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const handleCredentialChange = (field: keyof typeof credentials, value: string) => {
@@ -169,7 +170,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
         localStorage.setItem('finale_api_secret', credentials.apiSecret);
         localStorage.setItem('finale_account_path', credentials.accountPath);
         
-        // Configure sync service with credentials
+        // Configure sync service and subscribe to status
         const syncService = getFinaleSyncService();
         syncService.setCredentials(
           credentials.apiKey,
@@ -177,6 +178,10 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
           credentials.accountPath,
           'https://app.finaleinventory.com'
         );
+        
+        // Subscribe to sync status changes
+        syncService.onStatusChange(setSyncStatus);
+        setSyncStatus(syncService.getStatus());
         
         setIsConfigured(true);
       } else {
