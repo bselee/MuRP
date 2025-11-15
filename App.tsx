@@ -67,6 +67,7 @@ import type {
     AiSettings,
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
+import { getAutoSyncService } from './services/autoSyncService';
 
 export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner';
 
@@ -108,7 +109,7 @@ const App: React.FC = () => {
   const [externalConnections, setExternalConnections] = usePersistentState<ExternalConnection[]>('externalConnections', []);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
 
-  // Lightweight URL-based routing + e2e auto-login support
+  // Lightweight URL-based routing + e2e auto-login support + Auto-Sync
   useEffect(() => {
     try {
       const { pathname, search } = window.location;
@@ -148,6 +149,14 @@ const App: React.FC = () => {
       if (nextPage !== currentPage) {
         setCurrentPage(nextPage);
       }
+
+      // 🚀 Initialize automatic background sync on app load
+      // Data syncs silently in background and is served from Supabase
+      const autoSync = getAutoSyncService();
+      autoSync.initialize().catch(error => {
+        console.error('[App] Auto-sync initialization failed:', error);
+        // Don't show error to user - sync failures are silent
+      });
     } catch (err) {
       // No-op: best-effort only for e2e/dev
       console.warn('[App] URL routing init skipped:', err);
