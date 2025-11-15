@@ -70,6 +70,7 @@ const BOMs: React.FC<BOMsProps> = ({
   const [sortBy, setSortBy] = useState<SortOption>('name');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [showCriticalAlerts, setShowCriticalAlerts] = useState(true);
+  const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);
   
   // Collapsible sections state
   const [isAlertsOpen, setIsAlertsOpen] = useState(true);
@@ -195,6 +196,37 @@ const BOMs: React.FC<BOMsProps> = ({
     }
   }, [boms]);
 
+  useEffect(() => {
+    try {
+      const payload = localStorage.getItem('bomComponentFilter');
+      if (payload) {
+        const parsed = JSON.parse(payload);
+        if (parsed?.componentSku) {
+          setComponentFilter({ sku: parsed.componentSku, componentName: parsed.componentName });
+        }
+        localStorage.removeItem('bomComponentFilter');
+      }
+    } catch (error) {
+      console.warn('[BOMs] Failed to load component filter from storage', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!componentFilter) return;
+    const matchingBom = boms.find(b => b.components?.some(c => c.sku === componentFilter.sku));
+    if (matchingBom) {
+      setExpandedBoms(new Set([matchingBom.id]));
+      setTimeout(() => {
+        const element = bomRefs.current.get(matchingBom.id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-indigo-500');
+          setTimeout(() => element.classList.remove('ring-2', 'ring-indigo-500'), 2000);
+        }
+      }, 150);
+    }
+  }, [componentFilter, boms]);
+
   const handleViewComplianceDetails = (bom: BillOfMaterials, status: ComplianceStatus) => {
     setSelectedBom(bom);
     setSelectedComplianceStatus(status);
@@ -236,6 +268,12 @@ const BOMs: React.FC<BOMsProps> = ({
   // Apply search, filters, and sorting
   const processedBoms = useMemo(() => {
     let result = [...filteredBoms];
+
+    if (componentFilter?.sku) {
+      result = result.filter(bom =>
+        bom.components?.some(component => component.sku === componentFilter.sku)
+      );
+    }
 
     // Search filter
     if (searchQuery.trim()) {
@@ -286,15 +324,15 @@ const BOMs: React.FC<BOMsProps> = ({
     });
 
     return result;
-  }, [filteredBoms, searchQuery, categoryFilter, buildabilityFilter, sortBy, inventoryMap]);
+  }, [filteredBoms, searchQuery, categoryFilter, buildabilityFilter, sortBy, inventoryMap, componentFilter]);
 
   // Identify critical alerts
   const criticalBoms = useMemo(() => {
-    return filteredBoms.filter(bom => {
+    return processedBoms.filter(bom => {
       const { maxBuildable } = calculateBuildability(bom);
       return maxBuildable === 0 && (inventoryMap.get(bom.finishedSku)?.stock || 0) === 0;
     });
-  }, [filteredBoms, inventoryMap]);
+  }, [processedBoms, inventoryMap]);
 
   const BomCard: React.FC<{ bom: BillOfMaterials }> = ({ bom }) => {
     const isExpanded = expandedBoms.has(bom.id);
@@ -338,6 +376,32 @@ const BOMs: React.FC<BOMsProps> = ({
         <h1 className="text-3xl font-bold text-white tracking-tight">Bills of Materials</h1>
         <p className="text-gray-400 mt-1">Manage product recipes, buildability, and compliance status</p>
       </header>
+
+      {componentFilter && (
+        <div className="bg-indigo-900/30 border border-indigo-700 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-sm text-indigo-100 font-semibold">
+              Filtering to BOMs using component {componentFilter.sku}
+            </p>
+            <p className="text-xs text-indigo-200 mt-0.5">
+              {componentFilter.componentName ? `Only BOMs that consume ${componentFilter.componentName} are displayed.` : 'Only BOMs that consume this component are displayed.'}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setComponentFilter(null);
+              try {
+                localStorage.removeItem('bomComponentFilter');
+              } catch (error) {
+                console.warn('[BOMs] Unable to clear stored component filter', error);
+              }
+            }}
+            className="px-4 py-2 rounded-md bg-indigo-700/60 hover:bg-indigo-600 text-sm font-semibold text-white border border-indigo-500"
+          >
+            Clear Filter
+          </button>
+        </div>
+      )}
 
       {/* Critical Alerts Banner */}
       {criticalBoms.length > 0 && (

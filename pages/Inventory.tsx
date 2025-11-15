@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { InventoryItem, BillOfMaterials, Vendor } from '../types';
 import { 
   SearchIcon, 
@@ -72,7 +72,16 @@ interface DemandInsight {
     runwayDays: number;
     vendorLeadTime: number;
     needsOrder: boolean;
+    demandSource: DemandSource;
+    demandBreakdown: {
+        salesVelocity?: number;
+        avg30?: number;
+        avg60?: number;
+        avg90?: number;
+        blendedRecency?: number;
+    };
 }
+type DemandSource = 'salesVelocity' | 'recencyAverage' | 'avg30' | 'avg60' | 'avg90' | 'none';
 
 const getStockStatus = (item: InventoryItem): 'In Stock' | 'Low Stock' | 'Out of Stock' => {
     if (item.stock <= 0) return 'Out of Stock';
@@ -198,8 +207,55 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     }, []);
 
     // Create vendor lookup maps
-    const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
-    const vendorDetailMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
+    const vendorMap = useMemo(() => {
+        const map = new Map<string, string>();
+        const register = (key?: string, value?: string) => {
+            if (!key || !value) return;
+            const trimmed = key.trim();
+            if (!trimmed) return;
+            map.set(trimmed, value);
+            map.set(trimmed.toLowerCase(), value);
+        };
+        vendors.forEach(vendor => {
+            register(vendor.id, vendor.name);
+            register(vendor.name, vendor.name);
+        });
+        map.set('unknown', 'Unknown Vendor');
+        map.set('unknown_vendor', 'Unknown Vendor');
+        map.set('n/a', 'N/A');
+        map.set('N/A', 'N/A');
+        return map;
+    }, [vendors]);
+
+    const vendorDetailMap = useMemo(() => {
+        const map = new Map<string, Vendor>();
+        const register = (key?: string, vendor?: Vendor) => {
+            if (!key || !vendor) return;
+            const trimmed = key.trim();
+            if (!trimmed) return;
+            map.set(trimmed, vendor);
+            map.set(trimmed.toLowerCase(), vendor);
+        };
+        vendors.forEach(vendor => {
+            register(vendor.id, vendor);
+            register(vendor.name, vendor);
+        });
+        return map;
+    }, [vendors]);
+
+    const getVendorRecord = useCallback((identifier?: string) => {
+        if (!identifier) return undefined;
+        const trimmed = identifier.trim();
+        if (!trimmed) return undefined;
+        return vendorDetailMap.get(trimmed) || vendorDetailMap.get(trimmed.toLowerCase());
+    }, [vendorDetailMap]);
+
+    const getVendorName = useCallback((identifier?: string) => {
+        if (!identifier) return 'N/A';
+        const trimmed = identifier.trim();
+        if (!trimmed) return 'N/A';
+        return vendorMap.get(trimmed) || vendorMap.get(trimmed.toLowerCase()) || trimmed;
+    }, [vendorMap]);
 
     // Track which BOMs use each component SKU and count how many (for the BOM link in table)
     const bomUsageMap = useMemo(() => {
@@ -209,7 +265,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 if (!usageMap.has(comp.sku)) {
                     usageMap.set(comp.sku, []);
                 }
-                usageMap.get(comp.sku)!.push(bom.sku);
+                usageMap.get(comp.sku)!.push(bom.finishedSku);
             });
         });
         return usageMap;
@@ -225,19 +281,41 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         const componentSkus = new Set(bomUsageMap.keys());
 
         inventory.forEach(item => {
-            const vendor = vendorDetailMap.get(item.vendorId);
+            const vendor = getVendorRecord(item.vendorId);
             const leadTimeDays = vendor?.leadTimeDays ?? 7;
 
-            const rateCandidates = [
-                item.salesVelocity && item.salesVelocity > 0 ? item.salesVelocity : null,
-                item.sales30Days && item.sales30Days > 0 ? item.sales30Days / 30 : null,
-                item.sales60Days && item.sales60Days > 0 ? item.sales60Days / 60 : null,
-                item.sales90Days && item.sales90Days > 0 ? item.sales90Days / 90 : null,
-            ].filter((rate): rate is number => rate !== null);
+            const salesVelocity = item.salesVelocity && item.salesVelocity > 0 ? Number(item.salesVelocity.toFixed(2)) : undefined;
+            const avg30 = item.sales30Days && item.sales30Days > 0 ? Number((item.sales30Days / 30).toFixed(2)) : undefined;
+            const avg60 = item.sales60Days && item.sales60Days > 0 ? Number((item.sales60Days / 60).toFixed(2)) : undefined;
+            const avg90 = item.sales90Days && item.sales90Days > 0 ? Number((item.sales90Days / 90).toFixed(2)) : undefined;
 
-            const dailyDemand = rateCandidates.length > 0 ? Number(rateCandidates[0].toFixed(2)) : 0;
+            const recencyWeights: Array<{ value: number; weight: number }> = [];
+            if (avg30) recencyWeights.push({ value: avg30, weight: 0.5 });
+            if (avg60) recencyWeights.push({ value: avg60, weight: 0.3 });
+            if (avg90) recencyWeights.push({ value: avg90, weight: 0.2 });
+
+            const totalWeight = recencyWeights.reduce((sum, entry) => sum + entry.weight, 0);
+            const weightedSum = recencyWeights.reduce((sum, entry) => sum + entry.value * entry.weight, 0);
+            const blendedRecency = totalWeight > 0 ? Number((weightedSum / totalWeight).toFixed(2)) : undefined;
+
+            const demandCandidates: Array<{ value: number; source: DemandSource }> = [];
+            if (salesVelocity) demandCandidates.push({ value: salesVelocity, source: 'salesVelocity' });
+            if (blendedRecency) demandCandidates.push({ value: blendedRecency, source: 'recencyAverage' });
+            if (avg30) demandCandidates.push({ value: avg30, source: 'avg30' });
+            if (avg60) demandCandidates.push({ value: avg60, source: 'avg60' });
+            if (avg90) demandCandidates.push({ value: avg90, source: 'avg90' });
+
+            let dailyDemand = 0;
+            let demandSource: DemandSource = 'none';
+            if (demandCandidates.length > 0) {
+                const maxCandidate = demandCandidates.reduce((prev, current) =>
+                    current.value > prev.value ? current : prev
+                );
+                dailyDemand = Number(maxCandidate.value.toFixed(2));
+                demandSource = maxCandidate.source;
+            }
+
             const runwayDays = dailyDemand > 0 ? item.stock / dailyDemand : Number.POSITIVE_INFINITY;
-
             const needsOrder = (dailyDemand > 0 && runwayDays < leadTimeDays) || item.stock <= item.reorderPoint;
 
             const isFinished = bomFinishedSkuSet.has(item.sku);
@@ -253,11 +331,19 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 runwayDays,
                 vendorLeadTime: leadTimeDays,
                 needsOrder,
+                demandSource,
+                demandBreakdown: {
+                    salesVelocity,
+                    avg30,
+                    avg60,
+                    avg90,
+                    blendedRecency,
+                },
             });
         });
 
         return insights;
-    }, [inventory, vendorDetailMap, bomUsageMap, bomFinishedSkuSet]);
+    }, [inventory, getVendorRecord, bomUsageMap, bomFinishedSkuSet]);
 
     const needsOrderCount = useMemo(() => {
         let count = 0;
@@ -269,10 +355,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
     const filterOptions = useMemo(() => {
         const categories = [...new Set(inventory.map(item => item.category))].sort();
-        const vendorIds = [...new Set(inventory.map(item => item.vendorId).filter(id => id && id !== 'N/A'))];
+        const vendorIds = [...new Set(
+            inventory
+                .map(item => item.vendorId?.trim())
+                .filter(id => id && id !== 'N/A')
+        )].sort((a, b) => getVendorName(a).localeCompare(getVendorName(b)));
         const statuses = ['In Stock', 'Low Stock', 'Out of Stock'];
         return { categories, vendors: vendorIds, statuses };
-    }, [inventory]);
+    }, [inventory, getVendorName]);
 
     // Filter categories based on search term
     const filteredCategories = useMemo(() => {
@@ -285,12 +375,12 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     // Filter vendors based on search term
     const filteredVendors = useMemo(() => {
         if (!vendorSearchTerm) return filterOptions.vendors;
+        const term = vendorSearchTerm.toLowerCase();
         return filterOptions.vendors.filter(vendorId => {
-            const vendorName = vendorMap.get(vendorId) || vendorId;
-            return vendorName.toLowerCase().includes(vendorSearchTerm.toLowerCase()) ||
-                   vendorId.toLowerCase().includes(vendorSearchTerm.toLowerCase());
+            const vendorName = getVendorName(vendorId).toLowerCase();
+            return vendorName.includes(term) || vendorId.toLowerCase().includes(term);
         });
-    }, [filterOptions.vendors, vendorSearchTerm, vendorMap]);
+    }, [filterOptions.vendors, vendorSearchTerm, getVendorName]);
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -313,9 +403,22 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         setIsSuggestionsVisible(false);
     };
 
-    const handleBomClick = (componentSku: string) => {
+    const handleBomClick = (component: InventoryItem) => {
+        const componentSku = component.sku;
         const bomSkus = bomUsageMap.get(componentSku);
         if (!bomSkus || bomSkus.length === 0) return;
+        try {
+            localStorage.setItem(
+                'bomComponentFilter',
+                JSON.stringify({
+                    componentSku,
+                    componentName: component.name,
+                    timestamp: Date.now(),
+                })
+            );
+        } catch (error) {
+            console.warn('[Inventory] Failed to persist BOM component filter', error);
+        }
         
         // If only one BOM uses this component, navigate directly
         if (bomSkus.length === 1 && onNavigateToBom) {
@@ -433,8 +536,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     aVal = getStockStatus(a);
                     bVal = getStockStatus(b);
                 } else if (sortConfig.key === 'vendor') {
-                    aVal = vendorMap.get(a.vendorId) || '';
-                    bVal = vendorMap.get(b.vendorId) || '';
+                    aVal = getVendorName(a.vendorId) || '';
+                    bVal = getVendorName(b.vendorId) || '';
                 } else if (sortConfig.key === 'runway') {
                     aVal = demandInsights.get(a.sku)?.runwayDays ?? Number.POSITIVE_INFINITY;
                     bVal = demandInsights.get(b.sku)?.runwayDays ?? Number.POSITIVE_INFINITY;
@@ -458,7 +561,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         filters,
         searchTerm,
         sortConfig,
-        vendorMap,
+        getVendorName,
         demandInsights,
         riskFilter,
     ]);
@@ -501,6 +604,15 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         hybrid: { label: 'Hybrid', className: 'bg-pink-500/20 text-pink-200 border border-pink-500/30' },
         standalone: { label: 'Standalone', className: 'bg-gray-600/40 text-gray-200 border border-gray-500/40' },
     };
+    const demandSourceLabels: Record<DemandSource, string> = {
+        salesVelocity: 'Sales Velocity',
+        recencyAverage: 'Recency Blend',
+        avg30: '30d Avg',
+        avg60: '60d Avg',
+        avg90: '90d Avg',
+        none: 'No Trend Data',
+    };
+    const formatDemandRate = (value?: number) => (value !== undefined ? value.toFixed(1) : '—');
 
     return (
         <>
@@ -693,7 +805,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         onChange={() => toggleVendor(vendorId)}
                                                         className="w-4 h-4 mr-2 rounded border-gray-500 text-indigo-600 focus:ring-indigo-500"
                                                     />
-                                                    <span className="text-sm text-white">{vendorMap.get(vendorId) || vendorId}</span>
+                                                    <span className="text-sm text-white">{getVendorName(vendorId)}</span>
                                                 </label>
                                             ))
                                         )}
@@ -734,7 +846,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             Needs Order ({needsOrderCount})
                         </button>
                         <span className="text-xs text-gray-400">
-                            Flags SKUs when runway &lt; vendor lead time or stock is at/below the reorder point.
+                            Flags SKUs when runway &lt; vendor lead time or stock is at/below the reorder point. Daily demand uses the most conservative rate across sales velocity and 30/60/90-day averages.
                         </span>
                     </div>
                     <div className="mt-4 text-sm text-gray-400">
@@ -763,7 +875,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             <tbody className="divide-y divide-gray-700">
                                 {processedInventory.map(item => {
                                     const stockStatus = getStockStatus(item);
-                                    const vendor = vendorMap.get(item.vendorId);
+                                    const vendor = getVendorName(item.vendorId);
                                     const bomSkus = bomUsageMap.get(item.sku);
                                     const bomCount = bomSkus ? bomSkus.length : 0;
                                     const insight = demandInsights.get(item.sku);
@@ -785,7 +897,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                     <span className="text-white font-bold">{item.sku}</span>
                                                                     {bomCount > 0 && (
                                                                         <button
-                                                                            onClick={() => handleBomClick(item.sku)}
+                                                                            onClick={() => handleBomClick(item)}
                                                                             className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full text-xs hover:bg-blue-500/30 transition-colors flex-shrink-0"
                                                                             title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
                                                                         >
@@ -853,6 +965,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         const progressRatio = insight && Number.isFinite(insight.runwayDays) && leadValue > 0
                                                             ? Math.min(100, (insight.runwayDays / leadValue) * 100)
                                                             : 100;
+                                                        const breakdown = insight?.demandBreakdown;
                                                         return (
                                                             <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm">
                                                                 <div className="flex items-center gap-2">
@@ -861,6 +974,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                     </span>
                                                                     <span className="text-xs text-gray-400">vs {leadValue || '—'}d lead</span>
                                                                 </div>
+                                                                {insight && (
+                                                                    <div className="text-[11px] text-gray-500 mt-0.5">
+                                                                        Source: {demandSourceLabels[insight.demandSource]}
+                                                                    </div>
+                                                                )}
                                                                 <div className="mt-1 w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
                                                                     <div
                                                                         className={`${insight?.needsOrder ? 'bg-red-500' : 'bg-emerald-500'} h-full`}
@@ -870,6 +988,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                 {insight && insight.dailyDemand > 0 && (
                                                                     <div className="text-xs text-gray-500 mt-1">
                                                                         ≈ {insight.dailyDemand.toFixed(1)} units/day
+                                                                    </div>
+                                                                )}
+                                                                {breakdown && (
+                                                                    <div className="text-[11px] text-gray-600 mt-0.5 space-x-2">
+                                                                        <span>30d {formatDemandRate(breakdown.avg30)}</span>
+                                                                        <span>60d {formatDemandRate(breakdown.avg60)}</span>
+                                                                        <span>90d {formatDemandRate(breakdown.avg90)}</span>
+                                                                        <span>Vel {formatDemandRate(breakdown.salesVelocity)}</span>
                                                                     </div>
                                                                 )}
                                                             </td>

@@ -15,6 +15,7 @@ import {
   DocumentTextIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
+  ExclamationTriangleIcon,
   XCircleIcon,
   ClockIcon,
   BeakerIcon,
@@ -70,6 +71,20 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   // Determine display mode
   const isAdmin = userRole === 'Admin';
   const isManager = userRole === 'Manager';
+  const limitingSummary = buildability.limitingComponents
+    .map(lc => `${lc.sku} (need ${lc.needed}, have ${lc.available})`)
+    .join(', ');
+  const limitingHighlight = buildability.maxBuildable === 0
+    ? {
+        row: 'bg-red-900/20 border-2 border-red-700/50',
+        badge: 'text-red-300 bg-red-900/40 border border-red-700',
+        label: 'BLOCKING'
+      }
+    : {
+        row: 'bg-amber-900/20 border-2 border-amber-500/60',
+        badge: 'text-amber-200 bg-amber-900/40 border border-amber-500',
+        label: 'LIMITING'
+      };
 
   // Calculate metrics from relational data (labels table)
   const labelCount = labels.filter(l => l.fileType === 'label').length;
@@ -361,11 +376,21 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
               <ExclamationCircleIcon className="w-4 h-4 text-red-400 flex-shrink-0" />
               <div>
                 <span className="text-red-400 font-medium">Cannot build - Limiting: </span>
-                <span className="text-gray-300">
-                  {buildability.limitingComponents.map(lc =>
-                    `${lc.sku} (need ${lc.needed}, have ${lc.available})`
-                  ).join(', ')}
+                <span className="text-gray-300">{limitingSummary}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {buildability.maxBuildable > 0 && buildability.limitingComponents.length > 0 && (
+          <div className="mt-3 p-2 bg-amber-900/20 border border-amber-600 rounded text-xs">
+            <div className="flex items-center gap-2">
+              <ExclamationTriangleIcon className="w-4 h-4 text-amber-200 flex-shrink-0" />
+              <div>
+                <span className="text-amber-200 font-medium">
+                  Limited to {buildability.maxBuildable} build{buildability.maxBuildable !== 1 ? 's' : ''}
                 </span>
+                <span className="text-gray-300"> — constrained by {limitingSummary}</span>
               </div>
             </div>
           </div>
@@ -393,15 +418,14 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 const needed = c.quantity || 1;
                 const canBuild = Math.floor(available / needed);
                 const isLimiting = buildability.limitingComponents.some(lc => lc.sku === c.sku);
+                const rowClass = isLimiting
+                  ? limitingHighlight.row
+                  : 'bg-gray-800/50 border border-gray-700 hover:border-gray-600';
 
                 return (
                   <div
                     key={c.sku}
-                    className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                      isLimiting
-                        ? 'bg-red-900/20 border-2 border-red-700/50'
-                        : 'bg-gray-800/50 border border-gray-700 hover:border-gray-600'
-                    }`}
+                    className={`flex items-center justify-between p-3 rounded-lg transition-colors ${rowClass}`}
                   >
                     <div className="flex-1">
                       {onNavigateToInventory ? (
@@ -429,8 +453,8 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                         {isLimiting && (
                           <>
                             <span className="text-gray-600">|</span>
-                            <span className="px-2 py-0.5 rounded text-red-400 font-semibold bg-red-900/30 border border-red-700">
-                              ⚠ LIMITING
+                            <span className={`px-2 py-0.5 rounded font-semibold ${limitingHighlight.badge}`}>
+                              ⚠ {limitingHighlight.label}
                             </span>
                           </>
                         )}

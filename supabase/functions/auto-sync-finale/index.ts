@@ -177,11 +177,12 @@ async function syncInventoryData(params: {
   }
 
   const vendorMap = await buildVendorMap(params.supabase);
+  const inferredVendors = new Map<string, { id: string; name: string }>();
   const nowIso = params.now.toISOString();
 
   const inventoryItems: Array<Record<string, any>> = [];
   rawRows.forEach((row, index) => {
-    const transformed = transformInventoryRow(row, vendorMap, nowIso, index);
+    const transformed = transformInventoryRow(row, vendorMap, inferredVendors, nowIso, index);
     if (transformed) {
       inventoryItems.push(transformed);
     }
@@ -189,6 +190,31 @@ async function syncInventoryData(params: {
 
   if (inventoryItems.length === 0) {
     throw new Error('No valid inventory items after transformation');
+  }
+
+  if (inferredVendors.size > 0) {
+    const inferredPayload = Array.from(inferredVendors.values()).map((vendor) => ({
+      id: vendor.id,
+      name: vendor.name,
+      contact_emails: [],
+      phone: '',
+      address: '',
+      website: '',
+      lead_time_days: 7,
+      data_source: 'manual',
+      last_sync_at: nowIso,
+      sync_status: 'synced',
+      updated_at: nowIso,
+      notes: 'Auto-created from inventory sync (vendor not present in vendor report).',
+    }));
+
+    console.log(`[AutoSync][Inventory] Inferred ${inferredPayload.length} vendors missing from vendor export`);
+    const { error: inferredError } = await params.supabase
+      .from('vendors')
+      .upsert(inferredPayload, { onConflict: 'id' });
+    if (inferredError) {
+      console.error('[AutoSync][Inventory] Failed to upsert inferred vendors:', inferredError.message);
+    }
   }
 
   await batchUpsert(params.supabase, 'inventory_items', inventoryItems, 'sku');
@@ -530,8 +556,8 @@ async function buildVendorMap(supabase: SupabaseClient) {
   type VendorLookup = { id: string; name: string };
   const map = new Map<string, string>();
   ((data as VendorLookup[] | null) || []).forEach((vendor) => {
-    if (vendor.name) {
-      map.set(vendor.name.toLowerCase(), vendor.id);
+    if (vendor?.name) {
+      map.set(normalizeVendorKey(vendor.name), vendor.id);
     }
   });
   return map;
@@ -540,6 +566,7 @@ async function buildVendorMap(supabase: SupabaseClient) {
 function transformInventoryRow(
   raw: Record<string, any>,
   vendorMap: Map<string, string>,
+  inferredVendors: Map<string, { id: string; name: string }>,
   timestamp: string,
   index: number,
 ) {
@@ -552,7 +579,24 @@ function transformInventoryRow(
 
   const vendorNameKeys = ['Vendor', 'Supplier', 'Primary supplier', 'Primary Supplier'];
   const vendorName = vendorNameKeys.map(key => (raw[key] || '').trim()).find(Boolean) || '';
-  const vendorId = vendorName ? vendorMap.get(vendorName.toLowerCase()) || null : null;
+  const normalizedVendorName = normalizeVendorKey(vendorName);
+  let vendorId: string | null = null;
+  if (normalizedVendorName) {
+    const existingVendorId = vendorMap.get(normalizedVendorName);
+    if (existingVendorId) {
+      vendorId = existingVendorId;
+    } else {
+      const inferredId = generateDeterministicId(normalizedVendorName);
+      vendorId = inferredId;
+      vendorMap.set(normalizedVendorName, inferredId);
+      if (!inferredVendors.has(normalizedVendorName)) {
+        inferredVendors.set(normalizedVendorName, {
+          id: inferredId,
+          name: vendorName || 'Unknown Vendor',
+        });
+      }
+    }
+  }
 
   const unitsInStock = Math.max(0, roundInt(parseNumber(raw['Units in stock'] || raw['In Stock'] || raw['Quantity On Hand'], 0)));
   const unitsOnOrder = Math.max(0, roundInt(parseNumber(raw['Units On Order'] || raw['On Order'], 0)));
@@ -599,7 +643,7 @@ function transformInventoryRow(
 function transformVendorRow(raw: Record<string, any>, timestamp: string, _index: number) {
   const name = (raw['Name'] || raw['Vendor Name'] || '').trim();
   if (!name) return null;
-  const normalizedName = name.toLowerCase();
+  const normalizedName = normalizeVendorKey(name);
 
   const emailKeys = ['Email address 0', 'Email address 1', 'Email address 2', 'Email address 3', 'Email'];
   const contactEmails = emailKeys
@@ -814,6 +858,14 @@ function generateDeterministicId(value: string, index = 0): string {
 
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0'));
   return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10, 16).join('')}`;
+}
+
+function normalizeVendorKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ');
 }
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
