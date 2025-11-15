@@ -11,17 +11,17 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
     return (
         <header className="h-16 bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0">
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <MushroomLogo className="w-10 h-10" />
-                    <div>
-                        <p className="text-sm tracking-widest text-indigo-300 uppercase">MuRP</p>
-                        <p className="text-xs text-gray-400 -mt-1">Manufacturing Control</p>
-                    </div>
+            <div className="flex items-center gap-3">
+                <MushroomLogo className="w-10 h-10" />
+                <div>
+                    <p className="text-sm tracking-widest text-indigo-300 uppercase">MuRP</p>
+                    <p className="text-xs text-gray-400 -mt-1">Manufacturing Control</p>
                 </div>
-                <DataSyncIndicator />
             </div>
             <div className="flex items-center space-x-4">
+                <div className="hidden sm:block">
+                    <DataSyncIndicator />
+                </div>
                 <button className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
                     <BellIcon className="h-6 w-6" />
                 </button>
