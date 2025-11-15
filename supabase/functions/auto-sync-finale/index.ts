@@ -5,7 +5,7 @@
  * Users never need to manually sync - data is always current.
  * 
  * Triggered by: Supabase Cron (pg_cron)
- * Schedule: */5 * * * * (every 5 minutes)
+ * Schedule: Every 5 minutes via cron
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
