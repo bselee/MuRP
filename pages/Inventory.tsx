@@ -20,7 +20,22 @@ interface InventoryProps {
     onNavigateToBom?: (bomSku: string) => void;
 }
 
-type ColumnKey = 'sku' | 'name' | 'category' | 'stock' | 'onOrder' | 'reorderPoint' | 'vendor' | 'status' | 'salesVelocity' | 'sales30Days' | 'sales60Days' | 'sales90Days' | 'unitCost';
+type ColumnKey =
+    | 'sku'
+    | 'name'
+    | 'category'
+    | 'stock'
+    | 'onOrder'
+    | 'reorderPoint'
+    | 'vendor'
+    | 'status'
+    | 'itemType'
+    | 'runway'
+    | 'salesVelocity'
+    | 'sales30Days'
+    | 'sales60Days'
+    | 'sales90Days'
+    | 'unitCost';
 
 interface ColumnConfig {
   key: ColumnKey;
@@ -38,6 +53,8 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: 'reorderPoint', label: 'Reorder Point', visible: true, sortable: true },
   { key: 'vendor', label: 'Vendor', visible: true, sortable: true },
   { key: 'status', label: 'Status', visible: true, sortable: false },
+    { key: 'itemType', label: 'Item Type', visible: true, sortable: false },
+    { key: 'runway', label: 'Runway vs Lead', visible: true, sortable: true },
   { key: 'salesVelocity', label: 'Sales Velocity', visible: false, sortable: true },
   { key: 'sales30Days', label: 'Sales (30d)', visible: false, sortable: true },
   { key: 'sales60Days', label: 'Sales (60d)', visible: false, sortable: true },
@@ -45,7 +62,17 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: 'unitCost', label: 'Unit Cost', visible: false, sortable: true },
 ];
 
-type SortKeys = keyof InventoryItem | 'status' | 'vendor';
+type SortKeys = keyof InventoryItem | 'status' | 'vendor' | 'runway';
+
+type ItemType = 'retail' | 'component' | 'hybrid' | 'standalone';
+
+interface DemandInsight {
+    itemType: ItemType;
+    dailyDemand: number;
+    runwayDays: number;
+    vendorLeadTime: number;
+    needsOrder: boolean;
+}
 
 const getStockStatus = (item: InventoryItem): 'In Stock' | 'Low Stock' | 'Out of Stock' => {
     if (item.stock <= 0) return 'Out of Stock';
@@ -92,6 +119,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         return (localStorage.getItem('inventory-bom-filter') as any) || 'all';
     });
     const [filters, setFilters] = useState({ status: '' });
+    const [riskFilter, setRiskFilter] = useState<'all' | 'needs-order'>('all');
     const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
     const [suggestions, setSuggestions] = useState<InventoryItem[]>([]);
     const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
@@ -103,7 +131,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const [vendorSearchTerm, setVendorSearchTerm] = useState('');
     const [columns, setColumns] = useState<ColumnConfig[]>(() => {
         const saved = localStorage.getItem('inventory-columns');
-        return saved ? JSON.parse(saved) : DEFAULT_COLUMNS;
+        if (saved) {
+            try {
+                const parsed: ColumnConfig[] = JSON.parse(saved);
+                const savedKeys = new Set(parsed.map(col => col.key));
+                const missing = DEFAULT_COLUMNS.filter(col => !savedKeys.has(col.key));
+                return [...parsed, ...missing];
+            } catch (error) {
+                console.warn('[Inventory] Failed to parse saved columns, using defaults:', error);
+            }
+        }
+        return DEFAULT_COLUMNS;
     });
     
     const categoryDropdownRef = useRef<HTMLDivElement>(null);
@@ -161,6 +199,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
     // Create vendor lookup maps
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
+    const vendorDetailMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
 
     // Track which BOMs use each component SKU and count how many (for the BOM link in table)
     const bomUsageMap = useMemo(() => {
@@ -180,6 +219,53 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const bomFinishedSkuSet = useMemo(() => {
         return new Set(boms.map(bom => bom.finishedSku));
     }, [boms]);
+
+    const demandInsights = useMemo(() => {
+        const insights = new Map<string, DemandInsight>();
+        const componentSkus = new Set(bomUsageMap.keys());
+
+        inventory.forEach(item => {
+            const vendor = vendorDetailMap.get(item.vendorId);
+            const leadTimeDays = vendor?.leadTimeDays ?? 7;
+
+            const rateCandidates = [
+                item.salesVelocity && item.salesVelocity > 0 ? item.salesVelocity : null,
+                item.sales30Days && item.sales30Days > 0 ? item.sales30Days / 30 : null,
+                item.sales60Days && item.sales60Days > 0 ? item.sales60Days / 60 : null,
+                item.sales90Days && item.sales90Days > 0 ? item.sales90Days / 90 : null,
+            ].filter((rate): rate is number => rate !== null);
+
+            const dailyDemand = rateCandidates.length > 0 ? Number(rateCandidates[0].toFixed(2)) : 0;
+            const runwayDays = dailyDemand > 0 ? item.stock / dailyDemand : Number.POSITIVE_INFINITY;
+
+            const needsOrder = (dailyDemand > 0 && runwayDays < leadTimeDays) || item.stock <= item.reorderPoint;
+
+            const isFinished = bomFinishedSkuSet.has(item.sku);
+            const isComponent = componentSkus.has(item.sku);
+            let itemType: ItemType = 'standalone';
+            if (isFinished && isComponent) itemType = 'hybrid';
+            else if (isFinished) itemType = 'retail';
+            else if (isComponent) itemType = 'component';
+
+            insights.set(item.sku, {
+                itemType,
+                dailyDemand,
+                runwayDays,
+                vendorLeadTime: leadTimeDays,
+                needsOrder,
+            });
+        });
+
+        return insights;
+    }, [inventory, vendorDetailMap, bomUsageMap, bomFinishedSkuSet]);
+
+    const needsOrderCount = useMemo(() => {
+        let count = 0;
+        demandInsights.forEach(info => {
+            if (info.needsOrder) count += 1;
+        });
+        return count;
+    }, [demandInsights]);
 
     const filterOptions = useMemo(() => {
         const categories = [...new Set(inventory.map(item => item.category))].sort();
@@ -315,6 +401,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         if (filters.status) {
             filteredItems = filteredItems.filter(item => getStockStatus(item) === filters.status);
         }
+        if (riskFilter === 'needs-order') {
+            filteredItems = filteredItems.filter(item => demandInsights.get(item.sku)?.needsOrder);
+        }
         // Vendor filter
         if (selectedVendors.size > 0) {
             filteredItems = filteredItems.filter(item => selectedVendors.has(item.vendorId));
@@ -346,6 +435,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 } else if (sortConfig.key === 'vendor') {
                     aVal = vendorMap.get(a.vendorId) || '';
                     bVal = vendorMap.get(b.vendorId) || '';
+                } else if (sortConfig.key === 'runway') {
+                    aVal = demandInsights.get(a.sku)?.runwayDays ?? Number.POSITIVE_INFINITY;
+                    bVal = demandInsights.get(b.sku)?.runwayDays ?? Number.POSITIVE_INFINITY;
                 } else {
                     aVal = a[sortConfig.key as keyof InventoryItem] ?? '';
                     bVal = b[sortConfig.key as keyof InventoryItem] ?? '';
@@ -357,7 +449,19 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
             });
         }
         return filteredItems;
-    }, [inventory, selectedCategories, selectedVendors, bomFilter, bomFinishedSkuSet, filters, searchTerm, sortConfig, vendorMap]);
+    }, [
+        inventory,
+        selectedCategories,
+        selectedVendors,
+        bomFilter,
+        bomFinishedSkuSet,
+        filters,
+        searchTerm,
+        sortConfig,
+        vendorMap,
+        demandInsights,
+        riskFilter,
+    ]);
 
     const handleExportCsv = () => {
         exportToCsv(processedInventory, `inventory-export-${new Date().toISOString().split('T')[0]}.csv`);
@@ -390,6 +494,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     };
 
     const visibleColumns = columns.filter(col => col.visible);
+
+    const itemTypeStyles: Record<ItemType, { label: string; className: string }> = {
+        retail: { label: 'Retail', className: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' },
+        component: { label: 'BOM Component', className: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
+        hybrid: { label: 'Hybrid', className: 'bg-pink-500/20 text-pink-200 border border-pink-500/30' },
+        standalone: { label: 'Standalone', className: 'bg-gray-600/40 text-gray-200 border border-gray-500/40' },
+    };
 
     return (
         <>
@@ -611,6 +722,21 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             )}
                         </div>
                     </div>
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                        <button
+                            onClick={() => setRiskFilter(prev => (prev === 'needs-order' ? 'all' : 'needs-order'))}
+                            className={`px-4 py-2 text-sm font-semibold rounded-md border transition-colors ${
+                                riskFilter === 'needs-order'
+                                    ? 'bg-red-500/20 border-red-400/60 text-red-200 shadow-lg shadow-red-900/40'
+                                    : 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600'
+                            }`}
+                        >
+                            Needs Order ({needsOrderCount})
+                        </button>
+                        <span className="text-xs text-gray-400">
+                            Flags SKUs when runway &lt; vendor lead time or stock is at/below the reorder point.
+                        </span>
+                    </div>
                     <div className="mt-4 text-sm text-gray-400">
                         Showing <span className="font-semibold text-white">{processedInventory.length}</span> of <span className="font-semibold text-white">{inventory.length}</span> items
                     </div>
@@ -640,6 +766,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     const vendor = vendorMap.get(item.vendorId);
                                     const bomSkus = bomUsageMap.get(item.sku);
                                     const bomCount = bomSkus ? bomSkus.length : 0;
+                                    const insight = demandInsights.get(item.sku);
 
                                     return (
                                         <tr 
@@ -666,6 +793,18 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                         </button>
                                                                     )}
                                                                 </div>
+                                                            </td>
+                                                        );
+                                                    case 'itemType':
+                                                        return (
+                                                            <td key={col.key} className="px-4 py-3 whitespace-nowrap text-sm">
+                                                                {insight ? (
+                                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${itemTypeStyles[insight.itemType].className}`}>
+                                                                        {itemTypeStyles[insight.itemType].label}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-gray-500">—</span>
+                                                                )}
                                                             </td>
                                                         );
                                                     case 'name':
@@ -706,6 +845,36 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                 </span>
                                                             </td>
                                                         );
+                                                    case 'runway': {
+                                                        const runwayValue = insight && Number.isFinite(insight.runwayDays)
+                                                            ? `${Math.max(0, Math.round(insight.runwayDays))}d`
+                                                            : 'No demand';
+                                                        const leadValue = insight?.vendorLeadTime ?? 0;
+                                                        const progressRatio = insight && Number.isFinite(insight.runwayDays) && leadValue > 0
+                                                            ? Math.min(100, (insight.runwayDays / leadValue) * 100)
+                                                            : 100;
+                                                        return (
+                                                            <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
+                                                                        {runwayValue}
+                                                                    </span>
+                                                                    <span className="text-xs text-gray-400">vs {leadValue || '—'}d lead</span>
+                                                                </div>
+                                                                <div className="mt-1 w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                                                    <div
+                                                                        className={`${insight?.needsOrder ? 'bg-red-500' : 'bg-emerald-500'} h-full`}
+                                                                        style={{ width: `${progressRatio}%` }}
+                                                                    ></div>
+                                                                </div>
+                                                                {insight && insight.dailyDemand > 0 && (
+                                                                    <div className="text-xs text-gray-500 mt-1">
+                                                                        ≈ {insight.dailyDemand.toFixed(1)} units/day
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    }
                                                     case 'salesVelocity':
                                                         return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
                                                     case 'sales30Days':
