@@ -56,31 +56,67 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   // Multi-select sync
   const [selectedSyncSources, setSelectedSyncSources] = useState<Set<string>>(new Set(['vendors', 'inventory', 'boms']));
 
-  // Check if backend is configured on mount
+  // Check if credentials are stored in localStorage on mount
   useEffect(() => {
-    // Check if backend API has Finale credentials configured
-    const checkBackendConfig = async () => {
+    const checkStoredCredentials = async () => {
       try {
-        const response = await fetch('/api/finale-proxy?action=test-connection');
-        const result = await response.json();
+        // Check localStorage for stored credentials
+        const storedApiKey = localStorage.getItem('finale_api_key');
+        const storedApiSecret = localStorage.getItem('finale_api_secret');
+        const storedAccountPath = localStorage.getItem('finale_account_path');
         
-        if (result.configured || result.success) {
-          setIsConfigured(true);
-          setCurrentStep('sync');
+        if (storedApiKey && storedApiSecret && storedAccountPath) {
+          console.log('[FinaleSetupPanel] Found stored credentials');
           
-          // Initialize sync service and subscribe to status
-          const syncService = getFinaleSyncService();
-          const unsubscribe = syncService.onStatusChange(setSyncStatus);
-          setSyncStatus(syncService.getStatus());
+          // Restore credentials to form
+          setCredentials({
+            apiKey: storedApiKey,
+            apiSecret: storedApiSecret,
+            accountPath: storedAccountPath,
+          });
           
-          return () => unsubscribe();
+          // Test the stored credentials
+          try {
+            const client = new FinaleBasicAuthClient({
+              apiKey: storedApiKey,
+              apiSecret: storedApiSecret,
+              accountPath: storedAccountPath,
+              baseUrl: 'https://app.finaleinventory.com',
+            });
+            
+            const result = await client.testConnection();
+            
+            if (result.success) {
+              setIsConfigured(true);
+              setCurrentStep('sync');
+              
+              // Configure sync service
+              const syncService = getFinaleSyncService();
+              syncService.setCredentials(storedApiKey, storedApiSecret, storedAccountPath);
+              const unsubscribe = syncService.onStatusChange(setSyncStatus);
+              setSyncStatus(syncService.getStatus());
+              
+              console.log('[FinaleSetupPanel] Credentials restored and verified');
+              
+              return () => unsubscribe();
+            } else {
+              console.warn('[FinaleSetupPanel] Stored credentials are invalid, clearing...');
+              localStorage.removeItem('finale_api_key');
+              localStorage.removeItem('finale_api_secret');
+              localStorage.removeItem('finale_account_path');
+            }
+          } catch (error) {
+            console.error('[FinaleSetupPanel] Error testing stored credentials:', error);
+          }
+        } else {
+          console.log('[FinaleSetupPanel] No stored credentials found - user needs to enter them');
         }
       } catch (error) {
-        console.log('[FinaleSetupPanel] Backend not configured yet');
+        console.error('[FinaleSetupPanel] Error checking stored credentials:', error);
       }
     };
     
-    checkBackendConfig();
+    checkStoredCredentials();
   }, []);
 
   const handleCredentialChange = (field: keyof typeof credentials, value: string) => {
