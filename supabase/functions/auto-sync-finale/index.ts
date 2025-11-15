@@ -191,8 +191,7 @@ async function syncInventoryData(params: {
     throw new Error('No valid inventory items after transformation');
   }
 
-  await deleteAllRows(params.supabase, 'inventory_items', 'sku');
-  await batchInsert(params.supabase, 'inventory_items', inventoryItems);
+  await batchUpsert(params.supabase, 'inventory_items', inventoryItems, 'sku');
   console.log(`[AutoSync][Inventory] Inserted ${inventoryItems.length} rows`);
   return inventoryItems.length;
 }
@@ -676,6 +675,38 @@ async function batchInsert(
       }
 
       throw new Error(`Insert into ${table} failed: ${error.message}`);
+    }
+  }
+}
+
+async function batchUpsert(
+  supabase: SupabaseClient,
+  table: string,
+  rows: Array<Record<string, any>>,
+  onConflict: string,
+  chunkSize = 1000,
+) {
+  const columnsToSkip = new Set<string>();
+
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize);
+    let rowsToInsert = chunk.map((row) => applyColumnSkips(row, columnsToSkip));
+
+    while (true) {
+      const { error } = await supabase.from(table).upsert(rowsToInsert, { onConflict });
+      if (!error) break;
+
+      const unsupportedColumn = detectUnsupportedColumn(error.message);
+      if (unsupportedColumn) {
+        if (!columnsToSkip.has(unsupportedColumn)) {
+          columnsToSkip.add(unsupportedColumn);
+          console.warn(`[AutoSync][${table}] Dropping unsupported column '${unsupportedColumn}' during upsert`);
+        }
+        rowsToInsert = rowsToInsert.map((row) => removeColumn(row, unsupportedColumn));
+        continue;
+      }
+
+      throw new Error(`Upsert into ${table} failed: ${error.message}`);
     }
   }
 }
