@@ -418,7 +418,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     </div>
                 </header>
                 
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 p-4">
+                <div className="relative z-10 bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 p-4 overflow-visible">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                         <div className="relative lg:col-span-1">
                             <label htmlFor="search-inventory" className="block text-sm font-medium text-gray-300 mb-1">Search by name or SKU</label>
@@ -438,7 +438,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
                                 />
                                 {isSuggestionsVisible && suggestions.length > 0 && (
-                                    <ul className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-auto shadow-lg">
+                                    <ul className="absolute z-50 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-auto shadow-lg">
                                         {suggestions.map(item => (
                                             <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className="p-2 text-sm text-white hover:bg-indigo-600 cursor-pointer">
                                                 {item.name} <span className="text-gray-400">({item.sku})</span>
@@ -450,7 +450,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         </div>
                         
                         {/* Multi-select Category Filter */}
-                        <div ref={categoryDropdownRef} className="relative">
+                        <div ref={categoryDropdownRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-20'}`}>
                             <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-1">
                                 Categories {selectedCategories.size > 0 && <span className="text-indigo-400">({selectedCategories.size})</span>}
                             </label>
@@ -521,7 +521,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         </div>
 
                         {/* Multi-select Vendor Filter */}
-                        <div ref={vendorDropdownRef} className="relative">
+                        <div ref={vendorDropdownRef} className={`relative ${isVendorDropdownOpen ? 'z-40' : 'z-20'}`}>
                             <label htmlFor="filter-vendor" className="block text-sm font-medium text-gray-300 mb-1">
                                 Vendors {selectedVendors.size > 0 && <span className="text-indigo-400">({selectedVendors.size})</span>}
                             </label>
@@ -616,7 +616,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     </div>
                 </div>
 
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
+                <div className="relative z-0 bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full divide-y divide-gray-700 table-auto">
                             <thead className="bg-gray-900/50">

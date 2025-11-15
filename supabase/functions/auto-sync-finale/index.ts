@@ -596,9 +596,10 @@ function transformInventoryRow(
   };
 }
 
-function transformVendorRow(raw: Record<string, any>, timestamp: string, index: number) {
+function transformVendorRow(raw: Record<string, any>, timestamp: string, _index: number) {
   const name = (raw['Name'] || raw['Vendor Name'] || '').trim();
   if (!name) return null;
+  const normalizedName = name.toLowerCase();
 
   const emailKeys = ['Email address 0', 'Email address 1', 'Email address 2', 'Email address 3', 'Email'];
   const contactEmails = emailKeys
@@ -620,7 +621,7 @@ function transformVendorRow(raw: Record<string, any>, timestamp: string, index: 
   const leadTimeDays = Math.max(0, Math.round(parseNumber(raw['Lead time (days)'], 7)));
 
   return {
-    id: generateDeterministicId(name, index),
+    id: generateDeterministicId(normalizedName),
     name,
     contact_emails: contactEmails,
     phone,

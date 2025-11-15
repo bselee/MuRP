@@ -3,7 +3,7 @@
 import React from 'react';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, UsersIcon, LightBulbIcon, CogIcon, MushroomLogo, SquirrelIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, ClipboardListIcon, BotIcon, PhotoIcon, QrCodeIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, UsersIcon, LightBulbIcon, CogIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, ClipboardListIcon, BotIcon, PhotoIcon, QrCodeIcon } from './icons';
 
 interface SidebarProps {
     currentPage: Page;
@@ -82,8 +82,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
     return (
         <aside className={`bg-gray-800 border-r border-gray-700 flex-shrink-0 flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
             <div className={`h-16 flex items-center border-b border-gray-700 relative ${isCollapsed ? 'justify-center' : 'px-4'}`}>
-                <MushroomLogo className={`transition-all duration-300 ${isCollapsed ? 'w-8 h-8 mr-0' : 'w-10 h-10 mr-2'}`} />
-                <div className={`text-xl font-bold text-white tracking-tight whitespace-nowrap transition-opacity duration-200 ${isCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>MuRP</div>
+                <div className={`flex items-center gap-3 ${isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'} transition-opacity duration-200`}>
+                    <div className="w-10 h-10 rounded-full bg-indigo-600/30 text-indigo-200 flex items-center justify-center text-lg font-bold">Mu</div>
+                    <div className="text-white">
+                        <p className="text-sm font-semibold tracking-wide uppercase">MuRP</p>
+                        <p className="text-xs text-gray-400">Ops Console</p>
+                    </div>
+                </div>
+                {isCollapsed && <span className="text-sm font-semibold text-white tracking-wide">MuRP</span>}
                 <button 
                     onClick={onToggle} 
                     className="absolute -right-3 top-1/2 -translate-y-1/2 bg-gray-600 hover:bg-indigo-600 text-white rounded-full p-1 border-2 border-gray-800 transition-transform z-10"
@@ -112,7 +118,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
                     onClick={(e) => { e.preventDefault(); onOpenAiAssistant(); }}
                     className={`flex items-center p-2 text-base font-normal rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white group ${isCollapsed ? 'justify-center' : ''}`}
                 >
-                    <SquirrelIcon className="w-6 h-6" />
+                    <BotIcon className="w-6 h-6" />
                     <span className={`ml-3 whitespace-nowrap transition-opacity duration-200 ${isCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>AI Assistant</span>
                 </a>
             </div>

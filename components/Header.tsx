@@ -1,6 +1,6 @@
 import React from 'react';
 import type { User } from '../types';
-import { SearchIcon, BellIcon, LogoutIcon } from './icons';
+import { BellIcon, LogoutIcon, MushroomLogo } from './icons';
 import DataSyncIndicator from './DataSyncIndicator';
 
 interface HeaderProps {
@@ -12,6 +12,13 @@ const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
     return (
         <header className="h-16 bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0">
             <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                    <MushroomLogo className="w-10 h-10" />
+                    <div>
+                        <p className="text-sm tracking-widest text-indigo-300 uppercase">MuRP</p>
+                        <p className="text-xs text-gray-400 -mt-1">Manufacturing Control</p>
+                    </div>
+                </div>
                 <DataSyncIndicator />
             </div>
             <div className="flex items-center space-x-4">
