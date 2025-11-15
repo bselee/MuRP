@@ -77,6 +77,11 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
         
         if (apiKey && apiSecret && accountPath) {
           console.log('[FinaleSetupPanel] Found credentials, testing connection...');
+          console.log('[FinaleSetupPanel] Credentials:', {
+            apiKey: apiKey.substring(0, 4) + '***',
+            apiSecret: apiSecret ? '***SET***' : 'MISSING',
+            accountPath,
+          });
           
           // Update form with found credentials
           setCredentials({
@@ -93,7 +98,9 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
             baseUrl: 'https://app.finaleinventory.com',
           });
           
+          console.log('[FinaleSetupPanel] Testing connection with client...');
           const result = await client.testConnection();
+          console.log('[FinaleSetupPanel] Connection test result:', result);
           
           if (result.success) {
             setIsConfigured(true);

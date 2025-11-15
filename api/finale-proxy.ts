@@ -111,13 +111,24 @@ async function finaleGraphQL(config: FinaleConfig, query: string, variables?: Re
  */
 async function testConnection(config: FinaleConfig) {
   try {
+    console.log('[Finale Proxy] testConnection called with config:', {
+      baseUrl: config.baseUrl,
+      accountPath: config.accountPath,
+      hasApiKey: !!config.apiKey,
+      apiKeyPreview: config.apiKey ? config.apiKey.substring(0, 4) + '***' : 'MISSING',
+      hasApiSecret: !!config.apiSecret,
+    });
+    
     const facilities = await finaleGet(config, '/facility');
+    console.log('[Finale Proxy] testConnection SUCCESS - facilities:', facilities.length);
+    
     return {
       success: true,
       message: `Successfully connected to Finale. Found ${facilities.length} facility(ies).`,
       facilities,
     };
   } catch (error) {
+    console.error('[Finale Proxy] testConnection FAILED:', error);
     return {
       success: false,
       message: 'Failed to connect to Finale API',
@@ -586,19 +597,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { action, config, ...params } = req.body || {};
 
-    // Validate config
-    if (!config || !config.apiKey || !config.apiSecret || !config.accountPath) {
-      console.error('[Finale Proxy] Missing config:', { hasConfig: !!config, config });
+    // Use server-side env vars as fallback if client didn't send config
+    const apiKey = config?.apiKey || process.env.FINALE_API_KEY || '';
+    const apiSecret = config?.apiSecret || process.env.FINALE_API_SECRET || '';
+    const accountPath = config?.accountPath || process.env.FINALE_ACCOUNT_PATH || '';
+    const baseUrl = config?.baseUrl || process.env.FINALE_BASE_URL || 'https://app.finaleinventory.com';
+
+    // Validate we have credentials from either source
+    if (!apiKey || !apiSecret || !accountPath) {
+      console.error('[Finale Proxy] Missing credentials:', {
+        hasApiKey: !!apiKey,
+        hasApiSecret: !!apiSecret,
+        hasAccountPath: !!accountPath,
+        configProvided: !!config,
+        envVarsAvailable: {
+          apiKey: !!process.env.FINALE_API_KEY,
+          apiSecret: !!process.env.FINALE_API_SECRET,
+          accountPath: !!process.env.FINALE_ACCOUNT_PATH,
+        }
+      });
       return res.status(400).json({
-        error: 'Missing required configuration: apiKey, apiSecret, accountPath',
+        error: 'Missing required configuration: apiKey, apiSecret, accountPath. Check Vercel environment variables.',
       });
     }
 
-    // Add default base URL if not provided
     const finaleConfig: FinaleConfig = {
-      ...config,
-      baseUrl: config.baseUrl || 'https://app.finaleinventory.com',
+      apiKey,
+      apiSecret,
+      accountPath,
+      baseUrl,
     };
+
+    console.log('[Finale Proxy] Using config:', {
+      apiKey: apiKey.substring(0, 4) + '***',
+      accountPath,
+      baseUrl,
+      source: config?.apiKey ? 'client' : 'server-env',
+    });
 
     // Route to appropriate action
     let result;
