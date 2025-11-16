@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase/client';
 import { RefreshIcon, CheckCircleIcon } from './icons';
+import { SYNC_EVENT_NAME, type SyncEventDetail } from '../lib/syncEventBus';
 
 const DataSyncIndicator: React.FC = () => {
   const [lastSync, setLastSync] = useState<Date | null>(null);
@@ -66,6 +67,20 @@ const DataSyncIndicator: React.FC = () => {
     return () => {
       clearInterval(interval);
       subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleSyncEvent = (event: Event) => {
+      const detail = (event as CustomEvent<SyncEventDetail>).detail;
+      if (detail && typeof detail.running === 'boolean') {
+        setIsSyncing(detail.running);
+      }
+    };
+    window.addEventListener(SYNC_EVENT_NAME, handleSyncEvent);
+    return () => {
+      window.removeEventListener(SYNC_EVENT_NAME, handleSyncEvent);
     };
   }, []);
 

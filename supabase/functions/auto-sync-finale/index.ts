@@ -38,6 +38,20 @@ serve(async (req) => {
 
   const startTime = Date.now();
   const syncErrors: string[] = [];
+  let requestBody: Record<string, unknown> | null = null;
+
+  try {
+    if (req.method !== 'GET') {
+      requestBody = await req.json();
+    }
+  } catch (_error) {
+    requestBody = null;
+  }
+
+  const forceSync = Boolean(requestBody && typeof requestBody === 'object' ? requestBody['force'] : false);
+  const triggerSource = (requestBody && typeof requestBody === 'object' && typeof requestBody['source'] === 'string')
+    ? (requestBody['source'] as string)
+    : 'auto';
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -88,7 +102,7 @@ serve(async (req) => {
       }
 
       const metadata = await getSyncMetadata(supabase, entry.type);
-      if (!shouldSync(metadata, entry.intervalMs, now)) {
+      if (!forceSync && !shouldSync(metadata, entry.intervalMs, now)) {
         summaries.push({
           dataType: entry.type,
           success: true,
@@ -118,7 +132,7 @@ serve(async (req) => {
           dataType: entry.type,
           success: true,
           itemCount,
-          message: `Synced ${itemCount} ${entry.type}`,
+          message: forceSync ? `Forced sync: ${itemCount} ${entry.type}` : `Synced ${itemCount} ${entry.type}`,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -140,6 +154,8 @@ serve(async (req) => {
       duration,
       summaries,
       errors: syncErrors,
+      force: forceSync,
+      source: triggerSource,
     });
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -576,7 +592,17 @@ function transformInventoryRow(
     return null;
   }
 
-  const vendorNameKeys = ['Vendor', 'Supplier', 'Primary supplier', 'Primary Supplier'];
+  const vendorNameKeys = [
+    'Vendor',
+    'Vendor Name',
+    'Vendor name',
+    'Supplier',
+    'Supplier 1',
+    'Supplier 2',
+    'Supplier 3',
+    'Primary supplier',
+    'Primary Supplier',
+  ];
   const vendorName = vendorNameKeys.map(key => (raw[key] || '').trim()).find(Boolean) || '';
   const normalizedVendorName = normalizeVendorKey(vendorName);
   let vendorId: string | null = null;

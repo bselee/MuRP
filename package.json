@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:transformers": "tsx lib/schema/transformers.smoke.ts",
     "test:transformers:all": "tsx lib/schema/transformers.runner.ts",
-    "test": "npm run -s test:transformers && npm run -s test:transformers:all",
+    "test:inventory-ui": "tsx tests/inventoryDisplay.test.ts",
+    "test": "npm run -s test:transformers && npm run -s test:transformers:all && npm run -s test:inventory-ui",
     "e2e": "npm run -s build && playwright test",
     "e2e:ui": "npm run -s build && playwright test --ui"
   },

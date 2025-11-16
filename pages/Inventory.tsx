@@ -12,6 +12,15 @@ import {
 import ImportExportModal from '../components/ImportExportModal';
 import { exportToCsv, exportToJson, exportToXls } from '../services/exportService';
 import { generateInventoryPdf } from '../services/pdfService';
+import {
+    normalizeCategory,
+    buildVendorNameMap,
+    buildVendorDetailMap,
+    getVendorDisplayName,
+    getVendorRecord as resolveVendorRecord,
+    buildBomAssociations,
+    getBomDetailsForComponent,
+} from '../lib/inventory/utils';
 
 interface InventoryProps {
     inventory: InventoryItem[];
@@ -62,6 +71,24 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: 'unitCost', label: 'Unit Cost', visible: false, sortable: true },
 ];
 
+const COLUMN_WIDTH_CLASSES: Partial<Record<ColumnKey, string>> = {
+    sku: 'w-28 max-w-[7rem]',
+    name: 'min-w-[14rem] max-w-[22rem]',
+    category: 'max-w-[10rem]',
+    stock: 'w-28',
+    onOrder: 'w-28',
+    reorderPoint: 'w-28',
+    vendor: 'max-w-[12rem]',
+    status: 'w-32',
+    itemType: 'w-32',
+    runway: 'max-w-[15rem]',
+    salesVelocity: 'w-32 max-w-[8rem]',
+    sales30Days: 'w-28 max-w-[7rem]',
+    sales60Days: 'w-28 max-w-[7rem]',
+    sales90Days: 'w-28 max-w-[7rem]',
+    unitCost: 'w-24 max-w-[6.5rem]',
+};
+
 type SortKeys = keyof InventoryItem | 'status' | 'vendor' | 'runway';
 
 type ItemType = 'retail' | 'component' | 'hybrid' | 'standalone';
@@ -83,6 +110,20 @@ interface DemandInsight {
 }
 type DemandSource = 'salesVelocity' | 'recencyAverage' | 'avg30' | 'avg60' | 'avg90' | 'none';
 
+const MAX_CATEGORY_WORDS = 3;
+
+const formatCategoryLabel = (value?: string | null): string => {
+    const normalized = normalizeCategory(value);
+    const firstSegment = normalized.split(',')[0]?.trim() || 'Uncategorized';
+    const cleaned = firstSegment.replace(/[()\[\]]/g, '').replace(/\s+/g, ' ').trim();
+    if (!cleaned) return 'Uncategorized';
+    const tokens = cleaned.split(/\s+/).filter(Boolean);
+    if (tokens.length <= MAX_CATEGORY_WORDS) {
+        return cleaned;
+    }
+    return `${tokens.slice(0, MAX_CATEGORY_WORDS).join(' ')}…`;
+};
+
 const getStockStatus = (item: InventoryItem): 'In Stock' | 'Low Stock' | 'Out of Stock' => {
     if (item.stock <= 0) return 'Out of Stock';
     if (item.stock < item.reorderPoint) return 'Low Stock';
@@ -94,12 +135,13 @@ const SortableHeader: React.FC<{
     sortKey: SortKeys;
     sortConfig: { key: SortKeys; direction: 'ascending' | 'descending' } | null;
     requestSort: (key: SortKeys) => void;
-}> = ({ title, sortKey, sortConfig, requestSort }) => {
+    className?: string;
+}> = ({ title, sortKey, sortConfig, requestSort, className }) => {
     const isSorted = sortConfig?.key === sortKey;
     const direction = isSorted ? sortConfig?.direction : undefined;
 
     return (
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+        <th className={`px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${className || ''}`}>
             <button className="flex items-center gap-2 group" onClick={() => requestSort(sortKey)}>
                 {title}
                 <span className={`transition-opacity ${isSorted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
@@ -156,12 +198,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const categoryDropdownRef = useRef<HTMLDivElement>(null);
     const vendorDropdownRef = useRef<HTMLDivElement>(null);
     const inventoryRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+    const previousSortConfigRef = useRef<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
 
-    const normalizeCategory = useCallback((value?: string) => {
-        if (!value) return 'Uncategorized';
-        const trimmed = value.trim();
-        return trimmed || 'Uncategorized';
-    }, []);
 
     // Navigation from BOM page - auto-scroll to inventory item
     useEffect(() => {
@@ -213,82 +251,25 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     }, []);
 
     // Create vendor lookup maps
-    const vendorMap = useMemo(() => {
-        const map = new Map<string, string>();
-        const register = (key?: string, value?: string) => {
-            if (!key || !value) return;
-            const trimmed = key.trim();
-            if (!trimmed) return;
-            map.set(trimmed, value);
-            map.set(trimmed.toLowerCase(), value);
-        };
-        vendors.forEach(vendor => {
-            register(vendor.id, vendor.name);
-            register(vendor.name, vendor.name);
-        });
-        map.set('unknown', 'Unknown Vendor');
-        map.set('unknown_vendor', 'Unknown Vendor');
-        map.set('n/a', 'N/A');
-        map.set('N/A', 'N/A');
-        return map;
-    }, [vendors]);
+    const vendorNameMap = useMemo(() => buildVendorNameMap(vendors), [vendors]);
 
-    const vendorDetailMap = useMemo(() => {
-        const map = new Map<string, Vendor>();
-        const register = (key?: string, vendor?: Vendor) => {
-            if (!key || !vendor) return;
-            const trimmed = key.trim();
-            if (!trimmed) return;
-            map.set(trimmed, vendor);
-            map.set(trimmed.toLowerCase(), vendor);
-        };
-        vendors.forEach(vendor => {
-            register(vendor.id, vendor);
-            register(vendor.name, vendor);
-        });
-        return map;
-    }, [vendors]);
+    const vendorDetailMap = useMemo(() => buildVendorDetailMap(vendors), [vendors]);
 
-    const getVendorRecord = useCallback((identifier?: string) => {
-        if (!identifier) return undefined;
-        const trimmed = identifier.trim();
-        if (!trimmed) return undefined;
-        return vendorDetailMap.get(trimmed) || vendorDetailMap.get(trimmed.toLowerCase());
-    }, [vendorDetailMap]);
+    const getVendorRecord = useCallback(
+        (identifier?: string) => resolveVendorRecord(identifier, vendorDetailMap),
+        [vendorDetailMap],
+    );
 
-    const getVendorName = useCallback((identifier?: string) => {
-        if (!identifier) return 'N/A';
-        const trimmed = identifier.trim();
-        if (!trimmed) return 'N/A';
-        return vendorMap.get(trimmed) || vendorMap.get(trimmed.toLowerCase()) || trimmed;
-    }, [vendorMap]);
+    const getVendorName = useCallback(
+        (identifier?: string) => getVendorDisplayName(identifier, vendorNameMap),
+        [vendorNameMap],
+    );
 
-    // Track which BOMs use each component SKU and count how many (for the BOM link in table)
-    const bomUsageMap = useMemo(() => {
-        const usageMap = new Map<string, string[]>();
-        boms.forEach(bom => {
-            bom.components.forEach(comp => {
-                if (!usageMap.has(comp.sku)) {
-                    usageMap.set(comp.sku, []);
-                }
-                usageMap.get(comp.sku)!.push(bom.finishedSku);
-            });
-        });
-        return usageMap;
-    }, [boms]);
-
-    const bomNameMap = useMemo(() => {
-        const map = new Map<string, string>();
-        boms.forEach(bom => {
-            map.set(bom.finishedSku, bom.name || bom.finishedSku);
-        });
-        return map;
-    }, [boms]);
-
-    // Track which SKUs ARE finished products (have their own BOM with constituents)
-    const bomFinishedSkuSet = useMemo(() => {
-        return new Set(boms.map(bom => bom.finishedSku));
-    }, [boms]);
+    // Track BOM usage for components and finished goods metadata
+    const { usageMap: bomUsageMap, finishedSkuSet: bomFinishedSkuSet } = useMemo(
+        () => buildBomAssociations(boms),
+        [boms],
+    );
 
     const demandInsights = useMemo(() => {
         const insights = new Map<string, DemandInsight>();
@@ -367,6 +348,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         return count;
     }, [demandInsights]);
 
+    const categoryLabelMap = useMemo(() => {
+        const map = new Map<string, string>();
+        inventory.forEach(item => {
+            const normalized = normalizeCategory(item.category);
+            if (!map.has(normalized)) {
+                map.set(normalized, formatCategoryLabel(normalized));
+            }
+        });
+        return map;
+    }, [inventory]);
+
     const filterOptions = useMemo(() => {
         const categories = [...new Set(inventory.map(item => normalizeCategory(item.category)))].sort();
         const vendorIds = [...new Set(
@@ -376,15 +368,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         )].sort((a, b) => getVendorName(a).localeCompare(getVendorName(b)));
         const statuses = ['In Stock', 'Low Stock', 'Out of Stock'];
         return { categories, vendors: vendorIds, statuses };
-    }, [inventory, getVendorName, normalizeCategory]);
+    }, [inventory, getVendorName]);
 
     // Filter categories based on search term
     const filteredCategories = useMemo(() => {
         if (!categorySearchTerm) return filterOptions.categories;
-        return filterOptions.categories.filter(cat => 
-            cat.toLowerCase().includes(categorySearchTerm.toLowerCase())
-        );
-    }, [filterOptions.categories, categorySearchTerm]);
+        const term = categorySearchTerm.toLowerCase();
+        return filterOptions.categories.filter(cat => {
+            const label = categoryLabelMap.get(cat) || formatCategoryLabel(cat);
+            return label.toLowerCase().includes(term) || cat.toLowerCase().includes(term);
+        });
+    }, [filterOptions.categories, categorySearchTerm, categoryLabelMap]);
 
     // Filter vendors based on search term
     const filteredVendors = useMemo(() => {
@@ -419,8 +413,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
     const handleBomClick = (component: InventoryItem) => {
         const componentSku = component.sku;
-        const bomSkus = bomUsageMap.get(componentSku);
-        if (!bomSkus || bomSkus.length === 0) return;
+        const bomDetails = getBomDetailsForComponent(componentSku, bomUsageMap);
+        const bomSkus = bomDetails.map(detail => detail.finishedSku);
+        if (bomSkus.length === 0) return;
         try {
             localStorage.setItem(
                 'bomComponentFilter',
@@ -506,6 +501,22 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         setSortConfig({ key, direction });
     };
 
+    const handleNeedsOrderToggle = () => {
+        setRiskFilter(prev => {
+            if (prev === 'needs-order') {
+                const fallback = previousSortConfigRef.current
+                    ? { ...previousSortConfigRef.current }
+                    : { key: 'name' as SortKeys, direction: 'ascending' as const };
+                previousSortConfigRef.current = null;
+                setSortConfig(fallback);
+                return 'all';
+            }
+            previousSortConfigRef.current = sortConfig ? { ...sortConfig } : null;
+            setSortConfig({ key: 'runway', direction: 'ascending' });
+            return 'needs-order';
+        });
+    };
+
     const processedInventory = useMemo(() => {
         let filteredItems = [...inventory];
 
@@ -585,7 +596,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     };
 
     const handleExportPdf = () => {
-        generateInventoryPdf(processedInventory, vendorMap);
+        generateInventoryPdf(processedInventory, vendorNameMap);
     };
 
     const handleExportJson = () => {
@@ -737,20 +748,23 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         {filteredCategories.length === 0 ? (
                                             <div className="p-3 text-center text-gray-400 text-sm">No categories found</div>
                                         ) : (
-                                            filteredCategories.map(category => (
-                                                <label 
-                                                    key={category} 
-                                                    className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedCategories.has(category)}
-                                                        onChange={() => toggleCategory(category)}
-                                                        className="w-4 h-4 mr-2 rounded border-gray-500 text-indigo-600 focus:ring-indigo-500"
-                                                    />
-                                                    <span className="text-sm text-white">{category}</span>
-                                                </label>
-                                            ))
+                                            filteredCategories.map(category => {
+                                                const label = categoryLabelMap.get(category) || formatCategoryLabel(category);
+                                                return (
+                                                    <label 
+                                                        key={category} 
+                                                        className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedCategories.has(category)}
+                                                            onChange={() => toggleCategory(category)}
+                                                            className="w-4 h-4 mr-2 rounded border-gray-500 text-indigo-600 focus:ring-indigo-500"
+                                                        />
+                                                        <span className="text-sm text-white" title={category}>{label}</span>
+                                                    </label>
+                                                );
+                                            })
                                         )}
                                     </div>
                                 </div>
@@ -850,7 +864,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button
-                            onClick={() => setRiskFilter(prev => (prev === 'needs-order' ? 'all' : 'needs-order'))}
+                            onClick={handleNeedsOrderToggle}
                             className={`px-4 py-2 text-sm font-semibold rounded-md border transition-colors ${
                                 riskFilter === 'needs-order'
                                     ? 'bg-red-500/20 border-red-400/60 text-red-200 shadow-lg shadow-red-900/40'
@@ -874,15 +888,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             <thead className="bg-gray-900/50">
                                 <tr>
                                     {visibleColumns.map(col => {
+                                        const widthClass = COLUMN_WIDTH_CLASSES[col.key] || '';
                                         if (!col.sortable) {
                                             return (
-                                                <th key={col.key} className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                                <th key={col.key} className={`px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${widthClass}`}>
                                                     {col.label}
                                                 </th>
                                             );
                                         }
                                         const sortKey = col.key === 'vendor' ? 'vendor' : col.key as SortKeys;
-                                        return <SortableHeader key={col.key} title={col.label} sortKey={sortKey} sortConfig={sortConfig} requestSort={requestSort} />;
+                                        return <SortableHeader key={col.key} title={col.label} sortKey={sortKey} sortConfig={sortConfig} requestSort={requestSort} className={widthClass} />;
                                     })}
                                 </tr>
                             </thead>
@@ -890,12 +905,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 {processedInventory.map(item => {
                                     const stockStatus = getStockStatus(item);
                                     const vendor = getVendorName(item.vendorId);
-                                    const bomSkus = bomUsageMap.get(item.sku);
-                                    const bomCount = bomSkus ? bomSkus.length : 0;
-                                    const bomDetails = (bomSkus || []).map(sku => ({
-                                        sku,
-                                        name: bomNameMap.get(sku) || sku,
-                                    }));
+                                    const bomDetails = getBomDetailsForComponent(item.sku, bomUsageMap);
+                                    const bomCount = bomDetails.length;
                                     const insight = demandInsights.get(item.sku);
 
                                     return (
@@ -907,10 +918,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             className="hover:bg-gray-700/50 transition-colors"
                                         >
                                             {visibleColumns.map(col => {
+                                                const widthClass = COLUMN_WIDTH_CLASSES[col.key] || '';
                                                 switch (col.key) {
                                                     case 'sku':
                                                         return (
-                                                            <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm font-mono">
+                                                            <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm font-mono ${widthClass}`}>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-white font-bold">{item.sku}</span>
                                                                     {bomCount > 0 && (
@@ -926,9 +938,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                                 <p className="text-xs text-gray-400 mb-1">Used in:</p>
                                                                                 <ul className="space-y-1 max-h-48 overflow-auto pr-1">
                                                                                     {bomDetails.map(detail => (
-                                                                                        <li key={detail.sku} className="text-xs text-white truncate">
-                                                                                            <span className="font-semibold">{detail.name}</span>
-                                                                                            <span className="text-gray-400 ml-1">({detail.sku})</span>
+                                                                                        <li key={detail.finishedSku} className="text-xs text-white truncate">
+                                                                                            <span className="font-semibold">{detail.finishedName}</span>
+                                                                                            <span className="text-gray-400 ml-1">({detail.finishedSku})</span>
                                                                                         </li>
                                                                                     ))}
                                                                                 </ul>
@@ -940,7 +952,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     case 'itemType':
                                                         return (
-                                                            <td key={col.key} className="px-4 py-3 whitespace-nowrap text-sm">
+                                                            <td key={col.key} className={`px-4 py-3 whitespace-nowrap text-sm ${widthClass}`}>
                                                                 {insight ? (
                                                                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${itemTypeStyles[insight.itemType].className}`}>
                                                                         {itemTypeStyles[insight.itemType].label}
@@ -952,7 +964,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     case 'name':
                                                         return (
-                                                            <td key={col.key} className="px-4 py-3 text-sm text-white max-w-xs group relative">
+                                                            <td key={col.key} className={`px-4 py-3 text-sm text-white max-w-xs group relative ${widthClass}`}>
                                                                 <span className="font-medium truncate block">
                                                                     {item.name}
                                                                 </span>
@@ -961,24 +973,31 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                 </div>
                                                             </td>
                                                         );
-                                                    case 'category':
-                                                        return <td key={col.key} className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">{normalizeCategory(item.category)}</td>;
+                                                    case 'category': {
+                                                        const normalizedCategory = normalizeCategory(item.category);
+                                                        const prettyCategory = categoryLabelMap.get(normalizedCategory) || formatCategoryLabel(normalizedCategory);
+                                                        return (
+                                                            <td key={col.key} className={`px-4 py-3 whitespace-nowrap text-sm text-gray-300 truncate ${widthClass}`} title={normalizedCategory}>
+                                                                {prettyCategory}
+                                                            </td>
+                                                        );
+                                                    }
                                                     case 'stock':
                                                         return (
-                                                            <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-white">
+                                                            <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-white ${widthClass}`}>
                                                                 <div className="mb-1 font-semibold">{item.stock.toLocaleString()}</div>
                                                                 <StockIndicator item={item} />
                                                             </td>
                                                         );
                                                     case 'onOrder':
-                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.onOrder.toLocaleString()}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 ${widthClass}`}>{item.onOrder.toLocaleString()}</td>;
                                                     case 'reorderPoint':
-                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.reorderPoint.toLocaleString()}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 ${widthClass}`}>{item.reorderPoint.toLocaleString()}</td>;
                                                     case 'vendor':
-                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{vendor || 'N/A'}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 truncate ${widthClass}`} title={vendor || 'N/A'}>{vendor || 'N/A'}</td>;
                                                     case 'status':
                                                         return (
-                                                            <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm">
+                                                            <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm ${widthClass}`}>
                                                                 <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                                                     stockStatus === 'In Stock' ? 'bg-green-500/20 text-green-400' :
                                                                     stockStatus === 'Low Stock' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -998,7 +1017,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                             : 100;
                                                         const breakdown = insight?.demandBreakdown;
                                                         return (
-                                                            <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm">
+                                                            <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm ${widthClass}`}>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
                                                                         {runwayValue}
@@ -1033,15 +1052,15 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     }
                                                     case 'salesVelocity':
-                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
                                                     case 'sales30Days':
-                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.sales30Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales30Days || 0}</td>;
                                                     case 'sales60Days':
-                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.sales60Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales60Days || 0}</td>;
                                                     case 'sales90Days':
-                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">{item.sales90Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales90Days || 0}</td>;
                                                     case 'unitCost':
-                                                        return <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-gray-300">${item.unitCost?.toFixed(2) || '0.00'}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>${item.unitCost?.toFixed(2) || '0.00'}</td>;
                                                     default:
                                                         return null;
                                                 }
