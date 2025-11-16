@@ -235,15 +235,14 @@ async function syncVendorData(params: {
 
   const nowIso = params.now.toISOString();
   const vendors: Array<Record<string, any>> = [];
-  const seenVendorNames = new Set<string>();
+  const seenVendorIds = new Set<string>();
   rawRows.forEach((row, index) => {
     const transformed = transformVendorRow(row, nowIso, index);
     if (transformed) {
-      const nameKey = transformed.name.toLowerCase();
-      if (seenVendorNames.has(nameKey)) {
+      if (seenVendorIds.has(transformed.id)) {
         return;
       }
-      seenVendorNames.add(nameKey);
+      seenVendorIds.add(transformed.id);
       vendors.push(transformed);
     }
   });

@@ -9,7 +9,7 @@ interface InventoryProps {
     inventory: InventoryItem[];
     vendors: Vendor[];
     boms: BillOfMaterials[];
-    onNavigateToBom?: (bomSku: string) => void;
+    onNavigateToBom?: (bomSku?: string) => void;
 }
 
 type SortKeys = keyof InventoryItem | 'status';

@@ -17,7 +17,7 @@ interface InventoryProps {
     inventory: InventoryItem[];
     vendors: Vendor[];
     boms: BillOfMaterials[];
-    onNavigateToBom?: (bomSku: string) => void;
+    onNavigateToBom?: (bomSku?: string) => void;
 }
 
 type ColumnKey =
@@ -157,6 +157,12 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const vendorDropdownRef = useRef<HTMLDivElement>(null);
     const inventoryRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
 
+    const normalizeCategory = useCallback((value?: string) => {
+        if (!value) return 'Uncategorized';
+        const trimmed = value.trim();
+        return trimmed || 'Uncategorized';
+    }, []);
+
     // Navigation from BOM page - auto-scroll to inventory item
     useEffect(() => {
         const selectedSku = localStorage.getItem('selectedInventorySku');
@@ -271,6 +277,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         return usageMap;
     }, [boms]);
 
+    const bomNameMap = useMemo(() => {
+        const map = new Map<string, string>();
+        boms.forEach(bom => {
+            map.set(bom.finishedSku, bom.name || bom.finishedSku);
+        });
+        return map;
+    }, [boms]);
+
     // Track which SKUs ARE finished products (have their own BOM with constituents)
     const bomFinishedSkuSet = useMemo(() => {
         return new Set(boms.map(bom => bom.finishedSku));
@@ -354,7 +368,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     }, [demandInsights]);
 
     const filterOptions = useMemo(() => {
-        const categories = [...new Set(inventory.map(item => item.category))].sort();
+        const categories = [...new Set(inventory.map(item => normalizeCategory(item.category)))].sort();
         const vendorIds = [...new Set(
             inventory
                 .map(item => item.vendorId?.trim())
@@ -362,7 +376,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         )].sort((a, b) => getVendorName(a).localeCompare(getVendorName(b)));
         const statuses = ['In Stock', 'Low Stock', 'Out of Stock'];
         return { categories, vendors: vendorIds, statuses };
-    }, [inventory, getVendorName]);
+    }, [inventory, getVendorName, normalizeCategory]);
 
     // Filter categories based on search term
     const filteredCategories = useMemo(() => {
@@ -420,13 +434,12 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
             console.warn('[Inventory] Failed to persist BOM component filter', error);
         }
         
-        // If only one BOM uses this component, navigate directly
-        if (bomSkus.length === 1 && onNavigateToBom) {
-            onNavigateToBom(bomSkus[0]);
-        } else if (bomSkus.length > 1 && onNavigateToBom) {
-            // For now, navigate to the first BOM
-            // TODO: Could show a modal to select which BOM to view
-            onNavigateToBom(bomSkus[0]);
+        if (onNavigateToBom) {
+            if (bomSkus.length === 1) {
+                onNavigateToBom(bomSkus[0]);
+            } else {
+                onNavigateToBom(undefined);
+            }
         }
     };
 
@@ -498,7 +511,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
         // Multi-select category filter
         if (selectedCategories.size > 0) {
-            filteredItems = filteredItems.filter(item => selectedCategories.has(item.category));
+            filteredItems = filteredItems.filter(item => selectedCategories.has(normalizeCategory(item.category)));
         }
 
         if (filters.status) {
@@ -564,6 +577,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         getVendorName,
         demandInsights,
         riskFilter,
+        normalizeCategory,
     ]);
 
     const handleExportCsv = () => {
@@ -878,6 +892,10 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     const vendor = getVendorName(item.vendorId);
                                     const bomSkus = bomUsageMap.get(item.sku);
                                     const bomCount = bomSkus ? bomSkus.length : 0;
+                                    const bomDetails = (bomSkus || []).map(sku => ({
+                                        sku,
+                                        name: bomNameMap.get(sku) || sku,
+                                    }));
                                     const insight = demandInsights.get(item.sku);
 
                                     return (
@@ -896,13 +914,26 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-white font-bold">{item.sku}</span>
                                                                     {bomCount > 0 && (
-                                                                        <button
-                                                                            onClick={() => handleBomClick(item)}
-                                                                            className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full text-xs hover:bg-blue-500/30 transition-colors flex-shrink-0"
-                                                                            title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
-                                                                        >
-                                                                            BOM {bomCount > 1 ? `(${bomCount})` : ''}
-                                                                        </button>
+                                                                        <div className="relative group flex-shrink-0">
+                                                                            <button
+                                                                                onClick={() => handleBomClick(item)}
+                                                                                className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full text-xs hover:bg-blue-500/30 transition-colors"
+                                                                                title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
+                                                                            >
+                                                                                BOM {bomCount > 1 ? `(${bomCount})` : ''}
+                                                                            </button>
+                                                                            <div className="hidden group-hover:block absolute left-0 top-full mt-2 w-64 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 p-3 text-left">
+                                                                                <p className="text-xs text-gray-400 mb-1">Used in:</p>
+                                                                                <ul className="space-y-1 max-h-48 overflow-auto pr-1">
+                                                                                    {bomDetails.map(detail => (
+                                                                                        <li key={detail.sku} className="text-xs text-white truncate">
+                                                                                            <span className="font-semibold">{detail.name}</span>
+                                                                                            <span className="text-gray-400 ml-1">({detail.sku})</span>
+                                                                                        </li>
+                                                                                    ))}
+                                                                                </ul>
+                                                                            </div>
+                                                                        </div>
                                                                     )}
                                                                 </div>
                                                             </td>
@@ -931,7 +962,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                             </td>
                                                         );
                                                     case 'category':
-                                                        return <td key={col.key} className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">{item.category}</td>;
+                                                        return <td key={col.key} className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">{normalizeCategory(item.category)}</td>;
                                                     case 'stock':
                                                         return (
                                                             <td key={col.key} className="px-6 py-3 whitespace-nowrap text-sm text-white">

@@ -644,8 +644,11 @@ const App: React.FC = () => {
           boms={boms}
           onNavigateToBom={(bomSku) => {
             setCurrentPage('BOMs');
-            // Store the BOM SKU to highlight/expand
-            localStorage.setItem('selectedBomSku', bomSku);
+            if (bomSku) {
+              localStorage.setItem('selectedBomSku', bomSku);
+            } else {
+              localStorage.removeItem('selectedBomSku');
+            }
           }}
         />;
       case 'Purchase Orders':
