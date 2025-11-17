@@ -12,6 +12,7 @@
 import React, { useState, useEffect } from 'react';
 import { getFinaleSyncService, type SyncStatus } from '../services/finaleSyncService';
 import { FinaleBasicAuthClient } from '../services/finaleBasicAuthClient';
+import { supabase } from '../lib/supabase/client';
 import { 
   ServerStackIcon, 
   CheckCircleIcon, 
@@ -58,13 +59,18 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
 
   // Check if backend is configured on mount
   useEffect(() => {
-    // Check if backend API has Finale credentials configured
+    // Check if Finale sync is configured by querying sync metadata
     const checkBackendConfig = async () => {
       try {
-        const response = await fetch('/api/finale-proxy?action=test-connection');
-        const result = await response.json();
+        // Check Supabase for sync metadata (proves backend is working)
+        const { data: syncData, error } = await supabase
+          .from('sync_metadata')
+          .select('data_type, last_sync_time')
+          .limit(1)
+          .single();
         
-        if (result.configured || result.success) {
+        if (!error && syncData) {
+          // Backend is configured and has synced data before
           setIsConfigured(true);
           setCurrentStep('sync');
           
@@ -76,7 +82,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
           return () => unsubscribe();
         }
       } catch (error) {
-        console.log('[FinaleSetupPanel] Backend not configured yet');
+        console.log('[FinaleSetupPanel] Backend not configured yet or no sync data');
       }
     };
     
@@ -286,10 +292,10 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
             <p className="text-sm text-yellow-300 font-medium mb-2">⚙️ Configuration Required</p>
             <p className="text-xs text-gray-400">
-              Finale API credentials must be configured in your backend environment variables by an administrator.
-              Contact your system administrator to set up <code className="text-blue-400">FINALE_API_KEY</code>, 
-              <code className="text-blue-400"> FINALE_API_SECRET</code>, and 
-              <code className="text-blue-400"> FINALE_ACCOUNT_PATH</code>.
+              Finale CSV sync must be configured in Supabase Edge Functions by an administrator.
+              Contact your system administrator to set up <code className="text-blue-400">FINALE_INVENTORY_REPORT_URL</code>, 
+              <code className="text-blue-400"> FINALE_VENDORS_REPORT_URL</code>, and 
+              <code className="text-blue-400"> FINALE_BOM_REPORT_URL</code> environment variables.
             </p>
           </div>
         )}

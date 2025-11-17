@@ -407,12 +407,13 @@ export class DataService {
           break;
 
         case 'supabase':
-          // TODO: Implement Supabase fetch
-          throw new Error('Supabase source not yet implemented');
+          throw new Error('Supabase purchase order source not yet implemented.');
 
         case 'mock':
+          throw new Error('Mock purchase order source has been removed. Please use Finale or Supabase.');
+
         default:
-          purchaseOrders = await this.getPurchaseOrdersFromMock();
+          purchaseOrders = await this.getPurchaseOrdersFromFinale();
           break;
       }
 
@@ -451,16 +452,6 @@ export class DataService {
     console.log(`[DataService] Fetched ${purchaseOrders.length} purchase orders from Finale`);
 
     return purchaseOrders;
-  }
-
-  /**
-   * Get mock purchase order data
-   */
-  private async getPurchaseOrdersFromMock(): Promise<PurchaseOrder[]> {
-    console.log('[DataService] Using mock purchase order data');
-
-    const { mockPurchaseOrders } = await import('../types');
-    return mockPurchaseOrders;
   }
 
   /**

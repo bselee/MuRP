@@ -26,11 +26,12 @@ const EmailComposerModal: React.FC<EmailComposerModalProps> = ({ isOpen, onClose
         if (isOpen) {
             setTo(vendor.contactEmails[0] || '');
             setFrom(gmailConnection.isConnected ? gmailConnection.email! : 'procurement@murp.app (simulation)');
-            setSubject(`Purchase Order #${purchaseOrder.id} from MuRP`);
+            const poNumber = purchaseOrder.orderId || purchaseOrder.id;
+            setSubject(`Purchase Order #${poNumber} from MuRP`);
             setBody(
 `Hello ${vendor.name} Team,
 
-Please find attached our Purchase Order #${purchaseOrder.id}.
+Please find attached our Purchase Order #${poNumber}.
 
 Kindly confirm receipt and provide an estimated shipping date at your earliest convenience.
 
@@ -78,7 +79,7 @@ Procurement Team`
                         <h4 className="text-sm font-semibold text-gray-300 mb-2">Attachments</h4>
                         <button onClick={handleDownloadAttachment} className="flex items-center gap-2 text-sm p-2 bg-gray-700 rounded-md text-indigo-300 hover:bg-gray-600">
                             <FileTextIcon className="w-5 h-5"/>
-                            <span>{purchaseOrder.id}.pdf</span>
+                            <span>{(purchaseOrder.orderId || purchaseOrder.id)}.pdf</span>
                         </button>
                     </div>
                 </div>

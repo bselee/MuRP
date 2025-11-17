@@ -14,9 +14,12 @@ export const generatePoPdf = (po: PurchaseOrder, vendor: Vendor) => {
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`PO Number: ${po.id}`, 20, 35);
-    doc.text(`Date: ${new Date(po.createdAt).toLocaleDateString()}`, 20, 40);
-    doc.text(`Expected: ${po.expectedDate ? new Date(po.expectedDate).toLocaleDateString() : 'N/A'}`, 20, 45);
+    const poNumber = po.orderId || po.id;
+    const orderDate = po.orderDate || po.createdAt;
+    const expected = po.estimatedReceiveDate || po.expectedDate;
+    doc.text(`PO Number: ${poNumber}`, 20, 35);
+    doc.text(`Date: ${orderDate ? new Date(orderDate).toLocaleDateString() : 'N/A'}`, 20, 40);
+    doc.text(`Expected: ${expected ? new Date(expected).toLocaleDateString() : 'N/A'}`, 20, 45);
 
     // --- Company Info (From) ---
     doc.setFont('helvetica', 'bold');
@@ -42,13 +45,14 @@ export const generatePoPdf = (po: PurchaseOrder, vendor: Vendor) => {
 
     let subtotal = 0;
     po.items.forEach(item => {
-        const itemTotal = item.price * item.quantity;
+        const unitPrice = item.unitCost ?? item.price ?? 0;
+        const itemTotal = item.lineTotal ?? unitPrice * item.quantity;
         subtotal += itemTotal;
         const itemData = [
             item.sku,
-            item.name,
+            item.description,
             item.quantity,
-            `$${item.price.toFixed(2)}`,
+            `$${unitPrice.toFixed(2)}`,
             `$${itemTotal.toFixed(2)}`
         ];
         tableRows.push(itemData);
@@ -64,8 +68,8 @@ export const generatePoPdf = (po: PurchaseOrder, vendor: Vendor) => {
     
     // --- Totals ---
     const finalY = (doc as any).lastAutoTable.finalY;
-    const tax = subtotal * 0.08; // 8% tax
-    const total = subtotal + tax;
+    const tax = po.taxableFeeFreight ?? 0;
+    const total = typeof po.total === 'number' ? po.total : subtotal + tax;
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -75,12 +79,12 @@ export const generatePoPdf = (po: PurchaseOrder, vendor: Vendor) => {
     doc.text(`TOTAL: $${total.toFixed(2)}`, 190, finalY + 30, { align: 'right' });
     
     // --- Notes ---
-    if (po.notes) {
+    if (po.vendorNotes || po.notes) {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.text('Notes:', 20, finalY + 15);
         doc.setFont('helvetica', 'normal');
-        const splitNotes = doc.splitTextToSize(po.notes, 170); // 170mm width
+        const splitNotes = doc.splitTextToSize(po.vendorNotes || po.notes || '', 170);
         doc.text(splitNotes, 20, finalY + 20);
     }
     
@@ -90,7 +94,7 @@ export const generatePoPdf = (po: PurchaseOrder, vendor: Vendor) => {
 
 
     // --- Save File ---
-    doc.save(`${po.id}.pdf`);
+    doc.save(`${poNumber}.pdf`);
 };
 
 export const generateInventoryPdf = (inventory: InventoryItem[], vendorMap: Map<string, string>) => {

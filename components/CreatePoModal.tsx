@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Vendor, InventoryItem, PurchaseOrder } from '../types';
+import type { Vendor, InventoryItem, CreatePurchaseOrderInput } from '../types';
 import Modal from './Modal';
 import { PlusCircleIcon, TrashIcon } from './icons';
 
@@ -8,13 +8,14 @@ interface CreatePoModalProps {
     onClose: () => void;
     vendors: Vendor[];
     inventory: InventoryItem[];
-    onCreatePo: (poDetails: Omit<PurchaseOrder, 'id' | 'status' | 'createdAt' | 'items'> & { items: { sku: string; name: string; quantity: number }[] }) => void;
+    onCreatePo: (poDetails: CreatePurchaseOrderInput) => void;
 }
 
 type PoItem = {
     sku: string;
     name: string;
     quantity: number;
+    unitCost: number;
 };
 
 const CreatePoModal: React.FC<CreatePoModalProps> = ({ isOpen, onClose, vendors, inventory, onCreatePo }) => {
@@ -38,7 +39,8 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({ isOpen, onClose, vendors,
                 .map(item => ({
                     sku: item.sku,
                     name: item.name,
-                    quantity: item.moq || (item.reorderPoint - item.stock) // Suggest ordering up to reorder point or MOQ
+                    quantity: item.moq || (item.reorderPoint - item.stock),
+                    unitCost: item.unitCost ?? 0,
                 }));
             setPoItems(suggestedItems);
 
@@ -69,7 +71,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({ isOpen, onClose, vendors,
         if (itemToAdd && !poItems.some(i => i.sku === itemToAdd)) {
             const item = inventoryMap.get(itemToAdd);
             if (item) {
-                setPoItems(prev => [...prev, { sku: item.sku, name: item.name, quantity: item.moq || 1 }]);
+                setPoItems(prev => [...prev, { sku: item.sku, name: item.name, quantity: item.moq || 1, unitCost: item.unitCost ?? 0 }]);
             }
         }
         setItemToAdd('');
@@ -137,7 +139,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({ isOpen, onClose, vendors,
                             <div key={item.sku} className="flex items-center gap-4 bg-gray-900/50 p-2 rounded-md">
                                 <div className="flex-1">
                                     <p className="text-sm font-medium text-white">{item.name}</p>
-                                    <p className="text-xs text-gray-400">{item.sku}</p>
+                                    <p className="text-xs text-gray-400">{item.sku} • Unit Cost: ${item.unitCost.toFixed(2)}</p>
                                 </div>
                                 <input
                                     type="number"

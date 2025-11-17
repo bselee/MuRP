@@ -27,13 +27,27 @@ interface PurchaseOrdersProps {
     onCreateRequisition: (items: RequisitionItem[]) => void;
 }
 
-const PoStatusBadge: React.FC<{ status: 'Pending' | 'Submitted' | 'Fulfilled' }> = ({ status }) => {
-    const statusConfig = {
-      'Pending': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-      'Submitted': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      'Fulfilled': 'bg-green-500/20 text-green-400 border-green-500/30',
-    };
-    return <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border ${statusConfig[status]}`}>{status}</span>;
+const PO_STATUS_STYLES: Record<string, { label: string; className: string }> = {
+  draft: { label: 'Draft', className: 'bg-gray-600/20 text-gray-200 border-gray-500/40' },
+  pending: { label: 'Pending', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+  committed: { label: 'Committed', className: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+  sent: { label: 'Sent', className: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
+  confirmed: { label: 'Confirmed', className: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+  partial: { label: 'Partial', className: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+  received: { label: 'Received', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+  cancelled: { label: 'Cancelled', className: 'bg-red-500/20 text-red-300 border-red-500/30' },
+  Pending: { label: 'Pending', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+  Submitted: { label: 'Submitted', className: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+  Fulfilled: { label: 'Fulfilled', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+};
+
+const PoStatusBadge: React.FC<{ status: PurchaseOrder['status'] }> = ({ status }) => {
+  const config = PO_STATUS_STYLES[status] ?? { label: status, className: 'bg-gray-600/20 text-gray-200 border-gray-500/30' };
+  return (
+    <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border ${config.className}`}>
+      {config.label}
+    </span>
+  );
 };
 
 const CollapsibleSection: React.FC<{
@@ -78,21 +92,30 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
     const canManagePOs = currentUser.role === 'Admin';
 
-    const calculateTotal = (items: {quantity: number, price: number}[]) => {
-        return items.reduce((sum, item) => sum + item.quantity * item.price, 0).toFixed(2);
+    const formatPoTotal = (po: PurchaseOrder) => {
+        const total = typeof po.total === 'number' ? po.total : po.items.reduce((sum, item) => sum + (item.lineTotal ?? item.quantity * (item.price ?? 0)), 0);
+        return total.toFixed(2);
     };
     
     const handleDownloadPdf = (po: PurchaseOrder) => {
+        if (!po.vendorId) {
+            addToast(`Could not generate PDF: Vendor not linked for ${po.orderId || po.id}`, 'error');
+            return;
+        }
         const vendor = vendorMap.get(po.vendorId);
         if (vendor) {
             generatePoPdf(po, vendor);
-            addToast(`Downloaded ${po.id}.pdf`, 'success');
+            addToast(`Downloaded ${(po.orderId || po.id)}.pdf`, 'success');
         } else {
-            addToast(`Could not generate PDF: Vendor not found for ${po.id}`, 'error');
+            addToast(`Could not generate PDF: Vendor not found for ${po.orderId || po.id}`, 'error');
         }
     };
     
     const handleSendEmailClick = (po: PurchaseOrder) => {
+        if (!po.vendorId || !vendorMap.get(po.vendorId)) {
+            addToast('Cannot compose email: vendor contact information is missing.', 'error');
+            return;
+        }
         setSelectedPoForEmail(po);
         setIsEmailModalOpen(true);
     };
@@ -170,12 +193,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             <tbody className="bg-gray-800 divide-y divide-gray-700">
                                 {sortedPurchaseOrders.map((po) => (
                                     <tr key={po.id} className="hover:bg-gray-700/50 transition-colors duration-200">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-400">{po.id}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{vendorMap.get(po.vendorId)?.name || 'Unknown Vendor'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-400">{po.orderId || po.id}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap"><PoStatusBadge status={po.status} /></td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{new Date(po.createdAt).toLocaleDateString()}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{po.expectedDate ? new Date(po.expectedDate).toLocaleDateString() : 'N/A'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white font-semibold">${calculateTotal(po.items)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white font-semibold">${formatPoTotal(po)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                                             <button onClick={() => handleDownloadPdf(po)} title="Download PDF" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><FileTextIcon className="w-5 h-5"/></button>
                                             <button onClick={() => handleSendEmailClick(po)} title="Send Email" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><MailIcon className="w-5 h-5"/></button>
@@ -196,7 +219,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 onCreatePo={onCreatePo}
             />
 
-            {selectedPoForEmail && (
+            {selectedPoForEmail && selectedPoForEmail.vendorId && vendorMap.get(selectedPoForEmail.vendorId) && (
                 <EmailComposerModal 
                     isOpen={isEmailModalOpen}
                     onClose={() => setIsEmailModalOpen(false)}

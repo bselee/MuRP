@@ -8,7 +8,7 @@ interface GeneratePoModalProps {
     approvedRequisitions: InternalRequisition[];
     inventory: InventoryItem[];
     vendors: Vendor[];
-    onGenerate: (posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number }[]; requisitionIds: string[]; }[]) => void;
+    onGenerate: (posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number; unitCost: number }[]; requisitionIds: string[]; }[]) => void;
 }
 
 const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, approvedRequisitions, inventory, vendors, onGenerate }) => {
@@ -19,7 +19,7 @@ const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, appr
     const posToGenerate = useMemo(() => {
         if (!isOpen) return []; // Don't compute if not open
 
-        const aggregatedItems = new Map<string, { sku: string; name: string; quantity: number; requisitionIds: Set<string> }>();
+        const aggregatedItems = new Map<string, { sku: string; name: string; quantity: number; unitCost: number; requisitionIds: Set<string> }>();
 
         approvedRequisitions.forEach(req => {
             req.items.forEach(item => {
@@ -32,6 +32,7 @@ const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, appr
                         sku: item.sku,
                         name: item.name,
                         quantity: item.quantity,
+                        unitCost: inventoryMap.get(item.sku)?.unitCost ?? 0,
                         requisitionIds: new Set([req.id])
                     });
                 }
@@ -40,7 +41,7 @@ const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, appr
 
         const groupedByVendor = new Map<string, {
             vendorId: string;
-            items: { sku: string; name: string; quantity: number }[];
+            items: { sku: string; name: string; quantity: number; unitCost: number }[];
             requisitionIds: string[];
         }>();
 
@@ -50,7 +51,7 @@ const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, appr
             if (vendorId && vendorId !== 'N/A') {
                 const existingVendorGroup = groupedByVendor.get(vendorId);
                 if (existingVendorGroup) {
-                    existingVendorGroup.items.push({ sku: item.sku, name: item.name, quantity: item.quantity });
+                    existingVendorGroup.items.push({ sku: item.sku, name: item.name, quantity: item.quantity, unitCost: item.unitCost });
                     item.requisitionIds.forEach(id => {
                         if (!existingVendorGroup.requisitionIds.includes(id)) {
                              existingVendorGroup.requisitionIds.push(id);
@@ -59,7 +60,7 @@ const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, appr
                 } else {
                     groupedByVendor.set(vendorId, {
                         vendorId,
-                        items: [{ sku: item.sku, name: item.name, quantity: item.quantity }],
+                        items: [{ sku: item.sku, name: item.name, quantity: item.quantity, unitCost: item.unitCost }],
                         requisitionIds: Array.from(item.requisitionIds)
                     });
                 }

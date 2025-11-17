@@ -65,6 +65,7 @@ import type {
     AiConfig,
     ArtworkFolder,
     AiSettings,
+    CreatePurchaseOrderInput,
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
 import LoadingOverlay from './components/LoadingOverlay';
@@ -199,9 +200,14 @@ const App: React.FC = () => {
     setCurrentUser(null);
   };
   
-  const handleCreatePo = async (
-    poDetails: Omit<PurchaseOrder, 'id' | 'status' | 'createdAt' | 'items'> & { items: { sku: string; name: string; quantity: number }[] }
-  ) => {
+  const generateOrderId = () => {
+    const now = new Date();
+    const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const randomPart = Math.floor(100 + Math.random() * 900);
+    return `PO-${datePart}-${randomPart}`;
+  };
+
+  const handleCreatePo = async (poDetails: CreatePurchaseOrderInput) => {
     const { vendorId, items, expectedDate, notes, requisitionIds } = poDetails;
     const vendor = vendors.find(v => v.id === vendorId);
     if (!vendor) {
@@ -209,22 +215,29 @@ const App: React.FC = () => {
       return;
     }
 
-    const newPo: PurchaseOrder = {
-      id: `PO-${new Date().getFullYear()}-${(purchaseOrders.length + 1).toString().padStart(3, '0')}`,
-      vendorId,
-      status: 'Pending',
-      createdAt: new Date().toISOString(),
-      items: items.map(item => ({
-        ...item,
-        price: Math.random() * 10 + 1 // Mock price for demo
-      })),
-      expectedDate,
-      notes,
-      requisitionIds,
-    };
+    const normalizedItems = items.map(item => ({
+      sku: item.sku,
+      description: item.name,
+      quantity: item.quantity,
+      unitCost: item.unitCost ?? 0,
+    }));
+
+    const total = normalizedItems.reduce((sum, item) => sum + item.quantity * item.unitCost, 0);
+    const orderId = generateOrderId();
 
     // 🔥 Save to Supabase
-    const result = await createPurchaseOrder(newPo);
+    const result = await createPurchaseOrder({
+      orderId,
+      vendorId,
+      supplier: vendor.name,
+      status: 'draft',
+      orderDate: new Date().toISOString().split('T')[0],
+      estimatedReceiveDate: expectedDate,
+      total,
+      vendorNotes: notes,
+      requisitionIds,
+      items: normalizedItems,
+    });
     if (!result.success) {
       addToast(`Failed to create PO: ${result.error}`, 'error');
       return;
@@ -248,12 +261,12 @@ const App: React.FC = () => {
     refetchInventory();
     refetchRequisitions();
 
-    addToast(`Successfully created ${newPo.id} for ${vendor.name}.`, 'success');
+    addToast(`Successfully created ${orderId} for ${vendor.name}.`, 'success');
     setCurrentPage('Purchase Orders');
   };
 
   const handleGeneratePosFromRequisitions = (
-    posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number; }[]; requisitionIds: string[]; }[]
+    posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number; unitCost: number; }[]; requisitionIds: string[]; }[]
   ) => {
     posToCreate.forEach(poData => {
         handleCreatePo(poData);
@@ -399,7 +412,7 @@ const App: React.FC = () => {
         });
     });
 
-    const itemsByVendor = new Map<string, { sku: string; name: string; quantity: number }[]>();
+    const itemsByVendor = new Map<string, { sku: string; name: string; quantity: number; unitCost: number }[]>();
 
     artworkIds.forEach(artId => {
         const bom = artworkToBomMap.get(artId);
@@ -411,14 +424,14 @@ const App: React.FC = () => {
                 if(existingItem) {
                     existingItem.quantity += 1; // Assume 1 unit of packaging per artwork selection for simplicity
                 } else {
-                    vendorItems.push({ sku: pc.sku, name: pc.name, quantity: 1 });
+                    vendorItems.push({ sku: pc.sku, name: pc.name, quantity: 1, unitCost: pc.unitCost ?? 0 });
                 }
                 itemsByVendor.set(pc.vendorId, vendorItems);
             });
         }
     });
 
-    const posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number }[] }[] = [];
+    const posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number; unitCost: number }[] }[] = [];
     itemsByVendor.forEach((items, vendorId) => {
         posToCreate.push({ vendorId, items });
     });
