@@ -1257,29 +1257,69 @@ export class FinaleSyncService {
       throw new Error('No valid purchase orders to save');
     }
 
-    // Prepare PO data for Supabase
-    const poInserts = validPOs.map(po => ({
-      id: po.id,
-      vendor_id: po.vendorId,
-      status: po.status,
-      created_at: po.createdAt,
-      items: po.items, // JSONB column
-      expected_date: po.expectedDate,
-      notes: po.notes,
-      requisition_ids: po.requisitionIds,
-      updated_at: new Date().toISOString(),
-    }));
+    // Save each PO with its line items
+    for (const po of validPOs) {
+      try {
+        // Prepare PO header for new schema
+        const poHeader = {
+          order_id: po.id,
+          vendor_id: po.vendorId,
+          supplier_name: po.vendorId || 'Unknown',
+          status: po.status || 'draft',
+          order_date: po.createdAt,
+          expected_date: po.expectedDate,
+          internal_notes: po.notes,
+          requisition_ids: po.requisitionIds || [],
+          source: 'finale_import',
+          finale_po_id: po.id,
+          last_finale_sync: new Date().toISOString(),
+        };
 
-    // Upsert purchase orders
-    const { error } = await supabase
-      .from('purchase_orders')
-      .upsert(poInserts as any, {
-        onConflict: 'id',
-        ignoreDuplicates: false,
-      });
+        // Upsert PO header
+        const { data: savedPO, error: poError } = await supabase
+          .from('purchase_orders')
+          .upsert(poHeader, {
+            onConflict: 'order_id',
+            ignoreDuplicates: false,
+          })
+          .select('id')
+          .single();
 
-    if (error) {
-      throw new Error(`Failed to save purchase orders: ${error.message}`);
+        if (poError) {
+          console.error(`Failed to save PO ${po.id}:`, poError);
+          continue;
+        }
+
+        // Save line items if present
+        if (po.items && Array.isArray(po.items) && po.items.length > 0 && savedPO) {
+          // Delete existing line items for this PO (in case of update)
+          await supabase
+            .from('purchase_order_items')
+            .delete()
+            .eq('po_id', savedPO.id);
+
+          // Insert new line items
+          const lineItems = po.items.map((item: any, idx: number) => ({
+            po_id: savedPO.id,
+            inventory_sku: item.sku || item.itemId || '',
+            item_name: item.name || item.description || '',
+            quantity_ordered: item.quantity || 0,
+            unit_cost: item.unitCost || 0,
+            line_number: idx + 1,
+            line_status: 'pending',
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('purchase_order_items')
+            .insert(lineItems);
+
+          if (itemsError) {
+            console.error(`Failed to save line items for PO ${po.id}:`, itemsError);
+          }
+        }
+      } catch (error) {
+        console.error(`Error saving PO ${po.id}:`, error);
+      }
     }
 
     console.log(`[FinaleSyncService] Successfully saved ${validPOs.length} purchase orders`);
