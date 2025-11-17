@@ -22,15 +22,24 @@ const DataSyncIndicator: React.FC = () => {
       try {
         const { data } = await supabase
           .from('sync_metadata' as any)
-          .select('last_sync_time, success, item_count')
-          .order('last_sync_time', { ascending: false })
-          .limit(1)
-          .single();
+          .select('last_sync_time, success, item_count, data_type');
 
-        if (data?.last_sync_time) {
-          setLastSync(new Date(data.last_sync_time));
-          setHasError(!data.success);
-          setItemCount(data.item_count || 0);
+        if (data && data.length > 0) {
+          // Find most recent sync across all types
+          const mostRecent = data.reduce((latest, current) => {
+            const currentTime = new Date(current.last_sync_time).getTime();
+            const latestTime = latest ? new Date(latest.last_sync_time).getTime() : 0;
+            return currentTime > latestTime ? current : latest;
+          }, data[0]);
+
+          // Check if any sync has errors
+          const anyErrors = data.some(row => !row.success);
+          // Sum all item counts
+          const totalItems = data.reduce((sum, row) => sum + (row.item_count || 0), 0);
+
+          setLastSync(new Date(mostRecent.last_sync_time));
+          setHasError(anyErrors);
+          setItemCount(totalItems);
         }
       } catch (error) {
         console.error('[DataSync] Error checking sync status:', error);
@@ -55,11 +64,8 @@ const DataSyncIndicator: React.FC = () => {
         },
         (payload: any) => {
           console.log('[DataSync] Real-time update:', payload);
-          if (payload.new) {
-            setLastSync(new Date(payload.new.last_sync_time));
-            setHasError(!payload.new.success);
-            setItemCount(payload.new.item_count || 0);
-          }
+          // Re-fetch all metadata when any row changes
+          checkSyncStatus();
         }
       )
       .subscribe();

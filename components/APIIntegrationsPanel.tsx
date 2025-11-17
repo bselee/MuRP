@@ -11,6 +11,7 @@ import {
   RefreshIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
+  XCircleIcon,
 } from './icons';
 import { supabase } from '../lib/supabase/client';
 import { dispatchSyncEvent } from '../lib/syncEventBus';
@@ -126,6 +127,12 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
   const [manualSyncError, setManualSyncError] = useState<string | null>(null);
   const [manualSyncStartedAt, setManualSyncStartedAt] = useState<number | null>(null);
   const manualPollingRef = useRef<number | null>(null);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<{
+    hasCredentials: boolean;
+    connectionTest?: { success: boolean; message: string };
+    recommendations: string[];
+  } | null>(null);
 
   const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
 
@@ -209,10 +216,85 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
     addToast('Connection removed.', 'info');
   };
 
+  const runDiagnostics = useCallback(async () => {
+    setIsDiagnosing(true);
+    setDiagnosticResult(null);
+    addToast('Running diagnostics...', 'info');
+
+    try {
+      // Check if credentials are stored
+      const apiKey = localStorage.getItem('finale_api_key');
+      const apiSecret = localStorage.getItem('finale_api_secret');
+      const accountPath = localStorage.getItem('finale_account_path');
+
+      const hasCredentials = !!(apiKey && apiSecret && accountPath);
+      const recommendations: string[] = [];
+
+      if (!hasCredentials) {
+        recommendations.push('Set up Finale credentials in the Finale Setup panel below');
+        setDiagnosticResult({ hasCredentials, recommendations });
+        addToast('Missing Finale credentials', 'error');
+        setIsDiagnosing(false);
+        return;
+      }
+
+      // Test connection to Finale API
+      addToast('Testing Finale connection...', 'info');
+      try {
+        const { data, error } = await supabase.functions.invoke('api-proxy', {
+          body: {
+            endpoint: 'testConnection',
+            method: 'GET',
+          },
+        });
+
+        if (error || !data?.success) {
+          recommendations.push('Verify your Finale API credentials are correct');
+          recommendations.push('Check that your Finale account is active');
+          recommendations.push('Ensure Finale API access is enabled for your account');
+          setDiagnosticResult({
+            hasCredentials,
+            connectionTest: {
+              success: false,
+              message: data?.error || error?.message || 'Connection test failed',
+            },
+            recommendations,
+          });
+          addToast('Connection test failed', 'error');
+        } else {
+          recommendations.push('Credentials and connection are valid');
+          recommendations.push('Try running Force Sync again');
+          recommendations.push('If sync still fails, check Finale report URLs in environment variables');
+          setDiagnosticResult({
+            hasCredentials,
+            connectionTest: { success: true, message: 'Connected successfully' },
+            recommendations,
+          });
+          addToast('Connection test passed', 'success');
+        }
+      } catch (error) {
+        recommendations.push('Unable to reach Finale API - check network connection');
+        recommendations.push('Verify API proxy function is deployed');
+        setDiagnosticResult({
+          hasCredentials,
+          connectionTest: {
+            success: false,
+            message: error instanceof Error ? error.message : 'Unknown error',
+          },
+          recommendations,
+        });
+        addToast('Diagnostic test failed', 'error');
+      }
+    } finally {
+      setIsDiagnosing(false);
+    }
+  }, [addToast]);
+
   const handleForceSync = useCallback(async () => {
     if (isManualSyncing) return;
     setManualSyncError(null);
     setManualSyncResult(null);
+    setDiagnosticResult(null);
     setIsManualSyncing(true);
     const startedAt = Date.now();
     setManualSyncStartedAt(startedAt);
@@ -268,7 +350,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
           new Date(lastSyncTime as string).getTime() >= manualSyncStartedAt,
       );
 
-      if (manualSyncStartedAt) {
+      if (isManualSyncing && manualSyncStartedAt) {
         if (updatedThisRun) {
           return metadata?.success
             ? { label: 'Updated', className: 'bg-green-500/15 text-green-300', state: 'updated' }
@@ -289,15 +371,15 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
         return { label: 'Queued', className: 'bg-gray-600/40 text-gray-300', state: 'queued' };
       }
 
-      if (!metadata) {
+      if (!metadata || !metadata.last_sync_time) {
         return { label: 'Not synced', className: 'bg-gray-700/50 text-gray-300', state: 'idle' };
       }
 
       return metadata.success
         ? { label: 'Healthy', className: 'bg-emerald-500/15 text-emerald-300', state: 'healthy' }
-        : { label: 'Needs attention', className: 'bg-red-500/15 text-red-300', state: 'failed' };
+        : { label: 'Error', className: 'bg-red-500/15 text-red-300', state: 'failed' };
     },
-    [manualSyncStartedAt, syncMetadata],
+    [isManualSyncing, manualSyncStartedAt, syncMetadata],
   );
 
   const syncCards = useMemo(() => {
@@ -392,27 +474,50 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                 Trigger the Supabase auto-sync function on demand and monitor each data stream.
               </p>
             </div>
-            <button
-              onClick={handleForceSync}
-              disabled={isManualSyncing}
-              className={`inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
-                isManualSyncing
-                  ? 'bg-gray-700 text-gray-300 cursor-not-allowed'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
-              }`}
-            >
-              {isManualSyncing ? (
-                <>
-                  <RefreshIcon className="w-4 h-4 animate-spin" />
-                  Syncing…
-                </>
-              ) : (
-                <>
-                  <RefreshIcon className="w-4 h-4" />
-                  Force Sync Now
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={runDiagnostics}
+                disabled={isDiagnosing || isManualSyncing}
+                className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                  isDiagnosing || isManualSyncing
+                    ? 'bg-gray-700 text-gray-300 cursor-not-allowed'
+                    : 'bg-gray-600 text-white hover:bg-gray-500'
+                }`}
+              >
+                {isDiagnosing ? (
+                  <>
+                    <RefreshIcon className="w-4 h-4 animate-spin" />
+                    Testing…
+                  </>
+                ) : (
+                  <>
+                    <ExclamationTriangleIcon className="w-4 h-4" />
+                    Run Diagnostics
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleForceSync}
+                disabled={isManualSyncing}
+                className={`inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
+                  isManualSyncing
+                    ? 'bg-gray-700 text-gray-300 cursor-not-allowed'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
+              >
+                {isManualSyncing ? (
+                  <>
+                    <RefreshIcon className="w-4 h-4 animate-spin" />
+                    Syncing…
+                  </>
+                ) : (
+                  <>
+                    <RefreshIcon className="w-4 h-4" />
+                    Force Sync Now
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -496,6 +601,65 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
 
           {manualSyncError && (
             <p className="mt-3 text-sm text-red-400">{manualSyncError}</p>
+          )}
+
+          {diagnosticResult && (
+            <div className="mt-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
+              <div className="flex items-start gap-2">
+                <ExclamationTriangleIcon className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-yellow-200 mb-2">Diagnostic Results</p>
+                  
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400">Credentials:</span>
+                      {diagnosticResult.hasCredentials ? (
+                        <span className="text-green-300 flex items-center gap-1">
+                          <CheckCircleIcon className="w-3.5 h-3.5" />
+                          Found
+                        </span>
+                      ) : (
+                        <span className="text-red-300 flex items-center gap-1">
+                          <XCircleIcon className="w-3.5 h-3.5" />
+                          Missing
+                        </span>
+                      )}
+                    </div>
+
+                    {diagnosticResult.connectionTest && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400">Connection:</span>
+                        {diagnosticResult.connectionTest.success ? (
+                          <span className="text-green-300 flex items-center gap-1">
+                            <CheckCircleIcon className="w-3.5 h-3.5" />
+                            {diagnosticResult.connectionTest.message}
+                          </span>
+                        ) : (
+                          <span className="text-red-300 flex items-center gap-1">
+                            <XCircleIcon className="w-3.5 h-3.5" />
+                            {diagnosticResult.connectionTest.message}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {diagnosticResult.recommendations.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-yellow-500/20">
+                      <p className="text-xs font-semibold text-yellow-200 mb-1.5">Recommendations:</p>
+                      <ul className="space-y-1 text-xs text-gray-300">
+                        {diagnosticResult.recommendations.map((rec, idx) => (
+                          <li key={idx} className="flex items-start gap-1.5">
+                            <span className="text-yellow-400 mt-0.5">•</span>
+                            <span>{rec}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
