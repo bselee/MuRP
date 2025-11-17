@@ -22,20 +22,59 @@ import type {
 
 export async function createPurchaseOrder(po: PurchaseOrder): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase
+    // Map UI status to database status
+    const statusMap: Record<'Pending' | 'Submitted' | 'Fulfilled', string> = {
+      'Pending': 'draft',
+      'Submitted': 'sent',
+      'Fulfilled': 'received'
+    };
+
+    // 1. Lookup vendor name
+    const { data: vendor } = await supabase
+      .from('vendors')
+      .select('name')
+      .eq('id', po.vendorId)
+      .single();
+
+    // 2. Insert PO header
+    const { data: newPO, error: poError } = await supabase
       .from('purchase_orders')
       .insert({
-        id: po.id,
+        order_id: po.id, // Use the ID from UI as the order_id (e.g., "PO-20251117-001")
         vendor_id: po.vendorId,
-        status: po.status,
-        created_at: po.createdAt,
-        items: po.items as any,
+        supplier_name: vendor?.name || 'Unknown Vendor',
+        status: statusMap[po.status] || 'draft',
+        order_date: po.createdAt,
         expected_date: po.expectedDate,
-        notes: po.notes,
+        internal_notes: po.notes,
         requisition_ids: po.requisitionIds || [],
-      } as any);
+        source: 'manual',
+        record_created: new Date().toISOString(),
+      } as any)
+      .select('id')
+      .single();
 
-    if (error) throw error;
+    if (poError) throw poError;
+
+    // 3. Insert line items
+    if (newPO && po.items && po.items.length > 0) {
+      const lineItems = po.items.map((item, idx) => ({
+        po_id: newPO.id,
+        inventory_sku: item.sku,
+        item_name: item.name,
+        quantity_ordered: item.quantity,
+        unit_cost: item.price || 0,
+        line_number: idx + 1,
+        line_status: 'pending',
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('purchase_order_items')
+        .insert(lineItems);
+
+      if (itemsError) throw itemsError;
+    }
+
     return { success: true };
   } catch (error) {
     console.error('[createPurchaseOrder] Error:', error);
@@ -48,10 +87,20 @@ export async function updatePurchaseOrderStatus(
   status: 'Pending' | 'Submitted' | 'Fulfilled'
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Map UI status to database status
+    const statusMap: Record<'Pending' | 'Submitted' | 'Fulfilled', string> = {
+      'Pending': 'draft',
+      'Submitted': 'sent',
+      'Fulfilled': 'received'
+    };
+
     const { error } = await supabase
       .from('purchase_orders')
-      .update({ status, updated_at: new Date().toISOString() } as any)
-      .eq('id', id);
+      .update({
+        status: statusMap[status] || 'draft',
+        record_last_updated: new Date().toISOString()
+      } as any)
+      .or(`order_id.eq.${id},id.eq.${id}`);
 
     if (error) throw error;
     return { success: true };

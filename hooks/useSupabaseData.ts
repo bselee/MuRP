@@ -556,24 +556,59 @@ export function useSupabasePurchaseOrders(): UseSupabaseDataResult<PurchaseOrder
       setLoading(true);
       setError(null);
 
+      // Fetch PO headers with line items from separate table
       const { data: pos, error: fetchError } = await supabase
         .from('purchase_orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select(`
+          *,
+          purchase_order_items (
+            id,
+            inventory_sku,
+            item_name,
+            quantity_ordered,
+            quantity_received,
+            unit_cost,
+            line_number
+          )
+        `)
+        .order('order_date', { ascending: false });
 
       if (fetchError) throw fetchError;
 
-      // Transform from snake_case to camelCase
-      const transformed: PurchaseOrder[] = (pos || []).map((po: any) => ({
-        id: po.id,
-        vendorId: po.vendor_id,
-        status: po.status as 'Pending' | 'Submitted' | 'Fulfilled',
-        createdAt: po.created_at,
-        items: po.items as any, // JSONB field
-        expectedDate: po.expected_date,
-        notes: po.notes,
-        requisitionIds: po.requisition_ids || [],
-      }));
+      // Transform from snake_case to camelCase and map to existing PurchaseOrder interface
+      const transformed: PurchaseOrder[] = (pos || []).map((po: any) => {
+        // Map database status to UI status
+        const statusMap: Record<string, 'Pending' | 'Submitted' | 'Fulfilled'> = {
+          'draft': 'Pending',
+          'pending': 'Pending',
+          'sent': 'Submitted',
+          'confirmed': 'Submitted',
+          'partial': 'Submitted',
+          'received': 'Fulfilled',
+          'cancelled': 'Fulfilled'
+        };
+
+        // Transform line items
+        const items = (po.purchase_order_items || [])
+          .sort((a: any, b: any) => (a.line_number || 0) - (b.line_number || 0))
+          .map((item: any) => ({
+            sku: item.inventory_sku,
+            name: item.item_name,
+            quantity: item.quantity_ordered,
+            price: item.unit_cost || 0
+          }));
+
+        return {
+          id: po.order_id || po.id, // Use order_id (PO-YYYYMMDD-XXX) for display
+          vendorId: po.vendor_id || '',
+          status: statusMap[po.status] || 'Pending',
+          createdAt: po.order_date || po.record_created,
+          items,
+          expectedDate: po.expected_date,
+          notes: po.internal_notes || po.vendor_notes,
+          requisitionIds: po.requisition_ids || [],
+        };
+      });
 
       setData(transformed);
     } catch (err) {
@@ -637,23 +672,56 @@ export function useSupabasePurchaseOrder(id: string): UseSupabaseSingleResult<Pu
       setLoading(true);
       setError(null);
 
+      // Fetch PO with line items - try both order_id and UUID
       const { data: po, error: fetchError } = await supabase
         .from('purchase_orders')
-        .select('*')
-        .eq('id', id)
+        .select(`
+          *,
+          purchase_order_items (
+            id,
+            inventory_sku,
+            item_name,
+            quantity_ordered,
+            quantity_received,
+            unit_cost,
+            line_number
+          )
+        `)
+        .or(`order_id.eq.${id},id.eq.${id}`)
         .single();
 
       if (fetchError) throw fetchError;
 
       if (po) {
+        // Map database status to UI status
+        const statusMap: Record<string, 'Pending' | 'Submitted' | 'Fulfilled'> = {
+          'draft': 'Pending',
+          'pending': 'Pending',
+          'sent': 'Submitted',
+          'confirmed': 'Submitted',
+          'partial': 'Submitted',
+          'received': 'Fulfilled',
+          'cancelled': 'Fulfilled'
+        };
+
+        // Transform line items
+        const items = (po.purchase_order_items || [])
+          .sort((a: any, b: any) => (a.line_number || 0) - (b.line_number || 0))
+          .map((item: any) => ({
+            sku: item.inventory_sku,
+            name: item.item_name,
+            quantity: item.quantity_ordered,
+            price: item.unit_cost || 0
+          }));
+
         setData({
-          id: po.id,
-          vendorId: po.vendor_id,
-          status: po.status as 'Pending' | 'Submitted' | 'Fulfilled',
-          createdAt: po.created_at,
-          items: po.items as any,
+          id: po.order_id || po.id,
+          vendorId: po.vendor_id || '',
+          status: statusMap[po.status] || 'Pending',
+          createdAt: po.order_date || po.record_created,
+          items,
           expectedDate: po.expected_date,
-          notes: po.notes,
+          notes: po.internal_notes || po.vendor_notes,
           requisitionIds: po.requisition_ids || [],
         });
       } else {
