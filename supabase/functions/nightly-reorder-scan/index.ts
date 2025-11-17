@@ -13,7 +13,8 @@
  * 3. Identifies items below reorder point
  * 4. Populates reorder_queue with recommendations
  * 5. Assigns urgency and priority scores
- * 6. Logs execution to ai_job_logs
+ * 6. (Optional) Auto-creates draft POs for vendors with automation enabled
+ * 7. Logs execution to ai_job_logs
  *
  * @module supabase/functions/nightly-reorder-scan
  */
@@ -116,11 +117,27 @@ serve(async (req) => {
       critical_items: recommendations.filter(r => r.urgency === 'critical').length,
       high_priority_items: recommendations.filter(r => r.urgency === 'high').length,
       total_estimated_cost: recommendations.reduce((sum, r) => sum + r.estimated_cost, 0),
+      auto_pos_created: 0,
+      auto_po_vendors: [],
     };
 
     console.log(`✅ Scan complete: ${summary.items_needing_reorder} items need reordering`);
     console.log(`   Critical: ${summary.critical_items}, High: ${summary.high_priority_items}`);
     console.log(`   Estimated cost: $${summary.total_estimated_cost.toFixed(2)}`);
+
+    // 5. Auto-create draft POs for vendors with automation enabled
+    try {
+      const autoPOResult = await createAutoDraftPOs(supabase);
+      summary.auto_pos_created = autoPOResult.pos_created;
+      summary.auto_po_vendors = autoPOResult.vendors;
+
+      if (autoPOResult.pos_created > 0) {
+        console.log(`🤖 Auto-created ${autoPOResult.pos_created} draft PO(s) for ${autoPOResult.vendors.length} vendor(s)`);
+      }
+    } catch (error: any) {
+      console.error('⚠️ Auto-PO creation failed:', error.message);
+      // Don't fail entire job if auto-PO fails
+    }
 
     // Log job completion
     const duration = Date.now() - startTime;
@@ -471,4 +488,158 @@ async function logJobComplete(
       result_summary: JSON.stringify(summary),
     })
     .eq('id', jobLogId);
+}
+
+/**
+ * Auto-create draft POs for vendors with automation enabled
+ */
+async function createAutoDraftPOs(supabase: any): Promise<{ pos_created: number; vendors: string[] }> {
+  // 1. Fetch pending reorder queue items
+  const { data: queueItems, error: queueError } = await supabase
+    .from('reorder_queue')
+    .select('*')
+    .eq('status', 'pending')
+    .not('vendor_id', 'is', null);
+
+  if (queueError) throw queueError;
+  if (!queueItems || queueItems.length === 0) {
+    return { pos_created: 0, vendors: [] };
+  }
+
+  // 2. Fetch vendors with automation enabled
+  const { data: vendors, error: vendorsError } = await supabase
+    .from('vendors')
+    .select('id, name, auto_po_enabled, auto_po_threshold, lead_time_days')
+    .eq('auto_po_enabled', true);
+
+  if (vendorsError) throw vendorsError;
+  if (!vendors || vendors.length === 0) {
+    return { pos_created: 0, vendors: [] };
+  }
+
+  const vendorMap = new Map(vendors.map((v: any) => [v.id, v]));
+
+  // 3. Filter items by vendor automation settings & urgency threshold
+  const urgencyRank: Record<string, number> = { critical: 4, high: 3, normal: 2, low: 1 };
+
+  const eligibleItems = queueItems.filter((item: any) => {
+    const vendor = vendorMap.get(item.vendor_id);
+    if (!vendor) return false;
+
+    const threshold = vendor.auto_po_threshold || 'critical';
+    return urgencyRank[item.urgency] >= urgencyRank[threshold];
+  });
+
+  if (eligibleItems.length === 0) {
+    return { pos_created: 0, vendors: [] };
+  }
+
+  // 4. Group by vendor
+  const itemsByVendor = new Map<string, any[]>();
+  eligibleItems.forEach((item: any) => {
+    if (!itemsByVendor.has(item.vendor_id)) {
+      itemsByVendor.set(item.vendor_id, []);
+    }
+    itemsByVendor.get(item.vendor_id)!.push(item);
+  });
+
+  // 5. Create draft PO for each vendor
+  const createdVendors: string[] = [];
+
+  for (const [vendorId, items] of itemsByVendor.entries()) {
+    const vendor = vendorMap.get(vendorId);
+    if (!vendor) continue;
+
+    try {
+      // Generate order ID
+      const orderId = await generateOrderId(supabase);
+
+      // Calculate expected date
+      const orderDate = new Date().toISOString();
+      const expectedDate = new Date();
+      expectedDate.setDate(expectedDate.getDate() + (vendor.lead_time_days || 14));
+
+      // Insert PO header
+      const { data: newPO, error: poError } = await supabase
+        .from('purchase_orders')
+        .insert({
+          order_id: orderId,
+          vendor_id: vendorId,
+          supplier_name: vendor.name,
+          status: 'draft',
+          order_date: orderDate,
+          expected_date: expectedDate.toISOString(),
+          internal_notes: `Auto-generated from reorder queue (${items.length} items)`,
+          source: 'auto_reorder',
+          auto_generated: true,
+          auto_approved: false,
+          record_created: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (poError) throw poError;
+
+      // Insert line items
+      const lineItems = items.map((item: any, idx: number) => ({
+        po_id: newPO.id,
+        inventory_sku: item.inventory_sku,
+        item_name: item.item_name,
+        quantity_ordered: item.recommended_quantity,
+        unit_cost: item.estimated_cost / item.recommended_quantity,
+        line_number: idx + 1,
+        line_status: 'pending',
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('purchase_order_items')
+        .insert(lineItems);
+
+      if (itemsError) throw itemsError;
+
+      // Mark reorder queue items as processed
+      const itemIds = items.map((i: any) => i.id);
+      await supabase
+        .from('reorder_queue')
+        .update({
+          status: 'po_created',
+          po_id: orderId,
+          resolved_at: new Date().toISOString(),
+          resolution_type: 'auto_po_created',
+        })
+        .in('id', itemIds);
+
+      createdVendors.push(vendor.name);
+    } catch (error) {
+      console.error(`Failed to create auto-PO for vendor ${vendorId}:`, error);
+      // Continue with other vendors
+    }
+  }
+
+  return { pos_created: itemsByVendor.size, vendors: createdVendors };
+}
+
+/**
+ * Generate unique order ID
+ */
+async function generateOrderId(supabase: any): Promise<string> {
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
+
+  // Find max sequence for today
+  const { data, error } = await supabase
+    .from('purchase_orders')
+    .select('order_id')
+    .like('order_id', `PO-${dateStr}-%`)
+    .order('order_id', { ascending: false })
+    .limit(1);
+
+  let sequence = 1;
+  if (data && data.length > 0) {
+    const lastId = data[0].order_id;
+    const lastSeq = parseInt(lastId.split('-')[2]);
+    sequence = lastSeq + 1;
+  }
+
+  return `PO-${dateStr}-${sequence.toString().padStart(3, '0')}`;
 }
