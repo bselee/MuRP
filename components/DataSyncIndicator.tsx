@@ -10,6 +10,13 @@ import { supabase } from '../lib/supabase/client';
 import { RefreshIcon, CheckCircleIcon } from './icons';
 import { SYNC_EVENT_NAME, type SyncEventDetail } from '../lib/syncEventBus';
 
+type SyncRow = {
+  data_type: string;
+  last_sync_time: string | null;
+  success: boolean | null;
+  item_count: number | null;
+};
+
 const DataSyncIndicator: React.FC = () => {
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -20,30 +27,48 @@ const DataSyncIndicator: React.FC = () => {
     // Get latest sync time from metadata
     const checkSyncStatus = async () => {
       try {
-        const { data } = await supabase
-          .from('sync_metadata' as any)
-          .select('last_sync_time, success, item_count, data_type');
+        const { data, error } = await supabase
+          .from('sync_metadata')
+          .select('data_type, last_sync_time, success, item_count');
 
-        if (data && data.length > 0) {
-          // Find most recent sync across all types
-          const mostRecent = data.reduce((latest, current) => {
-            const currentTime = new Date(current.last_sync_time).getTime();
-            const latestTime = latest ? new Date(latest.last_sync_time).getTime() : 0;
-            return currentTime > latestTime ? current : latest;
-          }, data[0]);
-
-          // Check if any sync has errors
-          const anyErrors = data.some(row => !row.success);
-          // Sum all item counts
-          const totalItems = data.reduce((sum, row) => sum + (row.item_count || 0), 0);
-
-          setLastSync(new Date(mostRecent.last_sync_time));
-          setHasError(anyErrors);
-          setItemCount(totalItems);
+        if (error) {
+          throw error;
         }
+
+        if (!data || data.length === 0) {
+          setLastSync(null);
+          setHasError(false);
+          setItemCount(0);
+          return;
+        }
+
+        const rows = data as SyncRow[];
+        const inventoryRow = rows.find((row) => row.data_type === 'inventory');
+        const mostRecent = rows.reduce<SyncRow | null>((latest, current) => {
+          if (!current.last_sync_time) return latest;
+          if (!latest || !latest.last_sync_time) return current;
+          const currentTime = new Date(current.last_sync_time).getTime();
+          const latestTime = new Date(latest.last_sync_time).getTime();
+          return currentTime > latestTime ? current : latest;
+        }, null);
+
+        const targetRow = inventoryRow ?? mostRecent;
+
+        if (targetRow?.last_sync_time) {
+          setLastSync(new Date(targetRow.last_sync_time));
+        } else {
+          setLastSync(null);
+        }
+
+        setItemCount(targetRow?.item_count || 0);
+
+        const inventoryErrored = Boolean(inventoryRow && inventoryRow.success === false);
+        const anyErrored = rows.some((row) => row.success === false);
+        setHasError(inventoryRow ? inventoryErrored : anyErrored);
       } catch (error) {
         console.error('[DataSync] Error checking sync status:', error);
         setHasError(true);
+        setLastSync(null);
       }
     };
 

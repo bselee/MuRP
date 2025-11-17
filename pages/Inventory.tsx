@@ -414,15 +414,15 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         
         // Filter categories based on visibility config
         const categories = allCategories.filter(cat => {
-            const config = categoryConfig[cat];
-            return config?.visible !== false; // Show by default if not configured
+            const config = getCategoryConfig(cat);
+            return config.visible !== false; // Show by default if not configured
         });
         
         // Filter vendors based on visibility config
         const vendors = allVendorIds.filter(vendorId => {
             const vendorName = getVendorName(vendorId);
-            const config = vendorConfig[vendorName];
-            return config?.visible !== false; // Show by default if not configured
+            const config = getVendorConfig(vendorName);
+            return config.visible !== false; // Show by default if not configured
         });
         
         const statuses = ['In Stock', 'Low Stock', 'Out of Stock'];
@@ -533,6 +533,34 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         setSelectedVendors(new Set());
     };
 
+    const getCategoryConfig = useCallback(
+        (category: string): CategoryConfig => {
+            const existing = categoryConfig[category];
+            if (existing) return existing;
+            return {
+                name: category,
+                visible: true,
+                excluded: false,
+                order: 999,
+            };
+        },
+        [categoryConfig]
+    );
+
+    const getVendorConfig = useCallback(
+        (vendorName: string): VendorConfig => {
+            const existing = vendorConfig[vendorName];
+            if (existing) return existing;
+            return {
+                name: vendorName,
+                visible: true,
+                excluded: false,
+                order: 999,
+            };
+        },
+        [vendorConfig]
+    );
+
     const handleFilterChange = (filterType: keyof typeof filters, value: string) => {
         setFilters(prev => ({ ...prev, [filterType]: value }));
     };
@@ -583,11 +611,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         if (selectedCategories.size > 0) {
             filteredItems = filteredItems.filter(item => {
                 const category = normalizeCategory(item.category);
-                const config = categoryConfig[category];
-                
+                const config = getCategoryConfig(category);
+
                 // Always show excluded categories
-                if (config?.excluded) return true;
-                
+                if (config.excluded) return true;
+
                 // Filter by selected categories
                 return selectedCategories.has(category);
             });
@@ -604,11 +632,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         if (selectedVendors.size > 0) {
             filteredItems = filteredItems.filter(item => {
                 const vendorName = getVendorName(item.vendorId);
-                const config = vendorConfig[vendorName];
-                
+                const config = getVendorConfig(vendorName);
+
                 // Always show excluded vendors
-                if (config?.excluded) return true;
-                
+                if (config.excluded) return true;
+
                 // Filter by selected vendors
                 return selectedVendors.has(item.vendorId);
             });

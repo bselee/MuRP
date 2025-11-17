@@ -33,32 +33,56 @@ const VendorManagementModal: React.FC<VendorManagementModalProps> = ({
   config,
   onSave,
 }) => {
-  const [localConfig, setLocalConfig] = useState<Record<string, VendorConfig>>(config);
+  const [localConfig, setLocalConfig] = useState<Record<string, VendorConfig>>({});
+  const getOrCreateConfig = (vendor: string, current: Record<string, VendorConfig>) => {
+    return current[vendor] || {
+      name: vendor,
+      visible: true,
+      excluded: false,
+      order: 999,
+    };
+  };
 
   useEffect(() => {
     if (isOpen) {
-      setLocalConfig(config);
+      const initial: Record<string, VendorConfig> = {};
+      vendors.forEach((vendor, index) => {
+        const existing = config[vendor];
+        initial[vendor] = existing || {
+          name: vendor,
+          visible: true,
+          excluded: false,
+          order: index,
+        };
+      });
+      setLocalConfig(initial);
     }
   }, [isOpen, config]);
 
   const handleToggleVisible = (vendor: string) => {
-    setLocalConfig(prev => ({
-      ...prev,
-      [vendor]: {
-        ...prev[vendor],
-        visible: !prev[vendor].visible,
-      },
-    }));
+    setLocalConfig(prev => {
+      const cfg = getOrCreateConfig(vendor, prev);
+      return {
+        ...prev,
+        [vendor]: {
+          ...cfg,
+          visible: !cfg.visible,
+        },
+      };
+    });
   };
 
   const handleToggleExcluded = (vendor: string) => {
-    setLocalConfig(prev => ({
-      ...prev,
-      [vendor]: {
-        ...prev[vendor],
-        excluded: !prev[vendor].excluded,
-      },
-    }));
+    setLocalConfig(prev => {
+      const cfg = getOrCreateConfig(vendor, prev);
+      return {
+        ...prev,
+        [vendor]: {
+          ...cfg,
+          excluded: !cfg.excluded,
+        },
+      };
+    });
   };
 
   const handleSave = () => {

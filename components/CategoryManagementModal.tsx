@@ -33,32 +33,57 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
   config,
   onSave,
 }) => {
-  const [localConfig, setLocalConfig] = useState<Record<string, CategoryConfig>>(config);
+  const [localConfig, setLocalConfig] = useState<Record<string, CategoryConfig>>({});
+  const getOrCreateConfig = (category: string, current: Record<string, CategoryConfig>) => {
+    return current[category] || {
+      name: category,
+      visible: true,
+      excluded: false,
+      order: 999,
+    };
+  };
 
   useEffect(() => {
     if (isOpen) {
-      setLocalConfig(config);
+      // Ensure we start from a clean copy and materialize defaults
+      const initial: Record<string, CategoryConfig> = {};
+      categories.forEach((category, index) => {
+        const existing = config[category];
+        initial[category] = existing || {
+          name: category,
+          visible: true,
+          excluded: false,
+          order: index,
+        };
+      });
+      setLocalConfig(initial);
     }
   }, [isOpen, config]);
 
   const handleToggleVisible = (category: string) => {
-    setLocalConfig(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        visible: !prev[category].visible,
-      },
-    }));
+    setLocalConfig(prev => {
+      const cfg = getOrCreateConfig(category, prev);
+      return {
+        ...prev,
+        [category]: {
+          ...cfg,
+          visible: !cfg.visible,
+        },
+      };
+    });
   };
 
   const handleToggleExcluded = (category: string) => {
-    setLocalConfig(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        excluded: !prev[category].excluded,
-      },
-    }));
+    setLocalConfig(prev => {
+      const cfg = getOrCreateConfig(category, prev);
+      return {
+        ...prev,
+        [category]: {
+          ...cfg,
+          excluded: !cfg.excluded,
+        },
+      };
+    });
   };
 
   const handleSave = () => {
