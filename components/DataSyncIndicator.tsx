@@ -5,79 +5,45 @@
  * Shows in header - users know data is flowing without thinking about it.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase/client';
 import { RefreshIcon, CheckCircleIcon } from './icons';
 import { SYNC_EVENT_NAME, type SyncEventDetail } from '../lib/syncEventBus';
+import {
+  buildSyncStatusLabel,
+  formatSyncTooltip,
+  pickPrimaryRow,
+  pickStaleRow,
+  type SyncHealthRow,
+} from '../lib/sync/healthUtils';
 
-type SyncRow = {
-  data_type: string;
-  last_sync_time: string | null;
-  success: boolean | null;
-  item_count: number | null;
-};
+interface DataSyncIndicatorProps {
+  isGlobalLoading: boolean;
+}
 
-const DataSyncIndicator: React.FC = () => {
-  const [lastSync, setLastSync] = useState<Date | null>(null);
+const DataSyncIndicator: React.FC<DataSyncIndicatorProps> = ({ isGlobalLoading }) => {
+  const [healthRows, setHealthRows] = useState<SyncHealthRow[]>([]);
+  const [isFetching, setIsFetching] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const [itemCount, setItemCount] = useState<number>(0);
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
 
   useEffect(() => {
-    // Get latest sync time from metadata
-    const checkSyncStatus = async () => {
+    const fetchHealth = async () => {
       try {
-        const { data, error } = await supabase
-          .from('sync_metadata')
-          .select('data_type, last_sync_time, success, item_count');
-
-        if (error) {
-          throw error;
-        }
-
-        if (!data || data.length === 0) {
-          setLastSync(null);
-          setHasError(false);
-          setItemCount(0);
-          return;
-        }
-
-        const rows = data as SyncRow[];
-        const inventoryRow = rows.find((row) => row.data_type === 'inventory');
-        const mostRecent = rows.reduce<SyncRow | null>((latest, current) => {
-          if (!current.last_sync_time) return latest;
-          if (!latest || !latest.last_sync_time) return current;
-          const currentTime = new Date(current.last_sync_time).getTime();
-          const latestTime = new Date(latest.last_sync_time).getTime();
-          return currentTime > latestTime ? current : latest;
-        }, null);
-
-        const targetRow = inventoryRow ?? mostRecent;
-
-        if (targetRow?.last_sync_time) {
-          setLastSync(new Date(targetRow.last_sync_time));
-        } else {
-          setLastSync(null);
-        }
-
-        setItemCount(targetRow?.item_count || 0);
-
-        const inventoryErrored = Boolean(inventoryRow && inventoryRow.success === false);
-        const anyErrored = rows.some((row) => row.success === false);
-        setHasError(inventoryRow ? inventoryErrored : anyErrored);
+        setIsFetching(true);
+        const { data, error } = await supabase.rpc('get_sync_health');
+        if (error) throw error;
+        setHealthRows(data || []);
+        setLastFetchedAt(new Date());
       } catch (error) {
-        console.error('[DataSync] Error checking sync status:', error);
-        setHasError(true);
-        setLastSync(null);
+        console.error('[DataSync] Error fetching sync health:', error);
+      } finally {
+        setIsFetching(false);
       }
     };
 
-    checkSyncStatus();
-
-    // Re-check every 30 seconds
-    const interval = setInterval(checkSyncStatus, 30000);
-
-    // Subscribe to real-time changes
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 30000);
     const subscription = supabase
       .channel('sync_metadata_changes')
       .on(
@@ -87,10 +53,8 @@ const DataSyncIndicator: React.FC = () => {
           schema: 'public',
           table: 'sync_metadata',
         },
-        (payload: any) => {
-          console.log('[DataSync] Real-time update:', payload);
-          // Re-fetch all metadata when any row changes
-          checkSyncStatus();
+        () => {
+          fetchHealth();
         }
       )
       .subscribe();
@@ -115,38 +79,53 @@ const DataSyncIndicator: React.FC = () => {
     };
   }, []);
 
-  const getTimeAgo = (date: Date | null): string => {
-    if (!date) return 'Never';
-    
-    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-    
-    if (seconds < 60) return 'Just now';
-    if (seconds < 120) return '1m ago';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 7200) return '1h ago';
-    return `${Math.floor(seconds / 3600)}h ago`;
-  };
+  const primaryRow = useMemo(() => pickPrimaryRow(healthRows), [healthRows]);
+  const staleRow = useMemo(() => pickStaleRow(healthRows), [healthRows]);
+
+  const lastSyncDate = primaryRow?.last_sync_time ? new Date(primaryRow.last_sync_time) : null;
+  const itemCount = primaryRow?.item_count ?? 0;
+  const showSpinner = isGlobalLoading || isSyncing || isFetching;
+  const hasIssue = Boolean(staleRow);
+
+  const statusLabel = useMemo(
+    () =>
+      buildSyncStatusLabel({
+        showSpinner,
+        staleRow,
+        lastSyncDate,
+      }),
+    [showSpinner, staleRow, lastSyncDate],
+  );
+
+  const titleDetails = useMemo(
+    () =>
+      formatSyncTooltip({
+        primaryRow,
+        lastSyncDate,
+        itemCount,
+        lastFetchedAt,
+      }),
+    [primaryRow, lastSyncDate, itemCount, lastFetchedAt],
+  );
 
   return (
-    <div 
+    <div
       className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors ${
-        hasError 
-          ? 'bg-red-500/10 border-red-500/30' 
+        hasIssue
+          ? 'bg-red-500/10 border-red-500/30'
           : 'bg-gray-800/50 border-gray-700/50'
       }`}
-      title={`Data synced ${getTimeAgo(lastSync)}${itemCount > 0 ? ` (${itemCount.toLocaleString()} items)` : ''}`}
+      title={titleDetails}
     >
-      {isSyncing ? (
+      {showSpinner ? (
         <RefreshIcon className="w-4 h-4 text-blue-400 animate-spin" />
-      ) : hasError ? (
+      ) : hasIssue ? (
         <div className="w-4 h-4 text-red-400">⚠</div>
       ) : (
         <CheckCircleIcon className="w-4 h-4 text-green-400" />
       )}
-      <span className={`text-xs ${
-        hasError ? 'text-red-300' : 'text-gray-300'
-      }`}>
-        {hasError ? 'Sync error' : lastSync ? getTimeAgo(lastSync) : 'Syncing...'}
+      <span className={`text-xs ${hasIssue ? 'text-red-300' : 'text-gray-300'}`}>
+        {statusLabel}
       </span>
     </div>
   );

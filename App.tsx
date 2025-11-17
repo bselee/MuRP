@@ -67,7 +67,7 @@ import type {
     AiSettings,
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
-import { getAutoSyncService } from './services/autoSyncService';
+import LoadingOverlay from './components/LoadingOverlay';
 
 export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner';
 
@@ -108,6 +108,21 @@ const App: React.FC = () => {
   const [apiKey, setApiKey] = usePersistentState<string | null>('apiKey', null);
   const [externalConnections, setExternalConnections] = usePersistentState<ExternalConnection[]>('externalConnections', []);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
+  const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
+
+  const isDataLoading =
+    inventoryLoading ||
+    vendorsLoading ||
+    bomsLoading ||
+    posLoading ||
+    buildOrdersLoading ||
+    requisitionsLoading;
+
+  useEffect(() => {
+    if (!isDataLoading) {
+      setHasInitialDataLoaded(true);
+    }
+  }, [isDataLoading]);
 
   // Lightweight URL-based routing + e2e auto-login support + Auto-Sync
   useEffect(() => {
@@ -150,13 +165,8 @@ const App: React.FC = () => {
         setCurrentPage(nextPage);
       }
 
-      // 🚀 Initialize automatic background sync on app load
-      // Data syncs silently in background and is served from Supabase
-      const autoSync = getAutoSyncService();
-      autoSync.initialize().catch(error => {
-        console.error('[App] Auto-sync initialization failed:', error);
-        // Don't show error to user - sync failures are silent
-      });
+      // Auto-sync now handled exclusively by backend cron + Edge functions.
+      // Frontend simply consumes fresh Supabase data.
     } catch (err) {
       // No-op: best-effort only for e2e/dev
       console.warn('[App] URL routing init skipped:', err);
@@ -768,7 +778,12 @@ const App: React.FC = () => {
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header currentUser={currentUser} onLogout={handleLogout} />
+        <Header
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          isGlobalLoading={isDataLoading}
+          showLogo={isSidebarCollapsed}
+        />
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-900 p-4 sm:p-6 lg:p-8">
           <ErrorBoundary
@@ -802,6 +817,8 @@ const App: React.FC = () => {
         aiSettings={aiSettings}
         onUpdateAiSettings={handleUpdateAiSettings}
       />
+
+      {!hasInitialDataLoaded && <LoadingOverlay />}
     </div>
   );
 };

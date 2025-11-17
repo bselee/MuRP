@@ -107,12 +107,6 @@ export const generateInventoryPdf = (inventory: InventoryItem[], vendorMap: Map<
     
     const tableColumn = ["SKU", "Name", "Category", "Stock", "On Order", "Reorder Pt.", "Vendor"];
     const tableRows: (string|number)[][] = [];
-    const resolveVendorName = (vendorId?: string) => {
-        if (!vendorId) return 'N/A';
-        const trimmed = vendorId.trim();
-        if (!trimmed) return 'N/A';
-        return vendorMap.get(trimmed) || vendorMap.get(trimmed.toLowerCase()) || trimmed;
-    };
     
     inventory.forEach(item => {
         tableRows.push([
@@ -122,7 +116,7 @@ export const generateInventoryPdf = (inventory: InventoryItem[], vendorMap: Map<
             item.stock,
             item.onOrder,
             item.reorderPoint,
-            resolveVendorName(item.vendorId)
+            vendorMap.get(item.vendorId) || 'N/A'
         ]);
     });
     

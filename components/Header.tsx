@@ -1,22 +1,29 @@
 import React from 'react';
 import type { User } from '../types';
-import { BellIcon, LogoutIcon } from './icons';
+import { BellIcon, LogoutIcon, MushroomLogo } from './icons';
 import DataSyncIndicator from './DataSyncIndicator';
 
 interface HeaderProps {
     currentUser: User;
     onLogout: () => void;
+    isGlobalLoading: boolean;
+    showLogo: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentUser, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ currentUser, onLogout, isGlobalLoading, showLogo }) => {
     return (
         <header className="h-16 bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0">
-            <div className="flex items-center">
-                <h1 className="text-2xl font-bold tracking-wide text-indigo-300">MuRP</h1>
+            <div className="flex items-center min-w-[120px]">
+                {showLogo && (
+                    <div className="flex items-center gap-3">
+                        <MushroomLogo className="w-9 h-9 text-indigo-300" />
+                        <h1 className="text-3xl font-bold tracking-wide text-indigo-200">MuRP</h1>
+                    </div>
+                )}
             </div>
             <div className="flex items-center space-x-4">
                 <div className="hidden sm:block">
-                    <DataSyncIndicator />
+                    <DataSyncIndicator isGlobalLoading={isGlobalLoading} />
                 </div>
                 <button className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
                     <BellIcon className="h-6 w-6" />

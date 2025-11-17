@@ -16,6 +16,7 @@ import {
 import { supabase } from '../lib/supabase/client';
 import { dispatchSyncEvent } from '../lib/syncEventBus';
 import FinaleSetupPanel from './FinaleSetupPanel';
+import type { SyncHealthRow } from '../lib/sync/healthUtils';
 
 interface APIIntegrationsPanelProps {
   apiKey: string | null;
@@ -34,12 +35,7 @@ interface APIIntegrationsPanelProps {
 
 type SyncType = 'vendors' | 'inventory' | 'boms';
 
-interface SyncMetadataRow {
-  data_type: SyncType;
-  last_sync_time: string;
-  item_count: number;
-  success: boolean;
-}
+type SyncHealthRowWithType = SyncHealthRow & { data_type: SyncType };
 
 interface ManualSyncSummary {
   dataType: SyncType;
@@ -117,7 +113,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
   setCurrentPage,
   addToast,
 }) => {
-  const [syncMetadata, setSyncMetadata] = useState<Record<SyncType, SyncMetadataRow | null>>({
+  const [syncHealth, setSyncHealth] = useState<Record<SyncType, SyncHealthRowWithType | null>>({
     vendors: null,
     inventory: null,
     boms: null,
@@ -136,33 +132,36 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
 
   const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
 
-  const fetchSyncMetadata = useCallback(async () => {
+  const fetchSyncHealth = useCallback(async () => {
     try {
-      const { data, error } = await supabase.from('sync_metadata').select('*');
+      const { data, error } = await supabase.rpc<SyncHealthRowWithType[]>('get_sync_health');
       if (error) throw error;
-      const next: Record<SyncType, SyncMetadataRow | null> = {
+
+      const next: Record<SyncType, SyncHealthRowWithType | null> = {
         vendors: null,
         inventory: null,
         boms: null,
       };
+
       (data || []).forEach((row) => {
         const type = row.data_type as SyncType;
         if (type in next) {
-          next[type] = row as SyncMetadataRow;
+          next[type] = row;
         }
       });
-      setSyncMetadata(next);
+
+      setSyncHealth(next);
     } catch (error) {
-      console.error('[APIIntegrations] Failed to load sync metadata', error);
+      console.error('[APIIntegrations] Failed to load sync health', error);
     }
   }, []);
 
   const startManualPolling = useCallback(() => {
     if (typeof window === 'undefined' || manualPollingRef.current !== null) return;
     manualPollingRef.current = window.setInterval(() => {
-      fetchSyncMetadata();
+      fetchSyncHealth();
     }, 2500);
-  }, [fetchSyncMetadata]);
+  }, [fetchSyncHealth]);
 
   const stopManualPolling = useCallback(() => {
     if (manualPollingRef.current !== null) {
@@ -172,13 +171,13 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
   }, []);
 
   useEffect(() => {
-    fetchSyncMetadata();
+    fetchSyncHealth();
     if (typeof window === 'undefined') return;
-    const interval = window.setInterval(fetchSyncMetadata, 60000);
+    const interval = window.setInterval(fetchSyncHealth, 60000);
     return () => {
       clearInterval(interval);
     };
-  }, [fetchSyncMetadata]);
+  }, [fetchSyncHealth]);
 
   useEffect(() => {
     return () => {
@@ -298,7 +297,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
     setIsManualSyncing(true);
     const startedAt = Date.now();
     setManualSyncStartedAt(startedAt);
-    fetchSyncMetadata();
+    fetchSyncHealth();
     startManualPolling();
     addToast('Triggering Finale sync…', 'info');
     dispatchSyncEvent({ running: true, source: 'settings:manual' });
@@ -329,20 +328,20 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
       setIsManualSyncing(false);
       setManualSyncStartedAt(null);
       stopManualPolling();
-      await fetchSyncMetadata();
+      await fetchSyncHealth();
       dispatchSyncEvent({ running: false, source: 'settings:manual' });
     }
   }, [
     isManualSyncing,
     addToast,
-    fetchSyncMetadata,
+    fetchSyncHealth,
     startManualPolling,
     stopManualPolling,
   ]);
 
   const getStepBadge = useCallback(
     (type: SyncType): StepBadge => {
-      const metadata = syncMetadata[type];
+      const metadata = syncHealth[type];
       const lastSyncTime = metadata?.last_sync_time;
       const updatedThisRun = Boolean(
         manualSyncStartedAt &&
@@ -359,7 +358,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
 
         const stepIndex = SYNC_STEPS.findIndex((step) => step.type === type);
         const previousComplete = SYNC_STEPS.slice(0, stepIndex).every((step) => {
-          const stepMeta = syncMetadata[step.type];
+          const stepMeta = syncHealth[step.type];
           if (!manualSyncStartedAt || !stepMeta) return false;
           return new Date(stepMeta.last_sync_time).getTime() >= manualSyncStartedAt;
         });
@@ -375,16 +374,20 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
         return { label: 'Not synced', className: 'bg-gray-700/50 text-gray-300', state: 'idle' };
       }
 
+      if (metadata.is_stale) {
+        return { label: 'Stale', className: 'bg-amber-500/15 text-amber-300', state: 'failed' };
+      }
+
       return metadata.success
         ? { label: 'Healthy', className: 'bg-emerald-500/15 text-emerald-300', state: 'healthy' }
         : { label: 'Error', className: 'bg-red-500/15 text-red-300', state: 'failed' };
     },
-    [isManualSyncing, manualSyncStartedAt, syncMetadata],
+    [isManualSyncing, manualSyncStartedAt, syncHealth],
   );
 
   const syncCards = useMemo(() => {
     return SYNC_STEPS.map((step) => {
-      const metadata = syncMetadata[step.type];
+      const metadata = syncHealth[step.type];
       const badge = getStepBadge(step.type);
       return {
         ...step,
@@ -392,7 +395,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
         badge,
       };
     });
-  }, [getStepBadge, syncMetadata]);
+  }, [getStepBadge, syncHealth]);
 
   return (
     <div className="space-y-6">
