@@ -7,6 +7,7 @@ import CreatePoModal from '../components/CreatePoModal';
 import EmailComposerModal from '../components/EmailComposerModal';
 import GeneratePoModal from '../components/GeneratePoModal';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
+import ReorderQueueDashboard from '../components/ReorderQueueDashboard';
 import { generatePoPdf } from '../services/pdfService';
 
 interface PurchaseOrdersProps {
@@ -139,15 +140,31 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     )}
                 </header>
 
-                <RequisitionsSection 
-                    requisitions={requisitions} 
-                    currentUser={currentUser} 
+                <RequisitionsSection
+                    requisitions={requisitions}
+                    currentUser={currentUser}
                     userMap={userMap}
                     isOpen={isRequisitionsOpen}
                     onToggle={() => setIsRequisitionsOpen(!isRequisitionsOpen)}
                     onApprove={onApproveRequisition}
                     onReject={onRejectRequisition}
                     onCreate={() => setIsCreateReqModalOpen(true)}
+                />
+
+                <ReorderQueueDashboard
+                    onCreatePOs={(posToCreate) => {
+                        // Create POs from reorder queue recommendations
+                        posToCreate.forEach(po => {
+                            onCreatePo({
+                                vendorId: po.vendorId,
+                                items: po.items,
+                                expectedDate: '',
+                                notes: 'Auto-generated from reorder queue'
+                            });
+                        });
+                        addToast(`Created ${posToCreate.length} purchase order(s) from reorder queue`, 'success');
+                    }}
+                    addToast={addToast}
                 />
 
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
