@@ -7,9 +7,13 @@ import {
   ArrowsUpDownIcon,
   AdjustmentsHorizontalIcon,
   EyeIcon,
-  EyeSlashIcon
+  EyeSlashIcon,
+  BookmarkIcon
 } from '../components/icons';
 import ImportExportModal from '../components/ImportExportModal';
+import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
+import VendorManagementModal, { type VendorConfig } from '../components/VendorManagementModal';
+import FilterPresetManager, { type FilterPreset } from '../components/FilterPresetManager';
 import { exportToCsv, exportToJson, exportToXls } from '../services/exportService';
 import { generateInventoryPdf } from '../services/pdfService';
 import {
@@ -180,6 +184,26 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
     const [categorySearchTerm, setCategorySearchTerm] = useState('');
     const [vendorSearchTerm, setVendorSearchTerm] = useState('');
+    
+    // Filter preset system state
+    const [categoryConfig, setCategoryConfig] = useState<Record<string, CategoryConfig>>(() => {
+        const saved = localStorage.getItem('inventory-category-config');
+        return saved ? JSON.parse(saved) : {};
+    });
+    const [vendorConfig, setVendorConfig] = useState<Record<string, VendorConfig>>(() => {
+        const saved = localStorage.getItem('inventory-vendor-config');
+        return saved ? JSON.parse(saved) : {};
+    });
+    const [filterPresets, setFilterPresets] = useState<FilterPreset[]>(() => {
+        const saved = localStorage.getItem('inventory-filter-presets');
+        return saved ? JSON.parse(saved) : [];
+    });
+    const [activePresetId, setActivePresetId] = useState<string | null>(() => {
+        return localStorage.getItem('inventory-active-preset-id');
+    });
+    const [isCategoryManagementOpen, setIsCategoryManagementOpen] = useState(false);
+    const [isVendorManagementOpen, setIsVendorManagementOpen] = useState(false);
+    const [isPresetManagerOpen, setIsPresetManagerOpen] = useState(false);
     const [columns, setColumns] = useState<ColumnConfig[]>(() => {
         const saved = localStorage.getItem('inventory-columns');
         if (saved) {
@@ -235,6 +259,27 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     useEffect(() => {
         localStorage.setItem('inventory-bom-filter', bomFilter);
     }, [bomFilter]);
+
+    // Save filter preset config to localStorage
+    useEffect(() => {
+        localStorage.setItem('inventory-category-config', JSON.stringify(categoryConfig));
+    }, [categoryConfig]);
+
+    useEffect(() => {
+        localStorage.setItem('inventory-vendor-config', JSON.stringify(vendorConfig));
+    }, [vendorConfig]);
+
+    useEffect(() => {
+        localStorage.setItem('inventory-filter-presets', JSON.stringify(filterPresets));
+    }, [filterPresets]);
+
+    useEffect(() => {
+        if (activePresetId) {
+            localStorage.setItem('inventory-active-preset-id', activePresetId);
+        } else {
+            localStorage.removeItem('inventory-active-preset-id');
+        }
+    }, [activePresetId]);
 
     // Close dropdowns when clicking outside
     useEffect(() => {
@@ -360,15 +405,29 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     }, [inventory]);
 
     const filterOptions = useMemo(() => {
-        const categories = [...new Set(inventory.map(item => normalizeCategory(item.category)))].sort();
-        const vendorIds = [...new Set(
+        const allCategories = [...new Set(inventory.map(item => normalizeCategory(item.category)))].sort();
+        const allVendorIds = [...new Set(
             inventory
                 .map(item => item.vendorId?.trim())
                 .filter(id => id && id !== 'N/A')
         )].sort((a, b) => getVendorName(a).localeCompare(getVendorName(b)));
+        
+        // Filter categories based on visibility config
+        const categories = allCategories.filter(cat => {
+            const config = categoryConfig[cat];
+            return config?.visible !== false; // Show by default if not configured
+        });
+        
+        // Filter vendors based on visibility config
+        const vendors = allVendorIds.filter(vendorId => {
+            const vendorName = getVendorName(vendorId);
+            const config = vendorConfig[vendorName];
+            return config?.visible !== false; // Show by default if not configured
+        });
+        
         const statuses = ['In Stock', 'Low Stock', 'Out of Stock'];
-        return { categories, vendors: vendorIds, statuses };
-    }, [inventory, getVendorName]);
+        return { categories, vendors, statuses };
+    }, [inventory, getVendorName, categoryConfig, vendorConfig]);
 
     // Filter categories based on search term
     const filteredCategories = useMemo(() => {
@@ -520,9 +579,18 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const processedInventory = useMemo(() => {
         let filteredItems = [...inventory];
 
-        // Multi-select category filter
+        // Multi-select category filter with exclusion support
         if (selectedCategories.size > 0) {
-            filteredItems = filteredItems.filter(item => selectedCategories.has(normalizeCategory(item.category)));
+            filteredItems = filteredItems.filter(item => {
+                const category = normalizeCategory(item.category);
+                const config = categoryConfig[category];
+                
+                // Always show excluded categories
+                if (config?.excluded) return true;
+                
+                // Filter by selected categories
+                return selectedCategories.has(category);
+            });
         }
 
         if (filters.status) {
@@ -531,9 +599,19 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         if (riskFilter === 'needs-order') {
             filteredItems = filteredItems.filter(item => demandInsights.get(item.sku)?.needsOrder);
         }
-        // Vendor filter
+        
+        // Vendor filter with exclusion support
         if (selectedVendors.size > 0) {
-            filteredItems = filteredItems.filter(item => selectedVendors.has(item.vendorId));
+            filteredItems = filteredItems.filter(item => {
+                const vendorName = getVendorName(item.vendorId);
+                const config = vendorConfig[vendorName];
+                
+                // Always show excluded vendors
+                if (config?.excluded) return true;
+                
+                // Filter by selected vendors
+                return selectedVendors.has(item.vendorId);
+            });
         }
 
         // BOM filter
@@ -589,7 +667,42 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         demandInsights,
         riskFilter,
         normalizeCategory,
+        categoryConfig,
+        vendorConfig,
     ]);
+
+    // Filter preset handlers
+    const handleSaveCategoryConfig = useCallback((config: Record<string, CategoryConfig>) => {
+        setCategoryConfig(config);
+    }, []);
+
+    const handleSaveVendorConfig = useCallback((config: Record<string, VendorConfig>) => {
+        setVendorConfig(config);
+    }, []);
+
+    const handleSavePreset = useCallback((preset: Omit<FilterPreset, 'id' | 'createdAt'>) => {
+        const newPreset: FilterPreset = {
+            ...preset,
+            id: `preset-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+        };
+        setFilterPresets(prev => [...prev, newPreset]);
+    }, []);
+
+    const handleDeletePreset = useCallback((id: string) => {
+        setFilterPresets(prev => prev.filter(p => p.id !== id));
+        if (activePresetId === id) {
+            setActivePresetId(null);
+        }
+    }, [activePresetId]);
+
+    const handleApplyPreset = useCallback((preset: FilterPreset) => {
+        setSelectedCategories(new Set(preset.filters.categories));
+        setSelectedVendors(new Set(preset.filters.vendors));
+        setBomFilter(preset.filters.bomFilter);
+        setRiskFilter(preset.filters.riskFilter);
+        setActivePresetId(preset.id);
+    }, []);
 
     const handleExportCsv = () => {
         exportToCsv(processedInventory, `inventory-export-${new Date().toISOString().split('T')[0]}.csv`);
@@ -647,7 +760,23 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         <h1 className="text-3xl font-bold text-white tracking-tight">Inventory</h1>
                         <p className="text-gray-400 mt-1">Search, filter, and manage all your stock items.</p>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-2 flex-shrink-0 flex-wrap">
+                        <button
+                            onClick={() => setIsPresetManagerOpen(true)}
+                            className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-md transition-colors ${
+                                activePresetId 
+                                    ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                                    : 'bg-gray-700 text-white hover:bg-gray-600'
+                            }`}
+                            title="Manage filter presets"
+                        >
+                            <BookmarkIcon className="w-5 h-5" />
+                            <span className="hidden sm:inline">
+                                {activePresetId 
+                                    ? filterPresets.find(p => p.id === activePresetId)?.name || 'Presets'
+                                    : 'Filter Presets'}
+                            </span>
+                        </button>
                         <button
                             onClick={() => setIsColumnModalOpen(true)}
                             className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
@@ -733,6 +862,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         >
                                             Clear
                                         </button>
+                                        <button
+                                            onClick={() => {
+                                                setIsCategoryDropdownOpen(false);
+                                                setIsCategoryManagementOpen(true);
+                                            }}
+                                            className="ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 bg-gray-600 rounded flex items-center gap-1"
+                                        >
+                                            <AdjustmentsHorizontalIcon className="w-3 h-3" />
+                                            Manage
+                                        </button>
                                     </div>
                                     <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
                                         <input
@@ -806,6 +945,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
                                         >
                                             Clear
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setIsVendorDropdownOpen(false);
+                                                setIsVendorManagementOpen(true);
+                                            }}
+                                            className="ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 bg-gray-600 rounded flex items-center gap-1"
+                                        >
+                                            <AdjustmentsHorizontalIcon className="w-3 h-3" />
+                                            Manage
                                         </button>
                                     </div>
                                     <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
@@ -1136,6 +1285,41 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 onExportPdf={handleExportPdf}
                 onExportJson={handleExportJson}
                 onExportXls={handleExportXls}
+            />
+
+            <CategoryManagementModal
+                isOpen={isCategoryManagementOpen}
+                onClose={() => setIsCategoryManagementOpen(false)}
+                categories={[...new Set(inventory.map(item => normalizeCategory(item.category)))].sort()}
+                config={categoryConfig}
+                onSave={handleSaveCategoryConfig}
+            />
+
+            <VendorManagementModal
+                isOpen={isVendorManagementOpen}
+                onClose={() => setIsVendorManagementOpen(false)}
+                vendors={[...new Set(
+                    inventory
+                        .map(item => getVendorName(item.vendorId))
+                        .filter(name => name && name !== 'N/A')
+                )].sort()}
+                config={vendorConfig}
+                onSave={handleSaveVendorConfig}
+            />
+
+            <FilterPresetManager
+                isOpen={isPresetManagerOpen}
+                onClose={() => setIsPresetManagerOpen(false)}
+                presets={filterPresets}
+                currentFilters={{
+                    categories: selectedCategories,
+                    vendors: selectedVendors,
+                    bomFilter,
+                    riskFilter,
+                }}
+                onSavePreset={handleSavePreset}
+                onDeletePreset={handleDeletePreset}
+                onApplyPreset={handleApplyPreset}
             />
         </>
     );
