@@ -615,6 +615,7 @@ export function useSupabasePurchaseOrders(): UseSupabaseDataResult<PurchaseOrder
       setLoading(true);
       setError(null);
 
+      // Fetch PO headers with line items from separate table
       const { data: pos, error: fetchError } = await supabase
         .from('purchase_orders')
         .select('*, purchase_order_items(*)')
@@ -684,10 +685,11 @@ export function useSupabasePurchaseOrder(id: string): UseSupabaseSingleResult<Pu
       setLoading(true);
       setError(null);
 
+      // Fetch PO with line items - try both order_id and UUID
       const { data: po, error: fetchError } = await supabase
         .from('purchase_orders')
         .select('*, purchase_order_items(*)')
-        .eq('id', id)
+        .or(`order_id.eq.${id},id.eq.${id}`)
         .single();
 
       if (fetchError) throw fetchError;

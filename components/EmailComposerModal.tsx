@@ -21,15 +21,34 @@ const EmailComposerModal: React.FC<EmailComposerModalProps> = ({ isOpen, onClose
     const [subject, setSubject] = useState('');
     const [body, setBody] = useState('');
     const [isSending, setIsSending] = useState(false);
-    
+
     useEffect(() => {
         if (isOpen) {
-            setTo(vendor.contactEmails[0] || '');
-            setFrom(gmailConnection.isConnected ? gmailConnection.email! : 'procurement@murp.app (simulation)');
+            loadEmailTemplate();
+        }
+    }, [isOpen, purchaseOrder, vendor, gmailConnection]);
+
+    const loadEmailTemplate = async () => {
+        setTo(vendor.contactEmails[0] || '');
+        setFrom(gmailConnection.isConnected ? gmailConnection.email! : 'procurement@murp.app (simulation)');
+
+        try {
+            const templateService = await import('../services/templateService').then(m => m.templateService);
+            const template = await templateService.getEmailTemplate(vendor.id);
+            const variables = await templateService.getPOVariables(purchaseOrder, vendor);
+
+            const resolvedSubject = templateService.substituteVariables(template.subject_line, variables);
+            const resolvedBody = templateService.substituteVariables(template.body_template, variables);
+            const resolvedSignature = templateService.substituteVariables(template.signature, variables);
+
+            setSubject(resolvedSubject);
+            setBody(resolvedBody + '\n\n' + resolvedSignature);
+        } catch (error) {
+            console.error('Error loading email template:', error);
+            // Fallback to hardcoded template
             const poNumber = purchaseOrder.orderId || purchaseOrder.id;
             setSubject(`Purchase Order #${poNumber} from MuRP`);
-            setBody(
-`Hello ${vendor.name} Team,
+            setBody(`Hello ${vendor.name} Team,
 
 Please find attached our Purchase Order #${poNumber}.
 
@@ -38,10 +57,9 @@ Kindly confirm receipt and provide an estimated shipping date at your earliest c
 Thank you,
 
 MuRP
-Procurement Team`
-            );
+Procurement Team`);
         }
-    }, [isOpen, purchaseOrder, vendor, gmailConnection]);
+    };
 
     const handleSendClick = () => {
         setIsSending(true);
@@ -51,9 +69,9 @@ Procurement Team`
             onSend();
         }, 1500);
     };
-    
-    const handleDownloadAttachment = () => {
-        generatePoPdf(purchaseOrder, vendor);
+
+    const handleDownloadAttachment = async () => {
+        await generatePoPdf(purchaseOrder, vendor);
     }
 
     return (

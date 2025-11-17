@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import UserManagementPanel from '../components/UserManagementPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
@@ -10,6 +10,7 @@ import RegulatoryAgreementPanel from '../components/RegulatoryAgreementPanel';
 import AiSettingsPanel from '../components/AiSettingsPanel';
 import SemanticSearchSettings from '../components/SemanticSearchSettings';
 import { MCPServerPanel } from '../components/MCPServerPanel';
+import DocumentTemplatesPanel from '../components/DocumentTemplatesPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -50,6 +51,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isAiConfigOpen, setIsAiConfigOpen] = useState(false);
     const [isApiIntegrationsOpen, setIsApiIntegrationsOpen] = useState(false);
     const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
+    const [isDocumentTemplatesOpen, setIsDocumentTemplatesOpen] = useState(false);
     const [isMcpServerOpen, setIsMcpServerOpen] = useState(false);
     
     // API key visibility state
@@ -162,7 +164,19 @@ const Settings: React.FC<SettingsProps> = ({
             />
           </CollapsibleSection>
 
-          {/* 6. MCP Server Configuration (Admin only) */}
+          {/* 6. Document Templates (Admin only) */}
+          {currentUser.role === 'Admin' && (
+            <CollapsibleSection
+              title="Document Templates"
+              icon={<DocumentTextIcon className="w-6 h-6 text-yellow-400" />}
+              isOpen={isDocumentTemplatesOpen}
+              onToggle={() => setIsDocumentTemplatesOpen(!isDocumentTemplatesOpen)}
+            >
+              <DocumentTemplatesPanel addToast={addToast} />
+            </CollapsibleSection>
+          )}
+
+          {/* 7. MCP Server Configuration (Admin only) */}
           {currentUser.role === 'Admin' && (
             <CollapsibleSection
               title="MCP Server Configuration"
