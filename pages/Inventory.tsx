@@ -393,6 +393,34 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         return count;
     }, [demandInsights]);
 
+    const getCategoryConfig = useCallback(
+        (category: string): CategoryConfig => {
+            const existing = categoryConfig[category];
+            if (existing) return existing;
+            return {
+                name: category,
+                visible: true,
+                excluded: false,
+                order: 999,
+            };
+        },
+        [categoryConfig]
+    );
+
+    const getVendorConfig = useCallback(
+        (vendorName: string): VendorConfig => {
+            const existing = vendorConfig[vendorName];
+            if (existing) return existing;
+            return {
+                name: vendorName,
+                visible: true,
+                excluded: false,
+                order: 999,
+            };
+        },
+        [vendorConfig]
+    );
+
     const categoryLabelMap = useMemo(() => {
         const map = new Map<string, string>();
         inventory.forEach(item => {
@@ -532,34 +560,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const clearAllVendors = () => {
         setSelectedVendors(new Set());
     };
-
-    const getCategoryConfig = useCallback(
-        (category: string): CategoryConfig => {
-            const existing = categoryConfig[category];
-            if (existing) return existing;
-            return {
-                name: category,
-                visible: true,
-                excluded: false,
-                order: 999,
-            };
-        },
-        [categoryConfig]
-    );
-
-    const getVendorConfig = useCallback(
-        (vendorName: string): VendorConfig => {
-            const existing = vendorConfig[vendorName];
-            if (existing) return existing;
-            return {
-                name: vendorName,
-                visible: true,
-                excluded: false,
-                order: 999,
-            };
-        },
-        [vendorConfig]
-    );
 
     const handleFilterChange = (filterType: keyof typeof filters, value: string) => {
         setFilters(prev => ({ ...prev, [filterType]: value }));
