@@ -24,11 +24,34 @@ const EmailComposerModal: React.FC<EmailComposerModalProps> = ({ isOpen, onClose
     
     useEffect(() => {
         if (isOpen) {
-            setTo(vendor.contactEmails[0] || '');
-            setFrom(gmailConnection.isConnected ? gmailConnection.email! : 'procurement@murp.app (simulation)');
+            loadEmailTemplate();
+        }
+    }, [isOpen, purchaseOrder, vendor, gmailConnection]);
+
+    const loadEmailTemplate = async () => {
+        setTo(vendor.contactEmails[0] || '');
+        setFrom(gmailConnection.isConnected ? gmailConnection.email! : 'procurement@murp.app (simulation)');
+
+        try {
+            // Dynamically import templateService
+            const { templateService } = await import('../services/templateService');
+
+            // Load template
+            const template = await templateService.getEmailTemplate(vendor.id);
+            const variables = await templateService.getPOVariables(purchaseOrder, vendor);
+
+            // Substitute variables
+            const subject = templateService.substituteVariables(template.subject_line, variables);
+            const body = templateService.substituteVariables(template.body_template, variables);
+            const signature = templateService.substituteVariables(template.signature, variables);
+
+            setSubject(subject);
+            setBody(body + '\n\n' + signature);
+        } catch (error) {
+            console.error('Error loading email template:', error);
+            // Fallback to hardcoded template
             setSubject(`Purchase Order #${purchaseOrder.id} from MuRP`);
-            setBody(
-`Hello ${vendor.name} Team,
+            setBody(`Hello ${vendor.name} Team,
 
 Please find attached our Purchase Order #${purchaseOrder.id}.
 
@@ -37,10 +60,9 @@ Kindly confirm receipt and provide an estimated shipping date at your earliest c
 Thank you,
 
 MuRP
-Procurement Team`
-            );
+Procurement Team`);
         }
-    }, [isOpen, purchaseOrder, vendor, gmailConnection]);
+    };
 
     const handleSendClick = () => {
         setIsSending(true);
@@ -50,9 +72,9 @@ Procurement Team`
             onSend();
         }, 1500);
     };
-    
-    const handleDownloadAttachment = () => {
-        generatePoPdf(purchaseOrder, vendor);
+
+    const handleDownloadAttachment = async () => {
+        await generatePoPdf(purchaseOrder, vendor);
     }
 
     return (

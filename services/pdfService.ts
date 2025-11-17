@@ -1,16 +1,38 @@
 import type { PurchaseOrder, Vendor, InventoryItem } from '../types';
+import { templateService } from './templateService';
 
 // These are globally available from the script tags in index.html
 declare const jspdf: any;
 
-export const generatePoPdf = (po: PurchaseOrder, vendor: Vendor) => {
+// Helper function to convert hex to RGB
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : { r: 41, g: 128, b: 185 }; // Default blue
+}
+
+export const generatePoPdf = async (po: PurchaseOrder, vendor: Vendor) => {
     const { jsPDF } = jspdf;
     const doc = new jsPDF();
-    
+
+    // Load template and company settings
+    const template = await templateService.getPDFTemplate(vendor.id);
+    const company = await templateService.getCompanySettings();
+    const companyAddress = await templateService.getCompanyAddress();
+
     // --- Header ---
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text('PURCHASE ORDER', 105, 20, { align: 'center' });
+
+    // Use template header color
+    const headerColor = template.header_color || '#2980b9';
+    const rgb = hexToRgb(headerColor);
+    doc.setTextColor(rgb.r, rgb.g, rgb.b);
+    doc.text(template.header_text || 'PURCHASE ORDER', 105, 20, { align: 'center' });
+    doc.setTextColor(0, 0, 0); // Reset to black
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -19,13 +41,23 @@ export const generatePoPdf = (po: PurchaseOrder, vendor: Vendor) => {
     doc.text(`Expected: ${po.expectedDate ? new Date(po.expectedDate).toLocaleDateString() : 'N/A'}`, 20, 45);
 
     // --- Company Info (From) ---
-    doc.setFont('helvetica', 'bold');
-    doc.text('FROM:', 20, 60);
-    doc.setFont('helvetica', 'normal');
-    doc.text('MuRP', 20, 65);
-    doc.text('123 MuRP Lane', 20, 70);
-    doc.text('Mycelia, CA, 90210', 20, 75);
-    doc.text('contact@murp.app', 20, 80);
+    if (template.show_company_info) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('FROM:', 20, 60);
+        doc.setFont('helvetica', 'normal');
+        doc.text(company.company_name, 20, 65);
+
+        const addressLines = companyAddress.split('\n');
+        let yPos = 70;
+        addressLines.forEach(line => {
+            doc.text(line, 20, yPos);
+            yPos += 5;
+        });
+
+        if (company.email) {
+            doc.text(company.email, 20, yPos);
+        }
+    }
 
     // --- Vendor Info (To) ---
     doc.setFont('helvetica', 'bold');
@@ -54,40 +86,48 @@ export const generatePoPdf = (po: PurchaseOrder, vendor: Vendor) => {
         tableRows.push(itemData);
     });
 
+    // Use template header color for table
     doc.autoTable({
         head: [tableColumn],
         body: tableRows,
         startY: 95,
         theme: 'striped',
-        headStyles: { fillColor: [41, 128, 185] }
+        headStyles: { fillColor: [rgb.r, rgb.g, rgb.b] }
     });
-    
+
     // --- Totals ---
     const finalY = (doc as any).lastAutoTable.finalY;
-    const tax = subtotal * 0.08; // 8% tax
+    const tax = template.show_tax ? subtotal * company.tax_rate : 0;
     const total = subtotal + tax;
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text(`Subtotal: $${subtotal.toFixed(2)}`, 190, finalY + 15, { align: 'right' });
-    doc.text(`Tax (8%): $${tax.toFixed(2)}`, 190, finalY + 22, { align: 'right' });
-    doc.setFontSize(14);
-    doc.text(`TOTAL: $${total.toFixed(2)}`, 190, finalY + 30, { align: 'right' });
-    
+
+    if (template.show_tax) {
+        doc.text(`Tax (${(company.tax_rate * 100).toFixed(1)}%): $${tax.toFixed(2)}`, 190, finalY + 22, { align: 'right' });
+        doc.setFontSize(14);
+        doc.text(`TOTAL: $${total.toFixed(2)}`, 190, finalY + 30, { align: 'right' });
+    } else {
+        doc.setFontSize(14);
+        doc.text(`TOTAL: $${subtotal.toFixed(2)}`, 190, finalY + 22, { align: 'right' });
+    }
+
     // --- Notes ---
     if (po.notes) {
+        const notesY = template.show_tax ? finalY + 40 : finalY + 30;
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text('Notes:', 20, finalY + 15);
+        doc.text('Notes:', 20, notesY);
         doc.setFont('helvetica', 'normal');
         const splitNotes = doc.splitTextToSize(po.notes, 170); // 170mm width
-        doc.text(splitNotes, 20, finalY + 20);
+        doc.text(splitNotes, 20, notesY + 5);
     }
-    
+
     // --- Footer ---
     doc.setFontSize(10);
-    doc.text('Thank you for your business!', 105, 280, { align: 'center' });
-
+    doc.setFont('helvetica', 'normal');
+    doc.text(template.footer_text || 'Thank you for your business!', 105, 280, { align: 'center' });
 
     // --- Save File ---
     doc.save(`${po.id}.pdf`);
@@ -96,7 +136,7 @@ export const generatePoPdf = (po: PurchaseOrder, vendor: Vendor) => {
 export const generateInventoryPdf = (inventory: InventoryItem[], vendorMap: Map<string, string>) => {
     const { jsPDF } = jspdf;
     const doc = new jsPDF();
-    
+
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
     doc.text('Inventory Report', 105, 20, { align: 'center' });
@@ -104,10 +144,10 @@ export const generateInventoryPdf = (inventory: InventoryItem[], vendorMap: Map<
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
-    
+
     const tableColumn = ["SKU", "Name", "Category", "Stock", "On Order", "Reorder Pt.", "Vendor"];
     const tableRows: (string|number)[][] = [];
-    
+
     inventory.forEach(item => {
         tableRows.push([
             item.sku,
@@ -119,7 +159,7 @@ export const generateInventoryPdf = (inventory: InventoryItem[], vendorMap: Map<
             vendorMap.get(item.vendorId) || 'N/A'
         ]);
     });
-    
+
     doc.autoTable({
         head: [tableColumn],
         body: tableRows,
@@ -127,7 +167,7 @@ export const generateInventoryPdf = (inventory: InventoryItem[], vendorMap: Map<
         theme: 'striped',
         headStyles: { fillColor: [41, 128, 185] }
     });
-    
+
     const pageCount = (doc as any).internal.getNumberOfPages();
     for(let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
