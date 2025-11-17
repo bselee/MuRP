@@ -244,7 +244,8 @@ CREATE TABLE IF NOT EXISTS ai_purchasing_costs (
 -- Indexes for cost tracking
 CREATE INDEX idx_ai_purchasing_costs_date ON ai_purchasing_costs(date DESC);
 CREATE INDEX idx_ai_purchasing_costs_service ON ai_purchasing_costs(service_name);
-CREATE INDEX idx_ai_purchasing_costs_month ON ai_purchasing_costs(DATE_TRUNC('month', date));
+-- Note: Removed functional index on DATE_TRUNC('month', date) because DATE_TRUNC is not IMMUTABLE.
+-- The monthly costs view still works efficiently using the date index.
 
 COMMENT ON TABLE ai_purchasing_costs IS 'Tracks AI costs and usage for purchasing intelligence features';
 

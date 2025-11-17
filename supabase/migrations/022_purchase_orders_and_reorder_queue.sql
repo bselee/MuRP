@@ -189,9 +189,6 @@ CREATE TABLE IF NOT EXISTS reorder_queue (
   resolution_type VARCHAR(50), -- ordered, manual_adjustment, inventory_correction, cancelled
 
   -- Cost impact
-  resolution_type VARCHAR(50), -- ordered, manual_adjustment, inventory_correction, cancelled
-
-  -- Cost impact
   estimated_cost DECIMAL(10,2),
   estimated_stockout_risk_usd DECIMAL(10,2), -- Potential lost sales if not ordered
 
@@ -316,18 +313,31 @@ COMMENT ON VIEW urgent_reorders IS 'Critical and high priority items in reorder 
 -- Function to update PO totals
 CREATE OR REPLACE FUNCTION update_po_totals()
 RETURNS TRIGGER AS $$
+DECLARE
+  po_id_to_update UUID;
 BEGIN
+  -- Get the PO ID from either NEW (INSERT/UPDATE) or OLD (DELETE)
+  IF TG_OP = 'DELETE' THEN
+    po_id_to_update := OLD.po_id;
+  ELSE
+    po_id_to_update := NEW.po_id;
+  END IF;
+
   UPDATE purchase_orders
   SET
     subtotal = (
       SELECT COALESCE(SUM(line_total), 0)
       FROM purchase_order_items
-      WHERE po_id = NEW.po_id
+      WHERE po_id = po_id_to_update
     ),
     record_last_updated = NOW()
-  WHERE id = NEW.po_id;
+  WHERE id = po_id_to_update;
 
-  RETURN NEW;
+  IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+  ELSE
+    RETURN NEW;
+  END IF;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -351,7 +361,7 @@ BEGIN
 
   RETURN FLOOR(p_current_stock / p_consumption_daily);
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION calculate_days_until_stockout IS 'Calculate days until item will stock out based on daily consumption';
 
