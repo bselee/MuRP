@@ -8,6 +8,7 @@ import EmailComposerModal from '../components/EmailComposerModal';
 import GeneratePoModal from '../components/GeneratePoModal';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
 import ReorderQueueDashboard from '../components/ReorderQueueDashboard';
+import DraftPOReviewSection from '../components/DraftPOReviewSection';
 import { generatePoPdf } from '../services/pdfService';
 
 interface PurchaseOrdersProps {
@@ -163,6 +164,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             });
                         });
                         addToast(`Created ${posToCreate.length} purchase order(s) from reorder queue`, 'success');
+                    }}
+                    addToast={addToast}
+                />
+
+                <DraftPOReviewSection
+                    onApprove={(orderId) => {
+                        addToast(`Approved ${orderId} - ready to send to vendor`, 'success');
+                    }}
+                    onDiscard={(orderId) => {
+                        addToast(`Discarded ${orderId}`, 'info');
                     }}
                     addToast={addToast}
                 />
