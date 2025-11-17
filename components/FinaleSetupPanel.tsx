@@ -307,14 +307,14 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
             </>
           ) : (
             <>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 font-semibold text-sm">
-              1
-            </div>
-            <h4 className="text-md font-semibold text-white">Sync Finale Data</h4>
-          </div>
-          
-          <div className="ml-11 space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 font-semibold text-sm">
+                  1
+                </div>
+                <h4 className="text-md font-semibold text-white">Sync Finale Data</h4>
+              </div>
+              
+              <div className="ml-11 space-y-4">
             <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4">
               <p className="text-sm text-blue-300 font-medium mb-2">📍 Where to find your credentials:</p>
               <ol className="text-xs text-gray-400 space-y-1 ml-4 list-decimal">
@@ -403,6 +403,8 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
               )}
             </div>
           </div>
+            </>
+          )}
         </div>
 
         {/* Step 2: Initial Sync */}
