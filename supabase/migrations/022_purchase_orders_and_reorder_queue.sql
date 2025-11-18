@@ -7,7 +7,11 @@
 -- PURCHASE ORDERS TABLE
 -- Stores purchase order headers with Finale compatibility
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS purchase_orders (
+
+-- Drop existing table if it exists (for clean migration)
+DROP TABLE IF EXISTS purchase_orders CASCADE;
+
+CREATE TABLE purchase_orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Order identification
@@ -88,7 +92,11 @@ COMMENT ON TABLE purchase_orders IS 'Purchase order headers with Finale compatib
 -- PURCHASE ORDER ITEMS (LINE ITEMS)
 -- Individual line items for each purchase order
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS purchase_order_items (
+
+-- Drop existing table if it exists (for clean migration)
+DROP TABLE IF EXISTS purchase_order_items CASCADE;
+
+CREATE TABLE purchase_order_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Links
@@ -144,7 +152,11 @@ COMMENT ON TABLE purchase_order_items IS 'Line items for purchase orders with co
 -- REORDER QUEUE
 -- Automated reorder recommendations and tracking
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS reorder_queue (
+
+-- Drop existing table if it exists (for clean migration)
+DROP TABLE IF EXISTS reorder_queue CASCADE;
+
+CREATE TABLE reorder_queue (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Item identification
@@ -221,7 +233,11 @@ COMMENT ON TABLE reorder_queue IS 'Automated reorder queue with AI recommendatio
 -- FINALE SYNC LOG
 -- Tracks synchronization with Finale Inventory system
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS finale_sync_log (
+
+-- Drop existing table if it exists (for clean migration)
+DROP TABLE IF EXISTS finale_sync_log CASCADE;
+
+CREATE TABLE finale_sync_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Sync details

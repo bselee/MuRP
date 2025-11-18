@@ -27,14 +27,13 @@ COMMENT ON COLUMN vendors.is_recurring_vendor IS 'Flag for vendors with predicta
 COMMENT ON COLUMN vendors.automation_notes IS 'Internal notes about automation preferences for this vendor';
 
 -- Add automation tracking to purchase_orders table
+-- Note: auto_generated column already exists from migration 022
 ALTER TABLE purchase_orders
-ADD COLUMN IF NOT EXISTS auto_generated BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS auto_approved BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS reviewed_by VARCHAR(255),
 ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
 
 -- Add comments
-COMMENT ON COLUMN purchase_orders.auto_generated IS 'True if PO was auto-created by reorder scanner';
 COMMENT ON COLUMN purchase_orders.auto_approved IS 'True if PO was auto-sent without manual review';
 COMMENT ON COLUMN purchase_orders.reviewed_by IS 'User who reviewed the auto-generated PO';
 COMMENT ON COLUMN purchase_orders.reviewed_at IS 'When the PO was reviewed/approved';
@@ -42,7 +41,7 @@ COMMENT ON COLUMN purchase_orders.reviewed_at IS 'When the PO was reviewed/appro
 -- Add PO pattern tracking for recurring detection
 CREATE TABLE IF NOT EXISTS po_patterns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  vendor_id VARCHAR(50) NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+  vendor_id UUID NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
   item_skus TEXT[], -- Array of SKUs commonly ordered together
   frequency_days INTEGER, -- Average days between orders
   last_order_date DATE,
