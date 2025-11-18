@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS ai_vendor_email_cache (
 
   -- Processing status
   applied_to_po BOOLEAN DEFAULT FALSE,
-  po_id UUID REFERENCES purchase_orders(id),
+  po_id UUID, -- References purchase_orders(id) - FK will be added in migration 022
 
   -- Audit
   created_at TIMESTAMPTZ DEFAULT NOW(),
