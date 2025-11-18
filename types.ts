@@ -596,6 +596,12 @@ export interface Vendor {
     dataSource?: 'manual' | 'csv' | 'api';
     lastSyncAt?: string;
     syncStatus?: 'synced' | 'pending' | 'error';
+    // Automation fields (from migration 023_vendor_automation_settings)
+    autoPoEnabled?: boolean;
+    autoPoThreshold?: 'critical' | 'high' | 'normal' | 'low';
+    autoSendEmail?: boolean;
+    isRecurringVendor?: boolean;
+    automationNotes?: string;
 }
 
 export type PurchaseOrderStatus =

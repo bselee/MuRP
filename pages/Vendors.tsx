@@ -1,11 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Vendor } from '../types';
+import VendorAutomationModal from '../components/VendorAutomationModal';
 
 interface VendorsProps {
     vendors: Vendor[];
+    addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-const Vendors: React.FC<VendorsProps> = ({ vendors }) => {
+const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
+    const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+    const [automationModalOpen, setAutomationModalOpen] = useState(false);
+
+    const handleOpenAutomation = (vendor: Vendor) => {
+        setSelectedVendor(vendor);
+        setAutomationModalOpen(true);
+    };
+
+    const handleCloseAutomation = () => {
+        setAutomationModalOpen(false);
+        setSelectedVendor(null);
+    };
+
     return (
         <div className="space-y-6">
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -28,6 +43,7 @@ const Vendors: React.FC<VendorsProps> = ({ vendors }) => {
                                 <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Address</th>
                                 <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Lead Time</th>
                                 <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Source</th>
+                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Auto-PO</th>
                             </tr>
                         </thead>
                         <tbody className="bg-gray-800 divide-y divide-gray-700">
@@ -103,12 +119,41 @@ const Vendors: React.FC<VendorsProps> = ({ vendors }) => {
                                             </div>
                                         )}
                                     </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                        <div className="flex items-center gap-2">
+                                            {vendor.autoPoEnabled ? (
+                                                <span className="px-2 py-1 bg-green-900/50 text-green-300 rounded-full text-xs font-medium border border-green-700">
+                                                    ✓ {vendor.autoPoThreshold || 'critical'}
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 py-1 bg-gray-700 text-gray-400 rounded-full text-xs">
+                                                    Off
+                                                </span>
+                                            )}
+                                            <button
+                                                onClick={() => handleOpenAutomation(vendor)}
+                                                className="text-indigo-400 hover:text-indigo-300 transition-colors"
+                                                title="Configure auto-PO settings"
+                                            >
+                                                ⚙️
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            {/* Automation Modal */}
+            <VendorAutomationModal
+                isOpen={automationModalOpen}
+                onClose={handleCloseAutomation}
+                vendor={selectedVendor}
+                onSave={handleCloseAutomation}
+                addToast={addToast}
+            />
         </div>
     );
 };
