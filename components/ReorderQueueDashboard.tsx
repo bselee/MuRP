@@ -17,6 +17,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase/client';
 import { ChevronDownIcon, AlertCircleIcon, CheckCircleIcon } from './icons';
+import { usePermissions } from '../hooks/usePermissions';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -55,6 +56,8 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
   const [loading, setLoading] = useState(true);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [isExpanded, setIsExpanded] = useState(true);
+  const permissions = usePermissions();
+  const allowPoCreation = Boolean(onCreatePOs && permissions.canManagePurchaseOrders);
 
   // Fetch reorder queue items
   useEffect(() => {
@@ -142,6 +145,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
   }, [items, selectedItems]);
 
   const handleToggleItem = (itemId: string) => {
+    if (!allowPoCreation) return;
     setSelectedItems(prev => {
       const newSet = new Set(prev);
       if (newSet.has(itemId)) {
@@ -154,15 +158,21 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
   };
 
   const handleSelectAll = (urgency?: 'critical' | 'high' | 'normal' | 'low') => {
+    if (!allowPoCreation) return;
     const itemsToSelect = urgency ? itemsByUrgency[urgency] : items;
     setSelectedItems(new Set(itemsToSelect.map(i => i.id)));
   };
 
   const handleClearSelection = () => {
+    if (!allowPoCreation) return;
     setSelectedItems(new Set());
   };
 
   const handleCreatePOs = () => {
+    if (!allowPoCreation) {
+      addToast?.('You do not have permission to create purchase orders.', 'error');
+      return;
+    }
     if (groupedForPO.length === 0) {
       addToast?.('No items selected', 'error');
       return;
@@ -243,8 +253,13 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
 
         {isExpanded && (
           <div className="border-t border-gray-700">
+            {!allowPoCreation && (
+              <div className="bg-gray-900/40 border-b border-gray-800 px-4 py-3 text-sm text-gray-400">
+                View-only mode: create permissions are limited to approved roles.
+              </div>
+            )}
             {/* Action Bar */}
-            {selectedItems.size > 0 && (
+            {allowPoCreation && selectedItems.size > 0 && (
               <div className="bg-indigo-900/30 border-b border-gray-700 p-4 flex justify-between items-center">
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-gray-300">
@@ -274,46 +289,50 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
             )}
 
             {/* Quick Select Buttons */}
-            <div className="bg-gray-800/50 p-3 border-b border-gray-700 flex gap-2">
-              <button
-                onClick={() => handleSelectAll('critical')}
-                className="text-xs px-3 py-1.5 bg-red-600/20 text-red-400 rounded-md hover:bg-red-600/30 transition-colors"
-              >
-                Select Critical ({itemsByUrgency.critical.length})
-              </button>
-              <button
-                onClick={() => handleSelectAll('high')}
-                className="text-xs px-3 py-1.5 bg-orange-600/20 text-orange-400 rounded-md hover:bg-orange-600/30 transition-colors"
-              >
-                Select High ({itemsByUrgency.high.length})
-              </button>
-              <button
-                onClick={() => handleSelectAll()}
-                className="text-xs px-3 py-1.5 bg-indigo-600/20 text-indigo-400 rounded-md hover:bg-indigo-600/30 transition-colors"
-              >
-                Select All ({items.length})
-              </button>
-            </div>
+            {allowPoCreation && (
+              <div className="bg-gray-800/50 p-3 border-b border-gray-700 flex gap-2">
+                <button
+                  onClick={() => handleSelectAll('critical')}
+                  className="text-xs px-3 py-1.5 bg-red-600/20 text-red-400 rounded-md hover:bg-red-600/30 transition-colors"
+                >
+                  Select Critical ({itemsByUrgency.critical.length})
+                </button>
+                <button
+                  onClick={() => handleSelectAll('high')}
+                  className="text-xs px-3 py-1.5 bg-orange-600/20 text-orange-400 rounded-md hover:bg-orange-600/30 transition-colors"
+                >
+                  Select High ({itemsByUrgency.high.length})
+                </button>
+                <button
+                  onClick={() => handleSelectAll()}
+                  className="text-xs px-3 py-1.5 bg-indigo-600/20 text-indigo-400 rounded-md hover:bg-indigo-600/30 transition-colors"
+                >
+                  Select All ({items.length})
+                </button>
+              </div>
+            )}
 
             {/* Items Table */}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-800/50">
                   <tr>
-                    <th className="px-4 py-3 text-left">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.size === items.length && items.length > 0}
-                        onChange={() => {
-                          if (selectedItems.size === items.length) {
-                            handleClearSelection();
-                          } else {
-                            handleSelectAll();
-                          }
-                        }}
-                        className="rounded border-gray-600 text-indigo-600 focus:ring-indigo-500"
-                      />
-                    </th>
+                    {allowPoCreation && (
+                      <th className="px-4 py-3 text-left">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.size === items.length && items.length > 0}
+                          onChange={() => {
+                            if (selectedItems.size === items.length) {
+                              handleClearSelection();
+                            } else {
+                              handleSelectAll();
+                            }
+                          }}
+                          className="rounded border-gray-600 text-indigo-600 focus:ring-indigo-500"
+                        />
+                      </th>
+                    )}
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Urgency</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Item</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Vendor</th>
@@ -332,14 +351,16 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
                         selectedItems.has(item.id) ? 'bg-indigo-900/20' : ''
                       }`}
                     >
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.has(item.id)}
-                          onChange={() => handleToggleItem(item.id)}
-                          className="rounded border-gray-600 text-indigo-600 focus:ring-indigo-500"
-                        />
-                      </td>
+                      {allowPoCreation && (
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.has(item.id)}
+                            onChange={() => handleToggleItem(item.id)}
+                            className="rounded border-gray-600 text-indigo-600 focus:ring-indigo-500"
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-3">
                         <UrgencyBadge urgency={item.urgency} />
                       </td>

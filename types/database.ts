@@ -30,36 +30,56 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      users: {
+      user_profiles: {
         Row: {
           id: string
-          name: string
           email: string
-          role: string
-          department: string
+          full_name: string | null
+          role: 'Admin' | 'Manager' | 'Staff'
+          department: 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV'
           onboarding_complete: boolean
-          created_at?: string
-          updated_at?: string
+          agreements: Json | null
+          metadata: Json | null
+          is_active: boolean
+          last_login_at: string | null
+          created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
-          name: string
           email: string
-          role: string
-          department: string
+          full_name?: string | null
+          role?: 'Admin' | 'Manager' | 'Staff'
+          department?: 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV'
           onboarding_complete?: boolean
+          agreements?: Json | null
+          metadata?: Json | null
+          is_active?: boolean
+          last_login_at?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
-          name?: string
           email?: string
-          role?: string
-          department?: string
+          full_name?: string | null
+          role?: 'Admin' | 'Manager' | 'Staff'
+          department?: 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV'
           onboarding_complete?: boolean
+          agreements?: Json | null
+          metadata?: Json | null
+          is_active?: boolean
+          last_login_at?: string | null
+          created_at?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'user_profiles_id_fkey'
+            columns: ['id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
       }
       vendors: {
         Row: {

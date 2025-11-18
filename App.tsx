@@ -13,6 +13,7 @@ import Vendors from './pages/Vendors';
 import Production from './pages/Production';
 import BOMs from './pages/BOMs';
 import Settings from './pages/Settings';
+import StockIntelligence from './pages/StockIntelligence';
 import LoginScreen from './pages/LoginScreen';
 import Toast from './components/Toast';
 import ApiDocs from './pages/ApiDocs';
@@ -28,6 +29,7 @@ import {
   useSupabasePurchaseOrders,
   useSupabaseBuildOrders,
   useSupabaseRequisitions,
+  useSupabaseUserProfiles,
 } from './hooks/useSupabaseData';
 import {
   createPurchaseOrder,
@@ -43,7 +45,6 @@ import {
 } from './hooks/useSupabaseMutations';
 import {
     mockHistoricalSales,
-    mockUsers,
     mockWatchlist,
     defaultAiConfig,
     mockArtworkFolders,
@@ -69,8 +70,11 @@ import type {
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
 import LoadingOverlay from './components/LoadingOverlay';
+import { supabase } from './lib/supabase/client';
+import { useAuth } from './lib/auth/AuthContext';
+import { usePermissions } from './hooks/usePermissions';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner';
 
 export type ToastInfo = {
   id: number;
@@ -79,7 +83,8 @@ export type ToastInfo = {
 };
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = usePersistentState<User | null>('currentUser', null);
+  const { user: currentUser, loading: authLoading, signOut: authSignOut, refreshProfile } = useAuth();
+  const permissions = usePermissions();
 
   // 🔥 LIVE DATA FROM SUPABASE (Real-time subscriptions enabled)
   const { data: inventory, loading: inventoryLoading, error: inventoryError, refetch: refetchInventory } = useSupabaseInventory();
@@ -88,10 +93,10 @@ const App: React.FC = () => {
   const { data: purchaseOrders, loading: posLoading, error: posError, refetch: refetchPOs } = useSupabasePurchaseOrders();
   const { data: buildOrders, loading: buildOrdersLoading, error: buildOrdersError, refetch: refetchBuildOrders } = useSupabaseBuildOrders();
   const { data: requisitions, loading: requisitionsLoading, error: requisitionsError, refetch: refetchRequisitions } = useSupabaseRequisitions();
+  const { data: userProfiles, loading: userProfilesLoading, refetch: refetchUserProfiles } = useSupabaseUserProfiles();
 
   // UI/Config state (keep in localStorage - not business data)
   const [historicalSales] = usePersistentState<HistoricalSale[]>('historicalSales', mockHistoricalSales);
-  const [users, setUsers] = usePersistentState<User[]>('users', mockUsers);
   const [watchlist] = usePersistentState<WatchlistItem[]>('watchlist', mockWatchlist);
   const [aiConfig, setAiConfig] = usePersistentState<AiConfig>('aiConfig', defaultAiConfig);
   const [aiSettings, setAiSettings] = usePersistentState<AiSettings>('aiSettings', getDefaultAiSettings());
@@ -110,6 +115,7 @@ const App: React.FC = () => {
   const [externalConnections, setExternalConnections] = usePersistentState<ExternalConnection[]>('externalConnections', []);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
   const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
+  const users = userProfiles;
 
   const isDataLoading =
     inventoryLoading ||
@@ -117,7 +123,8 @@ const App: React.FC = () => {
     bomsLoading ||
     posLoading ||
     buildOrdersLoading ||
-    requisitionsLoading;
+    requisitionsLoading ||
+    userProfilesLoading;
 
   useEffect(() => {
     if (!isDataLoading) {
@@ -125,25 +132,12 @@ const App: React.FC = () => {
     }
   }, [isDataLoading]);
 
-  // Lightweight URL-based routing + e2e auto-login support + Auto-Sync
+  // Lightweight URL-based routing for deep links
   useEffect(() => {
     try {
       const { pathname, search } = window.location;
-      const params = new URLSearchParams(search);
-
-      // If running e2e, auto-login a mock admin user and skip onboarding
-      if (params.get('e2e') === '1' && !currentUser) {
-        setCurrentUser({
-          id: 'e2e-admin',
-          name: 'E2E Admin',
-          email: 'e2e.admin@example.com',
-          role: 'Admin',
-          department: 'Purchasing',
-          onboardingComplete: true,
-        } as User);
-      }
-
       // Basic path-to-page mapping so tests can hit deep links like /vendors
+      const params = new URLSearchParams(search);
       const path = pathname.replace(/\/$/, '');
       const map: Record<string, Page> = {
         '': 'Dashboard',
@@ -172,8 +166,7 @@ const App: React.FC = () => {
       // No-op: best-effort only for e2e/dev
       console.warn('[App] URL routing init skipped:', err);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [currentUser, setCurrentPage]);
 
 
   const addToast = (message: string, type: ToastInfo['type'] = 'info') => {
@@ -185,19 +178,9 @@ const App: React.FC = () => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
 
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
-    // Onboarding check happens in the main render logic.
-    // If onboarding is not complete, the setup screen will be shown.
-    // If it is complete, this toast will show as they enter the dashboard.
-    if (user.onboardingComplete) {
-        addToast(`Welcome back, ${user.name}!`, 'success');
-    }
-  };
-
-  const handleLogout = () => {
-    addToast(`Goodbye, ${currentUser?.name}.`, 'info');
-    setCurrentUser(null);
+  const handleLogout = async () => {
+    addToast(`Goodbye, ${currentUser?.name ?? 'MuRP user'}.`, 'info');
+    await authSignOut();
   };
   
   const generateOrderId = () => {
@@ -572,7 +555,7 @@ const App: React.FC = () => {
     setAiSettings(settings);
     addToast('AI settings updated successfully.', 'success');
   };
-  
+
   const generateApiKey = () => {
     const newKey = `tgfmrp_live_${[...Array(32)].map(() => Math.random().toString(36)[2]).join('')}`;
     setApiKey(newKey);
@@ -584,35 +567,71 @@ const App: React.FC = () => {
     addToast('API Key has been revoked.', 'info');
   };
   
-  const handleInviteUser = (email: string, role: User['role'], department: User['department']) => {
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name: email.split('@')[0].replace('.', ' ').replace(/\b\w/g, l => l.toUpperCase()), // Generate name from email
-      email,
-      role,
-      department,
-      onboardingComplete: false,
-    };
-    setUsers(prev => [...prev, newUser]);
-    addToast(`User ${email} has been invited as a ${role}.`, 'success');
+  const handleInviteUser = async (email: string, role: User['role'], department: User['department']) => {
+    try {
+      const { error } = await supabase.functions.invoke('admin-invite', {
+        body: { email, role, department },
+      });
+      if (error) throw error;
+      addToast(`Invite sent to ${email}.`, 'success');
+      await refetchUserProfiles();
+    } catch (error: any) {
+      console.error('[Users] invite error', error);
+      addToast(error.message ?? 'Failed to send invite.', 'error');
+    }
   };
 
-  const handleUpdateUser = (updatedUser: User) => {
-    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-    addToast(`User ${updatedUser.name} has been updated.`, 'success');
+  const handleUpdateUser = async (updatedUser: User) => {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          full_name: updatedUser.name,
+          role: updatedUser.role,
+          department: updatedUser.department,
+          onboarding_complete: updatedUser.onboardingComplete ?? false,
+          agreements: updatedUser.agreements ?? {},
+          is_active: true,
+        })
+        .eq('id', updatedUser.id);
+      if (error) throw error;
+      addToast(`User ${updatedUser.name} has been updated.`, 'success');
+      await refetchUserProfiles();
+    } catch (error: any) {
+      console.error('[Users] update error', error);
+      addToast(error.message ?? 'Failed to update user.', 'error');
+    }
   };
 
-  const handleDeleteUser = (userId: string) => {
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    addToast('User has been removed.', 'info');
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ is_active: false })
+        .eq('id', userId);
+      if (error) throw error;
+      addToast('User has been deactivated.', 'info');
+      await refetchUserProfiles();
+    } catch (error: any) {
+      console.error('[Users] delete error', error);
+      addToast(error.message ?? 'Failed to deactivate user.', 'error');
+    }
   };
 
-  const handleCompleteOnboarding = (userId: string) => {
-    setUsers(prevUsers => prevUsers.map(user => 
-        user.id === userId ? { ...user, onboardingComplete: true } : user
-    ));
-    setCurrentUser(prev => prev ? { ...prev, onboardingComplete: true } : null);
-    addToast('Welcome aboard! Your account is now active.', 'success');
+  const handleCompleteOnboarding = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ onboarding_complete: true })
+        .eq('id', userId);
+      if (error) throw error;
+      await refreshProfile();
+      addToast('Welcome aboard! Your account is now active.', 'success');
+      await refetchUserProfiles();
+    } catch (error: any) {
+      console.error('[Users] onboarding error', error);
+      addToast(error.message ?? 'Failed to finalize onboarding.', 'error');
+    }
   };
 
 
@@ -628,9 +647,15 @@ const App: React.FC = () => {
   }, [requisitions, currentUser]);
   
   const approvedRequisitionsForPoGen = useMemo(() => {
-    if (currentUser?.role !== 'Admin') return [];
-    return requisitions.filter(r => r.status === 'Approved');
-  }, [requisitions, currentUser]);
+    if (!currentUser || !permissions.canManagePurchaseOrders) return [];
+    if (currentUser.role === 'Admin') {
+        return requisitions.filter(r => r.status === 'Approved');
+    }
+    if (currentUser.role === 'Manager') {
+        return requisitions.filter(r => r.status === 'Approved' && r.department === currentUser.department);
+    }
+    return [];
+  }, [requisitions, currentUser, permissions.canManagePurchaseOrders]);
 
   const navigateToArtwork = (filter: string) => {
     setArtworkFilter(filter);
@@ -694,6 +719,12 @@ const App: React.FC = () => {
                 />;
       case 'Vendors':
         return <Vendors vendors={vendors} />;
+      case 'Stock Intelligence':
+        return <StockIntelligence 
+          inventory={inventory}
+          vendors={vendors}
+          purchaseOrders={purchaseOrders}
+        />;
       case 'Production':
         return <Production buildOrders={buildOrders} onCompleteBuildOrder={handleCompleteBuildOrder} />;
       case 'BOMs':
@@ -706,6 +737,7 @@ const App: React.FC = () => {
           onNavigateToArtwork={navigateToArtwork}
           onNavigateToInventory={handleNavigateToInventory}
           onUploadArtwork={handleAddArtworkToBom}
+          onCreateRequisition={(items) => handleCreateRequisition(items, 'Manual')}
         />;
       case 'Artwork':
         return <ArtworkPage 
@@ -770,11 +802,24 @@ const App: React.FC = () => {
     }
   };
 
-  if (!currentUser) {
-    return <LoginScreen users={users} onLogin={handleLogin} />;
+  if (authLoading) {
+    return <LoadingOverlay />;
   }
 
-  if (currentUser && !currentUser.onboardingComplete) {
+  if (!currentUser) {
+    return (
+      <>
+        <LoginScreen addToast={addToast} />
+        <div className="fixed top-20 right-4 z-[60] w-full max-w-sm">
+          {toasts.map(toast => (
+            <Toast key={toast.id} {...toast} onClose={() => removeToast(toast.id)} />
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  if (!currentUser.onboardingComplete) {
       return <NewUserSetup user={currentUser} onSetupComplete={() => handleCompleteOnboarding(currentUser.id)} />;
   }
 
@@ -787,7 +832,7 @@ const App: React.FC = () => {
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         currentUser={currentUser}
         pendingRequisitionCount={pendingRequisitionCount}
-  onOpenAiAssistant={openAiAssistant}
+        onOpenAiAssistant={openAiAssistant}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -796,6 +841,7 @@ const App: React.FC = () => {
           onLogout={handleLogout}
           isGlobalLoading={isDataLoading}
           showLogo={isSidebarCollapsed}
+          devModeActive={permissions.isGodMode}
         />
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-900 p-4 sm:p-6 lg:p-8">

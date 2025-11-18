@@ -806,6 +806,39 @@ export interface AiSettings {
     estimatedMonthlyCost: number; // In USD
 }
 
+export interface RoleAccessRule {
+    canView: boolean;
+    canEdit: boolean;
+}
+
+export interface RolePermissions {
+    boms: {
+        manager: RoleAccessRule;
+        staff: RoleAccessRule;
+    };
+    purchaseOrders: {
+        managersCanCreate: boolean;
+        staffCanCreate: boolean;
+    };
+    requisitions: {
+        staffCanCreate: boolean;
+    };
+}
+
+export const defaultRolePermissions: RolePermissions = {
+    boms: {
+        manager: { canView: true, canEdit: false },
+        staff: { canView: true, canEdit: false },
+    },
+    purchaseOrders: {
+        managersCanCreate: true,
+        staffCanCreate: false,
+    },
+    requisitions: {
+        staffCanCreate: true,
+    },
+};
+
 
 export const mockWatchlist: WatchlistItem[] = [
     { id: 'watch-1', type: 'Ingredient', term: 'Neem Seed Meal', reason: 'Potential pesticide registration requirements in some states.' },

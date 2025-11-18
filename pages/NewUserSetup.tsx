@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { User } from '../types';
 import { BoxIcon, KeyIcon, MailIcon, GmailIcon } from '../components/icons';
+import { supabase } from '../lib/supabase/client';
 
 interface NewUserSetupProps {
     user: User;
@@ -11,24 +12,33 @@ const NewUserSetup: React.FC<NewUserSetupProps> = ({ user, onSetupComplete }) =>
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         if (!password || !confirmPassword) {
             setError('Please fill out both password fields.');
             return;
         }
-        if (password.length < 8) {
-            setError('Password must be at least 8 characters long.');
+        if (password.length < 12) {
+            setError('Password must be at least 12 characters long for compliance.');
             return;
         }
         if (password !== confirmPassword) {
-            setError("Passwords do not match.");
+            setError('Passwords do not match.');
             return;
         }
-        // In a real app, this would be an API call to set the password
-        onSetupComplete();
+        try {
+            setLoading(true);
+            const { error: updateError } = await supabase.auth.updateUser({ password });
+            if (updateError) throw updateError;
+            onSetupComplete();
+        } catch (err: any) {
+            setError(err.message ?? 'Failed to set password.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

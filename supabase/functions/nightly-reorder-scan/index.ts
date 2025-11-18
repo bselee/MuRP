@@ -119,13 +119,27 @@ serve(async (req) => {
       total_estimated_cost: recommendations.reduce((sum, r) => sum + r.estimated_cost, 0),
       auto_pos_created: 0,
       auto_po_vendors: [],
+      notifications_sent: 0,
     };
 
     console.log(`✅ Scan complete: ${summary.items_needing_reorder} items need reordering`);
     console.log(`   Critical: ${summary.critical_items}, High: ${summary.high_priority_items}`);
     console.log(`   Estimated cost: $${summary.total_estimated_cost.toFixed(2)}`);
 
-    // 5. Auto-create draft POs for vendors with automation enabled
+    // 5. Send notifications for critical items
+    try {
+      const notificationResult = await sendCriticalItemNotifications(supabase, recommendations);
+      summary.notifications_sent = notificationResult.sent;
+      
+      if (notificationResult.sent > 0) {
+        console.log(`📧 Sent ${notificationResult.sent} notification(s) for critical items`);
+      }
+    } catch (error: any) {
+      console.error('⚠️ Notification sending failed:', error.message);
+      // Don't fail entire job if notifications fail
+    }
+
+    // 6. Auto-create draft POs for vendors with automation enabled
     try {
       const autoPOResult = await createAutoDraftPOs(supabase);
       summary.auto_pos_created = autoPOResult.pos_created;
@@ -488,6 +502,85 @@ async function logJobComplete(
       result_summary: JSON.stringify(summary),
     })
     .eq('id', jobLogId);
+}
+
+/**
+ * Send notifications for critical stockout items
+ */
+async function sendCriticalItemNotifications(
+  supabase: any,
+  recommendations: ReorderRecommendation[]
+): Promise<{ sent: number }> {
+  const criticalItems = recommendations.filter(r => r.urgency === 'critical');
+  
+  if (criticalItems.length === 0) {
+    return { sent: 0 };
+  }
+
+  // Get notification settings
+  const { data: settings } = await supabase
+    .from('app_settings')
+    .select('setting_value')
+    .eq('setting_key', 'notification_channels')
+    .single();
+
+  const channels = settings?.setting_value || ['in-app'];
+
+  // Get admin users for notifications
+  const { data: adminUsers } = await supabase
+    .from('profiles')
+    .select('id, email, full_name')
+    .or('role.eq.admin,role.eq.manager');
+
+  if (!adminUsers || adminUsers.length === 0) {
+    return { sent: 0 };
+  }
+
+  // Create in-app notifications
+  const notifications = adminUsers.flatMap((user: any) => 
+    criticalItems.map((item: any) => ({
+      user_id: user.id,
+      title: `Critical Stock Alert: ${item.item_name}`,
+      message: `${item.item_name} (${item.inventory_sku}) will stock out in ${item.days_until_stockout} days. Current stock: ${item.current_stock}, Recommended order: ${item.recommended_quantity} units.`,
+      type: 'critical_stockout',
+      reference_type: 'reorder_queue',
+      reference_id: item.inventory_sku,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    }))
+  );
+
+  const { error: notifError } = await supabase
+    .from('notifications')
+    .insert(notifications);
+
+  if (notifError) {
+    console.error('Failed to create in-app notifications:', notifError);
+  }
+
+  // Send email notifications if enabled
+  if (channels.includes('email')) {
+    try {
+      await supabase.functions.invoke('send-notification-email', {
+        body: {
+          recipients: adminUsers.map((u: any) => u.email),
+          subject: `🚨 Critical Stock Alert: ${criticalItems.length} item(s) need immediate reordering`,
+          items: criticalItems.map((item: any) => ({
+            sku: item.inventory_sku,
+            name: item.item_name,
+            current_stock: item.current_stock,
+            days_until_stockout: item.days_until_stockout,
+            recommended_quantity: item.recommended_quantity,
+            vendor: item.vendor_name,
+          })),
+        },
+      });
+    } catch (emailError) {
+      console.error('Failed to send email notifications:', emailError);
+    }
+  }
+
+  return { sent: notifications.length };
 }
 
 /**

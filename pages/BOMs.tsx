@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork } from '../types';
+import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem } from '../types';
 import type { ComplianceStatus } from '../types/regulatory';
 import {
   PencilIcon,
@@ -27,6 +27,8 @@ import BomDetailModal from '../components/BomDetailModal';
 import ComplianceDashboard from '../components/ComplianceDashboard';
 import ComplianceDetailModal from '../components/ComplianceDetailModal';
 import EnhancedBomCard from '../components/EnhancedBomCard';
+import CreateRequisitionModal from '../components/CreateRequisitionModal';
+import { usePermissions } from '../hooks/usePermissions';
 import { useSupabaseLabels, useSupabaseComplianceRecords } from '../hooks/useSupabaseData';
 
 type ViewMode = 'card' | 'table';
@@ -42,6 +44,7 @@ interface BOMsProps {
   onNavigateToArtwork: (filter: string) => void;
   onNavigateToInventory?: (sku: string) => void;
   onUploadArtwork?: (bomId: string, artwork: Omit<Artwork, 'id'>) => void;
+  onCreateRequisition: (items: RequisitionItem[]) => void;
 }
 
 const BOMs: React.FC<BOMsProps> = ({
@@ -52,7 +55,8 @@ const BOMs: React.FC<BOMsProps> = ({
   onUpdateBom,
   onNavigateToArtwork,
   onNavigateToInventory,
-  onUploadArtwork
+  onUploadArtwork,
+  onCreateRequisition
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
@@ -62,6 +66,11 @@ const BOMs: React.FC<BOMsProps> = ({
   const [selectedComplianceStatus, setSelectedComplianceStatus] = useState<ComplianceStatus | null>(null);
   const [expandedBoms, setExpandedBoms] = useState<Set<string>>(new Set());
   const bomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [isRequisitionModalOpen, setIsRequisitionModalOpen] = useState(false);
+  const permissions = usePermissions();
+  const canViewBoms = permissions.canViewBoms;
+  const canEdit = permissions.canEditBoms;
+  const canSubmitRequisitions = permissions.canSubmitRequisition;
 
   // New UI state
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,8 +85,6 @@ const BOMs: React.FC<BOMsProps> = ({
   const [isAlertsOpen, setIsAlertsOpen] = useState(true);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [isComplianceOpen, setIsComplianceOpen] = useState(false);
-
-  const canEdit = currentUser.role === 'Admin';
 
   // Debug inventory integration
   useEffect(() => {
@@ -369,12 +376,33 @@ const BOMs: React.FC<BOMsProps> = ({
     );
   };
 
+  if (!canViewBoms) {
+    return (
+      <div className="p-8 text-center space-y-3">
+        <h1 className="text-2xl font-semibold text-white">BOM Access Restricted</h1>
+        <p className="text-gray-400 text-sm">
+          Your account does not currently have permission to manage bills of materials. Please contact an administrator if you need access.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-4 space-y-4">
       {/* Page Header */}
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold text-white tracking-tight">Bills of Materials</h1>
-        <p className="text-gray-400 mt-1">Manage product recipes, buildability, and compliance status</p>
+      <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Bills of Materials</h1>
+          <p className="text-gray-400 mt-1">Manage product recipes, buildability, and compliance status</p>
+        </div>
+        {canSubmitRequisitions && (
+          <button
+            onClick={() => setIsRequisitionModalOpen(true)}
+            className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white shadow hover:bg-indigo-700 transition-colors"
+          >
+            Submit Requisition
+          </button>
+        )}
       </header>
 
       {componentFilter && (
@@ -692,6 +720,13 @@ const BOMs: React.FC<BOMsProps> = ({
           complianceStatus={selectedComplianceStatus}
         />
       )}
+
+      <CreateRequisitionModal
+        isOpen={isRequisitionModalOpen}
+        onClose={() => setIsRequisitionModalOpen(false)}
+        inventory={inventory}
+        onCreate={onCreateRequisition}
+      />
     </div>
   );
 };

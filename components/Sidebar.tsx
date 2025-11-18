@@ -3,7 +3,8 @@
 import React from 'react';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, UsersIcon, LightBulbIcon, CogIcon, MushroomLogo, SquirrelIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, ClipboardListIcon, BotIcon, PhotoIcon, QrCodeIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, UsersIcon, LightBulbIcon, CogIcon, MushroomLogo, SquirrelIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, ClipboardListIcon, BotIcon, PhotoIcon, QrCodeIcon, ChartBarIcon } from './icons';
+import { usePermissions } from '../hooks/usePermissions';
 
 interface SidebarProps {
     currentPage: Page;
@@ -47,30 +48,66 @@ const NavItem: React.FC<{
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollapsed, onToggle, currentUser, pendingRequisitionCount, onOpenAiAssistant }) => {
     
-    type NavItemConfig = { page: Page; icon: React.ReactNode; notificationKey?: 'pendingRequisitions'; adminOnly?: boolean; managerAndUp?: boolean };
+    const permissions = usePermissions();
+    
+    type NavItemConfig = { page: Page; icon: React.ReactNode; notificationKey?: 'pendingRequisitions'; adminOnly?: boolean; managerAndUp?: boolean; isVisible?: (input: { user: User }) => boolean };
 
     const navItems: NavItemConfig[] = [
         { page: 'Dashboard', icon: <HomeIcon className="w-6 h-6" /> },
-        { page: 'Purchase Orders', icon: <DocumentTextIcon className="w-6 h-6" />, managerAndUp: true, notificationKey: 'pendingRequisitions' },
+        { 
+            page: 'Purchase Orders',
+            icon: <DocumentTextIcon className="w-6 h-6" />,
+            managerAndUp: true,
+            notificationKey: 'pendingRequisitions',
+            isVisible: ({ user }) => {
+                if (user.role === 'Admin') return true;
+                if (user.role === 'Manager') return true;
+                if (user.role === 'Staff') {
+                    return permissions.canSubmitRequisition || permissions.canManagePurchaseOrders;
+                }
+                return false;
+            }
+        },
         { page: 'Production', icon: <WrenchScrewdriverIcon className="w-6 h-6" />, managerAndUp: true },
-        { page: 'BOMs', icon: <BeakerIcon className="w-6 h-6" />, adminOnly: true },
+        { 
+            page: 'BOMs',
+            icon: <BeakerIcon className="w-6 h-6" />,
+            managerAndUp: true,
+            isVisible: () => permissions.canViewBoms
+        },
         { page: 'Artwork', icon: <PhotoIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Inventory', icon: <PackageIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Stock Intelligence', icon: <ChartBarIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Vendors', icon: <UsersIcon className="w-6 h-6" />, adminOnly: true },
         { page: 'Settings', icon: <CogIcon className="w-6 h-6" />, adminOnly: true },
     ];
     
     const getVisibleNavItems = () => {
-        if (currentUser.role === 'Admin') {
-            return navItems;
-        }
-        if (currentUser.role === 'Manager') {
-            return navItems.filter(item => !item.adminOnly);
-        }
-        if (currentUser.role === 'Staff') {
-            return navItems.filter(item => !item.adminOnly && !item.managerAndUp);
-        }
-        return [];
+        if (!currentUser) return [];
+        return navItems.filter(item => {
+            if (currentUser.role === 'Admin') {
+                return true;
+            }
+            if (currentUser.role === 'Manager') {
+                if (item.adminOnly) return false;
+            }
+            if (currentUser.role === 'Staff') {
+                if (item.adminOnly) return false;
+                if (item.managerAndUp && !item.isVisible) {
+                    return false;
+                }
+                if (item.managerAndUp && item.isVisible) {
+                    return item.isVisible({ user: currentUser });
+                }
+            }
+            if (item.isVisible) {
+                return item.isVisible({ user: currentUser });
+            }
+            if (currentUser.role === 'Staff' && item.managerAndUp) {
+                return false;
+            }
+            return true;
+        });
     };
 
     const visibleNavItems = getVisibleNavItems();

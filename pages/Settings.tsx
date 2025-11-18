@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import UserManagementPanel from '../components/UserManagementPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
@@ -11,6 +11,8 @@ import AiSettingsPanel from '../components/AiSettingsPanel';
 import SemanticSearchSettings from '../components/SemanticSearchSettings';
 import { MCPServerPanel } from '../components/MCPServerPanel';
 import DocumentTemplatesPanel from '../components/DocumentTemplatesPanel';
+import { useAuth } from '../lib/auth/AuthContext';
+import { isDevelopment } from '../lib/auth/guards';
 
 interface SettingsProps {
     currentUser: User;
@@ -53,9 +55,12 @@ const Settings: React.FC<SettingsProps> = ({
     const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
     const [isDocumentTemplatesOpen, setIsDocumentTemplatesOpen] = useState(false);
     const [isMcpServerOpen, setIsMcpServerOpen] = useState(false);
+    const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
     
     // API key visibility state
     const [showApiKey, setShowApiKey] = useState(false);
+
+    const { godMode, setGodMode, session } = useAuth();
 
   return (
     <>
@@ -80,6 +85,35 @@ const Settings: React.FC<SettingsProps> = ({
                 onUpdateUser={onUpdateUser}
                 onDeleteUser={onDeleteUser}
               />
+            </CollapsibleSection>
+          )}
+
+          {isDevelopment() && currentUser.role === 'Admin' && (
+            <CollapsibleSection
+              title="Developer Tools"
+              icon={<KeyIcon className="w-6 h-6 text-amber-300" />}
+              isOpen={isDevToolsOpen}
+              onToggle={() => setIsDevToolsOpen(!isDevToolsOpen)}
+            >
+              <div className="space-y-4">
+                <div className="bg-gray-800/60 rounded-xl border border-gray-700 p-4 text-sm text-gray-300">
+                  <p><span className="text-gray-400">Session User:</span> {session?.user?.email ?? 'None'}</p>
+                  <p><span className="text-gray-400">User ID:</span> {session?.user?.id ?? 'N/A'}</p>
+                  <p><span className="text-gray-400">God Mode:</span> {godMode ? 'Enabled' : 'Disabled'}</p>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-gray-700 bg-gray-900/60 p-4">
+                  <div>
+                    <p className="text-white font-semibold">Dev God Mode</p>
+                    <p className="text-xs text-gray-400">Bypasses auth and RLS (local only).</p>
+                  </div>
+                  <button
+                    className={`px-4 py-2 rounded-lg font-semibold ${godMode ? 'bg-red-500/20 text-red-200 border border-red-400/40' : 'bg-gray-700 text-gray-200'}`}
+                    onClick={() => setGodMode(!godMode)}
+                  >
+                    {godMode ? 'Disable' : 'Enable'}
+                  </button>
+                </div>
+              </div>
             </CollapsibleSection>
           )}
 

@@ -10,6 +10,7 @@ import CreateRequisitionModal from '../components/CreateRequisitionModal';
 import ReorderQueueDashboard from '../components/ReorderQueueDashboard';
 import DraftPOReviewSection from '../components/DraftPOReviewSection';
 import { generatePoPdf } from '../services/pdfService';
+import { usePermissions } from '../hooks/usePermissions';
 
 interface PurchaseOrdersProps {
     purchaseOrders: PurchaseOrder[];
@@ -89,10 +90,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [isRequisitionsOpen, setIsRequisitionsOpen] = useState(true);
     const [selectedPoForEmail, setSelectedPoForEmail] = useState<PurchaseOrder | null>(null);
     
+    const permissions = usePermissions();
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
     const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
 
-    const canManagePOs = currentUser.role === 'Admin';
+    const canManagePOs = permissions.canManagePurchaseOrders;
+    const canSubmitRequisitions = permissions.canSubmitRequisition;
 
     const formatPoTotal = (po: PurchaseOrder) => {
         const total = typeof po.total === 'number' ? po.total : po.items.reduce((sum, item) => sum + (item.lineTotal ?? item.quantity * (item.price ?? 0)), 0);
@@ -145,11 +148,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     </div>
                     {canManagePOs && (
                         <div className="flex w-full sm:w-auto gap-2">
-                            {currentUser.role === 'Admin' && approvedRequisitions.length > 0 && (
-                                <button
-                                    onClick={() => setIsGeneratePoModalOpen(true)}
-                                    className="relative flex-1 sm:flex-initial bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
-                                >
+                    {canManagePOs && currentUser.role !== 'Staff' && approvedRequisitions.length > 0 && (
+                        <button
+                            onClick={() => setIsGeneratePoModalOpen(true)}
+                            className="relative flex-1 sm:flex-initial bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                        >
                                     Generate from Requisitions
                                     <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs">{approvedRequisitions.length}</span>
                                 </button>
@@ -173,11 +176,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     onApprove={onApproveRequisition}
                     onReject={onRejectRequisition}
                     onCreate={() => setIsCreateReqModalOpen(true)}
+                    allowManualCreation={canSubmitRequisitions}
+                    canActOnRequisition={permissions.canApproveRequisition}
                 />
 
                 <ReorderQueueDashboard
-                    onCreatePOs={(posToCreate) => {
-                        // Create POs from reorder queue recommendations
+                    onCreatePOs={canManagePOs ? ((posToCreate) => {
                         posToCreate.forEach(po => {
                             onCreatePo({
                                 vendorId: po.vendorId,
@@ -187,7 +191,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             });
                         });
                         addToast(`Created ${posToCreate.length} purchase order(s) from reorder queue`, 'success');
-                    }}
+                    }) : undefined}
                     addToast={addToast}
                 />
 
@@ -269,12 +273,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 />
             )}
 
-            <CreateRequisitionModal 
-                isOpen={isCreateReqModalOpen}
-                onClose={() => setIsCreateReqModalOpen(false)}
-                inventory={inventory}
-                onCreate={onCreateRequisition}
-            />
+            {canSubmitRequisitions && (
+                <CreateRequisitionModal 
+                    isOpen={isCreateReqModalOpen}
+                    onClose={() => setIsCreateReqModalOpen(false)}
+                    inventory={inventory}
+                    onCreate={onCreateRequisition}
+                />
+            )}
         </>
     );
 };
@@ -300,9 +306,11 @@ interface RequisitionsSectionProps {
     onApprove: (id: string) => void;
     onReject: (id: string) => void;
     onCreate: () => void;
+    allowManualCreation: boolean;
+    canActOnRequisition: (req: InternalRequisition) => boolean;
 }
 
-const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions, currentUser, userMap, isOpen, onToggle, onApprove, onReject, onCreate }) => {
+const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions, currentUser, userMap, isOpen, onToggle, onApprove, onReject, onCreate, allowManualCreation, canActOnRequisition }) => {
 
     const displayedRequisitions = useMemo(() => {
         const sorted = [...requisitions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -315,17 +323,12 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
         [displayedRequisitions]
     );
 
-    const canTakeAction = (req: InternalRequisition) => {
-        if (req.status !== 'Pending') return false;
-        if (currentUser.role === 'Admin') return true;
-        if (currentUser.role === 'Manager' && currentUser.department === req.department) return true;
-        return false;
-    }
+    const canTakeAction = (req: InternalRequisition) => req.status === 'Pending' && canActOnRequisition(req);
 
     return (
         <CollapsibleSection title="Internal Requisitions" count={pendingCount} isOpen={isOpen} onToggle={onToggle}>
             <div className="p-4 flex justify-end">
-                {currentUser.role !== 'Admin' && (
+                {allowManualCreation && (
                     <button onClick={onCreate} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
                         Create Manual Requisition
                     </button>

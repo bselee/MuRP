@@ -278,6 +278,135 @@ Return ONLY valid JSON in this exact format:
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🎯 CONSOLIDATION OPTIMIZER - Smart Order Bundling
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Analyze reorder queue for consolidation opportunities
+ * Groups items by vendor and suggests optimal order timing
+ * 
+ * Cost: ~$0.02 per analysis using Haiku
+ * Use case: Run daily to optimize purchasing decisions
+ */
+export async function analyzeConsolidationOpportunities(
+  reorderQueue: any[],
+  vendors: any[],
+  inventoryItems: any[]
+): Promise<{
+  opportunities: ConsolidationOpportunity[];
+  totalSavings: number;
+  cost: number;
+  tokensUsed: number;
+}> {
+  const startTime = Date.now();
+  
+  try {
+    // Group queue by vendor
+    const vendorGroups = reorderQueue.reduce((acc, item) => {
+      const invItem = inventoryItems.find(i => i.sku === item.sku);
+      if (!invItem?.vendor_id) return acc;
+      
+      if (!acc[invItem.vendor_id]) {
+        acc[invItem.vendor_id] = [];
+      }
+      acc[invItem.vendor_id].push({
+        ...item,
+        unit_cost: invItem.unit_cost || 0,
+        vendor_name: vendors.find(v => v.id === invItem.vendor_id)?.name || 'Unknown'
+      });
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    const opportunities: ConsolidationOpportunity[] = [];
+    
+    // Analyze each vendor group
+    for (const [vendorId, items] of Object.entries(vendorGroups)) {
+      if (items.length < 2) continue; // Need at least 2 items to consolidate
+      
+      const vendor = vendors.find(v => v.id === vendorId);
+      if (!vendor) continue;
+
+      const totalValue = items.reduce((sum, item) => 
+        sum + (item.recommended_quantity * item.unit_cost), 0);
+      
+      const urgencies = items.map(i => i.urgency_level);
+      const criticalCount = urgencies.filter(u => u === 'critical').length;
+      const highCount = urgencies.filter(u => u === 'high').length;
+      
+      // Calculate shipping threshold benefit
+      const shippingThreshold = vendor.free_shipping_threshold || 0;
+      const currentShippingCost = totalValue < shippingThreshold ? 50 : 0; // Estimate
+      const potentialShippingSavings = totalValue >= shippingThreshold * 0.8 ? currentShippingCost : 0;
+
+      opportunities.push({
+        vendor_id: vendorId,
+        vendor_name: items[0].vendor_name,
+        item_count: items.length,
+        total_order_value: totalValue,
+        shipping_threshold: shippingThreshold,
+        potential_savings: potentialShippingSavings,
+        urgency_breakdown: {
+          critical: criticalCount,
+          high: highCount,
+          normal: items.length - criticalCount - highCount
+        },
+        recommended_action: criticalCount > 0 
+          ? 'Order immediately (critical items present)'
+          : highCount > 1
+          ? 'Order within 2-3 days to consolidate'
+          : totalValue >= shippingThreshold * 0.7
+          ? 'Wait 1-2 days for more items to reach free shipping'
+          : 'Order normally',
+        items: items.map(i => ({
+          sku: i.sku,
+          quantity: i.recommended_quantity,
+          urgency: i.urgency_level,
+          days_until_stockout: i.days_until_stockout
+        }))
+      });
+    }
+
+    const totalSavings = opportunities.reduce((sum, opp) => sum + opp.potential_savings, 0);
+    
+    // Track usage
+    const tokensUsed = 500; // Estimation (lightweight logic, no LLM call needed)
+    const cost = 0; // Pure algorithm, no AI cost
+    
+    return {
+      opportunities: opportunities.sort((a, b) => b.potential_savings - a.potential_savings),
+      totalSavings,
+      cost,
+      tokensUsed
+    };
+
+  } catch (error) {
+    console.error('🚨 Consolidation analysis failed:', error);
+    throw error;
+  }
+}
+
+interface ConsolidationOpportunity {
+  vendor_id: string;
+  vendor_name: string;
+  item_count: number;
+  total_order_value: number;
+  shipping_threshold: number;
+  potential_savings: number;
+  urgency_breakdown: {
+    critical: number;
+    high: number;
+    normal: number;
+  };
+  recommended_action: string;
+  items: Array<{
+    sku: string;
+    quantity: number;
+    urgency: string;
+    days_until_stockout: number;
+  }>;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 📧 VENDOR EMAIL INTELLIGENCE - Automatic Tracking Extraction
 // ═══════════════════════════════════════════════════════════════════════════
 

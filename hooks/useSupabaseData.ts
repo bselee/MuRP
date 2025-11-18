@@ -22,6 +22,7 @@ import type {
   InternalRequisition,
   Label,
   ComplianceRecord,
+  User,
 } from '../types';
 
 // ============================================================================
@@ -867,6 +868,51 @@ export function useSupabaseRequisitions(): UseSupabaseDataResult<InternalRequisi
   }, [fetchRequisitions]);
 
   return { data, loading, error, refetch: fetchRequisitions };
+}
+
+// ============================================================================
+// USER PROFILES
+// ============================================================================
+
+const transformProfileRow = (row: any): User => ({
+  id: row.id,
+  name: row.full_name ?? row.email,
+  email: row.email,
+  role: row.role,
+  department: row.department,
+  onboardingComplete: row.onboarding_complete,
+  agreements: row.agreements ?? {},
+  regulatoryAgreement: row.agreements?.regulatory,
+});
+
+export function useSupabaseUserProfiles(): UseSupabaseDataResult<User> {
+  const [data, setData] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchProfiles = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { data: rows, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .order('full_name');
+      if (fetchError) throw fetchError;
+      setData((rows ?? []).map(transformProfileRow));
+    } catch (err) {
+      console.error('[useSupabaseUserProfiles] Error:', err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch user profiles'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProfiles();
+  }, [fetchProfiles]);
+
+  return { data, loading, error, refetch: fetchProfiles };
 }
 
 // ============================================================================

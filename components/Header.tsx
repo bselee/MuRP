@@ -8,9 +8,10 @@ interface HeaderProps {
     onLogout: () => void;
     isGlobalLoading: boolean;
     showLogo: boolean;
+    devModeActive?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentUser, onLogout, isGlobalLoading, showLogo }) => {
+const Header: React.FC<HeaderProps> = ({ currentUser, onLogout, isGlobalLoading, showLogo, devModeActive }) => {
     return (
         <header className="h-16 bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0">
             <div className="flex items-center min-w-[120px]">
@@ -21,12 +22,17 @@ const Header: React.FC<HeaderProps> = ({ currentUser, onLogout, isGlobalLoading,
                     </div>
                 )}
             </div>
-            <div className="flex items-center space-x-4">
-                <div className="hidden sm:block">
-                    <DataSyncIndicator isGlobalLoading={isGlobalLoading} />
-                </div>
-                <button className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
-                    <BellIcon className="h-6 w-6" />
+                <div className="flex items-center space-x-4">
+                    <div className="hidden sm:block">
+                        <DataSyncIndicator isGlobalLoading={isGlobalLoading} />
+                    </div>
+                    {devModeActive && (
+                        <span className="hidden sm:inline-flex items-center rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-yellow-200">
+                            Dev Mode
+                        </span>
+                    )}
+                    <button className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
+                        <BellIcon className="h-6 w-6" />
                 </button>
                 <div className="flex items-center space-x-3">
                     <div className="text-right">
