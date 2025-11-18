@@ -399,44 +399,52 @@ ALTER TABLE reorder_queue ENABLE ROW LEVEL SECURITY;
 ALTER TABLE finale_sync_log ENABLE ROW LEVEL SECURITY;
 
 -- Allow authenticated users to read all records
+DROP POLICY IF EXISTS "Allow authenticated read purchase_orders" ON purchase_orders;
 CREATE POLICY "Allow authenticated read purchase_orders"
   ON purchase_orders FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow authenticated read purchase_order_items" ON purchase_order_items;
 CREATE POLICY "Allow authenticated read purchase_order_items"
   ON purchase_order_items FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow authenticated read reorder_queue" ON reorder_queue;
 CREATE POLICY "Allow authenticated read reorder_queue"
   ON reorder_queue FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow authenticated read finale_sync_log" ON finale_sync_log;
 CREATE POLICY "Allow authenticated read finale_sync_log"
   ON finale_sync_log FOR SELECT
   TO authenticated
   USING (true);
 
 -- Allow authenticated users to insert/update purchase orders
+DROP POLICY IF EXISTS "Allow authenticated write purchase_orders" ON purchase_orders;
 CREATE POLICY "Allow authenticated write purchase_orders"
   ON purchase_orders FOR ALL
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow authenticated write purchase_order_items" ON purchase_order_items;
 CREATE POLICY "Allow authenticated write purchase_order_items"
   ON purchase_order_items FOR ALL
   TO authenticated
   USING (true);
 
 -- Service role has full access to reorder_queue
+DROP POLICY IF EXISTS "Allow service role full access reorder_queue" ON reorder_queue;
 CREATE POLICY "Allow service role full access reorder_queue"
   ON reorder_queue FOR ALL
   TO service_role
   USING (true);
 
 -- Service role has full access to sync log
+DROP POLICY IF EXISTS "Allow service role full access finale_sync_log" ON finale_sync_log;
 CREATE POLICY "Allow service role full access finale_sync_log"
   ON finale_sync_log FOR ALL
   TO service_role
