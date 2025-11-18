@@ -1,11 +1,88 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Vendor } from '../types';
+import VendorAutomationModal from '../components/VendorAutomationModal';
+import VendorManagementModal, { type VendorConfig } from '../components/VendorManagementModal';
+import { SearchIcon, AdjustmentsHorizontalIcon } from '../components/icons';
 
 interface VendorsProps {
     vendors: Vendor[];
+    addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-const Vendors: React.FC<VendorsProps> = ({ vendors }) => {
+const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
+    const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+    const [automationModalOpen, setAutomationModalOpen] = useState(false);
+    const [isVendorManagementOpen, setIsVendorManagementOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Vendor visibility config (same as Inventory page)
+    const [vendorConfig, setVendorConfig] = useState<Record<string, VendorConfig>>(() => {
+        const saved = localStorage.getItem('vendors-page-vendor-config');
+        return saved ? JSON.parse(saved) : {};
+    });
+
+    // Save config to localStorage
+    useEffect(() => {
+        localStorage.setItem('vendors-page-vendor-config', JSON.stringify(vendorConfig));
+    }, [vendorConfig]);
+
+    const getVendorConfig = useCallback(
+        (vendorName: string): VendorConfig => {
+            const existing = vendorConfig[vendorName];
+            if (existing) return existing;
+            return {
+                name: vendorName,
+                visible: true,
+                excluded: false,
+                order: 999,
+            };
+        },
+        [vendorConfig]
+    );
+
+    const handleOpenAutomation = (vendor: Vendor) => {
+        setSelectedVendor(vendor);
+        setAutomationModalOpen(true);
+    };
+
+    const handleCloseAutomation = () => {
+        setAutomationModalOpen(false);
+        setSelectedVendor(null);
+    };
+
+    const handleSaveVendorConfig = useCallback((config: Record<string, VendorConfig>) => {
+        setVendorConfig(config);
+    }, []);
+
+    // Filter vendors based on visibility and search
+    const filteredVendors = useMemo(() => {
+        let filtered = vendors;
+
+        // Filter by visibility config
+        filtered = filtered.filter(vendor => {
+            const config = getVendorConfig(vendor.name);
+            return config.visible !== false; // Show by default if not configured
+        });
+
+        // Filter by search term
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            filtered = filtered.filter(vendor =>
+                vendor.name.toLowerCase().includes(term) ||
+                vendor.contactEmails.some(email => email.toLowerCase().includes(term)) ||
+                vendor.phone?.toLowerCase().includes(term) ||
+                vendor.city?.toLowerCase().includes(term)
+            );
+        }
+
+        return filtered;
+    }, [vendors, vendorConfig, searchTerm, getVendorConfig]);
+
+    // Get all vendor names for management modal
+    const allVendorNames = useMemo(() => {
+        return vendors.map(v => v.name).sort();
+    }, [vendors]);
+
     return (
         <div className="space-y-6">
             <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -18,6 +95,41 @@ const Vendors: React.FC<VendorsProps> = ({ vendors }) => {
                 </button>
             </header>
 
+            {/* Filter Bar */}
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 p-4">
+                <div className="flex gap-4 items-end">
+                    <div className="flex-1">
+                        <label htmlFor="search-vendors" className="block text-sm font-medium text-gray-300 mb-1">
+                            Search Vendors
+                        </label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <SearchIcon className="h-5 w-5 text-gray-400" />
+                            </div>
+                            <input
+                                id="search-vendors"
+                                type="text"
+                                placeholder="Search by name, email, phone, city..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                            />
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setIsVendorManagementOpen(true)}
+                        className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
+                        title="Show/hide vendors"
+                    >
+                        <AdjustmentsHorizontalIcon className="w-5 h-5" />
+                        <span className="hidden sm:inline">Manage Vendors</span>
+                    </button>
+                </div>
+                <div className="mt-3 text-sm text-gray-400">
+                    Showing <span className="font-semibold text-white">{filteredVendors.length}</span> of <span className="font-semibold text-white">{vendors.length}</span> vendors
+                </div>
+            </div>
+
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-700">
@@ -28,10 +140,11 @@ const Vendors: React.FC<VendorsProps> = ({ vendors }) => {
                                 <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Address</th>
                                 <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Lead Time</th>
                                 <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Source</th>
+                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Auto-PO</th>
                             </tr>
                         </thead>
                         <tbody className="bg-gray-800 divide-y divide-gray-700">
-                            {vendors.map((vendor) => (
+                            {filteredVendors.map((vendor) => (
                                 <tr key={vendor.id} className="hover:bg-gray-700/50 transition-colors duration-200">
                                     <td className="px-6 py-4">
                                         <div className="text-sm font-medium text-white">{vendor.name}</div>
@@ -103,12 +216,50 @@ const Vendors: React.FC<VendorsProps> = ({ vendors }) => {
                                             </div>
                                         )}
                                     </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                        <div className="flex items-center gap-2">
+                                            {vendor.autoPoEnabled ? (
+                                                <span className="px-2 py-1 bg-green-900/50 text-green-300 rounded-full text-xs font-medium border border-green-700">
+                                                    ✓ {vendor.autoPoThreshold || 'critical'}
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 py-1 bg-gray-700 text-gray-400 rounded-full text-xs">
+                                                    Off
+                                                </span>
+                                            )}
+                                            <button
+                                                onClick={() => handleOpenAutomation(vendor)}
+                                                className="text-indigo-400 hover:text-indigo-300 transition-colors"
+                                                title="Configure auto-PO settings"
+                                            >
+                                                ⚙️
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            {/* Automation Modal */}
+            <VendorAutomationModal
+                isOpen={automationModalOpen}
+                onClose={handleCloseAutomation}
+                vendor={selectedVendor}
+                onSave={handleCloseAutomation}
+                addToast={addToast}
+            />
+
+            {/* Vendor Management Modal (Show/Hide) */}
+            <VendorManagementModal
+                isOpen={isVendorManagementOpen}
+                onClose={() => setIsVendorManagementOpen(false)}
+                vendors={allVendorNames}
+                config={vendorConfig}
+                onSave={handleSaveVendorConfig}
+            />
         </div>
     );
 };

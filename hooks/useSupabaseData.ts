@@ -291,6 +291,12 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
         dataSource: row.data_source || undefined,
         lastSyncAt: row.last_sync_at || undefined,
         syncStatus: row.sync_status || undefined,
+        // Automation fields (from migration 023)
+        autoPoEnabled: row.auto_po_enabled || false,
+        autoPoThreshold: row.auto_po_threshold || 'critical',
+        autoSendEmail: row.auto_send_email || false,
+        isRecurringVendor: row.is_recurring_vendor || false,
+        automationNotes: row.automation_notes || '',
       }));
 
       setData(transformed);
