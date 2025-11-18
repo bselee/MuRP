@@ -43,9 +43,9 @@ CREATE TABLE IF NOT EXISTS ai_anomaly_logs (
 );
 
 -- Indexes for anomaly logs
-CREATE INDEX idx_ai_anomaly_logs_detected_at ON ai_anomaly_logs(detected_at DESC);
-CREATE INDEX idx_ai_anomaly_logs_detection_type ON ai_anomaly_logs(detection_type);
-CREATE INDEX idx_ai_anomaly_logs_critical_count ON ai_anomaly_logs(critical_count) WHERE critical_count > 0;
+CREATE INDEX IF NOT EXISTS idx_ai_anomaly_logs_detected_at ON ai_anomaly_logs(detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_anomaly_logs_detection_type ON ai_anomaly_logs(detection_type);
+CREATE INDEX IF NOT EXISTS idx_ai_anomaly_logs_critical_count ON ai_anomaly_logs(critical_count) WHERE critical_count > 0;
 
 COMMENT ON TABLE ai_anomaly_logs IS 'Stores AI-detected inventory anomalies (consumption spikes, stockouts, data errors)';
 
@@ -86,10 +86,10 @@ CREATE TABLE IF NOT EXISTS ai_vendor_email_cache (
 );
 
 -- Indexes for vendor email cache
-CREATE INDEX idx_ai_vendor_email_po_number ON ai_vendor_email_cache(po_number);
-CREATE INDEX idx_ai_vendor_email_received_at ON ai_vendor_email_cache(received_at DESC);
-CREATE INDEX idx_ai_vendor_email_extracted ON ai_vendor_email_cache(extracted) WHERE extracted = TRUE;
-CREATE INDEX idx_ai_vendor_email_applied ON ai_vendor_email_cache(applied_to_po) WHERE applied_to_po = FALSE;
+CREATE INDEX IF NOT EXISTS idx_ai_vendor_email_po_number ON ai_vendor_email_cache(po_number);
+CREATE INDEX IF NOT EXISTS idx_ai_vendor_email_received_at ON ai_vendor_email_cache(received_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_vendor_email_extracted ON ai_vendor_email_cache(extracted) WHERE extracted = TRUE;
+CREATE INDEX IF NOT EXISTS idx_ai_vendor_email_applied ON ai_vendor_email_cache(applied_to_po) WHERE applied_to_po = FALSE;
 
 COMMENT ON TABLE ai_vendor_email_cache IS 'Caches AI-extracted vendor email intelligence (tracking numbers, delivery dates)';
 
@@ -136,10 +136,10 @@ CREATE TABLE IF NOT EXISTS ai_consolidation_opportunities (
 );
 
 -- Indexes for consolidation opportunities
-CREATE INDEX idx_ai_consolidation_vendor ON ai_consolidation_opportunities(vendor_id);
-CREATE INDEX idx_ai_consolidation_status ON ai_consolidation_opportunities(status);
-CREATE INDEX idx_ai_consolidation_savings ON ai_consolidation_opportunities(potential_savings DESC);
-CREATE INDEX idx_ai_consolidation_urgency ON ai_consolidation_opportunities(urgency);
+CREATE INDEX IF NOT EXISTS idx_ai_consolidation_vendor ON ai_consolidation_opportunities(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_ai_consolidation_status ON ai_consolidation_opportunities(status);
+CREATE INDEX IF NOT EXISTS idx_ai_consolidation_savings ON ai_consolidation_opportunities(potential_savings DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_consolidation_urgency ON ai_consolidation_opportunities(urgency);
 
 COMMENT ON TABLE ai_consolidation_opportunities IS 'AI-identified order consolidation opportunities to save shipping costs';
 
@@ -195,12 +195,12 @@ CREATE TABLE IF NOT EXISTS ai_purchasing_insights (
 );
 
 -- Indexes for purchasing insights
-CREATE INDEX idx_ai_insights_type ON ai_purchasing_insights(insight_type);
-CREATE INDEX idx_ai_insights_priority ON ai_purchasing_insights(priority);
-CREATE INDEX idx_ai_insights_generated_at ON ai_purchasing_insights(generated_at DESC);
-CREATE INDEX idx_ai_insights_viewed ON ai_purchasing_insights(viewed) WHERE viewed = FALSE;
-CREATE INDEX idx_ai_insights_dismissed ON ai_purchasing_insights(dismissed) WHERE dismissed = FALSE;
-CREATE INDEX idx_ai_insights_stale ON ai_purchasing_insights(stale) WHERE stale = FALSE;
+CREATE INDEX IF NOT EXISTS idx_ai_insights_type ON ai_purchasing_insights(insight_type);
+CREATE INDEX IF NOT EXISTS idx_ai_insights_priority ON ai_purchasing_insights(priority);
+CREATE INDEX IF NOT EXISTS idx_ai_insights_generated_at ON ai_purchasing_insights(generated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_insights_viewed ON ai_purchasing_insights(viewed) WHERE viewed = FALSE;
+CREATE INDEX IF NOT EXISTS idx_ai_insights_dismissed ON ai_purchasing_insights(dismissed) WHERE dismissed = FALSE;
+CREATE INDEX IF NOT EXISTS idx_ai_insights_stale ON ai_purchasing_insights(stale) WHERE stale = FALSE;
 
 COMMENT ON TABLE ai_purchasing_insights IS 'AI-generated purchasing insights (seasonal patterns, optimization opportunities)';
 
@@ -242,8 +242,8 @@ CREATE TABLE IF NOT EXISTS ai_purchasing_costs (
 );
 
 -- Indexes for cost tracking
-CREATE INDEX idx_ai_purchasing_costs_date ON ai_purchasing_costs(date DESC);
-CREATE INDEX idx_ai_purchasing_costs_service ON ai_purchasing_costs(service_name);
+CREATE INDEX IF NOT EXISTS idx_ai_purchasing_costs_date ON ai_purchasing_costs(date DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_purchasing_costs_service ON ai_purchasing_costs(service_name);
 -- Note: Removed functional index on DATE_TRUNC('month', date) because DATE_TRUNC is not IMMUTABLE.
 -- The monthly costs view still works efficiently using the date index.
 
@@ -284,9 +284,9 @@ CREATE TABLE IF NOT EXISTS ai_job_logs (
 );
 
 -- Indexes for job logs
-CREATE INDEX idx_ai_job_logs_job_name ON ai_job_logs(job_name);
-CREATE INDEX idx_ai_job_logs_started_at ON ai_job_logs(started_at DESC);
-CREATE INDEX idx_ai_job_logs_status ON ai_job_logs(status);
+CREATE INDEX IF NOT EXISTS idx_ai_job_logs_job_name ON ai_job_logs(job_name);
+CREATE INDEX IF NOT EXISTS idx_ai_job_logs_started_at ON ai_job_logs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_job_logs_status ON ai_job_logs(status);
 
 COMMENT ON TABLE ai_job_logs IS 'Tracks execution of scheduled AI purchasing jobs';
 
@@ -423,62 +423,74 @@ ALTER TABLE ai_job_logs ENABLE ROW LEVEL SECURITY;
 
 -- Example RLS policies (adjust based on your auth setup)
 -- Allow all authenticated users to read
+DROP POLICY IF EXISTS "Allow authenticated users to read anomaly logs" ON ai_anomaly_logs;
 CREATE POLICY "Allow authenticated users to read anomaly logs"
   ON ai_anomaly_logs FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow authenticated users to read vendor emails" ON ai_vendor_email_cache;
 CREATE POLICY "Allow authenticated users to read vendor emails"
   ON ai_vendor_email_cache FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow authenticated users to read consolidation opportunities" ON ai_consolidation_opportunities;
 CREATE POLICY "Allow authenticated users to read consolidation opportunities"
   ON ai_consolidation_opportunities FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow authenticated users to read insights" ON ai_purchasing_insights;
 CREATE POLICY "Allow authenticated users to read insights"
   ON ai_purchasing_insights FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow authenticated users to read costs" ON ai_purchasing_costs;
 CREATE POLICY "Allow authenticated users to read costs"
   ON ai_purchasing_costs FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow authenticated users to read job logs" ON ai_job_logs;
 CREATE POLICY "Allow authenticated users to read job logs"
   ON ai_job_logs FOR SELECT
   TO authenticated
   USING (true);
 
 -- Allow service role to insert/update (for backend processes)
+DROP POLICY IF EXISTS "Allow service role full access to anomaly logs" ON ai_anomaly_logs;
 CREATE POLICY "Allow service role full access to anomaly logs"
   ON ai_anomaly_logs FOR ALL
   TO service_role
   USING (true);
 
+DROP POLICY IF EXISTS "Allow service role full access to vendor emails" ON ai_vendor_email_cache;
 CREATE POLICY "Allow service role full access to vendor emails"
   ON ai_vendor_email_cache FOR ALL
   TO service_role
   USING (true);
 
+DROP POLICY IF EXISTS "Allow service role full access to consolidation opportunities" ON ai_consolidation_opportunities;
 CREATE POLICY "Allow service role full access to consolidation opportunities"
   ON ai_consolidation_opportunities FOR ALL
   TO service_role
   USING (true);
 
+DROP POLICY IF EXISTS "Allow service role full access to insights" ON ai_purchasing_insights;
 CREATE POLICY "Allow service role full access to insights"
   ON ai_purchasing_insights FOR ALL
   TO service_role
   USING (true);
 
+DROP POLICY IF EXISTS "Allow service role full access to costs" ON ai_purchasing_costs;
 CREATE POLICY "Allow service role full access to costs"
   ON ai_purchasing_costs FOR ALL
   TO service_role
   USING (true);
 
+DROP POLICY IF EXISTS "Allow service role full access to job logs" ON ai_job_logs;
 CREATE POLICY "Allow service role full access to job logs"
   ON ai_job_logs FOR ALL
   TO service_role
