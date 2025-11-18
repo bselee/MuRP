@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS email_templates (
   body_template TEXT NOT NULL,
   signature TEXT,
   is_default BOOLEAN DEFAULT FALSE,
-  vendor_id VARCHAR(50) REFERENCES vendors(id) ON DELETE CASCADE, -- NULL = company-wide
+  vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE, -- NULL = company-wide
   ai_generated BOOLEAN DEFAULT FALSE,
   approved_by VARCHAR(255),
   approved_at TIMESTAMPTZ,
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS pdf_templates (
   show_tax BOOLEAN DEFAULT TRUE,
   font_family VARCHAR(50) DEFAULT 'helvetica',
   is_default BOOLEAN DEFAULT FALSE,
-  vendor_id VARCHAR(50) REFERENCES vendors(id) ON DELETE CASCADE, -- NULL = company-wide
+  vendor_id UUID REFERENCES vendors(id) ON DELETE CASCADE, -- NULL = company-wide
   ai_generated BOOLEAN DEFAULT FALSE,
   approved_by VARCHAR(255),
   approved_at TIMESTAMPTZ,
