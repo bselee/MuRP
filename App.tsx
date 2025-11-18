@@ -20,6 +20,8 @@ import ApiDocs from './pages/ApiDocs';
 import ArtworkPage from './pages/Artwork';
 import NewUserSetup from './pages/NewUserSetup';
 import ManualLabelScanner from './components/ManualLabelScanner';
+import AuthCallback from './pages/AuthCallback';
+import ResetPassword from './pages/ResetPassword';
 import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
 import {
@@ -801,6 +803,34 @@ const App: React.FC = () => {
         />;
     }
   };
+
+  // Handle auth routes (email confirmation, password reset) before auth checks
+  const currentPath = window.location.pathname;
+  if (currentPath === '/auth/callback') {
+    return (
+      <>
+        <AuthCallback addToast={addToast} />
+        <div className="fixed top-20 right-4 z-[60] w-full max-w-sm">
+          {toasts.map(toast => (
+            <Toast key={toast.id} {...toast} onClose={() => removeToast(toast.id)} />
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  if (currentPath === '/reset-password') {
+    return (
+      <>
+        <ResetPassword addToast={addToast} />
+        <div className="fixed top-20 right-4 z-[60] w-full max-w-sm">
+          {toasts.map(toast => (
+            <Toast key={toast.id} {...toast} onClose={() => removeToast(toast.id)} />
+          ))}
+        </div>
+      </>
+    );
+  }
 
   if (authLoading) {
     return <LoadingOverlay />;
