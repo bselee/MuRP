@@ -145,7 +145,7 @@ const SortableHeader: React.FC<{
     const direction = isSorted ? sortConfig?.direction : undefined;
 
     return (
-        <th className={`px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${className || ''}`}>
+        <th className={`px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${className || ''}`}>
             <button className="flex items-center gap-2 group" onClick={() => requestSort(sortKey)}>
                 {title}
                 <span className={`transition-opacity ${isSorted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
@@ -1068,7 +1068,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         const widthClass = COLUMN_WIDTH_CLASSES[col.key] || '';
                                         if (!col.sortable) {
                                             return (
-                                                <th key={col.key} className={`px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${widthClass}`}>
+                                                <th key={col.key} className={`px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${widthClass}`}>
                                                     {col.label}
                                                 </th>
                                             );
@@ -1099,7 +1099,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                 switch (col.key) {
                                                     case 'sku':
                                                         return (
-                                                            <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm font-mono ${widthClass}`}>
+                                                            <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm font-mono ${widthClass}`}>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-white font-bold">{item.sku}</span>
                                                                     {bomCount > 0 && (
@@ -1129,7 +1129,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     case 'itemType':
                                                         return (
-                                                            <td key={col.key} className={`px-4 py-2 whitespace-nowrap text-sm ${widthClass}`}>
+                                                            <td key={col.key} className={`px-4 py-3 whitespace-nowrap text-sm ${widthClass}`}>
                                                                 {insight ? (
                                                                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${itemTypeStyles[insight.itemType].className}`}>
                                                                         {itemTypeStyles[insight.itemType].label}
@@ -1141,7 +1141,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     case 'name':
                                                         return (
-                                                            <td key={col.key} className={`px-4 py-2 text-sm text-white max-w-xs group relative ${widthClass}`}>
+                                                            <td key={col.key} className={`px-4 py-3 text-sm text-white max-w-xs group relative ${widthClass}`}>
                                                                 <span className="font-medium truncate block">
                                                                     {item.name}
                                                                 </span>
@@ -1154,27 +1154,27 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         const normalizedCategory = normalizeCategory(item.category);
                                                         const prettyCategory = categoryLabelMap.get(normalizedCategory) || formatCategoryLabel(normalizedCategory);
                                                         return (
-                                                            <td key={col.key} className={`px-4 py-2 whitespace-nowrap text-sm text-gray-300 truncate ${widthClass}`} title={normalizedCategory}>
+                                                            <td key={col.key} className={`px-4 py-3 whitespace-nowrap text-sm text-gray-300 truncate ${widthClass}`} title={normalizedCategory}>
                                                                 {prettyCategory}
                                                             </td>
                                                         );
                                                     }
                                                     case 'stock':
                                                         return (
-                                                            <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm text-white ${widthClass}`}>
+                                                            <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-white ${widthClass}`}>
                                                                 <div className="mb-1 font-semibold">{item.stock.toLocaleString()}</div>
                                                                 <StockIndicator item={item} />
                                                             </td>
                                                         );
                                                     case 'onOrder':
-                                                        return <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm text-gray-300 ${widthClass}`}>{item.onOrder.toLocaleString()}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 ${widthClass}`}>{item.onOrder.toLocaleString()}</td>;
                                                     case 'reorderPoint':
-                                                        return <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm text-gray-300 ${widthClass}`}>{item.reorderPoint.toLocaleString()}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 ${widthClass}`}>{item.reorderPoint.toLocaleString()}</td>;
                                                     case 'vendor':
-                                                        return <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm text-gray-300 truncate ${widthClass}`} title={vendor || 'N/A'}>{vendor || 'N/A'}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 truncate ${widthClass}`} title={vendor || 'N/A'}>{vendor || 'N/A'}</td>;
                                                     case 'status':
                                                         return (
-                                                            <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm ${widthClass}`}>
+                                                            <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm ${widthClass}`}>
                                                                 <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                                                     stockStatus === 'In Stock' ? 'bg-green-500/20 text-green-400' :
                                                                     stockStatus === 'Low Stock' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -1194,7 +1194,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                             : 100;
                                                         const breakdown = insight?.demandBreakdown;
                                                         return (
-                                                            <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm ${widthClass}`}>
+                                                            <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm ${widthClass}`}>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
                                                                         {runwayValue}
@@ -1229,15 +1229,15 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     }
                                                     case 'salesVelocity':
-                                                        return <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
                                                     case 'sales30Days':
-                                                        return <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales30Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales30Days || 0}</td>;
                                                     case 'sales60Days':
-                                                        return <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales60Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales60Days || 0}</td>;
                                                     case 'sales90Days':
-                                                        return <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales90Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales90Days || 0}</td>;
                                                     case 'unitCost':
-                                                        return <td key={col.key} className={`px-6 py-2 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>${item.unitCost?.toFixed(2) || '0.00'}</td>;
+                                                        return <td key={col.key} className={`px-6 py-3 whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>${item.unitCost?.toFixed(2) || '0.00'}</td>;
                                                     default:
                                                         return null;
                                                 }
