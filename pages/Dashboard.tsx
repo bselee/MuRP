@@ -143,8 +143,19 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
-        <p className="text-gray-400 mt-1">Welcome back, here's your company-wide operations snapshot.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
+            <p className="text-gray-400 mt-1">Welcome back, here's your company-wide operations snapshot.</p>
+          </div>
+          <button
+            onClick={() => setCurrentPage('Purchase Orders')}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-colors flex items-center gap-2"
+          >
+            <ClipboardDocumentListIcon className="w-5 h-5" />
+            View Reorder Queue
+          </button>
+        </div>
       </header>
       
       <section>

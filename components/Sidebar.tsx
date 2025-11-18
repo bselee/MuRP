@@ -51,7 +51,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
 
     const navItems: NavItemConfig[] = [
         { page: 'Dashboard', icon: <HomeIcon className="w-6 h-6" /> },
-        { page: 'Purchase Orders', icon: <DocumentTextIcon className="w-6 h-6" />, adminOnly: true, notificationKey: 'pendingRequisitions' },
+        { page: 'Purchase Orders', icon: <DocumentTextIcon className="w-6 h-6" />, managerAndUp: true, notificationKey: 'pendingRequisitions' },
         { page: 'Production', icon: <WrenchScrewdriverIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'BOMs', icon: <BeakerIcon className="w-6 h-6" />, adminOnly: true },
         { page: 'Artwork', icon: <PhotoIcon className="w-6 h-6" />, managerAndUp: true },
