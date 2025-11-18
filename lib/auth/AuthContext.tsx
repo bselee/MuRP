@@ -73,9 +73,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = useCallback(async (userId?: string | null) => {
     if (!userId) {
+      console.log('[Auth] fetchProfile: no userId provided');
       setUser(null);
       return;
     }
+    console.log('[Auth] Fetching profile for user:', userId);
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
@@ -88,8 +90,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     if (data) {
+      console.log('[Auth] Profile loaded successfully:', data);
       setUser(transformProfile(data));
     } else {
+      console.warn('[Auth] No user_profiles row found for user:', userId);
       setUser(null);
     }
   }, []);
@@ -136,11 +140,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [session, godMode]);
 
   const signIn = useCallback(async ({ email, password }: { email: string; password: string }) => {
+    console.log('[Auth] Attempting sign in for:', email);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       console.error('[Auth] signIn error:', error);
       return { error: error.message };
     }
+    console.log('[Auth] Sign in successful, session will update via listener');
     return {};
   }, []);
 
