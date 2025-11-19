@@ -31,10 +31,10 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
   const { inventory, boms, requisitions, users, currentUser, setCurrentPage } = props;
   
   const [openSections, setOpenSections] = useState({
-    buildability: true,
-    shortages: true,
-    renewals: true,
-    requisitions: true,
+    buildability: false,
+    shortages: false,
+    renewals: false,
+    requisitions: false,
     todos: false,
     forecast: false,
   });
