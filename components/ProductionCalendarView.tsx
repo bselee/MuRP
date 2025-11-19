@@ -9,11 +9,26 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { getGoogleCalendarService, type BuildCalendarEvent } from '../services/googleCalendarService';
+// import { getGoogleCalendarService, type BuildCalendarEvent } from '../services/googleCalendarService'; // Disabled - browser compatibility
 import { CalendarIcon, ClockIcon, ExclamationTriangleIcon, CheckCircleIcon, XMarkIcon } from '../components/icons';
 import type { BuildOrder, MaterialRequirement, BillOfMaterials, InventoryItem, Vendor } from '../types';
 
 const localizer = momentLocalizer(moment);
+
+interface BuildCalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  description?: string;
+  materials?: Array<{
+    component_name: string;
+    quantity: number;
+    unit: string;
+    vendor: string;
+    cost: number;
+  }>;
+}
 
 interface CalendarBuildEvent {
   id: string;
@@ -62,9 +77,9 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
   const loadGoogleCalendarEvents = async () => {
     try {
       setIsLoadingGoogle(true);
-      const calendarService = getGoogleCalendarService();
-      const events = await calendarService.getUpcomingBuilds(90); // Next 90 days
-      setGoogleEvents(events);
+      // Temporarily disabled Google Calendar sync - will implement via edge functions
+      console.log('Google Calendar sync temporarily disabled');
+      setGoogleEvents([]);
     } catch (error) {
       console.error('Error loading Google Calendar events:', error);
     } finally {
@@ -137,31 +152,9 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
   // Sync with Google Calendar
   const handleSyncWithGoogle = async (buildOrder: BuildOrder) => {
     try {
-      const calendarService = getGoogleCalendarService();
-      
-      if (buildOrder.calendarEventId) {
-        // Update existing event
-        const success = await calendarService.updateBuildEvent(buildOrder.calendarEventId, buildOrder);
-        if (success) {
-          addToast('Calendar event updated', 'success');
-        } else {
-          addToast('Failed to update calendar event', 'error');
-        }
-      } else {
-        // Create new event
-        const eventId = await calendarService.createBuildEvent(buildOrder);
-        if (eventId) {
-          // Update build order with calendar event ID
-          const updatedBuildOrder = { ...buildOrder, calendarEventId: eventId };
-          onUpdateBuildOrder(updatedBuildOrder);
-          addToast('Calendar event created', 'success');
-        } else {
-          addToast('Failed to create calendar event', 'error');
-        }
-      }
-      
-      // Reload Google events
-      await loadGoogleCalendarEvents();
+      // Temporarily disabled Google Calendar sync
+      console.log('Google Calendar sync temporarily disabled for build order:', buildOrder.id);
+      addToast('Google Calendar sync temporarily unavailable - coming soon!', 'info');
     } catch (error) {
       console.error('Error syncing with Google Calendar:', error);
       addToast('Error syncing with Google Calendar', 'error');
