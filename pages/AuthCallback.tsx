@@ -58,6 +58,28 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
         // Ensure profile exists using server function
         await supabase.rpc('ensure_user_profile');
 
+        // Store OAuth tokens for Google Calendar integration
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.provider_token && session?.user) {
+          // Save OAuth tokens to user_oauth_tokens table for calendar integration
+          const expiresAt = session.expires_at
+            ? new Date(session.expires_at * 1000).toISOString()
+            : null;
+
+          await supabase
+            .from('user_oauth_tokens')
+            .upsert({
+              user_id: session.user.id,
+              provider: 'google',
+              access_token: session.provider_token,
+              refresh_token: session.provider_refresh_token || null,
+              expires_at: expiresAt,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'user_id,provider',
+            });
+        }
+
         setStatus('success');
         addToast('Authentication successful! Welcome to MuRP.', 'success');
 
