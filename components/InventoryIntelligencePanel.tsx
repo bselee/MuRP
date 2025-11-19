@@ -46,7 +46,7 @@ interface InventoryIntelligencePanelProps {
   historicalSales: HistoricalSale[];
   vendors: Vendor[];
   purchaseOrders: PurchaseOrder[];
-  onCreateRequisition: (items: RequisitionItem[], source: 'Manual' | 'System') => void;
+  onCreateRequisition: (items: RequisitionItem[], source: 'Manual' | 'System', priority?: 'critical' | 'high' | 'medium' | 'low') => void;
   onCreateBuildOrder: (sku: string, name: string, quantity: number) => void;
   aiConfig: AiConfig;
 }
@@ -237,6 +237,13 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
     if (!item) return;
 
     const quantity = item.moq || Math.ceil(shortage.shortfall * 1.5);
+
+    // Determine priority based on number of products blocked
+    let priority: 'critical' | 'high' | 'medium' | 'low' = 'medium';
+    if (shortage.blocksProducts.length >= 3) priority = 'critical';
+    else if (shortage.blocksProducts.length >= 2) priority = 'high';
+    else priority = 'medium';
+
     onCreateRequisition(
       [{
         sku: shortage.sku,
@@ -244,7 +251,8 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
         quantity,
         reason: `Critical shortage blocking ${shortage.blocksProducts.length} product(s)`
       }],
-      'Manual'
+      'Manual',
+      priority
     );
   };
 
@@ -452,6 +460,10 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
                               if (!compItem) return;
 
                               const quantity = compItem.moq || Math.ceil(comp.quantity * 1.5);
+
+                              // Set priority to critical for out of stock, high for blocked
+                              const priority = product.currentStock === 0 ? 'critical' : 'high';
+
                               onCreateRequisition(
                                 [{
                                   sku: comp.sku,
@@ -459,7 +471,8 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
                                   quantity,
                                   reason: `Blocking production of ${product.name}`
                                 }],
-                                'Manual'
+                                'Manual',
+                                priority
                               );
                             }}
                             className="px-2 py-1 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"

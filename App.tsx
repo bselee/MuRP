@@ -556,7 +556,11 @@ const App: React.FC = () => {
     addToast(`Folder "${name}" created successfully.`, 'success');
   };
 
-  const handleCreateRequisition = async (items: RequisitionItem[], source: 'Manual' | 'System' = 'Manual') => {
+  const handleCreateRequisition = async (
+    items: RequisitionItem[],
+    source: 'Manual' | 'System' = 'Manual',
+    priority?: 'critical' | 'high' | 'medium' | 'low'
+  ) => {
     const newReq: InternalRequisition = {
       id: `REQ-${new Date().getFullYear()}-${(requisitions.length + 1).toString().padStart(3, '0')}`,
       requesterId: source === 'Manual' ? currentUser!.id : 'SYSTEM',
@@ -565,6 +569,7 @@ const App: React.FC = () => {
       status: 'Pending',
       source,
       items,
+      priority: priority || 'medium', // Default to medium if not specified
     };
 
     // 🔥 Save to Supabase

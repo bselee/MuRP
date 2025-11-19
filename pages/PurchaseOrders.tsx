@@ -298,6 +298,17 @@ const ReqStatusBadge: React.FC<{ status: InternalRequisition['status'] }> = ({ s
     return <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border ${statusConfig[status]}`}>{status}</span>;
 };
 
+const PriorityBadge: React.FC<{ priority?: 'critical' | 'high' | 'medium' | 'low' }> = ({ priority = 'medium' }) => {
+    const priorityConfig = {
+      critical: { label: 'Critical', className: 'bg-red-500/20 text-red-400 border-red-500/30' },
+      high: { label: 'High', className: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+      medium: { label: 'Medium', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+      low: { label: 'Low', className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+    };
+    const config = priorityConfig[priority];
+    return <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border ${config.className}`}>{config.label}</span>;
+};
+
 interface RequisitionsSectionProps {
     requisitions: InternalRequisition[];
     currentUser: User;
@@ -312,15 +323,34 @@ interface RequisitionsSectionProps {
 }
 
 const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions, currentUser, userMap, isOpen, onToggle, onApprove, onReject, onCreate, allowManualCreation, canActOnRequisition }) => {
+    const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
 
     const displayedRequisitions = useMemo(() => {
-        const sorted = [...requisitions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        if (currentUser.role === 'Admin') return sorted;
-        return sorted.filter(r => r.department === currentUser.department);
-    }, [requisitions, currentUser]);
+        let filtered = requisitions;
 
-    const pendingCount = useMemo(() => 
-        displayedRequisitions.filter(r => r.status === 'Pending').length, 
+        // Filter by view mode
+        if (viewMode === 'mine') {
+            filtered = requisitions.filter(r => r.requesterId === currentUser.id);
+        } else if (currentUser.role !== 'Admin') {
+            // Non-admins in "all" mode only see their department
+            filtered = requisitions.filter(r => r.department === currentUser.department);
+        }
+
+        // Sort by priority (critical first) then by date
+        return [...filtered].sort((a, b) => {
+            const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+            const aPriority = a.priority || 'medium';
+            const bPriority = b.priority || 'medium';
+
+            if (priorityOrder[aPriority] !== priorityOrder[bPriority]) {
+                return priorityOrder[aPriority] - priorityOrder[bPriority];
+            }
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+    }, [requisitions, currentUser, viewMode]);
+
+    const pendingCount = useMemo(() =>
+        displayedRequisitions.filter(r => r.status === 'Pending').length,
         [displayedRequisitions]
     );
 
@@ -328,7 +358,29 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
 
     return (
         <CollapsibleSection title="Internal Requisitions" count={pendingCount} isOpen={isOpen} onToggle={onToggle}>
-            <div className="p-4 flex justify-end">
+            <div className="p-4 flex justify-between items-center">
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setViewMode('all')}
+                        className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                            viewMode === 'all'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }`}
+                    >
+                        All Requisitions
+                    </button>
+                    <button
+                        onClick={() => setViewMode('mine')}
+                        className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                            viewMode === 'mine'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }`}
+                    >
+                        My Requisitions
+                    </button>
+                </div>
                 {allowManualCreation && (
                     <button onClick={onCreate} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
                         Create Manual Requisition
@@ -339,6 +391,7 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
                 <table className="min-w-full divide-y divide-gray-700">
                     <thead className="bg-gray-800/50">
                         <tr>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Priority</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Req ID</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Requester</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Department</th>
@@ -351,11 +404,12 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
                     <tbody className="bg-gray-800 divide-y divide-gray-700">
                         {displayedRequisitions.map(req => (
                             <tr key={req.id}>
+                                <td className="px-6 py-1 whitespace-nowrap"><PriorityBadge priority={req.priority} /></td>
                                 <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-indigo-400">{req.id}</td>
                                 <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">
                                     {req.source === 'System' ? (
                                         <div className="flex items-center gap-2" title="Auto-generated by AI Planning Insights based on demand forecast">
-                                            <BotIcon className="w-4 h-4 text-indigo-400"/> 
+                                            <BotIcon className="w-4 h-4 text-indigo-400"/>
                                             <span className="text-indigo-300 font-semibold">AI Generated</span>
                                         </div>
                                     ) : (userMap.get(req.requesterId!) || 'Unknown User')}

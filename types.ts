@@ -777,6 +777,7 @@ export interface InternalRequisition {
     createdAt: string;
     status: 'Pending' | 'Approved' | 'Rejected' | 'Ordered';
     items: RequisitionItem[];
+    priority?: 'critical' | 'high' | 'medium' | 'low'; // Priority level for purchasing
 }
 
 export interface ExternalConnection {
