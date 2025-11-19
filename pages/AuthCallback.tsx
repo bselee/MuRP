@@ -13,29 +13,42 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get the code and other params from URL
+        // Check URL parameters for errors or hash fragments
         const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
-        const error = params.get('error');
-        const errorDescription = params.get('error_description');
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+        const error = params.get('error') || hashParams.get('error');
+        const errorDescription = params.get('error_description') || hashParams.get('error_description');
 
         if (error) {
           throw new Error(errorDescription || error);
         }
 
-        if (!code) {
-          throw new Error('No verification code found in URL');
+        // For OAuth flows, Supabase handles the callback automatically
+        // We just need to check if we have a session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          throw sessionError;
         }
 
-        // Exchange the code for a session
-        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (!session) {
+          // No session yet - might be email confirmation flow
+          const code = params.get('code');
+          if (code) {
+            // This is an email confirmation, exchange code for session
+            const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-        if (exchangeError) {
-          throw exchangeError;
-        }
+            if (exchangeError) {
+              throw exchangeError;
+            }
 
-        if (!data.session) {
-          throw new Error('Failed to create session');
+            if (!data.session) {
+              throw new Error('Failed to create session');
+            }
+          } else {
+            throw new Error('No active session found');
+          }
         }
 
         // Ensure profile exists using server function (handles race condition)
@@ -63,7 +76,7 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-slate-900">
         <div className="text-center">
           <LoadingOverlay />
-          <p className="mt-4 text-gray-300">Confirming your email...</p>
+          <p className="mt-4 text-gray-300">Completing authentication...</p>
         </div>
       </div>
     );
