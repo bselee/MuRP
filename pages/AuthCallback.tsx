@@ -13,99 +13,75 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get the code and other params from URL
+        // Log full URL for debugging
+        console.log('[AuthCallback] Full URL:', window.location.href);
+        console.log('[AuthCallback] Search:', window.location.search);
+        console.log('[AuthCallback] Hash:', window.location.hash);
+
+        // Check URL parameters for errors or hash fragments
         const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
-        const error = params.get('error');
-        const errorDescription = params.get('error_description');
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+        const error = params.get('error') || hashParams.get('error');
+        const errorDescription = params.get('error_description') || hashParams.get('error_description');
 
         if (error) {
           throw new Error(errorDescription || error);
         }
 
-        if (!code) {
-          throw new Error('No verification code found in URL');
-        }
+        // Check for code in both query params and hash
+        const code = params.get('code') || hashParams.get('code');
+        const accessToken = hashParams.get('access_token');
 
-        // Exchange the code for a session
-        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        console.log('[AuthCallback] Code:', code ? 'found' : 'not found');
+        console.log('[AuthCallback] Access token:', accessToken ? 'found' : 'not found');
 
-        if (exchangeError) {
-          throw exchangeError;
-        }
+        if (code) {
+          console.log('[AuthCallback] Exchanging code for session');
+          // PKCE flow - exchange code for session
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-        if (data.session) {
-          // Wait for user profile to be created by database trigger
-          // This is important for OAuth flows where profile creation happens async
-          let profile = null;
-          let attempts = 0;
-          const maxAttempts = 10;
-
-          while (!profile && attempts < maxAttempts) {
-            const { data: profileData, error: profileError } = await supabase
-              .from('user_profiles')
-              .select('*')
-              .eq('id', data.session.user.id)
-              .maybeSingle();
-
-            if (profileData) {
-              profile = profileData;
-              break;
-            }
-
-            if (profileError && profileError.code !== 'PGRST116') {
-              // PGRST116 is "no rows returned", which is expected during the wait
-              console.error('[AuthCallback] Error fetching profile:', profileError);
-            }
-
-            attempts++;
-            if (attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
+          if (exchangeError) {
+            throw exchangeError;
           }
 
-          if (!profile) {
-            console.warn('[AuthCallback] Profile not found after waiting, creating via server function');
-
-            // Call server-side function to create profile (bypasses RLS)
-            const { data: ensuredProfile, error: ensureError } = await supabase.rpc('ensure_user_profile');
-
-            if (ensureError) {
-              console.error('[AuthCallback] Failed to ensure profile:', ensureError);
-              // Continue anyway - AuthContext has its own retry logic
-            } else {
-              console.log('[AuthCallback] Profile created successfully:', ensuredProfile);
-              profile = ensuredProfile;
-            }
+          if (!data.session) {
+            throw new Error('Failed to create session from code');
           }
-
-          // Mark user as onboarded if profile exists (already done by ensure_user_profile function)
-          if (profile && !profile.onboarding_complete) {
-            const { error: updateError } = await supabase
-              .from('user_profiles')
-              .update({ onboarding_complete: true })
-              .eq('id', data.session.user.id);
-
-            if (updateError) {
-              console.error('[AuthCallback] Failed to mark onboarding complete:', updateError);
-            }
-          }
-
-          setStatus('success');
-          addToast('Authentication successful! Welcome to MuRP.', 'success');
-
-          // Redirect to dashboard after a short delay
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 1500);
+        } else if (accessToken) {
+          console.log('[AuthCallback] Implicit flow detected, waiting for Supabase to process hash');
+          // Implicit flow - Supabase processes hash automatically
+          await new Promise(resolve => setTimeout(resolve, 1000));
         } else {
-          throw new Error('Failed to create session');
+          console.log('[AuthCallback] No code or token, checking for existing session');
+          // No code or token - check if session already exists
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+          if (sessionError) {
+            throw sessionError;
+          }
+
+          if (!session) {
+            throw new Error('No authentication data found');
+          }
         }
+
+        // Ensure profile exists using server function
+        console.log('[AuthCallback] Ensuring user profile exists');
+        await supabase.rpc('ensure_user_profile');
+
+        setStatus('success');
+        addToast('Authentication successful! Welcome to MuRP.', 'success');
+
+        // Redirect to dashboard
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
       } catch (err: any) {
         console.error('[AuthCallback] Error:', err);
         setStatus('error');
-        setErrorMessage(err.message || 'Failed to confirm email');
-        addToast(`Email confirmation failed: ${err.message}`, 'error');
+        setErrorMessage(err.message || 'Authentication failed');
+        addToast(`Authentication failed: ${err.message}`, 'error');
       }
     };
 
@@ -117,7 +93,7 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-slate-900">
         <div className="text-center">
           <LoadingOverlay />
-          <p className="mt-4 text-gray-300">Confirming your email...</p>
+          <p className="mt-4 text-gray-300">Completing authentication...</p>
         </div>
       </div>
     );
