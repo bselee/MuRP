@@ -28,18 +28,51 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = (props) => {
   const { inventory, boms, requisitions, users, currentUser, setCurrentPage } = props;
-  
+
   const [openSections, setOpenSections] = useState({
+    production: false,
     buildability: false,
     shortages: false,
     renewals: false,
     requisitions: false,
     todos: false,
-    forecast: false,
   });
+
+  // Load section order from localStorage or use default
+  const defaultOrder = ['production', 'buildability', 'shortages', 'renewals', 'requisitions', 'todos'];
+  const [sectionOrder, setSectionOrder] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dashboardSectionOrder');
+    return saved ? JSON.parse(saved) : defaultOrder;
+  });
+
+  const [draggedSection, setDraggedSection] = useState<string | null>(null);
 
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections(prev => ({...prev, [section]: !prev[section]}));
+  };
+
+  // Drag-and-drop handlers
+  const handleDragStart = (section: string) => {
+    setDraggedSection(section);
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetSection: string) => {
+    e.preventDefault();
+    if (!draggedSection || draggedSection === targetSection) return;
+
+    const newOrder = [...sectionOrder];
+    const draggedIndex = newOrder.indexOf(draggedSection);
+    const targetIndex = newOrder.indexOf(targetSection);
+
+    newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, draggedSection);
+
+    setSectionOrder(newOrder);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedSection(null);
+    localStorage.setItem('dashboardSectionOrder', JSON.stringify(sectionOrder));
   };
 
   const handleCardClick = (sectionId: keyof typeof openSections) => {
@@ -139,13 +172,65 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       </div>
   );
 
+  // Define all sections with their content
+  const sections = useMemo(() => ({
+    production: {
+      title: 'Master Production & Planning',
+      icon: <ChartBarIcon className="w-6 h-6 text-purple-400" />,
+      content: (
+        <InventoryIntelligencePanel
+          boms={props.boms}
+          inventory={props.inventory}
+          historicalSales={props.historicalSales}
+          vendors={props.vendors}
+          purchaseOrders={props.purchaseOrders}
+          onCreateRequisition={props.onCreateRequisition}
+          onCreateBuildOrder={props.onCreateBuildOrder}
+          aiConfig={props.aiConfig}
+        />
+      ),
+    },
+    buildability: {
+      title: 'Buildability Status',
+      icon: <CheckCircleIcon className="w-6 h-6 text-green-400" />,
+      content: <BuildabilityTable data={buildabilityData} />,
+    },
+    shortages: {
+      title: 'Critical Shortages',
+      icon: <ExclamationCircleIcon className="w-6 h-6 text-red-400" />,
+      content: criticalShortagesContent,
+    },
+    renewals: {
+      title: 'Registration Renewal Alerts',
+      icon: <BellIcon className="w-6 h-6 text-orange-400" />,
+      content: (
+        <RenewalAlertsWidget
+          boms={boms}
+          onViewDetails={(bomId) => {
+            setCurrentPage('BOMs');
+          }}
+        />
+      ),
+    },
+    requisitions: {
+      title: 'Pending Requisitions',
+      icon: <ClipboardListIcon className="w-6 h-6 text-yellow-400" />,
+      content: pendingRequisitionsContent,
+    },
+    todos: {
+      title: 'Compliance & Artwork Todos',
+      icon: <BeakerIcon className="w-6 h-6 text-blue-400" />,
+      content: todosContent,
+    },
+  }), [props, buildabilityData, criticalShortagesContent, pendingRequisitionsContent, todosContent, boms, setCurrentPage]);
+
   return (
     <div className="space-y-8">
       <header>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
-            <p className="text-gray-400 mt-1">Welcome back, here's your company-wide operations snapshot.</p>
+            <p className="text-gray-400 mt-1">Welcome back, here's your company-wide operations snapshot. <span className="text-xs text-gray-500">(Drag sections to reorder)</span></p>
           </div>
           <button
             onClick={() => setCurrentPage('Purchase Orders')}
@@ -163,86 +248,32 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       </section>
       
       <div className="space-y-6">
-        <CollapsibleSection
-          id="buildability"
-          title="Buildability Status"
-          icon={<CheckCircleIcon className="w-6 h-6 text-green-400"/>}
-          variant="card"
-          isOpen={openSections.buildability}
-          onToggle={() => toggleSection('buildability')}
-        >
-          <BuildabilityTable data={buildabilityData} />
-        </CollapsibleSection>
-        
-        <CollapsibleSection
-          id="shortages"
-          title="Critical Shortages"
-          icon={<ExclamationCircleIcon className="w-6 h-6 text-red-400"/>}
-          variant="card"
-          isOpen={openSections.shortages}
-          onToggle={() => toggleSection('shortages')}
-        >
-          {criticalShortagesContent}
-        </CollapsibleSection>
+        {sectionOrder.map((sectionId) => {
+          const section = sections[sectionId as keyof typeof sections];
+          if (!section) return null;
 
-        <CollapsibleSection
-          id="renewals"
-          title="Registration Renewal Alerts"
-          icon={<BellIcon className="w-6 h-6 text-orange-400"/>}
-          variant="card"
-          isOpen={openSections.renewals}
-          onToggle={() => toggleSection('renewals')}
-        >
-          <RenewalAlertsWidget
-            boms={boms}
-            onViewDetails={(bomId) => {
-              setCurrentPage('BOMs');
-              // TODO: Could add navigation to specific BOM detail modal
-            }}
-          />
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          id="requisitions"
-          title="Pending Requisitions"
-          icon={<ClipboardListIcon className="w-6 h-6 text-yellow-400"/>}
-          variant="card"
-          isOpen={openSections.requisitions}
-          onToggle={() => toggleSection('requisitions')}
-        >
-          {pendingRequisitionsContent}
-        </CollapsibleSection>
-        
-        <CollapsibleSection
-          id="todos"
-          title="Compliance & Artwork Todos"
-          icon={<BeakerIcon className="w-6 h-6 text-blue-400"/>}
-          variant="card"
-          isOpen={openSections.todos}
-          onToggle={() => toggleSection('todos')}
-        >
-          {todosContent}
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          id="forecast"
-          title="Inventory Intelligence & Planning"
-          icon={<ChartBarIcon className="w-6 h-6 text-purple-400" />}
-          variant="card"
-          isOpen={openSections.forecast}
-          onToggle={() => toggleSection('forecast')}
-        >
-          <InventoryIntelligencePanel
-            boms={props.boms}
-            inventory={props.inventory}
-            historicalSales={props.historicalSales}
-            vendors={props.vendors}
-            purchaseOrders={props.purchaseOrders}
-            onCreateRequisition={props.onCreateRequisition}
-            onCreateBuildOrder={props.onCreateBuildOrder}
-            aiConfig={props.aiConfig}
-          />
-        </CollapsibleSection>
+          return (
+            <div
+              key={sectionId}
+              draggable
+              onDragStart={() => handleDragStart(sectionId)}
+              onDragOver={(e) => handleDragOver(e, sectionId)}
+              onDragEnd={handleDragEnd}
+              className={`transition-opacity ${draggedSection === sectionId ? 'opacity-50' : 'opacity-100'}`}
+            >
+              <CollapsibleSection
+                id={sectionId}
+                title={section.title}
+                icon={section.icon}
+                variant="card"
+                isOpen={openSections[sectionId as keyof typeof openSections]}
+                onToggle={() => toggleSection(sectionId as keyof typeof openSections)}
+              >
+                {section.content}
+              </CollapsibleSection>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
