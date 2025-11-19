@@ -38,9 +38,6 @@ export class GoogleAuthService {
   private async initialize() {
     // Get Google OAuth credentials from environment
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const clientSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const redirectUri = import.meta.env.VITE_GOOGLE_REDIRECT_URI || (origin ? `${origin}/auth/google/callback` : '');
 
     if (!clientId || !clientSecret) {
       console.warn('[GoogleAuthService] Google OAuth credentials not configured in environment');
@@ -158,55 +155,36 @@ export class GoogleAuthService {
   }
 
   /**
-   * Refresh access token
+   * Refresh access token via server proxy
    */
   private async refreshTokens(): Promise<void> {
-    if (!this.currentTokens?.refresh_token) {
-      throw new Error('No refresh token available. Please re-authenticate.');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('No authenticated session');
     }
 
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const clientSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
-
-    if (!clientId || !clientSecret) {
-      throw new Error('Google OAuth client not configured.');
-    }
-
-    const params = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: this.currentTokens.refresh_token,
-      grant_type: 'refresh_token',
-    });
-
-    const response = await fetch('https://oauth2.googleapis.com/token', {
+    const response = await fetch('/api/google-token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action: 'refresh' }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to refresh Google token: ${errorText}`);
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to refresh Google token');
     }
 
-    const newTokens = await response.json();
-    const updatedTokens: GoogleTokens = {
-      access_token: newTokens.access_token,
-      refresh_token: newTokens.refresh_token || this.currentTokens.refresh_token,
-      expiry_date: newTokens.expires_in
-        ? Date.now() + Number(newTokens.expires_in) * 1000
-        : undefined,
-      scope: newTokens.scope,
-      token_type: newTokens.token_type,
+    const { access_token, expires_at } = await response.json();
+    
+    this.currentTokens = {
+      access_token,
+      expiry_date: new Date(expires_at).getTime(),
     };
 
-    this.currentTokens = updatedTokens;
-
-    // Update database
-    await this.saveTokensToDatabase(updatedTokens);
-
-    console.log('[GoogleAuthService] Successfully refreshed access token');
+    console.log('[GoogleAuthService] Successfully refreshed access token via server proxy');
   }
 
   /**
@@ -244,11 +222,6 @@ export class GoogleAuthService {
         expiry_date: data.expires_at ? new Date(data.expires_at).getTime() : undefined,
         scope: data.scopes?.join(' '),
       };
-
-      // Set credentials on OAuth client
-      if (this.oauth2Client) {
-        setCredentials(this.oauth2Client, this.currentTokens);
-      }
 
       console.log('[GoogleAuthService] Loaded existing Google tokens');
     } catch (error) {
@@ -300,34 +273,30 @@ export class GoogleAuthService {
   }
 
   /**
-   * Revoke access and delete tokens
+   * Revoke Google OAuth access
    */
   async revokeAccess(): Promise<void> {
-    try {
-      if (this.oauth2Client && this.currentTokens?.access_token) {
-        // Revoke token with Google
-        await this.oauth2Client.revokeToken(this.currentTokens.access_token);
-      }
-
-      // Delete from database
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
-        await supabase
-          .from('user_oauth_tokens')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('provider', 'google');
-      }
-
-      // Clear local state
-      this.currentTokens = null;
-
-      console.log('[GoogleAuthService] Successfully revoked Google access');
-    } catch (error) {
-      console.error('[GoogleAuthService] Error revoking access:', error);
-      throw error;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('No authenticated session');
     }
+
+    const response = await fetch('/api/google-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action: 'revoke' }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to revoke Google access');
+    }
+
+    this.currentTokens = null;
+    console.log('[GoogleAuthService] Google access revoked');
   }
 
   /**
@@ -343,7 +312,7 @@ export class GoogleAuthService {
       };
     }
 
-    const hasValidToken = !isTokenExpired(this.currentTokens);
+    const hasValidToken = !this.isTokenExpired(this.currentTokens);
     const expiresAt = this.currentTokens.expiry_date
       ? new Date(this.currentTokens.expiry_date)
       : null;
@@ -362,6 +331,14 @@ export class GoogleAuthService {
   async isAuthenticated(): Promise<boolean> {
     const status = await this.getAuthStatus();
     return status.isAuthenticated && status.hasValidToken;
+  }
+
+  private isTokenExpired(tokens: GoogleTokens): boolean {
+    if (!tokens.expiry_date) {
+      return false;
+    }
+    const buffer = 5 * 60 * 1000;
+    return tokens.expiry_date - Date.now() < buffer;
   }
 }
 

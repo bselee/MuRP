@@ -5,9 +5,7 @@
  * Handles data transformation between Sheets and database
  */
 
-import { google, sheets_v4 } from 'googleapis';
 import { getGoogleAuthService } from './googleAuthService';
-import { createSheetsClient } from '../lib/google/client';
 import type { InventoryItem, Vendor, BillOfMaterials } from '../types';
 
 export interface SheetData {
@@ -40,15 +38,11 @@ export class GoogleSheetsService {
     range: string
   ): Promise<any[][]> {
     try {
-      const auth = await this.authService.getAuthenticatedClient();
-      const sheetsClient = createSheetsClient(auth);
+      const data = await this.sheetsRequest<{ values?: any[][] }>(
+        `spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}`
+      );
 
-      const response = await sheetsClient.spreadsheets.values.get({
-        spreadsheetId,
-        range,
-      });
-
-      return response.data.values || [];
+      return data.values || [];
     } catch (error) {
       console.error('[GoogleSheetsService] Error reading sheet:', error);
       throw new Error(`Failed to read sheet: ${error instanceof Error ? error.message : String(error)}`);
@@ -68,26 +62,26 @@ export class GoogleSheetsService {
     }
   ): Promise<void> {
     try {
-      const auth = await this.authService.getAuthenticatedClient();
-      const sheetsClient = createSheetsClient(auth);
-
       // Clear existing data if requested
       if (options?.clearExisting) {
-        await sheetsClient.spreadsheets.values.clear({
-          spreadsheetId,
-          range,
-        });
+        await this.sheetsRequest(
+          `spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:clear`,
+          {
+            method: 'POST',
+            body: JSON.stringify({}),
+          }
+        );
       }
 
-      // Write new data
-      await sheetsClient.spreadsheets.values.update({
-        spreadsheetId,
-        range,
-        valueInputOption: options?.valueInputOption || 'USER_ENTERED',
-        requestBody: {
-          values,
-        },
-      });
+      const valueInputOption = options?.valueInputOption || 'USER_ENTERED';
+
+      await this.sheetsRequest(
+        `spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=${valueInputOption}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ values }),
+        }
+      );
 
       console.log(`[GoogleSheetsService] Successfully wrote ${values.length} rows to ${range}`);
     } catch (error) {
@@ -108,17 +102,18 @@ export class GoogleSheetsService {
     }
   ): Promise<void> {
     try {
-      const auth = await this.authService.getAuthenticatedClient();
-      const sheetsClient = createSheetsClient(auth);
-
-      await sheetsClient.spreadsheets.values.append({
-        spreadsheetId,
-        range,
+      const params = new URLSearchParams({
         valueInputOption: options?.valueInputOption || 'USER_ENTERED',
-        requestBody: {
-          values,
-        },
+        insertDataOption: 'INSERT_ROWS',
       });
+
+      await this.sheetsRequest(
+        `spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?${params.toString()}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ values }),
+        }
+      );
 
       console.log(`[GoogleSheetsService] Successfully appended ${values.length} rows to ${range}`);
     } catch (error) {
@@ -132,14 +127,7 @@ export class GoogleSheetsService {
    */
   async getSpreadsheetInfo(spreadsheetId: string): Promise<SpreadsheetInfo> {
     try {
-      const auth = await this.authService.getAuthenticatedClient();
-      const sheetsClient = createSheetsClient(auth);
-
-      const response = await sheetsClient.spreadsheets.get({
-        spreadsheetId,
-      });
-
-      const spreadsheet = response.data;
+      const spreadsheet = await this.sheetsRequest<any>(`spreadsheets/${spreadsheetId}`);
 
       return {
         spreadsheetId: spreadsheet.spreadsheetId!,
@@ -166,25 +154,18 @@ export class GoogleSheetsService {
     sheetTitles: string[] = ['Sheet1']
   ): Promise<{ spreadsheetId: string; spreadsheetUrl: string }> {
     try {
-      const auth = await this.authService.getAuthenticatedClient();
-      const sheetsClient = createSheetsClient(auth);
-
-      const response = await sheetsClient.spreadsheets.create({
-        requestBody: {
-          properties: {
-            title,
-          },
+      const response = await this.sheetsRequest<any>('spreadsheets', {
+        method: 'POST',
+        body: JSON.stringify({
+          properties: { title },
           sheets: sheetTitles.map((sheetTitle, index) => ({
-            properties: {
-              title: sheetTitle,
-              index,
-            },
+            properties: { title: sheetTitle, index },
           })),
-        },
+        }),
       });
 
-      const spreadsheetId = response.data.spreadsheetId!;
-      const spreadsheetUrl = response.data.spreadsheetUrl!;
+      const spreadsheetId = response.spreadsheetId as string;
+      const spreadsheetUrl = response.spreadsheetUrl as string;
 
       console.log(`[GoogleSheetsService] Created spreadsheet: ${title} (${spreadsheetId})`);
 
@@ -203,23 +184,15 @@ export class GoogleSheetsService {
     sheetTitle: string
   ): Promise<number> {
     try {
-      const auth = await this.authService.getAuthenticatedClient();
-      const sheetsClient = createSheetsClient(auth);
-
-      const response = await sheetsClient.spreadsheets.batchUpdate({
-        spreadsheetId,
-        requestBody: {
-          requests: [{
-            addSheet: {
-              properties: {
-                title: sheetTitle,
-              },
-            },
-          }],
+      const response = await this.batchUpdate(spreadsheetId, [{
+        addSheet: {
+          properties: {
+            title: sheetTitle,
+          },
         },
-      });
+      }]);
 
-      const sheetId = response.data.replies?.[0]?.addSheet?.properties?.sheetId || 0;
+      const sheetId = response.replies?.[0]?.addSheet?.properties?.sheetId || 0;
 
       console.log(`[GoogleSheetsService] Created sheet: ${sheetTitle} (${sheetId})`);
 
@@ -243,9 +216,6 @@ export class GoogleSheetsService {
     }
   ): Promise<void> {
     try {
-      const auth = await this.authService.getAuthenticatedClient();
-      const sheetsClient = createSheetsClient(auth);
-
       const requests: any[] = [];
 
       // Bold headers
@@ -304,10 +274,7 @@ export class GoogleSheetsService {
       }
 
       if (requests.length > 0) {
-        await sheetsClient.spreadsheets.batchUpdate({
-          spreadsheetId,
-          requestBody: { requests },
-        });
+        await this.batchUpdate(spreadsheetId, requests);
       }
 
       console.log(`[GoogleSheetsService] Formatted headers for sheet ${sheetId}`);
@@ -358,30 +325,56 @@ export class GoogleSheetsService {
     endColumn?: number
   ): Promise<void> {
     try {
-      const auth = await this.authService.getAuthenticatedClient();
-      const sheetsClient = createSheetsClient(auth);
-
-      await sheetsClient.spreadsheets.batchUpdate({
-        spreadsheetId,
-        requestBody: {
-          requests: [{
-            autoResizeDimensions: {
-              dimensions: {
-                sheetId,
-                dimension: 'COLUMNS',
-                startIndex: startColumn,
-                endIndex: endColumn,
-              },
-            },
-          }],
+      await this.batchUpdate(spreadsheetId, [{
+        autoResizeDimensions: {
+          dimensions: {
+            sheetId,
+            dimension: 'COLUMNS',
+            startIndex: startColumn,
+            endIndex: endColumn,
+          },
         },
-      });
+      }]);
 
       console.log(`[GoogleSheetsService] Auto-resized columns for sheet ${sheetId}`);
     } catch (error) {
       console.error('[GoogleSheetsService] Error auto-resizing columns:', error);
       throw new Error(`Failed to auto-resize columns: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  private async sheetsRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const accessToken = await this.authService.getAccessToken();
+
+    const response = await fetch(`https://sheets.googleapis.com/v4/${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        ...(init.headers || {}),
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Google Sheets API error (${response.status}): ${text}`);
+    }
+
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    return response.json();
+  }
+
+  private async batchUpdate(spreadsheetId: string, requests: any[]) {
+    return this.sheetsRequest<{ replies?: any[] }>(
+      `spreadsheets/${spreadsheetId}:batchUpdate`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ requests }),
+      }
+    );
   }
 }
 

@@ -10,11 +10,24 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createGoogleOAuthClient, getAuthUrl, getTokensFromCode, DEFAULT_SCOPES } from '../lib/google/client';
+import { generateCodeVerifier, generateCodeChallenge, generateState } from '../lib/google/pkce';
 
 // OAuth configuration from environment
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || '';
+
+/**
+ * Parse cookies from cookie header
+ */
+function parseCookies(cookieHeader: string): Record<string, string> {
+  if (!cookieHeader) return {};
+  return cookieHeader.split(';').reduce((acc, cookie) => {
+    const [key, value] = cookie.trim().split('=');
+    if (key && value) acc[key] = value;
+    return acc;
+  }, {} as Record<string, string>);
+}
 
 /**
  * Main handler for Google Auth endpoints
@@ -41,6 +54,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return handleStatus(req, res);
     } else if (pathname.endsWith('/revoke') || pathname.includes('/revoke')) {
       return handleRevoke(req, res);
+    } else if (pathname.endsWith('/refresh') || pathname.includes('/refresh')) {
+      return handleRefresh(req, res);
     } else {
       return res.status(404).json({ error: 'Endpoint not found' });
     }
@@ -66,13 +81,32 @@ async function handleAuthorize(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Generate PKCE verifier and challenge
+    const verifier = generateCodeVerifier();
+    const challenge = await generateCodeChallenge(verifier);
+    const state = generateState();
+
+    // Store PKCE verifier and state in secure httpOnly cookies
+    res.setHeader('Set-Cookie', [
+      `oauth_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
+      `pkce_verifier=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
+    ]);
+
     const oauth2Client = createGoogleOAuthClient({
       clientId: GOOGLE_CLIENT_ID,
       clientSecret: GOOGLE_CLIENT_SECRET,
       redirectUri: GOOGLE_REDIRECT_URI || `https://${req.headers.host}/api/google-auth/callback`,
     });
 
-    const authUrl = getAuthUrl(oauth2Client, DEFAULT_SCOPES);
+    // Generate auth URL with PKCE and state
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: DEFAULT_SCOPES,
+      prompt: 'consent',
+      state: state,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+    });
 
     // Return auth URL as JSON for client-side redirect
     return res.status(200).json({
@@ -93,7 +127,7 @@ async function handleAuthorize(req: VercelRequest, res: VercelResponse) {
  * Handles OAuth callback from Google
  */
 async function handleCallback(req: VercelRequest, res: VercelResponse) {
-  const { code, error } = req.query;
+  const { code, error, state: receivedState } = req.query;
 
   if (error) {
     return res.status(400).send(`
@@ -112,6 +146,31 @@ async function handleCallback(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing authorization code' });
   }
 
+  // Parse cookies for PKCE verifier and state
+  const cookies = parseCookies(req.headers.cookie || '');
+  const expectedState = cookies.oauth_state;
+  const verifier = cookies.pkce_verifier;
+
+  // Validate state parameter (CSRF protection)
+  if (!receivedState || receivedState !== expectedState) {
+    return res.status(400).send(`
+      <html>
+        <head><title>Security Error</title></head>
+        <body>
+          <h1>Security Error</h1>
+          <p>Invalid state parameter. This may indicate a CSRF attack.</p>
+          <p><a href="/">Return to app</a></p>
+        </body>
+      </html>
+    `);
+  }
+
+  // Clear cookies after use
+  res.setHeader('Set-Cookie', [
+    `oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+    `pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+  ]);
+
   try {
     const oauth2Client = createGoogleOAuthClient({
       clientId: GOOGLE_CLIENT_ID,
@@ -119,11 +178,14 @@ async function handleCallback(req: VercelRequest, res: VercelResponse) {
       redirectUri: GOOGLE_REDIRECT_URI || `https://${req.headers.host}/api/google-auth/callback`,
     });
 
-    const tokens = await getTokensFromCode(oauth2Client, code);
+    // Exchange code for tokens with PKCE verifier
+    const { tokens } = await oauth2Client.getToken({
+      code: code,
+      codeVerifier: verifier,
+    });
 
     // Return success page with tokens (client will save to database)
     const tokensJson = JSON.stringify(tokens);
-    const tokensBase64 = Buffer.from(tokensJson).toString('base64');
 
     return res.status(200).send(`
       <html>
@@ -138,9 +200,12 @@ async function handleCallback(req: VercelRequest, res: VercelResponse) {
               }, '*');
               window.close();
             } else {
-              // Store in localStorage and redirect
-              localStorage.setItem('google_auth_tokens', '${tokensBase64}');
-              window.location.href = '/settings?google_auth=success';
+              // No popup - show error message
+              document.body.innerHTML = \`
+                <h1>Authentication Successful</h1>
+                <p>Please close this window and try connecting again.</p>
+                <p>If you see this repeatedly, please enable popups for this site.</p>
+              \`;
             }
           </script>
         </head>
@@ -187,4 +252,63 @@ async function handleRevoke(req: VercelRequest, res: VercelResponse) {
   return res.status(200).json({
     message: 'Use GoogleAuthService.revokeAccess() client-side to revoke tokens',
   });
+}
+
+/**
+ * POST /api/google-auth/refresh
+ * Refreshes an access token using a refresh token
+ */
+async function handleRefresh(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    return res.status(500).json({ error: 'Google OAuth not configured' });
+  }
+
+  const { refreshToken } = req.body ?? {};
+
+  if (!refreshToken || typeof refreshToken !== 'string') {
+    return res.status(400).json({ error: 'refreshToken is required' });
+  }
+
+  try {
+    const body = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    });
+
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to refresh token');
+    }
+
+    const data = await response.json();
+    const expiresAt = data.expires_in
+      ? new Date(Date.now() + Number(data.expires_in) * 1000).toISOString()
+      : null;
+
+    return res.status(200).json({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: expiresAt,
+      scope: data.scope,
+      token_type: data.token_type,
+    });
+  } catch (error) {
+    console.error('[GoogleAuth] Refresh error:', error);
+    return res.status(500).json({
+      error: 'Failed to refresh token',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
