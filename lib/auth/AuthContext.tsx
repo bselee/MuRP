@@ -78,22 +78,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     console.log('[Auth] Fetching profile for user:', userId);
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
 
-    if (error) {
-      console.error('[Auth] Failed to fetch user profile:', error);
-      setUser(null);
-      return;
+    // Try to fetch profile, with retry for OAuth flows
+    let profile = null;
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (!profile && attempts < maxAttempts) {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('[Auth] Failed to fetch user profile:', error);
+        setUser(null);
+        return;
+      }
+
+      if (data) {
+        profile = data;
+        break;
+      }
+
+      attempts++;
+      if (attempts < maxAttempts) {
+        // Wait before retrying (for OAuth flows where profile is being created)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
     }
-    if (data) {
-      console.log('[Auth] Profile loaded successfully:', data);
-      setUser(transformProfile(data));
+
+    if (profile) {
+      console.log('[Auth] Profile loaded successfully:', profile);
+      setUser(transformProfile(profile));
     } else {
-      console.warn('[Auth] No user_profiles row found for user:', userId);
+      console.warn('[Auth] No user_profiles row found for user after', attempts, 'attempts:', userId);
       setUser(null);
     }
   }, []);
