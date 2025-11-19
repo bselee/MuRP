@@ -13,12 +13,7 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Log full URL for debugging
-        console.log('[AuthCallback] Full URL:', window.location.href);
-        console.log('[AuthCallback] Search:', window.location.search);
-        console.log('[AuthCallback] Hash:', window.location.hash);
-
-        // Check URL parameters for errors or hash fragments
+        // Check URL parameters for errors
         const params = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
 
@@ -29,15 +24,11 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
           throw new Error(errorDescription || error);
         }
 
-        // Check for code in both query params and hash
+        // Check for code (PKCE flow) or access_token (implicit flow)
         const code = params.get('code') || hashParams.get('code');
         const accessToken = hashParams.get('access_token');
 
-        console.log('[AuthCallback] Code:', code ? 'found' : 'not found');
-        console.log('[AuthCallback] Access token:', accessToken ? 'found' : 'not found');
-
         if (code) {
-          console.log('[AuthCallback] Exchanging code for session');
           // PKCE flow - exchange code for session
           const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -49,11 +40,9 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
             throw new Error('Failed to create session from code');
           }
         } else if (accessToken) {
-          console.log('[AuthCallback] Implicit flow detected, waiting for Supabase to process hash');
-          // Implicit flow - Supabase processes hash automatically
+          // Implicit flow - Supabase processes hash automatically, wait for it
           await new Promise(resolve => setTimeout(resolve, 1000));
         } else {
-          console.log('[AuthCallback] No code or token, checking for existing session');
           // No code or token - check if session already exists
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
@@ -67,8 +56,29 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
         }
 
         // Ensure profile exists using server function
-        console.log('[AuthCallback] Ensuring user profile exists');
         await supabase.rpc('ensure_user_profile');
+
+        // Store OAuth tokens for Google Calendar integration
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.provider_token && session?.user) {
+          // Save OAuth tokens to user_oauth_tokens table for calendar integration
+          const expiresAt = session.expires_at
+            ? new Date(session.expires_at * 1000).toISOString()
+            : null;
+
+          await supabase
+            .from('user_oauth_tokens')
+            .upsert({
+              user_id: session.user.id,
+              provider: 'google',
+              access_token: session.provider_token,
+              refresh_token: session.provider_refresh_token || null,
+              expires_at: expiresAt,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'user_id,provider',
+            });
+        }
 
         setStatus('success');
         addToast('Authentication successful! Welcome to MuRP.', 'success');
@@ -78,7 +88,6 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
           window.location.href = '/';
         }, 1500);
       } catch (err: any) {
-        console.error('[AuthCallback] Error:', err);
         setStatus('error');
         setErrorMessage(err.message || 'Authentication failed');
         addToast(`Authentication failed: ${err.message}`, 'error');
@@ -109,7 +118,7 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Email Confirmation Failed</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">Authentication Failed</h2>
             <p className="text-red-200 mb-6">{errorMessage}</p>
             <a
               href="/"
@@ -132,7 +141,7 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Email Confirmed!</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">Authentication Successful!</h2>
           <p className="text-green-200 mb-6">Redirecting you to the dashboard...</p>
         </div>
       </div>

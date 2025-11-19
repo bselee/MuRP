@@ -49,7 +49,7 @@ const Settings: React.FC<SettingsProps> = ({
     inventory, boms, vendors
 }) => {
     // Collapsible section states (reordered by usage frequency)
-    const [isUserManagementOpen, setIsUserManagementOpen] = useState(true);
+    const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
     const [isRegulatoryOpen, setIsRegulatoryOpen] = useState(false);
     const [isAiConfigOpen, setIsAiConfigOpen] = useState(false);
     const [isApiIntegrationsOpen, setIsApiIntegrationsOpen] = useState(false);

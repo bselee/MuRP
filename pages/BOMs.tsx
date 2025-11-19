@@ -82,8 +82,8 @@ const BOMs: React.FC<BOMsProps> = ({
   const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);
   
   // Collapsible sections state
-  const [isAlertsOpen, setIsAlertsOpen] = useState(true);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isComplianceOpen, setIsComplianceOpen] = useState(false);
 
   // Debug inventory integration
