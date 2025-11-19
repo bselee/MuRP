@@ -35,18 +35,70 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
         }
 
         if (data.session) {
-          // Mark user as onboarded since they've confirmed their email and set a password during signup
-          const { error: updateError } = await supabase
-            .from('user_profiles')
-            .update({ onboarding_complete: true })
-            .eq('id', data.session.user.id);
+          // Wait for user profile to be created by database trigger
+          // This is important for OAuth flows where profile creation happens async
+          let profile = null;
+          let attempts = 0;
+          const maxAttempts = 10;
 
-          if (updateError) {
-            console.error('[AuthCallback] Failed to mark onboarding complete:', updateError);
+          while (!profile && attempts < maxAttempts) {
+            const { data: profileData, error: profileError } = await supabase
+              .from('user_profiles')
+              .select('*')
+              .eq('id', data.session.user.id)
+              .maybeSingle();
+
+            if (profileData) {
+              profile = profileData;
+              break;
+            }
+
+            if (profileError && profileError.code !== 'PGRST116') {
+              // PGRST116 is "no rows returned", which is expected during the wait
+              console.error('[AuthCallback] Error fetching profile:', profileError);
+            }
+
+            attempts++;
+            if (attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          }
+
+          if (!profile) {
+            console.warn('[AuthCallback] Profile not found after waiting, creating manually');
+
+            // Create profile manually if trigger didn't work
+            const { error: insertError } = await supabase
+              .from('user_profiles')
+              .insert({
+                id: data.session.user.id,
+                email: data.session.user.email,
+                full_name: data.session.user.user_metadata?.full_name ||
+                          data.session.user.user_metadata?.name ||
+                          data.session.user.email?.split('@')[0],
+                role: 'Staff',
+                department: 'Purchasing',
+                onboarding_complete: true,
+              });
+
+            if (insertError) {
+              console.error('[AuthCallback] Failed to create profile:', insertError);
+              // Continue anyway - user can still access the app
+            }
+          } else {
+            // Mark user as onboarded
+            const { error: updateError } = await supabase
+              .from('user_profiles')
+              .update({ onboarding_complete: true })
+              .eq('id', data.session.user.id);
+
+            if (updateError) {
+              console.error('[AuthCallback] Failed to mark onboarding complete:', updateError);
+            }
           }
 
           setStatus('success');
-          addToast('Email confirmed successfully! Welcome to MuRP.', 'success');
+          addToast('Authentication successful! Welcome to MuRP.', 'success');
 
           // Redirect to dashboard after a short delay
           setTimeout(() => {
