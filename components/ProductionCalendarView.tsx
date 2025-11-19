@@ -5,12 +5,13 @@
  * Shows material requirements and sourcing information for each build
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-// import { getGoogleCalendarService, type BuildCalendarEvent } from '../services/googleCalendarService'; // Disabled - browser compatibility
 import { CalendarIcon, ClockIcon, ExclamationTriangleIcon, CheckCircleIcon, XMarkIcon } from '../components/icons';
+import { getGoogleCalendarService, type ProductionCalendarEvent as GoogleProductionEvent } from '../services/googleCalendarService';
+import { supabase } from '../lib/supabase/client';
 import type { BuildOrder, MaterialRequirement, BillOfMaterials, InventoryItem, Vendor } from '../types';
 
 const localizer = momentLocalizer(moment);
@@ -38,6 +39,37 @@ interface CalendarBuildEvent {
   resource: BuildOrder;
   status: 'Pending' | 'In Progress' | 'Completed';
   materialShortfall: boolean;
+  source: 'build';
+}
+
+interface GoogleCalendarDisplayEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  status: 'External';
+  source: 'google';
+  materialShortfall: boolean;
+  googleEvent: GoogleProductionEvent;
+}
+
+type UnifiedCalendarEvent = CalendarBuildEvent | GoogleCalendarDisplayEvent;
+
+type DemandWindow = 30 | 60 | 90;
+
+interface CalendarSettingsState {
+  calendar_id: string | null;
+  calendar_timezone: string;
+  calendar_sync_enabled: boolean;
+}
+
+interface ExternalDemandRow {
+  sku: string;
+  name: string;
+  totalQty: number;
+  available: number;
+  shortfall: number;
+  nextEventDate: Date | null;
 }
 
 interface ProductionCalendarViewProps {
@@ -64,10 +96,100 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
   const [view, setView] = useState<'month' | 'week' | 'day'>('month');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedBuild, setSelectedBuild] = useState<BuildOrder | null>(null);
+  const [selectedExternalEvent, setSelectedExternalEvent] = useState<GoogleProductionEvent | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newEventDate, setNewEventDate] = useState<Date | null>(null);
-  const [googleEvents, setGoogleEvents] = useState<BuildCalendarEvent[]>([]);
+  const [googleEvents, setGoogleEvents] = useState<GoogleProductionEvent[]>([]);
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
+  const [calendarSettings, setCalendarSettings] = useState<CalendarSettingsState | null>(null);
+  const [calendarSyncError, setCalendarSyncError] = useState<string | null>(null);
+  const [demandWindow, setDemandWindow] = useState<DemandWindow>(30);
+
+  const inventoryMap = useMemo(() => new Map(inventory.map(item => [item.sku, item])), [inventory]);
+
+  const fetchCalendarSettings = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCalendarSettings({
+          calendar_id: null,
+          calendar_timezone: 'America/Los_Angeles',
+          calendar_sync_enabled: false,
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('calendar_id, calendar_timezone, calendar_sync_enabled')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && (error as any).code !== 'PGRST116') {
+        throw error;
+      }
+
+      setCalendarSettings({
+        calendar_id: data?.calendar_id ?? null,
+        calendar_timezone: data?.calendar_timezone || 'America/Los_Angeles',
+        calendar_sync_enabled: data?.calendar_sync_enabled ?? false,
+      });
+    } catch (error) {
+      console.error('Error loading calendar settings:', error);
+      setCalendarSettings({
+        calendar_id: null,
+        calendar_timezone: 'America/Los_Angeles',
+        calendar_sync_enabled: false,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCalendarSettings();
+  }, [fetchCalendarSettings]);
+
+  const loadGoogleCalendarEvents = useCallback(async (windowOverride?: number, silent = false) => {
+    if (!calendarSettings || !calendarSettings.calendar_sync_enabled) {
+      if (!silent) {
+        addToast('Enable calendar sync in Settings to pull Google Calendar events', 'info');
+      }
+      return;
+    }
+
+    try {
+      setIsLoadingGoogle(true);
+      setCalendarSyncError(null);
+      const calendarService = getGoogleCalendarService(
+        calendarSettings.calendar_id || undefined,
+        calendarSettings.calendar_timezone
+      );
+      const events = await calendarService.getProductionEvents({
+        windowDays: windowOverride ?? 90,
+      });
+      setGoogleEvents(events);
+      if (!silent) {
+        addToast(`Synced ${events.length} Google events`, 'success');
+      }
+    } catch (error) {
+      console.error('Error loading Google Calendar events:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setCalendarSyncError(message);
+      setGoogleEvents([]);
+      if (!silent) {
+        addToast('Failed to sync Google Calendar', 'error');
+      }
+    } finally {
+      setIsLoadingGoogle(false);
+    }
+  }, [calendarSettings, addToast]);
+
+  useEffect(() => {
+    if (calendarSettings?.calendar_sync_enabled) {
+      loadGoogleCalendarEvents(undefined, true);
+    } else if (calendarSettings) {
+      setGoogleEvents([]);
+    }
+  }, [calendarSettings?.calendar_id, calendarSettings?.calendar_sync_enabled, loadGoogleCalendarEvents]);
 
   // Load Google Calendar events
   useEffect(() => {
@@ -88,7 +210,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
   };
 
   // Convert build orders to calendar events
-  const calendarEvents = useMemo<CalendarBuildEvent[]>(() => {
+  const buildEvents = useMemo<CalendarBuildEvent[]>(() => {
     return buildOrders
       .filter(bo => bo.scheduledDate) // Only show scheduled builds
       .map(buildOrder => {
@@ -225,7 +347,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
       <div className="flex-1 bg-white rounded-lg p-4">
         <Calendar
           localizer={localizer}
-          events={calendarEvents}
+        events={combinedEvents}
           startAccessor="start"
           endAccessor="end"
           titleAccessor="title"

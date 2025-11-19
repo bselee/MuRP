@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../lib/auth/AuthContext';
 import { GmailIcon } from '../components/icons';
+import { supabase } from '../lib/supabase/client';
 
 interface LoginScreenProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -56,6 +57,28 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
       addToast(result.error, 'error');
     } else {
       addToast('Reset instructions sent.', 'success');
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets',
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) {
+        addToast(error.message, 'error');
+      }
+    } catch (error: any) {
+      addToast('Failed to sign in with Google', 'error');
     }
   };
 
@@ -216,16 +239,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
             <div className="mt-4 grid grid-cols-2 gap-3">
               <button
                 type="button"
-                className="flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-800/60 p-3 text-white hover:border-indigo-500"
-                onClick={() => addToast('Google OAuth coming soon.', 'info')}
+                className="flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-800/60 p-3 text-white hover:border-indigo-500 hover:bg-gray-800 transition-colors"
+                onClick={handleGoogleSignIn}
               >
                 <GmailIcon className="h-5 w-5 text-[#DB4437]" />
                 Google
               </button>
               <button
                 type="button"
-                className="flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-800/60 p-3 text-white hover:border-indigo-500"
+                className="flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-800/60 p-3 text-white hover:border-indigo-500 transition-colors opacity-50 cursor-not-allowed"
                 onClick={() => addToast('Microsoft OAuth coming soon.', 'info')}
+                disabled
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M4 4H11.5V11.5H4V4ZM12.5 4H20V11.5H12.5V4ZM4 12.5H11.5V20H4V12.5ZM12.5 12.5H20V20H12.5V12.5Z" />

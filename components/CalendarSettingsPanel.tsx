@@ -1,15 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CalendarIcon, RefreshIcon, CheckCircleIcon } from './icons';
-// import { getGoogleCalendarService, type GoogleCalendar } from '../services/googleCalendarService'; // Disabled - browser compatibility
+import { getGoogleCalendarService, type GoogleCalendar } from '../services/googleCalendarService';
 import { supabase } from '../lib/supabase/client';
-// import { getGoogleAuthService } from '../services/googleAuthService'; // Disabled - browser compatibility
-
-interface GoogleCalendar {
-  id: string;
-  summary: string;
-  description?: string;
-  timeZone: string;
-}
 
 interface CalendarSettingsPanelProps {
   userId: string;
@@ -46,27 +38,23 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
   const [isSaving, setIsSaving] = useState(false);
   const [hasGoogleAuth, setHasGoogleAuth] = useState(false);
 
+  const calendarService = useMemo(
+    () => getGoogleCalendarService(settings.calendar_id || undefined, settings.calendar_timezone),
+    [settings.calendar_id, settings.calendar_timezone]
+  );
+
   useEffect(() => {
     loadSettings();
-    checkGoogleAuth();
-
-    // Listen for OAuth callback
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-        checkGoogleAuth();
-        addToast('Google account connected successfully!', 'success');
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
   }, [userId]);
+
+  useEffect(() => {
+    checkGoogleAuth();
+  }, [calendarService]);
 
   const checkGoogleAuth = async () => {
     try {
-      const authService = getGoogleAuthService();
-      const status = await authService.getAuthStatus();
-      setHasGoogleAuth(status.isAuthenticated && status.hasValidToken);
+      await calendarService.listCalendars();
+      setHasGoogleAuth(true);
     } catch (error) {
       console.error('Error checking Google auth:', error);
       setHasGoogleAuth(false);
@@ -75,11 +63,11 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
 
   const handleConnectGoogle = async () => {
     try {
-      // Use Supabase's built-in Google OAuth with calendar scope
+      // Use Supabase's built-in Google OAuth with comprehensive scopes
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          scopes: 'https://www.googleapis.com/auth/calendar',
+          scopes: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets',
           redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
             access_type: 'offline',
@@ -131,36 +119,13 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
 
     try {
       setIsLoadingCalendars(true);
-      
-      // Call edge function to list calendars
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
+      const calendars = await calendarService.listCalendars();
 
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/google-calendar`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          action: 'list_calendars',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to load calendars: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.calendars && result.calendars.length > 0) {
-        setAvailableCalendars(result.calendars);
-      } else {
+      if (calendars.length === 0) {
         addToast('No calendars found in your Google account', 'info');
-        setAvailableCalendars([]);
       }
+
+      setAvailableCalendars(calendars);
     } catch (error) {
       console.error('Error loading calendars:', error);
       addToast('Failed to load Google Calendars. Please ensure you have granted calendar access.', 'error');
@@ -197,12 +162,6 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
         });
 
       if (error) throw error;
-
-      // Update the service with new calendar ID
-      const calendarService = getGoogleCalendarService(
-        settings.calendar_id || 'primary',
-        settings.calendar_timezone
-      );
 
       addToast('Calendar settings saved successfully', 'success');
     } catch (error) {
