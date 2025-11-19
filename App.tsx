@@ -88,6 +88,7 @@ export type ToastInfo = {
 const App: React.FC = () => {
   const { user: currentUser, loading: authLoading, signOut: authSignOut, refreshProfile } = useAuth();
   const permissions = usePermissions();
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
   // 🔥 LIVE DATA FROM SUPABASE (Real-time subscriptions enabled)
   const { data: inventory, loading: inventoryLoading, error: inventoryError, refetch: refetchInventory } = useSupabaseInventory();
@@ -171,6 +172,35 @@ const App: React.FC = () => {
     }
   }, [currentUser, setCurrentPage]);
 
+  // Auto-complete onboarding for users who confirmed email (preventing flash of setup screen)
+  useEffect(() => {
+    const autoCompleteOnboarding = async () => {
+      if (!currentUser || currentUser.onboardingComplete) {
+        setCheckingOnboarding(false);
+        return;
+      }
+
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        
+        // If email is confirmed, user already set password during signup
+        if (authUser?.email_confirmed_at) {
+          await supabase
+            .from('user_profiles')
+            .update({ onboarding_complete: true })
+            .eq('id', currentUser.id);
+          
+          await refreshProfile();
+        }
+      } catch (err) {
+        console.error('[App] Error auto-completing onboarding:', err);
+      } finally {
+        setCheckingOnboarding(false);
+      }
+    };
+
+    autoCompleteOnboarding();
+  }, [currentUser, refreshProfile]);
 
   const addToast = (message: string, type: ToastInfo['type'] = 'info') => {
     const id = Date.now();
@@ -862,7 +892,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (authLoading) {
+  if (authLoading || checkingOnboarding) {
     return <LoadingOverlay />;
   }
 
