@@ -11,6 +11,7 @@ type PermissionSummary = {
   canViewBoms: boolean;
   canEditBoms: boolean;
   canAccessSettings: boolean;
+  canViewInventory: boolean;
   isGodMode: boolean;
 };
 
@@ -27,6 +28,7 @@ export const usePermissions = (): PermissionSummary => {
     const canEditBoms = roleValue === 'Admin';
     const canViewBoms = roleValue !== undefined;
     const canAccessSettings = roleValue !== 'Staff';
+    const canViewInventory = true; // All users can view inventory
 
     const canApproveRequisition = (req: InternalRequisition) => {
       if (roleValue === 'Admin') return true;
@@ -45,6 +47,7 @@ export const usePermissions = (): PermissionSummary => {
       canViewBoms,
       canEditBoms,
       canAccessSettings,
+      canViewInventory,
       isGodMode: godMode,
     };
   }, [godMode, role, user?.department]);

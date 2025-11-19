@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CalendarIcon, RefreshIcon, CheckCircleIcon } from './icons';
 import { getGoogleCalendarService, type GoogleCalendar } from '../services/googleCalendarService';
 import { supabase } from '../lib/supabase/client';
+import { googleAuthService } from '../services/googleAuthService';
 
 interface CalendarSettingsPanelProps {
   userId: string;
@@ -41,15 +42,44 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
   useEffect(() => {
     loadSettings();
     checkGoogleAuth();
+
+    // Listen for OAuth callback
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+        checkGoogleAuth();
+        addToast('Google account connected successfully!', 'success');
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, [userId]);
 
   const checkGoogleAuth = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      setHasGoogleAuth(!!session?.provider_token);
+      const status = await googleAuthService.getAuthStatus();
+      setHasGoogleAuth(status.isAuthenticated && status.hasValidToken);
     } catch (error) {
       console.error('Error checking Google auth:', error);
       setHasGoogleAuth(false);
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    try {
+      const authUrl = await googleAuthService.getAuthUrl();
+      const popup = window.open(
+        authUrl,
+        'Google OAuth',
+        'width=600,height=700,menubar=no,toolbar=no'
+      );
+
+      if (!popup) {
+        window.location.href = authUrl;
+      }
+    } catch (error) {
+      console.error('Error connecting to Google:', error);
+      addToast('Failed to connect to Google', 'error');
     }
   };
 
@@ -159,10 +189,22 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
       </div>
 
       {!hasGoogleAuth && (
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 space-y-3">
           <p className="text-sm text-yellow-200">
-            ⚠️ Google account not connected. Please connect your Google account in the Google Integration section first.
+            ⚠️ Google account not connected. Connect your Google account to access calendar features.
           </p>
+          <button
+            onClick={handleConnectGoogle}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-gray-100 text-gray-900 font-medium rounded-lg transition-colors"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Connect Google Account
+          </button>
         </div>
       )}
 
