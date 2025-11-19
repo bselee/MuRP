@@ -125,7 +125,7 @@ const Production: React.FC<ProductionProps> = ({
                                             </button>
                                         ) : (
                                             <span className="text-xs text-gray-500">Done</span>
-                                        </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
