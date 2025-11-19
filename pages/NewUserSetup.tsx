@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { User } from '../types';
 import { BoxIcon, KeyIcon, MailIcon, GmailIcon } from '../components/icons';
 import { supabase } from '../lib/supabase/client';
@@ -13,6 +13,31 @@ const NewUserSetup: React.FC<NewUserSetupProps> = ({ user, onSetupComplete }) =>
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Auto-complete onboarding if user has already confirmed their email
+    // (meaning they set a password during signup)
+    useEffect(() => {
+        const checkAndAutoComplete = async () => {
+            try {
+                const { data: { user: authUser } } = await supabase.auth.getUser();
+                
+                // If user's email is confirmed, they already set their password during signup
+                // Just mark them as onboarded and skip this screen
+                if (authUser?.email_confirmed_at) {
+                    console.log('[NewUserSetup] Email already confirmed, auto-completing onboarding...');
+                    await supabase
+                        .from('user_profiles')
+                        .update({ onboarding_complete: true })
+                        .eq('id', user.id);
+                    onSetupComplete();
+                }
+            } catch (err) {
+                console.error('[NewUserSetup] Error checking email confirmation:', err);
+            }
+        };
+
+        checkAndAutoComplete();
+    }, [user.id, onSetupComplete]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
