@@ -65,28 +65,22 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
           }
 
           if (!profile) {
-            console.warn('[AuthCallback] Profile not found after waiting, creating manually');
+            console.warn('[AuthCallback] Profile not found after waiting, creating via server function');
 
-            // Create profile manually if trigger didn't work
-            const { error: insertError } = await supabase
-              .from('user_profiles')
-              .insert({
-                id: data.session.user.id,
-                email: data.session.user.email,
-                full_name: data.session.user.user_metadata?.full_name ||
-                          data.session.user.user_metadata?.name ||
-                          data.session.user.email?.split('@')[0],
-                role: 'Staff',
-                department: 'Purchasing',
-                onboarding_complete: true,
-              });
+            // Call server-side function to create profile (bypasses RLS)
+            const { data: ensuredProfile, error: ensureError } = await supabase.rpc('ensure_user_profile');
 
-            if (insertError) {
-              console.error('[AuthCallback] Failed to create profile:', insertError);
-              // Continue anyway - user can still access the app
+            if (ensureError) {
+              console.error('[AuthCallback] Failed to ensure profile:', ensureError);
+              // Continue anyway - AuthContext has its own retry logic
+            } else {
+              console.log('[AuthCallback] Profile created successfully:', ensuredProfile);
+              profile = ensuredProfile;
             }
-          } else {
-            // Mark user as onboarded
+          }
+
+          // Mark user as onboarded if profile exists (already done by ensure_user_profile function)
+          if (profile && !profile.onboarding_complete) {
             const { error: updateError } = await supabase
               .from('user_profiles')
               .update({ onboarding_complete: true })
