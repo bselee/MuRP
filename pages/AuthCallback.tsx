@@ -35,6 +35,16 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
         }
 
         if (data.session) {
+          // Mark user as onboarded since they've confirmed their email and set a password during signup
+          const { error: updateError } = await supabase
+            .from('user_profiles')
+            .update({ onboarding_complete: true })
+            .eq('id', data.session.user.id);
+
+          if (updateError) {
+            console.error('[AuthCallback] Failed to mark onboarding complete:', updateError);
+          }
+
           setStatus('success');
           addToast('Email confirmed successfully! Welcome to MuRP.', 'success');
 
