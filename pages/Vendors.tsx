@@ -135,18 +135,18 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                     <table className="min-w-full divide-y divide-gray-700">
                         <thead className="bg-gray-800">
                             <tr>
-                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor Name</th>
-                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact Info</th>
-                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Address</th>
-                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Lead Time</th>
-                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Source</th>
-                                <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Auto-PO</th>
+                                <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor Name</th>
+                                <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact Info</th>
+                                <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Address</th>
+                                <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Lead Time</th>
+                                <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Source</th>
+                                <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Auto-PO</th>
                             </tr>
                         </thead>
                         <tbody className="bg-gray-800 divide-y divide-gray-700">
                             {filteredVendors.map((vendor) => (
                                 <tr key={vendor.id} className="hover:bg-gray-700/50 transition-colors duration-200">
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-1">
                                         <div className="text-sm font-medium text-white">{vendor.name}</div>
                                         {vendor.website && (
                                             <a href={vendor.website} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:underline">{vendor.website}</a>
@@ -157,7 +157,7 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-300">
+                                    <td className="px-6 py-1 text-sm text-gray-300">
                                         {vendor.contactEmails.length > 0 ? (
                                             vendor.contactEmails.map(email => (
                                                 <a 
@@ -178,7 +178,7 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                             <div className="text-gray-400 mt-1">📞 {vendor.phone}</div>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-300">
+                                    <td className="px-6 py-1 text-sm text-gray-300">
                                         {vendor.addressLine1 || vendor.city ? (
                                             <div className="space-y-1">
                                                 {vendor.addressLine1 && <div>{vendor.addressLine1}</div>}
@@ -197,10 +197,10 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                             <span className="text-gray-500 italic">No address</span>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                    <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
                                         {vendor.leadTimeDays} days
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-xs">
+                                    <td className="px-6 py-1 whitespace-nowrap text-xs">
                                         {vendor.dataSource === 'csv' && (
                                             <span className="px-2 py-1 bg-blue-900/50 text-blue-300 rounded-full">CSV</span>
                                         )}
@@ -216,7 +216,7 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                             </div>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                    <td className="px-6 py-1 whitespace-nowrap text-sm">
                                         <div className="flex items-center gap-2">
                                             {vendor.autoPoEnabled ? (
                                                 <span className="px-2 py-1 bg-green-900/50 text-green-300 rounded-full text-xs font-medium border border-green-700">

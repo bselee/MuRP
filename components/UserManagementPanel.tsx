@@ -87,23 +87,23 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser, 
                     <table className="min-w-full divide-y divide-gray-700">
                         <thead className="bg-gray-800">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Role</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Department</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                {currentUser.role === 'Admin' && <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>}
+                                <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
+                                <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Role</th>
+                                <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Department</th>
+                                <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                {currentUser.role === 'Admin' && <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>}
                             </tr>
                         </thead>
                         <tbody className="bg-gray-800 divide-y divide-gray-700">
                             {visibleUsers.map(user => (
                                 <tr key={user.id}>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="px-6 py-1 whitespace-nowrap">
                                         <div className="text-sm font-medium text-white">{user.name}</div>
                                         <div className="text-xs text-gray-400">{user.email}</div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{user.role}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{user.department}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                    <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">{user.role}</td>
+                                    <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">{user.department}</td>
+                                    <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
                                         {user.onboardingComplete === false ? (
                                             <span className="text-yellow-400 font-semibold">Pending Setup</span>
                                         ) : (
@@ -111,7 +111,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser, 
                                         )}
                                     </td>
                                     {currentUser.role === 'Admin' && (
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                                        <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
                                             <button className="p-2 text-gray-400 hover:text-indigo-400 transition-colors" title="Edit User">
                                                 <PencilSquareIcon className="w-5 h-5"/>
                                             </button>

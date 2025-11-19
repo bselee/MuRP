@@ -254,7 +254,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
         {isExpanded && (
           <div className="border-t border-gray-700">
             {!allowPoCreation && (
-              <div className="bg-gray-900/40 border-b border-gray-800 px-4 py-3 text-sm text-gray-400">
+              <div className="bg-gray-900/40 border-b border-gray-800 px-4 py-1 text-sm text-gray-400">
                 View-only mode: create permissions are limited to approved roles.
               </div>
             )}
@@ -318,29 +318,29 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
                 <thead className="bg-gray-800/50">
                   <tr>
                     {allowPoCreation && (
-                      <th className="px-4 py-3 text-left">
+                      <th className="px-4 py-2 text-left">
                         <input
                           type="checkbox"
                           checked={selectedItems.size === items.length && items.length > 0}
-                          onChange={() => {
-                            if (selectedItems.size === items.length) {
-                              handleClearSelection();
-                            } else {
+                          onChange={e => {
+                            if (e.target.checked) {
                               handleSelectAll();
+                            } else {
+                              handleClearSelection();
                             }
                           }}
-                          className="rounded border-gray-600 text-indigo-600 focus:ring-indigo-500"
+                          className="w-4 h-4 rounded bg-gray-700 border-gray-600 text-indigo-600"
                         />
                       </th>
                     )}
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Urgency</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Item</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Vendor</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Stock</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Days Left</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Recommended</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Cost</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Notes</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Urgency</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Item</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Vendor</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Stock</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Days Left</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Recommended</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Cost</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Notes</th>
                   </tr>
                 </thead>
                 <tbody className="bg-gray-800 divide-y divide-gray-700">
@@ -352,7 +352,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
                       }`}
                     >
                       {allowPoCreation && (
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-1">
                           <input
                             type="checkbox"
                             checked={selectedItems.has(item.id)}
@@ -361,17 +361,17 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
                           />
                         </td>
                       )}
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1">
                         <UrgencyBadge urgency={item.urgency} />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1">
                         <div>
                           <p className="text-sm font-medium text-white">{item.item_name}</p>
                           <p className="text-xs text-gray-400">{item.inventory_sku}</p>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-300">{item.vendor_name || 'N/A'}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1 text-sm text-gray-300">{item.vendor_name || 'N/A'}</td>
+                      <td className="px-4 py-1">
                         <div className="text-sm">
                           <p className="text-white font-semibold">{item.current_stock}</p>
                           {item.on_order > 0 && (
@@ -379,10 +379,10 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1">
                         <DaysUntilStockout days={item.days_until_stockout} urgency={item.urgency} />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1">
                         <div className="text-sm">
                           <p className="text-white font-semibold">{item.recommended_quantity}</p>
                           {item.consumption_daily > 0 && (
@@ -390,10 +390,10 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-white font-semibold">
+                      <td className="px-4 py-1 text-sm text-white font-semibold">
                         ${item.estimated_cost.toFixed(2)}
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-400 max-w-xs truncate" title={item.notes}>
+                      <td className="px-4 py-1 text-xs text-gray-400 max-w-xs truncate" title={item.notes}>
                         {item.notes}
                       </td>
                     </tr>

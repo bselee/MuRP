@@ -1,21 +1,22 @@
 
 import React, { useState, useEffect } from 'react';
-// FIX: Import GmailConnection from types.ts.
 import type { PurchaseOrder, Vendor, GmailConnection } from '../types';
 import Modal from './Modal';
 import { generatePoPdf } from '../services/pdfService';
 import { FileTextIcon, GmailIcon } from './icons';
+import { getGoogleGmailService } from '../services/googleGmailService';
 
 interface EmailComposerModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSend: () => void;
+    onSend: (sentViaGmail: boolean) => void;
     purchaseOrder: PurchaseOrder;
     vendor: Vendor;
     gmailConnection: GmailConnection;
+    addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-const EmailComposerModal: React.FC<EmailComposerModalProps> = ({ isOpen, onClose, onSend, purchaseOrder, vendor, gmailConnection }) => {
+const EmailComposerModal: React.FC<EmailComposerModalProps> = ({ isOpen, onClose, onSend, purchaseOrder, vendor, gmailConnection, addToast }) => {
     const [to, setTo] = useState('');
     const [from, setFrom] = useState('');
     const [subject, setSubject] = useState('');
@@ -30,7 +31,7 @@ const EmailComposerModal: React.FC<EmailComposerModalProps> = ({ isOpen, onClose
 
     const loadEmailTemplate = async () => {
         setTo(vendor.contactEmails[0] || '');
-        setFrom(gmailConnection.isConnected ? gmailConnection.email! : 'procurement@murp.app (simulation)');
+        setFrom(gmailConnection.isConnected ? (gmailConnection.email ?? '') : 'procurement@murp.app (simulation)');
 
         try {
             const templateService = await import('../services/templateService').then(m => m.templateService);
@@ -61,13 +62,32 @@ Procurement Team`);
         }
     };
 
-    const handleSendClick = () => {
+    const handleSendClick = async () => {
+        if (isSending) return;
         setIsSending(true);
-        // Simulate network delay
-        setTimeout(() => {
+
+        try {
+            if (gmailConnection.isConnected) {
+                const gmailService = getGoogleGmailService();
+                await gmailService.sendEmail({
+                    to,
+                    subject,
+                    body,
+                    from: gmailConnection.email ?? from,
+                });
+                addToast('Email sent via Gmail', 'success');
+                onSend(true);
+            } else {
+                addToast('Gmail not connected. Simulating email send.', 'info');
+                onSend(false);
+            }
+            onClose();
+        } catch (error) {
+            console.error('Error sending Gmail:', error);
+            addToast(`Failed to send email via Gmail: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+        } finally {
             setIsSending(false);
-            onSend();
-        }, 1500);
+        }
     };
 
     const handleDownloadAttachment = async () => {

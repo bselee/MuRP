@@ -1,7 +1,7 @@
 
 
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import AiAssistant from './components/AiAssistant';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -72,6 +72,9 @@ import type {
     CreatePurchaseOrderInput,
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
+import { getGoogleAuthService } from './services/googleAuthService';
+import { getGoogleGmailService } from './services/googleGmailService';
+import { GOOGLE_SCOPES } from './lib/google/scopes';
 import LoadingOverlay from './components/LoadingOverlay';
 import { supabase } from './lib/supabase/client';
 import { useAuth } from './lib/auth/AuthContext';
@@ -120,6 +123,28 @@ const App: React.FC = () => {
   const [artworkFilter, setArtworkFilter] = useState<string>('');
   const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
   const users = userProfiles;
+  const googleAuthService = useMemo(() => getGoogleAuthService(), []);
+  const gmailService = useMemo(() => getGoogleGmailService(), []);
+
+  const refreshGmailConnection = useCallback(async () => {
+    try {
+      const status = await googleAuthService.getAuthStatus();
+      const hasGmailScope = status.scopes?.includes(GOOGLE_SCOPES.GMAIL_SEND);
+
+      if (status.isAuthenticated && status.hasValidToken && hasGmailScope) {
+        const profile = await gmailService.getProfile();
+        setGmailConnection({
+          isConnected: true,
+          email: profile.emailAddress || status.email || null,
+        });
+      } else {
+        setGmailConnection({ isConnected: false, email: null });
+      }
+    } catch (error) {
+      console.error('[App] Failed to refresh Gmail connection:', error);
+      setGmailConnection({ isConnected: false, email: null });
+    }
+  }, [googleAuthService, gmailService, setGmailConnection]);
 
   const isDataLoading =
     inventoryLoading ||
@@ -135,6 +160,16 @@ const App: React.FC = () => {
       setHasInitialDataLoaded(true);
     }
   }, [isDataLoading]);
+
+  useEffect(() => {
+    if (currentUser) {
+      refreshGmailConnection();
+    } else {
+      setGmailConnection({ isConnected: false, email: null });
+    }
+    // We intentionally exclude setGmailConnection from deps to avoid unnecessary re-renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, refreshGmailConnection]);
 
   // Lightweight URL-based routing for deep links
   useEffect(() => {
@@ -582,25 +617,33 @@ const App: React.FC = () => {
     }
   };
 
-  const handleGmailConnect = () => {
-    if (currentUser?.name) {
-        // Simulate creating an email from the user's name
-        const email = `${currentUser.name.toLowerCase().replace(' ', '.')}@goodestfungus.com`;
-        setGmailConnection({ isConnected: true, email });
-        addToast('Gmail account connected successfully!', 'success');
+  const handleGmailConnect = async () => {
+    try {
+      await googleAuthService.startOAuthFlow();
+      await refreshGmailConnection();
+      addToast('Google Workspace account connected successfully!', 'success');
+    } catch (error) {
+      console.error('[App] Gmail connect error:', error);
+      addToast(`Failed to connect Gmail: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
-  const handleGmailDisconnect = () => {
-    setGmailConnection({ isConnected: false, email: null });
-    addToast('Gmail account disconnected.', 'info');
+  const handleGmailDisconnect = async () => {
+    try {
+      await googleAuthService.revokeAccess();
+      await refreshGmailConnection();
+      addToast('Google Workspace account disconnected.', 'info');
+    } catch (error) {
+      console.error('[App] Gmail disconnect error:', error);
+      addToast(`Failed to disconnect Gmail: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    }
   };
 
-  const handleSendPoEmail = (poId: string) => {
-    if (gmailConnection.isConnected) {
-        addToast(`Email for ${poId} sent via ${gmailConnection.email}.`, 'success');
+  const handleSendPoEmail = (poId: string, sentViaGmail: boolean) => {
+    if (sentViaGmail) {
+      addToast(`Email for ${poId} sent via ${gmailConnection.email ?? 'Gmail'}.`, 'success');
     } else {
-        addToast(`Simulating email send for ${poId}.`, 'info');
+      addToast(`Simulated email send for ${poId}.`, 'info');
     }
   };
 

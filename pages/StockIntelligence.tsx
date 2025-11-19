@@ -243,7 +243,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                className={`flex-1 px-4 py-1 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                   activeTab === tab.id
                     ? 'bg-indigo-600 text-white'
                     : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
@@ -269,19 +269,19 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                   <table className="min-w-full divide-y divide-gray-700">
                     <thead className="bg-gray-800/50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">SKU</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Item</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Days Left</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Risk Level</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">Trend</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">SKU</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Item</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Days Left</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Risk Level</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Trend</th>
                       </tr>
                     </thead>
                     <tbody className="bg-gray-800 divide-y divide-gray-700">
                       {stockoutRisks.slice(0, 50).map(risk => (
                         <tr key={risk.sku} className="hover:bg-gray-700/50">
-                          <td className="px-4 py-3 text-sm text-gray-300">{risk.sku}</td>
-                          <td className="px-4 py-3 text-sm text-white font-medium">{risk.name}</td>
-                          <td className="px-4 py-3 text-sm">
+                          <td className="px-4 py-1 text-sm text-gray-300">{risk.sku}</td>
+                          <td className="px-4 py-1 text-sm text-white font-medium">{risk.name}</td>
+                          <td className="px-4 py-1 text-sm">
                             <span className={`font-semibold ${
                               risk.daysUntilStockout <= 0 ? 'text-red-400' :
                               risk.daysUntilStockout < 7 ? 'text-orange-400' :
@@ -290,10 +290,10 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                               {risk.daysUntilStockout <= 0 ? 'OUT OF STOCK' : `${risk.daysUntilStockout} days`}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-1">
                             <RiskBadge level={risk.riskLevel} />
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-1">
                             <TrendIndicator direction={risk.trendDirection} />
                           </td>
                         </tr>

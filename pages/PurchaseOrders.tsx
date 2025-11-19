@@ -22,7 +22,7 @@ interface PurchaseOrdersProps {
     approvedRequisitions: InternalRequisition[];
     onGeneratePos: (posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number }[]; requisitionIds: string[]; }[]) => void;
     gmailConnection: GmailConnection;
-    onSendEmail: (poId: string) => void;
+    onSendEmail: (poId: string, sentViaGmail: boolean) => void;
     requisitions: InternalRequisition[];
     users: User[];
     onApproveRequisition: (reqId: string) => void;
@@ -125,9 +125,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         setIsEmailModalOpen(true);
     };
 
-    const handleSendEmail = () => {
+    const handleSendEmail = (sentViaGmail: boolean) => {
         if (selectedPoForEmail) {
-            onSendEmail(selectedPoForEmail.id);
+            onSendEmail(selectedPoForEmail.id, sentViaGmail);
         }
         setIsEmailModalOpen(false);
         setSelectedPoForEmail(null);
@@ -213,25 +213,25 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <table className="min-w-full divide-y divide-gray-700">
                             <thead className="bg-gray-800">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">PO Number</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Created</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Expected Date</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">PO Number</th>
+                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor</th>
+                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Created</th>
+                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Expected Date</th>
+                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total</th>
+                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-gray-800 divide-y divide-gray-700">
                                 {sortedPurchaseOrders.map((po) => (
                                     <tr key={po.id} className="hover:bg-gray-700/50 transition-colors duration-200">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-400">{po.orderId || po.id}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap"><PoStatusBadge status={po.status} /></td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : 'N/A'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white font-semibold">${formatPoTotal(po)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                                        <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-indigo-400">{po.orderId || po.id}</td>
+                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</td>
+                                        <td className="px-6 py-1 whitespace-nowrap"><PoStatusBadge status={po.status} /></td>
+                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</td>
+                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : 'N/A'}</td>
+                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-white font-semibold">${formatPoTotal(po)}</td>
+                                        <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
                                             <button onClick={() => handleDownloadPdf(po)} title="Download PDF" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><FileTextIcon className="w-5 h-5"/></button>
                                             <button onClick={() => handleSendEmailClick(po)} title="Send Email" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><MailIcon className="w-5 h-5"/></button>
                                         </td>
@@ -259,6 +259,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     purchaseOrder={selectedPoForEmail}
                     vendor={vendorMap.get(selectedPoForEmail.vendorId)!}
                     gmailConnection={gmailConnection}
+                    addToast={addToast}
                 />
             )}
             
@@ -338,20 +339,20 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
                 <table className="min-w-full divide-y divide-gray-700">
                     <thead className="bg-gray-800/50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Req ID</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Requester</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Department</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Items</th>
-                            {(currentUser.role === 'Admin' || currentUser.role === 'Manager') && <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>}
+                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Req ID</th>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Requester</th>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Department</th>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Items</th>
+                            {(currentUser.role === 'Admin' || currentUser.role === 'Manager') && <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>}
                         </tr>
                     </thead>
                     <tbody className="bg-gray-800 divide-y divide-gray-700">
                         {displayedRequisitions.map(req => (
                             <tr key={req.id}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-indigo-400">{req.id}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-indigo-400">{req.id}</td>
+                                <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">
                                     {req.source === 'System' ? (
                                         <div className="flex items-center gap-2" title="Auto-generated by AI Planning Insights based on demand forecast">
                                             <BotIcon className="w-4 h-4 text-indigo-400"/> 
@@ -359,10 +360,10 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
                                         </div>
                                     ) : (userMap.get(req.requesterId!) || 'Unknown User')}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{req.department}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{new Date(req.createdAt).toLocaleDateString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap"><ReqStatusBadge status={req.status} /></td>
-                                <td className="px-6 py-4 text-sm text-gray-300">
+                                <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">{req.department}</td>
+                                <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(req.createdAt).toLocaleDateString()}</td>
+                                <td className="px-6 py-1 whitespace-nowrap"><ReqStatusBadge status={req.status} /></td>
+                                <td className="px-6 py-1 text-sm text-gray-300">
                                     <ul className="space-y-1">
                                         {req.items.map(item => (
                                             <li key={item.sku} title={item.reason}>{item.quantity}x {item.name}</li>
@@ -370,7 +371,7 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
                                     </ul>
                                 </td>
                                 {(currentUser.role === 'Admin' || currentUser.role === 'Manager') && (
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                                    <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
                                         {canTakeAction(req) ? (
                                             <>
                                                 <button onClick={() => onApprove(req.id)} className="p-2 text-green-400 hover:text-green-300" title="Approve"><CheckCircleIcon className="w-6 h-6" /></button>

@@ -89,27 +89,9 @@ export function isTokenExpired(tokens: GoogleTokens): boolean {
 }
 
 /**
- * Scopes required for different Google services
+ * Re-export scopes from separate file to avoid bundling googleapis in client
  */
-export const GOOGLE_SCOPES = {
-  SHEETS_READONLY: 'https://www.googleapis.com/auth/spreadsheets.readonly',
-  SHEETS_READWRITE: 'https://www.googleapis.com/auth/spreadsheets',
-  DRIVE_READONLY: 'https://www.googleapis.com/auth/drive.readonly',
-  DRIVE_FILE: 'https://www.googleapis.com/auth/drive.file', // Access only files created by this app
-  DRIVE_APPDATA: 'https://www.googleapis.com/auth/drive.appdata', // Access app-specific data folder
-  CALENDAR_READONLY: 'https://www.googleapis.com/auth/calendar.readonly',
-  CALENDAR_READWRITE: 'https://www.googleapis.com/auth/calendar', // Full calendar access
-  CALENDAR_EVENTS: 'https://www.googleapis.com/auth/calendar.events', // Events only
-} as const;
-
-/**
- * Default scopes for TGF MRP application
- */
-export const DEFAULT_SCOPES = [
-  GOOGLE_SCOPES.SHEETS_READWRITE, // Read/write access to Sheets
-  GOOGLE_SCOPES.DRIVE_FILE,       // Create and access files we create
-  GOOGLE_SCOPES.CALENDAR_READWRITE, // Calendar integration for production scheduling
-] as const;
+export { GOOGLE_SCOPES, DEFAULT_SCOPES } from './scopes';
 
 /**
  * Create Google Sheets API client

@@ -24,11 +24,11 @@ This enables Google integration for:
    - **Google Docs API** - For document templates
 3. Click "ENABLE" for each one
 
-### 3. Enable Calendar Scope
+### 3. Enable Workspace Scopes
 
 In the Supabase Google provider settings, add these scopes (space-separated):
 ```
-https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets
+https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/gmail.send
 ```
 
 That's it! No need to add anything to `.env.local` for Supabase Auth.

@@ -449,19 +449,19 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
               <table className="min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-800/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       SKU
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Component Name
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Quantity
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Unit
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -469,13 +469,13 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
                 <tbody className="divide-y divide-gray-700">
                   {editedBom.components.map((component, index) => (
                     <tr key={component.id || index} className="hover:bg-gray-800/30 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-1 whitespace-nowrap">
                         <span className="text-sm font-mono text-indigo-400 font-semibold">{component.sku}</span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1">
                         <span className="text-sm text-gray-300">{component.name}</span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-1 text-right">
                         <input
                           type="number"
                           value={component.quantity}
@@ -485,7 +485,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
                           step="0.01"
                         />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-1">
                         <select
                           value={component.unit}
                           onChange={e => handleComponentChange(index, 'unit', e.target.value)}
@@ -501,7 +501,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
                           <option value="each">each</option>
                         </select>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-1 text-center">
                         <button
                           onClick={() => removeComponent(index)}
                           className="p-2 text-red-500 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors"

@@ -234,7 +234,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                    className={`flex items-center gap-2 px-4 py-1 text-sm font-medium border-b-2 transition-colors ${
                       activeTab === tab.id
                         ? 'border-indigo-500 text-indigo-400'
                         : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
@@ -275,16 +275,16 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                   <table className="min-w-full divide-y divide-gray-700">
                     <thead className="bg-gray-800/50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                           SKU
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                           Component Name
                         </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                           Quantity
                         </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                           Unit
                         </th>
                       </tr>
@@ -292,16 +292,16 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                     <tbody className="divide-y divide-gray-700">
                       {bom.components.map((component) => (
                         <tr key={component.id} className="hover:bg-gray-800/30 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-400">
+                          <td className="px-6 py-1 whitespace-nowrap text-sm font-mono text-gray-400">
                             {component.sku}
                           </td>
-                          <td className="px-6 py-4 text-sm text-white">
+                          <td className="px-6 py-1 text-sm text-white">
                             {component.name}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-white">
+                          <td className="px-6 py-1 whitespace-nowrap text-sm text-right font-semibold text-white">
                             {component.quantity}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-400">
+                          <td className="px-6 py-1 whitespace-nowrap text-sm text-right text-gray-400">
                             {component.unit}
                           </td>
                         </tr>

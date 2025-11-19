@@ -17,6 +17,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase/client';
 import { aiTemplateGenerator } from '../services/aiTemplateGenerator';
 import { BotIcon, SaveIcon, EyeIcon } from './icons';
+import { getGoogleDocsService } from '../services/googleDocsService';
 
 interface DocumentTemplatesPanelProps {
   addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -49,6 +50,7 @@ const DocumentTemplatesPanel: React.FC<DocumentTemplatesPanelProps> = ({ addToas
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [variables, setVariables] = useState<any[]>([]);
+  const [isExportingDoc, setIsExportingDoc] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -200,6 +202,28 @@ const DocumentTemplatesPanel: React.FC<DocumentTemplatesPanelProps> = ({ addToas
     }
   };
 
+  const buildTemplateSummary = () => {
+    return `Company Information\n======================\nName: ${companyName}\nAddress: ${addressLine1 || ''}\n${city || ''}, ${state || ''} ${postalCode || ''}\nPhone: ${phone || ''}\nEmail: ${email || ''}\nTax Rate: ${(taxRate * 100).toFixed(2)}%\n\nEmail Template\n===============\nSubject: ${emailSubject}\n\n${emailBody}\n\nSignature:\n${emailSignature}\n\nPDF Template\n============\nHeader: ${pdfHeaderText}\nFooter: ${pdfFooterText}\nHeader Color: ${pdfHeaderColor}`;
+  };
+
+  const handleExportToGoogleDoc = async () => {
+    try {
+      setIsExportingDoc(true);
+      const docsService = getGoogleDocsService();
+      const { documentUrl } = await docsService.createDocument({
+        title: `MuRP Templates ${new Date().toLocaleDateString()}`,
+        body: buildTemplateSummary(),
+      });
+      addToast?.('Template exported to Google Docs', 'success');
+      window.open(documentUrl, '_blank');
+    } catch (error) {
+      console.error('Error exporting template to Google Docs:', error);
+      addToast?.('Failed to export template to Google Docs', 'error');
+    } finally {
+      setIsExportingDoc(false);
+    }
+  };
+
   const generateEmailWithAI = async () => {
     try {
       setGenerating(true);
@@ -259,6 +283,15 @@ const DocumentTemplatesPanel: React.FC<DocumentTemplatesPanelProps> = ({ addToas
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <button
+          onClick={handleExportToGoogleDoc}
+          disabled={isExportingDoc}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-400 text-white rounded-md text-sm font-medium transition-colors"
+        >
+          {isExportingDoc ? 'Exporting…' : 'Export Settings to Google Docs'}
+        </button>
+      </div>
       {/* Tab Navigation */}
       <div className="flex gap-2 border-b border-gray-700">
         {[

@@ -596,25 +596,25 @@ const BOMs: React.FC<BOMsProps> = ({
             <table className="min-w-full divide-y divide-gray-700">
               <thead className="bg-gray-900">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     SKU
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Product Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Category
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Inventory
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Can Build
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Components
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -632,7 +632,7 @@ const BOMs: React.FC<BOMsProps> = ({
                       }}
                       className="hover:bg-gray-800/50 transition-colors"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-1 whitespace-nowrap">
                         <button
                           onClick={() => onNavigateToInventory?.(bom.finishedSku)}
                           className="text-sm font-bold font-mono text-white hover:text-indigo-400 transition-colors underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400"
@@ -640,28 +640,28 @@ const BOMs: React.FC<BOMsProps> = ({
                           {bom.finishedSku}
                         </button>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-1">
                         <div className="text-sm text-white">{bom.name}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-1 whitespace-nowrap">
                         <span className="px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 border border-gray-600">
                           {bom.category || 'N/A'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <td className="px-6 py-1 whitespace-nowrap text-right">
                         <span className={`text-sm font-bold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {finishedStock}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <td className="px-6 py-1 whitespace-nowrap text-right">
                         <span className={`text-sm font-bold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {buildability.maxBuildable}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <td className="px-6 py-1 whitespace-nowrap text-right">
                         <span className="text-sm text-gray-300">{bom.components.length}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <td className="px-6 py-1 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleViewDetails(bom)}

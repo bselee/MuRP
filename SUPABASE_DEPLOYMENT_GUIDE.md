@@ -6,6 +6,60 @@
 
 ---
 
+## 🚀 Google Calendar Edge Function (Production Calendar Integration)
+
+**Status:** ✅ Ready to Deploy  
+**Function:** `supabase/functions/google-calendar`  
+**Related Migration:** `027_production_calendar_integration.sql`
+
+This release wires Google Calendar data directly into the Production page so we can plan finished goods 30/60/90 days out. Deploy the new Edge Function and make sure OAuth scopes are configured before flipping the feature on.
+
+### 1. Configure Google OAuth (Supabase Dashboard)
+
+1. Go to **Project Settings → Authentication → Providers → Google**.
+2. Add the following scopes to **Additional Scopes** (comma separated):
+   - `https://www.googleapis.com/auth/calendar`
+   - `https://www.googleapis.com/auth/calendar.events`
+3. Update the OAuth **redirect URI** to match the app (`https://murp.app/auth/callback` in prod, `http://localhost:5173/auth/callback` locally).
+4. Paste the same client ID/secret you use for Sheets (see `.env.example`).
+
+### 2. Provide Server-Side OAuth Secrets
+
+The Edge Function refreshes Google tokens, so it needs the client credentials at runtime. In the Supabase project root run:
+
+```bash
+supabase secrets set \
+  GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com" \
+  GOOGLE_CLIENT_SECRET="your-client-secret" \
+  GOOGLE_REDIRECT_URI="https://murp.app/auth/callback"
+```
+
+> 🔁 Repeat for each environment (local, staging, prod). These values must match the ones configured in the Google Cloud Console.
+
+### 3. Deploy the Edge Function
+
+```bash
+supabase functions deploy google-calendar --project-ref <your-project-ref>
+```
+
+### 4. Verify RLS Tables From Migration 027
+
+Ensure the `production_calendar_settings` and `build_order_material_requirements` tables exist (migration `027_production_calendar_integration.sql`). If not, run the migration via SQL Editor.
+
+### 5. Smoke Test
+
+1. Log in to the app and go to **Settings → Calendar Integration**.
+2. Click **Connect Google Account** and approve the calendar scope.
+3. Select a calendar, enable sync, and click **Sync Google Calendar**.
+4. Navigate to **Production → Calendar View** and confirm:
+   - External Google events render with teal chips.
+   - The **Google Production Demand** card shows 30/60/90d rollups.
+   - Selecting a Google event opens the new detail modal, and “Create Build Order” drafts a build.
+
+Keep the Supabase Logs tab open when testing—any missing scopes or secret issues will surface there.
+
+---
+
 ## 🎯 Quick Start
 
 ### Step 1: Open Supabase SQL Editor

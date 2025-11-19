@@ -220,14 +220,6 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
     }
   }, [calendarSettings, addToast, onUpdateBuildOrder, loadGoogleCalendarEvents]);
 
-    }
-  }, [calendarSettings, addToast, onUpdateBuildOrder, loadGoogleCalendarEvents]);
-
-  // Load Google Calendar events on mount
-  useEffect(() => {
-    loadGoogleCalendarEvents();
-  }, [loadGoogleCalendarEvents]);
-
   // Handle creating new build order from calendar
   const buildEvents = useMemo<CalendarBuildEvent[]>(() => {
     return buildOrders
@@ -250,16 +242,65 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
           resource: buildOrder,
           status: buildOrder.status,
           materialShortfall: hasMaterialShortfall,
+          source: 'build',
         };
       });
   }, [buildOrders]);
 
+  const googleDisplayEvents = useMemo<GoogleCalendarDisplayEvent[]>(() => {
+    return googleEvents.map((event) => {
+      const endDate = event.end || new Date(event.start.getTime() + 2 * 60 * 60 * 1000);
+      const inventoryItem = event.finishedSku ? inventoryMap.get(event.finishedSku) : undefined;
+      const hasShortfall = Boolean(
+        event.finishedSku &&
+        typeof event.quantity === 'number' &&
+        inventoryItem &&
+        inventoryItem.stock < event.quantity
+      );
+
+      return {
+        id: `google-${event.id}`,
+        title: event.finishedSku
+          ? `${event.finishedSku} (${event.quantity ?? '?'}x)`
+          : event.title,
+        start: event.start,
+        end: endDate,
+        status: 'External',
+        source: 'google',
+        materialShortfall: hasShortfall,
+        googleEvent: event,
+      } satisfies GoogleCalendarDisplayEvent;
+    });
+  }, [googleEvents, inventoryMap]);
+
+  const combinedEvents = useMemo<UnifiedCalendarEvent[]>(
+    () => [...buildEvents, ...googleDisplayEvents],
+    [buildEvents, googleDisplayEvents]
+  );
+
+  const demandSummaries = useMemo<Record<DemandWindow, ExternalDemandRow[]>>(
+    () => ({
+      30: computeExternalDemand(googleEvents, inventoryMap, 30),
+      60: computeExternalDemand(googleEvents, inventoryMap, 60),
+      90: computeExternalDemand(googleEvents, inventoryMap, 90),
+    }),
+    [googleEvents, inventoryMap]
+  );
+
+  const demandRows = demandSummaries[demandWindow];
+  const unparsedEvents = useMemo(
+    () => googleEvents.filter(event => !event.finishedSku || !event.quantity),
+    [googleEvents]
+  );
+
   // Event styling based on status and material availability
-  const eventStyleGetter = (event: CalendarBuildEvent) => {
+  const eventStyleGetter = (event: UnifiedCalendarEvent) => {
     let backgroundColor = '#6366f1'; // Default blue
     let color = 'white';
 
-    if (event.status === 'Completed') {
+    if (event.source === 'google') {
+      backgroundColor = event.materialShortfall ? '#dc2626' : '#0ea5e9';
+    } else if (event.status === 'Completed') {
       backgroundColor = '#10b981'; // Green
     } else if (event.status === 'In Progress') {
       backgroundColor = '#f59e0b'; // Orange
@@ -280,26 +321,18 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
   };
 
   // Handle calendar event selection
-  const handleSelectEvent = (event: CalendarBuildEvent) => {
-    setSelectedBuild(event.resource);
+  const handleSelectEvent = (event: UnifiedCalendarEvent) => {
+    if (event.source === 'google') {
+      setSelectedExternalEvent(event.googleEvent);
+    } else {
+      setSelectedBuild(event.resource);
+    }
   };
 
   // Handle slot selection for creating new events
   const handleSelectSlot = ({ start }: { start: Date; end: Date }) => {
     setNewEventDate(start);
     setShowCreateModal(true);
-  };
-
-  // Sync with Google Calendar
-  const handleSyncWithGoogle = async (buildOrder: BuildOrder) => {
-    try {
-      // Temporarily disabled Google Calendar sync
-      console.log('Google Calendar sync temporarily disabled for build order:', buildOrder.id);
-      addToast('Google Calendar sync temporarily unavailable - coming soon!', 'info');
-    } catch (error) {
-      console.error('Error syncing with Google Calendar:', error);
-      addToast('Error syncing with Google Calendar', 'error');
-    }
   };
 
   return (
@@ -318,11 +351,28 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
         
         <div className="flex items-center gap-2">
           <button
-            onClick={loadGoogleCalendarEvents}
-            className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+            onClick={() => loadGoogleCalendarEvents()}
+            disabled={!calendarSettings?.calendar_sync_enabled}
+            className={`px-3 py-1 text-xs rounded transition-colors ${
+              calendarSettings?.calendar_sync_enabled
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+            }`}
           >
             Sync Google Calendar
           </button>
+          <div className="flex flex-col text-xs">
+            {calendarSettings?.calendar_sync_enabled ? (
+              <span className="text-gray-400">
+                {calendarSettings.calendar_id ? `Calendar: ${calendarSettings.calendar_id}` : 'No calendar selected'}
+              </span>
+            ) : (
+              <span className="text-yellow-400">Sync disabled</span>
+            )}
+            {calendarSyncError && (
+              <span className="text-red-400">{calendarSyncError}</span>
+            )}
+          </div>
           
           <div className="flex bg-gray-700 rounded-lg">
             {(['month', 'week', 'day'] as const).map((viewType) => (
@@ -360,13 +410,102 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
           <div className="w-3 h-3 bg-red-500 rounded"></div>
           <span className="text-gray-300">Material Shortfall</span>
         </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-sky-500 rounded"></div>
+          <span className="text-gray-300">Google Event</span>
+        </div>
       </div>
+
+      {(googleEvents.length > 0 || calendarSettings?.calendar_sync_enabled) && (
+        <div className="bg-gray-900/40 border border-gray-800 rounded-lg p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-white">Google Production Demand</h3>
+              {googleEvents.length === 0 && (
+                <p className="text-xs text-gray-400">Sync events from your linked Google Calendar to see external demand.</p>
+              )}
+            </div>
+            <div className="flex bg-gray-800 rounded-full text-xs overflow-hidden">
+              {[30, 60, 90].map((window) => (
+                <button
+                  key={window}
+                  onClick={() => setDemandWindow(window as DemandWindow)}
+                  className={`px-3 py-1 ${
+                    demandWindow === window
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  {window}d
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {googleEvents.length > 0 ? (
+            demandRows.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-xs">
+                  <thead className="text-gray-400">
+                    <tr>
+                      <th className="text-left py-1 pr-4 font-medium">SKU</th>
+                      <th className="text-left py-1 pr-4 font-medium">Calendar Qty</th>
+                      <th className="text-left py-1 pr-4 font-medium">On Hand</th>
+                      <th className="text-left py-1 pr-4 font-medium">Gap</th>
+                      <th className="text-left py-1 font-medium">Next Event</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-200">
+                    {demandRows.slice(0, 5).map((row) => (
+                      <tr key={row.sku} className="border-t border-gray-800">
+                        <td className="py-1 pr-4 font-semibold">{row.sku}</td>
+                        <td className="py-1 pr-4">{row.totalQty.toLocaleString()}</td>
+                        <td className="py-1 pr-4">{row.available.toLocaleString()}</td>
+                        <td className={`py-1 pr-4 ${row.shortfall < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {row.shortfall >= 0 ? `+${row.shortfall}` : row.shortfall}
+                        </td>
+                        <td className="py-1 text-gray-400">
+                          {row.nextEventDate ? row.nextEventDate.toLocaleDateString() : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400">
+                Events synced but no SKUs detected for the next {demandWindow} days. Ensure events include “SKU:” and “Qty:” lines.
+              </p>
+            )
+          ) : (
+            <p className="text-xs text-gray-400">
+              No Google events synced yet.
+            </p>
+          )}
+
+          {unparsedEvents.length > 0 && (
+            <div className="text-xs text-yellow-300 space-y-1">
+              <p>Events missing SKU or quantity:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                {unparsedEvents.slice(0, 3).map(event => (
+                  <li key={event.id}>
+                    {event.title} — {event.start.toLocaleDateString()}
+                  </li>
+                ))}
+              </ul>
+              {unparsedEvents.length > 3 && (
+                <p className="text-[11px] text-gray-400">+{unparsedEvents.length - 3} more events need SKU/quantity</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Calendar */}
       <div className="flex-1 bg-white rounded-lg p-4">
         <Calendar
           localizer={localizer}
-        events={combinedEvents}
+          events={combinedEvents}
           startAccessor="start"
           endAccessor="end"
           titleAccessor="title"
@@ -375,15 +514,20 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
           onView={setView as any}
           date={selectedDate}
           onNavigate={setSelectedDate}
-          onSelectEvent={handleSelectEvent}
+          onSelectEvent={handleSelectEvent as any}
           onSelectSlot={handleSelectSlot}
           selectable
-          eventPropGetter={eventStyleGetter}
+          eventPropGetter={eventStyleGetter as any}
           style={{ height: '600px' }}
           popup
-          tooltipAccessor={(event: CalendarBuildEvent) => 
-            `${event.title}\nStatus: ${event.status}${event.materialShortfall ? '\n⚠️ Material Shortfall' : ''}`
-          }
+          tooltipAccessor={(event: UnifiedCalendarEvent) => {
+            if (event.source === 'google') {
+              const skuLine = event.googleEvent.finishedSku ? `SKU: ${event.googleEvent.finishedSku}\n` : '';
+              const qtyLine = event.googleEvent.quantity ? `Quantity: ${event.googleEvent.quantity}\n` : '';
+              return `${event.title}\n${skuLine}${qtyLine}Source: Google Calendar`;
+            }
+            return `${event.title}\nStatus: ${event.status}${event.materialShortfall ? '\n⚠️ Material Shortfall' : ''}`;
+          }}
         />
       </div>
 
@@ -394,9 +538,20 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
           onClose={() => setSelectedBuild(null)}
           onUpdate={onUpdateBuildOrder}
           onComplete={() => onCompleteBuildOrder(selectedBuild.id)}
-          onSyncGoogle={() => handleSyncWithGoogle(selectedBuild)}
+          onSyncGoogle={() => handleSyncBuildOrderToGoogle(selectedBuild)}
+          canSyncGoogle={Boolean(calendarSettings?.calendar_sync_enabled)}
           inventory={inventory}
           vendors={vendors}
+          addToast={addToast}
+        />
+      )}
+
+      {selectedExternalEvent && (
+        <ExternalEventDetailsModal
+          event={selectedExternalEvent}
+          inventory={inventory}
+          onClose={() => setSelectedExternalEvent(null)}
+          onCreateBuildOrder={onCreateBuildOrder}
           addToast={addToast}
         />
       )}
@@ -429,7 +584,8 @@ interface BuildDetailsModalProps {
   onClose: () => void;
   onUpdate: (buildOrder: BuildOrder) => void;
   onComplete: () => void;
-  onSyncGoogle: () => void;
+  onSyncGoogle: () => void | Promise<void>;
+  canSyncGoogle: boolean;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -441,6 +597,7 @@ const BuildDetailsModal: React.FC<BuildDetailsModalProps> = ({
   onUpdate,
   onComplete,
   onSyncGoogle,
+  canSyncGoogle,
   addToast,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -601,10 +758,20 @@ const BuildDetailsModal: React.FC<BuildDetailsModalProps> = ({
             <div className="flex gap-2">
               <button
                 onClick={onSyncGoogle}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+                disabled={!canSyncGoogle}
+                className={`px-4 py-2 rounded-md transition-colors ${
+                  canSyncGoogle
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                }`}
               >
-                Sync to Calendar
+                {buildOrder.calendarEventId ? 'Update Google Event' : 'Sync to Google Calendar'}
               </button>
+              {!canSyncGoogle && (
+                <span className="text-[11px] text-gray-400 self-center">
+                  Enable calendar sync to push events
+                </span>
+              )}
               
               {buildOrder.status !== 'Completed' && (
                 <button
@@ -615,6 +782,150 @@ const BuildDetailsModal: React.FC<BuildDetailsModalProps> = ({
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface ExternalEventDetailsModalProps {
+  event: GoogleProductionEvent;
+  inventory: InventoryItem[];
+  onClose: () => void;
+  onCreateBuildOrder: ProductionCalendarViewProps['onCreateBuildOrder'];
+  addToast: ProductionCalendarViewProps['addToast'];
+}
+
+const ExternalEventDetailsModal: React.FC<ExternalEventDetailsModalProps> = ({
+  event,
+  inventory,
+  onClose,
+  onCreateBuildOrder,
+  addToast,
+}) => {
+  const inventoryItem = event.finishedSku ? inventory.find(item => item.sku === event.finishedSku) : null;
+  const available = inventoryItem?.stock ?? null;
+  const shortfall = event.quantity && available !== null ? available - event.quantity : null;
+  const canCreateBuild = Boolean(event.finishedSku && event.quantity);
+
+  const handleCreateBuild = () => {
+    if (!canCreateBuild || !event.finishedSku || !event.quantity) {
+      addToast('Add SKU and quantity to the Google event to draft a build order.', 'error');
+      return;
+    }
+
+    onCreateBuildOrder(
+      event.finishedSku,
+      inventoryItem?.name || event.title,
+      Math.round(event.quantity),
+      event.start.toISOString(),
+      event.end?.toISOString()
+    );
+    addToast('Drafted build order from Google event', 'success');
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div className="bg-gray-900 rounded-lg max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto border border-gray-800">
+        <div className="flex justify-between items-start p-5 border-b border-gray-800">
+          <div>
+            <h3 className="text-lg font-semibold text-white">{event.title}</h3>
+            <p className="text-xs text-gray-400 mt-1">Source: Google Calendar</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <XMarkIcon className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4 text-sm text-gray-200">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-gray-400 text-xs">Start</p>
+              <p className="text-white font-medium">{event.start.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-gray-400 text-xs">End</p>
+              <p className="text-white font-medium">{event.end?.toLocaleString() || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="text-gray-400 text-xs">Finished SKU</p>
+              <p className="text-white font-medium">{event.finishedSku || 'Not detected'}</p>
+            </div>
+            <div>
+              <p className="text-gray-400 text-xs">Quantity</p>
+              <p className="text-white font-medium">{event.quantity ?? 'Not detected'}</p>
+            </div>
+          </div>
+
+          {event.description && (
+            <div>
+              <p className="text-gray-400 text-xs mb-1">Notes</p>
+              <p className="text-gray-200 whitespace-pre-line bg-gray-800/60 rounded-lg p-3 border border-gray-700">
+                {event.description}
+              </p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gray-800/60 border border-gray-700 rounded-lg p-3">
+              <p className="text-xs text-gray-400 mb-1">Inventory Snapshot</p>
+              {inventoryItem ? (
+                <>
+                  <p className="text-white font-semibold">{inventoryItem.name}</p>
+                  <p className="text-gray-300">On hand: {inventoryItem.stock.toLocaleString()}</p>
+                  {shortfall !== null && (
+                    <p className={shortfall < 0 ? 'text-red-400 font-medium' : 'text-emerald-400 font-medium'}>
+                      {shortfall < 0 ? `Short ${Math.abs(shortfall)}` : `Surplus ${shortfall}`}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-gray-400">SKU not in inventory.</p>
+              )}
+            </div>
+            <div className="bg-gray-800/60 border border-gray-700 rounded-lg p-3">
+              <p className="text-xs text-gray-400 mb-1">Metadata Confidence</p>
+              <p>SKU Source: <span className="text-white">{event.skuSource}</span></p>
+              <p>Qty Source: <span className="text-white">{event.quantitySource}</span></p>
+            </div>
+          </div>
+
+          {event.materials && event.materials.length > 0 && (
+            <div>
+              <p className="text-xs text-gray-400 mb-1">Materials (from event)</p>
+              <div className="space-y-1">
+                {event.materials.map((material, idx) => (
+                  <div key={idx} className="flex justify-between text-xs text-gray-300 bg-gray-800/40 rounded px-3 py-1">
+                    <span>{material.name || material.sku || `Component ${idx + 1}`}</span>
+                    {material.requiredQuantity !== undefined && (
+                      <span>{material.requiredQuantity}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-gray-800">
+            <button
+              onClick={handleCreateBuild}
+              disabled={!canCreateBuild}
+              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                canCreateBuild
+                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                  : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Create Build Order
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md text-sm"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>
@@ -744,5 +1055,51 @@ const CreateScheduledBuildModal: React.FC<CreateScheduledBuildModalProps> = ({
     </div>
   );
 };
+
+function computeExternalDemand(
+  events: GoogleProductionEvent[],
+  inventoryMap: Map<string, InventoryItem>,
+  windowDays: number
+): ExternalDemandRow[] {
+  const now = new Date();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() + windowDays);
+
+  const aggregate = new Map<string, { total: number; nextEventDate: Date | null; name?: string }>();
+
+  events.forEach((event) => {
+    if (!event.finishedSku || typeof event.quantity !== 'number') {
+      return;
+    }
+
+    const start = event.start;
+    if (start < now || start > cutoff) {
+      return;
+    }
+
+    const entry = aggregate.get(event.finishedSku) || { total: 0, nextEventDate: null };
+    entry.total += event.quantity;
+    if (!entry.nextEventDate || start < entry.nextEventDate) {
+      entry.nextEventDate = start;
+    }
+    entry.name = event.title;
+    aggregate.set(event.finishedSku, entry);
+  });
+
+  return Array.from(aggregate.entries())
+    .map(([sku, info]) => {
+      const inventoryItem = inventoryMap.get(sku);
+      const available = inventoryItem?.stock ?? 0;
+      return {
+        sku,
+        name: inventoryItem?.name || info.name || sku,
+        totalQty: info.total,
+        available,
+        shortfall: available - info.total,
+        nextEventDate: info.nextEventDate,
+      } as ExternalDemandRow;
+    })
+    .sort((a, b) => a.shortfall - b.shortfall);
+}
 
 export default ProductionCalendarView;

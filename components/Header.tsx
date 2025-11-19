@@ -16,10 +16,7 @@ const Header: React.FC<HeaderProps> = ({ currentUser, onLogout, isGlobalLoading,
         <header className="h-16 bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0">
             <div className="flex items-center min-w-[120px]">
                 {showLogo && (
-                    <div className="flex items-center gap-3">
-                        <MushroomLogo className="w-9 h-9 text-indigo-300" />
-                        <h1 className="text-3xl font-bold tracking-wide text-indigo-200">MuRP</h1>
-                    </div>
+                    <h1 className="text-4xl font-extrabold tracking-wide text-indigo-200">MuRP</h1>
                 )}
             </div>
                 <div className="flex items-center space-x-4">

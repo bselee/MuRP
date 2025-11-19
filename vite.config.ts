@@ -17,6 +17,15 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          'node:util': path.resolve(__dirname, 'polyfills/node-util.ts'),
+        }
+      },
+      optimizeDeps: {
+        exclude: ['node-fetch', '@google-cloud/local-auth', 'googleapis']
+      },
+      build: {
+        rollupOptions: {
+          external: ['node-fetch', '@google-cloud/local-auth', 'googleapis']
         }
       }
     };

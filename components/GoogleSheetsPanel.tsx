@@ -46,20 +46,6 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
     checkAuthStatus();
   }, []);
 
-  // Listen for OAuth callback messages
-  useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-        await authService.handleAuthCallback(event.data.tokens);
-        await checkAuthStatus();
-        addToast('Successfully connected to Google!', 'success');
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
   const checkAuthStatus = async () => {
     try {
       const status = await authService.getAuthStatus();
@@ -75,19 +61,9 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
   const handleConnect = async () => {
     try {
       setIsLoading(true);
-      const authUrl = await authService.getAuthUrl();
-
-      // Open in popup
-      const popup = window.open(
-        authUrl,
-        'Google OAuth',
-        'width=600,height=700,menubar=no,toolbar=no'
-      );
-
-      if (!popup) {
-        // Fallback: redirect in same window
-        window.location.href = authUrl;
-      }
+      await authService.startOAuthFlow();
+      await checkAuthStatus();
+      addToast('Successfully connected to Google!', 'success');
     } catch (error) {
       console.error('Error connecting to Google:', error);
       addToast(`Failed to connect: ${error instanceof Error ? error.message : String(error)}`, 'error');

@@ -42,7 +42,8 @@ export class GoogleAuthService {
     // Get Google OAuth credentials from environment
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const clientSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
-    const redirectUri = import.meta.env.VITE_GOOGLE_REDIRECT_URI || `${window.location.origin}/auth/google/callback`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const redirectUri = import.meta.env.VITE_GOOGLE_REDIRECT_URI || (origin ? `${origin}/auth/google/callback` : '');
 
     if (!clientId || !clientSecret) {
       console.warn('[GoogleAuthService] Google OAuth credentials not configured in environment');
@@ -63,6 +64,22 @@ export class GoogleAuthService {
    * Get authentication URL for user consent
    */
   async getAuthUrl(scopes: string[] = DEFAULT_SCOPES): Promise<string> {
+    // Prefer hitting the shared API route so scopes stay centralized
+    if (typeof window !== 'undefined') {
+      try {
+        const response = await fetch('/api/google-auth/authorize');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch authorize URL (${response.status})`);
+        }
+        const data = await response.json();
+        if (data?.authUrl) {
+          return data.authUrl as string;
+        }
+      } catch (error) {
+        console.warn('[GoogleAuthService] Falling back to local OAuth client:', error);
+      }
+    }
+
     if (!this.oauth2Client) {
       throw new Error('Google OAuth client not initialized. Check environment variables.');
     }
@@ -70,16 +87,74 @@ export class GoogleAuthService {
     return getAuthUrl(this.oauth2Client, scopes);
   }
 
+  async startOAuthFlow(scopes: string[] = DEFAULT_SCOPES): Promise<void> {
+    if (typeof window === 'undefined') {
+      throw new Error('OAuth flow can only be initiated in the browser');
+    }
+
+    const authUrl = await this.getAuthUrl(scopes);
+
+    await new Promise<void>((resolve, reject) => {
+      const popup = window.open(
+        authUrl,
+        'Google OAuth',
+        'width=600,height=700,menubar=no,toolbar=no,status=no'
+      );
+
+      const redirectFallback = () => {
+        window.location.href = authUrl;
+      };
+
+      if (!popup) {
+        redirectFallback();
+        return;
+      }
+
+      const timeout = window.setTimeout(() => {
+        cleanup();
+        reject(new Error('Google OAuth timed out. Please try again.'));
+      }, 1000 * 180);
+
+      const cleanup = () => {
+        window.removeEventListener('message', handleMessage);
+        window.clearTimeout(timeout);
+        if (!popup.closed) {
+          popup.close();
+        }
+      };
+
+      const handleMessage = async (event: MessageEvent) => {
+        if (!event?.data) return;
+        if (event.data.type === 'GOOGLE_AUTH_SUCCESS' && event.data.tokens) {
+          try {
+            await this.handleAuthCallback(event.data.tokens as GoogleTokens);
+            cleanup();
+            resolve();
+          } catch (error) {
+            cleanup();
+            reject(error);
+          }
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+    });
+  }
+
   /**
    * Handle OAuth callback with authorization code
    */
-  async handleAuthCallback(code: string): Promise<void> {
+  async handleAuthCallback(payload: string | GoogleTokens): Promise<void> {
     if (!this.oauth2Client) {
       throw new Error('Google OAuth client not initialized');
     }
 
-    // Exchange code for tokens
-    const tokens = await getTokensFromCode(this.oauth2Client, code);
+    let tokens: GoogleTokens;
+    if (typeof payload === 'string') {
+      tokens = await getTokensFromCode(this.oauth2Client, payload);
+    } else {
+      tokens = payload;
+    }
     this.currentTokens = tokens;
 
     // Set credentials on client
@@ -110,6 +185,18 @@ export class GoogleAuthService {
     }
 
     return this.oauth2Client;
+  }
+
+  async getAccessToken(): Promise<string> {
+    const client = await this.getAuthenticatedClient();
+    const tokenResponse = await client.getAccessToken();
+    const accessToken = typeof tokenResponse === 'string' ? tokenResponse : tokenResponse?.token;
+
+    if (!accessToken) {
+      throw new Error('Unable to retrieve Google access token');
+    }
+
+    return accessToken;
   }
 
   /**

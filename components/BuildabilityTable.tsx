@@ -45,22 +45,22 @@ const BuildabilityTable: React.FC<BuildabilityTableProps> = ({ data }) => {
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-gray-800">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Product</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">SKU</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Buildable Units</th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-              <th scope="col" className="relative px-6 py-3"><span className="sr-only">Expand</span></th>
+              <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Product</th>
+              <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">SKU</th>
+              <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Buildable Units</th>
+              <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+              <th scope="col" className="relative px-6 py-2"><span className="sr-only">Expand</span></th>
             </tr>
           </thead>
           <tbody className="bg-gray-800 divide-y divide-gray-700">
             {data.map((item) => (
               <React.Fragment key={item.bom.finishedSku}>
                 <tr className="hover:bg-gray-700/50 transition-colors duration-200">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{item.bom.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{item.bom.finishedSku}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-white">{item.buildableUnits}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm"><StatusBadge status={item.status} /></td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-white">{item.bom.name}</td>
+                  <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{item.bom.finishedSku}</td>
+                  <td className="px-6 py-1 whitespace-nowrap text-sm font-semibold text-white">{item.buildableUnits}</td>
+                  <td className="px-6 py-1 whitespace-nowrap text-sm"><StatusBadge status={item.status} /></td>
+                  <td className="px-6 py-1 whitespace-nowrap text-right text-sm font-medium">
                     <button onClick={() => toggleRow(item.bom.finishedSku)} className="text-indigo-400 hover:text-indigo-300">
                       <ChevronDownIcon className={`w-5 h-5 transition-transform duration-200 ${expandedRow === item.bom.finishedSku ? 'rotate-180' : ''}`} />
                     </button>
