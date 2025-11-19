@@ -34,78 +34,24 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
           throw exchangeError;
         }
 
-        if (data.session) {
-          // Wait for user profile to be created by database trigger
-          // This is important for OAuth flows where profile creation happens async
-          let profile = null;
-          let attempts = 0;
-          const maxAttempts = 10;
-
-          while (!profile && attempts < maxAttempts) {
-            const { data: profileData, error: profileError } = await supabase
-              .from('user_profiles')
-              .select('*')
-              .eq('id', data.session.user.id)
-              .maybeSingle();
-
-            if (profileData) {
-              profile = profileData;
-              break;
-            }
-
-            if (profileError && profileError.code !== 'PGRST116') {
-              // PGRST116 is "no rows returned", which is expected during the wait
-              console.error('[AuthCallback] Error fetching profile:', profileError);
-            }
-
-            attempts++;
-            if (attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
-          }
-
-          if (!profile) {
-            console.warn('[AuthCallback] Profile not found after waiting, creating via server function');
-
-            // Call server-side function to create profile (bypasses RLS)
-            const { data: ensuredProfile, error: ensureError } = await supabase.rpc('ensure_user_profile');
-
-            if (ensureError) {
-              console.error('[AuthCallback] Failed to ensure profile:', ensureError);
-              // Continue anyway - AuthContext has its own retry logic
-            } else {
-              console.log('[AuthCallback] Profile created successfully:', ensuredProfile);
-              profile = ensuredProfile;
-            }
-          }
-
-          // Mark user as onboarded if profile exists (already done by ensure_user_profile function)
-          if (profile && !profile.onboarding_complete) {
-            const { error: updateError } = await supabase
-              .from('user_profiles')
-              .update({ onboarding_complete: true })
-              .eq('id', data.session.user.id);
-
-            if (updateError) {
-              console.error('[AuthCallback] Failed to mark onboarding complete:', updateError);
-            }
-          }
-
-          setStatus('success');
-          addToast('Authentication successful! Welcome to MuRP.', 'success');
-
-          // Redirect to dashboard after a short delay
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 1500);
-        } else {
+        if (!data.session) {
           throw new Error('Failed to create session');
         }
+
+        // Ensure profile exists using server function (handles race condition)
+        await supabase.rpc('ensure_user_profile');
+
+        setStatus('success');
+        addToast('Authentication successful! Welcome to MuRP.', 'success');
+
+        // Redirect to dashboard
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
       } catch (err: any) {
-        console.error('[AuthCallback] Error:', err);
         setStatus('error');
-        setErrorMessage(err.message || 'Failed to confirm email');
-        addToast(`Email confirmation failed: ${err.message}`, 'error');
+        setErrorMessage(err.message || 'Authentication failed');
+        addToast(`Authentication failed: ${err.message}`, 'error');
       }
     };
 

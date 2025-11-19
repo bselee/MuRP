@@ -73,48 +73,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = useCallback(async (userId?: string | null) => {
     if (!userId) {
-      console.log('[Auth] fetchProfile: no userId provided');
       setUser(null);
       return;
     }
-    console.log('[Auth] Fetching profile for user:', userId);
 
-    // Try to fetch profile, with retry for OAuth flows
-    let profile = null;
-    let attempts = 0;
-    const maxAttempts = 3;
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
 
-    while (!profile && attempts < maxAttempts) {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('[Auth] Failed to fetch user profile:', error);
-        setUser(null);
-        return;
-      }
-
-      if (data) {
-        profile = data;
-        break;
-      }
-
-      attempts++;
-      if (attempts < maxAttempts) {
-        // Wait before retrying (for OAuth flows where profile is being created)
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-
-    if (profile) {
-      console.log('[Auth] Profile loaded successfully:', profile);
-      setUser(transformProfile(profile));
+    if (data) {
+      setUser(transformProfile(data));
     } else {
-      console.warn('[Auth] No user_profiles row found for user after', attempts, 'attempts:', userId);
-      setUser(null);
+      // Profile doesn't exist, create it via server function
+      const { data: profile } = await supabase.rpc('ensure_user_profile');
+      setUser(profile ? transformProfile(profile) : null);
     }
   }, []);
 
@@ -123,7 +97,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data, error }) => {
       if (!mounted) return;
       if (error) {
-        console.error('[Auth] getSession error:', error);
         setLoading(false);
         return;
       }
@@ -160,13 +133,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [session, godMode]);
 
   const signIn = useCallback(async ({ email, password }: { email: string; password: string }) => {
-    console.log('[Auth] Attempting sign in for:', email);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      console.error('[Auth] signIn error:', error);
-      return { error: error.message };
-    }
-    console.log('[Auth] Sign in successful, session will update via listener');
+    if (error) return { error: error.message };
     return {};
   }, []);
 
@@ -183,10 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
-    if (error) {
-      console.error('[Auth] signUp error:', error);
-      return { error: error.message };
-    }
+    if (error) return { error: error.message };
     return {};
   }, []);
 
