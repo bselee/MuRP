@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CalendarIcon, RefreshIcon, CheckCircleIcon } from './icons';
 // import { getGoogleCalendarService, type GoogleCalendar } from '../services/googleCalendarService'; // Disabled - browser compatibility
 import { supabase } from '../lib/supabase/client';
-import { getGoogleAuthService } from '../services/googleAuthService';
+// import { getGoogleAuthService } from '../services/googleAuthService'; // Disabled - browser compatibility
 
 interface GoogleCalendar {
   id: string;
@@ -75,17 +75,22 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
 
   const handleConnectGoogle = async () => {
     try {
-      const authService = getGoogleAuthService();
-      const authUrl = await authService.getAuthUrl();
-      const popup = window.open(
-        authUrl,
-        'Google OAuth',
-        'width=600,height=700,menubar=no,toolbar=no'
-      );
+      // Use Supabase's built-in Google OAuth with calendar scope
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/calendar',
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
 
-      if (!popup) {
-        window.location.href = authUrl;
-      }
+      if (error) throw error;
+      
+      // The page will redirect to Google OAuth
     } catch (error) {
       console.error('Error connecting to Google:', error);
       addToast('Failed to connect to Google', 'error');
@@ -126,9 +131,36 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
 
     try {
       setIsLoadingCalendars(true);
-      // TODO: Implement via Supabase Edge Function for browser compatibility
-      addToast('Calendar loading temporarily unavailable - coming soon!', 'info');
-      setAvailableCalendars([]);
+      
+      // Call edge function to list calendars
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/google-calendar`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'list_calendars',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load calendars: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.calendars && result.calendars.length > 0) {
+        setAvailableCalendars(result.calendars);
+      } else {
+        addToast('No calendars found in your Google account', 'info');
+        setAvailableCalendars([]);
+      }
     } catch (error) {
       console.error('Error loading calendars:', error);
       addToast('Failed to load Google Calendars. Please ensure you have granted calendar access.', 'error');
