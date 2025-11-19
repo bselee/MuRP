@@ -695,6 +695,18 @@ export interface HistoricalSale {
     quantity: number;
 }
 
+export interface MaterialRequirement {
+    sku: string;
+    name: string;
+    requiredQuantity: number;
+    availableQuantity: number;
+    shortfall: number;
+    vendorId?: string;
+    vendorName?: string;
+    leadTimeDays?: number;
+    estimatedCost?: number;
+}
+
 export interface BuildOrder {
     id: string;
     finishedSku: string;
@@ -702,6 +714,13 @@ export interface BuildOrder {
     quantity: number;
     status: 'Pending' | 'In Progress' | 'Completed';
     createdAt: string;
+    scheduledDate?: string; // ISO date for when build should start
+    dueDate?: string; // ISO date for when build should complete
+    calendarEventId?: string; // Google Calendar event ID
+    materialRequirements?: MaterialRequirement[]; // Component sourcing info
+    notes?: string; // Additional build notes
+    estimatedDurationHours?: number; // How long the build should take
+    assignedUserId?: string; // Who is responsible for the build
 }
 
 export interface User {

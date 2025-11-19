@@ -36,6 +36,7 @@ import {
 import {
   createPurchaseOrder,
   createBuildOrder,
+  updateBuildOrder,
   updateBuildOrderStatus,
   updateBOM,
   updateInventoryStock,
@@ -260,7 +261,13 @@ const App: React.FC = () => {
   };
 
 
-  const handleCreateBuildOrder = async (sku: string, name: string, quantity: number) => {
+  const handleCreateBuildOrder = async (
+    sku: string, 
+    name: string, 
+    quantity: number, 
+    scheduledDate?: string, 
+    dueDate?: string
+  ) => {
     const newBuildOrder: BuildOrder = {
       id: `BO-${new Date().getFullYear()}-${(buildOrders.length + 1).toString().padStart(3, '0')}`,
       finishedSku: sku,
@@ -268,6 +275,9 @@ const App: React.FC = () => {
       quantity,
       status: 'Pending',
       createdAt: new Date().toISOString(),
+      scheduledDate,
+      dueDate,
+      estimatedDurationHours: 2, // Default 2 hours
     };
 
     // 🔥 Save to Supabase
@@ -280,6 +290,17 @@ const App: React.FC = () => {
     refetchBuildOrders();
     addToast(`Successfully created Build Order ${newBuildOrder.id} for ${quantity}x ${name}.`, 'success');
     setCurrentPage('Production');
+  };
+
+  const handleUpdateBuildOrder = async (buildOrder: BuildOrder) => {
+    const result = await updateBuildOrder(buildOrder);
+    if (!result.success) {
+      addToast(`Failed to update build order: ${result.error}`, 'error');
+      return;
+    }
+
+    refetchBuildOrders();
+    addToast(`Build order ${buildOrder.id} updated successfully.`, 'success');
   };
 
   const handleCompleteBuildOrder = async (buildOrderId: string) => {
@@ -728,7 +749,16 @@ const App: React.FC = () => {
           purchaseOrders={purchaseOrders}
         />;
       case 'Production':
-        return <Production buildOrders={buildOrders} onCompleteBuildOrder={handleCompleteBuildOrder} />;
+        return <Production 
+          buildOrders={buildOrders} 
+          boms={boms}
+          inventory={inventory}
+          vendors={vendors}
+          onCompleteBuildOrder={handleCompleteBuildOrder} 
+          onCreateBuildOrder={handleCreateBuildOrder}
+          onUpdateBuildOrder={handleUpdateBuildOrder}
+          addToast={addToast}
+        />;
       case 'BOMs':
         return <BOMs
           boms={boms}

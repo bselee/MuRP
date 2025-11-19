@@ -738,7 +738,24 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
 
       const { data: orders, error: fetchError } = await supabase
         .from('build_orders')
-        .select('*')
+        .select(`
+          *,
+          build_order_material_requirements (
+            id,
+            sku,
+            name,
+            required_quantity,
+            available_quantity,
+            shortfall,
+            vendor_id,
+            vendor_name,
+            lead_time_days,
+            estimated_cost,
+            sourced,
+            sourced_at,
+            notes
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -749,8 +766,25 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
         finishedSku: order.finished_sku,
         name: order.name,
         quantity: order.quantity,
-        status: order.status as 'Pending' | 'In Progress' | 'Complete',
+        status: order.status as 'Pending' | 'In Progress' | 'Completed',
         createdAt: order.created_at,
+        scheduledDate: order.scheduled_date,
+        dueDate: order.due_date,
+        calendarEventId: order.calendar_event_id,
+        notes: order.notes,
+        estimatedDurationHours: order.estimated_duration_hours,
+        assignedUserId: order.assigned_user_id,
+        materialRequirements: order.build_order_material_requirements?.map((req: any) => ({
+          sku: req.sku,
+          name: req.name,
+          requiredQuantity: req.required_quantity,
+          availableQuantity: req.available_quantity,
+          shortfall: req.shortfall,
+          vendorId: req.vendor_id,
+          vendorName: req.vendor_name,
+          leadTimeDays: req.lead_time_days,
+          estimatedCost: req.estimated_cost,
+        })) || [],
       }));
 
       setData(transformed);

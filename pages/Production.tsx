@@ -1,9 +1,17 @@
-import React, { useMemo } from 'react';
-import type { BuildOrder } from '../types';
+import React, { useMemo, useState } from 'react';
+import ProductionCalendarView from '../components/ProductionCalendarView';
+import { CalendarIcon, TableCellsIcon } from '../components/icons';
+import type { BuildOrder, BillOfMaterials, InventoryItem, Vendor } from '../types';
 
 interface ProductionProps {
     buildOrders: BuildOrder[];
+    boms: BillOfMaterials[];
+    inventory: InventoryItem[];
+    vendors: Vendor[];
     onCompleteBuildOrder: (buildOrderId: string) => void;
+    onCreateBuildOrder: (sku: string, name: string, quantity: number, scheduledDate?: string, dueDate?: string) => void;
+    onUpdateBuildOrder: (buildOrder: BuildOrder) => void;
+    addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 const StatusBadge: React.FC<{ status: BuildOrder['status'] }> = ({ status }) => {
@@ -16,7 +24,17 @@ const StatusBadge: React.FC<{ status: BuildOrder['status'] }> = ({ status }) => 
 };
 
 
-const Production: React.FC<ProductionProps> = ({ buildOrders, onCompleteBuildOrder }) => {
+const Production: React.FC<ProductionProps> = ({ 
+    buildOrders, 
+    boms, 
+    inventory, 
+    vendors, 
+    onCompleteBuildOrder, 
+    onCreateBuildOrder, 
+    onUpdateBuildOrder, 
+    addToast 
+}) => {
+    const [view, setView] = useState<'table' | 'calendar'>('table');
     
     const sortedBuildOrders = useMemo(() => 
         [...buildOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
@@ -26,9 +44,52 @@ const Production: React.FC<ProductionProps> = ({ buildOrders, onCompleteBuildOrd
     return (
         <div className="space-y-6">
             <header>
-                <h1 className="text-3xl font-bold text-white tracking-tight">Production</h1>
-                <p className="text-gray-400 mt-1">Manage internal build orders for finished goods.</p>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white tracking-tight">Production</h1>
+                        <p className="text-gray-400 mt-1">Manage internal build orders for finished goods.</p>
+                    </div>
+                    
+                    {/* View Toggle */}
+                    <div className="flex bg-gray-700 rounded-lg">
+                        <button
+                            onClick={() => setView('table')}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                                view === 'table'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'text-gray-300 hover:text-white hover:bg-gray-600'
+                            }`}
+                        >
+                            <TableCellsIcon className="w-4 h-4" />
+                            Table View
+                        </button>
+                        <button
+                            onClick={() => setView('calendar')}
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                                view === 'calendar'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'text-gray-300 hover:text-white hover:bg-gray-600'
+                            }`}
+                        >
+                            <CalendarIcon className="w-4 h-4" />
+                            Calendar View
+                        </button>
+                    </div>
+                </div>
             </header>
+
+            {view === 'calendar' ? (
+                <ProductionCalendarView
+                    buildOrders={buildOrders}
+                    boms={boms}
+                    inventory={inventory}
+                    vendors={vendors}
+                    onCreateBuildOrder={onCreateBuildOrder}
+                    onUpdateBuildOrder={onUpdateBuildOrder}
+                    onCompleteBuildOrder={onCompleteBuildOrder}
+                    addToast={addToast}
+                />
+            ) : (
 
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
                 <div className="overflow-x-auto">
@@ -64,7 +125,7 @@ const Production: React.FC<ProductionProps> = ({ buildOrders, onCompleteBuildOrd
                                             </button>
                                         ) : (
                                             <span className="text-xs text-gray-500">Done</span>
-                                        )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -72,6 +133,7 @@ const Production: React.FC<ProductionProps> = ({ buildOrders, onCompleteBuildOrd
                     </table>
                 </div>
             </div>
+            )}
         </div>
     );
 };

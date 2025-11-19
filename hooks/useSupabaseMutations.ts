@@ -187,6 +187,12 @@ export async function createBuildOrder(order: BuildOrder): Promise<{ success: bo
         quantity: order.quantity,
         status: order.status,
         created_at: order.createdAt,
+        scheduled_date: order.scheduledDate,
+        due_date: order.dueDate,
+        calendar_event_id: order.calendarEventId,
+        notes: order.notes,
+        estimated_duration_hours: order.estimatedDurationHours,
+        assigned_user_id: order.assignedUserId,
       });
 
     if (error) throw error;
@@ -215,6 +221,33 @@ export async function updateBuildOrderStatus(
     return { success: true };
   } catch (error) {
     console.error('[updateBuildOrderStatus] Error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to update build order' };
+  }
+}
+
+export async function updateBuildOrder(buildOrder: BuildOrder): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('build_orders')
+      .update({
+        finished_sku: buildOrder.finishedSku,
+        name: buildOrder.name,
+        quantity: buildOrder.quantity,
+        status: buildOrder.status,
+        scheduled_date: buildOrder.scheduledDate,
+        due_date: buildOrder.dueDate,
+        calendar_event_id: buildOrder.calendarEventId,
+        notes: buildOrder.notes,
+        estimated_duration_hours: buildOrder.estimatedDurationHours,
+        assigned_user_id: buildOrder.assignedUserId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', buildOrder.id);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('[updateBuildOrder] Error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Failed to update build order' };
   }
 }

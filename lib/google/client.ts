@@ -97,6 +97,9 @@ export const GOOGLE_SCOPES = {
   DRIVE_READONLY: 'https://www.googleapis.com/auth/drive.readonly',
   DRIVE_FILE: 'https://www.googleapis.com/auth/drive.file', // Access only files created by this app
   DRIVE_APPDATA: 'https://www.googleapis.com/auth/drive.appdata', // Access app-specific data folder
+  CALENDAR_READONLY: 'https://www.googleapis.com/auth/calendar.readonly',
+  CALENDAR_READWRITE: 'https://www.googleapis.com/auth/calendar', // Full calendar access
+  CALENDAR_EVENTS: 'https://www.googleapis.com/auth/calendar.events', // Events only
 } as const;
 
 /**
@@ -105,6 +108,7 @@ export const GOOGLE_SCOPES = {
 export const DEFAULT_SCOPES = [
   GOOGLE_SCOPES.SHEETS_READWRITE, // Read/write access to Sheets
   GOOGLE_SCOPES.DRIVE_FILE,       // Create and access files we create
+  GOOGLE_SCOPES.CALENDAR_READWRITE, // Calendar integration for production scheduling
 ] as const;
 
 /**
@@ -119,4 +123,11 @@ export function createSheetsClient(oauth2Client: OAuth2Client) {
  */
 export function createDriveClient(oauth2Client: OAuth2Client) {
   return google.drive({ version: 'v3', auth: oauth2Client });
+}
+
+/**
+ * Create Google Calendar API client
+ */
+export function createCalendarClient(oauth2Client: OAuth2Client) {
+  return google.calendar({ version: 'v3', auth: oauth2Client });
 }
