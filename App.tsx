@@ -768,11 +768,12 @@ const App: React.FC = () => {
     
     switch (currentPage) {
       case 'Dashboard':
-        return <Dashboard 
-          inventory={inventory} 
-          boms={boms} 
+        return <Dashboard
+          inventory={inventory}
+          boms={boms}
           historicalSales={historicalSales}
           vendors={vendors}
+          purchaseOrders={purchaseOrders}
           onCreateBuildOrder={handleCreateBuildOrder}
           onCreateRequisition={handleCreateRequisition}
           requisitions={requisitions}
