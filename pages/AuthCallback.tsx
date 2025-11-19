@@ -13,6 +13,11 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
+        // Log full URL for debugging
+        console.log('[AuthCallback] Full URL:', window.location.href);
+        console.log('[AuthCallback] Search:', window.location.search);
+        console.log('[AuthCallback] Hash:', window.location.hash);
+
         // Check URL parameters for errors or hash fragments
         const params = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -24,34 +29,45 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
           throw new Error(errorDescription || error);
         }
 
-        // For OAuth flows, Supabase handles the callback automatically
-        // We just need to check if we have a session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // Check for code in both query params and hash
+        const code = params.get('code') || hashParams.get('code');
+        const accessToken = hashParams.get('access_token');
 
-        if (sessionError) {
-          throw sessionError;
-        }
+        console.log('[AuthCallback] Code:', code ? 'found' : 'not found');
+        console.log('[AuthCallback] Access token:', accessToken ? 'found' : 'not found');
 
-        if (!session) {
-          // No session yet - might be email confirmation flow
-          const code = params.get('code');
-          if (code) {
-            // This is an email confirmation, exchange code for session
-            const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (code) {
+          console.log('[AuthCallback] Exchanging code for session');
+          // PKCE flow - exchange code for session
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-            if (exchangeError) {
-              throw exchangeError;
-            }
+          if (exchangeError) {
+            throw exchangeError;
+          }
 
-            if (!data.session) {
-              throw new Error('Failed to create session');
-            }
-          } else {
-            throw new Error('No active session found');
+          if (!data.session) {
+            throw new Error('Failed to create session from code');
+          }
+        } else if (accessToken) {
+          console.log('[AuthCallback] Implicit flow detected, waiting for Supabase to process hash');
+          // Implicit flow - Supabase processes hash automatically
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+          console.log('[AuthCallback] No code or token, checking for existing session');
+          // No code or token - check if session already exists
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+          if (sessionError) {
+            throw sessionError;
+          }
+
+          if (!session) {
+            throw new Error('No authentication data found');
           }
         }
 
-        // Ensure profile exists using server function (handles race condition)
+        // Ensure profile exists using server function
+        console.log('[AuthCallback] Ensuring user profile exists');
         await supabase.rpc('ensure_user_profile');
 
         setStatus('success');
@@ -62,6 +78,7 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
           window.location.href = '/';
         }, 1500);
       } catch (err: any) {
+        console.error('[AuthCallback] Error:', err);
         setStatus('error');
         setErrorMessage(err.message || 'Authentication failed');
         addToast(`Authentication failed: ${err.message}`, 'error');
