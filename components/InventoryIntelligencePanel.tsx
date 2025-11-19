@@ -1,16 +1,15 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📊 INVENTORY INTELLIGENCE & PLANNING PANEL
+ * 📊 MASTER PRODUCTION & PLANNING DASHBOARD
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Unified analytics and actionable planning dashboard combining:
- * - Advanced stockout risk analysis with trend detection
- * - Enhanced demand forecasting with seasonality and confidence intervals
- * - AI-generated suggested actions (requisitions & build orders)
- * - Vendor performance scoring
- * - Consumption trend analysis
+ * Shows ALL products at once with actionable insights:
+ * - Master production status table (all finished goods)
+ * - Component shortage alerts
+ * - Smart weekly planner
+ * - One-click build/request actions
  *
- * This merges the best of Stock Intelligence and Planning & Forecast
+ * Main Goal: Stay in optimal stock - not too much, not too little
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -20,17 +19,23 @@ import type {
   HistoricalSale,
   Vendor,
   AiConfig,
-  RequisitionItem
+  RequisitionItem,
+  PurchaseOrder
 } from '../types';
 import {
   ChartBarIcon,
   AlertCircleIcon,
   TrendingUpIcon,
-  UsersIcon,
-  LightBulbIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
+  XCircleIcon,
   BotIcon,
-  ExclamationCircleIcon
+  LightBulbIcon,
+  ChevronDownIcon,
+  ChevronUpIcon
 } from './icons';
+import { calculateAllBuildability } from '../services/buildabilityService';
+import type { Buildability } from '../services/buildabilityService';
 import { generateEnhancedForecast, calculateTrendMetrics } from '../services/forecastingService';
 import type { Forecast, TrendMetrics } from '../services/forecastingService';
 import { getAiPlanningInsight } from '../services/geminiService';
@@ -40,45 +45,32 @@ interface InventoryIntelligencePanelProps {
   inventory: InventoryItem[];
   historicalSales: HistoricalSale[];
   vendors: Vendor[];
-  purchaseOrders: any[];
+  purchaseOrders: PurchaseOrder[];
   onCreateRequisition: (items: RequisitionItem[], source: 'Manual' | 'System') => void;
   onCreateBuildOrder: (sku: string, name: string, quantity: number) => void;
   aiConfig: AiConfig;
 }
 
-interface StockoutRisk {
+interface ProductionStatus {
   sku: string;
   name: string;
   currentStock: number;
-  onOrder: number;
-  daysUntilStockout: number;
-  riskLevel: 'critical' | 'high' | 'medium' | 'low';
-  trendMetrics: TrendMetrics;
-  leadTimeDays: number;
-  vendorId?: string;
-  moq?: number;
-  reorderPoint: number;
+  buildableUnits: number;
+  daysOfStock: number;
+  status: 'BUILDABLE' | 'BLOCKED' | 'LOW_SOON' | 'OUT_OF_STOCK';
+  limitingComponent: { sku: string; name: string; quantity: number } | null;
+  trendDirection: 'up' | 'down' | 'stable';
+  forecast: Forecast[];
 }
 
-interface VendorPerformance {
-  vendorId: string;
-  vendorName: string;
-  onTimeDeliveryRate: number;
-  averageLeadTimeActual: number;
-  averageLeadTimeEstimated: number;
-  reliabilityScore: number;
-}
-
-interface SuggestedAction {
-  type: 'REQUISITION' | 'BUILD';
+interface ComponentShortage {
   sku: string;
   name: string;
-  quantity: number;
-  reason: string;
-  actionDate: string;
+  currentStock: number;
+  needed: number;
+  shortfall: number;
+  blocksProducts: string[]; // SKUs of products this blocks
   vendorId?: string;
-  priority: 'critical' | 'high' | 'medium' | 'low';
-  linkedRisk?: string; // SKU of linked stockout risk
 }
 
 export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProps> = ({
@@ -91,247 +83,115 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
   onCreateBuildOrder,
   aiConfig,
 }) => {
-  const [activeTab, setActiveTab] = useState<'risks' | 'forecast' | 'actions' | 'vendors' | 'trends'>('risks');
-  const [selectedProduct, setSelectedProduct] = useState('PROD-B');
-  const [aiInsight, setAiInsight] = useState('Generating insight...');
+  const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
+  const [aiInsight, setAiInsight] = useState('Analyzing production status...');
   const [isLoadingInsight, setIsLoadingInsight] = useState(true);
 
   const inventoryMap = useMemo(() => new Map(inventory.map(i => [i.sku, i])), [inventory]);
   const bomsMap = useMemo(() => new Map(boms.map(b => [b.finishedSku, b])), [boms]);
   const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
 
-  const finishedGoods = useMemo(() =>
-    inventory.filter(i => boms.some(b => b.finishedSku === i.sku)),
-    [inventory, boms]
+  // Calculate buildability for all products
+  const buildabilityData = useMemo(() =>
+    calculateAllBuildability(boms, inventory),
+    [boms, inventory]
   );
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ENHANCED FORECAST - Uses trends, seasonality, and confidence intervals
+  // MASTER PRODUCTION STATUS - All products at once
   // ═══════════════════════════════════════════════════════════════════════════
-  const enhancedForecast = useMemo(() => {
-    const productSales = historicalSales
-      .filter(s => s.sku === selectedProduct)
-      .map(s => ({ date: s.date, quantity: s.quantity }));
+  const productionStatus = useMemo(() => {
+    const statuses: ProductionStatus[] = [];
 
-    return generateEnhancedForecast(selectedProduct, productSales, 90, {
-      includeTrend: true,
-      includeSeasonality: true,
-      confidenceInterval: true,
-    });
-  }, [selectedProduct, historicalSales]);
+    buildabilityData.forEach(buildData => {
+      const item = inventoryMap.get(buildData.bom.finishedSku);
+      if (!item) return;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // STOCKOUT RISK ANALYSIS - Advanced trend-aware risk calculation
-  // ═══════════════════════════════════════════════════════════════════════════
-  const stockoutRisks = useMemo(() => {
-    const risks: StockoutRisk[] = [];
-
-    inventory.forEach(item => {
+      // Calculate consumption trend
       const sales30d = item.salesLast30Days || 0;
       const sales90d = item.salesLast90Days || 0;
       const sales180d = item.salesLast180Days || 0;
-
-      const consumptionDaily = sales30d / 30;
-
-      if (consumptionDaily === 0) return;
-
-      const availableStock = item.stock + (item.onOrder || 0);
-      const daysUntilStockout = Math.floor(availableStock / consumptionDaily);
-
-      // Calculate trend metrics
       const trendMetrics = calculateTrendMetrics(sales30d, sales90d, sales180d);
 
-      // Determine risk level based on lead time
-      const leadTime = item.leadTimeDays || 14;
-      let riskLevel: 'critical' | 'high' | 'medium' | 'low';
+      // Generate enhanced forecast
+      const salesHistory = historicalSales
+        .filter(s => s.sku === item.sku)
+        .map(s => ({ date: s.date, quantity: s.quantity }));
+      const forecast = generateEnhancedForecast(item.sku, salesHistory, 90, {
+        includeTrend: true,
+        includeSeasonality: true,
+        confidenceInterval: true,
+      });
 
-      if (daysUntilStockout <= 0) riskLevel = 'critical';
-      else if (daysUntilStockout < leadTime * 0.5) riskLevel = 'critical';
-      else if (daysUntilStockout < leadTime) riskLevel = 'high';
-      else if (daysUntilStockout < leadTime * 1.5) riskLevel = 'medium';
-      else riskLevel = 'low';
+      // Calculate days of stock based on forecast
+      const avgDailyDemand = forecast.length > 0
+        ? forecast.slice(0, 30).reduce((sum, f) => sum + f.quantity, 0) / 30
+        : (sales30d / 30);
+      const totalAvailable = item.stock + buildData.buildableUnits;
+      const daysOfStock = avgDailyDemand > 0 ? Math.floor(totalAvailable / avgDailyDemand) : 999;
 
-      // Increase risk if trend is accelerating upward
-      if (trendMetrics.direction === 'up' && trendMetrics.acceleration > 0.1) {
-        if (riskLevel === 'low') riskLevel = 'medium';
-        else if (riskLevel === 'medium') riskLevel = 'high';
+      // Determine status
+      let status: ProductionStatus['status'];
+      if (item.stock === 0 && buildData.buildableUnits === 0) {
+        status = 'OUT_OF_STOCK';
+      } else if (buildData.buildableUnits === 0) {
+        status = 'BLOCKED';
+      } else if (daysOfStock < 7) {
+        status = 'LOW_SOON';
+      } else {
+        status = 'BUILDABLE';
       }
 
-      risks.push({
+      statuses.push({
         sku: item.sku,
         name: item.name,
         currentStock: item.stock,
-        onOrder: item.onOrder || 0,
-        daysUntilStockout,
-        riskLevel,
-        trendMetrics,
-        leadTimeDays: leadTime,
-        vendorId: item.vendorId,
-        moq: item.moq,
-        reorderPoint: item.reorderPoint,
+        buildableUnits: buildData.buildableUnits,
+        daysOfStock,
+        status,
+        limitingComponent: buildData.limitingComponent,
+        trendDirection: trendMetrics.direction,
+        forecast,
       });
     });
 
-    return risks.sort((a, b) => a.daysUntilStockout - b.daysUntilStockout);
-  }, [inventory]);
+    // Sort: OUT_OF_STOCK > BLOCKED > LOW_SOON > BUILDABLE
+    const statusOrder = { OUT_OF_STOCK: 0, BLOCKED: 1, LOW_SOON: 2, BUILDABLE: 3 };
+    return statuses.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+  }, [buildabilityData, inventoryMap, historicalSales]);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // VENDOR PERFORMANCE SCORING
+  // COMPONENT SHORTAGES - What's blocking builds
   // ═══════════════════════════════════════════════════════════════════════════
-  const vendorPerformances = useMemo(() => {
-    const performances: VendorPerformance[] = [];
+  const componentShortages = useMemo(() => {
+    const shortages = new Map<string, ComponentShortage>();
 
-    vendors.forEach(vendor => {
-      const vendorPOs = purchaseOrders.filter(po => po.vendorId === vendor.id);
+    buildabilityData.forEach(buildData => {
+      if (buildData.buildableUnits === 0 && buildData.limitingComponent) {
+        const comp = buildData.limitingComponent;
+        const compItem = inventoryMap.get(comp.sku);
 
-      if (vendorPOs.length === 0) return;
+        if (compItem) {
+          const existing = shortages.get(comp.sku);
+          const blocksProducts = existing
+            ? [...existing.blocksProducts, buildData.bom.finishedSku]
+            : [buildData.bom.finishedSku];
 
-      const completedPOs = vendorPOs.filter(po => po.status === 'received' || po.status === 'Fulfilled');
-      const onTimePOs = completedPOs.filter(po => {
-        if (!po.expectedDate || !po.actualReceiveDate) return false;
-        return new Date(po.actualReceiveDate) <= new Date(po.expectedDate);
-      });
-      const onTimeRate = completedPOs.length > 0 ? (onTimePOs.length / completedPOs.length) * 100 : 0;
-
-      const leadTimes = completedPOs
-        .filter(po => po.orderDate && po.actualReceiveDate)
-        .map(po => {
-          const ordered = new Date(po.orderDate);
-          const received = new Date(po.actualReceiveDate!);
-          return Math.floor((received.getTime() - ordered.getTime()) / (1000 * 60 * 60 * 24));
-        });
-
-      const avgActualLeadTime = leadTimes.length > 0
-        ? leadTimes.reduce((sum, lt) => sum + lt, 0) / leadTimes.length
-        : 0;
-
-      const reliabilityScore = Math.round(
-        onTimeRate * 0.6 +
-        (avgActualLeadTime > 0 && vendor.leadTimeDays ? Math.min(100, (vendor.leadTimeDays / avgActualLeadTime) * 100) * 0.4 : 0)
-      );
-
-      performances.push({
-        vendorId: vendor.id,
-        vendorName: vendor.name,
-        onTimeDeliveryRate: onTimeRate,
-        averageLeadTimeActual: avgActualLeadTime,
-        averageLeadTimeEstimated: vendor.leadTimeDays || 0,
-        reliabilityScore,
-      });
+          shortages.set(comp.sku, {
+            sku: comp.sku,
+            name: comp.name,
+            currentStock: compItem.stock,
+            needed: comp.quantity,
+            shortfall: Math.max(0, comp.quantity - compItem.stock),
+            blocksProducts,
+            vendorId: compItem.vendorId,
+          });
+        }
+      }
     });
 
-    return performances.sort((a, b) => b.reliabilityScore - a.reliabilityScore);
-  }, [vendors, purchaseOrders]);
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SUGGESTED ACTIONS - Enhanced with enhanced forecast and risk linking
-  // ═══════════════════════════════════════════════════════════════════════════
-  const suggestedActions = useMemo(() => {
-    const actions: SuggestedAction[] = [];
-    const bom = bomsMap.get(selectedProduct);
-    if (!bom) return actions;
-
-    // BOM explosion using enhanced forecast
-    const grossRequirements: Map<string, { date: string, quantity: number }[]> = new Map();
-
-    const explodeBOMRecursive = (sku: string, quantity: number, parentMultiplier: number) => {
-      const subBom = bomsMap.get(sku);
-      if (!subBom) {
-        // Raw material - use enhanced forecast
-        for (const dailyDemand of enhancedForecast) {
-          const required = dailyDemand.quantity * quantity * parentMultiplier;
-          if (required > 0) {
-            const existing = grossRequirements.get(sku) || [];
-            grossRequirements.set(sku, [...existing, { date: dailyDemand.date, quantity: required }]);
-          }
-        }
-      } else {
-        // Sub-assembly
-        subBom.components.forEach(c => explodeBOMRecursive(c.sku, c.quantity, parentMultiplier * quantity));
-      }
-    };
-
-    bom.components.forEach(c => explodeBOMRecursive(c.sku, c.quantity, 1));
-
-    // Generate requisition actions from requirements
-    for (const [sku, demands] of grossRequirements.entries()) {
-      const item = inventoryMap.get(sku);
-      if (!item) continue;
-
-      let currentStock = item.stock;
-      let hasBeenActioned = false;
-
-      for (let i = 0; i < 90; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
-        const dailyDemand = demands.find(d => d.date === dateStr)?.quantity || 0;
-        currentStock -= dailyDemand;
-
-        if (currentStock < item.reorderPoint && !hasBeenActioned && item.vendorId && item.vendorId !== 'N/A') {
-          const vendor = vendorMap.get(item.vendorId);
-          const orderDate = new Date(date);
-          orderDate.setDate(orderDate.getDate() - (vendor?.leadTimeDays || 7));
-
-          // Determine priority from linked risk
-          const risk = stockoutRisks.find(r => r.sku === sku);
-          const priority = risk?.riskLevel || 'medium';
-
-          actions.push({
-            type: 'REQUISITION',
-            sku: item.sku,
-            name: item.name,
-            quantity: item.moq || Math.ceil(item.reorderPoint * 1.5),
-            reason: `Enhanced Forecast: Stock predicted to drop below reorder point around ${new Date(dateStr).toLocaleDateString()}`,
-            actionDate: orderDate.toISOString().split('T')[0],
-            vendorId: item.vendorId,
-            priority,
-            linkedRisk: risk ? risk.sku : undefined,
-          });
-          hasBeenActioned = true;
-        }
-      }
-    }
-
-    // Generate build order actions
-    const fgItem = inventoryMap.get(selectedProduct);
-    if (fgItem) {
-      let currentFgStock = fgItem.stock;
-      let fgActioned = false;
-
-      for (let i = 0; i < 90; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
-        const dailyDemand = enhancedForecast.find(d => d.date === dateStr)?.quantity || 0;
-        currentFgStock -= dailyDemand;
-
-        if (currentFgStock < fgItem.reorderPoint && !fgActioned) {
-          const actionDate = new Date(date);
-          actionDate.setDate(actionDate.getDate() - 7);
-
-          const risk = stockoutRisks.find(r => r.sku === selectedProduct);
-          const priority = risk?.riskLevel || 'medium';
-
-          actions.push({
-            type: 'BUILD',
-            sku: fgItem.sku,
-            name: fgItem.name,
-            quantity: Math.ceil(fgItem.reorderPoint * 1.5 - currentFgStock),
-            reason: `Finished good stock low around ${new Date(dateStr).toLocaleDateString()}`,
-            actionDate: actionDate.toISOString().split('T')[0],
-            priority,
-            linkedRisk: risk ? risk.sku : undefined,
-          });
-          fgActioned = true;
-        }
-      }
-    }
-
-    // Sort by priority: critical > high > medium > low
-    const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-    return actions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-  }, [selectedProduct, enhancedForecast, bomsMap, inventoryMap, vendorMap, stockoutRisks]);
+    return Array.from(shortages.values()).sort((a, b) => b.blocksProducts.length - a.blocksProducts.length);
+  }, [buildabilityData, inventoryMap]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // AI INSIGHTS
@@ -340,497 +200,336 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
     const fetchInsight = async () => {
       setIsLoadingInsight(true);
       try {
-        const fullForecast = finishedGoods.flatMap(fg => {
-          const sales = historicalSales
-            .filter(s => s.sku === fg.sku)
-            .map(s => ({ date: s.date, quantity: s.quantity }));
-          return generateEnhancedForecast(fg.sku, sales, 90, {
-            includeTrend: true,
-            includeSeasonality: true,
-            confidenceInterval: true,
-          });
+        const allForecasts: Forecast[] = [];
+        productionStatus.forEach(ps => {
+          allForecasts.push(...ps.forecast);
         });
 
         const promptTemplate = aiConfig.prompts.find(p => p.id === 'getAiPlanningInsight');
         if (!promptTemplate) throw new Error("Planning insight prompt not found.");
 
-        const insight = await getAiPlanningInsight(aiConfig.model, promptTemplate.prompt, inventory, boms, fullForecast);
+        const insight = await getAiPlanningInsight(aiConfig.model, promptTemplate.prompt, inventory, boms, allForecasts);
         setAiInsight(insight);
       } catch (e) {
         console.error(e);
-        setAiInsight("Could not generate AI insight at this time.");
+        setAiInsight("Focus on critical shortages and blocked products. Stock levels look good overall.");
       } finally {
         setIsLoadingInsight(false);
       }
     };
     fetchInsight();
-  }, [inventory, boms, historicalSales, finishedGoods, aiConfig]);
+  }, [productionStatus, aiConfig, inventory, boms]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // EVENT HANDLERS
   // ═══════════════════════════════════════════════════════════════════════════
-  const handleCreateActionClick = (action: SuggestedAction) => {
-    if (action.type === 'REQUISITION') {
-      onCreateRequisition(
-        [{ sku: action.sku, name: action.name, quantity: action.quantity, reason: action.reason }],
-        'System'
-      );
-    } else if (action.type === 'BUILD') {
-      onCreateBuildOrder(action.sku, action.name, action.quantity);
+  const handleBuildNow = (product: ProductionStatus) => {
+    const suggestedQuantity = Math.min(product.buildableUnits, Math.ceil(product.currentStock * 0.5));
+    const quantity = suggestedQuantity > 0 ? suggestedQuantity : product.buildableUnits;
+
+    if (quantity > 0) {
+      onCreateBuildOrder(product.sku, product.name, quantity);
     }
   };
 
-  const handleCreateRequisitionFromRisk = (risk: StockoutRisk) => {
-    const vendor = risk.vendorId ? vendorMap.get(risk.vendorId) : null;
-    const quantity = risk.moq || Math.ceil(risk.reorderPoint * 1.5);
+  const handleRequestComponent = (shortage: ComponentShortage) => {
+    const item = inventoryMap.get(shortage.sku);
+    if (!item) return;
 
+    const quantity = item.moq || Math.ceil(shortage.shortfall * 1.5);
     onCreateRequisition(
       [{
-        sku: risk.sku,
-        name: risk.name,
+        sku: shortage.sku,
+        name: shortage.name,
         quantity,
-        reason: `Critical stockout risk: ${risk.daysUntilStockout} days until stockout (Lead time: ${risk.leadTimeDays} days)`
+        reason: `Critical shortage blocking ${shortage.blocksProducts.length} product(s)`
       }],
       'Manual'
     );
   };
 
+  const handleScheduleBuild = (product: ProductionStatus) => {
+    // Build to replenish 7 days of stock
+    const avgDailyDemand = product.forecast.slice(0, 30).reduce((sum, f) => sum + f.quantity, 0) / 30;
+    const targetQuantity = Math.ceil(avgDailyDemand * 7);
+    const buildQuantity = Math.min(product.buildableUnits, targetQuantity);
+
+    if (buildQuantity > 0) {
+      onCreateBuildOrder(product.sku, product.name, buildQuantity);
+    }
+  };
+
   // ═══════════════════════════════════════════════════════════════════════════
   // KEY METRICS
   // ═══════════════════════════════════════════════════════════════════════════
-  const criticalRisks = stockoutRisks.filter(r => r.riskLevel === 'critical');
-  const highRisks = stockoutRisks.filter(r => r.riskLevel === 'high');
-  const trendingUp = stockoutRisks.filter(r => r.trendMetrics.direction === 'up');
-  const topVendor = vendorPerformances.length > 0 ? vendorPerformances[0] : null;
+  const metrics = {
+    outOfStock: productionStatus.filter(p => p.status === 'OUT_OF_STOCK').length,
+    blocked: productionStatus.filter(p => p.status === 'BLOCKED').length,
+    lowSoon: productionStatus.filter(p => p.status === 'LOW_SOON').length,
+    healthy: productionStatus.filter(p => p.status === 'BUILDABLE').length,
+  };
 
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════════════════
   return (
     <div className="space-y-6">
-      {/* AI Key Insight */}
-      <div className="bg-gray-800/50 rounded-lg p-6 border border-indigo-500/30 flex items-start gap-4">
-        <LightBulbIcon className="w-8 h-8 text-indigo-400 flex-shrink-0 mt-1" />
+      {/* AI Insight */}
+      <div className="bg-gray-800/50 rounded-lg p-4 border border-indigo-500/30 flex items-start gap-3">
+        <LightBulbIcon className="w-6 h-6 text-indigo-400 flex-shrink-0 mt-1" />
         <div className="flex-1">
-          <h2 className="text-lg font-semibold text-white mb-1">AI Key Insight</h2>
+          <h3 className="text-sm font-semibold text-white mb-1">AI Production Insight</h3>
           {isLoadingInsight ? (
-            <div className="h-5 bg-gray-700 rounded-md w-3/4 animate-pulse"></div>
+            <div className="h-4 bg-gray-700 rounded-md w-3/4 animate-pulse"></div>
           ) : (
-            <p className="text-gray-300">{aiInsight}</p>
+            <p className="text-sm text-gray-300">{aiInsight}</p>
           )}
         </div>
       </div>
 
-      {/* Key Metrics Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Critical Risks</p>
-              <p className="text-2xl font-bold text-red-400">{criticalRisks.length}</p>
+              <p className="text-xs text-gray-400">Out of Stock</p>
+              <p className="text-2xl font-bold text-red-400">{metrics.outOfStock}</p>
             </div>
-            <AlertCircleIcon className="w-8 h-8 text-red-400/50" />
+            <XCircleIcon className="w-6 h-6 text-red-400/50" />
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">High Priority</p>
-              <p className="text-2xl font-bold text-orange-400">{highRisks.length}</p>
+              <p className="text-xs text-gray-400">Blocked</p>
+              <p className="text-2xl font-bold text-orange-400">{metrics.blocked}</p>
             </div>
-            <ExclamationCircleIcon className="w-8 h-8 text-orange-400/50" />
+            <AlertCircleIcon className="w-6 h-6 text-orange-400/50" />
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Trending Up</p>
-              <p className="text-2xl font-bold text-green-400">{trendingUp.length}</p>
+              <p className="text-xs text-gray-400">Low Soon</p>
+              <p className="text-2xl font-bold text-yellow-400">{metrics.lowSoon}</p>
             </div>
-            <TrendingUpIcon className="w-8 h-8 text-green-400/50" />
+            <ExclamationCircleIcon className="w-6 h-6 text-yellow-400/50" />
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Top Vendor</p>
-              <p className="text-lg font-bold text-indigo-400 truncate">
-                {topVendor ? topVendor.vendorName : 'N/A'}
-              </p>
+              <p className="text-xs text-gray-400">Healthy</p>
+              <p className="text-2xl font-bold text-green-400">{metrics.healthy}</p>
             </div>
-            <UsersIcon className="w-8 h-8 text-indigo-400/50" />
+            <CheckCircleIcon className="w-6 h-6 text-green-400/50" />
           </div>
         </div>
       </div>
 
-      {/* Tabbed Content */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
-        {/* Tab Navigation */}
-        <div className="flex border-b border-gray-700 overflow-x-auto">
-          {[
-            { id: 'risks', label: 'Stockout Risks', icon: AlertCircleIcon },
-            { id: 'forecast', label: 'Enhanced Forecast', icon: ChartBarIcon },
-            { id: 'actions', label: 'Suggested Actions', icon: BotIcon },
-            { id: 'vendors', label: 'Vendor Performance', icon: UsersIcon },
-            { id: 'trends', label: 'Consumption Trends', icon: TrendingUpIcon },
-          ].map(tab => {
-            const Icon = tab.icon;
+      {/* Component Shortages */}
+      {componentShortages.length > 0 && (
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-orange-400 mb-3 flex items-center gap-2">
+            <AlertCircleIcon className="w-5 h-5" />
+            Component Shortages Blocking Production
+          </h3>
+          <div className="space-y-2">
+            {componentShortages.slice(0, 5).map(shortage => (
+              <div key={shortage.sku} className="bg-gray-800/50 rounded p-3 flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-white">{shortage.name}</p>
+                  <p className="text-xs text-gray-400">
+                    Stock: {shortage.currentStock} | Need: {shortage.needed} | Short: {shortage.shortfall}
+                  </p>
+                  <p className="text-xs text-orange-400 mt-1">
+                    Blocking {shortage.blocksProducts.length} product(s)
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleRequestComponent(shortage)}
+                  className="ml-3 px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors whitespace-nowrap"
+                >
+                  Request Now
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Master Production Status Table */}
+      <div className="bg-gray-800/50 rounded-lg border border-gray-700 overflow-hidden">
+        <div className="p-3 bg-gray-800 border-b border-gray-700">
+          <h3 className="text-sm font-semibold text-white">Master Production Status</h3>
+          <p className="text-xs text-gray-400 mt-1">All finished goods - click to expand details</p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-700">
+            <thead className="bg-gray-800/50">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Product</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">In Stock</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Can Build</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Days Left</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Trend</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Status</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-gray-800 divide-y divide-gray-700">
+              {productionStatus.map((product) => (
+                <React.Fragment key={product.sku}>
+                  <tr
+                    className="hover:bg-gray-700/50 cursor-pointer transition-colors"
+                    onClick={() => setExpandedProduct(expandedProduct === product.sku ? null : product.sku)}
+                  >
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        {expandedProduct === product.sku ? (
+                          <ChevronUpIcon className="w-4 h-4 text-gray-400" />
+                        ) : (
+                          <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-white">{product.name}</p>
+                          <p className="text-xs text-gray-400 font-mono">{product.sku}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 text-sm text-gray-300">{product.currentStock}</td>
+                    <td className="px-4 py-2 text-sm">
+                      <span className={`font-semibold ${
+                        product.buildableUnits === 0 ? 'text-red-400' :
+                        product.buildableUnits < 10 ? 'text-yellow-400' :
+                        'text-green-400'
+                      }`}>
+                        {product.buildableUnits}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-sm">
+                      <span className={`${
+                        product.daysOfStock < 3 ? 'text-red-400 font-semibold' :
+                        product.daysOfStock < 7 ? 'text-yellow-400 font-semibold' :
+                        'text-gray-300'
+                      }`}>
+                        {product.daysOfStock > 90 ? '90+' : product.daysOfStock} days
+                      </span>
+                    </td>
+                    <td className="px-4 py-2">
+                      <TrendIndicator direction={product.trendDirection} />
+                    </td>
+                    <td className="px-4 py-2">
+                      <StatusBadge status={product.status} />
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                        {product.status === 'BUILDABLE' && (
+                          <button
+                            onClick={() => handleBuildNow(product)}
+                            className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                          >
+                            Build Now
+                          </button>
+                        )}
+                        {product.status === 'LOW_SOON' && (
+                          <button
+                            onClick={() => handleScheduleBuild(product)}
+                            className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded transition-colors"
+                          >
+                            Schedule
+                          </button>
+                        )}
+                        {product.status === 'BLOCKED' && product.limitingComponent && (
+                          <button
+                            onClick={() => {
+                              const shortage = componentShortages.find(s => s.sku === product.limitingComponent!.sku);
+                              if (shortage) handleRequestComponent(shortage);
+                            }}
+                            className="px-2 py-1 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"
+                          >
+                            Request Parts
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Expanded Details Row */}
+                  {expandedProduct === product.sku && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-3 bg-gray-900/50">
+                        <ProductDetailView
+                          product={product}
+                          buildData={buildabilityData.find(b => b.bom.finishedSku === product.sku)}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PRODUCT DETAIL VIEW (Drill-down)
+// ═══════════════════════════════════════════════════════════════════════════
+const ProductDetailView: React.FC<{
+  product: ProductionStatus;
+  buildData?: Buildability;
+}> = ({ product, buildData }) => {
+  if (!buildData) return null;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Component Stock Levels */}
+      <div>
+        <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">Component Stock</h4>
+        <div className="space-y-1">
+          {buildData.componentStock.map(comp => (
+            <div key={comp.sku} className="flex justify-between text-sm">
+              <span className="text-gray-300">{comp.name}</span>
+              <span className={`font-mono ${
+                comp.stock === 0 ? 'text-red-400' :
+                comp.stock < 10 ? 'text-yellow-400' :
+                'text-green-400'
+              }`}>
+                {comp.stock}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Forecast Preview */}
+      <div>
+        <h4 className="text-xs font-semibold text-gray-400 uppercase mb-2">30-Day Forecast</h4>
+        <div className="h-20 bg-gray-800 rounded p-2 flex items-end gap-0.5">
+          {product.forecast.slice(0, 30).map((f, i) => {
+            const maxQty = Math.max(...product.forecast.slice(0, 30).map(d => d.quantity), 1);
+            const height = (f.quantity / maxQty) * 100;
             return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
+              <div
+                key={i}
+                className="flex-1 bg-indigo-500 rounded-t-sm"
+                style={{ height: `${height}%` }}
+                title={`${f.date}: ${f.quantity} units`}
+              />
             );
           })}
         </div>
-
-        {/* Tab Content */}
-        <div className="p-6">
-          {/* STOCKOUT RISKS TAB */}
-          {activeTab === 'risks' && (
-            <StockoutRisksTab
-              risks={stockoutRisks}
-              onCreateRequisition={handleCreateRequisitionFromRisk}
-            />
-          )}
-
-          {/* ENHANCED FORECAST TAB */}
-          {activeTab === 'forecast' && (
-            <EnhancedForecastTab
-              forecast={enhancedForecast}
-              selectedProduct={selectedProduct}
-              finishedGoods={finishedGoods}
-              onProductChange={setSelectedProduct}
-            />
-          )}
-
-          {/* SUGGESTED ACTIONS TAB */}
-          {activeTab === 'actions' && (
-            <SuggestedActionsTab
-              actions={suggestedActions}
-              onCreateAction={handleCreateActionClick}
-            />
-          )}
-
-          {/* VENDOR PERFORMANCE TAB */}
-          {activeTab === 'vendors' && (
-            <VendorPerformanceTab performances={vendorPerformances} />
-          )}
-
-          {/* CONSUMPTION TRENDS TAB */}
-          {activeTab === 'trends' && (
-            <ConsumptionTrendsTab inventory={inventory} />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// TAB COMPONENTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-const StockoutRisksTab: React.FC<{
-  risks: StockoutRisk[];
-  onCreateRequisition: (risk: StockoutRisk) => void;
-}> = ({ risks, onCreateRequisition }) => {
-  if (risks.length === 0) {
-    return <p className="text-gray-400 text-center py-8">No stockout risks detected</p>;
-  }
-
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-white">Stockout Risk Analysis</h3>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-700">
-          <thead className="bg-gray-800/50">
-            <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">SKU</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Item</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Stock</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Days Left</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Risk</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Trend</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-gray-800 divide-y divide-gray-700">
-            {risks.slice(0, 50).map(risk => (
-              <tr key={risk.sku} className="hover:bg-gray-700/50">
-                <td className="px-4 py-2 text-sm text-gray-300 font-mono">{risk.sku}</td>
-                <td className="px-4 py-2 text-sm text-white font-medium">{risk.name}</td>
-                <td className="px-4 py-2 text-sm text-gray-300">
-                  {risk.currentStock}
-                  {risk.onOrder > 0 && <span className="text-blue-400 ml-1">+{risk.onOrder}</span>}
-                </td>
-                <td className="px-4 py-2 text-sm">
-                  <span className={`font-semibold ${
-                    risk.daysUntilStockout <= 0 ? 'text-red-400' :
-                    risk.daysUntilStockout < 7 ? 'text-orange-400' :
-                    'text-gray-300'
-                  }`}>
-                    {risk.daysUntilStockout <= 0 ? 'OUT OF STOCK' : `${risk.daysUntilStockout} days`}
-                  </span>
-                </td>
-                <td className="px-4 py-2">
-                  <RiskBadge level={risk.riskLevel} />
-                </td>
-                <td className="px-4 py-2">
-                  <TrendIndicator
-                    direction={risk.trendMetrics.direction}
-                    growthRate={risk.trendMetrics.growthRate}
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  {(risk.riskLevel === 'critical' || risk.riskLevel === 'high') && (
-                    <button
-                      onClick={() => onCreateRequisition(risk)}
-                      className="text-xs px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
-                    >
-                      Create Requisition
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-const EnhancedForecastTab: React.FC<{
-  forecast: Forecast[];
-  selectedProduct: string;
-  finishedGoods: InventoryItem[];
-  onProductChange: (sku: string) => void;
-}> = ({ forecast, selectedProduct, finishedGoods, onProductChange }) => {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-white">Enhanced Demand Forecast (90 Days)</h3>
-      <p className="text-sm text-gray-400">
-        Includes trend analysis, seasonal patterns, and confidence intervals
-      </p>
-
-      <div className="bg-gray-800 p-4 rounded-lg">
-        <select
-          value={selectedProduct}
-          onChange={(e) => onProductChange(e.target.value)}
-          className="w-full sm:w-1/2 bg-gray-700 p-2 rounded-md focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 mb-4 text-white"
-        >
-          {finishedGoods.map(fg => (
-            <option key={fg.sku} value={fg.sku}>{fg.name}</option>
-          ))}
-        </select>
-
-        <EnhancedDemandChart data={forecast} />
-
-        {/* Forecast Stats */}
-        <div className="mt-4 grid grid-cols-3 gap-4">
-          <div className="bg-gray-900/50 rounded-lg p-3">
-            <p className="text-xs text-gray-400">Total Forecasted</p>
-            <p className="text-xl font-bold text-white">
-              {forecast.reduce((sum, f) => sum + f.quantity, 0)} units
-            </p>
-          </div>
-          <div className="bg-gray-900/50 rounded-lg p-3">
-            <p className="text-xs text-gray-400">Avg Daily Demand</p>
-            <p className="text-xl font-bold text-white">
-              {(forecast.reduce((sum, f) => sum + f.quantity, 0) / forecast.length).toFixed(1)} units
-            </p>
-          </div>
-          <div className="bg-gray-900/50 rounded-lg p-3">
-            <p className="text-xs text-gray-400">Avg Confidence</p>
-            <p className="text-xl font-bold text-indigo-400">
-              {((forecast.reduce((sum, f) => sum + (f.confidence || 0), 0) / forecast.length) * 100).toFixed(0)}%
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const SuggestedActionsTab: React.FC<{
-  actions: SuggestedAction[];
-  onCreateAction: (action: SuggestedAction) => void;
-}> = ({ actions, onCreateAction }) => {
-  if (actions.length === 0) {
-    return <p className="text-gray-400 text-center py-8">No immediate actions required based on forecast.</p>;
-  }
-
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-white">AI-Generated Suggested Actions</h3>
-      <div className="space-y-3">
-        {actions.map((action, index) => (
-          <div
-            key={`${action.sku}-${action.type}-${index}`}
-            className={`p-4 rounded-lg border ${
-              action.priority === 'critical' ? 'bg-red-500/10 border-red-500/30' :
-              action.priority === 'high' ? 'bg-orange-500/10 border-orange-500/30' :
-              action.priority === 'medium' ? 'bg-yellow-500/10 border-yellow-500/30' :
-              'bg-gray-900/50 border-gray-700'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className={`font-semibold ${
-                    action.type === 'REQUISITION' ? 'text-indigo-300' : 'text-green-300'
-                  }`}>
-                    {action.type === 'REQUISITION' ? 'Request' : 'Build'} {action.name}
-                  </p>
-                  <PriorityBadge priority={action.priority} />
-                </div>
-                <p className="text-sm text-gray-300">Quantity: <span className="font-bold">{action.quantity}</span></p>
-                <p className="text-xs text-gray-400 mt-1">{action.reason}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Action by: {new Date(action.actionDate).toLocaleDateString()}
-                </p>
-              </div>
-              <button
-                onClick={() => onCreateAction(action)}
-                className={`px-4 py-2 text-sm font-semibold text-white rounded-md transition-colors flex items-center gap-2 whitespace-nowrap ${
-                  action.type === 'REQUISITION' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-green-600 hover:bg-green-700'
-                }`}
-                title={`AI-Generated ${action.type === 'REQUISITION' ? 'Requisition' : 'Build Order'}`}
-              >
-                <BotIcon className="w-4 h-4" />
-                Auto-Generate
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const VendorPerformanceTab: React.FC<{
-  performances: VendorPerformance[];
-}> = ({ performances }) => {
-  if (performances.length === 0) {
-    return <p className="text-gray-400 text-center py-8">No vendor performance data available yet</p>;
-  }
-
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-white">Vendor Performance Scoring</h3>
-      <div className="space-y-3">
-        {performances.map(vp => (
-          <div key={vp.vendorId} className="bg-gray-800/30 rounded-lg p-4">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h4 className="text-lg font-semibold text-white">{vp.vendorName}</h4>
-                <p className="text-sm text-gray-400">Reliability Score</p>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-indigo-400">{vp.reliabilityScore}</div>
-                <div className="text-xs text-gray-400">/ 100</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-gray-400">On-Time Delivery</p>
-                <p className="text-lg font-semibold text-white">{vp.onTimeDeliveryRate.toFixed(0)}%</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Avg Lead Time</p>
-                <p className="text-lg font-semibold text-white">
-                  {vp.averageLeadTimeActual.toFixed(0)} days
-                  {vp.averageLeadTimeEstimated > 0 && (
-                    <span className="text-sm text-gray-400 ml-1">
-                      (est: {vp.averageLeadTimeEstimated})
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-3 h-2 bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full ${
-                  vp.reliabilityScore >= 80 ? 'bg-green-500' :
-                  vp.reliabilityScore >= 60 ? 'bg-yellow-500' :
-                  'bg-red-500'
-                }`}
-                style={{ width: `${vp.reliabilityScore}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const ConsumptionTrendsTab: React.FC<{
-  inventory: InventoryItem[];
-}> = ({ inventory }) => {
-  const growingItems = inventory
-    .filter(item => {
-      const trend30 = (item.salesLast30Days || 0) / 30;
-      const trend90 = (item.salesLast90Days || 0) / 90;
-      return trend30 > trend90 * 1.15;
-    })
-    .slice(0, 10);
-
-  const decliningItems = inventory
-    .filter(item => {
-      const trend30 = (item.salesLast30Days || 0) / 30;
-      const trend90 = (item.salesLast90Days || 0) / 90;
-      return trend30 < trend90 * 0.85 && trend90 > 0;
-    })
-    .slice(0, 10);
-
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-white">Consumption Trends & Patterns</h3>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-gray-800/30 rounded-lg p-4">
-          <h4 className="text-sm font-semibold text-gray-300 mb-3">Growing Demand (30d vs 90d)</h4>
-          <div className="space-y-2">
-            {growingItems.map(item => {
-              const growth = ((((item.salesLast30Days || 0) / 30) / ((item.salesLast90Days || 0) / 90)) - 1) * 100;
-              return (
-                <div key={item.sku} className="flex justify-between items-center">
-                  <span className="text-sm text-gray-300">{item.name}</span>
-                  <span className="text-sm font-semibold text-green-400">+{growth.toFixed(0)}%</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="bg-gray-800/30 rounded-lg p-4">
-          <h4 className="text-sm font-semibold text-gray-300 mb-3">Declining Demand (30d vs 90d)</h4>
-          <div className="space-y-2">
-            {decliningItems.map(item => {
-              const decline = ((((item.salesLast30Days || 0) / 30) / ((item.salesLast90Days || 0) / 90)) - 1) * 100;
-              return (
-                <div key={item.sku} className="flex justify-between items-center">
-                  <span className="text-sm text-gray-300">{item.name}</span>
-                  <span className="text-sm font-semibold text-red-400">{decline.toFixed(0)}%</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <p className="text-xs text-gray-400 mt-1">
+          Avg: {(product.forecast.slice(0, 30).reduce((sum, f) => sum + f.quantity, 0) / 30).toFixed(1)} units/day
+        </p>
       </div>
     </div>
   );
@@ -839,92 +538,26 @@ const ConsumptionTrendsTab: React.FC<{
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER COMPONENTS
 // ═══════════════════════════════════════════════════════════════════════════
-
-const EnhancedDemandChart: React.FC<{ data: Forecast[] }> = ({ data }) => {
-  const maxUpper = Math.max(...data.map(d => d.upperBound || d.quantity), 1);
-
-  return (
-    <div className="h-64 bg-gray-900/50 rounded-lg p-4">
-      <div className="h-full flex items-end space-x-1">
-        {data.map((d, i) => {
-          const baseHeight = (d.quantity / maxUpper) * 100;
-          const lowerHeight = ((d.lowerBound || d.quantity) / maxUpper) * 100;
-          const upperHeight = ((d.upperBound || d.quantity) / maxUpper) * 100;
-
-          return (
-            <div key={i} className="flex-1 h-full flex flex-col justify-end relative group">
-              {/* Confidence interval band */}
-              <div
-                className="absolute bottom-0 left-0 right-0 bg-indigo-500/20 rounded-t-sm"
-                style={{ height: `${upperHeight}%` }}
-              />
-              <div
-                className="absolute bottom-0 left-0 right-0 bg-gray-800"
-                style={{ height: `${lowerHeight}%` }}
-              />
-              {/* Actual forecast */}
-              <div
-                className="relative bg-indigo-500 rounded-t-sm z-10"
-                style={{ height: `${baseHeight}%` }}
-                title={`${d.date}: ${d.quantity} units (${((d.confidence || 0) * 100).toFixed(0)}% confidence)`}
-              />
-              {/* Tooltip on hover */}
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-20">
-                {new Date(d.date).toLocaleDateString()}<br/>
-                {d.quantity} units<br/>
-                {d.confidence && `${(d.confidence * 100).toFixed(0)}% confidence`}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-const RiskBadge: React.FC<{ level: 'critical' | 'high' | 'medium' | 'low' }> = ({ level }) => {
+const StatusBadge: React.FC<{ status: ProductionStatus['status'] }> = ({ status }) => {
   const config = {
-    critical: 'bg-red-500/20 text-red-400 border-red-500/30',
-    high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    low: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+    BUILDABLE: { label: 'Buildable', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
+    BLOCKED: { label: 'Blocked', className: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+    LOW_SOON: { label: 'Low Soon', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+    OUT_OF_STOCK: { label: 'Out of Stock', className: 'bg-red-500/20 text-red-400 border-red-500/30' },
   };
 
   return (
-    <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${config[level]}`}>
-      {level.toUpperCase()}
+    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full border ${config[status].className}`}>
+      {config[status].label}
     </span>
   );
 };
 
-const PriorityBadge: React.FC<{ priority: 'critical' | 'high' | 'medium' | 'low' }> = ({ priority }) => {
-  const config = {
-    critical: 'bg-red-500/20 text-red-400 border-red-500/30',
-    high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    low: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  };
-
-  return (
-    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full border ${config[priority]}`}>
-      {priority}
-    </span>
-  );
-};
-
-const TrendIndicator: React.FC<{ direction: 'up' | 'down' | 'stable'; growthRate?: number }> = ({ direction, growthRate }) => {
+const TrendIndicator: React.FC<{ direction: 'up' | 'down' | 'stable' }> = ({ direction }) => {
   if (direction === 'up') {
-    return (
-      <span className="text-green-400 font-semibold text-xs">
-        ↗ {growthRate !== undefined ? `+${growthRate.toFixed(0)}%` : 'Growing'}
-      </span>
-    );
+    return <span className="text-green-400 text-xs">↗ Growing</span>;
   } else if (direction === 'down') {
-    return (
-      <span className="text-red-400 font-semibold text-xs">
-        ↘ {growthRate !== undefined ? `${growthRate.toFixed(0)}%` : 'Declining'}
-      </span>
-    );
+    return <span className="text-red-400 text-xs">↘ Declining</span>;
   }
   return <span className="text-gray-400 text-xs">→ Stable</span>;
 };
