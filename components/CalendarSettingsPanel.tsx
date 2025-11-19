@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CalendarIcon, RefreshIcon, CheckCircleIcon } from './icons';
 import { getGoogleCalendarService, type GoogleCalendar } from '../services/googleCalendarService';
 import { supabase } from '../lib/supabase/client';
-import { googleAuthService } from '../services/googleAuthService';
+import { getGoogleAuthService } from '../services/googleAuthService';
 
 interface CalendarSettingsPanelProps {
   userId: string;
@@ -57,7 +57,8 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
 
   const checkGoogleAuth = async () => {
     try {
-      const status = await googleAuthService.getAuthStatus();
+      const authService = getGoogleAuthService();
+      const status = await authService.getAuthStatus();
       setHasGoogleAuth(status.isAuthenticated && status.hasValidToken);
     } catch (error) {
       console.error('Error checking Google auth:', error);
@@ -67,7 +68,8 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
 
   const handleConnectGoogle = async () => {
     try {
-      const authUrl = await googleAuthService.getAuthUrl();
+      const authService = getGoogleAuthService();
+      const authUrl = await authService.getAuthUrl();
       const popup = window.open(
         authUrl,
         'Google OAuth',
