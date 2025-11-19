@@ -191,25 +191,44 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
     }
   }, [calendarSettings?.calendar_id, calendarSettings?.calendar_sync_enabled, loadGoogleCalendarEvents]);
 
-  // Load Google Calendar events
+  const handleSyncBuildOrderToGoogle = useCallback(async (buildOrder: BuildOrder) => {
+    if (!calendarSettings?.calendar_sync_enabled) {
+      addToast('Enable calendar sync in Settings before syncing build orders', 'info');
+      return;
+    }
+
+    try {
+      const calendarService = getGoogleCalendarService(
+        calendarSettings.calendar_id || undefined,
+        calendarSettings.calendar_timezone
+      );
+
+      if (buildOrder.calendarEventId) {
+        await calendarService.updateBuildEvent(buildOrder.calendarEventId, buildOrder);
+      } else {
+        const eventId = await calendarService.createBuildEvent(buildOrder);
+        if (eventId) {
+          onUpdateBuildOrder({ ...buildOrder, calendarEventId: eventId });
+        }
+      }
+
+      addToast('Google Calendar updated', 'success');
+      await loadGoogleCalendarEvents(undefined, true);
+    } catch (error) {
+      console.error('Error syncing build order to Google:', error);
+      addToast('Failed to sync with Google Calendar', 'error');
+    }
+  }, [calendarSettings, addToast, onUpdateBuildOrder, loadGoogleCalendarEvents]);
+
+    }
+  }, [calendarSettings, addToast, onUpdateBuildOrder, loadGoogleCalendarEvents]);
+
+  // Load Google Calendar events on mount
   useEffect(() => {
     loadGoogleCalendarEvents();
-  }, []);
+  }, [loadGoogleCalendarEvents]);
 
-  const loadGoogleCalendarEvents = async () => {
-    try {
-      setIsLoadingGoogle(true);
-      // Temporarily disabled Google Calendar sync - will implement via edge functions
-      console.log('Google Calendar sync temporarily disabled');
-      setGoogleEvents([]);
-    } catch (error) {
-      console.error('Error loading Google Calendar events:', error);
-    } finally {
-      setIsLoadingGoogle(false);
-    }
-  };
-
-  // Convert build orders to calendar events
+  // Handle creating new build order from calendar
   const buildEvents = useMemo<CalendarBuildEvent[]>(() => {
     return buildOrders
       .filter(bo => bo.scheduledDate) // Only show scheduled builds
