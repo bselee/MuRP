@@ -396,8 +396,8 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
                           <ChevronDownIcon className="w-4 h-4 text-gray-400" />
                         )}
                         <div>
-                          <p className="text-sm font-medium text-white">{product.name}</p>
-                          <p className="text-xs text-gray-400 font-mono">{product.sku}</p>
+                          <p className="text-sm font-bold text-white font-mono">{product.sku}</p>
+                          <p className="text-xs text-gray-400">{product.name}</p>
                         </div>
                       </div>
                     </td>
@@ -447,8 +447,20 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
                         {product.status === 'BLOCKED' && product.limitingComponent && (
                           <button
                             onClick={() => {
-                              const shortage = componentShortages.find(s => s.sku === product.limitingComponent!.sku);
-                              if (shortage) handleRequestComponent(shortage);
+                              const comp = product.limitingComponent!;
+                              const compItem = inventoryMap.get(comp.sku);
+                              if (!compItem) return;
+
+                              const quantity = compItem.moq || Math.ceil(comp.quantity * 1.5);
+                              onCreateRequisition(
+                                [{
+                                  sku: comp.sku,
+                                  name: comp.name,
+                                  quantity,
+                                  reason: `Blocking production of ${product.name}`
+                                }],
+                                'Manual'
+                              );
                             }}
                             className="px-2 py-1 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"
                           >
