@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { CalendarIcon, RefreshIcon, CheckCircleIcon } from './icons';
 import { getGoogleCalendarService, type GoogleCalendar } from '../services/googleCalendarService';
 import { supabase } from '../lib/supabase/client';
-import { useToast } from '../hooks/useToast';
 
 interface CalendarSettingsPanelProps {
   userId: string;
+  addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 interface CalendarSettings {
@@ -26,7 +26,7 @@ const TIMEZONES = [
   'UTC',
 ];
 
-export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ userId }) => {
+export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ userId, addToast }) => {
   const [settings, setSettings] = useState<CalendarSettings>({
     calendar_id: null,
     calendar_timezone: 'America/Los_Angeles',
@@ -37,7 +37,6 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
   const [isLoadingCalendars, setIsLoadingCalendars] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasGoogleAuth, setHasGoogleAuth] = useState(false);
-  const { addToast } = useToast();
 
   useEffect(() => {
     loadSettings();
