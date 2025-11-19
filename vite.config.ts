@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
           'node:util': path.resolve(__dirname, 'polyfills/node-util.ts'),
+          'googleapis': path.resolve(__dirname, 'polyfills/googleapis.ts'),
         }
       },
       optimizeDeps: {

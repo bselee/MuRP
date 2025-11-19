@@ -6,17 +6,15 @@
  */
 
 import { supabase } from '../lib/supabase/client';
-import {
-  createGoogleOAuthClient,
-  getAuthUrl,
-  getTokensFromCode,
-  setCredentials,
-  refreshAccessToken,
-  isTokenExpired,
-  DEFAULT_SCOPES,
-  type GoogleTokens,
-} from '../lib/google/client';
-import type { OAuth2Client } from 'google-auth-library';
+import { DEFAULT_SCOPES } from '../lib/google/scopes';
+
+interface GoogleTokens {
+  access_token: string;
+  refresh_token?: string;
+  expiry_date?: number;
+  scope?: string;
+  token_type?: string;
+}
 
 export interface GoogleAuthStatus {
   isAuthenticated: boolean;
@@ -27,7 +25,6 @@ export interface GoogleAuthStatus {
 }
 
 export class GoogleAuthService {
-  private oauth2Client: OAuth2Client | null = null;
   private currentTokens: GoogleTokens | null = null;
   private userId: string | null = null;
 
@@ -50,12 +47,6 @@ export class GoogleAuthService {
       return;
     }
 
-    this.oauth2Client = createGoogleOAuthClient({
-      clientId,
-      clientSecret,
-      redirectUri,
-    });
-
     // Try to load existing tokens
     await this.loadTokensFromDatabase();
   }
@@ -76,15 +67,11 @@ export class GoogleAuthService {
           return data.authUrl as string;
         }
       } catch (error) {
-        console.warn('[GoogleAuthService] Falling back to local OAuth client:', error);
+        console.warn('[GoogleAuthService] Failed to fetch authorize URL:', error);
       }
     }
 
-    if (!this.oauth2Client) {
-      throw new Error('Google OAuth client not initialized. Check environment variables.');
-    }
-
-    return getAuthUrl(this.oauth2Client, scopes);
+    throw new Error('Unable to start Google OAuth flow');
   }
 
   async startOAuthFlow(scopes: string[] = DEFAULT_SCOPES): Promise<void> {
@@ -144,21 +131,9 @@ export class GoogleAuthService {
   /**
    * Handle OAuth callback with authorization code
    */
-  async handleAuthCallback(payload: string | GoogleTokens): Promise<void> {
-    if (!this.oauth2Client) {
-      throw new Error('Google OAuth client not initialized');
-    }
-
-    let tokens: GoogleTokens;
-    if (typeof payload === 'string') {
-      tokens = await getTokensFromCode(this.oauth2Client, payload);
-    } else {
-      tokens = payload;
-    }
+  async handleAuthCallback(payload: GoogleTokens): Promise<void> {
+    const tokens = payload;
     this.currentTokens = tokens;
-
-    // Set credentials on client
-    setCredentials(this.oauth2Client, tokens);
 
     // Save tokens to database
     await this.saveTokensToDatabase(tokens);
@@ -166,66 +141,70 @@ export class GoogleAuthService {
     console.log('[GoogleAuthService] Successfully authenticated with Google');
   }
 
-  /**
-   * Get current OAuth client (with valid tokens)
-   */
-  async getAuthenticatedClient(): Promise<OAuth2Client> {
-    if (!this.oauth2Client) {
-      throw new Error('Google OAuth client not initialized');
-    }
-
+  async getAccessToken(): Promise<string> {
     if (!this.currentTokens) {
       throw new Error('No Google OAuth tokens available. Please authenticate first.');
     }
 
-    // Check if token is expired and refresh if needed
-    if (isTokenExpired(this.currentTokens)) {
-      console.log('[GoogleAuthService] Access token expired, refreshing...');
+    if (this.isTokenExpired(this.currentTokens)) {
       await this.refreshTokens();
     }
 
-    return this.oauth2Client;
-  }
-
-  async getAccessToken(): Promise<string> {
-    const client = await this.getAuthenticatedClient();
-    const tokenResponse = await client.getAccessToken();
-    const accessToken = typeof tokenResponse === 'string' ? tokenResponse : tokenResponse?.token;
-
-    if (!accessToken) {
+    if (!this.currentTokens?.access_token) {
       throw new Error('Unable to retrieve Google access token');
     }
 
-    return accessToken;
+    return this.currentTokens.access_token;
   }
 
   /**
    * Refresh access token
    */
   private async refreshTokens(): Promise<void> {
-    if (!this.oauth2Client) {
-      throw new Error('Google OAuth client not initialized');
-    }
-
     if (!this.currentTokens?.refresh_token) {
       throw new Error('No refresh token available. Please re-authenticate.');
     }
 
-    // Set current tokens (including refresh token)
-    setCredentials(this.oauth2Client, this.currentTokens);
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const clientSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
 
-    // Refresh access token
-    const newTokens = await refreshAccessToken(this.oauth2Client);
-
-    // Preserve refresh token if not included in response
-    if (!newTokens.refresh_token && this.currentTokens.refresh_token) {
-      newTokens.refresh_token = this.currentTokens.refresh_token;
+    if (!clientId || !clientSecret) {
+      throw new Error('Google OAuth client not configured.');
     }
 
-    this.currentTokens = newTokens;
+    const params = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: this.currentTokens.refresh_token,
+      grant_type: 'refresh_token',
+    });
+
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to refresh Google token: ${errorText}`);
+    }
+
+    const newTokens = await response.json();
+    const updatedTokens: GoogleTokens = {
+      access_token: newTokens.access_token,
+      refresh_token: newTokens.refresh_token || this.currentTokens.refresh_token,
+      expiry_date: newTokens.expires_in
+        ? Date.now() + Number(newTokens.expires_in) * 1000
+        : undefined,
+      scope: newTokens.scope,
+      token_type: newTokens.token_type,
+    };
+
+    this.currentTokens = updatedTokens;
 
     // Update database
-    await this.saveTokensToDatabase(newTokens);
+    await this.saveTokensToDatabase(updatedTokens);
 
     console.log('[GoogleAuthService] Successfully refreshed access token');
   }
