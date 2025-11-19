@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarIcon, RefreshIcon, CheckCircleIcon } from './icons';
-import { getGoogleCalendarService, type GoogleCalendar } from '../services/googleCalendarService';
+// import { getGoogleCalendarService, type GoogleCalendar } from '../services/googleCalendarService'; // Disabled - browser compatibility
 import { supabase } from '../lib/supabase/client';
 import { getGoogleAuthService } from '../services/googleAuthService';
+
+interface GoogleCalendar {
+  id: string;
+  summary: string;
+  description?: string;
+  timeZone: string;
+}
 
 interface CalendarSettingsPanelProps {
   userId: string;
@@ -119,13 +126,9 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
 
     try {
       setIsLoadingCalendars(true);
-      const calendarService = getGoogleCalendarService();
-      const calendars = await calendarService.listCalendars();
-      setAvailableCalendars(calendars);
-      
-      if (calendars.length === 0) {
-        addToast('No calendars found in your Google account', 'info');
-      }
+      // TODO: Implement via Supabase Edge Function for browser compatibility
+      addToast('Calendar loading temporarily unavailable - coming soon!', 'info');
+      setAvailableCalendars([]);
     } catch (error) {
       console.error('Error loading calendars:', error);
       addToast('Failed to load Google Calendars. Please ensure you have granted calendar access.', 'error');
