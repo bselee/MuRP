@@ -47,10 +47,7 @@ INSERT INTO app_settings (
   setting_value,
   display_name,
   description,
-  is_secret,
-  is_required,
-  editable_by,
-  visible_to
+  is_sensitive
 )
 VALUES (
   'aftership_config',
@@ -63,9 +60,6 @@ VALUES (
   ),
   'AfterShip Tracking',
   'Stores AfterShip API key, enablement flag, and default carrier slug for automated tracking updates.',
-  TRUE,
-  FALSE,
-  ARRAY['admin'],
-  ARRAY['admin']
+  TRUE
 )
 ON CONFLICT (setting_key) DO NOTHING;
