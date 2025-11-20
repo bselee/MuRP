@@ -94,18 +94,23 @@ export class GoogleAuthService {
         return;
       }
 
-      const timeout = window.setTimeout(() => {
-        cleanup();
-        reject(new Error('Google OAuth timed out. Please try again.'));
-      }, 1000 * 180);
+      // Declare variables first to avoid temporal dead zone
+      let timeout: ReturnType<typeof setTimeout>;
 
       const cleanup = () => {
         window.removeEventListener('message', handleMessage);
-        window.clearTimeout(timeout);
+        if (timeout) {
+          window.clearTimeout(timeout);
+        }
         if (!popup.closed) {
           popup.close();
         }
       };
+
+      timeout = window.setTimeout(() => {
+        cleanup();
+        reject(new Error('Google OAuth timed out. Please try again.'));
+      }, 1000 * 180);
 
       const handleMessage = async (event: MessageEvent) => {
         if (!event?.data) return;

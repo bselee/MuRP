@@ -9,11 +9,15 @@ import type { StateRegulation, ComplianceCheck } from '../types';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Don't throw during module initialization - prevents blank screen
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  console.warn('[ComplianceService] Missing Supabase environment variables - service will not function');
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create client with fallback to prevent module initialization failure
+const supabase = (supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : createClient('https://placeholder.supabase.co', 'placeholder-key');
 
 export interface UserComplianceProfile {
   id: string;
