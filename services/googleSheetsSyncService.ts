@@ -44,7 +44,14 @@ export interface ExportResult {
 }
 
 export class GoogleSheetsSyncService {
-  private sheetsService = getGoogleSheetsService();
+  private _sheetsService: ReturnType<typeof getGoogleSheetsService> | null = null;
+
+  private get sheetsService() {
+    if (!this._sheetsService) {
+      this._sheetsService = getGoogleSheetsService();
+    }
+    return this._sheetsService;
+  }
 
   // ============================================================================
   // INVENTORY IMPORT/EXPORT
