@@ -13,7 +13,7 @@ import type {
     CreatePurchaseOrderItemInput,
     POTrackingStatus,
 } from '../types';
-import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon } from '../components/icons';
+import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon } from '../components/icons';
 import CreatePoModal from '../components/CreatePoModal';
 import EmailComposerModal from '../components/EmailComposerModal';
 import GeneratePoModal from '../components/GeneratePoModal';
@@ -21,6 +21,7 @@ import CreateRequisitionModal from '../components/CreateRequisitionModal';
 import ReorderQueueDashboard, { ReorderQueueVendorGroup } from '../components/ReorderQueueDashboard';
 import DraftPOReviewSection from '../components/DraftPOReviewSection';
 import POTrackingDashboard from '../components/POTrackingDashboard';
+import UpdateTrackingModal from '../components/UpdateTrackingModal';
 import { subscribeToPoDrafts } from '../lib/poDraftBridge';
 import { generatePoPdf } from '../services/pdfService';
 import { usePermissions } from '../hooks/usePermissions';
@@ -34,7 +35,14 @@ interface PurchaseOrdersProps {
     currentUser: User;
     approvedRequisitions: InternalRequisition[];
     gmailConnection: GmailConnection;
-    onSendEmail: (poId: string, sentViaGmail: boolean) => void;
+    onSendEmail: (poId: string, sentViaGmail: boolean) => Promise<void> | void;
+    onUpdateTracking: (poId: string, updates: {
+        trackingNumber?: string | null;
+        trackingCarrier?: string | null;
+        trackingStatus: POTrackingStatus;
+        trackingEstimatedDelivery?: string | null;
+        trackingLastException?: string | null;
+    }) => Promise<void> | void;
     requisitions: InternalRequisition[];
     users: User[];
     onApproveRequisition: (reqId: string) => void;
@@ -113,16 +121,18 @@ const CollapsibleSection: React.FC<{
 const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const { 
         purchaseOrders, vendors, inventory, onCreatePo, addToast, currentUser, 
-        approvedRequisitions, gmailConnection, onSendEmail,
+        approvedRequisitions, gmailConnection, onSendEmail, onUpdateTracking,
         requisitions, users, onApproveRequisition, onRejectRequisition, onCreateRequisition
     } = props;
     
     const [isCreatePoModalOpen, setIsCreatePoModalOpen] = useState(false);
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+    const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
     const [isGeneratePoModalOpen, setIsGeneratePoModalOpen] = useState(false);
     const [isCreateReqModalOpen, setIsCreateReqModalOpen] = useState(false);
     const [isRequisitionsOpen, setIsRequisitionsOpen] = useState(true);
     const [selectedPoForEmail, setSelectedPoForEmail] = useState<PurchaseOrder | null>(null);
+    const [selectedPoForTracking, setSelectedPoForTracking] = useState<PurchaseOrder | null>(null);
     const [activePoDraft, setActivePoDraft] = useState<PoDraftConfig | undefined>(undefined);
     const [pendingPoDrafts, setPendingPoDrafts] = useState<PoDraftConfig[]>([]);
     const [modalSession, setModalSession] = useState(0);
@@ -258,9 +268,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         setIsEmailModalOpen(true);
     };
 
-  const handleSendEmail = (sentViaGmail: boolean) => {
+  const handleSendEmail = async (sentViaGmail: boolean) => {
       if (selectedPoForEmail) {
-          onSendEmail(selectedPoForEmail.id, sentViaGmail);
+          await onSendEmail(selectedPoForEmail.id, sentViaGmail);
       }
       setIsEmailModalOpen(false);
       setSelectedPoForEmail(null);
@@ -293,6 +303,24 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     } else {
       addToast('Tracking link not available for this PO yet.', 'info');
     }
+  };
+
+  const handleEditTracking = (po: PurchaseOrder) => {
+    setSelectedPoForTracking(po);
+    setIsTrackingModalOpen(true);
+  };
+
+  const handleSaveTracking = async (updates: {
+    trackingNumber?: string | null;
+    trackingCarrier?: string | null;
+    trackingStatus: POTrackingStatus;
+    trackingEstimatedDelivery?: string | null;
+    trackingLastException?: string | null;
+  }) => {
+    if (!selectedPoForTracking) return;
+    await onUpdateTracking(selectedPoForTracking.id, updates);
+    setSelectedPoForTracking(null);
+    setIsTrackingModalOpen(false);
   };
 
     const sortedPurchaseOrders = useMemo(() =>
@@ -411,6 +439,15 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         </td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-white font-semibold">${formatPoTotal(po)}</td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
+                                            {canManagePOs && (
+                                                <button
+                                                    onClick={() => handleEditTracking(po)}
+                                                    className="p-2 text-indigo-300 hover:text-indigo-100 transition-colors"
+                                                    title="Update Tracking"
+                                                >
+                                                    <TruckIcon className="w-5 h-5" />
+                                                </button>
+                                            )}
                                             {po.trackingNumber && (
                                                 <button
                                                     onClick={() => handleOpenTracking(po)}
@@ -452,6 +489,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     addToast={addToast}
                 />
             )}
+            
+            <UpdateTrackingModal
+                isOpen={isTrackingModalOpen}
+                onClose={() => {
+                    setIsTrackingModalOpen(false);
+                    setSelectedPoForTracking(null);
+                }}
+                purchaseOrder={selectedPoForTracking}
+                onSave={handleSaveTracking}
+            />
             
             {currentUser.role === 'Admin' && (
                 <GeneratePoModal 

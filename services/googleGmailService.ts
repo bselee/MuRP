@@ -1,5 +1,11 @@
 import { getGoogleAuthService } from './googleAuthService';
 
+export interface GmailAttachment {
+  filename: string;
+  mimeType: string;
+  contentBase64: string;
+}
+
 export interface GmailSendOptions {
   to: string;
   subject: string;
@@ -8,6 +14,7 @@ export interface GmailSendOptions {
   cc?: string[];
   bcc?: string[];
   replyTo?: string;
+  attachments?: GmailAttachment[];
 }
 
 export interface GmailProfile {
@@ -76,12 +83,44 @@ export class GoogleGmailService {
       options.bcc && options.bcc.length ? `Bcc: ${options.bcc.join(', ')}` : undefined,
       `Subject: ${options.subject}`,
       'MIME-Version: 1.0',
+    ].filter(Boolean) as string[];
+
+    if (options.attachments && options.attachments.length > 0) {
+      const boundary = `=_Boundary_${Date.now()}`;
+      const multipartHeaders = [
+        ...headers,
+        `Content-Type: multipart/mixed; boundary="${boundary}"`,
+        '',
+        `--${boundary}`,
+        'Content-Type: text/plain; charset="UTF-8"',
+        'Content-Transfer-Encoding: 7bit',
+        '',
+        options.body,
+        '',
+      ];
+
+      const attachmentParts = options.attachments.map(attachment => [
+        `--${boundary}`,
+        `Content-Type: ${attachment.mimeType}; name="${attachment.filename}"`,
+        'Content-Transfer-Encoding: base64',
+        `Content-Disposition: attachment; filename="${attachment.filename}"`,
+        '',
+        attachment.contentBase64,
+        '',
+      ].join('\n'));
+
+      const closing = `--${boundary}--`;
+      const message = [...multipartHeaders, ...attachmentParts, closing].join('\n');
+      return this.toBase64Url(message);
+    }
+
+    const plainHeaders = [
+      ...headers,
       'Content-Type: text/plain; charset="UTF-8"',
       'Content-Transfer-Encoding: 7bit',
       '',
-    ].filter(Boolean) as string[];
-
-    const message = `${headers.join('\n')}${options.body}`;
+    ];
+    const message = `${plainHeaders.join('\n')}${options.body}`;
     return this.toBase64Url(message);
   }
 

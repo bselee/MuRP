@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import type { PurchaseOrder, Vendor, GmailConnection } from '../types';
 import Modal from './Modal';
-import { generatePoPdf } from '../services/pdfService';
+import { generatePoPdf, getPoPdfAttachment } from '../services/pdfService';
 import { FileTextIcon, GmailIcon } from './icons';
 import { getGoogleGmailService } from '../services/googleGmailService';
 import { logPoEmailTracking } from '../hooks/useSupabaseMutations';
@@ -68,6 +68,7 @@ Procurement Team`);
         setIsSending(true);
 
         try {
+            const attachment = await getPoPdfAttachment(purchaseOrder, vendor);
             if (gmailConnection.isConnected) {
                 const gmailService = getGoogleGmailService();
                 const sendResult = await gmailService.sendEmail({
@@ -75,6 +76,7 @@ Procurement Team`);
                     subject,
                     body,
                     from: gmailConnection.email ?? from,
+                    attachments: [attachment],
                 });
 
                 if (sendResult?.id) {
@@ -93,6 +95,14 @@ Procurement Team`);
                 addToast('Email sent via Gmail', 'success');
                 onSend(true);
             } else {
+                await logPoEmailTracking(purchaseOrder.id, {
+                    vendorEmail: vendor.contactEmails?.[0] || to,
+                    metadata: {
+                        subject,
+                        to,
+                        simulated: true,
+                    },
+                });
                 addToast('Gmail not connected. Simulating email send.', 'info');
                 onSend(false);
             }

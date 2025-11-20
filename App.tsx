@@ -45,6 +45,7 @@ import {
   updateMultipleRequisitions,
   createRequisition,
   updateRequisitionStatus,
+  updatePurchaseOrderStatus,
 } from './hooks/useSupabaseMutations';
 import {
     mockHistoricalSales,
@@ -70,6 +71,7 @@ import type {
     ArtworkFolder,
     AiSettings,
     CreatePurchaseOrderInput,
+    POTrackingStatus,
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
 import { getGoogleAuthService } from './services/googleAuthService';
@@ -78,6 +80,7 @@ import { GOOGLE_SCOPES } from './lib/google/scopes';
 import LoadingOverlay from './components/LoadingOverlay';
 import { supabase } from './lib/supabase/client';
 import { useAuth } from './lib/auth/AuthContext';
+import { updatePurchaseOrderTrackingStatus } from './services/poTrackingService';
 import { enqueuePoDrafts } from './lib/poDraftBridge';
 import { usePermissions } from './hooks/usePermissions';
 import {
@@ -327,8 +330,11 @@ const AppShell: React.FC = () => {
   const generateOrderId = () => {
     const now = new Date();
     const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-    const randomPart = Math.floor(100 + Math.random() * 900);
-    return `PO-${datePart}-${randomPart}`;
+    const randomSegment =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID().split('-')[0].toUpperCase()
+        : Math.floor(Math.random() * 1_000_000).toString().padStart(6, '0');
+    return `PO-${datePart}-${randomSegment}`;
   };
 
   const handleCreatePo = async (poDetails: CreatePurchaseOrderInput) => {
@@ -375,7 +381,7 @@ const AppShell: React.FC = () => {
       stockDelta: 0,
       onOrderDelta: item.quantity,
     }));
-    await batchUpdateInventory(inventoryUpdates);
+    const inventoryResult = await batchUpdateInventory(inventoryUpdates);
     
     // Update requisitions if linked
     if (requisitionIds && requisitionIds.length > 0) {
@@ -387,7 +393,11 @@ const AppShell: React.FC = () => {
     refetchInventory();
     refetchRequisitions();
 
-    addToast(`Successfully created ${orderId} for ${vendor.name}.`, 'success');
+    if (!inventoryResult.success) {
+      addToast(`Created ${orderId}, but inventory update failed: ${inventoryResult.error ?? 'Unknown error'}`, 'error');
+    } else {
+      addToast(`Successfully created ${orderId} for ${vendor.name}.`, 'success');
+    }
     setCurrentPage('Purchase Orders');
   };
 
@@ -959,12 +969,14 @@ const AppShell: React.FC = () => {
     }
   };
 
-  const handleSendPoEmail = (poId: string, sentViaGmail: boolean) => {
+  const handleSendPoEmail = async (poId: string, sentViaGmail: boolean) => {
     if (sentViaGmail) {
       addToast(`Email for ${poId} sent via ${gmailConnection.email ?? 'Gmail'}.`, 'success');
     } else {
       addToast(`Simulated email send for ${poId}.`, 'info');
     }
+    await updatePurchaseOrderStatus(poId, 'Submitted');
+    refetchPOs();
   };
 
   const handleUpdateAiSettings = (settings: AiSettings) => {
@@ -1016,6 +1028,31 @@ const AppShell: React.FC = () => {
     } catch (error: any) {
       console.error('[Users] update error', error);
       addToast(error.message ?? 'Failed to update user.', 'error');
+    }
+  };
+
+  const handleUpdatePoTracking = async (
+    poId: string,
+    updates: {
+      trackingNumber?: string | null;
+      trackingCarrier?: string | null;
+      trackingStatus: POTrackingStatus;
+      trackingEstimatedDelivery?: string | null;
+      trackingLastException?: string | null;
+    }
+  ) => {
+    try {
+      await updatePurchaseOrderTrackingStatus(poId, updates.trackingStatus, {
+        carrier: updates.trackingCarrier,
+        trackingNumber: updates.trackingNumber ?? null,
+        estimatedDelivery: updates.trackingEstimatedDelivery ?? null,
+        lastException: updates.trackingLastException ?? null,
+      });
+      addToast('Tracking information updated.', 'success');
+      refetchPOs();
+    } catch (error) {
+      console.error('[PO] tracking update error', error);
+      addToast('Failed to update tracking information.', 'error');
     }
   };
 
@@ -1130,6 +1167,7 @@ const AppShell: React.FC = () => {
                     approvedRequisitions={approvedRequisitionsForPoGen}
                     gmailConnection={gmailConnection}
                     onSendEmail={handleSendPoEmail}
+                    onUpdateTracking={handleUpdatePoTracking}
                     requisitions={requisitions}
                     users={users}
                     onApproveRequisition={handleApproveRequisition}

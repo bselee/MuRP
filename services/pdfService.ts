@@ -14,7 +14,17 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
     } : { r: 41, g: 128, b: 185 }; // Default blue
 }
 
-export const generatePoPdf = async (po: PurchaseOrder, vendor: Vendor) => {
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+};
+
+const buildPoPdf = async (po: PurchaseOrder, vendor: Vendor) => {
     const { jsPDF } = jspdf;
     const doc = new jsPDF();
 
@@ -135,8 +145,23 @@ export const generatePoPdf = async (po: PurchaseOrder, vendor: Vendor) => {
     doc.setFont('helvetica', 'normal');
     doc.text(template.footer_text || 'Thank you for your business!', 105, 280, { align: 'center' });
 
-    // --- Save File ---
-    doc.save(`${poNumber}.pdf`);
+    return { doc, fileName: `${poNumber}.pdf` };
+};
+
+export const generatePoPdf = async (po: PurchaseOrder, vendor: Vendor) => {
+    const { doc, fileName } = await buildPoPdf(po, vendor);
+    doc.save(fileName);
+};
+
+export const getPoPdfAttachment = async (po: PurchaseOrder, vendor: Vendor) => {
+    const { doc, fileName } = await buildPoPdf(po, vendor);
+    const buffer = doc.output('arraybuffer');
+    const base64 = arrayBufferToBase64(buffer);
+    return {
+        filename: fileName,
+        mimeType: 'application/pdf',
+        contentBase64: base64,
+    };
 };
 
 export const generateInventoryPdf = (inventory: InventoryItem[], vendorMap: Map<string, string>) => {
