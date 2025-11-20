@@ -51,7 +51,7 @@ CREATE OR REPLACE VIEW po_tracking_overview AS
 SELECT
   po.id,
   po.order_id,
-  po.vendor_name,
+  po.vendor_id,
   po.tracking_number,
   po.tracking_carrier,
   po.tracking_status,
