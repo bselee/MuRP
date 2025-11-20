@@ -39,7 +39,7 @@ export class GoogleAuthService {
     // Get Google OAuth credentials from environment
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-    if (!clientId || !clientSecret) {
+    if (!clientId) {
       console.warn('[GoogleAuthService] Google OAuth credentials not configured in environment');
       return;
     }
