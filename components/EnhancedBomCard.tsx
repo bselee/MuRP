@@ -250,20 +250,19 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 )}
               </div>
             )}
-          </div>
 
-              {/* Components - Admin only (technical detail) */}
-              {isAdmin && (
-                <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
-                  <div className="text-gray-500 mb-2">Components</div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xl font-bold text-purple-400">{bom.components.length}</span>
-                    <span className="text-gray-400 text-xs">items</span>
-                  </div>
+            {/* Components - Admin only (technical detail) */}
+            {isAdmin && (
+              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+                <div className="text-gray-500 mb-2">Components</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-bold text-purple-400">{bom.components.length}</span>
+                  <span className="text-gray-400 text-xs">items</span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
+        </div>
 
           {/* RIGHT: Status Indicators & Actions */}
           <div className="flex flex-col gap-2 items-end">
