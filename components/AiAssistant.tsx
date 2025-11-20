@@ -117,10 +117,10 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
 
       // Build context for the AI
       const contextData = {
-        boms: boms.slice(0, aiSettings.maxContextItems || 20),
-        inventory: inventory.slice(0, aiSettings.maxContextItems || 20),
-        vendors: vendors.slice(0, Math.floor((aiSettings.maxContextItems || 20) / 2)),
-        purchaseOrders: purchaseOrders.slice(0, Math.floor((aiSettings.maxContextItems || 20) / 2)),
+        boms: (boms || []).slice(0, aiSettings.maxContextItems || 20),
+        inventory: (inventory || []).slice(0, aiSettings.maxContextItems || 20),
+        vendors: (vendors || []).slice(0, Math.floor((aiSettings.maxContextItems || 20) / 2)),
+        purchaseOrders: (purchaseOrders || []).slice(0, Math.floor((aiSettings.maxContextItems || 20) / 2)),
       };
 
       // Replace placeholders in system prompt

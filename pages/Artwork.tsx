@@ -6,6 +6,7 @@ import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplica
 import RegulatoryScanModal from '../components/RegulatoryScanModal';
 import BatchArtworkVerificationModal from '../components/BatchArtworkVerificationModal';
 import ManualLabelScanner from '../components/ManualLabelScanner';
+import ArtworkEditor from '../components/ArtworkEditor';
 
 type ArtworkWithProduct = Artwork & {
     productName: string;
@@ -38,6 +39,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
     const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
     const [newFolderName, setNewFolderName] = useState('');
     const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+    const [artworkBeingEdited, setArtworkBeingEdited] = useState<ArtworkWithProduct | null>(null);
     
     useEffect(() => {
         return () => {
@@ -91,6 +93,18 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
             setNewFolderName('');
             setIsCreatingFolder(false);
         }
+    };
+    
+    const handleSaveEditedArtwork = (dataUrl: string) => {
+        if (!artworkBeingEdited) return;
+        const currentRevision = typeof artworkBeingEdited.revision === 'number' ? artworkBeingEdited.revision : 1;
+        const nextRevision = parseFloat((currentRevision + 0.01).toFixed(2));
+        onUpdateArtwork(artworkBeingEdited.id, artworkBeingEdited.bomId, {
+            url: dataUrl,
+            revision: Number.isFinite(nextRevision) ? nextRevision : currentRevision,
+            updatedAt: new Date().toISOString()
+        });
+        setArtworkBeingEdited(null);
     };
     
     const FolderButton: React.FC<{folderId: string | null, name: string}> = ({folderId, name}) => (
@@ -182,6 +196,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                                 artworkFolders={artworkFolders}
                                 onSelect={() => setSelectedArtworkForDetails(art)}
                                 isSelected={selectedArtworkForDetails?.id === art.id}
+                                onEdit={() => setArtworkBeingEdited(art)}
                             />
                         ))}
                     </div>
@@ -204,7 +219,16 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
 
                         {/* Preview */}
                         <div className="mb-6 bg-gray-900 rounded-lg p-4 flex items-center justify-center aspect-square">
-                            <PhotoIcon className="w-20 h-20 text-gray-600" />
+                            {selectedArtworkForDetails.url ? (
+                                <img
+                                    src={selectedArtworkForDetails.url}
+                                    alt={selectedArtworkForDetails.fileName}
+                                    className="max-h-full max-w-full object-contain rounded"
+                                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                />
+                            ) : (
+                                <PhotoIcon className="w-20 h-20 text-gray-600" />
+                            )}
                         </div>
 
                         {/* File Information */}
@@ -304,6 +328,13 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                                 <SparklesIcon className="w-5 h-5" />
                                 AI Scan
                             </button>
+                            <button
+                                onClick={() => setArtworkBeingEdited(selectedArtworkForDetails)}
+                                className="flex items-center justify-center gap-2 w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                            >
+                                <DocumentDuplicateIcon className="w-5 h-5" />
+                                Edit Artwork
+                            </button>
                         </div>
                     </aside>
                 )}
@@ -353,6 +384,13 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                     </div>
                 </div>
             )}
+            
+            <ArtworkEditor
+                isOpen={Boolean(artworkBeingEdited)}
+                artwork={artworkBeingEdited}
+                onClose={() => setArtworkBeingEdited(null)}
+                onSave={handleSaveEditedArtwork}
+            />
         </>
     );
 };
@@ -366,7 +404,8 @@ const ArtworkCard: React.FC<{
     artworkFolders: ArtworkFolder[];
     onSelect: () => void;
     isSelected: boolean;
-}> = ({art, selectedArtworkIds, onCheckboxChange, onScanClick, onUpdateArtwork, artworkFolders, onSelect, isSelected}) => {
+    onEdit: () => void;
+}> = ({art, selectedArtworkIds, onCheckboxChange, onScanClick, onUpdateArtwork, artworkFolders, onSelect, isSelected, onEdit}) => {
     
     const handleMove = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newFolderId = e.target.value === 'unassigned' ? undefined : e.target.value;
@@ -403,12 +442,15 @@ const ArtworkCard: React.FC<{
                         {artworkFolders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                      </select>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                    <a href={art.url} download className="flex items-center justify-center gap-2 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors">
+                <div className="grid grid-cols-3 gap-2">
+                    <a href={art.url} download className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
                         <ArrowDownTrayIcon className="w-4 h-4" /> <span>Download</span>
                     </a>
-                    <button onClick={(e) => { e.stopPropagation(); onScanClick(art); }} className="flex items-center justify-center gap-2 w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors">
+                    <button onClick={(e) => { e.stopPropagation(); onScanClick(art); }} className="flex items-center justify-center gap-1 w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
                         <SparklesIcon className="w-4 h-4" /> <span>Scan</span>
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
+                        <PhotoIcon className="w-4 h-4" /> <span>Edit</span>
                     </button>
                 </div>
             </div>

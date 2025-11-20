@@ -85,6 +85,8 @@ export interface Artwork {
   verifiedAt?: string;
 }
 
+export type ArtworkEditorTool = 'brush' | 'text' | 'eraser';
+
 export interface ArtworkFolder {
     id: string;
     name: string;
@@ -190,6 +192,19 @@ export interface Label {
   uploadedBy?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+declare global {
+  interface Window {
+    ImageTracer?: {
+      imageToSVG: (
+        url: string,
+        callback: (svgString: string) => void,
+        options?: Record<string, unknown>
+      ) => void;
+    };
+    JSZip?: any;
+  }
 }
 
 // Product Data Sheet - AI-generated and editable product documentation

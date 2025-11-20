@@ -1328,13 +1328,14 @@ const AppShell: React.FC = () => {
       <AiAssistant
         isOpen={isAiAssistantOpen}
         onClose={closeAiAssistant}
-        boms={boms}
-        inventory={inventory}
-        vendors={vendors}
-        purchaseOrders={purchaseOrders}
+        boms={boms || []}
+        inventory={inventory || []}
+        vendors={vendors || []}
+        purchaseOrders={purchaseOrders || []}
         aiConfig={aiConfig}
         aiSettings={aiSettings}
         onUpdateAiSettings={handleUpdateAiSettings}
+        userId={currentUser?.id || ''}
       />
 
       {!hasInitialDataLoaded && <LoadingOverlay />}
