@@ -754,6 +754,43 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
   const [error, setError] = useState<Error | null>(null);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
 
+  const transformBuildOrders = useCallback((orders: any[] | null, includeMaterials = true): BuildOrder[] => {
+    return (orders || []).map((order: any) => ({
+      id: order.id,
+      finishedSku: order.finished_sku,
+      name: order.name,
+      quantity: order.quantity,
+      status: order.status as 'Pending' | 'In Progress' | 'Completed',
+      createdAt: order.created_at,
+      scheduledDate: order.scheduled_date,
+      dueDate: order.due_date,
+      calendarEventId: order.calendar_event_id,
+      notes: order.notes,
+      estimatedDurationHours: order.estimated_duration_hours,
+      assignedUserId: order.assigned_user_id,
+      materialRequirements: includeMaterials && order.build_order_material_requirements
+        ? order.build_order_material_requirements.map((req: any) => ({
+            sku: req.sku,
+            name: req.name,
+            requiredQuantity: req.required_quantity,
+            availableQuantity: req.available_quantity,
+            shortfall: req.shortfall,
+            vendorId: req.vendor_id,
+            vendorName: req.vendor_name,
+            leadTimeDays: req.lead_time_days,
+            estimatedCost: req.estimated_cost,
+          }))
+        : [],
+    }));
+  }, []);
+
+  const isMaterialRequirementsMissing = (err: any) => {
+    if (!err) return false;
+    const targets = ['build_order_material_requirements', 'material_requirements'];
+    const haystack = `${err.message ?? ''} ${err.details ?? ''} ${err.hint ?? ''}`.toLowerCase();
+    return err.code === '42P01' || targets.some((token) => haystack.includes(token));
+  };
+
   const fetchBuildOrders = useCallback(async () => {
     try {
       setLoading(true);
@@ -761,63 +798,36 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
 
       const { data: orders, error: fetchError } = await supabase
         .from('build_orders')
-        .select(`
-          *,
-          build_order_material_requirements (
-            id,
-            sku,
-            name,
-            required_quantity,
-            available_quantity,
-            shortfall,
-            vendor_id,
-            vendor_name,
-            lead_time_days,
-            estimated_cost,
-            sourced,
-            sourced_at,
-            notes
-          )
-        `)
+        .select('*, build_order_material_requirements(id, sku, name, required_quantity, available_quantity, shortfall, vendor_id, vendor_name, lead_time_days, estimated_cost, sourced, sourced_at, notes)')
         .order('created_at', { ascending: false });
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        if (isMaterialRequirementsMissing(fetchError)) {
+          console.warn('[useSupabaseBuildOrders] Material requirements relation unavailable, falling back to legacy query.', fetchError);
+          const { data: fallbackOrders, error: fallbackError } = await supabase
+            .from('build_orders')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-      // Transform from snake_case to camelCase
-      const transformed: BuildOrder[] = (orders || []).map((order: any) => ({
-        id: order.id,
-        finishedSku: order.finished_sku,
-        name: order.name,
-        quantity: order.quantity,
-        status: order.status as 'Pending' | 'In Progress' | 'Completed',
-        createdAt: order.created_at,
-        scheduledDate: order.scheduled_date,
-        dueDate: order.due_date,
-        calendarEventId: order.calendar_event_id,
-        notes: order.notes,
-        estimatedDurationHours: order.estimated_duration_hours,
-        assignedUserId: order.assigned_user_id,
-        materialRequirements: order.build_order_material_requirements?.map((req: any) => ({
-          sku: req.sku,
-          name: req.name,
-          requiredQuantity: req.required_quantity,
-          availableQuantity: req.available_quantity,
-          shortfall: req.shortfall,
-          vendorId: req.vendor_id,
-          vendorName: req.vendor_name,
-          leadTimeDays: req.lead_time_days,
-          estimatedCost: req.estimated_cost,
-        })) || [],
-      }));
+          if (fallbackError) {
+            throw fallbackError;
+          }
 
-      setData(transformed);
+          setData(transformBuildOrders(fallbackOrders, false));
+          return;
+        }
+
+        throw fetchError;
+      }
+
+      setData(transformBuildOrders(orders, true));
     } catch (err) {
       console.error('[useSupabaseBuildOrders] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch build orders'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [transformBuildOrders]);
 
   useEffect(() => {
     // Initial fetch
