@@ -24,7 +24,14 @@ export interface GmailSendResult {
 }
 
 export class GoogleGmailService {
-  private authService = getGoogleAuthService();
+  private _authService: ReturnType<typeof getGoogleAuthService> | null = null;
+
+  private get authService() {
+    if (!this._authService) {
+      this._authService = getGoogleAuthService();
+    }
+    return this._authService;
+  }
 
   async getProfile(): Promise<GmailProfile> {
     const accessToken = await this.authService.getAccessToken();

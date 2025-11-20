@@ -11,7 +11,14 @@ export interface CreatedDocument {
 }
 
 export class GoogleDocsService {
-  private authService = getGoogleAuthService();
+  private _authService: ReturnType<typeof getGoogleAuthService> | null = null;
+
+  private get authService() {
+    if (!this._authService) {
+      this._authService = getGoogleAuthService();
+    }
+    return this._authService;
+  }
 
   async createDocument(options: CreateDocumentOptions): Promise<CreatedDocument> {
     const accessToken = await this.authService.getAccessToken();

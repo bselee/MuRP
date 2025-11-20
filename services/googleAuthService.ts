@@ -27,31 +27,52 @@ export interface GoogleAuthStatus {
 export class GoogleAuthService {
   private currentTokens: GoogleTokens | null = null;
   private userId: string | null = null;
+  private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
   constructor() {
-    this.initialize();
+    // Don't initialize in constructor - causes module load issues
+    // Initialize lazily when first needed
   }
 
   /**
    * Initialize OAuth client with environment variables
+   * Called lazily on first use to avoid module initialization errors
    */
   private async initialize() {
-    // Get Google OAuth credentials from environment
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-    if (!clientId) {
-      console.warn('[GoogleAuthService] Google OAuth credentials not configured in environment');
+    if (this.initialized) {
       return;
     }
 
-    // Try to load existing tokens
-    await this.loadTokensFromDatabase();
+    // Prevent multiple simultaneous initializations
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
+    this.initPromise = (async () => {
+      // Get Google OAuth credentials from environment
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+      if (!clientId) {
+        console.warn('[GoogleAuthService] Google OAuth credentials not configured in environment');
+        this.initialized = true;
+        return;
+      }
+
+      // Try to load existing tokens
+      await this.loadTokensFromDatabase();
+      this.initialized = true;
+    })();
+
+    return this.initPromise;
   }
 
   /**
    * Get authentication URL for user consent
    */
   async getAuthUrl(scopes: string[] = DEFAULT_SCOPES): Promise<string> {
+    await this.initialize();
+
     // Prefer hitting the shared API route so scopes stay centralized
     if (typeof window !== 'undefined') {
       try {
@@ -72,6 +93,8 @@ export class GoogleAuthService {
   }
 
   async startOAuthFlow(scopes: string[] = DEFAULT_SCOPES): Promise<void> {
+    await this.initialize();
+
     if (typeof window === 'undefined') {
       throw new Error('OAuth flow can only be initiated in the browser');
     }
@@ -148,6 +171,8 @@ export class GoogleAuthService {
   }
 
   async getAccessToken(): Promise<string> {
+    await this.initialize();
+
     if (!this.currentTokens) {
       throw new Error('No Google OAuth tokens available. Please authenticate first.');
     }
