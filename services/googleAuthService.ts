@@ -94,10 +94,28 @@ export class GoogleAuthService {
         return;
       }
 
-      // Declare variables first to avoid temporal dead zone
+      // Declare all variables first to avoid temporal dead zone errors
+      // These have circular dependencies so we must declare before assigning
       let timeout: ReturnType<typeof setTimeout>;
+      let handleMessage: (event: MessageEvent) => Promise<void>;
+      let cleanup: () => void;
 
-      const cleanup = () => {
+      // Now assign in the correct order
+      handleMessage = async (event: MessageEvent) => {
+        if (!event?.data) return;
+        if (event.data.type === 'GOOGLE_AUTH_SUCCESS' && event.data.tokens) {
+          try {
+            await this.handleAuthCallback(event.data.tokens as GoogleTokens);
+            cleanup();
+            resolve();
+          } catch (error) {
+            cleanup();
+            reject(error);
+          }
+        }
+      };
+
+      cleanup = () => {
         window.removeEventListener('message', handleMessage);
         if (timeout) {
           window.clearTimeout(timeout);
@@ -111,20 +129,6 @@ export class GoogleAuthService {
         cleanup();
         reject(new Error('Google OAuth timed out. Please try again.'));
       }, 1000 * 180);
-
-      const handleMessage = async (event: MessageEvent) => {
-        if (!event?.data) return;
-        if (event.data.type === 'GOOGLE_AUTH_SUCCESS' && event.data.tokens) {
-          try {
-            await this.handleAuthCallback(event.data.tokens as GoogleTokens);
-            cleanup();
-            resolve();
-          } catch (error) {
-            cleanup();
-            reject(error);
-          }
-        }
-      };
 
       window.addEventListener('message', handleMessage);
     });
