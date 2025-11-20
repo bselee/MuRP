@@ -20,6 +20,7 @@ import ApiDocs from './pages/ApiDocs';
 import ArtworkPage from './pages/Artwork';
 import NewUserSetup from './pages/NewUserSetup';
 import ManualLabelScanner from './components/ManualLabelScanner';
+import QuickRequestDrawer from './components/QuickRequestDrawer';
 import AuthCallback from './pages/AuthCallback';
 import ResetPassword from './pages/ResetPassword';
 import usePersistentState from './hooks/usePersistentState';
@@ -72,6 +73,8 @@ import type {
     AiSettings,
     CreatePurchaseOrderInput,
     POTrackingStatus,
+    RequisitionRequestOptions,
+    QuickRequestDefaults,
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
 import { getGoogleAuthService } from './services/googleAuthService';
@@ -137,6 +140,8 @@ const AppShell: React.FC = () => {
   const [externalConnections, setExternalConnections] = usePersistentState<ExternalConnection[]>('externalConnections', []);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
   const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
+  const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
+  const [quickRequestDefaults, setQuickRequestDefaults] = useState<QuickRequestDefaults | null>(null);
   const users = userProfiles;
   const googleAuthService = useMemo(() => getGoogleAuthService(), []);
   const gmailService = useMemo(() => getGoogleGmailService(), []);
@@ -321,6 +326,15 @@ const AppShell: React.FC = () => {
   const removeToast = (id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
+
+  const openQuickRequestDrawer = useCallback((defaults?: QuickRequestDefaults) => {
+    setQuickRequestDefaults(defaults ?? null);
+    setIsQuickRequestOpen(true);
+  }, []);
+
+  const closeQuickRequestDrawer = useCallback(() => {
+    setIsQuickRequestOpen(false);
+  }, []);
 
   const handleLogout = async () => {
     addToast(`Goodbye, ${currentUser?.name ?? 'MuRP user'}.`, 'info');
@@ -618,7 +632,11 @@ const AppShell: React.FC = () => {
     addToast(`Folder "${name}" created successfully.`, 'success');
   };
 
-  const handleCreateRequisition = async (items: RequisitionItem[], source: 'Manual' | 'System' = 'Manual') => {
+  const handleCreateRequisition = async (
+    items: RequisitionItem[],
+    source: 'Manual' | 'System' = 'Manual',
+    options: RequisitionRequestOptions = {}
+  ) => {
     const newReq: InternalRequisition = {
       id: `REQ-${new Date().getFullYear()}-${(requisitions.length + 1).toString().padStart(3, '0')}`,
       requesterId: source === 'Manual' ? currentUser!.id : 'SYSTEM',
@@ -627,6 +645,15 @@ const AppShell: React.FC = () => {
       status: 'Pending',
       source,
       items,
+      requestType: options.requestType ?? 'consumable',
+      priority: options.priority ?? 'medium',
+      needByDate: options.needByDate ?? null,
+      alertOnly: options.alertOnly ?? false,
+      autoPo: options.autoPo ?? false,
+      notifyRequester: options.notifyRequester ?? true,
+      context: options.context ?? null,
+      metadata: options.metadata ?? {},
+      notes: options.notes ?? undefined,
     };
 
     // 🔥 Save to Supabase
@@ -638,11 +665,16 @@ const AppShell: React.FC = () => {
 
     refetchRequisitions();
     
+    const label = newReq.alertOnly ? 'Alert' : 'Requisition';
     if (source === 'System') {
-      addToast(`⚡ AI-Generated Requisition ${newReq.id} created! Auto-generated based on demand forecast. Pending approval.`, 'success');
+      addToast(`⚡ AI-Generated ${label} ${newReq.id} created! Auto-generated based on demand forecast. Pending approval.`, 'success');
     } else {
-      addToast(`Requisition ${newReq.id} submitted for approval.`, 'success');
+      addToast(`${label} ${newReq.id} submitted for approval.`, 'success');
     }
+  };
+
+  const handleQuickRequestSubmit = async (items: RequisitionItem[], options: RequisitionRequestOptions) => {
+    await handleCreateRequisition(items, 'Manual', options);
   };
 
   const queueShortagesForBuild = useCallback(async (buildOrder: BuildOrder) => {
@@ -1147,6 +1179,7 @@ const AppShell: React.FC = () => {
           inventory={inventory} 
           vendors={vendors} 
           boms={boms}
+          onQuickRequest={openQuickRequestDrawer}
           onNavigateToBom={(bomSku) => {
             setCurrentPage('BOMs');
             if (bomSku) {
@@ -1172,7 +1205,7 @@ const AppShell: React.FC = () => {
                     users={users}
                     onApproveRequisition={handleApproveRequisition}
                     onRejectRequisition={handleRejectRequisition}
-                    onCreateRequisition={(items) => handleCreateRequisition(items, 'Manual')}
+                    onCreateRequisition={(items, options) => handleCreateRequisition(items, 'Manual', options)}
                 />;
       case 'Vendors':
         return <Vendors vendors={vendors} />;
@@ -1340,6 +1373,7 @@ const AppShell: React.FC = () => {
           devModeActive={permissions.isGodMode}
           systemAlerts={systemAlerts}
           onDismissAlert={dismissAlert}
+          onQuickRequest={() => openQuickRequestDrawer()}
         />
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-900 p-4 sm:p-6 lg:p-8">
@@ -1362,7 +1396,15 @@ const AppShell: React.FC = () => {
           <Toast key={toast.id} {...toast} onClose={() => removeToast(toast.id)} />
         ))}
       </div>
-      
+
+      <QuickRequestDrawer
+        isOpen={isQuickRequestOpen}
+        inventory={inventory || []}
+        defaults={quickRequestDefaults ?? undefined}
+        onClose={closeQuickRequestDrawer}
+        onSubmit={handleQuickRequestSubmit}
+      />
+
       <AiAssistant
         isOpen={isAiAssistantOpen}
         onClose={closeAiAssistant}

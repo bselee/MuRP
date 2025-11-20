@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import type { InventoryItem, BillOfMaterials, Vendor } from '../types';
+import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults } from '../types';
 import { 
   SearchIcon, 
   ChevronUpIcon, 
@@ -8,7 +8,9 @@ import {
   AdjustmentsHorizontalIcon,
   EyeIcon,
   EyeSlashIcon,
-  BookmarkIcon
+  BookmarkIcon,
+  BellIcon,
+  PlusCircleIcon
 } from '../components/icons';
 import ImportExportModal from '../components/ImportExportModal';
 import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
@@ -31,6 +33,7 @@ interface InventoryProps {
     vendors: Vendor[];
     boms: BillOfMaterials[];
     onNavigateToBom?: (bomSku?: string) => void;
+    onQuickRequest?: (defaults?: QuickRequestDefaults) => void;
 }
 
 type ColumnKey =
@@ -160,7 +163,7 @@ const SortableHeader: React.FC<{
     );
 };
 
-const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom }) => {
+const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom, onQuickRequest }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
         const saved = localStorage.getItem('inventory-selected-categories');
@@ -1076,6 +1079,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         const sortKey = col.key === 'vendor' ? 'vendor' : col.key as SortKeys;
                                         return <SortableHeader key={col.key} title={col.label} sortKey={sortKey} sortConfig={sortConfig} requestSort={requestSort} className={widthClass} />;
                                     })}
+                                    <th className="px-6 py-2 text-right text-xs font-medium text-gray-300 uppercase tracking-wider w-32">
+                                        Request
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700">
@@ -1242,6 +1248,26 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         return null;
                                                 }
                                             })}
+                                            <td className="px-6 py-1 text-right whitespace-nowrap">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'consumable' })}
+                                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white transition disabled:opacity-40"
+                                                        disabled={!onQuickRequest}
+                                                    >
+                                                        <PlusCircleIcon className="w-4 h-4" />
+                                                        Request
+                                                    </button>
+                                                    <button
+                                                        onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true, priority: 'high' })}
+                                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-amber-500/20 text-amber-200 border border-amber-500/40 hover:bg-amber-500/30 transition disabled:opacity-40"
+                                                        disabled={!onQuickRequest}
+                                                    >
+                                                        <BellIcon className="w-4 h-4" />
+                                                        Alert
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     );
                                 })}

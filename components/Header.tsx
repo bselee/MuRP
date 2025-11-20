@@ -12,6 +12,7 @@ interface HeaderProps {
     devModeActive?: boolean;
     systemAlerts: SystemAlert[];
     onDismissAlert: (idOrSource: string) => void;
+    onQuickRequest: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -22,6 +23,7 @@ const Header: React.FC<HeaderProps> = ({
     devModeActive,
     systemAlerts,
     onDismissAlert,
+    onQuickRequest,
 }) => {
     return (
         <header className="h-16 bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0">
@@ -39,6 +41,12 @@ const Header: React.FC<HeaderProps> = ({
                             Dev Mode
                         </span>
                     )}
+                    <button
+                        onClick={onQuickRequest}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
+                    >
+                        Need Supplies?
+                    </button>
                     <AlertBell alerts={systemAlerts} onDismiss={onDismissAlert} />
                 <div className="flex items-center space-x-3">
                     <div className="text-right">

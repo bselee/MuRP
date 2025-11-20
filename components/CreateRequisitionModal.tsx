@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { InventoryItem, RequisitionItem } from '../types';
+import type { InventoryItem, RequisitionItem, RequisitionRequestOptions, RequisitionRequestType, RequisitionPriority } from '../types';
 import Modal from './Modal';
 import { PlusCircleIcon, TrashIcon } from './icons';
 
@@ -7,14 +7,22 @@ interface CreateRequisitionModalProps {
     isOpen: boolean;
     onClose: () => void;
     inventory: InventoryItem[];
-    onCreate: (items: RequisitionItem[]) => void;
+    onCreate: (items: RequisitionItem[], options: RequisitionRequestOptions) => void;
+    defaultOptions?: RequisitionRequestOptions;
 }
 
 type ReqItemDraft = Omit<RequisitionItem, 'name'>;
 
-const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen, onClose, inventory, onCreate }) => {
+const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen, onClose, inventory, onCreate, defaultOptions }) => {
     const [reqItems, setReqItems] = useState<ReqItemDraft[]>([]);
     const [itemToAdd, setItemToAdd] = useState('');
+    const [requestType, setRequestType] = useState<RequisitionRequestType>(defaultOptions?.requestType ?? 'consumable');
+    const [priority, setPriority] = useState<RequisitionPriority>(defaultOptions?.priority ?? 'medium');
+    const [needByDate, setNeedByDate] = useState(defaultOptions?.needByDate ?? '');
+    const [alertOnly, setAlertOnly] = useState(defaultOptions?.alertOnly ?? false);
+    const [autoPo, setAutoPo] = useState(defaultOptions?.autoPo ?? false);
+    const [notes, setNotes] = useState(defaultOptions?.context ?? '');
+    const [notifyRequester, setNotifyRequester] = useState(defaultOptions?.notifyRequester ?? true);
 
     const inventoryMap = useMemo(() => new Map(inventory.map(i => [i.sku, i])), [inventory]);
 
@@ -43,7 +51,15 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
         
         if (finalItems.length === 0) return;
 
-        onCreate(finalItems);
+        onCreate(finalItems, {
+            requestType,
+            priority,
+            needByDate: needByDate || null,
+            alertOnly,
+            autoPo,
+            notifyRequester,
+            context: notes,
+        });
         onClose();
     };
 
@@ -52,8 +68,15 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
         if (!isOpen) {
             setReqItems([]);
             setItemToAdd('');
+            setRequestType(defaultOptions?.requestType ?? 'consumable');
+            setPriority(defaultOptions?.priority ?? 'medium');
+            setNeedByDate(defaultOptions?.needByDate ?? '');
+            setAlertOnly(defaultOptions?.alertOnly ?? false);
+            setAutoPo(defaultOptions?.autoPo ?? false);
+            setNotes(defaultOptions?.context ?? '');
+            setNotifyRequester(defaultOptions?.notifyRequester ?? true);
         }
-    }, [isOpen]);
+    }, [isOpen, defaultOptions]);
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Create New Purchase Requisition">
@@ -112,6 +135,84 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                     <button onClick={handleAddItem} className="p-2 text-indigo-400 hover:text-indigo-300 disabled:text-gray-600 disabled:cursor-not-allowed" disabled={!itemToAdd}>
                         <PlusCircleIcon className="w-7 h-7" />
                     </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-gray-700/50">
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Request Type</label>
+                        <select
+                            value={requestType}
+                            onChange={e => setRequestType(e.target.value as RequisitionRequestType)}
+                            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-indigo-500"
+                        >
+                            <option value="consumable">Consumable / Component</option>
+                            <option value="product_alert">Product Alert</option>
+                            <option value="finished_good">Finished Good</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Priority</label>
+                        <select
+                            value={priority}
+                            onChange={e => setPriority(e.target.value as RequisitionPriority)}
+                            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-indigo-500"
+                        >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Need By</label>
+                        <input
+                            type="date"
+                            value={needByDate}
+                            onChange={e => setNeedByDate(e.target.value)}
+                            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-indigo-500"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-2 pt-4 border-t border-gray-700/50">
+                    <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wide">Notes / Context</label>
+                    <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={3}
+                        className="w-full bg-gray-700/80 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-indigo-500"
+                        placeholder="Customer, job, urgency, or anything else we should know…"
+                    />
+                </div>
+
+                <div className="flex flex-col gap-2 text-sm text-gray-300 pt-2">
+                    <label className="inline-flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={alertOnly}
+                            onChange={(e) => setAlertOnly(e.target.checked)}
+                            className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                        />
+                        Alert only (no PO yet)
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={autoPo}
+                            onChange={(e) => setAutoPo(e.target.checked)}
+                            className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                        />
+                        Auto-create PO draft after approval
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={notifyRequester}
+                            onChange={(e) => setNotifyRequester(e.target.checked)}
+                            className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                        />
+                        Notify me when someone picks this up
+                    </label>
                 </div>
 
                 <div className="flex justify-end pt-6 border-t border-gray-700">

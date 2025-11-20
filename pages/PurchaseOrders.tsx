@@ -12,8 +12,9 @@ import type {
     CreatePurchaseOrderInput,
     CreatePurchaseOrderItemInput,
     POTrackingStatus,
+    RequisitionRequestOptions,
 } from '../types';
-import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon } from '../components/icons';
+import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon } from '../components/icons';
 import CreatePoModal from '../components/CreatePoModal';
 import EmailComposerModal from '../components/EmailComposerModal';
 import GeneratePoModal from '../components/GeneratePoModal';
@@ -47,7 +48,7 @@ interface PurchaseOrdersProps {
     users: User[];
     onApproveRequisition: (reqId: string) => void;
     onRejectRequisition: (reqId: string) => void;
-    onCreateRequisition: (items: RequisitionItem[]) => void;
+    onCreateRequisition: (items: RequisitionItem[], options: RequisitionRequestOptions) => void;
 }
 
 type PoDraftConfig = {
@@ -128,11 +129,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [isCreatePoModalOpen, setIsCreatePoModalOpen] = useState(false);
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
+    const [isCommModalOpen, setIsCommModalOpen] = useState(false);
     const [isGeneratePoModalOpen, setIsGeneratePoModalOpen] = useState(false);
     const [isCreateReqModalOpen, setIsCreateReqModalOpen] = useState(false);
     const [isRequisitionsOpen, setIsRequisitionsOpen] = useState(true);
     const [selectedPoForEmail, setSelectedPoForEmail] = useState<PurchaseOrder | null>(null);
     const [selectedPoForTracking, setSelectedPoForTracking] = useState<PurchaseOrder | null>(null);
+    const [selectedPoForComm, setSelectedPoForComm] = useState<PurchaseOrder | null>(null);
     const [activePoDraft, setActivePoDraft] = useState<PoDraftConfig | undefined>(undefined);
     const [pendingPoDrafts, setPendingPoDrafts] = useState<PoDraftConfig[]>([]);
     const [modalSession, setModalSession] = useState(0);
@@ -305,6 +308,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     }
   };
 
+  const handleOpenComm = (po: PurchaseOrder) => {
+    setSelectedPoForComm(po);
+    setIsCommModalOpen(true);
+  };
+
+  const handleCloseComm = () => {
+    setIsCommModalOpen(false);
+    setSelectedPoForComm(null);
+  };
+
   const handleEditTracking = (po: PurchaseOrder) => {
     setSelectedPoForTracking(po);
     setIsTrackingModalOpen(true);
@@ -459,6 +472,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             )}
                                             <button onClick={() => handleDownloadPdf(po)} title="Download PDF" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><FileTextIcon className="w-5 h-5"/></button>
                                             <button onClick={() => handleSendEmailClick(po)} title="Send Email" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><MailIcon className="w-5 h-5"/></button>
+                                            <button
+                                                onClick={() => handleOpenComm(po)}
+                                                title="View Thread"
+                                                className="p-2 text-gray-400 hover:text-emerald-300 transition-colors"
+                                            >
+                                                <DocumentTextIcon className="w-5 h-5" />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -490,6 +510,17 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 />
             )}
             
+            {selectedPoForComm && selectedPoForComm.vendorId && vendorMap.get(selectedPoForComm.vendorId) && (
+                <PoCommunicationModal
+                    isOpen={isCommModalOpen}
+                    onClose={handleCloseComm}
+                    purchaseOrder={selectedPoForComm}
+                    vendor={vendorMap.get(selectedPoForComm.vendorId)!}
+                    gmailConnection={gmailConnection}
+                    addToast={addToast}
+                />
+            )}
+            
             <UpdateTrackingModal
                 isOpen={isTrackingModalOpen}
                 onClose={() => {
@@ -516,7 +547,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     isOpen={isCreateReqModalOpen}
                     onClose={() => setIsCreateReqModalOpen(false)}
                     inventory={inventory}
-                    onCreate={onCreateRequisition}
+                    onCreate={(items, options) => onCreateRequisition(items, options)}
+                    defaultOptions={{ requestType: 'consumable', priority: 'medium' }}
                 />
             )}
         </>

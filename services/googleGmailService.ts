@@ -15,6 +15,8 @@ export interface GmailSendOptions {
   bcc?: string[];
   replyTo?: string;
   attachments?: GmailAttachment[];
+  threadId?: string;
+  inReplyToMessageId?: string;
 }
 
 export interface GmailProfile {
@@ -58,7 +60,10 @@ export class GoogleGmailService {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ raw: rawMessage }),
+      body: JSON.stringify({
+        raw: rawMessage,
+        threadId: options.threadId,
+      }),
     });
 
     const payload = await response.json();
@@ -81,6 +86,8 @@ export class GoogleGmailService {
       options.replyTo ? `Reply-To: ${options.replyTo}` : undefined,
       options.cc && options.cc.length ? `Cc: ${options.cc.join(', ')}` : undefined,
       options.bcc && options.bcc.length ? `Bcc: ${options.bcc.join(', ')}` : undefined,
+      options.inReplyToMessageId ? `In-Reply-To: ${options.inReplyToMessageId}` : undefined,
+      options.inReplyToMessageId ? `References: ${options.inReplyToMessageId}` : undefined,
       `Subject: ${options.subject}`,
       'MIME-Version: 1.0',
     ].filter(Boolean) as string[];

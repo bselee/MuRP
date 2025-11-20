@@ -813,11 +813,16 @@ export interface User {
     };
 }
 
+export type RequisitionRequestType = 'consumable' | 'product_alert' | 'finished_good' | 'other';
+export type RequisitionPriority = 'low' | 'medium' | 'high';
+
 export interface RequisitionItem {
     sku: string;
     name: string;
     quantity: number;
     reason: string;
+    notes?: string;
+    isCustomSku?: boolean;
 }
 
 export interface InternalRequisition {
@@ -828,6 +833,36 @@ export interface InternalRequisition {
     createdAt: string;
     status: 'Pending' | 'Approved' | 'Rejected' | 'Ordered';
     items: RequisitionItem[];
+    requestType?: RequisitionRequestType;
+    priority?: RequisitionPriority;
+    needByDate?: string | null;
+    alertOnly?: boolean;
+    autoPo?: boolean;
+    notifyRequester?: boolean;
+    context?: string | null;
+    metadata?: Record<string, any> | null;
+    notes?: string;
+}
+
+export interface RequisitionRequestOptions {
+    requestType?: RequisitionRequestType;
+    priority?: RequisitionPriority;
+    needByDate?: string | null;
+    alertOnly?: boolean;
+    autoPo?: boolean;
+    notifyRequester?: boolean;
+    context?: string | null;
+    notes?: string;
+    metadata?: Record<string, any>;
+}
+
+export interface QuickRequestDefaults {
+    sku?: string;
+    requestType?: RequisitionRequestType;
+    priority?: RequisitionPriority;
+    alertOnly?: boolean;
+    autoPo?: boolean;
+    context?: string;
 }
 
 export interface ExternalConnection {

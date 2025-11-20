@@ -384,6 +384,14 @@ export async function createRequisition(req: InternalRequisition): Promise<{ suc
         created_at: req.createdAt,
         items: req.items as any,
         notes: req.notes,
+        request_type: req.requestType ?? 'consumable',
+        priority: req.priority ?? 'medium',
+        need_by_date: req.needByDate ?? null,
+        alert_only: req.alertOnly ?? false,
+        auto_po: req.autoPo ?? false,
+        notify_requester: req.notifyRequester ?? true,
+        context: req.context ?? null,
+        metadata: req.metadata ?? {},
       });
 
     if (error) throw error;

@@ -80,6 +80,77 @@ const BOMs: React.FC<BOMsProps> = ({
   const canEdit = permissions.canEditBoms;
   const canSubmitRequisitions = permissions.canSubmitRequisition;
 
+  const openScheduleModal = (bom: BillOfMaterials) => {
+    const buildability = calculateBuildability(bom);
+    const suggestedQuantity = Math.max(1, buildability.maxBuildable || 1);
+    setScheduleModalConfig({
+      bomId: bom.id,
+      defaultQuantity: suggestedQuantity,
+      start: new Date(),
+    });
+  };
+
+  useEffect(() => {
+    const skuSet = new Set<string>();
+    boms.forEach(bom => {
+      bom.components?.forEach(component => {
+        skuSet.add(component.sku);
+      });
+    });
+
+    if (skuSet.size === 0) {
+      setQueueStatusBySku({});
+      return;
+    }
+
+    let isMounted = true;
+    const skuList = Array.from(skuSet);
+
+    const fetchQueueStatus = async () => {
+      try {
+        const statusMap: Record<string, { status: string; poId: string | null }> = {};
+        const chunkSize = 200;
+
+        for (let i = 0; i < skuList.length; i += chunkSize) {
+          const chunk = skuList.slice(i, i + chunkSize);
+          const { data, error } = await supabase
+            .from('reorder_queue')
+            .select('inventory_sku,status,po_id')
+            .in('inventory_sku', chunk)
+            .in('status', ['pending', 'po_created']);
+
+          if (error) throw error;
+
+          data?.forEach(row => {
+            statusMap[row.inventory_sku] = { status: row.status, poId: row.po_id };
+          });
+        }
+
+        if (isMounted) {
+          setQueueStatusBySku(statusMap);
+        }
+      } catch (error) {
+        console.error('[BOMs] Failed to load reorder queue status', error);
+      }
+    };
+
+    fetchQueueStatus();
+
+    const channel = supabase
+      .channel('boms-reorder-queue')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reorder_queue' },
+        () => fetchQueueStatus()
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [boms]);
+
   // New UI state
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -769,72 +840,3 @@ const BOMs: React.FC<BOMsProps> = ({
 };
 
 export default BOMs;
-  const openScheduleModal = (bom: BillOfMaterials) => {
-    const buildability = calculateBuildability(bom);
-    const suggestedQuantity = Math.max(1, buildability.maxBuildable || 1);
-    setScheduleModalConfig({
-      bomId: bom.id,
-      defaultQuantity: suggestedQuantity,
-      start: new Date(),
-    });
-  };
-  useEffect(() => {
-    const skuSet = new Set<string>();
-    boms.forEach(bom => {
-      bom.components?.forEach(component => {
-        skuSet.add(component.sku);
-      });
-    });
-
-    if (skuSet.size === 0) {
-      setQueueStatusBySku({});
-      return;
-    }
-
-    let isMounted = true;
-    const skuList = Array.from(skuSet);
-
-    const fetchQueueStatus = async () => {
-      try {
-        const statusMap: Record<string, { status: string; poId: string | null }> = {};
-        const chunkSize = 200;
-
-        for (let i = 0; i < skuList.length; i += chunkSize) {
-          const chunk = skuList.slice(i, i + chunkSize);
-          const { data, error } = await supabase
-            .from('reorder_queue')
-            .select('inventory_sku,status,po_id')
-            .in('inventory_sku', chunk)
-            .in('status', ['pending', 'po_created']);
-
-          if (error) throw error;
-
-          data?.forEach(row => {
-            statusMap[row.inventory_sku] = { status: row.status, poId: row.po_id };
-          });
-        }
-
-        if (isMounted) {
-          setQueueStatusBySku(statusMap);
-        }
-      } catch (error) {
-        console.error('[BOMs] Failed to load reorder queue status', error);
-      }
-    };
-
-    fetchQueueStatus();
-
-    const channel = supabase
-      .channel('boms-reorder-queue')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'reorder_queue' },
-        () => fetchQueueStatus()
-      )
-      .subscribe();
-
-    return () => {
-      isMounted = false;
-      supabase.removeChannel(channel);
-    };
-  }, [boms]);
