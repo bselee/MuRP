@@ -295,10 +295,19 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     }
   };
 
-    const sortedPurchaseOrders = useMemo(() => 
+    const sortedPurchaseOrders = useMemo(() =>
         [...purchaseOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
         [purchaseOrders]
     );
+
+    useEffect(() => {
+        const unsubscribe = subscribeToPoDrafts(drafts => {
+            openPoModalWithDrafts(drafts);
+        });
+        return () => {
+            unsubscribe();
+        };
+    }, [openPoModalWithDrafts]);
 
     return (
         <>
@@ -571,11 +580,3 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
 };
 
 export default PurchaseOrders;
-    useEffect(() => {
-        const unsubscribe = subscribeToPoDrafts(drafts => {
-            openPoModalWithDrafts(drafts);
-        });
-        return () => {
-            unsubscribe();
-        };
-    }, [openPoModalWithDrafts]);
