@@ -546,6 +546,10 @@ export interface BillOfMaterials {
   expiringRegistrationsCount?: number;
   complianceLastChecked?: string;
 
+  // Production metadata
+  buildTimeMinutes?: number;
+  laborCostPerHour?: number;
+
   // Legacy compliance fields (deprecated, use compliance_records table instead)
   complianceStatusId?: string; // Links to ComplianceStatus in regulatory cache
   registrations?: ProductRegistration[]; // Use ComplianceRecord[] instead
@@ -560,6 +564,8 @@ export interface InventoryItem {
   reorderPoint: number;
   vendorId: string;
   moq?: number;
+  safetyStock?: number;
+  leadTimeDays?: number;
   // Enhanced fields from migration 003
   description?: string;
   status?: 'active' | 'inactive' | 'discontinued';
@@ -652,6 +658,12 @@ export interface PurchaseOrder {
   taxableFeeFreight?: number;
   trackingLink?: string;
   trackingNumber?: string;
+  trackingCarrier?: string;
+  trackingStatus?: POTrackingStatus;
+  trackingLastCheckedAt?: string;
+  trackingLastException?: string;
+  trackingEstimatedDelivery?: string;
+  trackingEvents?: POTrackingEvent[];
   estDaysOfStock?: number;
   dateOutOfStock?: string;
   fulfillment?: string;
@@ -687,6 +699,30 @@ export interface CreatePurchaseOrderInput {
   expectedDate?: string;
   notes?: string;
   requisitionIds?: string[];
+  trackingNumber?: string;
+  trackingCarrier?: string;
+}
+
+export type POTrackingStatus =
+  | 'awaiting_confirmation'
+  | 'confirmed'
+  | 'processing'
+  | 'shipped'
+  | 'in_transit'
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'exception'
+  | 'cancelled';
+
+export interface POTrackingEvent {
+  id?: string;
+  poId: string;
+  status: POTrackingStatus;
+  carrier?: string;
+  trackingNumber?: string;
+  description?: string;
+  rawPayload?: Record<string, unknown>;
+  createdAt?: string;
 }
 
 export interface HistoricalSale {

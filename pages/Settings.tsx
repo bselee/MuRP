@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, CalendarIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import UserManagementPanel from '../components/UserManagementPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
@@ -11,7 +11,9 @@ import AiSettingsPanel from '../components/AiSettingsPanel';
 import SemanticSearchSettings from '../components/SemanticSearchSettings';
 import { MCPServerPanel } from '../components/MCPServerPanel';
 import DocumentTemplatesPanel from '../components/DocumentTemplatesPanel';
-import CalendarSettingsPanel from '../components/CalendarSettingsPanel';
+import DataPipelineGuide from '../components/DataPipelineGuide';
+import GoogleDataPanel from '../components/GoogleDataPanel';
+import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
 import { useAuth } from '../lib/auth/AuthContext';
 import { isDevelopment } from '../lib/auth/guards';
 
@@ -52,12 +54,12 @@ const Settings: React.FC<SettingsProps> = ({
     const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
     const [isRegulatoryOpen, setIsRegulatoryOpen] = useState(false);
     const [isAiConfigOpen, setIsAiConfigOpen] = useState(false);
-    const [isApiIntegrationsOpen, setIsApiIntegrationsOpen] = useState(false);
-    const [isCalendarSettingsOpen, setIsCalendarSettingsOpen] = useState(false);
+    const [isDataIntegrationsOpen, setIsDataIntegrationsOpen] = useState(false);
     const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
     const [isDocumentTemplatesOpen, setIsDocumentTemplatesOpen] = useState(false);
     const [isMcpServerOpen, setIsMcpServerOpen] = useState(false);
     const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
+    const [isLegalOpen, setIsLegalOpen] = useState(false);
     
     // API key visibility state
     const [showApiKey, setShowApiKey] = useState(false);
@@ -162,40 +164,49 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
           </CollapsibleSection>
 
-          {/* 4. API & Integrations */}
+          {/* 4. Data Inputs & Integrations */}
           <CollapsibleSection
-            title="API & Integrations"
+            title="Data Inputs & Integrations"
             icon={<LinkIcon className="w-6 h-6 text-blue-400" />}
-            isOpen={isApiIntegrationsOpen}
-            onToggle={() => setIsApiIntegrationsOpen(!isApiIntegrationsOpen)}
+            isOpen={isDataIntegrationsOpen}
+            onToggle={() => setIsDataIntegrationsOpen(!isDataIntegrationsOpen)}
           >
-            <APIIntegrationsPanel
-              apiKey={apiKey}
-              onGenerateApiKey={onGenerateApiKey}
-              onRevokeApiKey={onRevokeApiKey}
-              showApiKey={showApiKey}
-              onToggleShowApiKey={setShowApiKey}
-              gmailConnection={gmailConnection}
-              onGmailConnect={onGmailConnect}
-              onGmailDisconnect={onGmailDisconnect}
-              externalConnections={externalConnections}
-              onSetExternalConnections={onSetExternalConnections}
-              setCurrentPage={setCurrentPage}
-              addToast={addToast}
-            />
+            <div className="space-y-8">
+              <DataPipelineGuide
+                items={[
+                  {
+                    label: 'Connect Google',
+                    description: 'Grant Calendar + Sheets scopes once and reuse everywhere.',
+                  },
+                  {
+                    label: 'Sync Finale',
+                    description: 'Monitor the auto-sync function and run manual jobs on demand.',
+                  },
+                  {
+                    label: 'Custom APIs',
+                    description: 'Issue API keys and register vendor or ERP webhooks.',
+                  },
+                ]}
+              />
+              <GoogleDataPanel userId={currentUser.id} addToast={addToast} />
+              <APIIntegrationsPanel
+                apiKey={apiKey}
+                onGenerateApiKey={onGenerateApiKey}
+                onRevokeApiKey={onRevokeApiKey}
+                showApiKey={showApiKey}
+                onToggleShowApiKey={setShowApiKey}
+                gmailConnection={gmailConnection}
+                onGmailConnect={onGmailConnect}
+                onGmailDisconnect={onGmailDisconnect}
+                externalConnections={externalConnections}
+                onSetExternalConnections={onSetExternalConnections}
+                setCurrentPage={setCurrentPage}
+                addToast={addToast}
+              />
+            </div>
           </CollapsibleSection>
 
-          {/* 5. Google Calendar Settings */}
-          <CollapsibleSection
-            title="Google Calendar Settings"
-            icon={<CalendarIcon className="w-6 h-6 text-green-400" />}
-            isOpen={isCalendarSettingsOpen}
-            onToggle={() => setIsCalendarSettingsOpen(!isCalendarSettingsOpen)}
-          >
-            <CalendarSettingsPanel userId={currentUser.id} addToast={addToast} />
-          </CollapsibleSection>
-
-          {/* 6. Semantic Search */}
+          {/* 5. Semantic Search */}
           <CollapsibleSection
             title="Semantic Search"
             icon={<SearchIcon className="w-6 h-6 text-amber-400" />}
@@ -210,7 +221,7 @@ const Settings: React.FC<SettingsProps> = ({
             />
           </CollapsibleSection>
 
-          {/* 7. Document Templates (Admin only) */}
+          {/* 6. Document Templates (Admin only) */}
           {currentUser.role === 'Admin' && (
             <CollapsibleSection
               title="Document Templates"
@@ -221,6 +232,42 @@ const Settings: React.FC<SettingsProps> = ({
               <DocumentTemplatesPanel addToast={addToast} />
             </CollapsibleSection>
           )}
+
+          {/* 7. Legal & Support */}
+          <CollapsibleSection
+            title="Legal & Support"
+            icon={<ShieldCheckIcon className="w-6 h-6 text-emerald-400" />}
+            isOpen={isLegalOpen}
+            onToggle={() => setIsLegalOpen(!isLegalOpen)}
+          >
+            <div className="space-y-4">
+              <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-white">Terms of Service</h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  Keep this accessible for auditors and internal users. The document lives in the repo so it can be versioned with code.
+                </p>
+                <a
+                  href={termsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-indigo-300 hover:text-indigo-100"
+                >
+                  View Terms of Service &rarr;
+                </a>
+              </div>
+
+              <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-white">Support</h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  Need to escalate an issue or request data deletion? Email{' '}
+                  <a href="mailto:support@murp.app" className="text-indigo-300 hover:text-indigo-100 underline decoration-dotted">
+                    support@murp.app
+                  </a>{' '}
+                  and reference the build ID or production order.
+                </p>
+              </div>
+            </div>
+          </CollapsibleSection>
 
           {/* 8. MCP Server Configuration (Admin only) */}
           {currentUser.role === 'Admin' && (

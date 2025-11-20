@@ -78,7 +78,13 @@ import { GOOGLE_SCOPES } from './lib/google/scopes';
 import LoadingOverlay from './components/LoadingOverlay';
 import { supabase } from './lib/supabase/client';
 import { useAuth } from './lib/auth/AuthContext';
+import { enqueuePoDrafts } from './lib/poDraftBridge';
 import { usePermissions } from './hooks/usePermissions';
+import {
+  SystemAlertProvider,
+  useSystemAlerts,
+} from './lib/systemAlerts/SystemAlertContext';
+import type { SyncHealthRow } from './lib/sync/healthUtils';
 
 export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner';
 
@@ -88,9 +94,15 @@ export type ToastInfo = {
   type: 'success' | 'error' | 'info';
 };
 
-const App: React.FC = () => {
+const AppShell: React.FC = () => {
   const { user: currentUser, loading: authLoading, signOut: authSignOut, refreshProfile } = useAuth();
   const permissions = usePermissions();
+  const {
+    alerts: systemAlerts,
+    upsertAlert,
+    resolveAlert,
+    dismissAlert,
+  } = useSystemAlerts();
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
   // 🔥 LIVE DATA FROM SUPABASE (Real-time subscriptions enabled)
@@ -160,6 +172,67 @@ const App: React.FC = () => {
       setHasInitialDataLoaded(true);
     }
   }, [isDataLoading]);
+
+  useEffect(() => {
+    if (!currentUser) {
+      resolveAlert('sync:inventory');
+      resolveAlert('sync:vendors');
+      resolveAlert('sync:boms');
+      return;
+    }
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const sources = ['inventory', 'vendors', 'boms'] as const;
+
+    const evaluateRows = (rows: SyncHealthRow[] | null) => {
+      (rows || []).forEach((row) => {
+        const sourceKey = `sync:${row.data_type}`;
+        if (row.last_sync_time && row.success === false) {
+          upsertAlert({
+            source: sourceKey,
+            message: `Unable to reach Finale ${row.data_type} report. Last attempt ${new Date(row.last_sync_time).toLocaleTimeString()}.`,
+          });
+        } else if (sources.some((source) => `sync:${source}` === sourceKey)) {
+          resolveAlert(sourceKey);
+        }
+      });
+    };
+
+    const fetchHealth = async () => {
+      try {
+        const { data, error } = await supabase.rpc<SyncHealthRow[]>('get_sync_health');
+        if (error) throw error;
+        evaluateRows(data || []);
+      } catch (error) {
+        console.error('[App] Failed to refresh sync health alerts:', error);
+      }
+    };
+
+    fetchHealth();
+    const intervalId = window.setInterval(fetchHealth, 60000);
+    const channel = supabase
+      .channel('system_alert_sync_metadata')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sync_metadata',
+        },
+        () => {
+          fetchHealth();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      window.clearInterval(intervalId);
+      channel.unsubscribe();
+    };
+  }, [currentUser, resolveAlert, upsertAlert]);
 
   useEffect(() => {
     if (currentUser) {
@@ -259,7 +332,7 @@ const App: React.FC = () => {
   };
 
   const handleCreatePo = async (poDetails: CreatePurchaseOrderInput) => {
-    const { vendorId, items, expectedDate, notes, requisitionIds } = poDetails;
+    const { vendorId, items, expectedDate, notes, requisitionIds, trackingNumber, trackingCarrier } = poDetails;
     const vendor = vendors.find(v => v.id === vendorId);
     if (!vendor) {
       addToast("Failed to create PO: Vendor not found.", "error");
@@ -287,6 +360,8 @@ const App: React.FC = () => {
       total,
       vendorNotes: notes,
       requisitionIds,
+      trackingNumber,
+      trackingCarrier,
       items: normalizedItems,
     });
     if (!result.success) {
@@ -316,46 +391,6 @@ const App: React.FC = () => {
     setCurrentPage('Purchase Orders');
   };
 
-  const handleGeneratePosFromRequisitions = (
-    posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number; unitCost: number; }[]; requisitionIds: string[]; }[]
-  ) => {
-    posToCreate.forEach(poData => {
-        handleCreatePo(poData);
-    });
-    addToast(`Generated ${posToCreate.length} new Purchase Orders from requisitions.`, 'success');
-  };
-
-
-  const handleCreateBuildOrder = async (
-    sku: string, 
-    name: string, 
-    quantity: number, 
-    scheduledDate?: string, 
-    dueDate?: string
-  ) => {
-    const newBuildOrder: BuildOrder = {
-      id: `BO-${new Date().getFullYear()}-${(buildOrders.length + 1).toString().padStart(3, '0')}`,
-      finishedSku: sku,
-      name,
-      quantity,
-      status: 'Pending',
-      createdAt: new Date().toISOString(),
-      scheduledDate,
-      dueDate,
-      estimatedDurationHours: 2, // Default 2 hours
-    };
-
-    // 🔥 Save to Supabase
-    const result = await createBuildOrder(newBuildOrder);
-    if (!result.success) {
-      addToast(`Failed to create Build Order: ${result.error}`, 'error');
-      return;
-    }
-
-    refetchBuildOrders();
-    addToast(`Successfully created Build Order ${newBuildOrder.id} for ${quantity}x ${name}.`, 'success');
-    setCurrentPage('Production');
-  };
 
   const handleUpdateBuildOrder = async (buildOrder: BuildOrder) => {
     const result = await updateBuildOrder(buildOrder);
@@ -507,12 +542,29 @@ const App: React.FC = () => {
         posToCreate.push({ vendorId, items });
     });
 
-    if (posToCreate.length > 0) {
-        posToCreate.forEach(poData => handleCreatePo(poData));
-        addToast(`Successfully created ${posToCreate.length} PO(s) from artwork selection.`, 'success');
-    } else {
-        addToast('No packaging components found for the selected artwork.', 'info');
+    if (!posToCreate.length) {
+      addToast('No packaging components found for the selected artwork.', 'info');
+      return;
     }
+
+    const drafts = posToCreate
+      .filter(po => po.items.length > 0 && po.vendorId)
+      .map(po => ({
+        vendorId: po.vendorId,
+        vendorLocked: true,
+        items: po.items,
+        sourceLabel: `Artwork packaging (${po.items.length} item${po.items.length === 1 ? '' : 's'})`,
+        notes: 'Generated from artwork selection',
+      }));
+
+    if (!drafts.length) {
+      addToast('Unable to map packaging to vendors for the selected artwork.', 'error');
+      return;
+    }
+
+    enqueuePoDrafts(drafts);
+    addToast(`Loaded ${drafts.length} draft PO${drafts.length === 1 ? '' : 's'} for review.`, 'success');
+    setCurrentPage('Purchase Orders');
   };
 
   const handleUpdateArtwork = async (artworkId: string, bomId: string, updates: Partial<Artwork>) => {
@@ -581,6 +633,274 @@ const App: React.FC = () => {
     } else {
       addToast(`Requisition ${newReq.id} submitted for approval.`, 'success');
     }
+  };
+
+  const queueShortagesForBuild = useCallback(async (buildOrder: BuildOrder) => {
+    const LEAD_WINDOW_DAYS = 21;
+    const SUGGESTION_BUFFER_DAYS = 5;
+
+    const getDailyDemand = (item?: InventoryItem | null) => {
+      if (!item) return 0;
+      if (item.salesVelocity && item.salesVelocity > 0) return item.salesVelocity;
+      if (item.sales90Days && item.sales90Days > 0) return item.sales90Days / 90;
+      if (item.sales30Days && item.sales30Days > 0) return item.sales30Days / 30;
+      return 0;
+    };
+
+    const upsertQueueEntry = async (
+      sku: string,
+      payload: Record<string, any>,
+      quantity: number,
+      options?: { allowUpdate?: boolean }
+    ) => {
+      const { data: existing } = await supabase
+        .from('reorder_queue')
+        .select('id,recommended_quantity')
+        .eq('inventory_sku', sku)
+        .in('status', ['pending', 'po_created'])
+        .maybeSingle();
+
+      if (existing) {
+        if (options?.allowUpdate === false) {
+          return { inserted: false, updated: false, skipped: true };
+        }
+        const unitCost = quantity > 0 ? (payload.estimated_cost ?? 0) / quantity : 0;
+        const { error } = await supabase
+          .from('reorder_queue')
+          .update({
+            ...payload,
+            recommended_quantity: existing.recommended_quantity + quantity,
+            estimated_cost: unitCost
+              ? unitCost * (existing.recommended_quantity + quantity)
+              : payload.estimated_cost,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+        if (error) throw error;
+        return { inserted: false, updated: true, skipped: false };
+      }
+
+      const { error } = await supabase
+        .from('reorder_queue')
+        .insert({
+          ...payload,
+          recommended_quantity: quantity,
+          status: 'pending',
+        });
+      if (error) throw error;
+      return { inserted: true, updated: false, skipped: false };
+    };
+
+    const bom = bomMap.get(buildOrder.finishedSku);
+    if (!bom || !bom.components?.length) {
+      return;
+    }
+
+    const touchedSkus = new Set<string>();
+    const vendorIdsToReview = new Set<string>();
+    const shortages = bom.components
+      .map(component => {
+        const required = (component.quantity || 0) * buildOrder.quantity;
+        if (!required) return null;
+        const inventoryItem = inventoryMap.get(component.sku);
+        const stock = inventoryItem?.stock ?? 0;
+        const onOrder = inventoryItem?.onOrder ?? 0;
+        const available = stock + onOrder;
+        const dailyUsage = getDailyDemand(inventoryItem);
+        const bufferDemand = Math.ceil(dailyUsage * LEAD_WINDOW_DAYS);
+        const safety = inventoryItem?.safetyStock ?? 0;
+        const coverageTarget = required + bufferDemand + safety;
+        const coverageShortfall = Math.ceil(Math.max(0, coverageTarget - available));
+        const requiredShortfall = Math.max(0, required - available);
+        if (coverageShortfall <= 0 && requiredShortfall <= 0) return null;
+        return { component, inventoryItem, coverageShortfall, requiredShortfall, required };
+      })
+      .filter((item): item is { component: BillOfMaterials['components'][number]; inventoryItem?: InventoryItem; coverageShortfall: number; requiredShortfall: number; required: number } => Boolean(item));
+
+    if (!shortages.length) {
+      return;
+    }
+
+    let queued = 0;
+    let updated = 0;
+    let suggested = 0;
+    const requisitionItems: RequisitionItem[] = [];
+
+    for (const shortage of shortages) {
+      try {
+        const inventoryItem = shortage.inventoryItem;
+        const vendorId = inventoryItem?.vendorId || null;
+        const vendorName = vendorId ? vendorMap.get(vendorId)?.name || 'Unknown Vendor' : null;
+        const recommendedQuantity = Math.max(
+          shortage.coverageShortfall > 0 ? shortage.coverageShortfall : shortage.requiredShortfall,
+          inventoryItem?.moq || 1
+        );
+
+        touchedSkus.add(shortage.component.sku);
+        if (vendorId) vendorIdsToReview.add(vendorId);
+
+        const basePayload: Record<string, any> = {
+          inventory_sku: shortage.component.sku,
+          item_name: shortage.component.name || inventoryItem?.name || shortage.component.sku,
+          vendor_id: vendorId,
+          vendor_name: vendorName,
+          current_stock: inventoryItem?.stock ?? 0,
+          on_order: inventoryItem?.onOrder ?? 0,
+          reorder_point: inventoryItem?.reorderPoint ?? 0,
+          safety_stock: inventoryItem?.safetyStock ?? 0,
+          moq: inventoryItem?.moq ?? 1,
+          consumption_daily: getDailyDemand(inventoryItem),
+          consumption_30day: inventoryItem?.sales30Days ?? null,
+          consumption_90day: inventoryItem?.sales90Days ?? null,
+          lead_time_days: vendorId ? vendorMap.get(vendorId)?.leadTimeDays ?? 14 : 14,
+          days_until_stockout: null,
+          urgency: 'critical',
+          priority_score: 90,
+          estimated_cost: (inventoryItem?.unitCost ?? 0) * recommendedQuantity,
+          notes: `Triggered by build ${buildOrder.id} (${buildOrder.quantity} units scheduled)`,
+          ai_recommendation: 'Auto-queued from production scheduling',
+        };
+
+        if (!vendorId) {
+          requisitionItems.push({
+            sku: shortage.component.sku,
+            name: basePayload.item_name,
+            quantity: recommendedQuantity,
+            reason: `Missing vendor on file. Needed for build ${buildOrder.id}`,
+          });
+          continue;
+        }
+
+        const result = await upsertQueueEntry(shortage.component.sku, basePayload, recommendedQuantity);
+        if (result.inserted) queued += 1;
+        if (result.updated) updated += 1;
+      } catch (error) {
+        console.error('[BuildOrder] Failed to queue purchase need', error);
+      }
+    }
+
+    for (const vendorId of vendorIdsToReview) {
+      if (!vendorId) continue;
+      const vendorItems = Array.from(inventoryMap.values()).filter(item => item.vendorId === vendorId);
+      for (const item of vendorItems) {
+        if (!item || touchedSkus.has(item.sku)) continue;
+        const daily = getDailyDemand(item);
+        const safety = item.safetyStock ?? 0;
+        const reorderPoint = item.reorderPoint ?? 0;
+        const coverageTarget = Math.ceil(daily * LEAD_WINDOW_DAYS + safety + reorderPoint);
+        const available = (item.stock ?? 0) + (item.onOrder ?? 0);
+        const shortfall = coverageTarget - available;
+        const suggestionThreshold = Math.max(item.moq || 1, Math.ceil(daily * SUGGESTION_BUFFER_DAYS));
+        const vendorName = vendorMap.get(vendorId)?.name || 'Unknown Vendor';
+
+        if (shortfall > 0) {
+          const result = await upsertQueueEntry(
+            item.sku,
+            {
+              inventory_sku: item.sku,
+              item_name: item.name,
+              vendor_id: vendorId,
+              vendor_name: vendorName,
+              current_stock: item.stock ?? 0,
+              on_order: item.onOrder ?? 0,
+              reorder_point: item.reorderPoint ?? 0,
+              safety_stock: item.safetyStock ?? 0,
+              moq: item.moq ?? 1,
+              consumption_daily: daily,
+              consumption_30day: item.sales30Days ?? null,
+              consumption_90day: item.sales90Days ?? null,
+              lead_time_days: item.leadTimeDays ?? vendorMap.get(vendorId)?.leadTimeDays ?? 14,
+              days_until_stockout: null,
+              urgency: 'high',
+              priority_score: 75,
+              estimated_cost: (item.unitCost ?? 0) * Math.max(shortfall, item.moq || 1),
+              notes: `Must-have add-on while ordering for build ${buildOrder.id}`,
+              ai_recommendation: 'Auto-added due to lead window gap',
+            },
+            Math.max(shortfall, item.moq || 1),
+          );
+          if (result.inserted) queued += 1;
+          if (result.updated) updated += 1;
+          touchedSkus.add(item.sku);
+        } else {
+          const headroom = available - coverageTarget;
+          if (headroom <= suggestionThreshold) {
+            const result = await upsertQueueEntry(
+              item.sku,
+              {
+                inventory_sku: item.sku,
+                item_name: item.name,
+                vendor_id: vendorId,
+                vendor_name: vendorName,
+                current_stock: item.stock ?? 0,
+                on_order: item.onOrder ?? 0,
+                reorder_point: item.reorderPoint ?? 0,
+                safety_stock: item.safetyStock ?? 0,
+                moq: item.moq ?? 1,
+                consumption_daily: daily,
+                consumption_30day: item.sales30Days ?? null,
+                consumption_90day: item.sales90Days ?? null,
+                lead_time_days: item.leadTimeDays ?? vendorMap.get(vendorId)?.leadTimeDays ?? 14,
+                days_until_stockout: null,
+                urgency: 'normal',
+                priority_score: 55,
+                estimated_cost: (item.unitCost ?? 0) * Math.max(item.moq || 1, Math.ceil(daily * LEAD_WINDOW_DAYS / 2)),
+                notes: `Suggested add-on while ordering for build ${buildOrder.id}`,
+                ai_recommendation: 'Suggested due to limited headroom',
+              },
+              Math.max(item.moq || 1, Math.ceil(daily * LEAD_WINDOW_DAYS / 2)),
+              { allowUpdate: false },
+            );
+            if (!result.skipped && result.inserted) {
+              suggested += 1;
+              touchedSkus.add(item.sku);
+            }
+          }
+        }
+      }
+    }
+
+    if (queued || updated || suggested) {
+      addToast(
+        `Materials queued for purchasing (${queued} new, ${updated} updated${suggested ? `, ${suggested} suggested` : ''})`,
+        'success'
+      );
+    }
+
+    if (requisitionItems.length) {
+      await handleCreateRequisition(requisitionItems, 'System');
+    }
+  }, [bomMap, inventoryMap, vendorMap, handleCreateRequisition, addToast]);
+
+  const handleCreateBuildOrder = async (
+    sku: string,
+    name: string,
+    quantity: number,
+    scheduledDate?: string,
+    dueDate?: string
+  ) => {
+    const newBuildOrder: BuildOrder = {
+      id: `BO-${new Date().getFullYear()}-${(buildOrders.length + 1).toString().padStart(3, '0')}`,
+      finishedSku: sku,
+      name,
+      quantity,
+      status: 'Pending',
+      createdAt: new Date().toISOString(),
+      scheduledDate,
+      dueDate,
+      estimatedDurationHours: 2,
+    };
+
+    const result = await createBuildOrder(newBuildOrder);
+    if (!result.success) {
+      addToast(`Failed to create Build Order: ${result.error}`, 'error');
+      return;
+    }
+
+    await queueShortagesForBuild(newBuildOrder);
+    refetchBuildOrders();
+    addToast(`Successfully created Build Order ${newBuildOrder.id} for ${quantity}x ${name}.`, 'success');
+    setCurrentPage('Production');
   };
 
   const handleApproveRequisition = async (reqId: string) => {
@@ -753,6 +1073,10 @@ const App: React.FC = () => {
     return [];
   }, [requisitions, currentUser, permissions.canManagePurchaseOrders]);
 
+  const inventoryMap = useMemo(() => new Map(inventory.map(item => [item.sku, item])), [inventory]);
+  const vendorMap = useMemo(() => new Map(vendors.map(vendor => [vendor.id, vendor])), [vendors]);
+  const bomMap = useMemo(() => new Map(boms.map(bom => [bom.finishedSku, bom])), [boms]);
+
   const navigateToArtwork = (filter: string) => {
     setArtworkFilter(filter);
     setCurrentPage('Artwork');
@@ -768,12 +1092,11 @@ const App: React.FC = () => {
     
     switch (currentPage) {
       case 'Dashboard':
-        return <Dashboard
-          inventory={inventory}
-          boms={boms}
+        return <Dashboard 
+          inventory={inventory} 
+          boms={boms} 
           historicalSales={historicalSales}
           vendors={vendors}
-          purchaseOrders={purchaseOrders}
           onCreateBuildOrder={handleCreateBuildOrder}
           onCreateRequisition={handleCreateRequisition}
           requisitions={requisitions}
@@ -805,7 +1128,6 @@ const App: React.FC = () => {
                     addToast={addToast}
                     currentUser={currentUser}
                     approvedRequisitions={approvedRequisitionsForPoGen}
-                    onGeneratePos={handleGeneratePosFromRequisitions}
                     gmailConnection={gmailConnection}
                     onSendEmail={handleSendPoEmail}
                     requisitions={requisitions}
@@ -844,6 +1166,8 @@ const App: React.FC = () => {
           onNavigateToInventory={handleNavigateToInventory}
           onUploadArtwork={handleAddArtworkToBom}
           onCreateRequisition={(items) => handleCreateRequisition(items, 'Manual')}
+          onCreateBuildOrder={handleCreateBuildOrder}
+          addToast={addToast}
         />;
       case 'Artwork':
         return <ArtworkPage 
@@ -976,6 +1300,8 @@ const App: React.FC = () => {
           isGlobalLoading={isDataLoading}
           showLogo={isSidebarCollapsed}
           devModeActive={permissions.isGodMode}
+          systemAlerts={systemAlerts}
+          onDismissAlert={dismissAlert}
         />
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-900 p-4 sm:p-6 lg:p-8">
@@ -1015,5 +1341,11 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+const App: React.FC = () => (
+  <SystemAlertProvider>
+    <AppShell />
+  </SystemAlertProvider>
+);
 
 export default App;

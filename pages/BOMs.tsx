@@ -28,8 +28,10 @@ import ComplianceDashboard from '../components/ComplianceDashboard';
 import ComplianceDetailModal from '../components/ComplianceDetailModal';
 import EnhancedBomCard from '../components/EnhancedBomCard';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
+import ScheduleBuildModal from '../components/ScheduleBuildModal';
 import { usePermissions } from '../hooks/usePermissions';
 import { useSupabaseLabels, useSupabaseComplianceRecords } from '../hooks/useSupabaseData';
+import { supabase } from '../lib/supabase/client';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability';
@@ -45,6 +47,8 @@ interface BOMsProps {
   onNavigateToInventory?: (sku: string) => void;
   onUploadArtwork?: (bomId: string, artwork: Omit<Artwork, 'id'>) => void;
   onCreateRequisition: (items: RequisitionItem[]) => void;
+  onCreateBuildOrder: (sku: string, name: string, quantity: number, scheduledDate?: string, dueDate?: string) => void;
+  addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 const BOMs: React.FC<BOMsProps> = ({
@@ -56,7 +60,9 @@ const BOMs: React.FC<BOMsProps> = ({
   onNavigateToArtwork,
   onNavigateToInventory,
   onUploadArtwork,
-  onCreateRequisition
+  onCreateRequisition,
+  onCreateBuildOrder,
+  addToast
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
@@ -67,6 +73,8 @@ const BOMs: React.FC<BOMsProps> = ({
   const [expandedBoms, setExpandedBoms] = useState<Set<string>>(new Set());
   const bomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [isRequisitionModalOpen, setIsRequisitionModalOpen] = useState(false);
+  const [scheduleModalConfig, setScheduleModalConfig] = useState<{ bomId: string; defaultQuantity: number; start: Date } | null>(null);
+  const [queueStatusBySku, setQueueStatusBySku] = useState<Record<string, { status: string; poId: string | null }>>({});
   const permissions = usePermissions();
   const canViewBoms = permissions.canViewBoms;
   const canEdit = permissions.canEditBoms;
@@ -82,8 +90,8 @@ const BOMs: React.FC<BOMsProps> = ({
   const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);
   
   // Collapsible sections state
-  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isAlertsOpen, setIsAlertsOpen] = useState(true);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [isComplianceOpen, setIsComplianceOpen] = useState(false);
 
   // Debug inventory integration
@@ -351,6 +359,17 @@ const BOMs: React.FC<BOMsProps> = ({
     const { data: labels } = useSupabaseLabels(bom.id);
     const { data: complianceRecords } = useSupabaseComplianceRecords(bom.id);
 
+    const queuedComponents = useMemo(() => {
+      const map: Record<string, { status: string; poId: string | null }> = {};
+      bom.components?.forEach(component => {
+        const status = queueStatusBySku[component.sku];
+        if (status) {
+          map[component.sku] = status;
+        }
+      });
+      return map;
+    }, [bom, queueStatusBySku]);
+
     return (
       <div
         ref={(el) => {
@@ -371,6 +390,8 @@ const BOMs: React.FC<BOMsProps> = ({
           onViewDetails={() => handleViewDetails(bom)}
           onEdit={() => handleEditClick(bom)}
           onNavigateToInventory={onNavigateToInventory}
+          onQuickBuild={() => openScheduleModal(bom)}
+          queueStatus={queuedComponents}
         />
       </div>
     );
@@ -429,6 +450,22 @@ const BOMs: React.FC<BOMsProps> = ({
             Clear Filter
           </button>
         </div>
+      )}
+
+      {scheduleModalConfig && (
+        <ScheduleBuildModal
+          boms={boms}
+          defaultBomId={scheduleModalConfig.bomId}
+          defaultQuantity={scheduleModalConfig.defaultQuantity}
+          defaultStart={scheduleModalConfig.start}
+          lockProductSelection
+          onClose={() => setScheduleModalConfig(null)}
+          onCreate={(sku, name, quantity, scheduledDate, dueDate) => {
+            onCreateBuildOrder(sku, name, quantity, scheduledDate, dueDate);
+            addToast(`Scheduled ${quantity}x ${name}`, 'success');
+            setScheduleModalConfig(null);
+          }}
+        />
       )}
 
       {/* Critical Alerts Banner */}
@@ -732,3 +769,72 @@ const BOMs: React.FC<BOMsProps> = ({
 };
 
 export default BOMs;
+  const openScheduleModal = (bom: BillOfMaterials) => {
+    const buildability = calculateBuildability(bom);
+    const suggestedQuantity = Math.max(1, buildability.maxBuildable || 1);
+    setScheduleModalConfig({
+      bomId: bom.id,
+      defaultQuantity: suggestedQuantity,
+      start: new Date(),
+    });
+  };
+  useEffect(() => {
+    const skuSet = new Set<string>();
+    boms.forEach(bom => {
+      bom.components?.forEach(component => {
+        skuSet.add(component.sku);
+      });
+    });
+
+    if (skuSet.size === 0) {
+      setQueueStatusBySku({});
+      return;
+    }
+
+    let isMounted = true;
+    const skuList = Array.from(skuSet);
+
+    const fetchQueueStatus = async () => {
+      try {
+        const statusMap: Record<string, { status: string; poId: string | null }> = {};
+        const chunkSize = 200;
+
+        for (let i = 0; i < skuList.length; i += chunkSize) {
+          const chunk = skuList.slice(i, i + chunkSize);
+          const { data, error } = await supabase
+            .from('reorder_queue')
+            .select('inventory_sku,status,po_id')
+            .in('inventory_sku', chunk)
+            .in('status', ['pending', 'po_created']);
+
+          if (error) throw error;
+
+          data?.forEach(row => {
+            statusMap[row.inventory_sku] = { status: row.status, poId: row.po_id };
+          });
+        }
+
+        if (isMounted) {
+          setQueueStatusBySku(statusMap);
+        }
+      } catch (error) {
+        console.error('[BOMs] Failed to load reorder queue status', error);
+      }
+    };
+
+    fetchQueueStatus();
+
+    const channel = supabase
+      .channel('boms-reorder-queue')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reorder_queue' },
+        () => fetchQueueStatus()
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [boms]);

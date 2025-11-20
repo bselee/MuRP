@@ -49,6 +49,7 @@ interface EnhancedBomCardProps {
   onNavigateToInventory?: (sku: string) => void;
   onQuickBuild?: () => void;
   onQuickOrder?: () => void;
+  queueStatus?: Record<string, { status: string; poId: string | null }>;
 }
 
 const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
@@ -66,7 +67,8 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   onEdit,
   onNavigateToInventory,
   onQuickBuild,
-  onQuickOrder
+  onQuickOrder,
+  queueStatus = {}
 }) => {
   // Determine display mode
   const isAdmin = userRole === 'Admin';
@@ -137,6 +139,11 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
     }
     return sum;
   }, 0);
+  const buildHours = bom.buildTimeMinutes ? bom.buildTimeMinutes / 60 : null;
+  const laborRate = bom.laborCostPerHour ?? null;
+  const estimatedLaborCost = buildHours && laborRate ? buildHours * laborRate : null;
+  const queuedCount = queueStatus ? Object.keys(queueStatus).length : 0;
+  const hasPoDraft = queueStatus ? Object.values(queueStatus).some(entry => entry.status === 'po_created') : false;
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden transition-all hover:border-gray-600">
@@ -222,12 +229,28 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 
               {/* Yield - Both roles */}
               <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
-                <div className="text-gray-500 mb-2">Yield</div>
-                <div className="flex items-baseline gap-2">
-                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold text-blue-400`}>{bom.yieldQuantity || 1}</span>
-                  <span className="text-gray-400 text-xs">{isManager ? '/batch' : 'per batch'}</span>
-                </div>
+              <div className="text-gray-500 mb-2">Yield</div>
+              <div className="flex items-baseline gap-2">
+                <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold text-blue-400`}>{bom.yieldQuantity || 1}</span>
+                <span className="text-gray-400 text-xs">{isManager ? '/batch' : 'per batch'}</span>
               </div>
+            </div>
+
+            {(buildHours || laborRate) && (
+              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+                <div className="text-gray-500 mb-2">Labor</div>
+                <div className="text-gray-200 text-sm font-semibold">
+                  {buildHours ? `${buildHours.toFixed(1)} hrs` : 'Add estimate'}
+                </div>
+                {laborRate && (
+                  <p className="text-xs text-gray-500 mt-1">${laborRate.toFixed(2)}/hr</p>
+                )}
+                {estimatedLaborCost && (
+                  <p className="text-xs text-gray-500">≈ ${estimatedLaborCost.toFixed(2)} per batch</p>
+                )}
+              </div>
+            )}
+          </div>
 
               {/* Components - Admin only (technical detail) */}
               {isAdmin && (
@@ -280,7 +303,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             </div>
 
             {/* Action Buttons - DATA MANAGEMENT FOCUS (no production triggers) */}
-            <div className="flex gap-1">
+            <div className="flex gap-1 flex-wrap justify-end">
               {/* View Details - Prominent for both roles */}
               <button
                 onClick={onViewDetails}
@@ -290,6 +313,20 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 <EyeIcon className={`${isManager ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} />
                 {isManager && <span>Details</span>}
               </button>
+
+              {onQuickBuild && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onQuickBuild();
+                  }}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded transition-colors"
+                  title="Schedule this BOM on the production calendar"
+                >
+                  <ClockIcon className="w-3.5 h-3.5" />
+                  <span>Schedule</span>
+                </button>
+              )}
 
               {/* Expand/Collapse - Both roles */}
               <button
@@ -320,6 +357,13 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 </button>
               )}
             </div>
+
+            {queuedCount > 0 && (
+              <div className="text-xs text-emerald-200 bg-emerald-900/15 border border-emerald-600/40 rounded px-3 py-1">
+                {queuedCount} component{queuedCount > 1 ? 's' : ''} in PO queue &middot;{' '}
+                {hasPoDraft ? 'PO drafting' : 'Awaiting PO creation'}
+              </div>
+            )}
           </div>
         </div>
 

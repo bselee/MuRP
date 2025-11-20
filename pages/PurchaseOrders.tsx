@@ -1,14 +1,27 @@
 
 
-import React, { useMemo, useState } from 'react';
-import type { PurchaseOrder, Vendor, InventoryItem, User, InternalRequisition, GmailConnection, RequisitionItem } from '../types';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import type {
+    PurchaseOrder,
+    Vendor,
+    InventoryItem,
+    User,
+    InternalRequisition,
+    GmailConnection,
+    RequisitionItem,
+    CreatePurchaseOrderInput,
+    CreatePurchaseOrderItemInput,
+    POTrackingStatus,
+} from '../types';
 import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon } from '../components/icons';
 import CreatePoModal from '../components/CreatePoModal';
 import EmailComposerModal from '../components/EmailComposerModal';
 import GeneratePoModal from '../components/GeneratePoModal';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
-import ReorderQueueDashboard from '../components/ReorderQueueDashboard';
+import ReorderQueueDashboard, { ReorderQueueVendorGroup } from '../components/ReorderQueueDashboard';
 import DraftPOReviewSection from '../components/DraftPOReviewSection';
+import POTrackingDashboard from '../components/POTrackingDashboard';
+import { subscribeToPoDrafts } from '../lib/poDraftBridge';
 import { generatePoPdf } from '../services/pdfService';
 import { usePermissions } from '../hooks/usePermissions';
 
@@ -16,11 +29,10 @@ interface PurchaseOrdersProps {
     purchaseOrders: PurchaseOrder[];
     vendors: Vendor[];
     inventory: InventoryItem[];
-    onCreatePo: (poDetails: Omit<PurchaseOrder, 'id' | 'status' | 'createdAt' | 'items'> & { items: { sku: string; name: string; quantity: number }[], requisitionIds?: string[] }) => void;
+    onCreatePo: (poDetails: CreatePurchaseOrderInput) => Promise<void> | void;
     addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
     currentUser: User;
     approvedRequisitions: InternalRequisition[];
-    onGeneratePos: (posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number }[]; requisitionIds: string[]; }[]) => void;
     gmailConnection: GmailConnection;
     onSendEmail: (poId: string, sentViaGmail: boolean) => void;
     requisitions: InternalRequisition[];
@@ -29,6 +41,16 @@ interface PurchaseOrdersProps {
     onRejectRequisition: (reqId: string) => void;
     onCreateRequisition: (items: RequisitionItem[]) => void;
 }
+
+type PoDraftConfig = {
+    vendorId?: string;
+    vendorLocked?: boolean;
+    items?: CreatePurchaseOrderItemInput[];
+    expectedDate?: string;
+    notes?: string;
+    requisitionIds?: string[];
+    sourceLabel?: string;
+};
 
 const PO_STATUS_STYLES: Record<string, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-gray-600/20 text-gray-200 border-gray-500/40' },
@@ -51,6 +73,18 @@ const PoStatusBadge: React.FC<{ status: PurchaseOrder['status'] }> = ({ status }
       {config.label}
     </span>
   );
+};
+
+const TRACKING_STATUS_STYLES: Record<POTrackingStatus, { label: string; className: string }> = {
+  awaiting_confirmation: { label: 'Awaiting Reply', className: 'bg-gray-600/20 text-gray-200 border-gray-500/30' },
+  confirmed: { label: 'Confirmed', className: 'bg-blue-500/20 text-blue-200 border-blue-500/30' },
+  processing: { label: 'Processing', className: 'bg-indigo-500/20 text-indigo-200 border-indigo-500/30' },
+  shipped: { label: 'Shipped', className: 'bg-cyan-500/20 text-cyan-200 border-cyan-500/30' },
+  in_transit: { label: 'In Transit', className: 'bg-purple-500/20 text-purple-200 border-purple-500/30' },
+  out_for_delivery: { label: 'Out for Delivery', className: 'bg-amber-500/20 text-amber-200 border-amber-500/30' },
+  delivered: { label: 'Delivered', className: 'bg-green-500/20 text-green-200 border-green-500/30' },
+  exception: { label: 'Exception', className: 'bg-red-500/20 text-red-200 border-red-500/30' },
+  cancelled: { label: 'Cancelled', className: 'bg-gray-500/20 text-gray-300 border-gray-500/30' },
 };
 
 const CollapsibleSection: React.FC<{
@@ -79,7 +113,7 @@ const CollapsibleSection: React.FC<{
 const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const { 
         purchaseOrders, vendors, inventory, onCreatePo, addToast, currentUser, 
-        approvedRequisitions, onGeneratePos, gmailConnection, onSendEmail,
+        approvedRequisitions, gmailConnection, onSendEmail,
         requisitions, users, onApproveRequisition, onRejectRequisition, onCreateRequisition
     } = props;
     
@@ -87,15 +121,114 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [isGeneratePoModalOpen, setIsGeneratePoModalOpen] = useState(false);
     const [isCreateReqModalOpen, setIsCreateReqModalOpen] = useState(false);
-    const [isRequisitionsOpen, setIsRequisitionsOpen] = useState(false);
+    const [isRequisitionsOpen, setIsRequisitionsOpen] = useState(true);
     const [selectedPoForEmail, setSelectedPoForEmail] = useState<PurchaseOrder | null>(null);
+    const [activePoDraft, setActivePoDraft] = useState<PoDraftConfig | undefined>(undefined);
+    const [pendingPoDrafts, setPendingPoDrafts] = useState<PoDraftConfig[]>([]);
+    const [modalSession, setModalSession] = useState(0);
     
     const permissions = usePermissions();
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
     const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
+    const inventoryMap = useMemo(() => new Map(inventory.map(item => [item.sku, item])), [inventory]);
 
     const canManagePOs = permissions.canManagePurchaseOrders;
     const canSubmitRequisitions = permissions.canSubmitRequisition;
+
+    const openPoModalWithDrafts = useCallback((drafts: PoDraftConfig[]) => {
+        if (!drafts.length) {
+            addToast('No purchase order lines to review.', 'info');
+            return;
+        }
+        setActivePoDraft(drafts[0]);
+        setPendingPoDrafts(drafts.slice(1));
+        setModalSession(prev => prev + 1);
+        setIsCreatePoModalOpen(true);
+    }, [addToast]);
+
+    const resetPoModalState = () => {
+        setIsCreatePoModalOpen(false);
+        setActivePoDraft(undefined);
+        setPendingPoDrafts([]);
+    };
+
+    const handleManualCreateClick = () => {
+        openPoModalWithDrafts([{
+            sourceLabel: 'Manual PO Draft',
+        }]);
+    };
+
+    const handlePoModalClose = () => {
+        resetPoModalState();
+    };
+
+    const handlePoModalSubmit = async (poInput: CreatePurchaseOrderInput) => {
+        await onCreatePo(poInput);
+        if (pendingPoDrafts.length > 0) {
+            const [nextDraft, ...remaining] = pendingPoDrafts;
+            setActivePoDraft(nextDraft);
+            setPendingPoDrafts(remaining);
+            setModalSession(prev => prev + 1);
+        } else {
+            resetPoModalState();
+        }
+    };
+
+    const handleReorderQueueDrafts = (groups: ReorderQueueVendorGroup[]) => {
+        const validGroups = groups.filter(group => group.vendorId && group.vendorId !== 'unknown');
+        if (!validGroups.length) {
+            addToast('Selected items are missing vendor assignments.', 'error');
+            return;
+        }
+        const skipped = groups.length - validGroups.length;
+
+        const drafts: PoDraftConfig[] = validGroups.map(group => ({
+            vendorId: group.vendorId,
+            vendorLocked: true,
+            sourceLabel: `Reorder Queue • ${group.items.length} item${group.items.length === 1 ? '' : 's'}`,
+            notes: 'Auto-generated from reorder queue selection',
+            items: group.items.map(item => {
+                const inventoryItem = inventoryMap.get(item.inventory_sku);
+                const fallbackUnitCost =
+                    item.recommended_quantity > 0
+                        ? (item.estimated_cost ?? 0) / item.recommended_quantity
+                        : 0;
+                return {
+                    sku: item.inventory_sku,
+                    name: item.item_name,
+                    quantity: item.recommended_quantity,
+                    unitCost: inventoryItem?.unitCost ?? fallbackUnitCost ?? 0,
+                };
+            }),
+        }));
+
+        if (drafts.length) {
+            openPoModalWithDrafts(drafts);
+            if (skipped > 0) {
+                addToast(`${skipped} vendor group(s) skipped due to missing vendor records.`, 'info');
+            }
+        } else {
+            addToast('No vendor groups available for PO creation.', 'error');
+        }
+    };
+
+    const handleRequisitionDrafts = (drafts: { vendorId: string; items: CreatePurchaseOrderItemInput[]; requisitionIds: string[]; }[]) => {
+        if (!drafts.length) {
+            addToast('No approved requisitions available.', 'info');
+            return;
+        }
+
+        openPoModalWithDrafts(
+            drafts.map(draft => ({
+                vendorId: draft.vendorId,
+                vendorLocked: true,
+                items: draft.items,
+                requisitionIds: draft.requisitionIds,
+                sourceLabel: `Requisitions • ${draft.requisitionIds.length} request${draft.requisitionIds.length === 1 ? '' : 's'}`,
+                notes: 'Generated from approved requisitions',
+            }))
+        );
+    };
 
     const formatPoTotal = (po: PurchaseOrder) => {
         const total = typeof po.total === 'number' ? po.total : po.items.reduce((sum, item) => sum + (item.lineTotal ?? item.quantity * (item.price ?? 0)), 0);
@@ -125,13 +258,42 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         setIsEmailModalOpen(true);
     };
 
-    const handleSendEmail = (sentViaGmail: boolean) => {
-        if (selectedPoForEmail) {
-            onSendEmail(selectedPoForEmail.id, sentViaGmail);
-        }
-        setIsEmailModalOpen(false);
-        setSelectedPoForEmail(null);
-    };
+  const handleSendEmail = (sentViaGmail: boolean) => {
+      if (selectedPoForEmail) {
+          onSendEmail(selectedPoForEmail.id, sentViaGmail);
+      }
+      setIsEmailModalOpen(false);
+      setSelectedPoForEmail(null);
+  };
+
+  const getTrackingUrl = (po: PurchaseOrder): string | null => {
+    if (po.trackingLink) return po.trackingLink;
+    const trackingNumber = po.trackingNumber ?? '';
+    if (!trackingNumber) return null;
+    const carrier = (po.trackingCarrier || po.trackingLink || '').toLowerCase();
+    if (carrier.includes('ups')) {
+      return `https://www.ups.com/track?loc=en_US&tracknum=${trackingNumber}`;
+    }
+    if (carrier.includes('fedex')) {
+      return `https://www.fedex.com/fedextrack/?tracknumbers=${trackingNumber}`;
+    }
+    if (carrier.includes('usps') || carrier.includes('postal')) {
+      return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
+    }
+    if (carrier.includes('dhl')) {
+      return `https://www.dhl.com/global-en/home/tracking.html?tracking-id=${trackingNumber}`;
+    }
+    return null;
+  };
+
+  const handleOpenTracking = (po: PurchaseOrder) => {
+    const url = getTrackingUrl(po);
+    if (url && typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      addToast('Tracking link not available for this PO yet.', 'info');
+    }
+  };
 
     const sortedPurchaseOrders = useMemo(() => 
         [...purchaseOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
@@ -158,7 +320,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 </button>
                             )}
                             <button 
-                                onClick={() => setIsCreatePoModalOpen(true)}
+                                onClick={handleManualCreateClick}
                                 className="flex-1 sm:flex-initial bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
                             >
                                 Create New PO
@@ -181,19 +343,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 />
 
                 <ReorderQueueDashboard
-                    onCreatePOs={canManagePOs ? ((posToCreate) => {
-                        posToCreate.forEach(po => {
-                            onCreatePo({
-                                vendorId: po.vendorId,
-                                items: po.items,
-                                expectedDate: '',
-                                notes: 'Auto-generated from reorder queue'
-                            });
-                        });
-                        addToast(`Created ${posToCreate.length} purchase order(s) from reorder queue`, 'success');
-                    }) : undefined}
+                    onDraftPOs={canManagePOs ? handleReorderQueueDrafts : undefined}
                     addToast={addToast}
                 />
+
+                <POTrackingDashboard />
 
                 <DraftPOReviewSection
                     onApprove={(orderId) => {
@@ -218,6 +372,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Created</th>
                                     <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Expected Date</th>
+                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Tracking</th>
                                     <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total</th>
                                     <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                                 </tr>
@@ -230,8 +385,32 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         <td className="px-6 py-1 whitespace-nowrap"><PoStatusBadge status={po.status} /></td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : 'N/A'}</td>
+                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
+                                            {po.trackingNumber ? (
+                                                <div className="flex flex-col">
+                                                    <span className="font-mono text-sm">{po.trackingNumber}</span>
+                                                    <span className="text-xs text-gray-400 uppercase">{po.trackingCarrier || '—'}</span>
+                                                    {po.trackingStatus && (
+                                                        <span className={`inline-flex items-center px-2 py-0.5 mt-1 rounded-full border text-[11px] font-medium ${TRACKING_STATUS_STYLES[po.trackingStatus]?.className ?? 'bg-gray-600/20 text-gray-200 border-gray-500/30'}`}>
+                                                            {TRACKING_STATUS_STYLES[po.trackingStatus]?.label ?? po.trackingStatus}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-500">No tracking</span>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-white font-semibold">${formatPoTotal(po)}</td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
+                                            {po.trackingNumber && (
+                                                <button
+                                                    onClick={() => handleOpenTracking(po)}
+                                                    className="p-2 text-green-300 hover:text-green-100 transition-colors"
+                                                    title="Track Shipment"
+                                                >
+                                                    Track
+                                                </button>
+                                            )}
                                             <button onClick={() => handleDownloadPdf(po)} title="Download PDF" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><FileTextIcon className="w-5 h-5"/></button>
                                             <button onClick={() => handleSendEmailClick(po)} title="Send Email" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><MailIcon className="w-5 h-5"/></button>
                                         </td>
@@ -244,11 +423,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
             </div>
             
             <CreatePoModal
+                key={modalSession}
                 isOpen={isCreatePoModalOpen}
-                onClose={() => setIsCreatePoModalOpen(false)}
+                onClose={handlePoModalClose}
                 vendors={vendors}
                 inventory={inventory}
-                onCreatePo={onCreatePo}
+                onCreatePo={handlePoModalSubmit}
+                initialData={activePoDraft}
             />
 
             {selectedPoForEmail && selectedPoForEmail.vendorId && vendorMap.get(selectedPoForEmail.vendorId) && (
@@ -270,7 +451,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     approvedRequisitions={approvedRequisitions}
                     inventory={inventory}
                     vendors={vendors}
-                    onGenerate={onGeneratePos}
+                    onPrepareDrafts={handleRequisitionDrafts}
                 />
             )}
 
@@ -390,3 +571,11 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
 };
 
 export default PurchaseOrders;
+    useEffect(() => {
+        const unsubscribe = subscribeToPoDrafts(drafts => {
+            openPoModalWithDrafts(drafts);
+        });
+        return () => {
+            unsubscribe();
+        };
+    }, [openPoModalWithDrafts]);

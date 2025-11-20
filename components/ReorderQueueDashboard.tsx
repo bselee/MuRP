@@ -42,8 +42,14 @@ interface ReorderQueueItem {
   identified_at: string;
 }
 
+export interface ReorderQueueVendorGroup {
+  vendorId: string;
+  vendorName: string;
+  items: ReorderQueueItem[];
+}
+
 interface ReorderQueueDashboardProps {
-  onCreatePOs?: (posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number }[] }[]) => void;
+  onDraftPOs?: (groups: ReorderQueueVendorGroup[]) => void;
   addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -51,13 +57,13 @@ interface ReorderQueueDashboardProps {
 // Component
 // ═══════════════════════════════════════════════════════════════════════════
 
-const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreatePOs, addToast }) => {
+const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPOs, addToast }) => {
   const [items, setItems] = useState<ReorderQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [isExpanded, setIsExpanded] = useState(true);
   const permissions = usePermissions();
-  const allowPoCreation = Boolean(onCreatePOs && permissions.canManagePurchaseOrders);
+  const allowPoCreation = Boolean(onDraftPOs && permissions.canManagePurchaseOrders);
 
   // Fetch reorder queue items
   useEffect(() => {
@@ -126,9 +132,9 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
   }, [items, itemsByUrgency]);
 
   // Group selected items by vendor for PO creation
-  const groupedForPO = useMemo(() => {
+  const groupedForPO = useMemo<ReorderQueueVendorGroup[]>(() => {
     const selected = items.filter(item => selectedItems.has(item.id));
-    const grouped = new Map<string, { vendorId: string; vendorName: string; items: typeof items }>();
+    const grouped = new Map<string, ReorderQueueVendorGroup>();
 
     selected.forEach(item => {
       const vendorId = item.vendor_id || 'unknown';
@@ -168,7 +174,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
     setSelectedItems(new Set());
   };
 
-  const handleCreatePOs = () => {
+  const handleDraftPOs = () => {
     if (!allowPoCreation) {
       addToast?.('You do not have permission to create purchase orders.', 'error');
       return;
@@ -178,18 +184,9 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
       return;
     }
 
-    const posToCreate = groupedForPO.map(group => ({
-      vendorId: group.vendorId,
-      items: group.items.map(item => ({
-        sku: item.inventory_sku,
-        name: item.item_name,
-        quantity: item.recommended_quantity,
-      })),
-    }));
-
-    onCreatePOs?.(posToCreate);
+    onDraftPOs?.(groupedForPO);
     handleClearSelection();
-    addToast?.(`Creating ${posToCreate.length} purchase order(s)`, 'success');
+    addToast?.(`Queued ${groupedForPO.length} vendor group(s) for PO creation`, 'success');
   };
 
   if (loading) {
@@ -278,8 +275,8 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onCreateP
                       Will create {groupedForPO.length} PO(s)
                     </span>
                   )}
-                  <button
-                    onClick={handleCreatePOs}
+                    <button
+                      onClick={handleDraftPOs}
                     className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
                   >
                     Create Purchase Orders

@@ -21,7 +21,7 @@ interface DashboardProps {
   currentUser: User;
   purchaseOrders: PurchaseOrder[];
   onCreateRequisition: (items: RequisitionItem[], source: 'Manual' | 'System') => void;
-  onCreateBuildOrder: (sku: string, name: string, quantity: number) => void;
+  onCreateBuildOrder: (sku: string, name: string, quantity: number, scheduledDate?: string, dueDate?: string) => void;
   setCurrentPage: (page: Page) => void;
   aiConfig: AiConfig;
 }

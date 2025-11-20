@@ -13,6 +13,7 @@ import { CalendarIcon, ClockIcon, ExclamationTriangleIcon, CheckCircleIcon, XMar
 import { getGoogleCalendarService, type ProductionCalendarEvent as GoogleProductionEvent } from '../services/googleCalendarService';
 import { supabase } from '../lib/supabase/client';
 import type { BuildOrder, MaterialRequirement, BillOfMaterials, InventoryItem, Vendor } from '../types';
+import ScheduleBuildModal from './ScheduleBuildModal';
 
 const localizer = momentLocalizer(moment);
 
@@ -558,9 +559,9 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
 
       {/* Create Build Modal */}
       {showCreateModal && newEventDate && (
-        <CreateScheduledBuildModal
-          scheduledDate={newEventDate}
+        <ScheduleBuildModal
           boms={boms}
+          defaultStart={newEventDate}
           onClose={() => {
             setShowCreateModal(false);
             setNewEventDate(null);
@@ -934,128 +935,6 @@ const ExternalEventDetailsModal: React.FC<ExternalEventDetailsModalProps> = ({
 };
 
 // Create Scheduled Build Modal Component
-interface CreateScheduledBuildModalProps {
-  scheduledDate: Date;
-  boms: BillOfMaterials[];
-  onClose: () => void;
-  onCreate: (sku: string, name: string, quantity: number, scheduledDate: string, dueDate?: string) => void;
-}
-
-const CreateScheduledBuildModal: React.FC<CreateScheduledBuildModalProps> = ({
-  scheduledDate,
-  boms,
-  onClose,
-  onCreate,
-}) => {
-  const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [startDate, setStartDate] = useState(scheduledDate);
-  const [endDate, setEndDate] = useState(new Date(scheduledDate.getTime() + 2 * 60 * 60 * 1000)); // 2 hours later
-
-  const handleCreate = () => {
-    if (!selectedBom) return;
-    
-    onCreate(
-      selectedBom.finishedSku,
-      selectedBom.name,
-      quantity,
-      startDate.toISOString(),
-      endDate.toISOString()
-    );
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg max-w-md w-full mx-4">
-        <div className="p-6 border-b border-gray-700">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xl font-semibold text-white">Schedule Build Order</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-white">
-              <XMarkIcon className="w-6 h-6" />
-            </button>
-          </div>
-        </div>
-
-        <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Product (BOM)
-            </label>
-            <select
-              value={selectedBom?.id || ''}
-              onChange={(e) => {
-                const bom = boms.find(b => b.id === e.target.value);
-                setSelectedBom(bom || null);
-              }}
-              className="w-full bg-gray-700 text-white rounded-md px-3 py-2"
-            >
-              <option value="">Select a product...</option>
-              {boms.map(bom => (
-                <option key={bom.id} value={bom.id}>
-                  {bom.name} ({bom.finishedSku})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Quantity
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-              className="w-full bg-gray-700 text-white rounded-md px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Start Date & Time
-            </label>
-            <input
-              type="datetime-local"
-              value={startDate.toISOString().slice(0, 16)}
-              onChange={(e) => setStartDate(new Date(e.target.value))}
-              className="w-full bg-gray-700 text-white rounded-md px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              End Date & Time
-            </label>
-            <input
-              type="datetime-local"
-              value={endDate.toISOString().slice(0, 16)}
-              onChange={(e) => setEndDate(new Date(e.target.value))}
-              className="w-full bg-gray-700 text-white rounded-md px-3 py-2"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleCreate}
-              disabled={!selectedBom}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors disabled:opacity-50"
-            >
-              Create Build Order
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 function computeExternalDemand(
   events: GoogleProductionEvent[],
   inventoryMap: Map<string, InventoryItem>,

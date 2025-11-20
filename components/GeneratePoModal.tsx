@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { InternalRequisition, InventoryItem, Vendor } from '../types';
+import type { InternalRequisition, InventoryItem, Vendor, CreatePurchaseOrderItemInput } from '../types';
 import Modal from './Modal';
 
 interface GeneratePoModalProps {
@@ -8,10 +8,10 @@ interface GeneratePoModalProps {
     approvedRequisitions: InternalRequisition[];
     inventory: InventoryItem[];
     vendors: Vendor[];
-    onGenerate: (posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number; unitCost: number }[]; requisitionIds: string[]; }[]) => void;
+    onPrepareDrafts: (posToCreate: { vendorId: string; items: CreatePurchaseOrderItemInput[]; requisitionIds: string[]; }[]) => void;
 }
 
-const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, approvedRequisitions, inventory, vendors, onGenerate }) => {
+const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, approvedRequisitions, inventory, vendors, onPrepareDrafts }) => {
     
     const inventoryMap = useMemo(() => new Map(inventory.map(i => [i.sku, i])), [inventory]);
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v.name])), [vendors]);
@@ -70,7 +70,7 @@ const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, appr
     }, [approvedRequisitions, inventoryMap, isOpen]);
     
     const handleGenerate = () => {
-        onGenerate(posToGenerate);
+        onPrepareDrafts(posToGenerate);
         onClose();
     };
 

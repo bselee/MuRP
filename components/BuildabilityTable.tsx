@@ -1,14 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 // Corrected import path for the Buildability type from buildabilityService
 import type { Buildability } from '../services/buildabilityService';
-import { CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, ExclamationCircleIcon, XCircleIcon } from './icons';
+import { CheckCircleIcon, ChevronDownIcon, ExclamationCircleIcon, XCircleIcon } from './icons';
 
 interface BuildabilityTableProps {
   data: Buildability[];
 }
-
-type SortKey = 'sku' | 'description' | 'buildableUnits' | 'status';
-type SortDirection = 'asc' | 'desc';
 
 const StatusBadge: React.FC<{ status: 'In Stock' | 'Low Stock' | 'Out of Stock' }> = ({ status }) => {
   const statusConfig = {
@@ -37,121 +34,30 @@ const StatusBadge: React.FC<{ status: 'In Stock' | 'Low Stock' | 'Out of Stock' 
 
 const BuildabilityTable: React.FC<BuildabilityTableProps> = ({ data }) => {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>('sku');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const [hideFinished, setHideFinished] = useState(false);
 
   const toggleRow = (sku: string) => {
     setExpandedRow(expandedRow === sku ? null : sku);
   };
 
-  const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDirection('asc');
-    }
-  };
-
-  const sortedAndFilteredData = useMemo(() => {
-    let filtered = hideFinished
-      ? data.filter(item => item.status !== 'In Stock' || item.buildableUnits === 0)
-      : data;
-
-    return [...filtered].sort((a, b) => {
-      let aVal: string | number;
-      let bVal: string | number;
-
-      switch (sortKey) {
-        case 'sku':
-          aVal = a.bom.finishedSku;
-          bVal = b.bom.finishedSku;
-          break;
-        case 'description':
-          aVal = a.bom.name;
-          bVal = b.bom.name;
-          break;
-        case 'buildableUnits':
-          aVal = a.buildableUnits;
-          bVal = b.buildableUnits;
-          break;
-        case 'status':
-          aVal = a.status;
-          bVal = b.status;
-          break;
-        default:
-          return 0;
-      }
-
-      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }, [data, sortKey, sortDirection, hideFinished]);
-
-  const SortIcon: React.FC<{ column: SortKey }> = ({ column }) => {
-    if (sortKey !== column) return null;
-    return sortDirection === 'asc'
-      ? <ChevronUpIcon className="w-4 h-4 inline ml-1" />
-      : <ChevronDownIcon className="w-4 h-4 inline ml-1" />;
-  };
-
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
-      <div className="px-6 py-3 border-b border-gray-700 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-gray-300">Products ({sortedAndFilteredData.length})</h3>
-        <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={hideFinished}
-            onChange={(e) => setHideFinished(e.target.checked)}
-            className="rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500"
-          />
-          Hide fully buildable items
-        </label>
-      </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-700">
           <thead className="bg-gray-800">
             <tr>
-              <th
-                scope="col"
-                className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:text-white"
-                onClick={() => handleSort('sku')}
-              >
-                SKU <SortIcon column="sku" />
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:text-white"
-                onClick={() => handleSort('description')}
-              >
-                Description <SortIcon column="description" />
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:text-white"
-                onClick={() => handleSort('buildableUnits')}
-              >
-                Buildable Units <SortIcon column="buildableUnits" />
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:text-white"
-                onClick={() => handleSort('status')}
-              >
-                Status <SortIcon column="status" />
-              </th>
+              <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Product</th>
+              <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">SKU</th>
+              <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Buildable Units</th>
+              <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
               <th scope="col" className="relative px-6 py-2"><span className="sr-only">Expand</span></th>
             </tr>
           </thead>
           <tbody className="bg-gray-800 divide-y divide-gray-700">
-            {sortedAndFilteredData.map((item) => (
+            {data.map((item) => (
               <React.Fragment key={item.bom.finishedSku}>
                 <tr className="hover:bg-gray-700/50 transition-colors duration-200">
-                  <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{item.bom.finishedSku}</td>
                   <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-white">{item.bom.name}</td>
+                  <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{item.bom.finishedSku}</td>
                   <td className="px-6 py-1 whitespace-nowrap text-sm font-semibold text-white">{item.buildableUnits}</td>
                   <td className="px-6 py-1 whitespace-nowrap text-sm"><StatusBadge status={item.status} /></td>
                   <td className="px-6 py-1 whitespace-nowrap text-right text-sm font-medium">

@@ -1,0 +1,50 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - paragraph [ref=e8]: MuRP Access
+      - heading "Manufacturing Resource Portal" [level=1] [ref=e9]
+      - paragraph [ref=e10]: Securely connect to purchasing intelligence, BOM visibility, and AI copilots.
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - paragraph [ref=e14]: "#1"
+        - paragraph [ref=e15]: Purchase Assurance
+      - generic [ref=e16]:
+        - paragraph [ref=e17]: 24/7
+        - paragraph [ref=e18]: AI Coverage
+      - generic [ref=e19]:
+        - paragraph [ref=e20]: SOC2
+        - paragraph [ref=e21]: Ready Controls
+  - generic [ref=e22]:
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - paragraph [ref=e25]: Access Portal
+        - heading "Welcome back" [level=2] [ref=e26]
+      - generic [ref=e27]:
+        - button "Login" [ref=e28] [cursor=pointer]
+        - button "Sign Up" [ref=e29] [cursor=pointer]
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - text: Email
+        - textbox "you@company.com" [ref=e32]
+      - generic [ref=e33]:
+        - text: Password
+        - textbox "••••••••••" [ref=e34]
+      - generic [ref=e35]:
+        - generic [ref=e36] [cursor=pointer]:
+          - checkbox "Remember me" [checked] [ref=e37]
+          - text: Remember me
+        - button "Forgot password?" [ref=e38] [cursor=pointer]
+      - button "Sign In" [ref=e39] [cursor=pointer]
+    - generic [ref=e40]:
+      - generic [ref=e43]: or continue with
+      - generic [ref=e45]:
+        - button "Google" [ref=e46] [cursor=pointer]:
+          - img [ref=e47]
+          - text: Google
+        - button "Microsoft" [disabled] [ref=e49]:
+          - img [ref=e50]
+          - text: Microsoft
+```

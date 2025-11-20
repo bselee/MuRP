@@ -39,6 +39,7 @@ import type { Buildability } from '../services/buildabilityService';
 import { generateEnhancedForecast, calculateTrendMetrics } from '../services/forecastingService';
 import type { Forecast, TrendMetrics } from '../services/forecastingService';
 import { getAiPlanningInsight } from '../services/geminiService';
+import ScheduleBuildModal from './ScheduleBuildModal';
 
 interface InventoryIntelligencePanelProps {
   boms: BillOfMaterials[];
@@ -47,7 +48,7 @@ interface InventoryIntelligencePanelProps {
   vendors: Vendor[];
   purchaseOrders: PurchaseOrder[];
   onCreateRequisition: (items: RequisitionItem[], source: 'Manual' | 'System') => void;
-  onCreateBuildOrder: (sku: string, name: string, quantity: number) => void;
+  onCreateBuildOrder: (sku: string, name: string, quantity: number, scheduledDate?: string, dueDate?: string) => void;
   aiConfig: AiConfig;
 }
 
@@ -86,6 +87,7 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
   const [aiInsight, setAiInsight] = useState('Analyzing production status...');
   const [isLoadingInsight, setIsLoadingInsight] = useState(true);
+  const [scheduleModalConfig, setScheduleModalConfig] = useState<{ product: ProductionStatus; start: Date } | null>(null);
 
   const inventoryMap = useMemo(() => new Map(inventory.map(i => [i.sku, i])), [inventory]);
   const bomsMap = useMemo(() => new Map(boms.map(b => [b.finishedSku, b])), [boms]);
@@ -249,14 +251,15 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
   };
 
   const handleScheduleBuild = (product: ProductionStatus) => {
-    // Build to replenish 7 days of stock
-    const avgDailyDemand = product.forecast.slice(0, 30).reduce((sum, f) => sum + f.quantity, 0) / 30;
-    const targetQuantity = Math.ceil(avgDailyDemand * 7);
-    const buildQuantity = Math.min(product.buildableUnits, targetQuantity);
+    setScheduleModalConfig({ product, start: new Date() });
+  };
 
-    if (buildQuantity > 0) {
-      onCreateBuildOrder(product.sku, product.name, buildQuantity);
-    }
+  const getRecommendedQuantity = (product: ProductionStatus) => {
+    const avgDailyDemand =
+      product.forecast.slice(0, 30).reduce((sum, f) => sum + f.quantity, 0) / 30 || 1;
+    const targetQuantity = Math.ceil(avgDailyDemand * 7);
+    const buildQuantity = Math.min(product.buildableUnits || 1, targetQuantity);
+    return Math.max(1, buildQuantity);
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -273,7 +276,8 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
   // RENDER
   // ═══════════════════════════════════════════════════════════════════════════
   return (
-    <div className="space-y-6">
+    <>
+      <div className="space-y-6">
       {/* AI Insight */}
       <div className="bg-gray-800/50 rounded-lg p-4 border border-indigo-500/30 flex items-start gap-3">
         <LightBulbIcon className="w-6 h-6 text-indigo-400 flex-shrink-0 mt-1" />
@@ -476,7 +480,23 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
           </table>
         </div>
       </div>
-    </div>
+      </div>
+
+      {scheduleModalConfig && (
+        <ScheduleBuildModal
+          boms={boms}
+          defaultBomId={bomsMap.get(scheduleModalConfig.product.sku)?.id}
+          defaultStart={scheduleModalConfig.start}
+          defaultQuantity={getRecommendedQuantity(scheduleModalConfig.product)}
+          lockProductSelection={Boolean(bomsMap.get(scheduleModalConfig.product.sku))}
+          onClose={() => setScheduleModalConfig(null)}
+          onCreate={(sku, name, quantity, scheduledDate, dueDate) => {
+            onCreateBuildOrder(sku, name, quantity, scheduledDate, dueDate);
+            setScheduleModalConfig(null);
+          }}
+        />
+      )}
+    </>
   );
 };
 

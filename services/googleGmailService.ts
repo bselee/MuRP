@@ -17,6 +17,12 @@ export interface GmailProfile {
   historyId?: string;
 }
 
+export interface GmailSendResult {
+  id: string;
+  threadId: string;
+  labelIds?: string[];
+}
+
 export class GoogleGmailService {
   private authService = getGoogleAuthService();
 
@@ -35,7 +41,7 @@ export class GoogleGmailService {
     return response.json();
   }
 
-  async sendEmail(options: GmailSendOptions): Promise<void> {
+  async sendEmail(options: GmailSendOptions): Promise<GmailSendResult> {
     const accessToken = await this.authService.getAccessToken();
     const rawMessage = this.buildMimeMessage(options);
 
@@ -48,10 +54,17 @@ export class GoogleGmailService {
       body: JSON.stringify({ raw: rawMessage }),
     });
 
+    const payload = await response.json();
+
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Gmail send failed (${response.status}): ${errorText}`);
+      throw new Error(`Gmail send failed (${response.status}): ${JSON.stringify(payload)}`);
     }
+
+    return {
+      id: payload.id,
+      threadId: payload.threadId,
+      labelIds: payload.labelIds,
+    };
   }
 
   private buildMimeMessage(options: GmailSendOptions): string {

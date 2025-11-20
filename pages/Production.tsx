@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import ProductionCalendarView from '../components/ProductionCalendarView';
 import { CalendarIcon, TableCellsIcon } from '../components/icons';
 import type { BuildOrder, BillOfMaterials, InventoryItem, Vendor } from '../types';
+import ScheduleBuildModal from '../components/ScheduleBuildModal';
 
 interface ProductionProps {
     buildOrders: BuildOrder[];
@@ -35,6 +36,8 @@ const Production: React.FC<ProductionProps> = ({
     addToast 
 }) => {
     const [view, setView] = useState<'table' | 'calendar'>('table');
+    const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+    const [scheduleAnchor, setScheduleAnchor] = useState<Date | null>(null);
     
     const sortedBuildOrders = useMemo(() => 
         [...buildOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
@@ -50,13 +53,23 @@ const Production: React.FC<ProductionProps> = ({
                         <p className="text-gray-400 mt-1">Manage internal build orders for finished goods.</p>
                     </div>
                     
-                    {/* View Toggle */}
-                    <div className="flex bg-gray-700 rounded-lg">
+                    <div className="flex items-center gap-3 flex-wrap justify-end">
                         <button
-                            onClick={() => setView('table')}
-                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                                view === 'table'
-                                    ? 'bg-indigo-600 text-white'
+                            onClick={() => {
+                                setScheduleAnchor(new Date());
+                                setScheduleModalOpen(true);
+                            }}
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                        >
+                            Schedule Build
+                        </button>
+                        {/* View Toggle */}
+                        <div className="flex bg-gray-700 rounded-lg">
+                            <button
+                                onClick={() => setView('table')}
+                                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                                    view === 'table'
+                                        ? 'bg-indigo-600 text-white'
                                     : 'text-gray-300 hover:text-white hover:bg-gray-600'
                             }`}
                         >
@@ -70,10 +83,11 @@ const Production: React.FC<ProductionProps> = ({
                                     ? 'bg-indigo-600 text-white'
                                     : 'text-gray-300 hover:text-white hover:bg-gray-600'
                             }`}
-                        >
-                            <CalendarIcon className="w-4 h-4" />
-                            Calendar View
-                        </button>
+                            >
+                                <CalendarIcon className="w-4 h-4" />
+                                Calendar View
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -133,6 +147,22 @@ const Production: React.FC<ProductionProps> = ({
                     </table>
                 </div>
             </div>
+            )}
+            {scheduleModalOpen && (
+                <ScheduleBuildModal
+                    boms={boms}
+                    defaultStart={scheduleAnchor ?? new Date()}
+                    onClose={() => {
+                        setScheduleModalOpen(false);
+                        setScheduleAnchor(null);
+                    }}
+                    onCreate={(sku, name, quantity, scheduledDate, dueDate) => {
+                        onCreateBuildOrder(sku, name, quantity, scheduledDate, dueDate);
+                        addToast(`Scheduled ${quantity}x ${name}`, 'success');
+                        setScheduleModalOpen(false);
+                        setScheduleAnchor(null);
+                    }}
+                />
             )}
         </div>
     );

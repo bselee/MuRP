@@ -5,6 +5,7 @@ import Modal from './Modal';
 import { generatePoPdf } from '../services/pdfService';
 import { FileTextIcon, GmailIcon } from './icons';
 import { getGoogleGmailService } from '../services/googleGmailService';
+import { logPoEmailTracking } from '../hooks/useSupabaseMutations';
 
 interface EmailComposerModalProps {
     isOpen: boolean;
@@ -69,12 +70,26 @@ Procurement Team`);
         try {
             if (gmailConnection.isConnected) {
                 const gmailService = getGoogleGmailService();
-                await gmailService.sendEmail({
+                const sendResult = await gmailService.sendEmail({
                     to,
                     subject,
                     body,
                     from: gmailConnection.email ?? from,
                 });
+
+                if (sendResult?.id) {
+                    await logPoEmailTracking(purchaseOrder.id, {
+                        gmailMessageId: sendResult.id,
+                        gmailThreadId: sendResult.threadId,
+                        vendorEmail: vendor.contactEmails?.[0] || to,
+                        metadata: {
+                            subject,
+                            to,
+                            labelIds: sendResult.labelIds ?? [],
+                        },
+                    });
+                }
+
                 addToast('Email sent via Gmail', 'success');
                 onSend(true);
             } else {

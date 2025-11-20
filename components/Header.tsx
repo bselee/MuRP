@@ -1,7 +1,8 @@
 import React from 'react';
 import type { User } from '../types';
-import { BellIcon, LogoutIcon, MushroomLogo } from './icons';
-import DataSyncIndicator from './DataSyncIndicator';
+import { LogoutIcon, MushroomLogo } from './icons';
+import AlertBell from './AlertBell';
+import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 
 interface HeaderProps {
     currentUser: User;
@@ -9,9 +10,19 @@ interface HeaderProps {
     isGlobalLoading: boolean;
     showLogo: boolean;
     devModeActive?: boolean;
+    systemAlerts: SystemAlert[];
+    onDismissAlert: (idOrSource: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentUser, onLogout, isGlobalLoading, showLogo, devModeActive }) => {
+const Header: React.FC<HeaderProps> = ({
+    currentUser,
+    onLogout,
+    isGlobalLoading,
+    showLogo,
+    devModeActive,
+    systemAlerts,
+    onDismissAlert,
+}) => {
     return (
         <header className="h-16 bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0">
             <div className="flex items-center min-w-[120px]">
@@ -20,17 +31,15 @@ const Header: React.FC<HeaderProps> = ({ currentUser, onLogout, isGlobalLoading,
                 )}
             </div>
                 <div className="flex items-center space-x-4">
-                    <div className="hidden sm:block">
-                        <DataSyncIndicator isGlobalLoading={isGlobalLoading} />
-                    </div>
+                    <span className="text-xs text-gray-500 hidden sm:block">
+                        {isGlobalLoading ? 'Loading data…' : 'Live data syncing quietly'}
+                    </span>
                     {devModeActive && (
                         <span className="hidden sm:inline-flex items-center rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-yellow-200">
                             Dev Mode
                         </span>
                     )}
-                    <button className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
-                        <BellIcon className="h-6 w-6" />
-                </button>
+                    <AlertBell alerts={systemAlerts} onDismiss={onDismissAlert} />
                 <div className="flex items-center space-x-3">
                     <div className="text-right">
                         <div className="text-sm font-semibold text-white">{currentUser.name}</div>

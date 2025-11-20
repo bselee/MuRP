@@ -269,6 +269,45 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
               placeholder="Product description..."
             />
           </div>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-gray-400 block mb-2">Estimated Build Time (hours)</label>
+              <input
+                type="number"
+                step="0.25"
+                min="0"
+                value={editedBom.buildTimeMinutes !== undefined ? (editedBom.buildTimeMinutes / 60).toString() : ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    handleFieldChange('buildTimeMinutes', undefined);
+                    return;
+                  }
+                  const hours = parseFloat(value);
+                  handleFieldChange('buildTimeMinutes', Number.isNaN(hours) ? undefined : Math.round(hours * 60));
+                }}
+                className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g. 1.5"
+              />
+              <p className="text-xs text-gray-500 mt-1">Used to pre-fill scheduling windows.</p>
+            </div>
+            <div>
+              <label className="text-sm text-gray-400 block mb-2">Labor Cost per Hour (USD)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editedBom.laborCostPerHour ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleFieldChange('laborCostPerHour', value === '' ? undefined : parseFloat(value));
+                }}
+                className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g. 32.00"
+              />
+              <p className="text-xs text-gray-500 mt-1">Captures blended labor rate for costing.</p>
+            </div>
+          </div>
         </div>
 
         {/* Components Section - MRP Style */}

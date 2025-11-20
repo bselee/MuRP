@@ -87,6 +87,12 @@ export const PackageIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
+export const TruckIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-3.999.001A2 2 0 019 17zm10 0a2 2 0 11-3.999.001A2 2 0 0119 17zm-9-1h4m5 0h1a1 1 0 001-1v-3.382a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0016.586 7H15M5 16H4a1 1 0 01-1-1V5a1 1 0 011-1h11v12H5z" />
+    </svg>
+);
+
 export const DocumentTextIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

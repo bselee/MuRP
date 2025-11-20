@@ -12,6 +12,7 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   XCircleIcon,
+  TruckIcon,
 } from './icons';
 import { supabase } from '../lib/supabase/client';
 import { dispatchSyncEvent } from '../lib/syncEventBus';
@@ -67,6 +68,14 @@ const SYNC_STEPS: Array<{ type: SyncType; label: string; accent: string }> = [
   { type: 'vendors', label: 'Vendors', accent: 'text-pink-300' },
   { type: 'inventory', label: 'Inventory', accent: 'text-indigo-300' },
   { type: 'boms', label: 'BOMs', accent: 'text-emerald-300' },
+];
+
+const AFTERSHIP_CARRIER_OPTIONS = [
+  { value: 'ups', label: 'UPS' },
+  { value: 'fedex', label: 'FedEx' },
+  { value: 'usps', label: 'USPS' },
+  { value: 'dhl', label: 'DHL' },
+  { value: 'other', label: 'Custom' },
 ];
 
 const formatRelativeTime = (iso?: string) => {
@@ -131,6 +140,13 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
   } | null>(null);
 
   const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
+  const [afterShipInputs, setAfterShipInputs] = useState({
+    enabled: false,
+    defaultSlug: 'ups',
+    apiKey: '',
+  });
+  const [afterShipStoredKey, setAfterShipStoredKey] = useState<string | null>(null);
+  const [afterShipLoading, setAfterShipLoading] = useState(false);
 
   const fetchSyncHealth = useCallback(async () => {
     try {
@@ -156,6 +172,70 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
     }
   }, []);
 
+  const loadAfterShipConfig = useCallback(async () => {
+    try {
+      setAfterShipLoading(true);
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'aftership_config')
+        .maybeSingle();
+      if (error) throw error;
+
+      const value = data?.setting_value || {};
+      setAfterShipInputs({
+        enabled: Boolean(value.enabled),
+        defaultSlug: value.defaultSlug || 'ups',
+        apiKey: '',
+      });
+      setAfterShipStoredKey(value.apiKey ?? null);
+    } catch (error) {
+      console.error('[APIIntegrations] Failed to load AfterShip config', error);
+      addToast?.('Failed to load AfterShip settings', 'error');
+    } finally {
+      setAfterShipLoading(false);
+    }
+  }, [addToast]);
+
+  const handleSaveAfterShip = useCallback(async () => {
+    try {
+      setAfterShipLoading(true);
+      const apiKeyToSave = afterShipInputs.apiKey.trim()
+        ? afterShipInputs.apiKey.trim()
+        : afterShipStoredKey;
+
+      const payload = {
+        enabled: afterShipInputs.enabled,
+        defaultSlug: afterShipInputs.defaultSlug || 'ups',
+        apiKey: apiKeyToSave,
+      };
+
+      const { error } = await supabase
+        .from('app_settings')
+        .update({
+          setting_value: payload,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('setting_key', 'aftership_config');
+
+      if (error) throw error;
+
+      setAfterShipInputs((prev) => ({ ...prev, apiKey: '' }));
+      setAfterShipStoredKey(apiKeyToSave ?? null);
+      addToast?.('AfterShip settings updated', 'success');
+    } catch (error) {
+      console.error('[APIIntegrations] Failed to save AfterShip config', error);
+      addToast?.('Failed to save AfterShip settings', 'error');
+    } finally {
+      setAfterShipLoading(false);
+    }
+  }, [afterShipInputs, afterShipStoredKey, addToast]);
+
+  const handleClearAfterShipKey = useCallback(() => {
+    setAfterShipStoredKey(null);
+    setAfterShipInputs((prev) => ({ ...prev, apiKey: '' }));
+  }, []);
+
   const startManualPolling = useCallback(() => {
     if (typeof window === 'undefined' || manualPollingRef.current !== null) return;
     manualPollingRef.current = window.setInterval(() => {
@@ -178,6 +258,10 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
       clearInterval(interval);
     };
   }, [fetchSyncHealth]);
+
+  useEffect(() => {
+    loadAfterShipConfig();
+  }, [loadAfterShipConfig]);
 
   useEffect(() => {
     return () => {
@@ -744,6 +828,95 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
 
       {/* Finale Inventory Integration */}
       <FinaleSetupPanel addToast={addToast} />
+
+      {/* AfterShip Integration */}
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700 space-y-4">
+        <div className="flex items-center gap-4">
+          <TruckIcon className="w-8 h-8 text-indigo-300" />
+          <div>
+            <h3 className="text-lg font-semibold text-white">AfterShip Tracking</h3>
+            <p className="text-sm text-gray-400 mt-1">
+              Poll carrier APIs via AfterShip to update PO tracking statuses automatically.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="flex items-center gap-3 text-sm text-gray-300">
+            <input
+              type="checkbox"
+              className="rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-500"
+              checked={afterShipInputs.enabled}
+              onChange={(e) => setAfterShipInputs((prev) => ({ ...prev, enabled: e.target.checked }))}
+            />
+            Enable automatic tracking updates
+          </label>
+          <div>
+            <label className="block text-xs text-gray-400 uppercase tracking-wide mb-1">
+              Default Carrier Slug
+            </label>
+            <select
+              value={afterShipInputs.defaultSlug}
+              onChange={(e) => setAfterShipInputs((prev) => ({ ...prev, defaultSlug: e.target.value }))}
+              className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm text-white"
+            >
+              {AFTERSHIP_CARRIER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-400 uppercase tracking-wide mb-1">
+            AfterShip API Key
+          </label>
+          <input
+            type="password"
+            value={afterShipInputs.apiKey}
+            onChange={(e) => setAfterShipInputs((prev) => ({ ...prev, apiKey: e.target.value }))}
+            placeholder={afterShipStoredKey ? '•••••••••• (stored)' : 'Enter AfterShip API key'}
+            className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm text-white"
+          />
+          <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
+            <span>
+              {afterShipStoredKey
+                ? 'API key stored securely. Enter a new key to rotate.'
+                : 'No API key stored yet.'}
+            </span>
+            {afterShipStoredKey && (
+              <button
+                type="button"
+                onClick={handleClearAfterShipKey}
+                className="text-rose-300 hover:text-rose-200"
+              >
+                Remove stored key
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={loadAfterShipConfig}
+            className="text-sm text-gray-300 hover:text-white"
+            disabled={afterShipLoading}
+          >
+            {afterShipLoading ? 'Refreshing…' : 'Reset Changes'}
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveAfterShip}
+            disabled={afterShipLoading}
+            className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-600"
+          >
+            {afterShipLoading ? 'Saving…' : 'Save AfterShip Settings'}
+          </button>
+        </div>
+      </div>
 
       {/* Gmail Integration */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">

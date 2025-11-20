@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../lib/auth/AuthContext';
 import { GmailIcon } from '../components/icons';
 import { supabase } from '../lib/supabase/client';
+import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
 
 interface LoginScreenProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -229,6 +230,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
               {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : 'Create Account'}
             </button>
           </form>
+
+          <p className="text-xs text-gray-500 text-center mt-4">
+            By continuing you agree to our{' '}
+            <a
+              href={termsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-300 hover:text-indigo-100 underline decoration-dotted"
+            >
+              Terms of Service
+            </a>.
+          </p>
 
           <div className="mt-6">
             <div className="flex items-center gap-2">

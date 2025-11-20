@@ -12,6 +12,7 @@ import React, { useState, useEffect } from 'react';
 import { getGoogleAuthService, type GoogleAuthStatus } from '../services/googleAuthService';
 import { getGoogleSheetsSyncService, type ImportOptions, type ExportOptions } from '../services/googleSheetsSyncService';
 import { getGoogleSheetsService } from '../services/googleSheetsService';
+import { useSystemAlerts } from '../lib/systemAlerts/SystemAlertContext';
 
 interface GoogleSheetsPanelProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -40,6 +41,19 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
   const authService = getGoogleAuthService();
   const syncService = getGoogleSheetsSyncService();
   const sheetsService = getGoogleSheetsService();
+  const { upsertAlert, resolveAlert } = useSystemAlerts();
+
+  const notifySheetsFailure = (action: string, error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    upsertAlert({
+      source: 'google-sheets',
+      message: `Google Sheets ${action} failed: ${message}`,
+    });
+  };
+
+  const clearSheetsAlert = () => {
+    resolveAlert('google-sheets');
+  };
 
   // Check auth status on mount
   useEffect(() => {
@@ -110,6 +124,7 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
       const result = await syncService.importInventory(options);
 
       if (result.success) {
+        clearSheetsAlert();
         addToast(
           `Successfully imported ${result.itemsImported} items! ${result.itemsSkipped > 0 ? `(${result.itemsSkipped} skipped)` : ''}`,
           'success'
@@ -120,6 +135,7 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
     } catch (error) {
       console.error('Error importing:', error);
       addToast(`Import failed: ${error instanceof Error ? error.message : String(error)}`, 'error');
+      notifySheetsFailure('import', error);
     } finally {
       setIsLoading(false);
     }
@@ -139,10 +155,12 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
         itemsExported: result.itemsExported,
       });
 
+      clearSheetsAlert();
       addToast(`Successfully exported ${result.itemsExported} items!`, 'success');
     } catch (error) {
       console.error('Error exporting:', error);
       addToast(`Export failed: ${error instanceof Error ? error.message : String(error)}`, 'error');
+      notifySheetsFailure('export', error);
     } finally {
       setIsLoading(false);
     }
@@ -155,6 +173,7 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
       const result = await syncService.createAutoBackup();
 
       addToast('Backup created successfully!', 'success');
+      clearSheetsAlert();
 
       if (result.spreadsheetUrl) {
         window.open(result.spreadsheetUrl, '_blank');
@@ -162,6 +181,7 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
     } catch (error) {
       console.error('Error creating backup:', error);
       addToast(`Backup failed: ${error instanceof Error ? error.message : String(error)}`, 'error');
+      notifySheetsFailure('backup', error);
     } finally {
       setIsLoading(false);
     }
