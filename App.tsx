@@ -147,6 +147,9 @@ const AppShell: React.FC = () => {
   const users = userProfiles;
   const googleAuthService = useMemo(() => getGoogleAuthService(), []);
   const gmailService = useMemo(() => getGoogleGmailService(), []);
+  const inventoryMap = useMemo(() => new Map((inventory || []).map(item => [item.sku, item])), [inventory]);
+  const vendorMap = useMemo(() => new Map((vendors || []).map(vendor => [vendor.id, vendor])), [vendors]);
+  const bomMap = useMemo(() => new Map((boms || []).map(bom => [bom.finishedSku, bom])), [boms]);
   const refreshGmailConnection = useCallback(async () => {
     try {
       const status = await googleAuthService.getAuthStatus();
@@ -1204,10 +1207,6 @@ const AppShell: React.FC = () => {
     }
     return [];
   }, [requisitions, currentUser, permissions.canManagePurchaseOrders]);
-
-  const inventoryMap = useMemo(() => new Map(inventory.map(item => [item.sku, item])), [inventory]);
-  const vendorMap = useMemo(() => new Map(vendors.map(vendor => [vendor.id, vendor])), [vendors]);
-  const bomMap = useMemo(() => new Map(boms.map(bom => [bom.finishedSku, bom])), [boms]);
 
   const navigateToArtwork = (filter: string) => {
     setArtworkFilter(filter);
