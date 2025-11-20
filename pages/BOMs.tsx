@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem } from '../types';
+import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions } from '../types';
 import type { ComplianceStatus } from '../types/regulatory';
 import {
   PencilIcon,
@@ -46,7 +46,7 @@ interface BOMsProps {
   onNavigateToArtwork: (filter: string) => void;
   onNavigateToInventory?: (sku: string) => void;
   onUploadArtwork?: (bomId: string, artwork: Omit<Artwork, 'id'>) => void;
-  onCreateRequisition: (items: RequisitionItem[]) => void;
+  onCreateRequisition: (items: RequisitionItem[], options?: RequisitionRequestOptions) => void;
   onCreateBuildOrder: (sku: string, name: string, quantity: number, scheduledDate?: string, dueDate?: string) => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
@@ -79,77 +79,6 @@ const BOMs: React.FC<BOMsProps> = ({
   const canViewBoms = permissions.canViewBoms;
   const canEdit = permissions.canEditBoms;
   const canSubmitRequisitions = permissions.canSubmitRequisition;
-
-  const openScheduleModal = (bom: BillOfMaterials) => {
-    const buildability = calculateBuildability(bom);
-    const suggestedQuantity = Math.max(1, buildability.maxBuildable || 1);
-    setScheduleModalConfig({
-      bomId: bom.id,
-      defaultQuantity: suggestedQuantity,
-      start: new Date(),
-    });
-  };
-
-  useEffect(() => {
-    const skuSet = new Set<string>();
-    boms.forEach(bom => {
-      bom.components?.forEach(component => {
-        skuSet.add(component.sku);
-      });
-    });
-
-    if (skuSet.size === 0) {
-      setQueueStatusBySku({});
-      return;
-    }
-
-    let isMounted = true;
-    const skuList = Array.from(skuSet);
-
-    const fetchQueueStatus = async () => {
-      try {
-        const statusMap: Record<string, { status: string; poId: string | null }> = {};
-        const chunkSize = 200;
-
-        for (let i = 0; i < skuList.length; i += chunkSize) {
-          const chunk = skuList.slice(i, i + chunkSize);
-          const { data, error } = await supabase
-            .from('reorder_queue')
-            .select('inventory_sku,status,po_id')
-            .in('inventory_sku', chunk)
-            .in('status', ['pending', 'po_created']);
-
-          if (error) throw error;
-
-          data?.forEach(row => {
-            statusMap[row.inventory_sku] = { status: row.status, poId: row.po_id };
-          });
-        }
-
-        if (isMounted) {
-          setQueueStatusBySku(statusMap);
-        }
-      } catch (error) {
-        console.error('[BOMs] Failed to load reorder queue status', error);
-      }
-    };
-
-    fetchQueueStatus();
-
-    const channel = supabase
-      .channel('boms-reorder-queue')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'reorder_queue' },
-        () => fetchQueueStatus()
-      )
-      .subscribe();
-
-    return () => {
-      isMounted = false;
-      supabase.removeChannel(channel);
-    };
-  }, [boms]);
 
   // New UI state
   const [searchQuery, setSearchQuery] = useState('');
@@ -239,6 +168,77 @@ const BOMs: React.FC<BOMsProps> = ({
       limitingComponents
     };
   };
+
+  const openScheduleModal = (bom: BillOfMaterials) => {
+    const buildability = calculateBuildability(bom);
+    const suggestedQuantity = Math.max(1, buildability.maxBuildable || 1);
+    setScheduleModalConfig({
+      bomId: bom.id,
+      defaultQuantity: suggestedQuantity,
+      start: new Date(),
+    });
+  };
+
+  useEffect(() => {
+    const skuSet = new Set<string>();
+    boms.forEach(bom => {
+      bom.components?.forEach(component => {
+        skuSet.add(component.sku);
+      });
+    });
+
+    if (skuSet.size === 0) {
+      setQueueStatusBySku({});
+      return;
+    }
+
+    let isMounted = true;
+    const skuList = Array.from(skuSet);
+
+    const fetchQueueStatus = async () => {
+      try {
+        const statusMap: Record<string, { status: string; poId: string | null }> = {};
+        const chunkSize = 200;
+
+        for (let i = 0; i < skuList.length; i += chunkSize) {
+          const chunk = skuList.slice(i, i + chunkSize);
+          const { data, error } = await supabase
+            .from('reorder_queue')
+            .select('inventory_sku,status,po_id')
+            .in('inventory_sku', chunk)
+            .in('status', ['pending', 'po_created']);
+
+          if (error) throw error;
+
+          data?.forEach(row => {
+            statusMap[row.inventory_sku] = { status: row.status, poId: row.po_id };
+          });
+        }
+
+        if (isMounted) {
+          setQueueStatusBySku(statusMap);
+        }
+      } catch (error) {
+        console.error('[BOMs] Failed to load reorder queue status', error);
+      }
+    };
+
+    fetchQueueStatus();
+
+    const channel = supabase
+      .channel('boms-reorder-queue')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reorder_queue' },
+        () => fetchQueueStatus()
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [boms]);
 
   const toggleBomExpanded = (bomId: string) => {
     console.log('[BOMs] toggleBomExpanded CALLED!', {
@@ -833,7 +833,7 @@ const BOMs: React.FC<BOMsProps> = ({
         isOpen={isRequisitionModalOpen}
         onClose={() => setIsRequisitionModalOpen(false)}
         inventory={inventory}
-        onCreate={onCreateRequisition}
+        onCreate={(items, options) => onCreateRequisition(items, options)}
       />
     </div>
   );
