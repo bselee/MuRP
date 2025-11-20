@@ -18,6 +18,7 @@ const supabaseAnonKey = (
   ''
 ).trim();
 
+// Don't throw during module initialization - let app render error UI instead
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('[Supabase Client] Missing environment variables:', {
     hasUrl: !!supabaseUrl,
@@ -25,15 +26,24 @@ if (!supabaseUrl || !supabaseAnonKey) {
     urlValue: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'undefined',
     availableEnvVars: Object.keys(import.meta.env),
   });
-  throw new Error(`Missing Supabase environment variables. URL: ${!!supabaseUrl}, Key: ${!!supabaseAnonKey}`);
+  console.error('[Supabase Client] App will not function correctly without proper configuration');
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-});
+// Create client only if we have valid credentials
+// This prevents blank screen if env vars are missing - app can show error UI
+export const supabase = (supabaseUrl && supabaseAnonKey)
+  ? createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    })
+  : createClient<Database>('https://placeholder.supabase.co', 'placeholder-key', {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
 
 export type Tables<T extends keyof Database['public']['Tables']> = 
   Database['public']['Tables'][T]['Row'];
