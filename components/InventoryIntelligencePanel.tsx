@@ -20,7 +20,8 @@ import type {
   Vendor,
   AiConfig,
   RequisitionItem,
-  PurchaseOrder
+  PurchaseOrder,
+  RequisitionRequestOptions,
 } from '../types';
 import {
   ChartBarIcon,
@@ -47,7 +48,7 @@ interface InventoryIntelligencePanelProps {
   historicalSales: HistoricalSale[];
   vendors: Vendor[];
   purchaseOrders: PurchaseOrder[];
-  onCreateRequisition: (items: RequisitionItem[], source: 'Manual' | 'System') => void;
+  onCreateRequisition: (items: RequisitionItem[], source: 'Manual' | 'System', options?: RequisitionRequestOptions) => void;
   onCreateBuildOrder: (sku: string, name: string, quantity: number, scheduledDate?: string, dueDate?: string) => void;
   aiConfig: AiConfig;
 }
@@ -240,13 +241,20 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
 
     const quantity = item.moq || Math.ceil(shortage.shortfall * 1.5);
     onCreateRequisition(
-      [{
-        sku: shortage.sku,
-        name: shortage.name,
-        quantity,
-        reason: `Critical shortage blocking ${shortage.blocksProducts.length} product(s)`
-      }],
-      'Manual'
+      [
+        {
+          sku: shortage.sku,
+          name: shortage.name,
+          quantity,
+          reason: `Critical shortage blocking ${shortage.blocksProducts.length} product(s)`,
+        },
+      ],
+      'Manual',
+      {
+        priority: 'high',
+        requestType: 'consumable',
+        context: 'Triggered from Inventory Intelligence shortage widget',
+      },
     );
   };
 

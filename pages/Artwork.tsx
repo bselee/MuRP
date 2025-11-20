@@ -95,14 +95,19 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
         }
     };
     
-    const handleSaveEditedArtwork = (dataUrl: string) => {
+    const handleSaveEditedArtwork = (dataUrl: string, vectorSvg?: string | null) => {
         if (!artworkBeingEdited) return;
         const currentRevision = typeof artworkBeingEdited.revision === 'number' ? artworkBeingEdited.revision : 1;
         const nextRevision = parseFloat((currentRevision + 0.01).toFixed(2));
+        const editedAt = new Date().toISOString();
         onUpdateArtwork(artworkBeingEdited.id, artworkBeingEdited.bomId, {
             url: dataUrl,
             revision: Number.isFinite(nextRevision) ? nextRevision : currentRevision,
-            updatedAt: new Date().toISOString()
+            updatedAt: editedAt,
+            vectorSvg: typeof vectorSvg === 'string' ? vectorSvg : artworkBeingEdited.vectorSvg ?? null,
+            vectorGeneratedAt: typeof vectorSvg === 'string' ? editedAt : artworkBeingEdited.vectorGeneratedAt,
+            lastEditedAt: editedAt,
+            lastEditedBy: currentUser?.id,
         });
         setArtworkBeingEdited(null);
     };

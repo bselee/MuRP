@@ -10,7 +10,8 @@ type TrackingStatus =
   | 'out_for_delivery'
   | 'delivered'
   | 'exception'
-  | 'cancelled';
+  | 'cancelled'
+  | 'invoice_received';
 
 interface AfterShipConfig {
   enabled: boolean;
@@ -192,6 +193,7 @@ async function getFallbackCarrierStatus(
     delivered: 'delivered', // Terminal state
     exception: 'exception', // Terminal state
     cancelled: 'cancelled', // Terminal state
+    invoice_received: 'invoice_received',
   };
 
   const nextStatus = transitions[currentStatus] ?? 'in_transit';

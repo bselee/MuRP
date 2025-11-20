@@ -378,12 +378,13 @@ export async function createRequisition(req: InternalRequisition): Promise<{ suc
       .from('requisitions')
       .insert({
         id: req.id,
-        requested_by: req.requestedBy,
+        requester_id: req.requesterId ?? null,
         department: req.department,
         status: req.status,
         created_at: req.createdAt,
+        source: req.source,
         items: req.items as any,
-        notes: req.notes,
+        notes: req.notes ?? req.context ?? null,
         request_type: req.requestType ?? 'consumable',
         priority: req.priority ?? 'medium',
         need_by_date: req.needByDate ?? null,

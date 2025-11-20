@@ -120,6 +120,15 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
     loadArtworkImage();
   }, [loadArtworkImage]);
 
+  useEffect(() => {
+    if (isOpen && artwork?.vectorSvg) {
+      setVectorSvg(artwork.vectorSvg);
+    }
+    if (!isOpen) {
+      setVectorSvg(null);
+    }
+  }, [artwork, isOpen]);
+
   const getEventPosition = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     let clientX: number;
     let clientY: number;
@@ -320,7 +329,7 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3">
           <button
             onClick={handleUndo}
             disabled={historyStep <= 0}
@@ -466,6 +475,11 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
           <p className="text-sm text-gray-400">
             Use the AI brush to clean up your label, then generate SVG outlines for Illustrator or CAD teams.
           </p>
+          {artwork?.vectorGeneratedAt && (
+            <p className="text-xs text-gray-500">
+              Last vector export {new Date(artwork.vectorGeneratedAt).toLocaleString()}
+            </p>
+          )}
           <div className="rounded-lg border border-gray-800 bg-gray-950 min-h-[300px] flex items-center justify-center p-4">
             {vectorSvg ? (
               <div

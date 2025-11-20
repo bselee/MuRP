@@ -13,6 +13,7 @@ const STATUS_LABELS: Record<POTrackingStatus, string> = {
   delivered: 'Delivered',
   exception: 'Exception',
   cancelled: 'Cancelled',
+  invoice_received: 'Invoice Logged',
 };
 
 const STATUS_COLORS: Record<POTrackingStatus, string> = {
@@ -25,6 +26,7 @@ const STATUS_COLORS: Record<POTrackingStatus, string> = {
   delivered: 'bg-green-500/20 text-green-200 border-green-500/30',
   exception: 'bg-red-500/20 text-red-200 border-red-500/30',
   cancelled: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
+  invoice_received: 'bg-teal-500/20 text-teal-100 border-teal-500/30',
 };
 
 const POTrackingDashboard: React.FC = () => {

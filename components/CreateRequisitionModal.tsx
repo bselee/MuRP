@@ -59,6 +59,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
             autoPo,
             notifyRequester,
             context: notes,
+            notes,
         });
         onClose();
     };

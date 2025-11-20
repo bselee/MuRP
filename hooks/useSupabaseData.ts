@@ -23,6 +23,8 @@ import type {
   Label,
   ComplianceRecord,
   User,
+  RequisitionPriority,
+  RequisitionRequestType,
 } from '../types';
 
 // ============================================================================
@@ -574,6 +576,11 @@ const transformPurchaseOrderRecord = (po: any): PurchaseOrder => {
     price: Number(item.unit_cost ?? 0),
   }));
 
+  const followUpCount =
+    Array.isArray(po.vendor_followup_events) && po.vendor_followup_events.length > 0
+      ? Number(po.vendor_followup_events[0]?.count ?? 0)
+      : 0;
+
   return {
     id: po.id,
     orderId: po.order_id,
@@ -616,6 +623,14 @@ const transformPurchaseOrderRecord = (po: any): PurchaseOrder => {
     sentAt: po.sent_at ?? undefined,
     requisitionIds: po.requisition_ids ?? [],
     items,
+    followUpRequired: po.follow_up_required ?? true,
+    lastFollowUpStage: po.last_follow_up_stage ?? 0,
+    lastFollowUpSentAt: po.last_follow_up_sent_at ?? undefined,
+    followUpStatus: po.follow_up_status ?? null,
+    followUpCount,
+    invoiceDetectedAt: po.invoice_detected_at ?? undefined,
+    invoiceGmailMessageId: po.invoice_gmail_message_id ?? null,
+    invoiceSummary: po.invoice_summary ?? null,
   };
 };
 
@@ -633,7 +648,7 @@ export function useSupabasePurchaseOrders(): UseSupabaseDataResult<PurchaseOrder
       // Fetch PO headers with line items from separate table
       const { data: pos, error: fetchError } = await supabase
         .from('purchase_orders')
-        .select('*, purchase_order_items(*)')
+        .select('*, purchase_order_items(*), vendor_followup_events(count)')
         .order('order_date', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -867,12 +882,21 @@ export function useSupabaseRequisitions(): UseSupabaseDataResult<InternalRequisi
       // Transform from snake_case to camelCase
       const transformed: InternalRequisition[] = (reqs || []).map((req: any) => ({
         id: req.id,
-        requestedBy: req.requested_by,
+        requesterId: req.requester_id ?? null,
         department: req.department,
-        status: req.status as 'Pending' | 'Approved' | 'Fulfilled',
+        status: (req.status ?? 'Pending') as InternalRequisition['status'],
         createdAt: req.created_at,
         items: req.items as any, // JSONB field
         notes: req.notes,
+        source: (req.source ?? 'Manual') as 'Manual' | 'System',
+        requestType: (req.request_type ?? 'consumable') as RequisitionRequestType,
+        priority: (req.priority ?? 'medium') as RequisitionPriority,
+        needByDate: req.need_by_date ?? null,
+        alertOnly: req.alert_only ?? false,
+        autoPo: req.auto_po ?? false,
+        notifyRequester: req.notify_requester ?? true,
+        context: req.context ?? null,
+        metadata: req.metadata ?? {},
       }));
 
       setData(transformed);

@@ -23,10 +23,57 @@ CREATE POLICY "po_followup_rules_select"
   ON public.po_followup_rules FOR SELECT
   USING (auth.role() = 'authenticated');
 
-CREATE POLICY "po_followup_rules_modify"
+CREATE POLICY "po_followup_rules_service"
   ON public.po_followup_rules FOR ALL
   USING (auth.role() = 'service_role')
   WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "po_followup_rules_admin_write"
+  ON public.po_followup_rules FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.user_profiles up
+      WHERE up.id = auth.uid()
+      AND up.role = 'Admin'
+    )
+  );
+
+CREATE POLICY "po_followup_rules_admin_update"
+  ON public.po_followup_rules FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.user_profiles up
+      WHERE up.id = auth.uid()
+      AND up.role = 'Admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.user_profiles up
+      WHERE up.id = auth.uid()
+      AND up.role = 'Admin'
+    )
+  );
+
+INSERT INTO public.po_followup_rules (stage, wait_hours, subject_template, body_template, instructions, active)
+VALUES
+  (
+    1,
+    72,
+    'Checking in on PO #{{po_number}}',
+    'Hi {{vendor_name}},\n\nPurchase Order #{{po_number}} (sent {{order_age_days}} day(s) ago) is still waiting on confirmation. We need tracking details to keep production on schedule.',
+    'Please reply on this thread with carrier + tracking number only so it links back to our PO automatically.',
+    TRUE
+  ),
+  (
+    2,
+    168,
+    'Urgent: tracking needed for PO #{{po_number}}',
+    'Team,\n\nWe still have not received tracking for Purchase Order #{{po_number}}. This is now urgent for scheduling.',
+    'Reply to this email with tracking only. If shipment is delayed include the new ship date in the same reply.',
+    TRUE
+  )
+ON CONFLICT (stage) DO NOTHING;
 
 -- Table to log each follow-up send and eventual vendor response
 CREATE TABLE IF NOT EXISTS public.vendor_followup_events (

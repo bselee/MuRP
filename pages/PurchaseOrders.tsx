@@ -19,6 +19,7 @@ import CreatePoModal from '../components/CreatePoModal';
 import EmailComposerModal from '../components/EmailComposerModal';
 import GeneratePoModal from '../components/GeneratePoModal';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
+import PoCommunicationModal from '../components/PoCommunicationModal';
 import ReorderQueueDashboard, { ReorderQueueVendorGroup } from '../components/ReorderQueueDashboard';
 import DraftPOReviewSection from '../components/DraftPOReviewSection';
 import POTrackingDashboard from '../components/POTrackingDashboard';
@@ -26,6 +27,7 @@ import UpdateTrackingModal from '../components/UpdateTrackingModal';
 import { subscribeToPoDrafts } from '../lib/poDraftBridge';
 import { generatePoPdf } from '../services/pdfService';
 import { usePermissions } from '../hooks/usePermissions';
+import { runFollowUpAutomation } from '../services/followUpService';
 
 interface PurchaseOrdersProps {
     purchaseOrders: PurchaseOrder[];
@@ -94,6 +96,7 @@ const TRACKING_STATUS_STYLES: Record<POTrackingStatus, { label: string; classNam
   delivered: { label: 'Delivered', className: 'bg-green-500/20 text-green-200 border-green-500/30' },
   exception: { label: 'Exception', className: 'bg-red-500/20 text-red-200 border-red-500/30' },
   cancelled: { label: 'Cancelled', className: 'bg-gray-500/20 text-gray-300 border-gray-500/30' },
+  invoice_received: { label: 'Invoice Logged', className: 'bg-teal-500/20 text-teal-100 border-teal-500/30' },
 };
 
 const CollapsibleSection: React.FC<{
@@ -139,11 +142,22 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [activePoDraft, setActivePoDraft] = useState<PoDraftConfig | undefined>(undefined);
     const [pendingPoDrafts, setPendingPoDrafts] = useState<PoDraftConfig[]>([]);
     const [modalSession, setModalSession] = useState(0);
+    const [isRunningFollowUps, setIsRunningFollowUps] = useState(false);
     
     const permissions = usePermissions();
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
     const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
     const inventoryMap = useMemo(() => new Map(inventory.map(item => [item.sku, item])), [inventory]);
+    const followUpBacklog = useMemo(
+      () =>
+        purchaseOrders.filter(
+          po =>
+            (po.followUpRequired ?? true) &&
+            (!po.trackingNumber || po.trackingStatus === 'awaiting_confirmation') &&
+            ['sent', 'pending', 'confirmed', 'committed'].includes(po.status),
+        ).length,
+      [purchaseOrders],
+    );
 
     const canManagePOs = permissions.canManagePurchaseOrders;
     const canSubmitRequisitions = permissions.canSubmitRequisition;
@@ -224,6 +238,27 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
             addToast('No vendor groups available for PO creation.', 'error');
         }
     };
+
+    const handleRunFollowUps = useCallback(async () => {
+        try {
+            setIsRunningFollowUps(true);
+            const result = await runFollowUpAutomation();
+            if (result.success) {
+                if (result.sent && result.sent > 0) {
+                    addToast(`Queued ${result.sent} follow-up email${result.sent === 1 ? '' : 's'}.`, 'success');
+                } else {
+                    addToast('No vendors met the follow-up window right now.', 'info');
+                }
+            } else {
+                throw new Error(result.error ?? 'Unknown follow-up error');
+            }
+        } catch (error) {
+            console.error('[PurchaseOrders] follow-up automation failed', error);
+            addToast('Failed to run follow-up automation. Check logs.', 'error');
+        } finally {
+            setIsRunningFollowUps(false);
+        }
+    }, [addToast]);
 
     const handleRequisitionDrafts = (drafts: { vendorId: string; items: CreatePurchaseOrderItemInput[]; requisitionIds: string[]; }[]) => {
         if (!drafts.length) {
@@ -397,6 +432,30 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     addToast={addToast}
                 />
 
+                {canManagePOs && (
+                    <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-lg px-4 py-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between shadow-inner shadow-indigo-900/30">
+                        <div>
+                            <p className="text-sm font-semibold text-indigo-100">Follow-up Automation</p>
+                            <p className="text-xs text-indigo-100/80">
+                                Gmail nudges reuse the original thread so vendors reply with tracking only. Backlog:{' '}
+                                <span className="font-semibold">{followUpBacklog}</span> PO{followUpBacklog === 1 ? '' : 's'} waiting on details.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <button
+                                onClick={handleRunFollowUps}
+                                disabled={isRunningFollowUps}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 disabled:opacity-60"
+                            >
+                                {isRunningFollowUps ? 'Sending…' : 'Nudge Vendors'}
+                            </button>
+                            <span className="text-[11px] text-indigo-100/70">
+                                Configure templates in Settings → Follow-up Rules.
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 <POTrackingDashboard />
 
                 <DraftPOReviewSection
@@ -431,7 +490,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 {sortedPurchaseOrders.map((po) => (
                                     <tr key={po.id} className="hover:bg-gray-700/50 transition-colors duration-200">
                                         <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-indigo-400">{po.orderId || po.id}</td>
-                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</td>
+                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
+                                            <div className="flex items-center gap-2">
+                                                <span>{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</span>
+                                                {po.followUpCount && po.followUpCount > 0 && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/20 text-sky-200 border border-sky-500/40">
+                                                        FU {po.followUpCount}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-1 whitespace-nowrap"><PoStatusBadge status={po.status} /></td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : 'N/A'}</td>
@@ -441,14 +509,24 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     <span className="font-mono text-sm">{po.trackingNumber}</span>
                                                     <span className="text-xs text-gray-400 uppercase">{po.trackingCarrier || '—'}</span>
                                                     {po.trackingStatus && (
-                                                        <span className={`inline-flex items-center px-2 py-0.5 mt-1 rounded-full border text-[11px] font-medium ${TRACKING_STATUS_STYLES[po.trackingStatus]?.className ?? 'bg-gray-600/20 text-gray-200 border-gray-500/30'}`}>
-                                                            {TRACKING_STATUS_STYLES[po.trackingStatus]?.label ?? po.trackingStatus}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-gray-500">No tracking</span>
-                                            )}
+                                                    <span className={`inline-flex items-center px-2 py-0.5 mt-1 rounded-full border text-[11px] font-medium ${TRACKING_STATUS_STYLES[po.trackingStatus]?.className ?? 'bg-gray-600/20 text-gray-200 border-gray-500/30'}`}>
+                                                        {TRACKING_STATUS_STYLES[po.trackingStatus]?.label ?? po.trackingStatus}
+                                                    </span>
+                                                )}
+                                                {po.invoiceDetectedAt && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded-full border text-[11px] font-medium bg-teal-500/10 text-teal-100 border-teal-500/30">
+                                                        Invoice logged {new Date(po.invoiceDetectedAt).toLocaleDateString()}
+                                                    </span>
+                                                )}
+                                                {po.lastFollowUpSentAt && (
+                                                    <span className="text-xs text-gray-500 mt-1">
+                                                        Last follow-up {new Date(po.lastFollowUpSentAt).toLocaleDateString()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-gray-500">No tracking</span>
+                                        )}
                                         </td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-white font-semibold">${formatPoTotal(po)}</td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
@@ -611,6 +689,7 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Req ID</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Requester</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Department</th>
+                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Need / Priority</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Items</th>
@@ -627,9 +706,44 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
                                             <BotIcon className="w-4 h-4 text-indigo-400"/> 
                                             <span className="text-indigo-300 font-semibold">AI Generated</span>
                                         </div>
-                                    ) : (userMap.get(req.requesterId!) || 'Unknown User')}
+                                    ) : (req.requesterId ? (userMap.get(req.requesterId) || 'Unknown User') : 'Unassigned')}
                                 </td>
                                 <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">{req.department}</td>
+                                <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-200">
+                                    <div className="flex flex-col gap-1">
+                                        {req.needByDate ? (
+                                            <span className="text-xs text-gray-300">
+                                                Need by {new Date(req.needByDate).toLocaleDateString()}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-gray-500">Flexible</span>
+                                        )}
+                                        <div className="flex flex-wrap gap-1">
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-gray-700 text-gray-200">
+                                                {req.requestType?.replace('_', ' ') || 'consumable'}
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide ${
+                                                req.priority === 'high'
+                                                    ? 'bg-rose-500/20 text-rose-200 border border-rose-500/40'
+                                                    : req.priority === 'medium'
+                                                    ? 'bg-amber-500/20 text-amber-200 border border-amber-500/30'
+                                                    : 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
+                                            }`}>
+                                                {req.priority} priority
+                                            </span>
+                                            {req.alertOnly && (
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-sky-500/20 text-sky-200 border border-sky-500/30">
+                                                    Alert Only
+                                                </span>
+                                            )}
+                                            {req.autoPo && (
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-indigo-500/20 text-indigo-200 border border-indigo-500/30">
+                                                    Auto PO
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </td>
                                 <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(req.createdAt).toLocaleDateString()}</td>
                                 <td className="px-6 py-1 whitespace-nowrap"><ReqStatusBadge status={req.status} /></td>
                                 <td className="px-6 py-1 text-sm text-gray-300">

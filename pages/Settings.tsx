@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import UserManagementPanel from '../components/UserManagementPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
@@ -11,6 +11,7 @@ import AiSettingsPanel from '../components/AiSettingsPanel';
 import SemanticSearchSettings from '../components/SemanticSearchSettings';
 import { MCPServerPanel } from '../components/MCPServerPanel';
 import DocumentTemplatesPanel from '../components/DocumentTemplatesPanel';
+import FollowUpSettingsPanel from '../components/FollowUpSettingsPanel';
 import DataPipelineGuide from '../components/DataPipelineGuide';
 import GoogleDataPanel from '../components/GoogleDataPanel';
 import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
@@ -57,6 +58,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isDataIntegrationsOpen, setIsDataIntegrationsOpen] = useState(false);
     const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
     const [isDocumentTemplatesOpen, setIsDocumentTemplatesOpen] = useState(false);
+    const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
     const [isMcpServerOpen, setIsMcpServerOpen] = useState(false);
     const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
     const [isLegalOpen, setIsLegalOpen] = useState(false);
@@ -230,6 +232,17 @@ const Settings: React.FC<SettingsProps> = ({
               onToggle={() => setIsDocumentTemplatesOpen(!isDocumentTemplatesOpen)}
             >
               <DocumentTemplatesPanel addToast={addToast} />
+            </CollapsibleSection>
+          )}
+
+          {currentUser.role === 'Admin' && (
+            <CollapsibleSection
+              title="PO Follow-up Automation"
+              icon={<MailIcon className="w-6 h-6 text-sky-400" />}
+              isOpen={isFollowUpOpen}
+              onToggle={() => setIsFollowUpOpen(!isFollowUpOpen)}
+            >
+              <FollowUpSettingsPanel addToast={addToast} />
             </CollapsibleSection>
           )}
 

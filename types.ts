@@ -83,6 +83,12 @@ export interface Artwork {
   verified: boolean; // User confirmed extraction is accurate
   verifiedBy?: string;
   verifiedAt?: string;
+
+  // Inline editing + vectorization
+  vectorSvg?: string | null;
+  vectorGeneratedAt?: string;
+  lastEditedAt?: string;
+  lastEditedBy?: string;
 }
 
 export type ArtworkEditorTool = 'brush' | 'text' | 'eraser';
@@ -699,6 +705,14 @@ export interface PurchaseOrder {
   sentAt?: string;
   items: PurchaseOrderItem[];
   requisitionIds?: string[];
+  followUpRequired?: boolean;
+  lastFollowUpStage?: number;
+  lastFollowUpSentAt?: string;
+  followUpStatus?: string | null;
+  followUpCount?: number;
+  invoiceDetectedAt?: string;
+  invoiceGmailMessageId?: string | null;
+  invoiceSummary?: Record<string, any> | null;
 }
 
 export interface CreatePurchaseOrderItemInput {
@@ -727,7 +741,8 @@ export type POTrackingStatus =
   | 'out_for_delivery'
   | 'delivered'
   | 'exception'
-  | 'cancelled';
+  | 'cancelled'
+  | 'invoice_received';
 
 export interface POTrackingEvent {
   id?: string;
@@ -854,6 +869,29 @@ export interface RequisitionRequestOptions {
     context?: string | null;
     notes?: string;
     metadata?: Record<string, any>;
+}
+
+export interface FollowUpRule {
+  id: string;
+  stage: number;
+  waitHours: number;
+  subjectTemplate: string;
+  bodyTemplate: string;
+  instructions?: string | null;
+  active: boolean;
+  updatedAt?: string;
+}
+
+export interface VendorFollowUpEvent {
+  id: string;
+  poId: string;
+  vendorId?: string | null;
+  stage: number;
+  sentAt: string;
+  respondedAt?: string | null;
+  responseLatency?: string | null;
+  notes?: string | null;
+  metadata?: Record<string, any> | null;
 }
 
 export interface QuickRequestDefaults {
@@ -1148,6 +1186,14 @@ export const mockInternalRequisitions: InternalRequisition[] = [
         department: 'MFG 1',
         createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), 
         status: 'Approved',
+        requestType: 'consumable',
+        priority: 'high',
+        needByDate: null,
+        alertOnly: false,
+        autoPo: true,
+        notifyRequester: true,
+        context: 'Floor stock getting tight',
+        metadata: {},
         items: [
             { sku: 'COMP-001', name: 'Worm Castings (1 lb)', quantity: 50, reason: 'Low on production line' },
             { sku: 'BAG-SML', name: 'Small Burlap Bag (1 cu ft)', quantity: 100, reason: 'Stock running out for PROD-A run' }
@@ -1160,6 +1206,14 @@ export const mockInternalRequisitions: InternalRequisition[] = [
         department: 'MFG 2',
         createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'Pending',
+        requestType: 'product_alert',
+        priority: 'medium',
+        needByDate: null,
+        alertOnly: true,
+        autoPo: false,
+        notifyRequester: true,
+        context: 'Heads up before seasonal push',
+        metadata: {},
         items: [
             { sku: 'COMP-006', name: 'Biochar (1 gallon)', quantity: 20, reason: 'Scheduled build for PROD-C' },
         ]
@@ -1171,6 +1225,14 @@ export const mockInternalRequisitions: InternalRequisition[] = [
         department: 'SHP/RCV',
         createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'Rejected',
+        requestType: 'consumable',
+        priority: 'high',
+        needByDate: null,
+        alertOnly: false,
+        autoPo: false,
+        notifyRequester: true,
+        context: 'Emergency buffer',
+        metadata: {},
         items: [
             { sku: 'BAG-LRG', name: 'Large Burlap Bag (4 cu ft)', quantity: 200, reason: 'Emergency stock request' },
         ]
@@ -1182,6 +1244,14 @@ export const mockInternalRequisitions: InternalRequisition[] = [
         department: 'MFG 1',
         createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'Ordered',
+        requestType: 'finished_good',
+        priority: 'medium',
+        needByDate: null,
+        alertOnly: false,
+        autoPo: true,
+        notifyRequester: false,
+        context: '',
+        metadata: {},
         items: [
             { sku: 'COMP-003', name: 'Coconut Coir Brick', quantity: 50, reason: 'Restocking safety levels' },
         ]
@@ -1193,6 +1263,14 @@ export const mockInternalRequisitions: InternalRequisition[] = [
         department: 'Purchasing',
         createdAt: new Date().toISOString(),
         status: 'Pending',
+        requestType: 'consumable',
+        priority: 'medium',
+        needByDate: null,
+        alertOnly: false,
+        autoPo: false,
+        notifyRequester: true,
+        context: 'AI forecasted shortfall',
+        metadata: { generatedBy: 'inventory_intel' },
         items: [
             { sku: 'COMP-002', name: 'Pumice (1/8 inch)', quantity: 150, reason: 'AI Forecast: Predicted shortage in 25 days.' },
         ]

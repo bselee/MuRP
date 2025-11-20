@@ -1,7 +1,7 @@
 
 
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import AiAssistant from './components/AiAssistant';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -140,6 +140,8 @@ const AppShell: React.FC = () => {
   const [externalConnections, setExternalConnections] = usePersistentState<ExternalConnection[]>('externalConnections', []);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
   const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
+  const trackingSignalRef = useRef<Map<string, { status?: POTrackingStatus | null; invoiceNotified?: boolean }>>(new Map());
+  const notificationsPrimedRef = useRef(false);
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
   const [quickRequestDefaults, setQuickRequestDefaults] = useState<QuickRequestDefaults | null>(null);
   const users = userProfiles;
@@ -326,6 +328,68 @@ const AppShell: React.FC = () => {
   const removeToast = (id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };
+
+  useEffect(() => {
+    if (!hasInitialDataLoaded) return;
+    if (!purchaseOrders || purchaseOrders.length === 0) {
+      resolveAlert('po:missing-details');
+      return;
+    }
+
+    const now = Date.now();
+    const staleOrders = purchaseOrders.filter(po => {
+      const baseline = po.sentAt ?? po.orderDate ?? po.createdAt;
+      if (!baseline) return false;
+      const ageHours = (now - new Date(baseline).getTime()) / (1000 * 60 * 60);
+      return (
+        ageHours >= 48 &&
+        (po.followUpRequired ?? true) &&
+        !po.trackingNumber &&
+        ['sent', 'pending', 'committed', 'confirmed'].includes(po.status)
+      );
+    });
+
+    if (staleOrders.length > 0) {
+      upsertAlert({
+        source: 'po:missing-details',
+        severity: 'warning',
+        message: `${staleOrders.length} PO${staleOrders.length === 1 ? '' : 's'} still lack vendor tracking after 48h.`,
+        details: staleOrders
+          .slice(0, 3)
+          .map(po => po.orderId ?? po.id)
+          .join(', '),
+      });
+    } else {
+      resolveAlert('po:missing-details');
+    }
+
+    purchaseOrders.forEach(po => {
+      const entry = trackingSignalRef.current.get(po.id) ?? {};
+
+      if (notificationsPrimedRef.current && po.trackingStatus && po.trackingStatus !== entry.status) {
+        if (po.trackingStatus === 'shipped') {
+          addToast(`PO ${po.orderId ?? po.id} shipped. Expect tracking soon.`, 'info');
+        } else if (po.trackingStatus === 'delivered') {
+          addToast(`PO ${po.orderId ?? po.id} delivered. Close the loop once inventory is received.`, 'success');
+        }
+      }
+
+      if (po.trackingStatus) {
+        entry.status = po.trackingStatus;
+      }
+
+      if (po.invoiceDetectedAt && !entry.invoiceNotified) {
+        if (notificationsPrimedRef.current) {
+          addToast(`Invoice captured for ${po.orderId ?? po.id}.`, 'success');
+        }
+        entry.invoiceNotified = true;
+      }
+
+      trackingSignalRef.current.set(po.id, entry);
+    });
+
+    notificationsPrimedRef.current = true;
+  }, [purchaseOrders, hasInitialDataLoaded, upsertAlert, resolveAlert, addToast]);
 
   const openQuickRequestDrawer = useCallback((defaults?: QuickRequestDefaults) => {
     setQuickRequestDefaults(defaults ?? null);
@@ -1236,7 +1300,7 @@ const AppShell: React.FC = () => {
           onNavigateToArtwork={navigateToArtwork}
           onNavigateToInventory={handleNavigateToInventory}
           onUploadArtwork={handleAddArtworkToBom}
-          onCreateRequisition={(items) => handleCreateRequisition(items, 'Manual')}
+          onCreateRequisition={(items, options) => handleCreateRequisition(items, 'Manual', options)}
           onCreateBuildOrder={handleCreateBuildOrder}
           addToast={addToast}
         />;

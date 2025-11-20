@@ -98,8 +98,21 @@ serve(async (req) => {
       labelIds: gmailMessage.labelIds ?? [],
     });
 
-    const { bodyText, attachmentsText } = await extractMessageContent(gmailMessage, accessToken);
+    const { bodyText, attachmentsText, attachments } = await extractMessageContent(gmailMessage, accessToken);
     const combinedText = `${bodyText}\n\n${attachmentsText}`.trim();
+
+    const invoiceSignal = detectInvoiceSignal({
+      subject: gmailMessage.payload?.headers?.find((h: any) => h.name === 'Subject')?.value ?? '',
+      from: gmailMessage.payload?.headers?.find((h: any) => h.name === 'From')?.value ?? '',
+      bodyText,
+      attachmentsText,
+      attachments,
+    });
+
+    if (invoiceSignal?.detected && poRecord.invoice_gmail_message_id !== messageId) {
+      await recordInvoiceReceipt(poRecord, messageId, invoiceSignal);
+      await markFollowUpResponse(poRecord.id);
+    }
 
     if (!combinedText) {
       console.log('[gmail-webhook] No textual content found for message', messageId);
@@ -197,7 +210,7 @@ async function resolvePurchaseOrder(message: any, threadId?: string) {
     if (data?.po_id) {
       const { data: po } = await supabase
         .from('purchase_orders')
-        .select('id, order_id, vendor_name')
+        .select('id, order_id, vendor_name, invoice_gmail_message_id')
         .eq('id', data.po_id)
         .maybeSingle();
       if (po) return po;
@@ -212,7 +225,7 @@ async function resolvePurchaseOrder(message: any, threadId?: string) {
     const identifier = `PO-${poMatch[1]}`;
     const { data: po } = await supabase
       .from('purchase_orders')
-      .select('id, order_id, vendor_name')
+      .select('id, order_id, vendor_name, invoice_gmail_message_id')
       .eq('order_id', identifier)
       .maybeSingle();
     if (po) return po;
@@ -245,9 +258,16 @@ async function updateEmailTrackingRecord(
   await query;
 }
 
+interface AttachmentMeta {
+  filename: string;
+  mimeType: string;
+  size: number;
+}
+
 async function extractMessageContent(message: any, accessToken: string) {
   const bodyTextParts: string[] = [];
   const attachmentTextParts: string[] = [];
+  const attachmentsMeta: AttachmentMeta[] = [];
 
   const traverseParts = async (part: any) => {
     if (!part) return;
@@ -258,6 +278,11 @@ async function extractMessageContent(message: any, accessToken: string) {
       const text = decodeBase64(part.body.data).replace(/<[^>]*>/g, ' ');
       bodyTextParts.push(text);
     } else if (part.filename && part.body?.attachmentId) {
+      attachmentsMeta.push({
+        filename: part.filename,
+        mimeType: part.mimeType ?? 'application/octet-stream',
+        size: part.body?.size ?? 0,
+      });
       const attachmentData = await fetchAttachment(message.id, part.body.attachmentId, accessToken);
       if (!attachmentData) return;
 
@@ -281,6 +306,7 @@ async function extractMessageContent(message: any, accessToken: string) {
   return {
     bodyText: (bodyTextParts.join('\n').trim() || fallbackSnippet).slice(0, 15000),
     attachmentsText: attachmentTextParts.join('\n').slice(0, 15000),
+    attachments: attachmentsMeta,
   };
 }
 
@@ -488,4 +514,113 @@ async function applyTrackingUpdate(poId: string, parsed: ParsedTrackingResult) {
     description: parsed.notes ?? parsed.action ?? 'Vendor update',
     raw_payload: parsed,
   });
+
+  await markFollowUpResponse(poId);
+}
+
+interface InvoiceSignal {
+  detected: boolean;
+  subject: string;
+  reason: string;
+  attachmentName?: string;
+  amount?: string;
+  dueDate?: string;
+}
+
+function detectInvoiceSignal(input: {
+  subject: string;
+  from: string;
+  bodyText: string;
+  attachmentsText: string;
+  attachments: AttachmentMeta[];
+}): InvoiceSignal | null {
+  const combinedLower = `${input.subject}\n${input.bodyText}\n${input.attachmentsText}`.toLowerCase();
+  let score = 0;
+  if (combinedLower.includes('invoice')) score += 2;
+  if (combinedLower.includes('amount due') || combinedLower.includes('balance due')) score += 1;
+  if (combinedLower.includes('net 30') || combinedLower.includes('payment terms')) score += 0.5;
+
+  const invoiceAttachment = input.attachments.find(att => /invoice|inv|bill/i.test(att.filename));
+  if (invoiceAttachment) score += 2;
+  if (input.attachments.some(att => att.mimeType === 'application/pdf')) score += 0.5;
+
+  if (score < 2) {
+    return null;
+  }
+
+  const amountMatch = (input.subject + '\n' + input.bodyText).match(/\$?\s?\d{2,3}(?:[,\d]{3})*(?:\.\d{2})/);
+  const dueMatch = (input.bodyText + '\n' + input.attachmentsText).match(/(?:due|pay by)\s+(?:on\s+)?([A-Za-z]{3,9}\s+\d{1,2}(?:,\s*\d{4})?|\d{4}-\d{2}-\d{2})/i);
+
+  return {
+    detected: true,
+    subject: input.subject,
+    reason: invoiceAttachment ? 'Attachment filename suggests invoice' : 'Invoice language detected',
+    attachmentName: invoiceAttachment?.filename,
+    amount: amountMatch ? amountMatch[0].trim() : undefined,
+    dueDate: dueMatch ? dueMatch[1] : undefined,
+  };
+}
+
+async function recordInvoiceReceipt(poRecord: { id: string; vendor_name: string }, messageId: string, signal: InvoiceSignal) {
+  const detectedAt = new Date().toISOString();
+  const summary = {
+    vendor: poRecord.vendor_name,
+    subject: signal.subject,
+    amount: signal.amount ?? null,
+    dueDate: signal.dueDate ?? null,
+    attachment: signal.attachmentName ?? null,
+    reason: signal.reason,
+  };
+
+  await supabase
+    .from('purchase_orders')
+    .update({
+      invoice_detected_at: detectedAt,
+      invoice_gmail_message_id: messageId,
+      invoice_summary: summary,
+    })
+    .eq('id', poRecord.id);
+
+  await supabase.from('po_tracking_events').insert({
+    po_id: poRecord.id,
+    status: 'invoice_received',
+    description: summary.attachment
+      ? `Invoice received (${summary.attachment})`
+      : 'Invoice received via vendor email',
+    raw_payload: summary,
+  });
+}
+
+async function markFollowUpResponse(poId: string) {
+  const { data: event } = await supabase
+    .from('vendor_followup_events')
+    .select('id, sent_at')
+    .eq('po_id', poId)
+    .is('responded_at', null)
+    .order('sent_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!event) return;
+
+  const respondedAt = new Date().toISOString();
+  const latencySeconds = Math.max(
+    1,
+    Math.round((new Date(respondedAt).getTime() - new Date(event.sent_at).getTime()) / 1000),
+  );
+
+  await supabase
+    .from('vendor_followup_events')
+    .update({
+      responded_at: respondedAt,
+      response_latency: `${latencySeconds} seconds`,
+    })
+    .eq('id', event.id);
+
+  await supabase
+    .from('purchase_orders')
+    .update({
+      follow_up_status: 'response_received',
+    })
+    .eq('id', poId);
 }
