@@ -15,9 +15,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Create client with fallback to prevent module initialization failure
-const supabase = (supabaseUrl && supabaseAnonKey)
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : createClient('https://placeholder.supabase.co', 'placeholder-key');
+let supabaseClient;
+if (supabaseUrl && supabaseAnonKey) {
+  supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+} else {
+  supabaseClient = createClient('https://placeholder.supabase.co', 'placeholder-key');
+}
+const supabase = supabaseClient;
 
 export interface UserComplianceProfile {
   id: string;

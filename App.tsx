@@ -147,7 +147,6 @@ const AppShell: React.FC = () => {
   const users = userProfiles;
   const googleAuthService = useMemo(() => getGoogleAuthService(), []);
   const gmailService = useMemo(() => getGoogleGmailService(), []);
-
   const refreshGmailConnection = useCallback(async () => {
     try {
       const status = await googleAuthService.getAuthStatus();
