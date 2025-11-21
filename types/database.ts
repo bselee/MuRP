@@ -359,6 +359,20 @@ export interface Database {
           notes?: string
           requisition_ids: string[]
           updated_at?: string
+          // Migration 030: PO Tracking
+          order_id?: string
+          tracking_number?: string
+          tracking_status?: string
+          tracking_carrier?: string
+          tracking_last_checked_at?: string
+          tracking_last_exception?: string
+          tracking_estimated_delivery?: string
+          tracking_events?: Json
+          // Migration 033: PO Follow-up Automation
+          last_follow_up_stage?: number
+          last_follow_up_sent_at?: string
+          follow_up_required?: boolean
+          follow_up_status?: string
         }
         Insert: {
           id?: string
@@ -370,6 +384,20 @@ export interface Database {
           notes?: string
           requisition_ids?: string[]
           updated_at?: string
+          // Migration 030: PO Tracking
+          order_id?: string
+          tracking_number?: string
+          tracking_status?: string
+          tracking_carrier?: string
+          tracking_last_checked_at?: string
+          tracking_last_exception?: string
+          tracking_estimated_delivery?: string
+          tracking_events?: Json
+          // Migration 033: PO Follow-up Automation
+          last_follow_up_stage?: number
+          last_follow_up_sent_at?: string
+          follow_up_required?: boolean
+          follow_up_status?: string
         }
         Update: {
           vendor_id?: string
@@ -379,6 +407,20 @@ export interface Database {
           notes?: string
           requisition_ids?: string[]
           updated_at?: string
+          // Migration 030: PO Tracking
+          order_id?: string
+          tracking_number?: string
+          tracking_status?: string
+          tracking_carrier?: string
+          tracking_last_checked_at?: string
+          tracking_last_exception?: string
+          tracking_estimated_delivery?: string
+          tracking_events?: Json
+          // Migration 033: PO Follow-up Automation
+          last_follow_up_stage?: number
+          last_follow_up_sent_at?: string
+          follow_up_required?: boolean
+          follow_up_status?: string
         }
         Relationships: []
       }
@@ -392,6 +434,15 @@ export interface Database {
           items: Json
           notes?: string
           updated_at?: string
+          // Migration 032: Requisition Enhancements
+          request_type?: string
+          priority?: string
+          need_by_date?: string
+          alert_only?: boolean
+          auto_po?: boolean
+          notify_requester?: boolean
+          context?: string
+          metadata?: Json
         }
         Insert: {
           id?: string
@@ -402,6 +453,15 @@ export interface Database {
           items: Json
           notes?: string
           updated_at?: string
+          // Migration 032: Requisition Enhancements
+          request_type?: string
+          priority?: string
+          need_by_date?: string
+          alert_only?: boolean
+          auto_po?: boolean
+          notify_requester?: boolean
+          context?: string
+          metadata?: Json
         }
         Update: {
           requested_by?: string
@@ -410,6 +470,15 @@ export interface Database {
           items?: Json
           notes?: string
           updated_at?: string
+          // Migration 032: Requisition Enhancements
+          request_type?: string
+          priority?: string
+          need_by_date?: string
+          alert_only?: boolean
+          auto_po?: boolean
+          notify_requester?: boolean
+          context?: string
+          metadata?: Json
         }
         Relationships: []
       }
@@ -423,6 +492,13 @@ export interface Database {
           created_at: string
           completed_at?: string
           updated_at?: string
+          // Migration 027: Production Calendar Integration
+          scheduled_date?: string
+          due_date?: string
+          calendar_event_id?: string
+          notes?: string
+          estimated_duration_hours?: number
+          assigned_user_id?: string
         }
         Insert: {
           id?: string
@@ -433,6 +509,13 @@ export interface Database {
           created_at?: string
           completed_at?: string
           updated_at?: string
+          // Migration 027: Production Calendar Integration
+          scheduled_date?: string
+          due_date?: string
+          calendar_event_id?: string
+          notes?: string
+          estimated_duration_hours?: number
+          assigned_user_id?: string
         }
         Update: {
           finished_sku?: string
@@ -441,6 +524,13 @@ export interface Database {
           status?: string
           completed_at?: string
           updated_at?: string
+          // Migration 027: Production Calendar Integration
+          scheduled_date?: string
+          due_date?: string
+          calendar_event_id?: string
+          notes?: string
+          estimated_duration_hours?: number
+          assigned_user_id?: string
         }
         Relationships: []
       }
@@ -1080,6 +1170,264 @@ export interface Database {
           retry_count?: number
           triggered_by?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      build_order_material_requirements: {
+        Row: {
+          id: string
+          build_order_id: string
+          sku: string
+          name: string
+          required_quantity: number
+          available_quantity: number
+          shortfall: number
+          vendor_id?: string
+          vendor_name?: string
+          lead_time_days?: number
+          estimated_cost?: number
+          sourced: boolean
+          sourced_at?: string
+          notes?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          build_order_id: string
+          sku: string
+          name: string
+          required_quantity: number
+          available_quantity?: number
+          vendor_id?: string
+          vendor_name?: string
+          lead_time_days?: number
+          estimated_cost?: number
+          sourced?: boolean
+          sourced_at?: string
+          notes?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          build_order_id?: string
+          sku?: string
+          name?: string
+          required_quantity?: number
+          available_quantity?: number
+          vendor_id?: string
+          vendor_name?: string
+          lead_time_days?: number
+          estimated_cost?: number
+          sourced?: boolean
+          sourced_at?: string
+          notes?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      production_calendar_settings: {
+        Row: {
+          id: string
+          user_id: string
+          google_calendar_id?: string
+          default_duration_hours: number
+          default_time_zone: string
+          email_reminders_enabled: boolean
+          reminder_hours_before: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          google_calendar_id?: string
+          default_duration_hours?: number
+          default_time_zone?: string
+          email_reminders_enabled?: boolean
+          reminder_hours_before?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          google_calendar_id?: string
+          default_duration_hours?: number
+          default_time_zone?: string
+          email_reminders_enabled?: boolean
+          reminder_hours_before?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      po_tracking_events: {
+        Row: {
+          id: string
+          po_id: string
+          status: string
+          carrier?: string
+          tracking_number?: string
+          description?: string
+          raw_payload?: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          po_id: string
+          status: string
+          carrier?: string
+          tracking_number?: string
+          description?: string
+          raw_payload?: Json
+          created_at?: string
+        }
+        Update: {
+          po_id?: string
+          status?: string
+          carrier?: string
+          tracking_number?: string
+          description?: string
+          raw_payload?: Json
+        }
+        Relationships: []
+      }
+      po_email_tracking: {
+        Row: {
+          id: string
+          po_id?: string
+          vendor_email?: string
+          gmail_message_id?: string
+          gmail_thread_id?: string
+          gmail_history_id?: string
+          gmail_label_ids?: string[]
+          metadata?: Json
+          sent_at: string
+          last_reply_at?: string
+          last_reply_message_id?: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          po_id?: string
+          vendor_email?: string
+          gmail_message_id?: string
+          gmail_thread_id?: string
+          gmail_history_id?: string
+          gmail_label_ids?: string[]
+          metadata?: Json
+          sent_at?: string
+          last_reply_at?: string
+          last_reply_message_id?: string
+          created_at?: string
+        }
+        Update: {
+          po_id?: string
+          vendor_email?: string
+          gmail_message_id?: string
+          gmail_thread_id?: string
+          gmail_history_id?: string
+          gmail_label_ids?: string[]
+          metadata?: Json
+          sent_at?: string
+          last_reply_at?: string
+          last_reply_message_id?: string
+        }
+        Relationships: []
+      }
+      po_followup_rules: {
+        Row: {
+          id: string
+          stage: number
+          wait_hours: number
+          subject_template: string
+          body_template: string
+          instructions?: string
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          stage: number
+          wait_hours: number
+          subject_template: string
+          body_template: string
+          instructions?: string
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          stage?: number
+          wait_hours?: number
+          subject_template?: string
+          body_template?: string
+          instructions?: string
+          active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vendor_followup_events: {
+        Row: {
+          id: string
+          po_id: string
+          vendor_id: string
+          stage: number
+          sent_at: string
+          subject: string
+          body_preview?: string
+          recipient_email: string
+          gmail_message_id?: string
+          gmail_thread_id?: string
+          opened: boolean
+          opened_at?: string
+          replied: boolean
+          replied_at?: string
+          reply_message_id?: string
+          reply_body_preview?: string
+          status: string
+          notes?: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          po_id: string
+          vendor_id: string
+          stage: number
+          sent_at: string
+          subject: string
+          body_preview?: string
+          recipient_email: string
+          gmail_message_id?: string
+          gmail_thread_id?: string
+          opened?: boolean
+          opened_at?: string
+          replied?: boolean
+          replied_at?: string
+          reply_message_id?: string
+          reply_body_preview?: string
+          status?: string
+          notes?: string
+          created_at?: string
+        }
+        Update: {
+          po_id?: string
+          vendor_id?: string
+          stage?: number
+          sent_at?: string
+          subject?: string
+          body_preview?: string
+          recipient_email?: string
+          gmail_message_id?: string
+          gmail_thread_id?: string
+          opened?: boolean
+          opened_at?: string
+          replied?: boolean
+          replied_at?: string
+          reply_message_id?: string
+          reply_body_preview?: string
+          status?: string
+          notes?: string
         }
         Relationships: []
       }
