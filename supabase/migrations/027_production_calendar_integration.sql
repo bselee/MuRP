@@ -243,8 +243,9 @@ CREATE TRIGGER trigger_auto_populate_material_requirements
 CREATE INDEX IF NOT EXISTS idx_build_orders_status_scheduled ON build_orders(status, scheduled_date) 
   WHERE scheduled_date IS NOT NULL;
 
+-- Index for upcoming scheduled builds (removed NOW() from predicate - use app-level filtering instead)
 CREATE INDEX IF NOT EXISTS idx_build_orders_upcoming ON build_orders(scheduled_date)
-  WHERE status IN ('Pending', 'In Progress') AND scheduled_date > NOW();
+  WHERE status IN ('Pending', 'In Progress') AND scheduled_date IS NOT NULL;
 
 -- ============================================================================
 -- COMMENTS
