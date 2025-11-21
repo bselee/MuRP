@@ -788,7 +788,8 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
     if (!err) return false;
     const targets = ['build_order_material_requirements', 'material_requirements'];
     const haystack = `${err.message ?? ''} ${err.details ?? ''} ${err.hint ?? ''}`.toLowerCase();
-    return err.code === '42P01' || targets.some((token) => haystack.includes(token));
+    // 42P01 = undefined table, PGRST200 = relationship not found
+    return err.code === '42P01' || err.code === 'PGRST200' || targets.some((token) => haystack.includes(token));
   };
 
   const fetchBuildOrders = useCallback(async () => {

@@ -156,7 +156,7 @@ CREATE POLICY "Users can update own calendar settings"
 
 -- Function to calculate material requirements for a build order
 CREATE OR REPLACE FUNCTION calculate_material_requirements(
-  p_build_order_id TEXT,
+  p_build_order_id UUID,
   p_finished_sku TEXT,
   p_quantity INTEGER
 )
@@ -172,26 +172,27 @@ RETURNS TABLE (
 BEGIN
   RETURN QUERY
   WITH bom_explosion AS (
-    -- Get BOM components for the finished SKU
-    SELECT 
-      bc.sku as component_sku,
-      bc.name as component_name,
-      bc.quantity * p_quantity as total_required
-    FROM bom_components bc
-    JOIN boms b ON bc.bom_id = b.id
+    -- Get BOM components for the finished SKU (components stored as JSONB array)
+    SELECT
+      (jsonb_array_elements(b.components)->>'sku')::TEXT as component_sku,
+      (jsonb_array_elements(b.components)->>'name')::TEXT as component_name,
+      ((jsonb_array_elements(b.components)->>'quantity')::INTEGER * p_quantity) as total_required
+    FROM boms b
     WHERE b.finished_sku = p_finished_sku
+      AND b.components IS NOT NULL
+      AND jsonb_array_length(b.components) > 0
   )
-  SELECT 
+  SELECT
     be.component_sku::TEXT,
     be.component_name::TEXT,
     be.total_required::INTEGER,
-    COALESCE(ii.current_stock, 0)::INTEGER as available,
-    ii.vendor_id,
+    COALESCE(ii.stock, 0)::INTEGER as available,
+    ii.vendor_id::UUID,
     v.name as vendor_name,
     (be.total_required * COALESCE(ii.unit_cost, 0))::DECIMAL as cost
   FROM bom_explosion be
   LEFT JOIN inventory_items ii ON ii.sku = be.component_sku
-  LEFT JOIN vendors v ON v.id = ii.vendor_id;
+  LEFT JOIN vendors v ON v.id::TEXT = ii.vendor_id;
 END;
 $$ LANGUAGE plpgsql;
 
