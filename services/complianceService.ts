@@ -3,25 +3,8 @@
  * Handles compliance checking via Supabase Edge Functions or direct database queries
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase/client';
 import type { StateRegulation, ComplianceCheck } from '../types';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Don't throw during module initialization - prevents blank screen
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('[ComplianceService] Missing Supabase environment variables - service will not function');
-}
-
-// Create client with fallback to prevent module initialization failure
-let supabaseClient;
-if (supabaseUrl && supabaseAnonKey) {
-  supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-} else {
-  supabaseClient = createClient('https://placeholder.supabase.co', 'placeholder-key');
-}
-const supabase = supabaseClient;
 
 export interface UserComplianceProfile {
   id: string;
