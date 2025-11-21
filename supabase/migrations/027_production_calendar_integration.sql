@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_build_orders_assigned_user ON build_orders(assign
 
 CREATE TABLE IF NOT EXISTS build_order_material_requirements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  build_order_id TEXT NOT NULL REFERENCES build_orders(id) ON DELETE CASCADE,
+  build_order_id UUID NOT NULL REFERENCES build_orders(id) ON DELETE CASCADE,
   
   -- Material info
   sku VARCHAR(50) NOT NULL,
