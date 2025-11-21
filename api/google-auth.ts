@@ -101,11 +101,11 @@ async function handleAuthorize(req: VercelRequest, res: VercelResponse) {
     // Generate auth URL with PKCE and state
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
-      scope: DEFAULT_SCOPES,
+      scope: [...DEFAULT_SCOPES], // Convert readonly array to mutable array
       prompt: 'consent',
       state: state,
       code_challenge: challenge,
-      code_challenge_method: 'S256',
+      code_challenge_method: 'S256' as const,
     });
 
     // Return auth URL as JSON for client-side redirect

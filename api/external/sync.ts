@@ -47,7 +47,10 @@ export default async function handler(request: Request): Promise<Response> {
       throw new ApiError('Unauthorized', 401);
     }
 
-    const [{ createConnector }, { transformInventoryBatch, transformVendorBatch }] = await Promise.all([
+    // Import admin client and connectors AFTER auth check to prevent module-load errors
+    // from causing 500s on unauthenticated requests
+    const [{ getSupabaseAdmin }, { createConnector }, { transformInventoryBatch, transformVendorBatch }] = await Promise.all([
+      import('../../lib/supabase'),
       import('../../lib/connectors/registry'),
       import('../../lib/transformers'),
     ]);
@@ -56,12 +59,6 @@ export default async function handler(request: Request): Promise<Response> {
     const sourceId = getQueryParam(request, 'source_id');
 
     console.log(`[Sync] Triggered by user ${auth.user.id}${sourceId ? ` for source ${sourceId}` : ''}`);
-
-    // Import admin client and connectors AFTER auth check to prevent module-load errors
-    // from causing 500s on unauthenticated requests
-    const { getSupabaseAdmin } = await import('../../lib/supabase');
-    const { createConnector } = await import('../../lib/connectors/registry');
-    const { transformInventoryBatch, transformVendorBatch } = await import('../../lib/transformers');
 
     const supabaseAdmin = getSupabaseAdmin();
     // Fetch enabled external data sources

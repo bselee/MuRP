@@ -31,24 +31,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Create client only if we have valid credentials
 // This prevents blank screen if env vars are missing - app can show error UI
-let client;
-if (supabaseUrl && supabaseAnonKey) {
-  client = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+// CRITICAL: Only create ONE client instance to avoid "Multiple GoTrueClient instances" warning
+export const supabase = createClient<Database>(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key',
+  {
     auth: {
-      persistSession: true,
-      autoRefreshToken: true,
+      persistSession: !!(supabaseUrl && supabaseAnonKey),
+      autoRefreshToken: !!(supabaseUrl && supabaseAnonKey),
     },
-  });
-} else {
-  client = createClient<Database>('https://placeholder.supabase.co', 'placeholder-key', {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
-
-export const supabase = client;
+  }
+);
 
 export type Tables<T extends keyof Database['public']['Tables']> = 
   Database['public']['Tables'][T]['Row'];
