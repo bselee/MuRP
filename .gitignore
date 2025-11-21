@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 .env*.local
 .vscode/
+
+# Playwright console test scripts
+scripts/playwright-console.js
+scripts/playwright-console.mjs
