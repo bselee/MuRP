@@ -53,6 +53,7 @@ import {
     mockWatchlist,
     defaultAiConfig,
     mockArtworkFolders,
+    mockVendors,
 } from './types';
 import type {
     BillOfMaterials,
@@ -86,6 +87,7 @@ import { useAuth } from './lib/auth/AuthContext';
 import { updatePurchaseOrderTrackingStatus } from './services/poTrackingService';
 import { enqueuePoDrafts } from './lib/poDraftBridge';
 import { usePermissions } from './hooks/usePermissions';
+import { isE2ETesting } from './lib/auth/guards';
 import {
   SystemAlertProvider,
   useSystemAlerts,
@@ -113,7 +115,7 @@ const AppShell: React.FC = () => {
 
   // 🔥 LIVE DATA FROM SUPABASE (Real-time subscriptions enabled)
   const { data: inventory, loading: inventoryLoading, error: inventoryError, refetch: refetchInventory } = useSupabaseInventory();
-  const { data: vendors, loading: vendorsLoading, error: vendorsError, refetch: refetchVendors } = useSupabaseVendors();
+  const { data: vendorsData, loading: vendorsLoading, error: vendorsError, refetch: refetchVendors } = useSupabaseVendors();
   const { data: boms, loading: bomsLoading, error: bomsError, refetch: refetchBOMs } = useSupabaseBOMs();
   const { data: purchaseOrders, loading: posLoading, error: posError, refetch: refetchPOs } = useSupabasePurchaseOrders();
   const { data: buildOrders, loading: buildOrdersLoading, error: buildOrdersError, refetch: refetchBuildOrders } = useSupabaseBuildOrders();
@@ -147,6 +149,8 @@ const AppShell: React.FC = () => {
   const users = userProfiles;
   const googleAuthService = useMemo(() => getGoogleAuthService(), []);
   const gmailService = useMemo(() => getGoogleGmailService(), []);
+  const isE2ETestMode = isE2ETesting();
+  const vendors = isE2ETestMode ? mockVendors : vendorsData;
   const inventoryMap = useMemo(() => new Map((inventory || []).map(item => [item.sku, item])), [inventory]);
   const vendorMap = useMemo(() => new Map((vendors || []).map(vendor => [vendor.id, vendor])), [vendors]);
   const bomMap = useMemo(() => new Map((boms || []).map(bom => [bom.finishedSku, bom])), [boms]);
@@ -170,9 +174,11 @@ const AppShell: React.FC = () => {
     }
   }, [googleAuthService, gmailService, setGmailConnection]);
 
+  const effectiveVendorsLoading = isE2ETestMode ? false : vendorsLoading;
+
   const isDataLoading =
     inventoryLoading ||
-    vendorsLoading ||
+    effectiveVendorsLoading ||
     bomsLoading ||
     posLoading ||
     buildOrdersLoading ||

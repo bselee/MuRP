@@ -11,6 +11,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createGoogleOAuthClient, getAuthUrl, getTokensFromCode, DEFAULT_SCOPES } from '../lib/google/client';
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../lib/google/pkce';
+import { CodeChallengeMethod } from 'google-auth-library/build/src/auth/oauth2client';
 
 // OAuth configuration from environment
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -101,11 +102,11 @@ async function handleAuthorize(req: VercelRequest, res: VercelResponse) {
     // Generate auth URL with PKCE and state
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
-      scope: [...DEFAULT_SCOPES], // Convert readonly array to mutable array
+      scope: [...DEFAULT_SCOPES],
       prompt: 'consent',
       state: state,
       code_challenge: challenge,
-      code_challenge_method: 'S256' as const,
+      code_challenge_method: CodeChallengeMethod.S256,
     });
 
     // Return auth URL as JSON for client-side redirect

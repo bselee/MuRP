@@ -771,6 +771,9 @@ export interface MaterialRequirement {
     vendorName?: string;
     leadTimeDays?: number;
     estimatedCost?: number;
+    sourced?: boolean;
+    sourcedAt?: string;
+    notes?: string;
 }
 
 export interface BuildOrder {
@@ -1020,7 +1023,11 @@ export const mockVendors: Vendor[] = [
         phone: '1-800-555-0101',
         address: '123 Green Way, Soilsville, CA 90210',
         website: 'https://www.soilsolutions.com',
-        leadTimeDays: 14 
+        leadTimeDays: 14,
+        dataSource: 'csv',
+        lastSyncAt: '2025-01-10T12:00:00.000Z',
+        autoPoEnabled: true,
+        autoPoThreshold: 'critical'
     },
     { 
         id: 'VEND-002', 
@@ -1029,7 +1036,10 @@ export const mockVendors: Vendor[] = [
         phone: '1-888-555-0102',
         address: '456 Bloom Ave, Gardenton, TX 75001',
         website: 'https://www.gardensupplies.co',
-        leadTimeDays: 7 
+        leadTimeDays: 7,
+        dataSource: 'api',
+        lastSyncAt: '2025-01-11T08:30:00.000Z',
+        autoPoEnabled: false
     },
     { 
         id: 'VEND-003', 
@@ -1038,7 +1048,9 @@ export const mockVendors: Vendor[] = [
         phone: '1-877-555-0103',
         address: '789 Recycle Rd, Packburg, FL 33101',
         website: 'https://www.ecopackaging.com',
-        leadTimeDays: 21 
+        leadTimeDays: 21,
+        dataSource: 'manual',
+        autoPoEnabled: false
     },
 ];
 

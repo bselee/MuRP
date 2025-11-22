@@ -44,9 +44,12 @@ const transformProfile = (row: any): User => ({
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [authUser, setAuthUser] = useState<SupabaseUser | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(() =>
+    isE2ETesting() ? { ...DEV_DEFAULT_USER, name: `${DEV_DEFAULT_USER.name} (E2E)` } : null
+  );
+  const [loading, setLoading] = useState(() => !isE2ETesting());
   const [godMode, setGodMode] = useState(() => shouldEnableGodModeFromUrl() || loadGodModeFlag());
+  const [isE2EMode] = useState(() => isE2ETesting());
 
   const applyGodMode = useCallback((enabled: boolean) => {
     if (!isDevelopment()) return;
@@ -93,7 +96,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
+    if (isE2EMode) {
+      setSession(null);
+      setAuthUser(null);
+      setUser(prev => prev ?? { ...DEV_DEFAULT_USER, name: `${DEV_DEFAULT_USER.name} (E2E)` });
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setAuthUser(nextSession?.user ?? null);
+      if (nextSession?.user?.id) {
+        fetchProfile(nextSession.user.id);
+      } else {
+        setUser(null);
+      }
+    });
+
     supabase.auth.getSession().then(({ data, error }) => {
       if (!mounted) return;
       if (error) {
@@ -109,28 +130,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setAuthUser(nextSession?.user ?? null);
-      if (nextSession?.user?.id) {
-        fetchProfile(nextSession.user.id);
-      } else {
-        setUser(null);
-      }
-    });
-
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [fetchProfile, isE2EMode]);
 
   useEffect(() => {
     if (session?.user?.id) return;
-    if (godMode || isE2ETesting()) {
-      setUser({ ...DEV_DEFAULT_USER, name: godMode ? `${DEV_DEFAULT_USER.name} (God Mode)` : DEV_DEFAULT_USER.name });
+    if (godMode || isE2EMode) {
+      setUser(prev => prev ?? {
+        ...DEV_DEFAULT_USER,
+        name: godMode
+          ? `${DEV_DEFAULT_USER.name} (God Mode)`
+          : isE2EMode
+            ? `${DEV_DEFAULT_USER.name} (E2E)`
+            : DEV_DEFAULT_USER.name,
+      });
+      if (isE2EMode) {
+        setLoading(false);
+      }
     }
-  }, [session, godMode]);
+  }, [session, godMode, isE2EMode]);
 
   const signIn = useCallback(async ({ email, password }: { email: string; password: string }) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

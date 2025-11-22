@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "tgf-compliance": {
+      "command": "python",
+      "args": ["-m", "mcp_server.src.server_python"],
+      "cwd": "./mcp-server",
+      "env": {
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}",
+        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}"
+      }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "description": "Context7 MCP server for fetching up-to-date library documentation"
+    }
+  }
+}
