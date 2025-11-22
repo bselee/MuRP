@@ -96,7 +96,7 @@ const COLUMN_WIDTH_CLASSES: Partial<Record<ColumnKey, string>> = {
     unitCost: 'w-24 max-w-[6.5rem]',
 };
 
-const COMPACT_CELL_PADDING = 'py-0.5 leading-tight';
+const COMPACT_CELL_PADDING = 'py-0.5 leading-tight text-[13px]';
 
 type SortKeys = keyof InventoryItem | 'status' | 'vendor' | 'runway';
 
@@ -1087,7 +1087,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700">
-                                {processedInventory.map(item => {
+                                {processedInventory.map((item, index) => {
                                     const stockStatus = getStockStatus(item);
                                     const vendor = getVendorName(item.vendorId);
                                     const bomDetails = getBomDetailsForComponent(item.sku, bomUsageMap);
@@ -1100,7 +1100,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             ref={(el) => {
                                                 if (el) inventoryRowRefs.current.set(item.sku, el);
                                             }}
-                                            className="hover:bg-gray-700/50 transition-colors"
+                                            className={`${index % 2 === 0 ? 'bg-gray-900/40' : 'bg-gray-900/20'} hover:bg-gray-700/50 transition-colors`}
                                         >
                                             {visibleColumns.map(col => {
                                                 const widthClass = COLUMN_WIDTH_CLASSES[col.key] || '';

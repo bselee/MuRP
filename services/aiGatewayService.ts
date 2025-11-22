@@ -370,6 +370,19 @@ function buildLocalComplianceProfile(userId: string): UserComplianceProfile {
   };
 }
 
+function isRateLimitError(error: any): boolean {
+  if (!error) return false;
+  if (typeof error.status === 'number' && error.status === 429) return true;
+  const message =
+    typeof error.message === 'string'
+      ? error.message
+      : typeof error?.response?.message === 'string'
+        ? error.response.message
+        : '';
+  if (!message) return false;
+  return /quota|limit|rate|token/i.test(message);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 💬 Chat API - Beautiful Conversations with AI
 // ═══════════════════════════════════════════════════════════════════════════
@@ -466,9 +479,10 @@ export async function sendChatMessage(request: ChatRequest): Promise<AIResponse>
 
   } catch (error: any) {
     console.error('🚨 AI Gateway error:', error);
+    const hitRateLimit = isRateLimitError(error);
 
-    // 8️⃣ Fallback to Gemini free tier if Gateway fails (Basic tier only)
-    if (tier === 'basic') {
+    // 8️⃣ Fallback to Gemini free tier if Gateway fails
+    if (tier === 'basic' || hitRateLimit) {
       console.log('⚡ Falling back to Gemini free tier...');
 
       try {
@@ -494,12 +508,20 @@ export async function sendChatMessage(request: ChatRequest): Promise<AIResponse>
         };
       } catch (fallbackError) {
         console.error('💥 Gemini fallback also failed:', fallbackError);
-        throw new Error('AI services temporarily unavailable. Please try again in a moment.');
+        throw new Error(
+          hitRateLimit
+            ? 'API quota temporarily exceeded. Please wait ~1 minute or shorten your request.'
+            : 'AI services temporarily unavailable. Please try again in a moment.'
+        );
       }
     }
 
     // For Full AI tier, don't fallback - just throw the error
-    throw new Error(`AI Gateway error: ${error.message}`);
+    throw new Error(
+      hitRateLimit
+        ? 'API quota temporarily exceeded. Please wait ~1 minute or shorten your request.'
+        : `AI Gateway error: ${error.message}`
+    );
   }
 }
 
