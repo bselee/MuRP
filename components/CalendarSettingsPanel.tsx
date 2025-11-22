@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { CalendarIcon, RefreshIcon, CheckCircleIcon } from './icons';
+import { CalendarIcon, RefreshIcon, TrashIcon, ChevronDownIcon } from './icons';
 import { getGoogleCalendarService, type GoogleCalendar } from '../services/googleCalendarService';
 import { supabase } from '../lib/supabase/client';
+import type { CalendarSourceConfig } from '../types/calendar';
+import { normalizeCalendarSources } from '../types/calendar';
 
 interface CalendarSettingsPanelProps {
   userId: string;
@@ -9,10 +11,10 @@ interface CalendarSettingsPanelProps {
 }
 
 interface CalendarSettings {
-  calendar_id: string | null;
   calendar_timezone: string;
   calendar_sync_enabled: boolean;
-  calendar_name: string | null;
+  calendar_sources: CalendarSourceConfig[];
+  calendar_push_enabled: boolean;
 }
 
 const TIMEZONES = [
@@ -28,19 +30,23 @@ const TIMEZONES = [
 
 export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ userId, addToast }) => {
   const [settings, setSettings] = useState<CalendarSettings>({
-    calendar_id: null,
     calendar_timezone: 'America/Los_Angeles',
     calendar_sync_enabled: false,
-    calendar_name: null,
+    calendar_sources: [],
+    calendar_push_enabled: false,
   });
   const [availableCalendars, setAvailableCalendars] = useState<GoogleCalendar[]>([]);
   const [isLoadingCalendars, setIsLoadingCalendars] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasGoogleAuth, setHasGoogleAuth] = useState(false);
+  const primaryCalendar = useMemo(() => {
+    if (settings.calendar_sources.length === 0) return null;
+    return settings.calendar_sources.find((src) => src.ingestEnabled) ?? settings.calendar_sources[0];
+  }, [settings.calendar_sources]);
 
   const calendarService = useMemo(
-    () => getGoogleCalendarService(settings.calendar_id || undefined, settings.calendar_timezone),
-    [settings.calendar_id, settings.calendar_timezone]
+    () => getGoogleCalendarService(primaryCalendar?.id || undefined, primaryCalendar?.timezone || settings.calendar_timezone),
+    [primaryCalendar?.id, primaryCalendar?.timezone, settings.calendar_timezone]
   );
 
   useEffect(() => {
@@ -89,22 +95,26 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
     try {
       const { data, error } = await supabase
         .from('user_settings')
-        .select('calendar_id, calendar_timezone, calendar_sync_enabled, calendar_name')
+        .select('calendar_id, calendar_name, calendar_timezone, calendar_sync_enabled, calendar_sources, calendar_push_enabled')
         .eq('user_id', userId)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error && (error as any).code !== 'PGRST116') {
         throw error;
       }
 
-      if (data) {
-        setSettings({
-          calendar_id: data.calendar_id,
-          calendar_timezone: data.calendar_timezone || 'America/Los_Angeles',
-          calendar_sync_enabled: data.calendar_sync_enabled || false,
-          calendar_name: data.calendar_name,
-        });
-      }
+      const sources = normalizeCalendarSources(data?.calendar_sources, {
+        id: data?.calendar_id ?? null,
+        name: data?.calendar_name ?? null,
+        timezone: data?.calendar_timezone ?? null,
+      });
+
+      setSettings({
+        calendar_timezone: data?.calendar_timezone || 'America/Los_Angeles',
+        calendar_sync_enabled: data?.calendar_sync_enabled || false,
+        calendar_sources: sources,
+        calendar_push_enabled: data?.calendar_push_enabled || false,
+      });
     } catch (error) {
       console.error('Error loading calendar settings:', error);
       addToast('Failed to load calendar settings', 'error');
@@ -134,32 +144,46 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
     }
   };
 
-  const handleCalendarSelect = (calendar: GoogleCalendar) => {
-    setSettings({
-      ...settings,
-      calendar_id: calendar.id,
-      calendar_name: calendar.summary,
-      calendar_timezone: calendar.timeZone || settings.calendar_timezone,
-    });
+  const handleAddCalendar = (calendar: GoogleCalendar) => {
+    if (settings.calendar_sources.some((src) => src.id === calendar.id)) {
+      addToast('Calendar already connected', 'info');
+      return;
+    }
+
+    setSettings((prev) => ({
+      ...prev,
+      calendar_sources: [
+        ...prev.calendar_sources,
+        {
+          id: calendar.id,
+          name: calendar.summary,
+          timezone: calendar.timeZone || prev.calendar_timezone,
+          ingestEnabled: prev.calendar_sources.length === 0,
+          pushEnabled: false,
+        },
+      ],
+    }));
   };
 
   const handleSaveSettings = async () => {
     try {
       setIsSaving(true);
+      const primary = settings.calendar_sources.find((src) => src.ingestEnabled) ?? settings.calendar_sources[0] ?? null;
 
-      // Upsert settings
+      const payload = {
+        user_id: userId,
+        calendar_id: primary?.id ?? null,
+        calendar_name: primary?.name ?? null,
+        calendar_timezone: settings.calendar_timezone,
+        calendar_sync_enabled: settings.calendar_sync_enabled,
+        calendar_sources: settings.calendar_sources,
+        calendar_push_enabled: settings.calendar_push_enabled,
+        updated_at: new Date().toISOString(),
+      };
+
       const { error } = await supabase
         .from('user_settings')
-        .upsert({
-          user_id: userId,
-          calendar_id: settings.calendar_id,
-          calendar_timezone: settings.calendar_timezone,
-          calendar_sync_enabled: settings.calendar_sync_enabled,
-          calendar_name: settings.calendar_name,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id',
-        });
+        .upsert(payload, { onConflict: 'user_id' });
 
       if (error) throw error;
 
@@ -225,61 +249,141 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
       </div>
 
       {/* Calendar Selection */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-white">Select Calendar</label>
+          <div>
+            <label className="text-sm font-medium text-white">Connected Calendars</label>
+            <p className="text-xs text-gray-400">Add multiple calendars and choose which ones to ingest builds from.</p>
+          </div>
           <button
             onClick={loadAvailableCalendars}
             disabled={isLoadingCalendars || !hasGoogleAuth}
             className="flex items-center gap-2 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded transition-colors"
           >
             <RefreshIcon className={`w-4 h-4 ${isLoadingCalendars ? 'animate-spin' : ''}`} />
-            {isLoadingCalendars ? 'Loading...' : 'Load Calendars'}
+            {isLoadingCalendars ? 'Loading…' : 'Load Google Calendars'}
           </button>
         </div>
 
-        {settings.calendar_name && (
-          <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-            <CheckCircleIcon className="w-5 h-5 text-green-400" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-white">{settings.calendar_name}</p>
-              <p className="text-xs text-gray-400">{settings.calendar_id}</p>
-            </div>
+        {settings.calendar_sources.length === 0 ? (
+          <div className="p-4 border border-dashed border-gray-700 rounded-lg text-sm text-gray-400">
+            No calendars connected yet. Load calendars above to add them.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {settings.calendar_sources.map((source) => (
+              <div key={source.id} className="border border-gray-700 rounded-lg p-4 bg-gray-900/40 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{source.name}</p>
+                    <p className="text-xs text-gray-400 break-all">{source.id}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Timezone: {source.timezone || settings.calendar_timezone}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveCalendar(source.id)}
+                    className="text-gray-400 hover:text-red-400 transition-colors"
+                    title="Remove calendar"
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="flex items-center justify-between text-sm text-gray-200">
+                    <span>Pull builds & demand</span>
+                    <input
+                      type="checkbox"
+                      className="w-5 h-5 text-blue-600 rounded border-gray-600 bg-gray-800"
+                      checked={source.ingestEnabled}
+                      onChange={(e) => handleToggleIngest(source.id, e.target.checked)}
+                    />
+                  </label>
+                  <label className="flex items-center justify-between text-sm text-gray-200">
+                    <span>Push logistics events</span>
+                    <input
+                      type="checkbox"
+                      className="w-5 h-5 text-indigo-600 rounded border-gray-600 bg-gray-800"
+                      checked={source.pushEnabled && settings.calendar_push_enabled}
+                      disabled={!settings.calendar_push_enabled}
+                      onChange={(e) => handleTogglePush(source.id, e.target.checked)}
+                    />
+                  </label>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
         {availableCalendars.length > 0 && (
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {availableCalendars.map((calendar) => (
-              <button
-                key={calendar.id}
-                onClick={() => handleCalendarSelect(calendar)}
-                className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                  settings.calendar_id === calendar.id
-                    ? 'bg-blue-500/20 border-blue-500'
-                    : 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-white">{calendar.summary}</p>
-                    {calendar.description && (
-                      <p className="text-xs text-gray-400 mt-1">{calendar.description}</p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      {calendar.id} • {calendar.timeZone}
-                    </p>
+          <div className="border border-gray-800 rounded-lg">
+            <div className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium text-white bg-gray-900/60 border-b border-gray-800">
+              <span className="flex items-center gap-2">
+                <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+                Available Google Calendars
+              </span>
+              <span className="text-xs text-gray-400">{availableCalendars.length} found</span>
+            </div>
+            <div className="max-h-72 overflow-y-auto divide-y divide-gray-800">
+              {availableCalendars.map((calendar) => {
+                const isLinked = settings.calendar_sources.some((src) => src.id === calendar.id);
+                return (
+                  <div key={calendar.id} className="p-3 bg-gray-900/30">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-white">{calendar.summary}</p>
+                        {calendar.description && (
+                          <p className="text-xs text-gray-400">{calendar.description}</p>
+                        )}
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          {calendar.id} • {calendar.timeZone}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleAddCalendar(calendar)}
+                        disabled={isLinked}
+                        className={`px-3 py-1 rounded text-xs font-semibold ${
+                          isLinked
+                            ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        }`}
+                      >
+                        {isLinked ? 'Connected' : 'Add'}
+                      </button>
+                    </div>
                   </div>
-                  {calendar.primary && (
-                    <span className="px-2 py-0.5 text-xs bg-blue-500/20 text-blue-400 rounded">
-                      Primary
-                    </span>
-                  )}
-                </div>
-              </button>
-            ))}
+                );
+              })}
+            </div>
           </div>
         )}
+      </div>
+
+      {/* Push toggle */}
+      <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+        <div>
+          <label className="text-sm font-medium text-white">Enable Calendar Push</label>
+          <p className="text-xs text-gray-400 mt-1">
+            When enabled, MuRP can push inbound logistics events (critical POs, expected receipts) to selected calendars.
+          </p>
+        </div>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={settings.calendar_push_enabled}
+            onChange={(e) =>
+              setSettings((prev) => ({
+                ...prev,
+                calendar_push_enabled: e.target.checked,
+                calendar_sources: e.target.checked
+                  ? prev.calendar_sources
+                  : prev.calendar_sources.map((src) => ({ ...src, pushEnabled: false })),
+              }))
+            }
+            className="sr-only peer"
+          />
+          <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+        </label>
       </div>
 
       {/* Timezone Selection */}
@@ -328,3 +432,28 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
 };
 
 export default CalendarSettingsPanel;
+  const handleRemoveCalendar = (id: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      calendar_sources: prev.calendar_sources.filter((src) => src.id !== id),
+    }));
+  };
+
+  const handleToggleIngest = (id: string, enabled: boolean) => {
+    setSettings((prev) => ({
+      ...prev,
+      calendar_sources: prev.calendar_sources.map((src) =>
+        src.id === id ? { ...src, ingestEnabled: enabled } : src
+      ),
+    }));
+  };
+
+  const handleTogglePush = (id: string, enabled: boolean) => {
+    if (!settings.calendar_push_enabled && enabled) return;
+    setSettings((prev) => ({
+      ...prev,
+      calendar_sources: prev.calendar_sources.map((src) =>
+        src.id === id ? { ...src, pushEnabled: enabled } : src
+      ),
+    }));
+  };

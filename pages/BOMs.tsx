@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions } from '../types';
+import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions, QuickRequestDefaults } from '../types';
 import type { ComplianceStatus } from '../types/regulatory';
 import {
   PencilIcon,
@@ -49,6 +49,7 @@ interface BOMsProps {
   onCreateRequisition: (items: RequisitionItem[], options?: RequisitionRequestOptions) => void;
   onCreateBuildOrder: (sku: string, name: string, quantity: number, scheduledDate?: string, dueDate?: string) => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  onQuickRequest?: (defaults?: QuickRequestDefaults) => void;
 }
 
 const BOMs: React.FC<BOMsProps> = ({
@@ -62,7 +63,8 @@ const BOMs: React.FC<BOMsProps> = ({
   onUploadArtwork,
   onCreateRequisition,
   onCreateBuildOrder,
-  addToast
+  addToast,
+  onQuickRequest
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
@@ -86,11 +88,10 @@ const BOMs: React.FC<BOMsProps> = ({
   const [buildabilityFilter, setBuildabilityFilter] = useState<BuildabilityFilter>('all');
   const [sortBy, setSortBy] = useState<SortOption>('name');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
-  const [showCriticalAlerts, setShowCriticalAlerts] = useState(true);
   const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);
   
   // Collapsible sections state
-  const [isAlertsOpen, setIsAlertsOpen] = useState(true);
+  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [isComplianceOpen, setIsComplianceOpen] = useState(false);
 
@@ -488,12 +489,21 @@ const BOMs: React.FC<BOMsProps> = ({
           <p className="text-gray-400 mt-1">Manage product recipes, buildability, and compliance status</p>
         </div>
         {canSubmitRequisitions && (
-          <button
-            onClick={() => setIsRequisitionModalOpen(true)}
-            className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white shadow hover:bg-indigo-700 transition-colors"
-          >
-            Submit Requisition
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => onQuickRequest?.()}
+              className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white shadow hover:bg-indigo-500 transition-colors disabled:opacity-50"
+              disabled={!onQuickRequest}
+            >
+              Ask About Product
+            </button>
+            <button
+              onClick={() => setIsRequisitionModalOpen(true)}
+              className="inline-flex items-center justify-center rounded-md border border-gray-600 px-4 py-2 text-sm font-semibold text-gray-200 hover:border-gray-400 transition-colors"
+            >
+              Advanced Requisition
+            </button>
+          </div>
         )}
       </header>
 

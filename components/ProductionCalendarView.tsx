@@ -9,11 +9,13 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { CalendarIcon, ClockIcon, ExclamationTriangleIcon, CheckCircleIcon, XMarkIcon } from '../components/icons';
+import { CalendarIcon, ClockIcon, ExclamationTriangleIcon, CheckCircleIcon, XMarkIcon, TruckIcon } from '../components/icons';
 import { getGoogleCalendarService, type ProductionCalendarEvent as GoogleProductionEvent } from '../services/googleCalendarService';
 import { supabase } from '../lib/supabase/client';
-import type { BuildOrder, MaterialRequirement, BillOfMaterials, InventoryItem, Vendor } from '../types';
+import type { BuildOrder, MaterialRequirement, BillOfMaterials, InventoryItem, Vendor, PurchaseOrder } from '../types';
 import ScheduleBuildModal from './ScheduleBuildModal';
+import type { CalendarSourceConfig } from '../types/calendar';
+import { normalizeCalendarSources } from '../types/calendar';
 
 const localizer = momentLocalizer(moment);
 
@@ -54,14 +56,40 @@ interface GoogleCalendarDisplayEvent {
   googleEvent: GoogleProductionEvent;
 }
 
-type UnifiedCalendarEvent = CalendarBuildEvent | GoogleCalendarDisplayEvent;
+interface LogisticsCalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  status: 'Inbound';
+  source: 'logistics';
+  materialShortfall: boolean;
+  severity: 'critical' | 'warning';
+  logistics: {
+    po: PurchaseOrder;
+    vendorName: string;
+    arrivalDate: Date;
+    items: LogisticsItemDetail[];
+  };
+}
+
+interface LogisticsItemDetail {
+  sku: string;
+  name?: string;
+  quantity: number;
+  onHand: number;
+  reorderPoint?: number;
+}
+
+type UnifiedCalendarEvent = CalendarBuildEvent | GoogleCalendarDisplayEvent | LogisticsCalendarEvent;
 
 type DemandWindow = 30 | 60 | 90;
 
 interface CalendarSettingsState {
-  calendar_id: string | null;
   calendar_timezone: string;
   calendar_sync_enabled: boolean;
+  calendar_sources: CalendarSourceConfig[];
+  calendar_push_enabled: boolean;
 }
 
 interface ExternalDemandRow {
@@ -71,6 +99,12 @@ interface ExternalDemandRow {
   available: number;
   shortfall: number;
   nextEventDate: Date | null;
+  sourceNames: Set<string>;
+}
+
+interface EnrichedGoogleEvent extends GoogleProductionEvent {
+  calendarSourceId: string;
+  calendarSourceName: string;
 }
 
 interface ProductionCalendarViewProps {
@@ -78,6 +112,7 @@ interface ProductionCalendarViewProps {
   boms: BillOfMaterials[];
   inventory: InventoryItem[];
   vendors: Vendor[];
+  purchaseOrders: PurchaseOrder[];
   onCreateBuildOrder: (sku: string, name: string, quantity: number, scheduledDate?: string, dueDate?: string) => void;
   onUpdateBuildOrder: (buildOrder: BuildOrder) => void;
   onCompleteBuildOrder: (buildOrderId: string) => void;
@@ -89,6 +124,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
   boms,
   inventory,
   vendors,
+  purchaseOrders,
   onCreateBuildOrder,
   onUpdateBuildOrder,
   onCompleteBuildOrder,
@@ -100,29 +136,44 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
   const [selectedExternalEvent, setSelectedExternalEvent] = useState<GoogleProductionEvent | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newEventDate, setNewEventDate] = useState<Date | null>(null);
-  const [googleEvents, setGoogleEvents] = useState<GoogleProductionEvent[]>([]);
+  const [googleEvents, setGoogleEvents] = useState<EnrichedGoogleEvent[]>([]);
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const [calendarSettings, setCalendarSettings] = useState<CalendarSettingsState | null>(null);
   const [calendarSyncError, setCalendarSyncError] = useState<string | null>(null);
   const [demandWindow, setDemandWindow] = useState<DemandWindow>(30);
+  const [isPushingLogistics, setIsPushingLogistics] = useState(false);
 
   const inventoryMap = useMemo(() => new Map(inventory.map(item => [item.sku, item])), [inventory]);
+  const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
+  const primaryCalendar = useMemo(() => {
+    if (!calendarSettings) return null;
+    return calendarSettings.calendar_sources.find((src) => src.ingestEnabled) ?? calendarSettings.calendar_sources[0] ?? null;
+  }, [calendarSettings]);
+  const ingestCalendars = useMemo(() => {
+    if (!calendarSettings) return [];
+    return calendarSettings.calendar_sources.filter((src) => src.ingestEnabled);
+  }, [calendarSettings]);
+  const pushCalendars = useMemo(() => {
+    if (!calendarSettings || !calendarSettings.calendar_push_enabled) return [];
+    return calendarSettings.calendar_sources.filter((src) => src.pushEnabled);
+  }, [calendarSettings]);
 
   const fetchCalendarSettings = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setCalendarSettings({
-          calendar_id: null,
           calendar_timezone: 'America/Los_Angeles',
           calendar_sync_enabled: false,
+          calendar_sources: [],
+          calendar_push_enabled: false,
         });
         return;
       }
 
       const { data, error } = await supabase
         .from('user_settings')
-        .select('calendar_id, calendar_timezone, calendar_sync_enabled')
+        .select('calendar_id, calendar_name, calendar_timezone, calendar_sync_enabled, calendar_sources, calendar_push_enabled')
         .eq('user_id', user.id)
         .single();
 
@@ -130,17 +181,25 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
         throw error;
       }
 
+      const sources = normalizeCalendarSources(data?.calendar_sources, {
+        id: data?.calendar_id ?? null,
+        name: data?.calendar_name ?? null,
+        timezone: data?.calendar_timezone ?? null,
+      });
+
       setCalendarSettings({
-        calendar_id: data?.calendar_id ?? null,
         calendar_timezone: data?.calendar_timezone || 'America/Los_Angeles',
         calendar_sync_enabled: data?.calendar_sync_enabled ?? false,
+        calendar_sources: sources,
+        calendar_push_enabled: data?.calendar_push_enabled ?? false,
       });
     } catch (error) {
       console.error('Error loading calendar settings:', error);
       setCalendarSettings({
-        calendar_id: null,
         calendar_timezone: 'America/Los_Angeles',
         calendar_sync_enabled: false,
+        calendar_sources: [],
+        calendar_push_enabled: false,
       });
     }
   }, []);
@@ -149,40 +208,64 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
     fetchCalendarSettings();
   }, [fetchCalendarSettings]);
 
-  const loadGoogleCalendarEvents = useCallback(async (windowOverride?: number, silent = false) => {
-    if (!calendarSettings || !calendarSettings.calendar_sync_enabled) {
-      if (!silent) {
-        addToast('Enable calendar sync in Settings to pull Google Calendar events', 'info');
+  const loadGoogleCalendarEvents = useCallback(
+    async (windowOverride?: number, silent = false) => {
+      if (!calendarSettings || !calendarSettings.calendar_sync_enabled) {
+        if (!silent) {
+          addToast('Enable calendar sync in Settings to pull Google Calendar events', 'info');
+        }
+        return;
       }
-      return;
-    }
 
-    try {
-      setIsLoadingGoogle(true);
-      setCalendarSyncError(null);
-      const calendarService = getGoogleCalendarService(
-        calendarSettings.calendar_id || undefined,
-        calendarSettings.calendar_timezone
-      );
-      const events = await calendarService.getProductionEvents({
-        windowDays: windowOverride ?? 90,
-      });
-      setGoogleEvents(events);
-      if (!silent) {
-        addToast(`Synced ${events.length} Google events`, 'success');
+      const ingestSources = ingestCalendars;
+      if (ingestSources.length === 0) {
+        setGoogleEvents([]);
+        if (!silent) {
+          addToast('Select at least one calendar to ingest builds from.', 'info');
+        }
+        return;
       }
-    } catch (error) {
-      console.error('Error loading Google Calendar events:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      setCalendarSyncError(message);
-      setGoogleEvents([]);
-      if (!silent) {
-        addToast('Failed to sync Google Calendar', 'error');
+
+      try {
+        setIsLoadingGoogle(true);
+        setCalendarSyncError(null);
+        const allEvents: EnrichedGoogleEvent[] = [];
+
+        for (const source of ingestSources) {
+          const calendarService = getGoogleCalendarService(
+            source.id,
+            source.timezone || calendarSettings.calendar_timezone
+          );
+          const events = await calendarService.getProductionEvents({
+            windowDays: windowOverride ?? 90,
+          });
+          events.forEach((event) =>
+            allEvents.push({
+              ...event,
+              calendarSourceId: source.id,
+              calendarSourceName: source.name,
+            })
+          );
+        }
+
+        setGoogleEvents(allEvents);
+        if (!silent) {
+          addToast(`Synced ${allEvents.length} events from ${ingestSources.length} calendar(s)`, 'success');
+        }
+      } catch (error) {
+        console.error('Error loading Google Calendar events:', error);
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        setCalendarSyncError(message);
+        setGoogleEvents([]);
+        if (!silent) {
+          addToast('Failed to sync Google Calendar', 'error');
+        }
+      } finally {
+        setIsLoadingGoogle(false);
       }
-    } finally {
-      setIsLoadingGoogle(false);
-    }
-  }, [calendarSettings, addToast]);
+    },
+    [calendarSettings, ingestCalendars, addToast]
+  );
 
   useEffect(() => {
     if (calendarSettings?.calendar_sync_enabled) {
@@ -190,18 +273,22 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
     } else if (calendarSettings) {
       setGoogleEvents([]);
     }
-  }, [calendarSettings?.calendar_id, calendarSettings?.calendar_sync_enabled, loadGoogleCalendarEvents]);
+  }, [ingestCalendars, calendarSettings?.calendar_sync_enabled, loadGoogleCalendarEvents]);
 
   const handleSyncBuildOrderToGoogle = useCallback(async (buildOrder: BuildOrder) => {
     if (!calendarSettings?.calendar_sync_enabled) {
       addToast('Enable calendar sync in Settings before syncing build orders', 'info');
       return;
     }
+    if (!primaryCalendar) {
+      addToast('Select a calendar to push builds to.', 'error');
+      return;
+    }
 
     try {
       const calendarService = getGoogleCalendarService(
-        calendarSettings.calendar_id || undefined,
-        calendarSettings.calendar_timezone
+        primaryCalendar.id,
+        primaryCalendar.timezone || calendarSettings.calendar_timezone
       );
 
       if (buildOrder.calendarEventId) {
@@ -219,7 +306,72 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
       console.error('Error syncing build order to Google:', error);
       addToast('Failed to sync with Google Calendar', 'error');
     }
-  }, [calendarSettings, addToast, onUpdateBuildOrder, loadGoogleCalendarEvents]);
+  }, [calendarSettings, primaryCalendar, addToast, onUpdateBuildOrder, loadGoogleCalendarEvents]);
+
+  const buildLogisticsDescription = (event: LogisticsCalendarEvent) => {
+    const lines = [
+      `PO: ${event.logistics.po.orderId || event.logistics.po.id}`,
+      `Vendor: ${event.logistics.vendorName}`,
+      `Expected: ${event.logistics.arrivalDate.toLocaleDateString()}`,
+      '',
+      'Items:',
+      ...event.logistics.items.map(
+        (item) =>
+          `• ${item.sku} – Qty ${item.quantity} (On hand ${item.onHand}${item.reorderPoint ? ` / ROP ${item.reorderPoint}` : ''})`
+      ),
+      '',
+      `Status: ${event.severity === 'critical' ? 'Critical shortfall' : 'Low stock'}`,
+    ];
+    return lines.join('\n');
+  };
+
+  const handlePushLogisticsToCalendar = useCallback(async () => {
+    if (!calendarSettings?.calendar_push_enabled) {
+      addToast('Enable calendar push in Settings before sending logistics events.', 'info');
+      return;
+    }
+    if (pushCalendars.length === 0) {
+      addToast('Select at least one calendar to push logistics events to.', 'info');
+      return;
+    }
+    if (logisticsEvents.length === 0) {
+      addToast('No critical inbound purchase orders detected.', 'info');
+      return;
+    }
+
+    try {
+      setIsPushingLogistics(true);
+      const eventsToPush = logisticsEvents.slice(0, 15);
+
+      for (const target of pushCalendars) {
+        const calendarService = getGoogleCalendarService(
+          target.id,
+          target.timezone || calendarSettings.calendar_timezone
+        );
+        for (const event of eventsToPush) {
+          await calendarService.createCustomEvent({
+            title: `${event.title} – ${event.logistics.vendorName}`,
+            start: event.start.toISOString(),
+            end: event.end.toISOString(),
+            description: buildLogisticsDescription(event),
+            extendedProperties: {
+              private: {
+                source: 'murp-logistics',
+                poId: event.logistics.po.id,
+              },
+            },
+          });
+        }
+      }
+
+      addToast(`Pushed ${eventsToPush.length} logistics events to calendar`, 'success');
+    } catch (error) {
+      console.error('Error pushing logistics events:', error);
+      addToast('Failed to push logistics events', 'error');
+    } finally {
+      setIsPushingLogistics(false);
+    }
+  }, [calendarSettings, pushCalendars, logisticsEvents, addToast]);
 
   // Handle creating new build order from calendar
   const buildEvents = useMemo<CalendarBuildEvent[]>(() => {
@@ -274,9 +426,59 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
     });
   }, [googleEvents, inventoryMap]);
 
+  const logisticsEvents = useMemo<LogisticsCalendarEvent[]>(() => {
+    const events: LogisticsCalendarEvent[] = [];
+
+    purchaseOrders.forEach((po) => {
+      const arrivalIso = po.trackingEstimatedDelivery || po.estimatedReceiveDate || po.expectedDate || po.orderDate;
+      if (!arrivalIso) return;
+      const arrivalDate = new Date(arrivalIso);
+      const criticalItems: LogisticsItemDetail[] = [];
+
+      po.items.forEach((item) => {
+        const inventoryItem = inventoryMap.get(item.sku);
+        const onHand = inventoryItem?.stock ?? 0;
+        const reorderPoint = inventoryItem?.reorderPoint ?? 0;
+        const isCritical = !inventoryItem || onHand <= 0 || (reorderPoint > 0 && onHand <= reorderPoint);
+        if (!isCritical) return;
+        criticalItems.push({
+          sku: item.sku,
+          name: item.name || item.description,
+          quantity: item.quantity,
+          onHand,
+          reorderPoint,
+        });
+      });
+
+      if (criticalItems.length === 0) {
+        return;
+      }
+
+      const severity = criticalItems.some((item) => item.onHand <= 0) ? 'critical' : 'warning';
+      events.push({
+        id: `logistics-${po.id}-${arrivalIso}`,
+        title: `Inbound ${po.orderId || po.id}`,
+        start: arrivalDate,
+        end: new Date(arrivalDate.getTime() + 60 * 60 * 1000),
+        status: 'Inbound',
+        source: 'logistics',
+        materialShortfall: severity === 'critical',
+        severity,
+        logistics: {
+          po,
+          vendorName: po.vendorId ? vendorMap.get(po.vendorId)?.name || po.supplier : po.supplier,
+          arrivalDate,
+          items: criticalItems,
+        },
+      });
+    });
+
+    return events.sort((a, b) => a.start.getTime() - b.start.getTime());
+  }, [purchaseOrders, inventoryMap, vendorMap]);
+
   const combinedEvents = useMemo<UnifiedCalendarEvent[]>(
-    () => [...buildEvents, ...googleDisplayEvents],
-    [buildEvents, googleDisplayEvents]
+    () => [...buildEvents, ...googleDisplayEvents, ...logisticsEvents],
+    [buildEvents, googleDisplayEvents, logisticsEvents]
   );
 
   const demandSummaries = useMemo<Record<DemandWindow, ExternalDemandRow[]>>(
@@ -301,6 +503,8 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
 
     if (event.source === 'google') {
       backgroundColor = event.materialShortfall ? '#dc2626' : '#0ea5e9';
+    } else if (event.source === 'logistics') {
+      backgroundColor = event.severity === 'critical' ? '#be185d' : '#a855f7';
     } else if (event.status === 'Completed') {
       backgroundColor = '#10b981'; // Green
     } else if (event.status === 'In Progress') {
@@ -325,6 +529,11 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
   const handleSelectEvent = (event: UnifiedCalendarEvent) => {
     if (event.source === 'google') {
       setSelectedExternalEvent(event.googleEvent);
+    } else if (event.source === 'logistics') {
+      addToast(
+        `Inbound PO ${event.logistics.po.orderId || event.logistics.po.id} expected ${event.start.toLocaleDateString()}`,
+        event.severity === 'critical' ? 'error' : 'info'
+      );
     } else {
       setSelectedBuild(event.resource);
     }
@@ -364,11 +573,20 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
           </button>
           <div className="flex flex-col text-xs">
             {calendarSettings?.calendar_sync_enabled ? (
-              <span className="text-gray-400">
-                {calendarSettings.calendar_id ? `Calendar: ${calendarSettings.calendar_id}` : 'No calendar selected'}
-              </span>
+              ingestCalendars.length > 0 ? (
+                <span className="text-gray-400">
+                  Pulling from {ingestCalendars.map((c) => c.name).join(', ')}
+                </span>
+              ) : (
+                <span className="text-yellow-400">No calendars selected for ingestion</span>
+              )
             ) : (
               <span className="text-yellow-400">Sync disabled</span>
+            )}
+            {calendarSettings?.calendar_push_enabled && (
+              <span className="text-gray-400">
+                Push targets: {pushCalendars.length > 0 ? pushCalendars.map((c) => c.name).join(', ') : 'None selected'}
+              </span>
             )}
             {calendarSyncError && (
               <span className="text-red-400">{calendarSyncError}</span>
@@ -415,6 +633,10 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
           <div className="w-3 h-3 bg-sky-500 rounded"></div>
           <span className="text-gray-300">Google Event</span>
         </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-purple-500 rounded"></div>
+          <span className="text-gray-300">Inbound Logistics</span>
+        </div>
       </div>
 
       {(googleEvents.length > 0 || calendarSettings?.calendar_sync_enabled) && (
@@ -454,6 +676,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
                       <th className="text-left py-1 pr-4 font-medium">On Hand</th>
                       <th className="text-left py-1 pr-4 font-medium">Gap</th>
                       <th className="text-left py-1 font-medium">Next Event</th>
+                      <th className="text-left py-1 font-medium">Calendars</th>
                     </tr>
                   </thead>
                   <tbody className="text-gray-200">
@@ -467,6 +690,9 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
                         </td>
                         <td className="py-1 text-gray-400">
                           {row.nextEventDate ? row.nextEventDate.toLocaleDateString() : '—'}
+                        </td>
+                        <td className="py-1 text-gray-400">
+                          {row.sourceNames.size > 0 ? Array.from(row.sourceNames).join(', ') : '—'}
                         </td>
                       </tr>
                     ))}
@@ -502,6 +728,89 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
         </div>
       )}
 
+      {(logisticsEvents.length > 0 || calendarSettings?.calendar_push_enabled) && (
+        <div className="bg-gray-900/40 border border-gray-800 rounded-lg p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-white">Inbound Logistics (Critical POs)</h3>
+              <p className="text-xs text-gray-400">
+                POs covering out-of-stock or low inventory items. Use this to answer “when is it arriving?” without chasing procurement.
+              </p>
+            </div>
+            <button
+              onClick={handlePushLogisticsToCalendar}
+              disabled={
+                !calendarSettings?.calendar_push_enabled ||
+                pushCalendars.length === 0 ||
+                isPushingLogistics ||
+                logisticsEvents.length === 0
+              }
+              className={`px-3 py-1.5 text-xs rounded ${
+                calendarSettings?.calendar_push_enabled && pushCalendars.length > 0 && logisticsEvents.length > 0
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              {isPushingLogistics ? 'Pushing…' : 'Push to Calendar'}
+            </button>
+          </div>
+
+          {logisticsEvents.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead className="text-gray-400">
+                  <tr>
+                    <th className="text-left py-1 pr-4 font-medium">PO</th>
+                    <th className="text-left py-1 pr-4 font-medium">Vendor</th>
+                    <th className="text-left py-1 pr-4 font-medium">Arrival</th>
+                    <th className="text-left py-1 pr-4 font-medium">Critical Items</th>
+                    <th className="text-left py-1 font-medium">Severity</th>
+                  </tr>
+                </thead>
+                <tbody className="text-gray-200">
+                  {logisticsEvents.slice(0, 5).map((event) => (
+                    <tr key={event.id} className="border-t border-gray-800">
+                      <td className="py-1 pr-4 font-semibold">{event.logistics.po.orderId || event.logistics.po.id}</td>
+                      <td className="py-1 pr-4">{event.logistics.vendorName || 'Unknown vendor'}</td>
+                      <td className="py-1 pr-4 text-gray-400">{event.start.toLocaleDateString()}</td>
+                      <td className="py-1 pr-4">
+                        <ul className="space-y-0.5">
+                          {event.logistics.items.slice(0, 3).map((item) => (
+                            <li key={item.sku}>
+                              {item.sku} · Qty {item.quantity} (On hand {item.onHand})
+                            </li>
+                          ))}
+                          {event.logistics.items.length > 3 && (
+                            <li className="text-[11px] text-gray-500">
+                              +{event.logistics.items.length - 3} more
+                            </li>
+                          )}
+                        </ul>
+                      </td>
+                      <td className="py-1">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                            event.severity === 'critical'
+                              ? 'bg-rose-500/20 text-rose-200 border border-rose-500/40'
+                              : 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/40'
+                          }`}
+                        >
+                          {event.severity === 'critical' ? 'Critical' : 'Warning'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">
+              No critical inbound purchase orders detected yet. When inventory falls below safety stock, inbound orders will display here.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Calendar */}
       <div className="flex-1 bg-white rounded-lg p-4">
         <Calendar
@@ -526,6 +835,15 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
               const skuLine = event.googleEvent.finishedSku ? `SKU: ${event.googleEvent.finishedSku}\n` : '';
               const qtyLine = event.googleEvent.quantity ? `Quantity: ${event.googleEvent.quantity}\n` : '';
               return `${event.title}\n${skuLine}${qtyLine}Source: Google Calendar`;
+            }
+            if (event.source === 'logistics') {
+              const lines = [
+                event.title,
+                `Vendor: ${event.logistics.vendorName || 'Unknown'}`,
+                `Expected: ${event.start.toLocaleDateString()}`,
+                `Items: ${event.logistics.items.map((item) => item.sku).join(', ')}`,
+              ];
+              return lines.join('\n');
             }
             return `${event.title}\nStatus: ${event.status}${event.materialShortfall ? '\n⚠️ Material Shortfall' : ''}`;
           }}
@@ -936,7 +1254,7 @@ const ExternalEventDetailsModal: React.FC<ExternalEventDetailsModalProps> = ({
 
 // Create Scheduled Build Modal Component
 function computeExternalDemand(
-  events: GoogleProductionEvent[],
+  events: EnrichedGoogleEvent[],
   inventoryMap: Map<string, InventoryItem>,
   windowDays: number
 ): ExternalDemandRow[] {
@@ -944,7 +1262,10 @@ function computeExternalDemand(
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() + windowDays);
 
-  const aggregate = new Map<string, { total: number; nextEventDate: Date | null; name?: string }>();
+  const aggregate = new Map<
+    string,
+    { total: number; nextEventDate: Date | null; name?: string; sourceNames: Set<string> }
+  >();
 
   events.forEach((event) => {
     if (!event.finishedSku || typeof event.quantity !== 'number') {
@@ -956,12 +1277,16 @@ function computeExternalDemand(
       return;
     }
 
-    const entry = aggregate.get(event.finishedSku) || { total: 0, nextEventDate: null };
+    const entry =
+      aggregate.get(event.finishedSku) || { total: 0, nextEventDate: null, sourceNames: new Set<string>() };
     entry.total += event.quantity;
     if (!entry.nextEventDate || start < entry.nextEventDate) {
       entry.nextEventDate = start;
     }
     entry.name = event.title;
+    if (event.calendarSourceName) {
+      entry.sourceNames.add(event.calendarSourceName);
+    }
     aggregate.set(event.finishedSku, entry);
   });
 
@@ -976,6 +1301,7 @@ function computeExternalDemand(
         available,
         shortfall: available - info.total,
         nextEventDate: info.nextEventDate,
+        sourceNames: info.sourceNames,
       } as ExternalDemandRow;
     })
     .sort((a, b) => a.shortfall - b.shortfall);

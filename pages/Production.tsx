@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import ProductionCalendarView from '../components/ProductionCalendarView';
 import { CalendarIcon, TableCellsIcon } from '../components/icons';
-import type { BuildOrder, BillOfMaterials, InventoryItem, Vendor } from '../types';
+import type { BuildOrder, BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, QuickRequestDefaults } from '../types';
 import ScheduleBuildModal from '../components/ScheduleBuildModal';
 
 interface ProductionProps {
@@ -9,10 +9,12 @@ interface ProductionProps {
     boms: BillOfMaterials[];
     inventory: InventoryItem[];
     vendors: Vendor[];
+    purchaseOrders: PurchaseOrder[];
     onCompleteBuildOrder: (buildOrderId: string) => void;
     onCreateBuildOrder: (sku: string, name: string, quantity: number, scheduledDate?: string, dueDate?: string) => void;
     onUpdateBuildOrder: (buildOrder: BuildOrder) => void;
     addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+    onQuickRequest?: (defaults?: QuickRequestDefaults) => void;
 }
 
 const StatusBadge: React.FC<{ status: BuildOrder['status'] }> = ({ status }) => {
@@ -30,10 +32,12 @@ const Production: React.FC<ProductionProps> = ({
     boms, 
     inventory, 
     vendors, 
+    purchaseOrders,
     onCompleteBuildOrder, 
     onCreateBuildOrder, 
     onUpdateBuildOrder, 
-    addToast 
+    addToast,
+    onQuickRequest
 }) => {
     const [view, setView] = useState<'table' | 'calendar'>('table');
     const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
@@ -54,15 +58,25 @@ const Production: React.FC<ProductionProps> = ({
                     </div>
                     
                     <div className="flex items-center gap-3 flex-wrap justify-end">
-                        <button
-                            onClick={() => {
-                                setScheduleAnchor(new Date());
-                                setScheduleModalOpen(true);
-                            }}
-                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                        >
-                            Schedule Build
-                        </button>
+                        <div className="flex gap-2 flex-wrap justify-end">
+                            {onQuickRequest && (
+                                <button
+                                    onClick={() => onQuickRequest()}
+                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
+                                >
+                                    Ask About Product
+                                </button>
+                            )}
+                            <button
+                                onClick={() => {
+                                    setScheduleAnchor(new Date());
+                                    setScheduleModalOpen(true);
+                                }}
+                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                            >
+                                Schedule Build
+                            </button>
+                        </div>
                         {/* View Toggle */}
                         <div className="flex bg-gray-700 rounded-lg">
                             <button
@@ -98,6 +112,7 @@ const Production: React.FC<ProductionProps> = ({
                     boms={boms}
                     inventory={inventory}
                     vendors={vendors}
+                    purchaseOrders={purchaseOrders}
                     onCreateBuildOrder={onCreateBuildOrder}
                     onUpdateBuildOrder={onUpdateBuildOrder}
                     onCompleteBuildOrder={onCompleteBuildOrder}
@@ -130,16 +145,26 @@ const Production: React.FC<ProductionProps> = ({
                                     <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(bo.createdAt).toLocaleDateString()}</td>
                                     <td className="px-6 py-1 whitespace-nowrap"><StatusBadge status={bo.status} /></td>
                                     <td className="px-6 py-1 whitespace-nowrap">
-                                        {bo.status !== 'Completed' ? (
-                                            <button 
-                                                onClick={() => onCompleteBuildOrder(bo.id)}
-                                                className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
-                                            >
-                                                Mark Completed
-                                            </button>
-                                        ) : (
-                                            <span className="text-xs text-gray-500">Done</span>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {onQuickRequest && bo.finishedSku && (
+                                                <button
+                                                    onClick={() => onQuickRequest({ sku: bo.finishedSku, requestType: 'product_alert', alertOnly: true })}
+                                                    className="bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold py-1.5 px-3 rounded-md transition-colors"
+                                                >
+                                                    Ask
+                                                </button>
+                                            )}
+                                            {bo.status !== 'Completed' ? (
+                                                <button 
+                                                    onClick={() => onCompleteBuildOrder(bo.id)}
+                                                    className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
+                                                >
+                                                    Mark Completed
+                                                </button>
+                                            ) : (
+                                                <span className="text-xs text-gray-500">Done</span>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

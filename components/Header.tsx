@@ -45,7 +45,7 @@ const Header: React.FC<HeaderProps> = ({
                         onClick={onQuickRequest}
                         className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
                     >
-                        Need Supplies?
+                        Ask About Product
                     </button>
                     <AlertBell alerts={systemAlerts} onDismiss={onDismissAlert} />
                 <div className="flex items-center space-x-3">

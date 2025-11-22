@@ -1289,10 +1289,12 @@ const AppShell: React.FC = () => {
           boms={boms}
           inventory={inventory}
           vendors={vendors}
+          purchaseOrders={purchaseOrders}
           onCompleteBuildOrder={handleCompleteBuildOrder} 
           onCreateBuildOrder={handleCreateBuildOrder}
           onUpdateBuildOrder={handleUpdateBuildOrder}
           addToast={addToast}
+          onQuickRequest={openQuickRequestDrawer}
         />;
       case 'BOMs':
         return <BOMs
@@ -1307,6 +1309,7 @@ const AppShell: React.FC = () => {
           onCreateRequisition={(items, options) => handleCreateRequisition(items, 'Manual', options)}
           onCreateBuildOrder={handleCreateBuildOrder}
           addToast={addToast}
+          onQuickRequest={openQuickRequestDrawer}
         />;
       case 'Artwork':
         return <ArtworkPage 
@@ -1468,6 +1471,7 @@ const AppShell: React.FC = () => {
       <QuickRequestDrawer
         isOpen={isQuickRequestOpen}
         inventory={inventory || []}
+        purchaseOrders={purchaseOrders || []}
         defaults={quickRequestDefaults ?? undefined}
         onClose={closeQuickRequestDrawer}
         onSubmit={handleQuickRequestSubmit}

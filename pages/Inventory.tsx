@@ -96,7 +96,7 @@ const COLUMN_WIDTH_CLASSES: Partial<Record<ColumnKey, string>> = {
     unitCost: 'w-24 max-w-[6.5rem]',
 };
 
-const COMPACT_CELL_PADDING = 'py-0.5 leading-tight text-[13px]';
+const COMPACT_CELL_PADDING = 'py-[2px] leading-tight text-[12px]';
 
 type SortKeys = keyof InventoryItem | 'status' | 'vendor' | 'runway';
 
@@ -1059,8 +1059,18 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             Flags SKUs when runway &lt; vendor lead time or stock is at/below the reorder point. Daily demand uses the most conservative rate across sales velocity and 30/60/90-day averages.
                         </span>
                     </div>
-                    <div className="mt-4 text-sm text-gray-400">
-                        Showing <span className="font-semibold text-white">{processedInventory.length}</span> of <span className="font-semibold text-white">{inventory.length}</span> items
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm text-gray-400">
+                            Showing <span className="font-semibold text-white">{processedInventory.length}</span> of <span className="font-semibold text-white">{inventory.length}</span> items
+                        </p>
+                        {onQuickRequest && (
+                            <button
+                                onClick={() => onQuickRequest?.()}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
+                            >
+                                Ask About Product
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -1081,18 +1091,24 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         const sortKey = col.key === 'vendor' ? 'vendor' : col.key as SortKeys;
                                         return <SortableHeader key={col.key} title={col.label} sortKey={sortKey} sortConfig={sortConfig} requestSort={requestSort} className={widthClass} />;
                                     })}
-                                    <th className="px-6 py-2 text-right text-xs font-medium text-gray-300 uppercase tracking-wider w-32">
-                                        Request
+                                    <th className="px-6 py-2 text-right text-xs font-medium text-gray-300 uppercase tracking-wider w-36">
+                                        Actions
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-700">
+                            <tbody className="divide-y divide-gray-800">
                                 {processedInventory.map((item, index) => {
                                     const stockStatus = getStockStatus(item);
                                     const vendor = getVendorName(item.vendorId);
                                     const bomDetails = getBomDetailsForComponent(item.sku, bomUsageMap);
                                     const bomCount = bomDetails.length;
                                     const insight = demandInsights.get(item.sku);
+                                    const rowAccent =
+                                        index % 3 === 0
+                                            ? 'bg-slate-950/50'
+                                            : index % 3 === 1
+                                              ? 'bg-slate-900/40'
+                                              : 'bg-slate-900/20';
 
                                     return (
                                         <tr 
@@ -1100,7 +1116,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             ref={(el) => {
                                                 if (el) inventoryRowRefs.current.set(item.sku, el);
                                             }}
-                                            className={`${index % 2 === 0 ? 'bg-gray-900/40' : 'bg-gray-900/20'} hover:bg-gray-700/50 transition-colors`}
+                                            className={`${rowAccent} hover:bg-gray-700/60 transition-colors`}
                                         >
                                             {visibleColumns.map(col => {
                                                 const widthClass = COLUMN_WIDTH_CLASSES[col.key] || '';
@@ -1253,12 +1269,19 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             <td className={`px-6 ${COMPACT_CELL_PADDING} text-right whitespace-nowrap`}>
                                                 <div className="flex justify-end gap-2">
                                                     <button
+                                                        onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true })}
+                                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-gray-700/80 hover:bg-gray-600 text-white transition disabled:opacity-40"
+                                                        disabled={!onQuickRequest}
+                                                    >
+                                                        Ask
+                                                    </button>
+                                                    <button
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'consumable' })}
                                                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white transition disabled:opacity-40"
                                                         disabled={!onQuickRequest}
                                                     >
                                                         <PlusCircleIcon className="w-4 h-4" />
-                                                        Request
+                                                        Requisition
                                                     </button>
                                                     <button
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true, priority: 'high' })}

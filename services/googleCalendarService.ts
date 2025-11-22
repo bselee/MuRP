@@ -27,6 +27,18 @@ export interface ProductionCalendarEvent extends GoogleCalendarEvent {
   materials?: CalendarMaterial[];
 }
 
+export interface CalendarEventPayload {
+  title: string;
+  start: string;
+  end: string;
+  description?: string;
+  location?: string;
+  finishedSku?: string;
+  quantity?: number;
+  materials?: CalendarMaterial[];
+  extendedProperties?: Record<string, Record<string, string>>;
+}
+
 export interface GoogleCalendar {
   id: string;
   summary: string;
@@ -87,7 +99,7 @@ export class GoogleCalendarService {
     }));
   }
 
-  private buildEventPayloadFromOrder(buildOrder: BuildOrder) {
+  private buildEventPayloadFromOrder(buildOrder: BuildOrder): CalendarEventPayload {
     if (!buildOrder.scheduledDate) {
       throw new Error('Build order must have a scheduled date to sync with Google Calendar');
     }
@@ -107,6 +119,26 @@ export class GoogleCalendarService {
       quantity: buildOrder.quantity,
       materials: this.mapMaterials(buildOrder.materialRequirements),
     };
+  }
+
+  private async createCalendarEvent(event: CalendarEventPayload): Promise<string | null> {
+    try {
+      await this.requireSession();
+      const { data, error } = await supabase.functions.invoke('google-calendar', {
+        body: {
+          action: 'create_event',
+          calendarId: this.calendarId,
+          timeZone: this.timeZone,
+          event,
+        },
+      });
+
+      if (error) throw error;
+      return data.eventId as string;
+    } catch (error) {
+      console.error('[GoogleCalendarService] Error creating event:', error);
+      return null;
+    }
   }
 
   /** List available Google Calendars for the user */
@@ -200,25 +232,12 @@ export class GoogleCalendarService {
 
   /** Create a build order event in Google Calendar */
   async createBuildEvent(buildOrder: BuildOrder): Promise<string | null> {
-    try {
-      await this.requireSession();
-      const event = this.buildEventPayloadFromOrder(buildOrder);
+    const event = this.buildEventPayloadFromOrder(buildOrder);
+    return this.createCalendarEvent(event);
+  }
 
-      const { data, error } = await supabase.functions.invoke('google-calendar', {
-        body: {
-          action: 'create_event',
-          calendarId: this.calendarId,
-          timeZone: this.timeZone,
-          event,
-        },
-      });
-
-      if (error) throw error;
-      return data.eventId as string;
-    } catch (error) {
-      console.error('[GoogleCalendarService] Error creating build event:', error);
-      return null;
-    }
+  async createCustomEvent(event: CalendarEventPayload): Promise<string | null> {
+    return this.createCalendarEvent(event);
   }
 
   /** Update an existing Google Calendar event */
