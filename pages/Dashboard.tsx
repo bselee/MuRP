@@ -243,8 +243,20 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       </header>
       
       <section>
-        <h2 className="text-xl font-semibold mb-4 text-gray-300">Executive Summary</h2>
-        <ExecutiveSummary data={buildabilityData} onCardClick={() => handleCardClick('buildability')} />
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-semibold text-gray-300">Executive Summary</h2>
+        </div>
+        <ExecutiveSummary data={buildabilityData} onCardClick={(status) => {
+          localStorage.setItem('dashboardBuildabilityFilter', status);
+          setCurrentPage('BOMs');
+          requestAnimationFrame(() => {
+            try {
+              localStorage.setItem('bomStatusFilter', status);
+            } catch {
+              // no-op
+            }
+          });
+        }} />
       </section>
       
       <div className="space-y-6">

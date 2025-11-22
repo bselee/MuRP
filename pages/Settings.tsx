@@ -57,6 +57,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isDataIntegrationsOpen, setIsDataIntegrationsOpen] = useState(false);
     const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
     const [isDocumentTemplatesOpen, setIsDocumentTemplatesOpen] = useState(false);
+    const [isVendorAdminOpen, setIsVendorAdminOpen] = useState(false);
     const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
     const [isMcpServerOpen, setIsMcpServerOpen] = useState(false);
     const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
@@ -252,6 +253,34 @@ Thank you!`
               onToggle={() => setIsDocumentTemplatesOpen(!isDocumentTemplatesOpen)}
             >
               <DocumentTemplatesPanel addToast={addToast} />
+            </CollapsibleSection>
+          )}
+
+          {/* Vendor Administration (Admin only) */}
+          {currentUser.role === 'Admin' && (
+            <CollapsibleSection
+              title="Vendor Administration"
+              icon={<UsersIcon className="w-6 h-6 text-sky-400" />}
+              isOpen={isVendorAdminOpen}
+              onToggle={() => setIsVendorAdminOpen(!isVendorAdminOpen)}
+            >
+              <div className="space-y-3 bg-gray-900/40 border border-gray-800 rounded-lg p-4">
+                <p className="text-sm text-gray-300">
+                  Everyone can see vendor info inside purchase orders and requisitions, but only admins can edit vendor
+                  records. Use the button below when you need to add, deactivate, or update a supplier profile.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => setCurrentPage('Vendors')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
+                  >
+                    Manage Vendors
+                  </button>
+                  <p className="text-xs text-gray-500 flex items-center">
+                    Vendor data remains visible elsewhere for job duties, but modifications stay locked to admins.
+                  </p>
+                </div>
+              </div>
             </CollapsibleSection>
           )}
 

@@ -5,7 +5,7 @@ import { BoxIcon, CheckCircleIcon, ExclamationCircleIcon, XCircleIcon } from './
 
 interface ExecutiveSummaryProps {
   data: Buildability[];
-  onCardClick: (sectionId: string) => void;
+  onCardClick: (status: 'In Stock' | 'Low Stock' | 'Out of Stock') => void;
 }
 
 interface SummaryCardProps {
@@ -36,10 +36,6 @@ const ExecutiveSummary: React.FC<ExecutiveSummaryProps> = ({ data, onCardClick }
     const lowStockCount = data.filter(item => item.status === 'Low Stock').length;
     const outOfStockCount = data.filter(item => item.status === 'Out of Stock').length;
 
-    const handleCardClick = () => {
-        onCardClick('buildability');
-    };
-
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <SummaryCard 
@@ -47,21 +43,21 @@ const ExecutiveSummary: React.FC<ExecutiveSummaryProps> = ({ data, onCardClick }
                 title="Buildable & In Stock"
                 value={inStockCount}
                 color="border-green-400"
-                onClick={handleCardClick}
+                onClick={() => onCardClick('In Stock')}
             />
             <SummaryCard 
                 icon={<ExclamationCircleIcon className="w-10 h-10 text-yellow-400" />}
                 title="Buildable with Low Stock"
                 value={lowStockCount}
                 color="border-yellow-400"
-                onClick={handleCardClick}
+                onClick={() => onCardClick('Low Stock')}
             />
             <SummaryCard 
                 icon={<XCircleIcon className="w-10 h-10 text-red-400" />}
                 title="Unbuildable (Out of Stock)"
                 value={outOfStockCount}
                 color="border-red-400"
-                onClick={handleCardClick}
+                onClick={() => onCardClick('Out of Stock')}
             />
         </div>
     );

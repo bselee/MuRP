@@ -35,7 +35,7 @@ import { supabase } from '../lib/supabase/client';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability';
-type BuildabilityFilter = 'all' | 'buildable' | 'not-buildable';
+type BuildabilityFilter = 'all' | 'buildable' | 'not-buildable' | 'out-of-stock' | 'near-oos';
 
 interface BOMsProps {
   boms: BillOfMaterials[];
@@ -85,14 +85,17 @@ const BOMs: React.FC<BOMsProps> = ({
   // New UI state
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [buildabilityFilter, setBuildabilityFilter] = useState<BuildabilityFilter>('all');
+  const [buildabilityFilter, setBuildabilityFilter] = useState<BuildabilityFilter>(() => {
+    const stored = localStorage.getItem('bomStatusFilter') as BuildabilityFilter | null;
+    return stored ?? 'all';
+  });
   const [sortBy, setSortBy] = useState<SortOption>('name');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);
   
   // Collapsible sections state
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isComplianceOpen, setIsComplianceOpen] = useState(false);
 
   // Debug inventory integration
@@ -385,7 +388,25 @@ const BOMs: React.FC<BOMsProps> = ({
     if (buildabilityFilter !== 'all') {
       result = result.filter(bom => {
         const { maxBuildable } = calculateBuildability(bom);
-        return buildabilityFilter === 'buildable' ? maxBuildable > 0 : maxBuildable === 0;
+        const finished = inventoryMap.get(bom.finishedSku);
+        const stock = finished?.stock ?? 0;
+        const runwayDays = finished?.daysOfStock ?? null;
+
+        switch (buildabilityFilter) {
+          case 'buildable':
+            return maxBuildable > 0;
+          case 'not-buildable':
+            return maxBuildable === 0;
+          case 'out-of-stock':
+            return stock <= 0;
+          case 'near-oos':
+            if (runwayDays !== null) {
+              return runwayDays <= 10;
+            }
+            return stock <= (finished?.reorderPoint ?? 0);
+          default:
+            return true;
+        }
       });
     }
 
@@ -488,22 +509,13 @@ const BOMs: React.FC<BOMsProps> = ({
           <h1 className="text-3xl font-bold text-white tracking-tight">Bills of Materials</h1>
           <p className="text-gray-400 mt-1">Manage product recipes, buildability, and compliance status</p>
         </div>
-        {canSubmitRequisitions && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => onQuickRequest?.()}
-              className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white shadow hover:bg-indigo-500 transition-colors disabled:opacity-50"
-              disabled={!onQuickRequest}
-            >
-              Ask About Product
-            </button>
-            <button
-              onClick={() => setIsRequisitionModalOpen(true)}
-              className="inline-flex items-center justify-center rounded-md border border-gray-600 px-4 py-2 text-sm font-semibold text-gray-200 hover:border-gray-400 transition-colors"
-            >
-              Advanced Requisition
-            </button>
-          </div>
+        {canSubmitRequisitions && onQuickRequest && (
+          <button
+            onClick={() => onQuickRequest()}
+            className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white shadow hover:bg-indigo-500 transition-colors"
+          >
+            Ask About Product
+          </button>
         )}
       </header>
 
@@ -626,12 +638,22 @@ const BOMs: React.FC<BOMsProps> = ({
             {/* Buildability Filter */}
             <select
               value={buildabilityFilter}
-              onChange={(e) => setBuildabilityFilter(e.target.value as BuildabilityFilter)}
+              onChange={(e) => {
+                const next = e.target.value as BuildabilityFilter;
+                setBuildabilityFilter(next);
+                try {
+                  localStorage.setItem('bomStatusFilter', next);
+                } catch (error) {
+                  console.warn('[BOMs] Unable to store status filter', error);
+                }
+              }}
               className="px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="all">All Status</option>
               <option value="buildable">✓ Buildable</option>
               <option value="not-buildable">✗ Not Buildable</option>
+              <option value="out-of-stock">Out of Stock</option>
+              <option value="near-oos">Near OOS (≤10d)</option>
             </select>
 
             {/* Category Filter */}
