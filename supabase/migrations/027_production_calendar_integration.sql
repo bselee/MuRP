@@ -172,12 +172,13 @@ RETURNS TABLE (
 BEGIN
   RETURN QUERY
   WITH bom_explosion AS (
-    -- Get BOM components for the finished SKU (components stored as JSONB array)
+    -- Expand BOM component JSON into relational rows so Postgres can join efficiently
     SELECT
-      (jsonb_array_elements(b.components)->>'sku')::TEXT as component_sku,
-      (jsonb_array_elements(b.components)->>'name')::TEXT as component_name,
-      ((jsonb_array_elements(b.components)->>'quantity')::INTEGER * p_quantity) as total_required
+      component->>'sku' AS component_sku,
+      component->>'name' AS component_name,
+      ((component->>'quantity')::INTEGER * p_quantity) AS total_required
     FROM boms b
+    CROSS JOIN LATERAL jsonb_array_elements(b.components) AS component
     WHERE b.finished_sku = p_finished_sku
       AND b.components IS NOT NULL
       AND jsonb_array_length(b.components) > 0
@@ -192,7 +193,7 @@ BEGIN
     (be.total_required * COALESCE(ii.unit_cost, 0))::DECIMAL as cost
   FROM bom_explosion be
   LEFT JOIN inventory_items ii ON ii.sku = be.component_sku
-  LEFT JOIN vendors v ON v.id::TEXT = ii.vendor_id;
+  LEFT JOIN vendors v ON v.id = ii.vendor_id;
 END;
 $$ LANGUAGE plpgsql;
 
