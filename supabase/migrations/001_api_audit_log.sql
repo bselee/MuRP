@@ -138,14 +138,13 @@ GROUP BY user_id, service;
 -- Functions
 -- ============================================================================
 
--- Function to clean up old audit logs (run as scheduled job)
-CREATE OR REPLACE FUNCTION cleanup_old_audit_logs(retention_days INTEGER DEFAULT 90)
+CREATE OR REPLACE FUNCTION cleanup_old_audit_logs(days_to_keep INTEGER DEFAULT 90)
 RETURNS INTEGER AS $$
 DECLARE
   deleted_count INTEGER;
 BEGIN
   DELETE FROM api_audit_log
-  WHERE timestamp < NOW() - INTERVAL '1 day' * retention_days;
+  WHERE timestamp < NOW() - INTERVAL '1 day' * days_to_keep;
   
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RETURN deleted_count;

@@ -53,7 +53,6 @@ const Settings: React.FC<SettingsProps> = ({
 }) => {
     // Collapsible section states (reordered by usage frequency)
     const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
-    const [isRegulatoryOpen, setIsRegulatoryOpen] = useState(false);
     const [isAiConfigOpen, setIsAiConfigOpen] = useState(false);
     const [isDataIntegrationsOpen, setIsDataIntegrationsOpen] = useState(false);
     const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
@@ -61,12 +60,47 @@ const Settings: React.FC<SettingsProps> = ({
     const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
     const [isMcpServerOpen, setIsMcpServerOpen] = useState(false);
     const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
-    const [isLegalOpen, setIsLegalOpen] = useState(false);
+    const [isSupportComplianceOpen, setIsSupportComplianceOpen] = useState(false);
     
     // API key visibility state
     const [showApiKey, setShowApiKey] = useState(false);
 
     const { godMode, setGodMode, session } = useAuth();
+
+    const helpTicketSubject = encodeURIComponent('MuRP Help Ticket');
+    const helpTicketBody = encodeURIComponent(
+      `Support team,
+
+We need assistance with:
+- Environment (prod / staging / dev):
+- Module (AfterShip, Finale sync, compliance, etc.):
+- Impact summary:
+- Owners/approvers looped in:
+
+Reference Terms: ${termsUrl}
+
+Thank you!`
+    );
+    const helpTicketMailto = `mailto:support@murp.app?subject=${helpTicketSubject}&body=${helpTicketBody}`;
+
+    const supportPlaybook = [
+      {
+        title: 'Plant Owners & Ops Leads',
+        notes: [
+          'Track regulatory acknowledgements for every facility before enabling AI output.',
+          'Document any production hold or recall inside the help ticket — ties back to ToS §16.',
+          'Share build IDs when escalating so deletion / retention windows (ToS §14) are clear.',
+        ],
+      },
+      {
+        title: 'Developers & Integrators',
+        notes: [
+          'Keep API keys rotated and scoped; reference the API docs tab when inviting vendors.',
+          'Log AfterShip / Finale sync failures with timestamps so support can replay jobs.',
+          'Attach Supabase run IDs or log excerpts to speed up RCA for compliance tooling.',
+        ],
+      },
+    ];
 
   return (
     <>
@@ -123,21 +157,7 @@ const Settings: React.FC<SettingsProps> = ({
             </CollapsibleSection>
           )}
 
-          {/* 2. Regulatory Compliance Agreement */}
-          <CollapsibleSection
-            title="Regulatory Compliance Agreement"
-            icon={<ShieldCheckIcon className="w-6 h-6 text-green-400" />}
-            isOpen={isRegulatoryOpen}
-            onToggle={() => setIsRegulatoryOpen(!isRegulatoryOpen)}
-          >
-            <RegulatoryAgreementPanel
-              currentUser={currentUser}
-              onUpdateUser={onUpdateUser}
-              addToast={addToast}
-            />
-          </CollapsibleSection>
-
-          {/* 3. AI Configuration (Consolidated) */}
+          {/* 2. AI Configuration (Consolidated) */}
           <CollapsibleSection
             title="AI Configuration"
             icon={<BotIcon className="w-6 h-6 text-purple-400" />}
@@ -166,7 +186,7 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
           </CollapsibleSection>
 
-          {/* 4. Data Inputs & Integrations */}
+          {/* 3. Data Inputs & Integrations */}
           <CollapsibleSection
             title="Data Inputs & Integrations"
             icon={<LinkIcon className="w-6 h-6 text-blue-400" />}
@@ -208,7 +228,7 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
           </CollapsibleSection>
 
-          {/* 5. Semantic Search */}
+          {/* 4. Semantic Search */}
           <CollapsibleSection
             title="Semantic Search"
             icon={<SearchIcon className="w-6 h-6 text-amber-400" />}
@@ -223,7 +243,7 @@ const Settings: React.FC<SettingsProps> = ({
             />
           </CollapsibleSection>
 
-          {/* 6. Document Templates (Admin only) */}
+          {/* 5. Document Templates (Admin only) */}
           {currentUser.role === 'Admin' && (
             <CollapsibleSection
               title="Document Templates"
@@ -246,43 +266,96 @@ const Settings: React.FC<SettingsProps> = ({
             </CollapsibleSection>
           )}
 
-          {/* 7. Legal & Support */}
+          {/* 6. Support & Compliance */}
           <CollapsibleSection
-            title="Legal & Support"
+            title="Support & Compliance"
             icon={<ShieldCheckIcon className="w-6 h-6 text-emerald-400" />}
-            isOpen={isLegalOpen}
-            onToggle={() => setIsLegalOpen(!isLegalOpen)}
+            isOpen={isSupportComplianceOpen}
+            onToggle={() => setIsSupportComplianceOpen(!isSupportComplianceOpen)}
           >
-            <div className="space-y-4">
-              <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-white">Terms of Service</h3>
-                <p className="text-sm text-gray-400 mt-1">
-                  Keep this accessible for auditors and internal users. The document lives in the repo so it can be versioned with code.
-                </p>
-                <a
-                  href={termsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-indigo-300 hover:text-indigo-100"
-                >
-                  View Terms of Service &rarr;
-                </a>
+            <div className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-5">
+                  <h3 className="text-lg font-semibold text-white">Terms & Controls</h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Keep auditors, plant owners, and investors aligned with the current Terms (v1.0, Nov 20 2025). Versioned in git for full traceability.
+                  </p>
+                  <ul className="mt-3 space-y-1 text-sm text-gray-300 list-disc list-inside">
+                    <li>Section 14 covers data retention + deletion requests.</li>
+                    <li>Section 16 clarifies compliance responsibilities.</li>
+                    <li>Section 12 reminds teams AI output is not legal advice.</li>
+                  </ul>
+                  <a
+                    href={termsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-indigo-300 hover:text-indigo-100"
+                  >
+                    View Terms of Service &rarr;
+                  </a>
+                </div>
+                <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-5 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Help Desk Workflow</h3>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Send everything to{' '}
+                      <a href="mailto:support@murp.app" className="text-indigo-300 hover:text-indigo-100 underline decoration-dotted">
+                        support@murp.app
+                      </a>{' '}
+                      with logs, impact, and stakeholders copied. We turn this into a tracked ticket internally.
+                    </p>
+                    <p className="text-sm text-gray-400 mt-3">
+                      Include environment, modules affected (Finale, AfterShip, MCP), and which owners/devs have already approved changes.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="mt-4 inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.open(helpTicketMailto, '_blank');
+                      }
+                    }}
+                  >
+                    Create Help Ticket
+                  </button>
+                </div>
               </div>
 
-              <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-white">Support</h3>
+              <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-5">
+                <h3 className="text-lg font-semibold text-white">Support Playbook</h3>
+                <p className="text-sm text-gray-400 mt-1">What each audience should include when escalating.</p>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {supportPlaybook.map((group) => (
+                    <div key={group.title} className="rounded-lg border border-gray-700/70 bg-gray-900/40 p-4">
+                      <p className="text-sm font-semibold text-white">{group.title}</p>
+                      <ul className="mt-2 space-y-1 text-sm text-gray-300 list-disc list-inside">
+                        {group.notes.map((note) => (
+                          <li key={note}>{note}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-5">
+                <h3 className="text-lg font-semibold text-white">Compliance Agreement</h3>
                 <p className="text-sm text-gray-400 mt-1">
-                  Need to escalate an issue or request data deletion? Email{' '}
-                  <a href="mailto:support@murp.app" className="text-indigo-300 hover:text-indigo-100 underline decoration-dotted">
-                    support@murp.app
-                  </a>{' '}
-                  and reference the build ID or production order.
+                  Capture acknowledgements that MuRP&apos;s regulatory intel is advisory only and must be verified by qualified counsel before shipping product.
                 </p>
+                <div className="mt-4">
+                  <RegulatoryAgreementPanel
+                    currentUser={currentUser}
+                    onUpdateUser={onUpdateUser}
+                    addToast={addToast}
+                  />
+                </div>
               </div>
             </div>
           </CollapsibleSection>
 
-          {/* 8. MCP Server Configuration (Admin only) */}
+          {/* 7. MCP Server Configuration (Admin only) */}
           {currentUser.role === 'Admin' && (
             <CollapsibleSection
               title="MCP Server Configuration"

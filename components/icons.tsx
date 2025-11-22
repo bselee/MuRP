@@ -16,6 +16,30 @@ export const SquirrelIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+export const MagicSparklesIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+  >
+    <line x1="4" y1="20" x2="13.5" y2="10.5" strokeLinecap="round" />
+    <line x1="11.5" y1="12.5" x2="15.5" y2="16.5" strokeLinecap="round" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M16 3.5l.75 2.4 2.4.75-2.4.75-.75 2.4-.75-2.4-2.4-.75 2.4-.75z"
+    />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M19.5 13.5l.45 1.45 1.45.45-1.45.45-.45 1.45-.45-1.45-1.45-.45 1.45-.45z"
+    />
+  </svg>
+);
+
 export const BoxIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-14L4 7v10l8 4m0-14V3" />

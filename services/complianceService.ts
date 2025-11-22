@@ -17,6 +17,7 @@ export interface UserComplianceProfile {
   target_states: string[];
   product_types?: string[];
   certifications_held?: string[];
+  chat_messages_this_month: number;
   checks_this_month: number;
   monthly_check_limit: number;
   total_checks_lifetime: number;

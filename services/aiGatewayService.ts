@@ -350,6 +350,26 @@ function checkTierLimits(
   return { allowed: true, message: 'Feature available' };
 }
 
+function buildLocalComplianceProfile(userId: string): UserComplianceProfile {
+  const safeId = userId && userId.trim().length > 0 ? userId : 'local-user';
+  return {
+    id: safeId,
+    user_id: safeId,
+    email: `${safeId}@local.dev`,
+    compliance_tier: 'basic',
+    subscription_status: 'trial',
+    trial_checks_remaining: 3,
+    industry: 'general',
+    target_states: [],
+    product_types: [],
+    certifications_held: [],
+    chat_messages_this_month: 0,
+    checks_this_month: 0,
+    monthly_check_limit: 3,
+    total_checks_lifetime: 0,
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 💬 Chat API - Beautiful Conversations with AI
 // ═══════════════════════════════════════════════════════════════════════════
@@ -381,13 +401,21 @@ function checkTierLimits(
  * ```
  */
 export async function sendChatMessage(request: ChatRequest): Promise<AIResponse> {
-  // 0️⃣ Check and reset monthly counters if needed
-  await checkAndResetIfNeeded(request.userId);
+  const safeUserId = request.userId && request.userId.trim().length > 0 ? request.userId : 'local-user';
 
-  // 1️⃣ Get user profile and tier
-  const profile = await getUserProfile(request.userId);
-  if (!profile) {
-    throw new Error('User profile not found');
+  // 0️⃣ Check and reset monthly counters if needed
+  try {
+    await checkAndResetIfNeeded(safeUserId);
+  } catch (error) {
+    console.warn('Failed to run monthly reset check. Continuing with local defaults.', error);
+  }
+
+  // 1️⃣ Get user profile and tier (fallback to local defaults if missing)
+  const dbProfile = await getUserProfile(safeUserId);
+  const profile = dbProfile ?? buildLocalComplianceProfile(safeUserId);
+
+  if (!dbProfile) {
+    console.warn(`User compliance profile not found for ${safeUserId}. Using basic tier defaults for chat limits.`);
   }
 
   const tier = profile.compliance_tier;
@@ -425,7 +453,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<AIResponse>
     };
 
     // Track usage asynchronously (don't wait for it)
-    trackUsage(request.userId, 'chat', usage).catch(err =>
+    trackUsage(safeUserId, 'chat', usage).catch(err =>
       console.error('Failed to track usage:', err)
     );
 

@@ -70,13 +70,35 @@ const SYNC_STEPS: Array<{ type: SyncType; label: string; accent: string }> = [
   { type: 'boms', label: 'BOMs', accent: 'text-emerald-300' },
 ];
 
+const CUSTOM_CARRIER_VALUE = 'custom';
+
 const AFTERSHIP_CARRIER_OPTIONS = [
   { value: 'ups', label: 'UPS' },
   { value: 'fedex', label: 'FedEx' },
   { value: 'usps', label: 'USPS' },
   { value: 'dhl', label: 'DHL' },
-  { value: 'other', label: 'Custom' },
+  { value: CUSTOM_CARRIER_VALUE, label: 'Custom Carrier' },
 ];
+
+const resolveCarrierSelection = (slug?: string) => {
+  if (!slug || slug === 'other') {
+    return { selectedCarrier: 'ups', customSlug: '' };
+  }
+
+  if (slug === CUSTOM_CARRIER_VALUE) {
+    return { selectedCarrier: CUSTOM_CARRIER_VALUE, customSlug: '' };
+  }
+
+  const matchesPreset = AFTERSHIP_CARRIER_OPTIONS.some(
+    (option) => option.value === slug && option.value !== CUSTOM_CARRIER_VALUE,
+  );
+
+  if (matchesPreset) {
+    return { selectedCarrier: slug, customSlug: '' };
+  }
+
+  return { selectedCarrier: CUSTOM_CARRIER_VALUE, customSlug: slug };
+};
 
 const formatRelativeTime = (iso?: string) => {
   if (!iso) return 'Never synced';
@@ -142,11 +164,13 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
   const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
   const [afterShipInputs, setAfterShipInputs] = useState({
     enabled: false,
-    defaultSlug: 'ups',
+    selectedCarrier: 'ups',
+    customSlug: '',
     apiKey: '',
   });
   const [afterShipStoredKey, setAfterShipStoredKey] = useState<string | null>(null);
   const [afterShipLoading, setAfterShipLoading] = useState(false);
+  const [afterShipError, setAfterShipError] = useState<string | null>(null);
 
   const fetchSyncHealth = useCallback(async () => {
     try {
@@ -183,12 +207,16 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
       if (error) throw error;
 
       const value = data?.setting_value || {};
+      const { selectedCarrier, customSlug } = resolveCarrierSelection(value.defaultSlug);
+
       setAfterShipInputs({
         enabled: Boolean(value.enabled),
-        defaultSlug: value.defaultSlug || 'ups',
+        selectedCarrier,
+        customSlug,
         apiKey: '',
       });
       setAfterShipStoredKey(value.apiKey ?? null);
+      setAfterShipError(null);
     } catch (error) {
       console.error('[APIIntegrations] Failed to load AfterShip config', error);
       addToast?.('Failed to load AfterShip settings', 'error');
@@ -200,13 +228,31 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
   const handleSaveAfterShip = useCallback(async () => {
     try {
       setAfterShipLoading(true);
+      setAfterShipError(null);
       const apiKeyToSave = afterShipInputs.apiKey.trim()
         ? afterShipInputs.apiKey.trim()
         : afterShipStoredKey;
 
+      const resolvedSlug =
+        afterShipInputs.selectedCarrier === CUSTOM_CARRIER_VALUE
+          ? afterShipInputs.customSlug.trim()
+          : afterShipInputs.selectedCarrier;
+
+      if (afterShipInputs.selectedCarrier === CUSTOM_CARRIER_VALUE && !resolvedSlug) {
+        setAfterShipError('Enter a valid AfterShip carrier slug when using the custom option.');
+        addToast?.('Custom carrier slug required before saving.', 'error');
+        return;
+      }
+
+      if (afterShipInputs.enabled && !resolvedSlug) {
+        setAfterShipError('Default carrier slug is required when tracking is enabled.');
+        addToast?.('Default carrier slug cannot be empty.', 'error');
+        return;
+      }
+
       const payload = {
         enabled: afterShipInputs.enabled,
-        defaultSlug: afterShipInputs.defaultSlug || 'ups',
+        defaultSlug: resolvedSlug || 'ups',
         apiKey: apiKeyToSave,
       };
 
@@ -234,7 +280,13 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
   const handleClearAfterShipKey = useCallback(() => {
     setAfterShipStoredKey(null);
     setAfterShipInputs((prev) => ({ ...prev, apiKey: '' }));
+    setAfterShipError(null);
   }, []);
+
+  const handleResetAfterShip = useCallback(() => {
+    setAfterShipError(null);
+    loadAfterShipConfig();
+  }, [loadAfterShipConfig]);
 
   const startManualPolling = useCallback(() => {
     if (typeof window === 'undefined' || manualPollingRef.current !== null) return;
@@ -847,7 +899,10 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
               type="checkbox"
               className="rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-500"
               checked={afterShipInputs.enabled}
-              onChange={(e) => setAfterShipInputs((prev) => ({ ...prev, enabled: e.target.checked }))}
+              onChange={(e) => {
+                setAfterShipInputs((prev) => ({ ...prev, enabled: e.target.checked }));
+                setAfterShipError(null);
+              }}
             />
             Enable automatic tracking updates
           </label>
@@ -856,8 +911,16 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
               Default Carrier Slug
             </label>
             <select
-              value={afterShipInputs.defaultSlug}
-              onChange={(e) => setAfterShipInputs((prev) => ({ ...prev, defaultSlug: e.target.value }))}
+              value={afterShipInputs.selectedCarrier}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                setAfterShipInputs((prev) => ({
+                  ...prev,
+                  selectedCarrier: nextValue,
+                  customSlug: nextValue === CUSTOM_CARRIER_VALUE ? prev.customSlug : '',
+                }));
+                setAfterShipError(null);
+              }}
               className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm text-white"
             >
               {AFTERSHIP_CARRIER_OPTIONS.map((option) => (
@@ -866,6 +929,27 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                 </option>
               ))}
             </select>
+            {afterShipInputs.selectedCarrier === CUSTOM_CARRIER_VALUE && (
+              <div className="mt-3">
+                <label className="block text-xs text-gray-400 uppercase tracking-wide mb-1">
+                  Carrier slug (from AfterShip docs)
+                </label>
+                <input
+                  type="text"
+                  value={afterShipInputs.customSlug}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setAfterShipInputs((prev) => ({ ...prev, customSlug: value }));
+                    setAfterShipError(null);
+                  }}
+                  placeholder="e.g., canada-post"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm text-white"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Use the exact slug AfterShip expects for your carrier.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -876,7 +960,10 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
           <input
             type="password"
             value={afterShipInputs.apiKey}
-            onChange={(e) => setAfterShipInputs((prev) => ({ ...prev, apiKey: e.target.value }))}
+            onChange={(e) => {
+              setAfterShipInputs((prev) => ({ ...prev, apiKey: e.target.value }));
+              setAfterShipError(null);
+            }}
             placeholder={afterShipStoredKey ? '•••••••••• (stored)' : 'Enter AfterShip API key'}
             className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm text-white"
           />
@@ -898,10 +985,14 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
           </div>
         </div>
 
+        {afterShipError && (
+          <p className="text-sm text-rose-300">{afterShipError}</p>
+        )}
+
         <div className="flex items-center justify-end gap-3">
           <button
             type="button"
-            onClick={loadAfterShipConfig}
+            onClick={handleResetAfterShip}
             className="text-sm text-gray-300 hover:text-white"
             disabled={afterShipLoading}
           >

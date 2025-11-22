@@ -1463,3 +1463,27 @@ WHERE setting_key = 'aftership_config';
 ---
 
 *This session summary reflects the ACTUAL development work based on git commit history, not planning documents. Focus areas were production dashboard modernization and Google OAuth security hardening.*
+
+---
+
+## 🧪 Session Log — November 22, 2025 (CSS & Supabase Hardening)
+
+### Frontend Styling + Build Notes
+- Replaced the Tailwind CDN dependency with the local PostCSS/Tailwind toolchain (`tailwind.config.js`, `postcss.config.js`, `src/index.css`) and wired it through `index.tsx`, so Vite bundles all styling and the login screen is fully themed again.
+- Removed the CDN `<script>` tag from `index.html` to keep CSP strict and avoid double-initializing Tailwind at runtime.
+- Verified `npm run build` locally and on Vercel (pdx1 enhanced build machine). Output artifacts: `assets/index-BHECWPAh.css` (76.7 kB, 13.3 kB gzip) and `assets/index-jEH8zWja.js` (1.84 MB, 477 kB gzip). Existing templateService chunk warning noted for future code-splitting.
+
+### Supabase Preview & Security Fixes
+- Fixed `027_production_calendar_integration.sql` by switching to `CROSS JOIN LATERAL jsonb_array_elements(...)`, unblocking Supabase preview-DB creation.
+- Strengthened `20251119000000_add_calendar_settings.sql`: ensured the table exists, added timestamps + trigger, RLS policies, and the calendar lookup index.
+- Added `035_secure_material_requirements.sql` to drop permissive “USERS CAN *” policies and replace them with assignment-aware SELECTs plus admin/service-role-only INSERT/UPDATE/DELETE policies.
+
+### Pending Ops
+- `supabase db push` currently fails because migration `001_api_audit_log.sql` tries to recreate the existing `cleanup_old_audit_logs(days_to_keep integer)` function. To finish syncing:
+  1. Repair migration history in Supabase Studio or manually drop/recreate the function so the first migration is idempotent.
+  2. Rerun `supabase db push` so only the new migrations apply.
+
+### Next Actions
+1. Repair migration history & push latest migrations (calendar settings + RLS tightening).
+2. Extend the RLS pattern to other sensitive tables (audit logs, production calendar data).
+3. Investigate chunk splitting for `services/templateService.ts` to shrink the 1.8 MB JS bundle.

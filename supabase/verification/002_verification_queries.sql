@@ -81,7 +81,7 @@ INSERT INTO vendors (
   data_source,
   sync_status
 ) VALUES (
-  'test-vendor-' || gen_random_uuid()::text,
+  gen_random_uuid(),
   'Test Vendor (Delete Me)',
   '123 Test Street',
   'Denver',
