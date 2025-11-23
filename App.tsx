@@ -21,6 +21,7 @@ import ArtworkPage from './pages/Artwork';
 import NewUserSetup from './pages/NewUserSetup';
 import ManualLabelScanner from './components/ManualLabelScanner';
 import QuickRequestDrawer from './components/QuickRequestDrawer';
+import OnboardingChecklist from './components/OnboardingChecklist';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
 import { UserPreferencesProvider } from './components/UserPreferencesProvider';
 import AuthCallback from './pages/AuthCallback';
@@ -139,6 +140,7 @@ const AppShell: React.FC = () => {
   } = useModalState();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = usePersistentState<boolean>('sidebarCollapsed', false);
   const [currentPage, setCurrentPage] = usePersistentState<Page>('currentPage', 'Dashboard');
+  const [navigationHistory, setNavigationHistory] = useState<Page[]>([currentPage]);
   const [toasts, setToasts] = useState<ToastInfo[]>([]);
   const [gmailConnection, setGmailConnection] = usePersistentState<GmailConnection>('gmailConnection', { isConnected: false, email: null });
   const [apiKey, setApiKey] = usePersistentState<string | null>('apiKey', null);
@@ -149,6 +151,33 @@ const AppShell: React.FC = () => {
   const notificationsPrimedRef = useRef(false);
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
   const [quickRequestDefaults, setQuickRequestDefaults] = useState<QuickRequestDefaults | null>(null);
+  const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(false);
+  const navigateToPage = useCallback((nextPage: Page) => {
+    setNavigationHistory(prev => {
+      if (prev[prev.length - 1] === nextPage) {
+        return prev;
+      }
+      const updated = [...prev, nextPage];
+      return updated.length > 25 ? updated.slice(updated.length - 25) : updated;
+    });
+    setCurrentPage(nextPage);
+  }, [setCurrentPage]);
+
+  const handleGoBack = useCallback(() => {
+    setNavigationHistory(prev => {
+      if (prev.length <= 1) {
+        return prev;
+      }
+      const nextHistory = prev.slice(0, -1);
+      const target = nextHistory[nextHistory.length - 1];
+      if (target) {
+        setCurrentPage(target);
+      }
+      return nextHistory;
+    });
+  }, [setCurrentPage]);
+
+  const canGoBack = navigationHistory.length > 1;
   const users = userProfiles;
   const googleAuthService = useMemo(() => getGoogleAuthService(), []);
   const gmailService = useMemo(() => getGoogleGmailService(), []);
@@ -193,6 +222,34 @@ const AppShell: React.FC = () => {
       setHasInitialDataLoaded(true);
     }
   }, [isDataLoading]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!currentUser?.id || !currentUser.onboardingComplete || isE2ETestMode) {
+      setShowOnboardingChecklist(false);
+      return;
+    }
+    try {
+      const stored = window.localStorage.getItem(`murp-onboarding-${currentUser.id}`);
+      if (!stored) {
+        setShowOnboardingChecklist(true);
+        return;
+      }
+      const parsed = JSON.parse(stored) as { completed?: boolean };
+      setShowOnboardingChecklist(!parsed?.completed);
+    } catch {
+      setShowOnboardingChecklist(true);
+    }
+  }, [currentUser, isE2ETestMode]);
+
+  const handleChecklistComplete = useCallback(() => {
+    if (typeof window === 'undefined' || !currentUser?.id) return;
+    window.localStorage.setItem(
+      `murp-onboarding-${currentUser.id}`,
+      JSON.stringify({ completed: true, completedAt: new Date().toISOString() }),
+    );
+    setShowOnboardingChecklist(false);
+  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -290,6 +347,7 @@ const AppShell: React.FC = () => {
       };
       const nextPage = map[path] ?? 'Dashboard';
       if (nextPage !== currentPage) {
+        setNavigationHistory([nextPage]);
         setCurrentPage(nextPage);
       }
 
@@ -299,7 +357,7 @@ const AppShell: React.FC = () => {
       // No-op: best-effort only for e2e/dev
       console.warn('[App] URL routing init skipped:', err);
     }
-  }, [currentUser, setCurrentPage]);
+  }, [currentUser, currentPage, setCurrentPage, setNavigationHistory]);
 
   // Auto-complete onboarding for users who confirmed email (preventing flash of setup screen)
   useEffect(() => {
@@ -487,7 +545,7 @@ const AppShell: React.FC = () => {
     } else {
       addToast(`Successfully created ${orderId} for ${vendor.name}.`, 'success');
     }
-    setCurrentPage('Purchase Orders');
+    navigateToPage('Purchase Orders');
   };
 
 
@@ -604,7 +662,7 @@ const AppShell: React.FC = () => {
 
     refetchBOMs();
     addToast(`Added artwork '${fileName}' (Rev ${newArtwork.revision}) to ${bom.name}.`, 'success');
-    setCurrentPage('Artwork');
+    navigateToPage('Artwork');
   };
 
   const handleCreatePoFromArtwork = (artworkIds: string[]) => {
@@ -663,7 +721,7 @@ const AppShell: React.FC = () => {
 
     enqueuePoDrafts(drafts);
     addToast(`Loaded ${drafts.length} draft PO${drafts.length === 1 ? '' : 's'} for review.`, 'success');
-    setCurrentPage('Purchase Orders');
+    navigateToPage('Purchase Orders');
   };
 
   const handleUpdateArtwork = async (artworkId: string, bomId: string, updates: Partial<Artwork>) => {
@@ -1027,7 +1085,7 @@ const AppShell: React.FC = () => {
     await queueShortagesForBuild(newBuildOrder);
     refetchBuildOrders();
     addToast(`Successfully created Build Order ${newBuildOrder.id} for ${quantity}x ${name}.`, 'success');
-    setCurrentPage('Production');
+    navigateToPage('Production');
   };
 
   const handleApproveRequisition = async (reqId: string) => {
@@ -1300,12 +1358,12 @@ const AppShell: React.FC = () => {
 
   const navigateToArtwork = (filter: string) => {
     setArtworkFilter(filter);
-    setCurrentPage('Artwork');
+    navigateToPage('Artwork');
   };
 
   const handleNavigateToInventory = (sku: string) => {
     localStorage.setItem('selectedInventorySku', sku);
-    setCurrentPage('Inventory');
+    navigateToPage('Inventory');
   };
 
   const renderPage = () => {
@@ -1323,7 +1381,7 @@ const AppShell: React.FC = () => {
           requisitions={requisitions}
           users={users}
           currentUser={currentUser}
-          setCurrentPage={setCurrentPage}
+          setCurrentPage={navigateToPage}
           aiConfig={aiConfig}
         />;
       case 'Inventory':
@@ -1333,7 +1391,7 @@ const AppShell: React.FC = () => {
           boms={boms}
           onQuickRequest={openQuickRequestDrawer}
           onNavigateToBom={(bomSku) => {
-            setCurrentPage('BOMs');
+            navigateToPage('BOMs');
             if (bomSku) {
               localStorage.setItem('selectedBomSku', bomSku);
             } else {
@@ -1431,7 +1489,7 @@ const AppShell: React.FC = () => {
             onGenerateApiKey={generateApiKey}
             onRevokeApiKey={revokeApiKey}
             addToast={addToast}
-            setCurrentPage={setCurrentPage}
+            setCurrentPage={navigateToPage}
             externalConnections={externalConnections}
             onSetExternalConnections={setExternalConnections}
             users={users}
@@ -1453,7 +1511,7 @@ const AppShell: React.FC = () => {
           requisitions={requisitions}
           users={users}
           currentUser={currentUser}
-          setCurrentPage={setCurrentPage}
+          setCurrentPage={navigateToPage}
           aiConfig={aiConfig}
         />;
     }
@@ -1520,7 +1578,7 @@ const AppShell: React.FC = () => {
     <div className={`flex h-screen ${shellBackground} text-[var(--text-color)] transition-colors duration-300`}>
       <Sidebar 
         currentPage={currentPage} 
-        setCurrentPage={setCurrentPage} 
+        setCurrentPage={navigateToPage} 
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         currentUser={currentUser}
@@ -1538,6 +1596,8 @@ const AppShell: React.FC = () => {
           systemAlerts={systemAlerts}
           onDismissAlert={dismissAlert}
           onQuickRequest={() => openQuickRequestDrawer()}
+          canGoBack={canGoBack}
+          onGoBack={canGoBack ? handleGoBack : undefined}
         />
         
         <main
@@ -1572,6 +1632,18 @@ const AppShell: React.FC = () => {
         onClose={closeQuickRequestDrawer}
         onSubmit={handleQuickRequestSubmit}
       />
+
+      {showOnboardingChecklist && currentUser && (
+        <OnboardingChecklist
+          user={currentUser}
+          onClose={() => setShowOnboardingChecklist(false)}
+          onComplete={handleChecklistComplete}
+          navigateTo={(pageName) => {
+            navigateToPage(pageName as Page);
+            setShowOnboardingChecklist(false);
+          }}
+        />
+      )}
 
       <AiAssistant
         isOpen={isAiAssistantOpen}

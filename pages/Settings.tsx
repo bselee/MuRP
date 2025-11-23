@@ -20,6 +20,8 @@ import { useAuth } from '../lib/auth/AuthContext';
 import { isDevelopment } from '../lib/auth/guards';
 import { useTheme, type ThemePreference } from '../components/ThemeProvider';
 import { useUserPreferences, type RowDensity, type FontScale } from '../components/UserPreferencesProvider';
+import JobDescriptionPanel from '../components/JobDescriptionPanel';
+import TwoFactorSettings from '../components/TwoFactorSettings';
 
 interface SettingsProps {
     currentUser: User;
@@ -67,6 +69,8 @@ const Settings: React.FC<SettingsProps> = ({
     const [isSupportComplianceOpen, setIsSupportComplianceOpen] = useState(false);
     const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
     const [isTablePrefsOpen, setIsTablePrefsOpen] = useState(false);
+    const [isJobDocsOpen, setIsJobDocsOpen] = useState(false);
+    const [isTwoFactorOpen, setIsTwoFactorOpen] = useState(false);
     
     // API key visibility state
     const [showApiKey, setShowApiKey] = useState(false);
@@ -165,6 +169,24 @@ Thank you!`
                 ))}
               </div>
             </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Job Descriptions & SOPs"
+            icon={<DocumentTextIcon className="w-6 h-6 text-indigo-300" />}
+            isOpen={isJobDocsOpen}
+            onToggle={() => setIsJobDocsOpen(!isJobDocsOpen)}
+          >
+            <JobDescriptionPanel currentUser={currentUser} addToast={addToast} />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Two-Factor Authentication"
+            icon={<ShieldCheckIcon className="w-6 h-6 text-emerald-300" />}
+            isOpen={isTwoFactorOpen}
+            onToggle={() => setIsTwoFactorOpen(!isTwoFactorOpen)}
+          >
+            <TwoFactorSettings addToast={addToast} />
           </CollapsibleSection>
 
           <CollapsibleSection

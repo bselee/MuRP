@@ -831,6 +831,29 @@ export interface User {
     };
 }
 
+export type JobDescriptionStatus = 'draft' | 'pending_review' | 'approved';
+
+export interface JobDescription {
+    id: string;
+    role: User['role'];
+    department: User['department'];
+    overview: string;
+    mission: string;
+    successMetrics: string[];
+    keyTools: string[];
+    sopSections: Array<{
+        title: string;
+        trigger: string;
+        owner: string;
+        steps: string[];
+    }>;
+    automationIdeas?: string[];
+    status: JobDescriptionStatus;
+    lastUpdatedBy?: string;
+    updatedAt?: string;
+    googleDocUrl?: string | null;
+}
+
 export type RequisitionRequestType = 'consumable' | 'product_alert' | 'finished_good' | 'other';
 export type RequisitionPriority = 'low' | 'medium' | 'high';
 

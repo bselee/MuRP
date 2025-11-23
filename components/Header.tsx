@@ -1,7 +1,7 @@
 import React from 'react';
 import Button from '@/components/ui/Button';
 import type { User } from '../types';
-import { LogoutIcon, MushroomLogo } from './icons';
+import { LogoutIcon, MushroomLogo, ChevronDownIcon } from './icons';
 import AlertBell from './AlertBell';
 import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 import { useTheme } from './ThemeProvider';
@@ -15,6 +15,8 @@ interface HeaderProps {
     systemAlerts: SystemAlert[];
     onDismissAlert: (idOrSource: string) => void;
     onQuickRequest: () => void;
+    canGoBack?: boolean;
+    onGoBack?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -26,6 +28,8 @@ const Header: React.FC<HeaderProps> = ({
     systemAlerts,
     onDismissAlert,
     onQuickRequest,
+    canGoBack = false,
+    onGoBack,
 }) => {
     const { resolvedTheme } = useTheme();
     const isLight = resolvedTheme === 'light';
@@ -44,10 +48,23 @@ const Header: React.FC<HeaderProps> = ({
     const logoutButtonClass = isLight
         ? 'text-amber-800 hover:bg-amber-100'
         : 'text-gray-400 hover:bg-gray-700 hover:text-white';
+    const backButtonClass = isLight
+        ? 'text-amber-900 border border-amber-300 hover:bg-amber-100'
+        : 'text-gray-100 border border-gray-600 hover:bg-gray-700';
 
     return (
         <header className={`h-16 backdrop-blur-sm border-b flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0 transition-colors duration-300 ${headerClasses}`}>
-            <div className="flex items-center min-w-[120px]">
+            <div className="flex items-center gap-3 min-w-[120px]">
+                {canGoBack && onGoBack && (
+                    <Button
+                        onClick={onGoBack}
+                        className={`text-xs sm:text-sm px-3 py-1.5 rounded-md inline-flex items-center gap-1 transition-colors ${backButtonClass}`}
+                        title="Go back to previous screen"
+                    >
+                        <ChevronDownIcon className="w-4 h-4 -rotate-90" />
+                        Back
+                    </Button>
+                )}
                 {showLogo && (
                     <h1 className={`text-4xl font-extrabold tracking-wide ${isLight ? 'text-amber-900' : 'text-indigo-200'}`}>MuRP</h1>
                 )}

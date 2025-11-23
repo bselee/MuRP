@@ -114,6 +114,74 @@
 
 ---
 
+### Session: November 23, 2025 17:30 - 17:45
+
+**Changes Made:**
+- Created: `supabase/migrations/20251123000001_shopify_integration.sql` - Complete database schema (250+ lines)
+  - 5 tables: `shopify_credentials`, `shopify_orders`, `shopify_inventory_verification`, `shopify_sync_log`, `shopify_webhook_log`
+  - RLS policies enforcing admin/ops/purchasing permissions
+  - Indexes for performance optimization
+  - Materialized view for sales analytics (`shopify_sales_summary`)
+  - Triggers for timestamp updates
+  - Service role grants for Edge Functions
+- Created: `supabase/functions/shopify-webhook/index.ts` - Real-time webhook handler (180+ lines)
+  - HMAC signature verification for security
+  - Order create/update webhook processing
+  - Inventory level update webhook processing
+  - Automatic inventory discrepancy detection
+  - Low stock alerts from order deductions
+- Created: `supabase/functions/shopify-nightly-sync/index.ts` - Scheduled reconciliation (150+ lines)
+  - Incremental sync (last 24 hours)
+  - Pagination handling (250 orders per request)
+  - Rate limiting (500ms delay between requests)
+  - Error tracking and partial success handling
+  - Materialized view refresh after sync
+
+**Key Decisions:**
+- Decision: Use materialized view for sales analytics
+- Rationale: Pre-aggregated queries for fast dashboard performance
+- Decision: Separate webhook log table from sync log
+- Rationale: Debugging webhook failures requires detailed delivery tracking
+- Decision: Nightly sync as backup to webhooks
+- Rationale: Catch missed webhook deliveries, ensure data consistency
+- Decision: HMAC signature verification on all webhooks
+- Rationale: Security requirement - prevent unauthorized data injection
+
+**Database Architecture:**
+- `shopify_credentials`: Encrypted OAuth tokens (admin-only access)
+- `shopify_orders`: Sales data source of truth (1M+ rows expected)
+- `shopify_inventory_verification`: Discrepancy queue with approval workflow
+- `shopify_sync_log`: Health monitoring and sync history
+- `shopify_webhook_log`: Delivery tracking for debugging
+- Materialized view: Daily sales aggregation (fast analytics)
+
+**Edge Function Implementation:**
+- Webhook handler: Real-time order sync + inventory verification
+- Nightly sync: Incremental reconciliation with pagination
+- Rate limiting: 2 req/sec (Shopify Basic plan limit)
+- Error handling: Log failures, continue processing remaining orders
+- Security: HMAC verification, service role authentication
+
+**Tests:**
+- Verified: All unit tests passing (12/12 - 9 transformers, 3 inventory UI)
+- Verified: TypeScript compilation clean (Vite build 5.73s)
+- Next: E2E tests for Shopify webhook delivery and permission checks
+
+**Next Steps:**
+- [ ] Deploy Supabase migration: `supabase db push`
+- [ ] Deploy Edge Functions: `supabase functions deploy shopify-webhook`, `supabase functions deploy shopify-nightly-sync`
+- [ ] Set Supabase secrets: `SHOPIFY_API_SECRET`, `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_ACCESS_TOKEN`
+- [ ] Create service implementations: `services/shopifyAuthService.ts`, `services/shopifyInventoryVerificationService.ts`
+- [ ] Build UI components: `ShopifySetupWizard`, `ShopifyIntegrationPanel`, `InventoryDiscrepancyReview`
+- [ ] Schedule nightly sync: Supabase cron job at 2:00 AM daily
+
+**Open Questions:**
+- Should nightly sync run at 2 AM or user-configurable time?
+- Add Slack notifications for inventory discrepancies over threshold?
+- Auto-resolve discrepancies under 5 units without approval?
+
+---
+
 ### Session: November 23, 2025 14:30 - 16:15
 
 **Changes Made:**

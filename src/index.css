@@ -14,6 +14,7 @@
     --text-color: #f4f5f7;
     --table-cell-py: 0.4rem;
     --table-cell-font: 0.84rem;
+    --table-line-height: 1.4;
     --panel-light-surface: rgba(255, 255, 255, 0.92);
     --panel-light-muted-surface: rgba(255, 255, 255, 0.87);
     --panel-light-border: rgba(89, 62, 25, 0.14);
@@ -39,14 +40,17 @@
 
   [data-row-density='comfortable'] {
     --table-cell-py: 0.65rem;
+    --table-line-height: 1.55;
   }
 
   [data-row-density='compact'] {
     --table-cell-py: 0.4rem;
+    --table-line-height: 1.35;
   }
 
   [data-row-density='ultra'] {
     --table-cell-py: 0.2rem;
+    --table-line-height: 1.2;
   }
 
   [data-font-scale='small'] {
@@ -257,10 +261,10 @@
 
   .table-density th,
   .table-density td {
-    padding-top: var(--table-cell-py);
-    padding-bottom: var(--table-cell-py);
+    padding-top: var(--table-cell-py) !important;
+    padding-bottom: var(--table-cell-py) !important;
     font-size: var(--table-cell-font);
-    line-height: 1.4;
+    line-height: var(--table-line-height);
   }
 
   .inventory-row {

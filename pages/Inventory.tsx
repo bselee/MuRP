@@ -99,9 +99,9 @@ const COLUMN_WIDTH_CLASSES: Partial<Record<ColumnKey, string>> = {
 };
 
 const CELL_DENSITY_MAP: Record<RowDensity, string> = {
-    comfortable: 'py-1.5 leading-normal',
-    compact: 'py-1 leading-snug',
-    ultra: 'py-0.5 leading-tight',
+    comfortable: 'leading-relaxed',
+    compact: 'leading-snug',
+    ultra: 'leading-tight',
 };
 
 const FONT_SCALE_MAP: Record<FontScale, string> = {
