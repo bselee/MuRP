@@ -120,7 +120,7 @@ const POTrackingDashboard: React.FC = () => {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-700 text-sm">
+        <table className="table-density min-w-full divide-y divide-gray-700 text-sm">
           <thead>
             <tr className="text-xs uppercase text-gray-400">
               <th className="px-4 py-2 text-left">PO</th>

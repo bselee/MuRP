@@ -251,6 +251,32 @@ export const GmailIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
+export const GoogleSheetsIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 48 48" fill="none">
+    <rect x="8" y="4" width="32" height="40" rx="4" fill="#0F9D58" />
+    <rect x="14" y="12" width="20" height="16" fill="white" />
+    <path d="M14 28h20v3H14zM22 12v16M30 12v16" stroke="#34A853" strokeWidth="2" />
+  </svg>
+);
+
+export const GoogleCalendarIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 48 48" fill="none">
+    <rect x="6" y="8" width="36" height="32" rx="4" fill="#1A73E8" />
+    <rect x="6" y="14" width="36" height="26" rx="4" fill="white" />
+    <rect x="16" y="4" width="4" height="8" rx="2" fill="#1A73E8" />
+    <rect x="28" y="4" width="4" height="8" rx="2" fill="#1A73E8" />
+    <rect x="18" y="20" width="12" height="12" rx="2" fill="#1A73E8" />
+  </svg>
+);
+
+export const GoogleDocsIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 48 48" fill="none">
+    <path d="M10 6a4 4 0 0 1 4-4h16l12 12v24a4 4 0 0 1-4 4H14a4 4 0 0 1-4-4V6z" fill="#4285F4" />
+    <path d="M30 2v10a2 2 0 0 0 2 2h10" fill="#AECBFA" />
+    <path d="M16 24h16M16 30h16M16 18h8" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+  </svg>
+);
+
 export const KeyIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 19.5a3 3 0 01-3-3V15a3 3 0 013-3h2.25a3 3 0 013 3v1.5a3 3 0 01-3 3H4.5z" />

@@ -21,6 +21,8 @@ import ArtworkPage from './pages/Artwork';
 import NewUserSetup from './pages/NewUserSetup';
 import ManualLabelScanner from './components/ManualLabelScanner';
 import QuickRequestDrawer from './components/QuickRequestDrawer';
+import { ThemeProvider } from './components/ThemeProvider';
+import { UserPreferencesProvider } from './components/UserPreferencesProvider';
 import AuthCallback from './pages/AuthCallback';
 import ResetPassword from './pages/ResetPassword';
 import usePersistentState from './hooks/usePersistentState';
@@ -1135,7 +1137,7 @@ const AppShell: React.FC = () => {
       addToast('Google Workspace account connected successfully!', 'success');
     } catch (error) {
       console.error('[App] Gmail connect error:', error);
-      addToast(`Failed to connect Gmail: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      addToast(`Failed to connect Google Workspace Gmail: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
@@ -1146,13 +1148,13 @@ const AppShell: React.FC = () => {
       addToast('Google Workspace account disconnected.', 'info');
     } catch (error) {
       console.error('[App] Gmail disconnect error:', error);
-      addToast(`Failed to disconnect Gmail: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      addToast(`Failed to disconnect Google Workspace Gmail: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
   };
 
   const handleSendPoEmail = async (poId: string, sentViaGmail: boolean) => {
     if (sentViaGmail) {
-      addToast(`Email for ${poId} sent via ${gmailConnection.email ?? 'Gmail'}.`, 'success');
+      addToast(`Email for ${poId} sent via ${gmailConnection.email ?? 'Google Workspace Gmail'}.`, 'success');
     } else {
       addToast(`Simulated email send for ${poId}.`, 'info');
     }
@@ -1578,9 +1580,13 @@ const AppShell: React.FC = () => {
 };
 
 const App: React.FC = () => (
-  <SystemAlertProvider>
-    <AppShell />
-  </SystemAlertProvider>
+  <ThemeProvider>
+    <UserPreferencesProvider>
+      <SystemAlertProvider>
+        <AppShell />
+      </SystemAlertProvider>
+    </UserPreferencesProvider>
+  </ThemeProvider>
 );
 
 export default App;

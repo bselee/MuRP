@@ -1011,39 +1011,41 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
       </div>
 
       {/* Gmail Integration */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+      <div
+        id="gmail-integration-card"
+        className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700"
+      >
         <div className="flex items-center gap-4">
           <GmailIcon className="w-8 h-8 text-gray-300" />
           <div>
-            <h3 className="text-lg font-semibold text-white">Gmail Integration</h3>
+            <h3 className="text-lg font-semibold text-white">Google Workspace Gmail</h3>
             <p className="text-sm text-gray-400 mt-1">
-              Connect your Gmail account to send Purchase Orders directly to vendors from within the
-              app.
+              Connect Workspace Gmail to send purchase orders directly to vendors and keep AI follow-ups threaded.
             </p>
           </div>
         </div>
         <div className="mt-4 pt-4 border-t border-gray-700/50 flex items-center justify-between">
           {gmailConnection.isConnected ? (
             <div className="text-sm">
-              <span className="text-gray-400">Connected as: </span>
+              <span className="text-gray-400">Connected inbox: </span>
               <span className="font-semibold text-green-400">{gmailConnection.email}</span>
             </div>
           ) : (
-            <div className="text-sm text-yellow-400">Gmail account is not connected.</div>
+            <div className="text-sm text-yellow-400">Workspace Gmail is not connected.</div>
           )}
           {gmailConnection.isConnected ? (
             <Button
               onClick={onGmailDisconnect}
               className="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700 transition-colors"
             >
-              Disconnect
+              Disconnect Gmail
             </Button>
           ) : (
             <Button
               onClick={onGmailConnect}
               className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
             >
-              Connect Gmail Account
+              Connect Workspace Gmail
             </Button>
           )}
         </div>

@@ -93,7 +93,7 @@ Procurement Team`);
                     });
                 }
 
-                addToast('Email sent via Gmail', 'success');
+                addToast('Email sent via Google Workspace Gmail', 'success');
                 onSend(true);
             } else {
                 await logPoEmailTracking(purchaseOrder.id, {
@@ -104,13 +104,13 @@ Procurement Team`);
                         simulated: true,
                     },
                 });
-                addToast('Gmail not connected. Simulating email send.', 'info');
+                addToast('Workspace Gmail not connected. Simulating email send.', 'info');
                 onSend(false);
             }
             onClose();
         } catch (error) {
-            console.error('Error sending Gmail:', error);
-            addToast(`Failed to send email via Gmail: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+            console.error('Error sending Google Workspace Gmail:', error);
+            addToast(`Failed to send email via Google Workspace Gmail: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
         } finally {
             setIsSending(false);
         }
@@ -154,12 +154,12 @@ Procurement Team`);
                             {gmailConnection.isConnected ? (
                                 <>
                                     <GmailIcon className="w-4 h-4 text-green-400" />
-                                    <span>Email will be sent via your connected Gmail account.</span>
+                                    <span>Email will be sent via your connected Google Workspace Gmail account.</span>
                                 </>
                             ) : (
                                 <>
                                     <GmailIcon className="w-4 h-4 text-yellow-400" />
-                                    <span>This is a simulated email. Connect Gmail in Settings to send for real.</span>
+                                    <span>This is a simulated email. Connect Google Workspace Gmail in Settings to send for real.</span>
                                 </>
                             )}
                         </div>

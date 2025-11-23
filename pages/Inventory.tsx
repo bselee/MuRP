@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import Button from '@/components/ui/Button';
 import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults } from '../types';
+import { useUserPreferences, type RowDensity, type FontScale } from '../components/UserPreferencesProvider';
 import { 
-SearchIcon, 
+  SearchIcon, 
   ChevronUpIcon, 
   ChevronDownIcon, 
   ArrowsUpDownIcon,
@@ -97,7 +98,17 @@ const COLUMN_WIDTH_CLASSES: Partial<Record<ColumnKey, string>> = {
     unitCost: 'w-24 max-w-[6.5rem]',
 };
 
-const COMPACT_CELL_PADDING = 'py-[2px] leading-tight text-[12px]';
+const CELL_DENSITY_MAP: Record<RowDensity, string> = {
+    comfortable: 'py-1.5 leading-normal',
+    compact: 'py-1 leading-snug',
+    ultra: 'py-0.5 leading-tight',
+};
+
+const FONT_SCALE_MAP: Record<FontScale, string> = {
+    small: 'text-[11px]',
+    medium: 'text-[12px]',
+    large: 'text-sm',
+};
 
 type SortKeys = keyof InventoryItem | 'status' | 'vendor' | 'runway';
 
@@ -167,6 +178,7 @@ const SortableHeader: React.FC<{
 };
 
 const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom, onQuickRequest }) => {
+    const { rowDensity, fontScale } = useUserPreferences();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
         const saved = localStorage.getItem('inventory-selected-categories');
@@ -229,6 +241,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const vendorDropdownRef = useRef<HTMLDivElement>(null);
     const inventoryRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
     const previousSortConfigRef = useRef<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
+    const cellDensityClass = `${CELL_DENSITY_MAP[rowDensity]} ${FONT_SCALE_MAP[fontScale]}`;
 
 
     // Navigation from BOM page - auto-scroll to inventory item
@@ -1077,7 +1090,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
                 <div className="relative z-0 bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full divide-y divide-gray-700 table-auto">
+                    <table className="table-density w-full divide-y divide-gray-700 table-auto">
                             <thead className="bg-gray-900/50">
                                 <tr>
                                     {visibleColumns.map(col => {
@@ -1104,12 +1117,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     const bomDetails = getBomDetailsForComponent(item.sku, bomUsageMap);
                                     const bomCount = bomDetails.length;
                                     const insight = demandInsights.get(item.sku);
-                                    const rowAccent =
-                                        index % 3 === 0
-                                            ? 'bg-slate-950/50'
-                                            : index % 3 === 1
-                                              ? 'bg-slate-900/40'
-                                              : 'bg-slate-900/20';
+                                    const zebraClass = index % 2 === 0 ? 'inventory-row-even' : 'inventory-row-odd';
 
                                     return (
                                         <tr 
@@ -1117,14 +1125,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             ref={(el) => {
                                                 if (el) inventoryRowRefs.current.set(item.sku, el);
                                             }}
-                                            className={`${rowAccent} hover:bg-gray-700/60 transition-colors`}
+                                            className={`inventory-row ${zebraClass} transition-colors`}
                                         >
                                             {visibleColumns.map(col => {
                                                 const widthClass = COLUMN_WIDTH_CLASSES[col.key] || '';
                                                 switch (col.key) {
                                                     case 'sku':
                                                         return (
-                                                            <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm font-mono ${widthClass}`}>
+                                                            <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap font-mono ${widthClass}`}>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-white font-bold">{item.sku}</span>
                                                                     {bomCount > 0 && (
@@ -1154,7 +1162,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     case 'itemType':
                                                         return (
-                                                            <td key={col.key} className={`px-4 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm ${widthClass}`}>
+                                                            <td key={col.key} className={`px-4 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
                                                                 {insight ? (
                                                                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${itemTypeStyles[insight.itemType].className}`}>
                                                                         {itemTypeStyles[insight.itemType].label}
@@ -1166,7 +1174,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     case 'name':
                                                         return (
-                                                            <td key={col.key} className={`px-4 ${COMPACT_CELL_PADDING} text-sm text-white max-w-xs group relative ${widthClass}`}>
+                                                            <td key={col.key} className={`px-4 ${cellDensityClass} text-white max-w-xs group relative ${widthClass}`}>
                                                                 <span className="font-medium truncate block">
                                                                     {item.name}
                                                                 </span>
@@ -1179,27 +1187,27 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         const normalizedCategory = normalizeCategory(item.category);
                                                         const prettyCategory = categoryLabelMap.get(normalizedCategory) || formatCategoryLabel(normalizedCategory);
                                                         return (
-                                                            <td key={col.key} className={`px-4 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm text-gray-300 truncate ${widthClass}`} title={normalizedCategory}>
+                                                            <td key={col.key} className={`px-4 ${cellDensityClass} whitespace-nowrap text-gray-300 truncate ${widthClass}`} title={normalizedCategory}>
                                                                 {prettyCategory}
                                                             </td>
                                                         );
                                                     }
                                                     case 'stock':
                                                         return (
-                                                            <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm text-white ${widthClass}`}>
+                                                            <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-white ${widthClass}`}>
                                                                 <div className="mb-0.5 font-semibold">{item.stock.toLocaleString()}</div>
                                                                 <StockIndicator item={item} />
                                                             </td>
                                                         );
                                                     case 'onOrder':
-                                                        return <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm text-gray-300 ${widthClass}`}>{item.onOrder.toLocaleString()}</td>;
+                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 ${widthClass}`}>{item.onOrder.toLocaleString()}</td>;
                                                     case 'reorderPoint':
-                                                        return <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm text-gray-300 ${widthClass}`}>{item.reorderPoint.toLocaleString()}</td>;
+                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 ${widthClass}`}>{item.reorderPoint.toLocaleString()}</td>;
                                                     case 'vendor':
-                                                        return <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm text-gray-300 truncate ${widthClass}`} title={vendor || 'N/A'}>{vendor || 'N/A'}</td>;
+                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 truncate ${widthClass}`} title={vendor || 'N/A'}>{vendor || 'N/A'}</td>;
                                                     case 'status':
                                                         return (
-                                                            <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm ${widthClass}`}>
+                                                            <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
                                                                 <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                                                     stockStatus === 'In Stock' ? 'bg-green-500/20 text-green-400' :
                                                                     stockStatus === 'Low Stock' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -1219,7 +1227,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                             : 100;
                                                         const breakdown = insight?.demandBreakdown;
                                                         return (
-                                                            <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm ${widthClass}`}>
+                                                            <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
                                                                         {runwayValue}
@@ -1254,20 +1262,20 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     }
                                                     case 'salesVelocity':
-                                                        return <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
+                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
                                                     case 'sales30Days':
-                                                        return <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales30Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales30Days || 0}</td>;
                                                     case 'sales60Days':
-                                                        return <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales60Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales60Days || 0}</td>;
                                                     case 'sales90Days':
-                                                        return <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>{item.sales90Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales90Days || 0}</td>;
                                                     case 'unitCost':
-                                                        return <td key={col.key} className={`px-6 ${COMPACT_CELL_PADDING} whitespace-nowrap text-sm text-gray-300 text-right ${widthClass}`}>${item.unitCost?.toFixed(2) || '0.00'}</td>;
+                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>${item.unitCost?.toFixed(2) || '0.00'}</td>;
                                                     default:
                                                         return null;
                                                 }
                                             })}
-                                            <td className={`px-6 ${COMPACT_CELL_PADDING} text-right whitespace-nowrap`}>
+                                            <td className={`px-6 ${cellDensityClass} text-right whitespace-nowrap`}>
                                                 <div className="flex justify-end gap-2">
                                                     <Button
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true })}

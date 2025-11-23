@@ -86,6 +86,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         className={composedClassName}
         disabled={disabled || loading}
+        data-variant={variant}
         {...props}
       >
         {loading ? (

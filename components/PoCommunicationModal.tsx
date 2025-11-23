@@ -56,7 +56,7 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
   const handleSendReply = async () => {
     if (!purchaseOrder || !vendor) return;
     if (!gmailConnection.isConnected) {
-      addToast('Connect Gmail in Settings to send replies.', 'error');
+      addToast('Connect Google Workspace Gmail in Settings to send replies.', 'error');
       return;
     }
     if (!replyBody.trim()) {
@@ -94,7 +94,7 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
       await refreshTimeline();
     } catch (error) {
       console.error('[PoCommunicationModal] failed to send reply', error);
-      addToast('Failed to send reply via Gmail.', 'error');
+      addToast('Failed to send reply via Google Workspace Gmail.', 'error');
     } finally {
       setSending(false);
     }
@@ -170,7 +170,7 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
               <p className="text-sm text-gray-400">Loading timeline…</p>
             ) : timeline.length === 0 ? (
               <div className="text-sm text-gray-400 bg-gray-800/50 border border-dashed border-gray-700 rounded-lg p-6">
-                No email history logged for this PO yet. When you send POs or replies through Gmail, we’ll keep the thread here.
+                No email history logged for this PO yet. When you send POs or replies through Google Workspace Gmail, we’ll keep the thread here.
               </div>
             ) : (
               timeline.map(renderEntry)
@@ -178,7 +178,7 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
           </div>
 
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-white">Reply via Gmail</p>
+            <p className="text-sm font-semibold text-white">Reply via Workspace Gmail</p>
             <input
               type="text"
               value={replySubject}
@@ -203,7 +203,7 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
             </Button>
             {!gmailConnection.isConnected && (
               <p className="text-xs text-yellow-300">
-                Gmail isn’t connected. Connect in Settings to send replies from MuRP.
+                Workspace Gmail isn’t connected. Connect in Settings to send replies from MuRP.
               </p>
             )}
           </div>

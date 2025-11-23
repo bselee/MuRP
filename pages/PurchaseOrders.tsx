@@ -590,7 +590,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <h2 className="text-xl font-semibold text-gray-300">External Purchase Orders</h2>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-700">
+                        <table className="table-density min-w-full divide-y divide-gray-700">
                             <thead className="bg-gray-800">
                                 <tr>
                                     <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">PO Number</th>
@@ -969,7 +969,7 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                 )}
             </div>
             <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-700">
+                <table className="table-density min-w-full divide-y divide-gray-700">
                     <thead className="bg-gray-800/50">
                         <tr>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Req ID</th>

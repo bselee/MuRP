@@ -19,20 +19,14 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: [
-    {
-      command: 'npm run -s build',
-      reuseExistingServer: true,
+  webServer: {
+    command: 'npm run -s build && node scripts/preview-server.mjs',
+    port: 4173,
+    timeout: 120_000,
+    reuseExistingServer: true,
+    env: {
+      PORT: '4173',
+      HOST: '127.0.0.1',
     },
-    {
-      command: 'vite preview --strictPort --port 4173',
-      port: 4173,
-      timeout: 120_000,
-      reuseExistingServer: true,
-      env: {
-        // Ensure Vite runs in production preview mode
-        NODE_ENV: 'production',
-      },
-    },
-  ],
+  },
 });

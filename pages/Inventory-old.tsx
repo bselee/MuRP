@@ -255,7 +255,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-700">
+                        <table className="table-density min-w-full divide-y divide-gray-700">
                             <thead className="bg-gray-800">
                                 <tr>
                                     <SortableHeader title="SKU" sortKey="sku" sortConfig={sortConfig} requestSort={requestSort} />

@@ -289,7 +289,7 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
 
             {/* Results Table */}
             <div className="bg-gray-800/50 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
-              <table className="w-full">
+              <table className="table-density w-full">
                 <thead className="bg-gray-700 sticky top-0">
                   <tr>
                     <th className="text-left p-3 text-gray-300 text-sm font-semibold">Status</th>

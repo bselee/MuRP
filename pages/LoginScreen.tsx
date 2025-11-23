@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../lib/auth/AuthContext';
-import { GmailIcon } from '../components/icons';
+import { GmailIcon, GoogleCalendarIcon, GoogleSheetsIcon } from '../components/icons';
 import { supabase } from '../lib/supabase/client';
 import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
 
@@ -25,7 +25,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
     setLoading(true);
     const result = await signIn({ email, password });
     if (result.error) {
-      addToast(result.error, 'error');
+      addToast(`${result.error} You can also try Google Workspace SSO if your inbox is managed there.`, 'error');
     } else {
       addToast('Signed in successfully.', 'success');
     }
@@ -58,7 +58,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
     if (result.error) {
       addToast(result.error, 'error');
     } else {
-      addToast('Reset instructions sent.', 'success');
+      addToast('Reset instructions sent. Google Workspace SSO remains available if email is federated.', 'success');
     }
   };
 
@@ -251,14 +251,24 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
               <span className="text-xs uppercase tracking-widest text-gray-500">or continue with</span>
               <span className="w-full border-t border-gray-700" />
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-1 gap-3">
               <Button
                 type="button"
-                className="flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-800/60 p-3 text-white hover:border-indigo-500 hover:bg-gray-800 transition-colors"
+                className="flex items-center justify-between gap-4 rounded-xl border border-gray-700 bg-gray-800/60 p-4 text-white hover:border-indigo-500 hover:bg-gray-800 transition-colors text-left"
                 onClick={handleGoogleSignIn}
               >
-                <GmailIcon className="h-5 w-5 text-[#DB4437]" />
-                Google
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <GmailIcon className="h-5 w-5 text-[#EA4335]" />
+                    <GoogleCalendarIcon className="h-5 w-5" />
+                    <GoogleSheetsIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold leading-tight">Sign in with Google Workspace</p>
+                    <p className="text-xs text-gray-400">Unlock Gmail, Calendar, Sheets & Docs sync</p>
+                  </div>
+                </div>
+                <span className="text-xs uppercase tracking-[0.2em] text-gray-400">SSO</span>
               </Button>
               <Button
                 type="button"

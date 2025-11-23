@@ -292,7 +292,7 @@ const DraftPOReviewSection: React.FC<DraftPOReviewSectionProps> = ({ onApprove, 
               {/* Expanded Item Details */}
               {expandedPO === po.id && (
                 <div className="px-4 pb-4 bg-gray-900/50">
-                  <table className="min-w-full text-sm">
+                  <table className="table-density min-w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-gray-400">
                         <th className="py-2">SKU</th>

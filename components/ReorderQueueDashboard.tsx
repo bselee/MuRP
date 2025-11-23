@@ -312,7 +312,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
 
             {/* Items Table */}
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-700">
+              <table className="table-density min-w-full divide-y divide-gray-700">
                 <thead className="bg-gray-800/50">
                   <tr>
                     {allowPoCreation && (

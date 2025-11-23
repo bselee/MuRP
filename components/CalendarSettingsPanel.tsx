@@ -124,7 +124,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
 
   const loadAvailableCalendars = async () => {
     if (!hasGoogleAuth) {
-      addToast('Please connect your Google account first', 'error');
+      addToast('Please connect your Google Workspace account first', 'error');
       return;
     }
 
@@ -133,7 +133,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
       const calendars = await calendarService.listCalendars();
 
       if (calendars.length === 0) {
-        addToast('No calendars found in your Google account', 'info');
+        addToast('No calendars found in your Google Workspace account', 'info');
       }
 
       setAvailableCalendars(calendars);
@@ -212,7 +212,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
       {!hasGoogleAuth && (
         <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 space-y-3">
           <p className="text-sm text-yellow-200">
-            ⚠️ Google account not connected. Connect your Google account to access calendar features.
+            ⚠️ Google Workspace account not connected. Connect your Workspace profile to access calendar features.
           </p>
           <Button
             onClick={handleConnectGoogle}
@@ -224,7 +224,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            Connect Google Account
+            Connect Google Workspace
           </Button>
         </div>
       )}
@@ -421,7 +421,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
       <div className="mt-6 p-4 bg-gray-800/30 border border-gray-700 rounded-lg">
         <h4 className="text-sm font-semibold text-white mb-2">How to use Calendar Integration:</h4>
         <ul className="text-xs text-gray-400 space-y-1 list-disc list-inside">
-          <li>Connect your Google account and grant calendar access</li>
+          <li>Connect your Google Workspace account and grant calendar access</li>
           <li>Select the calendar you want to pull build information from</li>
           <li>Enable calendar sync to automatically create events for production builds</li>
           <li>View synced builds in the Production Calendar view</li>

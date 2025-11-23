@@ -3,7 +3,7 @@ import Button from '@/components/ui/Button';
  * Google Sheets Integration Panel
  *
  * User interface for:
- * - Connecting Google account
+ * - Connecting Google Workspace account
  * - Importing inventory from Sheets
  * - Exporting inventory to Sheets
  * - Creating automatic backups
@@ -78,9 +78,9 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
       setIsLoading(true);
       await authService.startOAuthFlow();
       await checkAuthStatus();
-      addToast('Successfully connected to Google!', 'success');
+      addToast('Connected to Google Workspace.', 'success');
     } catch (error) {
-      console.error('Error connecting to Google:', error);
+      console.error('Error connecting to Google Workspace:', error);
       addToast(`Failed to connect: ${error instanceof Error ? error.message : String(error)}`, 'error');
     } finally {
       setIsLoading(false);
@@ -97,7 +97,7 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
       await authService.revokeAccess();
       setAuthStatus(null);
       setCurrentStep('auth');
-      addToast('Successfully disconnected from Google', 'success');
+      addToast('Disconnected from Google Workspace.', 'success');
     } catch (error) {
       console.error('Error disconnecting:', error);
       addToast(`Failed to disconnect: ${error instanceof Error ? error.message : String(error)}`, 'error');
@@ -205,10 +205,10 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
 
       {/* Authentication Section */}
       <div className="section">
-        <h3>1. Connect Google Account</h3>
+        <h3>1. Connect Google Workspace</h3>
         {authStatus?.isAuthenticated ? (
           <div className="auth-status connected">
-            <p>✓ Connected to Google</p>
+            <p>✓ Connected to Google Workspace</p>
             <p className="scopes">Scopes: {authStatus.scopes.join(', ')}</p>
             {authStatus.expiresAt && (
               <p className="expires">Expires: {authStatus.expiresAt.toLocaleString()}</p>
@@ -219,9 +219,9 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
           </div>
         ) : (
           <div className="auth-status disconnected">
-            <p>Not connected to Google</p>
+            <p>Not connected to Google Workspace</p>
             <Button onClick={handleConnect} disabled={isLoading}>
-              {isLoading ? 'Connecting...' : 'Connect Google Account'}
+                {isLoading ? 'Connecting...' : 'Connect Google Workspace'}
             </Button>
           </div>
         )}

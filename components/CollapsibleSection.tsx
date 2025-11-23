@@ -34,22 +34,23 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
 }) => {
   if (variant === 'card') {
     return (
-      <section 
-        id={id} 
-        className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden scroll-mt-20"
+      <section
+        id={id}
+        className="glass-panel overflow-hidden scroll-mt-20"
       >
-        <Button 
-          onClick={onToggle} 
-          className="w-full flex justify-between items-center p-4 bg-gray-800 hover:bg-gray-700/50 transition-colors"
+        <Button
+          variant="ghost"
+          onClick={onToggle}
+          className="w-full flex justify-between items-center px-5 py-4 rounded-none bg-transparent hover:bg-white/5 border-b border-white/5"
         >
-          <h2 className="text-xl font-semibold text-gray-300 flex items-center gap-3">
+          <h2 className="text-xl font-semibold text-gray-100 flex items-center gap-3">
             {icon}
             {title}
           </h2>
           <ChevronDownIcon className={`w-6 h-6 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </Button>
         {isOpen && (
-          <div className="p-4 md:p-6 border-t border-gray-700">
+          <div className="p-5 md:p-6">
             {children}
           </div>
         )}
@@ -59,9 +60,10 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
 
   return (
     <section id={id}>
-      <Button 
+      <Button
         onClick={onToggle}
-        className="w-full flex justify-between items-center text-left border-b border-gray-700 pb-3 hover:border-gray-600 transition-colors"
+        variant="ghost"
+        className="w-full flex justify-between items-center text-left border-b border-white/10 pb-3 hover:border-white/20"
       >
         <div className="flex items-center gap-3">
           <div className={`w-6 h-6 ${iconColor}`}>

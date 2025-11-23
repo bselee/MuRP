@@ -669,7 +669,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
           {googleEvents.length > 0 ? (
             demandRows.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="min-w-full text-xs">
+                <table className="table-density min-w-full text-xs">
                   <thead className="text-gray-400">
                     <tr>
                       <th className="text-left py-1 pr-4 font-medium">SKU</th>
@@ -758,7 +758,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
 
           {logisticsEvents.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="min-w-full text-xs">
+              <table className="table-density min-w-full text-xs">
                 <thead className="text-gray-400">
                   <tr>
                     <th className="text-left py-1 pr-4 font-medium">PO</th>
