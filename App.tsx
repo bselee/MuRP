@@ -152,6 +152,7 @@ const AppShell: React.FC = () => {
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
   const [quickRequestDefaults, setQuickRequestDefaults] = useState<QuickRequestDefaults | null>(null);
   const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(false);
+  const onboardingStorageKey = currentUser?.id ? `murp-onboarding-${currentUser.id}` : null;
   const navigateToPage = useCallback((nextPage: Page) => {
     setNavigationHistory(prev => {
       if (prev[prev.length - 1] === nextPage) {
@@ -223,33 +224,58 @@ const AppShell: React.FC = () => {
     }
   }, [isDataLoading]);
 
+  const readOnboardingState = useCallback((): { completed?: boolean; snoozeUntil?: number | null } | null => {
+    if (!onboardingStorageKey || typeof window === 'undefined') return null;
+    try {
+      const stored = window.localStorage.getItem(onboardingStorageKey);
+      if (!stored) return null;
+      return JSON.parse(stored);
+    } catch {
+      return null;
+    }
+  }, [onboardingStorageKey]);
+
+  const writeOnboardingState = useCallback((update: Partial<{ completed: boolean; snoozeUntil: number | null }>) => {
+    if (!onboardingStorageKey || typeof window === 'undefined') return;
+    const existing = readOnboardingState() ?? {};
+    const next = { ...existing, ...update };
+    window.localStorage.setItem(onboardingStorageKey, JSON.stringify(next));
+  }, [onboardingStorageKey, readOnboardingState]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!currentUser?.id || !currentUser.onboardingComplete || isE2ETestMode) {
       setShowOnboardingChecklist(false);
       return;
     }
-    try {
-      const stored = window.localStorage.getItem(`murp-onboarding-${currentUser.id}`);
-      if (!stored) {
-        setShowOnboardingChecklist(true);
-        return;
-      }
-      const parsed = JSON.parse(stored) as { completed?: boolean };
-      setShowOnboardingChecklist(!parsed?.completed);
-    } catch {
+    const state = readOnboardingState();
+    if (!state) {
       setShowOnboardingChecklist(true);
+      return;
     }
-  }, [currentUser, isE2ETestMode]);
+    if (state.completed) {
+      setShowOnboardingChecklist(false);
+      return;
+    }
+    if (state.snoozeUntil && state.snoozeUntil > Date.now()) {
+      setShowOnboardingChecklist(false);
+      return;
+    }
+    setShowOnboardingChecklist(true);
+  }, [currentUser, isE2ETestMode, readOnboardingState]);
 
   const handleChecklistComplete = useCallback(() => {
-    if (typeof window === 'undefined' || !currentUser?.id) return;
-    window.localStorage.setItem(
-      `murp-onboarding-${currentUser.id}`,
-      JSON.stringify({ completed: true, completedAt: new Date().toISOString() }),
-    );
+    writeOnboardingState({ completed: true, snoozeUntil: null });
     setShowOnboardingChecklist(false);
-  }, [currentUser]);
+  }, [writeOnboardingState]);
+
+  const handleChecklistSnooze = useCallback((durationMs: number) => {
+    writeOnboardingState({
+      completed: false,
+      snoozeUntil: Date.now() + durationMs,
+    });
+    setShowOnboardingChecklist(false);
+  }, [writeOnboardingState]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -346,10 +372,8 @@ const AppShell: React.FC = () => {
         '/labels': 'Label Scanner',
       };
       const nextPage = map[path] ?? 'Dashboard';
-      if (nextPage !== currentPage) {
-        setNavigationHistory([nextPage]);
-        setCurrentPage(nextPage);
-      }
+      setNavigationHistory([nextPage]);
+      setCurrentPage(nextPage);
 
       // Auto-sync now handled exclusively by backend cron + Edge functions.
       // Frontend simply consumes fresh Supabase data.
@@ -357,7 +381,7 @@ const AppShell: React.FC = () => {
       // No-op: best-effort only for e2e/dev
       console.warn('[App] URL routing init skipped:', err);
     }
-  }, [currentUser, currentPage, setCurrentPage, setNavigationHistory]);
+  }, [setCurrentPage, setNavigationHistory]);
 
   // Auto-complete onboarding for users who confirmed email (preventing flash of setup screen)
   useEffect(() => {

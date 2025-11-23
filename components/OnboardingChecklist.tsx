@@ -14,6 +14,7 @@ interface OnboardingChecklistProps {
   user: User;
   onClose: () => void;
   onComplete: () => void;
+  onSnooze: (durationMs: number) => void;
   navigateTo: (page: string) => void;
 }
 
@@ -117,8 +118,21 @@ const ChecklistItemRow: React.FC<{
   </div>
 );
 
-const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ user, onClose, onComplete, navigateTo }) => {
+const SNOOZE_OPTIONS = [
+  { label: 'Later today (4h)', value: 4 * 60 * 60 * 1000 },
+  { label: 'Tomorrow (24h)', value: 24 * 60 * 60 * 1000 },
+  { label: 'In 3 days', value: 72 * 60 * 60 * 1000 },
+];
+
+const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({
+  user,
+  onClose,
+  onComplete,
+  onSnooze,
+  navigateTo,
+}) => {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [selectedSnooze, setSelectedSnooze] = useState<number>(SNOOZE_OPTIONS[0].value);
 
   const mergedItems = useMemo<ChecklistItem[]>(() => {
     const items: ChecklistItem[] = [];
@@ -188,9 +202,33 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ user, onClose
               Knock out these quick actions. They’re tuned for {user.department}.
             </p>
           </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            <span>Remind me in</span>
+            <select
+              value={selectedSnooze}
+              onChange={(e) => setSelectedSnooze(Number(e.target.value))}
+              className="bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-gray-100"
+            >
+              {SNOOZE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <Button
+              onClick={() => {
+                onSnooze(selectedSnooze);
+                onClose();
+              }}
+              className="text-xs text-amber-200 border border-amber-500/40 rounded-md px-3 py-1 hover:bg-amber-500/10"
+            >
+              Snooze
+            </Button>
+          </div>
           <div className="flex items-center gap-2">
             <Button onClick={onClose} className="text-sm text-gray-300 hover:text-white">
-              Remind me later
+              Dismiss
             </Button>
             <Button
               onClick={() => {
@@ -207,6 +245,7 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({ user, onClose
               {allComplete ? 'Looks good' : 'Skip for now'}
             </Button>
           </div>
+        </div>
         </div>
         <div className="space-y-3 max-h-[60vh] overflow-auto pr-1">
           {mergedItems.map((item) => (
