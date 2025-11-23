@@ -7,6 +7,7 @@ import RegistrationManagement from './RegistrationManagement';
 import AddRegistrationModal from './AddRegistrationModal';
 import ProductDataSheetGenerator from './ProductDataSheetGenerator';
 import {
+import Button from '@/components/ui/Button';
   CheckCircleIcon,
   ExclamationCircleIcon,
   ClockIcon,
@@ -231,7 +232,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
-                  <button
+                  <Button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-4 py-1 text-sm font-medium border-b-2 transition-colors ${
@@ -247,7 +248,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                         {tab.count}
                       </span>
                     )}
-                  </button>
+                  </Button>
                 );
               })}
             </nav>
@@ -393,13 +394,13 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                         </p>
                       </div>
                       {onUploadArtwork && (
-                        <button
+                        <Button
                           onClick={() => setIsUploadModalOpen(true)}
                           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                         >
                           <CloudUploadIcon className="w-5 h-5" />
                           Upload Artwork
-                        </button>
+                        </Button>
                       )}
                     </div>
 
@@ -411,13 +412,13 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                           Upload packaging materials, labels, or bag designs to extract ingredients, barcodes, and NPK analysis with AI
                         </p>
                         {onUploadArtwork && (
-                          <button
+                          <Button
                             onClick={() => setIsUploadModalOpen(true)}
                             className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                           >
                             <CloudUploadIcon className="w-5 h-5" />
                             Upload Packaging/Label
-                          </button>
+                          </Button>
                         )}
                       </div>
                     ) : (
@@ -460,21 +461,21 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                                 {getScanStatusBadge(label)}
 
                                 {label.scanStatus === 'completed' && (
-                                  <button
+                                  <Button
                                     onClick={() => handleViewLabel(label)}
                                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
                                   >
                                     View Results
-                                  </button>
+                                  </Button>
                                 )}
 
                                 {label.scanStatus === 'failed' && (
-                                  <button
+                                  <Button
                                     onClick={() => handleRescan(label.id)}
                                     className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded-lg transition-colors"
                                   >
                                     Retry Scan
-                                  </button>
+                                  </Button>
                                 )}
                               </div>
                             </div>
@@ -507,7 +508,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                   <>
                     {/* Label Detail View with Scan Results */}
                     <div className="space-y-4">
-                      <button
+                      <Button
                         onClick={handleBackToList}
                         className="flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
                       >
@@ -515,7 +516,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                         Back to Labels List
-                      </button>
+                      </Button>
 
                       <LabelScanResults
                         artwork={selectedLabel}
@@ -542,13 +543,13 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                           AI-generated documentation: SDS, spec sheets, compliance docs
                         </p>
                       </div>
-                      <button
+                      <Button
                         onClick={() => setIsGeneratingDataSheet(true)}
                         className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                       >
                         <SparklesIcon className="w-5 h-5" />
                         Generate with AI
-                      </button>
+                      </Button>
                     </div>
 
                     {dataSheets.length === 0 ? (
@@ -558,13 +559,13 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                         <p className="text-sm text-gray-500 mb-6">
                           Generate comprehensive product documentation with AI using label data, BOM ingredients, and compliance records
                         </p>
-                        <button
+                        <Button
                           onClick={() => setIsGeneratingDataSheet(true)}
                           className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                         >
                           <SparklesIcon className="w-5 h-5" />
                           Generate Your First Data Sheet
-                        </button>
+                        </Button>
                       </div>
                     ) : (
                       <div className="space-y-3">

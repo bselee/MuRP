@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type {
+import Button from '@/components/ui/Button';
   InventoryItem,
   PurchaseOrder,
   RequisitionItem,
@@ -9,7 +10,6 @@ import type {
   QuickRequestDefaults,
 } from '../types';
 import { PlusCircleIcon, BellIcon, XCircleIcon } from './icons';
-
 interface QuickRequestDrawerProps {
   isOpen: boolean;
   inventory: InventoryItem[];
@@ -181,20 +181,20 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
               Enter a SKU to see live inventory, inbound PO status, and kick off a question or requisition.
             </p>
           </div>
-          <button
+          <Button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition-colors"
             aria-label="Close quick request drawer"
           >
             <XCircleIcon className="w-6 h-6" />
-          </button>
+          </Button>
         </div>
 
         <div className="p-5 space-y-5 overflow-y-auto h-[calc(100%-64px)]">
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">What do you want to do?</label>
             <div className="grid grid-cols-2 gap-2">
-              <button
+              <Button
                 onClick={activateQuestionMode}
                 className={`p-3 rounded-lg border text-left transition ${
                   actionMode === 'question'
@@ -204,8 +204,8 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
               >
                 <p className="font-semibold">Ask a Question</p>
                 <p className="text-xs text-gray-400">Send a heads-up / status ping without ordering.</p>
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={activateRequisitionMode}
                 className={`p-3 rounded-lg border text-left transition ${
                   actionMode === 'requisition'
@@ -215,7 +215,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
               >
                 <p className="font-semibold">Create Requisition</p>
                 <p className="text-xs text-gray-400">Kick off an internal PO with quantities.</p>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -223,7 +223,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
             <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">Request Type</label>
             <div className="grid grid-cols-2 gap-2">
               {REQUEST_TYPES.map(option => (
-                <button
+                <Button
                   key={option.value}
                   onClick={() => {
                     setRequestType(option.value);
@@ -237,7 +237,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
                 >
                   <p className="font-semibold">{option.label}</p>
                   <p className="text-xs text-gray-400">{option.description}</p>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -246,7 +246,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
             <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">Priority</label>
             <div className="flex flex-wrap gap-2">
               {PRIORITY_OPTIONS.map(option => (
-                <button
+                <Button
                   key={option.value}
                   onClick={() => setPriority(option.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
@@ -254,7 +254,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
                   }`}
                 >
                   {option.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -433,14 +433,22 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
         </div>
 
         <div className="p-5 border-t border-gray-800 bg-gray-900/80">
-          <button
+          <Button
+            fullWidth
+            size="lg"
+            variant="primary"
             disabled={!canSubmit}
             onClick={handleSubmit}
-            className="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-md transition-colors"
+            leftIcon={
+              actionMode === 'question' ? (
+                <BellIcon className="w-5 h-5" aria-hidden="true" />
+              ) : (
+                <PlusCircleIcon className="w-5 h-5" aria-hidden="true" />
+              )
+            }
           >
-            {actionMode === 'question' ? <BellIcon className="w-5 h-5" /> : <PlusCircleIcon className="w-5 h-5" />}
             {actionMode === 'question' ? 'Send Question' : 'Submit Requisition'}
-          </button>
+          </Button>
           <p className="text-xs text-gray-500 text-center mt-2">
             Routes to purchasing with your department + priority so nothing slips through the cracks.
           </p>

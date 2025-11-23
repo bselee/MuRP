@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Context7 Documentation Panel
  * 
@@ -56,14 +57,14 @@ export function Context7Panel() {
         <div className="flex items-center gap-4 text-sm text-gray-600">
           <span>Cache: {cacheStats.cacheSize}</span>
           <span>{cacheStats.docCount} docs</span>
-          <button
+          <Button
             onClick={clearAllCache}
             className="text-red-600 hover:text-red-700 flex items-center gap-1"
             title="Clear all cache"
           >
             <Trash2 className="w-4 h-4" />
             Clear Cache
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -92,7 +93,7 @@ export function Context7Panel() {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <button
+              <Button
                 type="submit"
                 disabled={isSearching || !searchInput.trim()}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
@@ -108,7 +109,7 @@ export function Context7Panel() {
                     Search
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -143,13 +144,13 @@ export function Context7Panel() {
           </h3>
           <div className="flex flex-wrap gap-2">
             {searchHistory.map((lib) => (
-              <button
+              <Button
                 key={lib}
                 onClick={() => handleHistoryClick(lib)}
                 className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm transition-colors"
               >
                 {lib}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -162,12 +163,12 @@ export function Context7Panel() {
             <h3 className="text-lg font-semibold text-gray-900">
               Search Results ({searchResults.length})
             </h3>
-            <button
+            <Button
               onClick={clearSearchResults}
               className="text-sm text-gray-600 hover:text-gray-700"
             >
               Clear
-            </button>
+            </Button>
           </div>
           <div className="space-y-3">
             {searchResults.map((result) => (
@@ -187,14 +188,14 @@ export function Context7Panel() {
                       <span>{result.codeSnippetCount} code examples</span>
                     </div>
                   </div>
-                  <button
+                  <Button
                     onClick={() => handleFetchDocs(result.id, result.name)}
                     disabled={isFetchingDocs}
                     className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 text-sm flex items-center gap-2"
                   >
                     <FileText className="w-4 h-4" />
                     View Docs
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -215,12 +216,12 @@ export function Context7Panel() {
               <span className="text-sm text-gray-500">
                 {documentation.tokens} tokens • Fetched {new Date(documentation.fetchedAt).toLocaleDateString()}
               </span>
-              <button
+              <Button
                 onClick={clearDocumentation}
                 className="text-sm text-gray-600 hover:text-gray-700"
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
           <div className="prose prose-sm max-w-none">

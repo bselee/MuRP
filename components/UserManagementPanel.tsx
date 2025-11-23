@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { User } from '../types';
 import { UserPlusIcon, PencilSquareIcon, TrashIcon } from '../components/icons';
-
+import Button from '@/components/ui/Button';
 interface UserManagementPanelProps {
     currentUser: User;
     users: User[];
@@ -77,10 +77,9 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser, 
                     </div>
                 </div>
                 <div className="mt-4 flex justify-end">
-                    <button onClick={handleInvite} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors">
-                        <UserPlusIcon className="w-5 h-5" />
+                    <Button onClick={handleInvite} leftIcon={<UserPlusIcon className="w-5 h-5" aria-hidden="true" />}>
                         Send Invite
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -114,12 +113,12 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser, 
                                     </td>
                                     {isOpsAdmin && (
                                         <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
-                                            <button className="p-2 text-gray-400 hover:text-indigo-400 transition-colors" title="Edit User">
+                                            <Button className="p-2 text-gray-400 hover:text-indigo-400 transition-colors" title="Edit User">
                                                 <PencilSquareIcon className="w-5 h-5"/>
-                                            </button>
-                                            <button onClick={() => onDeleteUser(user.id)} className="p-2 text-gray-400 hover:text-red-400 transition-colors" title="Remove User" disabled={user.id === currentUser.id}>
+                                            </Button>
+                                            <Button onClick={() => onDeleteUser(user.id)} className="p-2 text-gray-400 hover:text-red-400 transition-colors" title="Remove User" disabled={user.id === currentUser.id}>
                                                 <TrashIcon className="w-5 h-5"/>
-                                            </button>
+                                            </Button>
                                         </td>
                                     )}
                                 </tr>

@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Enhanced BOM Card Component
  *
@@ -154,13 +155,13 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
           <div className="flex-1 min-w-0">
             {/* SKU and Category */}
             <div className="flex items-center gap-3 mb-2">
-              <button
+              <Button
                 onClick={() => onNavigateToInventory?.(bom.finishedSku)}
                 className="text-lg font-bold text-white font-mono hover:text-indigo-400 transition-colors cursor-pointer underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400"
                 title="View this product in Inventory"
               >
                 {bom.finishedSku}
-              </button>
+              </Button>
               {bom.category && (
                 <span className="px-2 py-0.5 text-xs rounded bg-gray-700 text-gray-300 border border-gray-600">
                   {bom.category}
@@ -304,17 +305,17 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             {/* Action Buttons - DATA MANAGEMENT FOCUS (no production triggers) */}
             <div className="flex gap-1 flex-wrap justify-end">
               {/* View Details - Prominent for both roles */}
-              <button
+              <Button
                 onClick={onViewDetails}
                 className={`flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded transition-colors ${isManager ? 'text-sm px-5' : ''}`}
                 title="View all product details, labels, registrations, and data sheets"
               >
                 <EyeIcon className={`${isManager ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} />
                 {isManager && <span>Details</span>}
-              </button>
+              </Button>
 
               {onQuickBuild && (
-                <button
+                <Button
                   onClick={(e) => {
                     e.stopPropagation();
                     onQuickBuild();
@@ -324,11 +325,11 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 >
                   <ClockIcon className="w-3.5 h-3.5" />
                   <span>Schedule</span>
-                </button>
+                </Button>
               )}
 
               {/* Expand/Collapse - Both roles */}
-              <button
+              <Button
                 onClick={(e) => {
                   console.log('[EnhancedBomCard] EXPAND BUTTON CLICKED!', {
                     bomId: bom.id,
@@ -342,18 +343,18 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 title={isExpanded ? 'Collapse components' : 'Expand components'}
               >
                 <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-              </button>
+              </Button>
 
               {/* Edit - Admin only */}
               {isAdmin && canEdit && (
-                <button
+                <Button
                   onClick={onEdit}
                   className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded transition-colors"
                   title="Edit BOM configuration"
                 >
                   <PencilIcon className="w-3.5 h-3.5" />
                   <span>Edit</span>
-                </button>
+                </Button>
               )}
             </div>
 
@@ -472,12 +473,12 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                   >
                     <div className="flex-1">
                       {onNavigateToInventory ? (
-                        <button
+                        <Button
                           onClick={() => onNavigateToInventory(c.sku)}
                           className="font-semibold font-mono text-sm text-indigo-400 hover:text-indigo-300 hover:underline"
                         >
                           {c.sku}
-                        </button>
+                        </Button>
                       ) : (
                         <span className="font-semibold font-mono text-sm text-white">{c.sku}</span>
                       )}

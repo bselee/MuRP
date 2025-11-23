@@ -8,6 +8,7 @@ import BatchArtworkVerificationModal from '../components/BatchArtworkVerificatio
 import ManualLabelScanner from '../components/ManualLabelScanner';
 import ArtworkEditor from '../components/ArtworkEditor';
 
+import Button from '@/components/ui/Button';
 type ArtworkWithProduct = Artwork & {
     productName: string;
     productSku: string;
@@ -113,9 +114,9 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
     };
     
     const FolderButton: React.FC<{folderId: string | null, name: string}> = ({folderId, name}) => (
-        <button onClick={() => setSelectedFolderId(folderId)} className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${selectedFolderId === folderId ? 'bg-indigo-600 text-white font-semibold' : 'text-gray-300 hover:bg-gray-700'}`}>
+        <Button onClick={() => setSelectedFolderId(folderId)} className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${selectedFolderId === folderId ? 'bg-indigo-600 text-white font-semibold' : 'text-gray-300 hover:bg-gray-700'}`}>
             {name}
-        </button>
+        </Button>
     );
 
     return (
@@ -142,15 +143,15 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                                     onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
                                 />
                                 <div className="flex gap-2">
-                                    <button onClick={handleCreateFolder} className="flex-1 bg-indigo-600 text-white font-semibold py-1 px-2 text-sm rounded-md">Create</button>
-                                    <button onClick={() => setIsCreatingFolder(false)} className="flex-1 bg-gray-600 text-white font-semibold py-1 px-2 text-sm rounded-md">Cancel</button>
+                                    <Button onClick={handleCreateFolder} className="flex-1 bg-indigo-600 text-white font-semibold py-1 px-2 text-sm rounded-md">Create</Button>
+                                    <Button onClick={() => setIsCreatingFolder(false)} className="flex-1 bg-gray-600 text-white font-semibold py-1 px-2 text-sm rounded-md">Cancel</Button>
                                 </div>
                             </div>
                         ) : (
-                            <button onClick={() => setIsCreatingFolder(true)} className="w-full flex items-center justify-center gap-2 text-sm bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded-md transition-colors">
+                            <Button onClick={() => setIsCreatingFolder(true)} className="w-full flex items-center justify-center gap-2 text-sm bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded-md transition-colors">
                                 <PlusCircleIcon className="w-5 h-5" />
                                 Create Folder
-                            </button>
+                            </Button>
                         )}
                     </div>
                 </aside>
@@ -163,24 +164,24 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                                 <p className="text-gray-400 mt-1">A central repository for all product artwork and design files.</p>
                             </div>
                             <div className="flex gap-2">
-                                <button 
+                                <Button 
                                     onClick={() => setIsLabelScannerOpen(true)}
                                     className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2"
                                 >
                                     <QrCodeIcon className="w-5 h-5" />
                                     Scan Labels
-                                </button>
-                                <button 
+                                </Button>
+                                <Button 
                                     onClick={() => setIsBatchVerificationModalOpen(true)}
                                     className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2"
                                 >
                                     <SparklesIcon className="w-5 h-5" />
                                     Batch Verify
-                                </button>
+                                </Button>
                                 {selectedArtworkIds.length > 0 && (
-                                    <button onClick={handleCreatePo} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-colors">
+                                    <Button onClick={handleCreatePo} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-colors">
                                         Create PO for Packaging ({selectedArtworkIds.length})
-                                    </button>
+                                    </Button>
                                 )}
                             </div>
                         </div>
@@ -212,14 +213,14 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                     <aside className="w-80 bg-gray-800/50 p-6 rounded-lg border border-gray-700 flex-shrink-0 overflow-auto" style={{ maxHeight: '90vh' }}>
                         <div className="flex justify-between items-start mb-4">
                             <h2 className="text-lg font-semibold text-white">Artwork Details</h2>
-                            <button
+                            <Button
                                 onClick={() => setSelectedArtworkForDetails(null)}
                                 className="text-gray-400 hover:text-white transition-colors"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
-                            </button>
+                            </Button>
                         </div>
 
                         {/* Preview */}
@@ -326,20 +327,20 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                                 <ArrowDownTrayIcon className="w-5 h-5" />
                                 Download
                             </a>
-                            <button 
+                            <Button 
                                 onClick={() => handleScanClick(selectedArtworkForDetails)}
                                 className="flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
                             >
                                 <SparklesIcon className="w-5 h-5" />
                                 AI Scan
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                                 onClick={() => setArtworkBeingEdited(selectedArtworkForDetails)}
                                 className="flex items-center justify-center gap-2 w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
                             >
                                 <DocumentDuplicateIcon className="w-5 h-5" />
                                 Edit Artwork
-                            </button>
+                            </Button>
                         </div>
                     </aside>
                 )}
@@ -370,14 +371,14 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                     <div className="bg-gray-800 rounded-lg shadow-2xl border border-gray-700 w-full max-w-6xl max-h-[90vh] overflow-auto">
                         <div className="sticky top-0 bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center z-10">
                             <h2 className="text-2xl font-bold text-white">Label Scanner</h2>
-                            <button
+                            <Button
                                 onClick={() => setIsLabelScannerOpen(false)}
                                 className="text-gray-400 hover:text-white transition-colors"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
-                            </button>
+                            </Button>
                         </div>
                         <div className="p-6">
                             <ManualLabelScanner
@@ -451,12 +452,12 @@ const ArtworkCard: React.FC<{
                     <a href={art.url} download className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
                         <ArrowDownTrayIcon className="w-4 h-4" /> <span>Download</span>
                     </a>
-                    <button onClick={(e) => { e.stopPropagation(); onScanClick(art); }} className="flex items-center justify-center gap-1 w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
+                    <Button onClick={(e) => { e.stopPropagation(); onScanClick(art); }} className="flex items-center justify-center gap-1 w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
                         <SparklesIcon className="w-4 h-4" /> <span>Scan</span>
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
+                    </Button>
+                    <Button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
                         <PhotoIcon className="w-4 h-4" /> <span>Edit</span>
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

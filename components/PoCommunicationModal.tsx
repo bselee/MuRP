@@ -6,6 +6,7 @@ import { getGoogleGmailService } from '../services/googleGmailService';
 import { logPoEmailTracking } from '../hooks/useSupabaseMutations';
 import { ArrowDownTrayIcon, MailIcon, RefreshCcwIcon } from './icons';
 
+import Button from '@/components/ui/Button';
 interface PoCommunicationModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -154,14 +155,14 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
               <p className="text-sm text-gray-400">Vendor</p>
               <p className="text-lg font-semibold text-white">{vendor.name}</p>
             </div>
-            <button
+            <Button
               onClick={refreshTimeline}
               disabled={loading}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border border-gray-600 text-gray-200 hover:bg-gray-700 disabled:opacity-50"
             >
               <RefreshCcwIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
-            </button>
+            </Button>
           </div>
 
           <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
@@ -192,14 +193,14 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
               className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
               placeholder="Type your reply…"
             />
-            <button
+            <Button
               onClick={handleSendReply}
               disabled={sending || !replyBody.trim()}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition disabled:bg-gray-600 disabled:cursor-not-allowed"
             >
               <MailIcon className="w-5 h-5" />
               {sending ? 'Sending…' : 'Send Reply'}
-            </button>
+            </Button>
             {!gmailConnection.isConnected && (
               <p className="text-xs text-yellow-300">
                 Gmail isn’t connected. Connect in Settings to send replies from MuRP.

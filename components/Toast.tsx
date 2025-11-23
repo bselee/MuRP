@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { ToastInfo } from '../App';
 import { CheckCircleIcon, XCircleIcon, InformationCircleIcon, CloseIcon } from './icons';
 
+import Button from '@/components/ui/Button';
 interface ToastProps extends ToastInfo {
   onClose: () => void;
 }
@@ -42,7 +43,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
       <div className="ml-3 text-sm font-medium text-gray-200">
         {message}
       </div>
-      <button 
+      <Button 
         type="button" 
         className="ml-auto -mx-1.5 -my-1.5 p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg inline-flex h-8 w-8" 
         onClick={handleClose}
@@ -50,7 +51,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
       >
         <span className="sr-only">Close</span>
         <CloseIcon className="w-5 h-5" />
-      </button>
+      </Button>
     </div>
   );
 };

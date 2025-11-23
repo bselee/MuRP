@@ -4,6 +4,7 @@ import type { AiConfig, AiPrompt } from '../types';
 import { defaultAiConfig } from '../types';
 import AiPromptEditModal from './AiPromptEditModal';
 import { 
+import Button from '@/components/ui/Button';
   AIProvider,
   getAIProviderSettings,
   updateAIProviderSettings,
@@ -138,7 +139,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {(['gemini', 'openai', 'anthropic', 'azure'] as AIProvider[]).map((provider) => (
-                  <button
+                  <Button
                     key={provider}
                     onClick={() => handleProviderChange(provider)}
                     className={`p-3 rounded-md border-2 transition-all ${
@@ -151,7 +152,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
                     {provider === 'gemini' && (
                       <div className="text-xs text-gray-500 mt-1">Default</div>
                     )}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -263,20 +264,20 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
             {/* Actions */}
             <div className="flex flex-col gap-2 pt-4 border-t border-gray-700">
               <div className="flex items-center gap-3">
-                <button
+                <Button
                   onClick={handleTestProvider}
                   disabled={testingProvider || !providerConfig.apiKey}
                   className="bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50 text-sm"
                 >
                   {testingProvider ? 'Testing...' : 'Test Connection'}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleSaveProvider}
                   disabled={!providerConfig.apiKey}
                   className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
                 >
                   Save Provider & API Key
-                </button>
+                </Button>
                 {providerTestResult && (
                   <div
                     className={`flex items-center gap-2 text-sm ${
@@ -338,12 +339,12 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
               Customize the system prompts used by the AI assistant.
             </p>
           </div>
-          <button
+          <Button
             onClick={handleResetPrompts}
             className="text-sm font-semibold text-gray-400 hover:text-white"
           >
             Reset all to default
-          </button>
+          </Button>
         </div>
         <div className="mt-4 pt-4 border-t border-gray-700/50 space-y-2">
           {aiConfig.prompts.map((prompt) => (
@@ -355,12 +356,12 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
                 <p className="font-semibold text-white">{prompt.name}</p>
                 <p className="text-xs text-gray-400">{prompt.description}</p>
               </div>
-              <button
+              <Button
                 onClick={() => handleEditPrompt(prompt)}
                 className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
               >
                 <PencilIcon className="w-4 h-4" /> Edit
-              </button>
+              </Button>
             </div>
           ))}
         </div>

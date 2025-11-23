@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 // Enhanced Regulatory Compliance: Compliance Detail Modal
 // Shows detailed compliance issues for a specific BOM
 
@@ -89,12 +90,12 @@ const ComplianceDetailModal: React.FC<ComplianceDetailModalProps> = ({
               </span>
             </div>
           </div>
-          <button
+          <Button
             onClick={onClose}
             className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
           >
             <CloseIcon className="w-6 h-6" />
-          </button>
+          </Button>
         </div>
 
         {/* Content */}
@@ -172,12 +173,12 @@ const ComplianceDetailModal: React.FC<ComplianceDetailModalProps> = ({
 
                           {/* Draft Letter Button */}
                           {onDraftLetter && (
-                            <button
+                            <Button
                               onClick={() => onDraftLetter(issue)}
                               className="text-sm text-gray-400 hover:text-white underline"
                             >
                               Draft compliance letter →
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -219,12 +220,12 @@ const ComplianceDetailModal: React.FC<ComplianceDetailModalProps> = ({
             Last scanned: {new Date(status.lastScanDate).toLocaleString()} •
             Expires: {new Date(status.expiresAt).toLocaleDateString()}
           </p>
-          <button
+          <Button
             onClick={onClose}
             className="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors"
           >
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>

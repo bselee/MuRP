@@ -3,6 +3,7 @@ import type { InventoryItem, RequisitionItem, RequisitionRequestOptions, Requisi
 import Modal from './Modal';
 import { PlusCircleIcon, TrashIcon } from './icons';
 
+import Button from '@/components/ui/Button';
 interface CreateRequisitionModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -104,9 +105,9 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                                             min="1"
                                             placeholder="Qty"
                                         />
-                                        <button onClick={() => handleRemoveItem(item.sku)} className="p-1.5 text-red-500 hover:text-red-400">
+                                        <Button onClick={() => handleRemoveItem(item.sku)} className="p-1.5 text-red-500 hover:text-red-400">
                                             <TrashIcon className="w-5 h-5"/>
-                                        </button>
+                                        </Button>
                                     </div>
                                     <input
                                         type="text"
@@ -133,9 +134,9 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                             .map(item => <option key={item.sku} value={item.sku}>{item.name}</option>
                         )}
                     </select>
-                    <button onClick={handleAddItem} className="p-2 text-indigo-400 hover:text-indigo-300 disabled:text-gray-600 disabled:cursor-not-allowed" disabled={!itemToAdd}>
+                    <Button onClick={handleAddItem} className="p-2 text-indigo-400 hover:text-indigo-300 disabled:text-gray-600 disabled:cursor-not-allowed" disabled={!itemToAdd}>
                         <PlusCircleIcon className="w-7 h-7" />
-                    </button>
+                    </Button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-gray-700/50">
@@ -217,10 +218,10 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                 </div>
 
                 <div className="flex justify-end pt-6 border-t border-gray-700">
-                    <button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</button>
-                    <button onClick={handleSubmit} disabled={reqItems.length === 0} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                    <Button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</Button>
+                    <Button onClick={handleSubmit} disabled={reqItems.length === 0} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
                         Submit Requisition
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Modal>

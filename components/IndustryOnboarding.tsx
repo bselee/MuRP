@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Industry Onboarding Component
  * Collects user industry, states, and product info for targeted compliance
@@ -125,7 +126,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
 
           <div className="space-y-3">
             {industries.map(industry => (
-              <button
+              <Button
                 key={industry.industry}
                 onClick={() => setSelectedIndustry(industry.industry)}
                 className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
@@ -141,17 +142,17 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
                     Focus areas: {industry.focus_areas.slice(0, 3).join(', ')}
                   </div>
                 )}
-              </button>
+              </Button>
             ))}
           </div>
 
-          <button
+          <Button
             onClick={() => setStep(2)}
             disabled={!selectedIndustry}
             className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-3 rounded-lg transition-all"
           >
             Continue
-          </button>
+          </Button>
         </div>
       )}
 
@@ -165,7 +166,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {US_STATES.map(state => (
-              <button
+              <Button
                 key={state.code}
                 onClick={() => toggleState(state.code)}
                 className={`p-3 rounded-lg border-2 font-medium transition-all ${
@@ -175,7 +176,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
                 }`}
               >
                 {state.name}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -199,19 +200,19 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
           )}
 
           <div className="flex gap-3">
-            <button
+            <Button
               onClick={() => setStep(1)}
               className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 rounded-lg transition-all"
             >
               Back
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setStep(3)}
               disabled={selectedStates.length === 0}
               className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-3 rounded-lg transition-all"
             >
               Continue
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -226,7 +227,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
 
           <div className="space-y-3">
             {/* Basic */}
-            <button
+            <Button
               onClick={() => setComplianceTier('basic')}
               className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
                 complianceTier === 'basic'
@@ -244,10 +245,10 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
               <p className="text-indigo-300 text-xs">
                 ✨ Includes 5 free AI checks to try Full AI Mode
               </p>
-            </button>
+            </Button>
 
             {/* Full AI */}
-            <button
+            <Button
               onClick={() => setComplianceTier('full_ai')}
               className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
                 complianceTier === 'full_ai'
@@ -265,22 +266,22 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
               <p className="text-yellow-400 text-xs font-medium">
                 ⭐ Recommended for growing businesses
               </p>
-            </button>
+            </Button>
           </div>
 
           <div className="flex gap-3">
-            <button
+            <Button
               onClick={() => setStep(2)}
               className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 rounded-lg transition-all"
             >
               Back
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSubmit}
               className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-3 rounded-lg transition-all"
             >
               Get Started
-            </button>
+            </Button>
           </div>
         </div>
       )}

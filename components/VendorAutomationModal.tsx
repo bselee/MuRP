@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 🤖 VENDOR AUTOMATION SETTINGS MODAL
@@ -141,7 +142,7 @@ const VendorAutomationModal: React.FC<VendorAutomationModalProps> = ({
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {(['critical', 'high', 'normal', 'low'] as const).map((level) => (
-                    <button
+                    <Button
                       key={level}
                       onClick={() => setAutoPoThreshold(level)}
                       className={`p-3 rounded-lg border-2 transition-all ${
@@ -157,7 +158,7 @@ const VendorAutomationModal: React.FC<VendorAutomationModalProps> = ({
                         {level === 'normal' && '🔵 Normal + high + critical'}
                         {level === 'low' && '⚪ All items'}
                       </div>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -226,19 +227,19 @@ const VendorAutomationModal: React.FC<VendorAutomationModalProps> = ({
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
-            <button
+            <Button
               onClick={onClose}
               className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSave}
               disabled={saving}
               className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save Settings'}
-            </button>
+            </Button>
           </div>
         </div>
       )}

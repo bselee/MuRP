@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Category Management Modal
  * 
@@ -127,7 +128,7 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    <button
+                    <Button
                       onClick={() => handleToggleVisible(category)}
                       className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${
                         cfg.visible
@@ -146,9 +147,9 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
                           Hidden
                         </>
                       )}
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       onClick={() => handleToggleExcluded(category)}
                       className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${
                         cfg.excluded
@@ -167,7 +168,7 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
                           Filtered
                         </>
                       )}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -176,18 +177,18 @@ const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
-          <button
+          <Button
             onClick={onClose}
             className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSave}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
           >
             Save Changes
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

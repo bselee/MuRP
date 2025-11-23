@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Filter Preset Manager
  * 
@@ -122,7 +123,7 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
             </div>
 
             <div className="flex justify-end gap-2">
-              <button
+              <Button
                 onClick={() => {
                   setIsCreating(false);
                   setNewPresetName('');
@@ -131,25 +132,25 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
                 className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm hover:bg-gray-600 transition-colors"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleCreatePreset}
                 disabled={!newPresetName.trim()}
                 className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <CheckIcon className="w-4 h-4 inline mr-1" />
                 Save Preset
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
-          <button
+          <Button
             onClick={() => setIsCreating(true)}
             className="w-full bg-indigo-600 text-white rounded-lg p-3 hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
           >
             <PlusIcon className="w-5 h-5" />
             <span className="font-medium">Create New Preset from Current Filters</span>
-          </button>
+          </Button>
         )}
 
         {/* Saved Presets List */}
@@ -180,13 +181,13 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
                       )}
                     </div>
                     
-                    <button
+                    <Button
                       onClick={() => onDeletePreset(preset.id)}
                       className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-300 transition-all"
                       title="Delete preset"
                     >
                       <TrashIcon className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="space-y-1 text-xs text-gray-400 mb-3">
@@ -204,12 +205,12 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
                     )}
                   </div>
 
-                  <button
+                  <Button
                     onClick={() => handleApply(preset)}
                     className="w-full bg-indigo-600/20 text-indigo-300 rounded py-2 text-sm font-medium hover:bg-indigo-600/30 transition-colors"
                   >
                     Apply Preset
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -217,12 +218,12 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
         </div>
 
         <div className="flex justify-end pt-4 border-t border-gray-700">
-          <button
+          <Button
             onClick={onClose}
             className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors"
           >
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

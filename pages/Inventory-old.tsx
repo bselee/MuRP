@@ -5,6 +5,7 @@ import ImportExportModal from '../components/ImportExportModal';
 import { exportToCsv, exportToJson, exportToXls } from '../services/exportService';
 import { generateInventoryPdf } from '../services/pdfService';
 
+import Button from '@/components/ui/Button';
 interface InventoryProps {
     inventory: InventoryItem[];
     vendors: Vendor[];
@@ -31,7 +32,7 @@ const SortableHeader: React.FC<{
 
     return (
         <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-            <button className="flex items-center gap-2 group" onClick={() => requestSort(sortKey)}>
+            <Button className="flex items-center gap-2 group" onClick={() => requestSort(sortKey)}>
                 {title}
                 <span className={`transition-opacity ${isSorted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                     {isSorted ? (
@@ -40,7 +41,7 @@ const SortableHeader: React.FC<{
                         <ChevronDownIcon className="w-4 h-4 text-gray-500" />
                     )}
                 </span>
-            </button>
+            </Button>
         </th>
     );
 };
@@ -188,13 +189,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         <p className="text-gray-400 mt-1">Search, filter, and manage all your stock items.</p>
                     </div>
                     <div className="flex-shrink-0">
-                        <button
+                        <Button
                             onClick={() => setIsImportExportModalOpen(true)}
                             className="flex items-center gap-2 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
                         >
                             <ArrowsUpDownIcon className="w-5 h-5" />
                             <span>Import / Export</span>
-                        </button>
+                        </Button>
                     </div>
                 </header>
                 
@@ -278,13 +279,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                 <div className="text-sm font-mono font-medium text-white">{item.sku}</div>
                                                 <div className="flex gap-1">
                                                     {bomSkuSet.has(item.sku) && (
-                                                        <button
+                                                        <Button
                                                             onClick={() => onNavigateToBom?.(item.sku)}
                                                             className="text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full hover:bg-blue-500/30 hover:border-blue-400/50 transition-colors cursor-pointer"
                                                             title="View BOM"
                                                         >
                                                             BOM
-                                                        </button>
+                                                        </Button>
                                                     )}
                                                     {item.dataSource && (
                                                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${

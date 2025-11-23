@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 📄 DOCUMENT TEMPLATES PANEL
@@ -284,13 +285,13 @@ const DocumentTemplatesPanel: React.FC<DocumentTemplatesPanelProps> = ({ addToas
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
-        <button
+        <Button
           onClick={handleExportToGoogleDoc}
           disabled={isExportingDoc}
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-400 text-white rounded-md text-sm font-medium transition-colors"
         >
           {isExportingDoc ? 'Exporting…' : 'Export Settings to Google Docs'}
-        </button>
+        </Button>
       </div>
       {/* Tab Navigation */}
       <div className="flex gap-2 border-b border-gray-700">
@@ -299,7 +300,7 @@ const DocumentTemplatesPanel: React.FC<DocumentTemplatesPanelProps> = ({ addToas
           { key: 'email', label: 'Email Templates' },
           { key: 'pdf', label: 'PDF Templates' },
         ].map((tab) => (
-          <button
+          <Button
             key={tab.key}
             onClick={() => setActiveTab(tab.key as any)}
             className={`px-4 py-2 font-medium text-sm transition-colors ${
@@ -309,7 +310,7 @@ const DocumentTemplatesPanel: React.FC<DocumentTemplatesPanelProps> = ({ addToas
             }`}
           >
             {tab.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -402,14 +403,14 @@ const DocumentTemplatesPanel: React.FC<DocumentTemplatesPanelProps> = ({ addToas
             </div>
           </div>
 
-          <button
+          <Button
             onClick={saveCompanySettings}
             disabled={saving}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500"
           >
             <SaveIcon className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save Company Info'}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -418,14 +419,14 @@ const DocumentTemplatesPanel: React.FC<DocumentTemplatesPanelProps> = ({ addToas
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-400">Customize the default email template for purchase orders</p>
-            <button
+            <Button
               onClick={generateEmailWithAI}
               disabled={generating}
               className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 transition-colors disabled:bg-gray-500"
             >
               <BotIcon className="w-4 h-4" />
               {generating ? 'Generating...' : 'Generate with AI'}
-            </button>
+            </Button>
           </div>
 
           <div>
@@ -475,14 +476,14 @@ const DocumentTemplatesPanel: React.FC<DocumentTemplatesPanelProps> = ({ addToas
             </div>
           </div>
 
-          <button
+          <Button
             onClick={saveEmailTemplate}
             disabled={saving}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500"
           >
             <SaveIcon className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save Email Template'}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -491,14 +492,14 @@ const DocumentTemplatesPanel: React.FC<DocumentTemplatesPanelProps> = ({ addToas
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-400">Customize the default PDF template for purchase orders</p>
-            <button
+            <Button
               onClick={generatePDFWithAI}
               disabled={generating}
               className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700 transition-colors disabled:bg-gray-500"
             >
               <BotIcon className="w-4 h-4" />
               {generating ? 'Generating...' : 'Generate with AI'}
-            </button>
+            </Button>
           </div>
 
           <div>
@@ -542,14 +543,14 @@ const DocumentTemplatesPanel: React.FC<DocumentTemplatesPanelProps> = ({ addToas
             </div>
           </div>
 
-          <button
+          <Button
             onClick={savePDFTemplate}
             disabled={saving}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500"
           >
             <SaveIcon className="w-4 h-4" />
             {saving ? 'Saving...' : 'Save PDF Template'}
-          </button>
+          </Button>
         </div>
       )}
     </div>

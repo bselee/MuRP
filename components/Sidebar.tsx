@@ -6,6 +6,7 @@ import type { User } from '../types';
 import { HomeIcon, PackageIcon, DocumentTextIcon, UsersIcon, LightBulbIcon, CogIcon, MushroomLogo, MagicSparklesIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, ClipboardListIcon, BotIcon, PhotoIcon, QrCodeIcon, ChartBarIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 
+import Button from '@/components/ui/Button';
 interface SidebarProps {
     currentPage: Page;
     setCurrentPage: (page: Page) => void;
@@ -124,12 +125,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
                         <div className="text-2xl font-bold text-white tracking-tight whitespace-nowrap">MuRP</div>
                     </>
                 )}
-                <button 
+                <Button 
                     onClick={onToggle} 
                     className="absolute -right-3 top-1/2 -translate-y-1/2 bg-gray-600 hover:bg-indigo-600 text-white rounded-full p-1 border-2 border-gray-800 transition-transform z-10"
                 >
                     <ChevronDoubleLeftIcon className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : 'rotate-0'}`} />
-                </button>
+                </Button>
             </div>
             <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
                 <ul>

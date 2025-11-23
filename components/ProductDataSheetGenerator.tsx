@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Product Data Sheet Generator
  *
@@ -339,7 +340,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
               Document Type
             </label>
             <div className="grid grid-cols-2 gap-3">
-              <button
+              <Button
                 onClick={() => handleDocumentTypeChange('sds')}
                 className={`p-4 rounded-lg border-2 transition-colors ${
                   documentType === 'sds'
@@ -350,9 +351,9 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
                 <DocumentTextIcon className="w-6 h-6 text-indigo-400 mx-auto mb-2" />
                 <p className="text-white font-medium text-sm">Safety Data Sheet (SDS)</p>
                 <p className="text-gray-400 text-xs mt-1">Complete safety information</p>
-              </button>
+              </Button>
 
-              <button
+              <Button
                 onClick={() => handleDocumentTypeChange('spec_sheet')}
                 className={`p-4 rounded-lg border-2 transition-colors ${
                   documentType === 'spec_sheet'
@@ -363,9 +364,9 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
                 <DocumentTextIcon className="w-6 h-6 text-green-400 mx-auto mb-2" />
                 <p className="text-white font-medium text-sm">Specification Sheet</p>
                 <p className="text-gray-400 text-xs mt-1">Technical specifications</p>
-              </button>
+              </Button>
 
-              <button
+              <Button
                 onClick={() => handleDocumentTypeChange('product_info')}
                 className={`p-4 rounded-lg border-2 transition-colors ${
                   documentType === 'product_info'
@@ -376,9 +377,9 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
                 <DocumentTextIcon className="w-6 h-6 text-blue-400 mx-auto mb-2" />
                 <p className="text-white font-medium text-sm">Product Information</p>
                 <p className="text-gray-400 text-xs mt-1">Marketing and sales info</p>
-              </button>
+              </Button>
 
-              <button
+              <Button
                 onClick={() => handleDocumentTypeChange('compliance_doc')}
                 className={`p-4 rounded-lg border-2 transition-colors ${
                   documentType === 'compliance_doc'
@@ -389,7 +390,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
                 <DocumentTextIcon className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
                 <p className="text-white font-medium text-sm">Compliance Document</p>
                 <p className="text-gray-400 text-xs mt-1">Regulatory focus</p>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -463,20 +464,20 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
           {/* Action Buttons */}
           <div className="flex gap-3 justify-end pt-6 border-t border-gray-700">
             {onClose && (
-              <button
+              <Button
                 onClick={onClose}
                 className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
               >
                 Cancel
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               onClick={handleGenerate}
               className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
             >
               <SparklesIcon className="w-5 h-5" />
               Generate with AI
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -513,18 +514,18 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
 
           {/* Action Buttons */}
           <div className="flex gap-3 justify-end pt-6 border-t border-gray-700">
-            <button
+            <Button
               onClick={() => setCurrentStep('config')}
               className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
             >
               Regenerate
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSave}
               className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
             >
               Save to Database
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -570,23 +571,23 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
               </div>
             ) : (
               <div className="flex gap-3">
-                <button
+                <Button
                   onClick={handleDownloadPDF}
                   disabled={!savedDataSheet}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                 >
                   <ArrowDownTrayIcon className="w-5 h-5" />
                   Download PDF
-                </button>
+                </Button>
 
-                <button
+                <Button
                   onClick={handleGenerateAndUploadPDF}
                   disabled={!savedDataSheet}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                 >
                   <ArrowDownTrayIcon className="w-5 h-5" />
                   Generate & Store PDF
-                </button>
+                </Button>
               </div>
             )}
 
@@ -609,7 +610,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
 
           {/* Action Buttons */}
           <div className="flex gap-3 justify-end pt-4 border-t border-gray-700">
-            <button
+            <Button
               onClick={() => {
                 setCurrentStep('config');
                 setGeneratedContent(null);
@@ -618,14 +619,14 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
               className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
             >
               Generate Another
-            </button>
+            </Button>
             {onClose && (
-              <button
+              <Button
                 onClick={onClose}
                 className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
               >
                 Close
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -645,7 +646,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
           </div>
 
           <div className="flex gap-3 justify-end">
-            <button
+            <Button
               onClick={() => {
                 setCurrentStep('config');
                 setError('');
@@ -653,7 +654,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
               className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
             >
               Try Again
-            </button>
+            </Button>
           </div>
         </div>
       )}

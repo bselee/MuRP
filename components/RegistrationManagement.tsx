@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 // Registration Management Component
 // Manages state-by-state product registrations with renewal tracking
 
@@ -127,13 +128,13 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2 ml-4">
-            <button
+            <Button
               onClick={() => onEditRegistration(registration)}
               className="p-2 text-indigo-400 hover:bg-indigo-900/20 rounded-lg transition-colors"
               title="Edit"
             >
               <PencilSquareIcon className="w-5 h-5" />
-            </button>
+            </Button>
             {registration.certificateUrl && (
               <a
                 href={registration.certificateUrl}
@@ -151,7 +152,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
         {/* Guidelines Info */}
         {guidelines && (
           <div className="mt-3 pt-3 border-t border-gray-700">
-            <button
+            <Button
               onClick={() => {
                 setSelectedState(registration.stateCode);
                 setShowGuidelines(true);
@@ -160,7 +161,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
             >
               <InformationCircleIcon className="w-4 h-4" />
               View {registration.stateName} Registration Requirements
-            </button>
+            </Button>
           </div>
         )}
 
@@ -185,13 +186,13 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
             Track product registrations and renewal deadlines across all states
           </p>
         </div>
-        <button
+        <Button
           onClick={onAddRegistration}
           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
         >
           <PlusCircleIcon className="w-5 h-5" />
           Add Registration
-        </button>
+        </Button>
       </div>
 
       {/* Summary Cards */}
@@ -224,13 +225,13 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
           <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
             Add state registrations to track renewal deadlines and ensure compliance across all markets where you sell this product.
           </p>
-          <button
+          <Button
             onClick={onAddRegistration}
             className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
           >
             <PlusCircleIcon className="w-5 h-5" />
             Add Your First Registration
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-6">

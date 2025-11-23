@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase/client';
 import type { FollowUpRule } from '../types';
 import { BotIcon, SaveIcon, TrashIcon, PlusCircleIcon } from './icons';
 
+import Button from '@/components/ui/Button';
 interface FollowUpSettingsPanelProps {
   addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
@@ -131,14 +132,14 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
         <p className="text-sm text-gray-300">
           Define the cadence for automatic “We still need tracking” reminders. Each stage waits a set number of hours after the last email (or original send) before nudging the vendor in the same Gmail thread.
         </p>
-        <button
+        <Button
           onClick={handleCreateRule}
           disabled={creating}
           className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white max-w-fit disabled:opacity-60"
         >
           <PlusCircleIcon className="w-4 h-4" />
           Add Stage
-        </button>
+        </Button>
       </div>
 
       {loading ? (
@@ -184,21 +185,21 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
                   Active
                 </label>
                 <div className="flex-1" />
-                <button
+                <Button
                   onClick={() => handleDeleteRule(rule.id)}
                   className="text-sm text-red-300 hover:text-red-100 flex items-center gap-1"
                 >
                   <TrashIcon className="w-4 h-4" />
                   Remove
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleSaveRule(rule)}
                   disabled={savingId === rule.id}
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-600/80 hover:bg-emerald-500 text-white text-sm font-semibold disabled:opacity-60"
                 >
                   <SaveIcon className="w-4 h-4" />
                   {savingId === rule.id ? 'Saving…' : 'Save'}
-                </button>
+                </Button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

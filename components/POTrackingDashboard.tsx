@@ -3,6 +3,7 @@ import type { POTrackingStatus } from '../types';
 import { fetchTrackedPurchaseOrders } from '../services/poTrackingService';
 import { RefreshCcwIcon, TruckIcon, AlertTriangleIcon } from './icons';
 
+import Button from '@/components/ui/Button';
 const STATUS_LABELS: Record<POTrackingStatus, string> = {
   awaiting_confirmation: 'Awaiting Vendor',
   confirmed: 'Confirmed',
@@ -91,14 +92,14 @@ const POTrackingDashboard: React.FC = () => {
           </h2>
           <p className="text-sm text-gray-400">Real-time shipment visibility</p>
         </div>
-        <button
+        <Button
           onClick={refresh}
           disabled={loading}
           className="inline-flex items-center gap-2 text-sm text-indigo-300 border border-indigo-500/40 rounded-md px-3 py-1.5 hover:bg-indigo-500/10 disabled:opacity-50"
         >
           <RefreshCcwIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
-        </button>
+        </Button>
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}

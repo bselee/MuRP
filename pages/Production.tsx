@@ -4,6 +4,7 @@ import { CalendarIcon, TableCellsIcon } from '../components/icons';
 import type { BuildOrder, BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, QuickRequestDefaults } from '../types';
 import ScheduleBuildModal from '../components/ScheduleBuildModal';
 
+import Button from '@/components/ui/Button';
 interface ProductionProps {
     buildOrders: BuildOrder[];
     boms: BillOfMaterials[];
@@ -60,14 +61,14 @@ const Production: React.FC<ProductionProps> = ({
                     <div className="flex items-center gap-3 flex-wrap justify-end">
                         <div className="flex gap-2 flex-wrap justify-end">
                             {onQuickRequest && (
-                                <button
+                                <Button
                                     onClick={() => onQuickRequest()}
                                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
                                 >
                                     Ask About Product
-                                </button>
+                                </Button>
                             )}
-                            <button
+                            <Button
                                 onClick={() => {
                                     setScheduleAnchor(new Date());
                                     setScheduleModalOpen(true);
@@ -75,11 +76,11 @@ const Production: React.FC<ProductionProps> = ({
                                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
                             >
                                 Schedule Build
-                            </button>
+                            </Button>
                         </div>
                         {/* View Toggle */}
                         <div className="flex bg-gray-700 rounded-lg">
-                            <button
+                            <Button
                                 onClick={() => setView('table')}
                                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
                                     view === 'table'
@@ -89,8 +90,8 @@ const Production: React.FC<ProductionProps> = ({
                         >
                             <TableCellsIcon className="w-4 h-4" />
                             Table View
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             onClick={() => setView('calendar')}
                             className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
                                 view === 'calendar'
@@ -100,7 +101,7 @@ const Production: React.FC<ProductionProps> = ({
                             >
                                 <CalendarIcon className="w-4 h-4" />
                                 Calendar View
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -147,20 +148,20 @@ const Production: React.FC<ProductionProps> = ({
                                     <td className="px-6 py-1 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
                                             {onQuickRequest && bo.finishedSku && (
-                                                <button
+                                                <Button
                                                     onClick={() => onQuickRequest({ sku: bo.finishedSku, requestType: 'product_alert', alertOnly: true })}
                                                     className="bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold py-1.5 px-3 rounded-md transition-colors"
                                                 >
                                                     Ask
-                                                </button>
+                                                </Button>
                                             )}
                                             {bo.status !== 'Completed' ? (
-                                                <button 
+                                                <Button 
                                                     onClick={() => onCompleteBuildOrder(bo.id)}
                                                     className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
                                                 >
                                                     Mark Completed
-                                                </button>
+                                                </Button>
                                             ) : (
                                                 <span className="text-xs text-gray-500">Done</span>
                                             )}

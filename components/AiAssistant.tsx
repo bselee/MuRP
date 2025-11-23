@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 💬 AI ASSISTANT - Beautiful Chat Interface with AI Gateway Integration
@@ -215,12 +216,12 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
               )}
             </div>
           </div>
-          <button
+          <Button
             onClick={onClose}
             className="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
           >
             <CloseIcon className="w-6 h-6" />
-          </button>
+          </Button>
         </header>
 
         {/* Upgrade Banner */}
@@ -229,14 +230,14 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
             <p className="text-sm text-white font-medium">
               ✨ Running low on messages? Upgrade to Full AI for unlimited chat!
             </p>
-            <button
+            <Button
               onClick={() => {
                 /* Navigate to upgrade page */
               }}
               className="mt-2 w-full py-1 px-3 bg-indigo-500 hover:bg-indigo-600 rounded text-white text-xs font-bold transition-colors"
             >
               Upgrade Now - $49/mo
-            </button>
+            </Button>
           </div>
         )}
 
@@ -300,13 +301,13 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
               className="w-full bg-transparent p-3 text-gray-200 placeholder-gray-400 focus:outline-none"
               disabled={isLoading}
             />
-            <button
+            <Button
               onClick={handleSend}
               disabled={isLoading || !input.trim()}
               className="p-3 text-gray-400 disabled:text-gray-600 enabled:hover:text-indigo-400 transition-colors"
             >
               <SendIcon className="w-6 h-6" />
-            </button>
+            </Button>
           </div>
           {userTier === 'basic' && (
             <p className="text-xs text-gray-500 mt-2 text-center">

@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 📊 AI USAGE DASHBOARD - Beautiful Insights into AI Operations
@@ -186,12 +187,12 @@ export const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ userId, onUp
       <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 text-center">
         <p className="text-red-400">Error loading usage data</p>
         <p className="text-sm text-gray-400 mt-2">{error}</p>
-        <button
+        <Button
           onClick={loadUsageData}
           className="mt-4 px-4 py-2 bg-red-700 hover:bg-red-600 rounded text-white text-sm transition-colors"
         >
           Retry
-        </button>
+        </Button>
       </div>
     );
   }
@@ -325,12 +326,12 @@ export const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ userId, onUp
             </div>
           </div>
           {onUpgradeClick && (
-            <button
+            <Button
               onClick={onUpgradeClick}
               className="mt-6 w-full py-3 px-6 bg-indigo-500 hover:bg-indigo-600 rounded-lg font-bold text-white transition-all shadow-lg hover:shadow-xl"
             >
               Upgrade to Full AI →
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -362,12 +363,12 @@ export const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ userId, onUp
 
       {/* Refresh Button */}
       <div className="text-center">
-        <button
+        <Button
           onClick={loadUsageData}
           className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white text-sm transition-colors"
         >
           🔄 Refresh Statistics
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults } from '../types';
 import { 
+import Button from '@/components/ui/Button';
   SearchIcon, 
   ChevronUpIcon, 
   ChevronDownIcon, 
@@ -151,7 +152,7 @@ const SortableHeader: React.FC<{
 
     return (
         <th className={`px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${className || ''}`}>
-            <button className="flex items-center gap-2 group" onClick={() => requestSort(sortKey)}>
+            <Button className="flex items-center gap-2 group" onClick={() => requestSort(sortKey)}>
                 {title}
                 <span className={`transition-opacity ${isSorted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                     {isSorted ? (
@@ -160,7 +161,7 @@ const SortableHeader: React.FC<{
                         <ChevronDownIcon className="w-4 h-4 text-gray-500" />
                     )}
                 </span>
-            </button>
+            </Button>
         </th>
     );
 };
@@ -794,7 +795,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         <p className="text-gray-400 mt-1">Search, filter, and manage all your stock items.</p>
                     </div>
                     <div className="flex gap-2 flex-shrink-0 flex-wrap">
-                        <button
+                        <Button
                             onClick={() => setIsPresetManagerOpen(true)}
                             className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-md transition-colors ${
                                 activePresetId 
@@ -809,22 +810,22 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     ? filterPresets.find(p => p.id === activePresetId)?.name || 'Presets'
                                     : 'Filter Presets'}
                             </span>
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             onClick={() => setIsColumnModalOpen(true)}
                             className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
                             title="Manage columns"
                         >
                             <AdjustmentsHorizontalIcon className="w-5 h-5" />
                             <span className="hidden sm:inline">Columns</span>
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             onClick={() => setIsImportExportModalOpen(true)}
                             className="flex items-center gap-2 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
                         >
                             <ArrowsUpDownIcon className="w-5 h-5" />
                             <span className="hidden sm:inline">Import / Export</span>
-                        </button>
+                        </Button>
                     </div>
                 </header>
                 
@@ -864,7 +865,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-1">
                                 Categories {selectedCategories.size > 0 && <span className="text-indigo-400">({selectedCategories.size})</span>}
                             </label>
-                            <button
+                            <Button
                                 onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
                                 className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-indigo-500/50' : ''}`}
                             >
@@ -879,23 +880,23 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         : `${selectedCategories.size} selected`}
                                 </span>
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
-                            </button>
+                            </Button>
                             {isCategoryDropdownOpen && (
                                 <div className="absolute z-[100] w-full mt-1 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden bg-gray-900">
                                     <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2 bg-gray-900">
-                                        <button
+                                        <Button
                                             onClick={selectAllCategories}
                                             className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
                                         >
                                             Select All
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
                                             onClick={clearAllCategories}
                                             className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
                                         >
                                             Clear
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
                                             onClick={() => {
                                                 setIsCategoryDropdownOpen(false);
                                                 setIsCategoryManagementOpen(true);
@@ -904,7 +905,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         >
                                             <AdjustmentsHorizontalIcon className="w-3 h-3" />
                                             Manage
-                                        </button>
+                                        </Button>
                                     </div>
                                     <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
                                         <input
@@ -948,7 +949,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             <label htmlFor="filter-vendor" className="block text-sm font-medium text-gray-300 mb-1">
                                 Vendors {selectedVendors.size > 0 && <span className="text-indigo-400">({selectedVendors.size})</span>}
                             </label>
-                            <button
+                            <Button
                                 onClick={() => setIsVendorDropdownOpen(!isVendorDropdownOpen)}
                                 className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 text-left flex justify-between items-center relative ${selectedVendors.size > 0 ? 'ring-2 ring-indigo-500/50' : ''}`}
                             >
@@ -963,23 +964,23 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         : `${selectedVendors.size} selected`}
                                 </span>
                                 <ChevronDownIcon className="w-4 h-4 ml-2" />
-                            </button>
+                            </Button>
                             {isVendorDropdownOpen && (
                                 <div className="absolute z-[100] w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden">
                                     <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2">
-                                        <button
+                                        <Button
                                             onClick={selectAllVendors}
                                             className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
                                         >
                                             Select All
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
                                             onClick={clearAllVendors}
                                             className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
                                         >
                                             Clear
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
                                             onClick={() => {
                                                 setIsVendorDropdownOpen(false);
                                                 setIsVendorManagementOpen(true);
@@ -988,7 +989,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         >
                                             <AdjustmentsHorizontalIcon className="w-3 h-3" />
                                             Manage
-                                        </button>
+                                        </Button>
                                     </div>
                                     <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
                                         <input
@@ -1045,7 +1046,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         </div>
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-3">
-                        <button
+                        <Button
                             onClick={handleNeedsOrderToggle}
                             className={`px-4 py-2 text-sm font-semibold rounded-md border transition-colors ${
                                 riskFilter === 'needs-order'
@@ -1054,7 +1055,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             }`}
                         >
                             Needs Order ({needsOrderCount})
-                        </button>
+                        </Button>
                         <span className="text-xs text-gray-400">
                             Flags SKUs when runway &lt; vendor lead time or stock is at/below the reorder point. Daily demand uses the most conservative rate across sales velocity and 30/60/90-day averages.
                         </span>
@@ -1064,12 +1065,12 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             Showing <span className="font-semibold text-white">{processedInventory.length}</span> of <span className="font-semibold text-white">{inventory.length}</span> items
                         </p>
                         {onQuickRequest && (
-                            <button
+                            <Button
                                 onClick={() => onQuickRequest?.()}
                                 className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
                             >
                                 Ask About Product
-                            </button>
+                            </Button>
                         )}
                     </div>
                 </div>
@@ -1128,13 +1129,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                     <span className="text-white font-bold">{item.sku}</span>
                                                                     {bomCount > 0 && (
                                                                         <div className="relative group flex-shrink-0">
-                                                                            <button
+                                                                            <Button
                                                                                 onClick={() => handleBomClick(item)}
                                                                                 className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full text-xs hover:bg-blue-500/30 transition-colors"
                                                                                 title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
                                                                             >
                                                                                 BOM {bomCount > 1 ? `(${bomCount})` : ''}
-                                                                            </button>
+                                                                            </Button>
                                                                             <div className="hidden group-hover:block absolute left-0 top-full mt-2 w-64 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 p-3 text-left">
                                                                                 <p className="text-xs text-gray-400 mb-1">Used in:</p>
                                                                                 <ul className="space-y-1 max-h-48 overflow-auto pr-1">
@@ -1268,29 +1269,29 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             })}
                                             <td className={`px-6 ${COMPACT_CELL_PADDING} text-right whitespace-nowrap`}>
                                                 <div className="flex justify-end gap-2">
-                                                    <button
+                                                    <Button
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true })}
                                                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-gray-700/80 hover:bg-gray-600 text-white transition disabled:opacity-40"
                                                         disabled={!onQuickRequest}
                                                     >
                                                         Ask
-                                                    </button>
-                                                    <button
+                                                    </Button>
+                                                    <Button
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'consumable' })}
                                                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white transition disabled:opacity-40"
                                                         disabled={!onQuickRequest}
                                                     >
                                                         <PlusCircleIcon className="w-4 h-4" />
                                                         Requisition
-                                                    </button>
-                                                    <button
+                                                    </Button>
+                                                    <Button
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true, priority: 'high' })}
                                                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-amber-500/20 text-amber-200 border border-amber-500/40 hover:bg-amber-500/30 transition disabled:opacity-40"
                                                         disabled={!onQuickRequest}
                                                     >
                                                         <BellIcon className="w-4 h-4" />
                                                         Alert
-                                                    </button>
+                                                    </Button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -1314,22 +1315,22 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             {columns.map((col, index) => (
                                 <div key={col.key} className="flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg">
                                     <div className="flex flex-col gap-1">
-                                        <button
+                                        <Button
                                             onClick={() => moveColumn(index, 'up')}
                                             disabled={index === 0}
                                             className="p-1 hover:bg-gray-600 rounded disabled:opacity-30 disabled:cursor-not-allowed"
                                         >
                                             <ChevronUpIcon className="w-4 h-4 text-gray-300" />
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
                                             onClick={() => moveColumn(index, 'down')}
                                             disabled={index === columns.length - 1}
                                             className="p-1 hover:bg-gray-600 rounded disabled:opacity-30 disabled:cursor-not-allowed"
                                         >
                                             <ChevronDownIcon className="w-4 h-4 text-gray-300" />
-                                        </button>
+                                        </Button>
                                     </div>
-                                    <button
+                                    <Button
                                         onClick={() => toggleColumn(col.key)}
                                         className="flex-1 flex items-center gap-3 text-left"
                                     >
@@ -1341,17 +1342,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         <span className={`text-sm font-medium ${col.visible ? 'text-white' : 'text-gray-500'}`}>
                                             {col.label}
                                         </span>
-                                    </button>
+                                    </Button>
                                 </div>
                             ))}
                         </div>
                         <div className="p-6 border-t border-gray-700">
-                            <button
+                            <Button
                                 onClick={() => setIsColumnModalOpen(false)}
                                 className="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
                             >
                                 Done
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>

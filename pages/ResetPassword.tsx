@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase/client';
 
+import Button from '@/components/ui/Button';
 interface ResetPasswordProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
@@ -129,13 +130,13 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ addToast }) => {
               />
             </div>
 
-            <button
+            <Button
               type="submit"
               disabled={loading}
               className="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:bg-indigo-500 disabled:bg-gray-700"
             >
               {loading ? 'Resetting Password...' : 'Reset Password'}
-            </button>
+            </Button>
           </form>
 
           <div className="mt-6 text-center">

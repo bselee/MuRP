@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Google Sheets Integration Panel
  *
@@ -212,16 +213,16 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
             {authStatus.expiresAt && (
               <p className="expires">Expires: {authStatus.expiresAt.toLocaleString()}</p>
             )}
-            <button onClick={handleDisconnect} disabled={isLoading}>
+            <Button onClick={handleDisconnect} disabled={isLoading}>
               Disconnect
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="auth-status disconnected">
             <p>Not connected to Google</p>
-            <button onClick={handleConnect} disabled={isLoading}>
+            <Button onClick={handleConnect} disabled={isLoading}>
               {isLoading ? 'Connecting...' : 'Connect Google Account'}
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -267,13 +268,13 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
             </select>
           </div>
 
-          <button
+          <Button
             onClick={handleImport}
             disabled={isLoading || !importSpreadsheetUrl}
             className="btn-primary"
           >
             {isLoading ? 'Importing...' : 'Import Inventory'}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -283,13 +284,13 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
           <h3>3. Export to Google Sheets</h3>
           <p>Export current inventory to a new Google Sheet</p>
 
-          <button
+          <Button
             onClick={handleExport}
             disabled={isLoading}
             className="btn-primary"
           >
             {isLoading ? 'Exporting...' : 'Export Inventory'}
-          </button>
+          </Button>
 
           {exportResult && (
             <div className="export-result">
@@ -334,13 +335,13 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
             <p style={{ fontSize: '0.9em', color: '#666', marginBottom: '10px' }}>
               Create a backup right now without waiting for next Finale sync
             </p>
-            <button
+            <Button
               onClick={handleCreateBackup}
               disabled={isLoading}
               className="btn-secondary"
             >
               {isLoading ? 'Creating Backup...' : 'Create Backup Now'}
-            </button>
+            </Button>
           </div>
         </div>
       )}

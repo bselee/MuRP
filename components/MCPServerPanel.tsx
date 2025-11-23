@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * MCP Server Configuration Panel
  * 
@@ -293,7 +294,7 @@ export const MCPServerPanel: React.FC = () => {
               placeholder="sk-ant-..."
               className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
-            <button
+            <Button
               type="button"
               onClick={() => setShowAnthropicKey(!showAnthropicKey)}
               className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
@@ -303,7 +304,7 @@ export const MCPServerPanel: React.FC = () => {
               ) : (
                 <EyeIcon className="w-5 h-5" />
               )}
-            </button>
+            </Button>
           </div>
           <p className="mt-1 text-xs text-gray-500">
             Required for AI-powered compliance checks (full_ai_compliance_check tool)
@@ -375,22 +376,22 @@ export const MCPServerPanel: React.FC = () => {
 
       {/* Action Buttons */}
       <div className="flex items-center justify-between pt-4">
-        <button
+        <Button
           onClick={handleTestConnection}
           disabled={isTesting || !serverUrl}
           className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
         >
           <RefreshIcon className={`w-4 h-4 mr-2 ${isTesting ? 'animate-spin' : ''}`} />
           {isTesting ? 'Testing...' : 'Test Connection'}
-        </button>
+        </Button>
         
-        <button
+        <Button
           onClick={handleSave}
           disabled={isSaving || !serverUrl}
           className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSaving ? 'Saving...' : 'Save Configuration'}
-        </button>
+        </Button>
       </div>
 
       {/* Info Box */}

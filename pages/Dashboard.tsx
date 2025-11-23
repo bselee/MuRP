@@ -10,7 +10,7 @@ import RenewalAlertsWidget from '../components/RenewalAlertsWidget';
 import InventoryIntelligencePanel from '../components/InventoryIntelligencePanel';
 import { calculateAllBuildability } from '../services/buildabilityService';
 import { LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, BellIcon, CheckCircleIcon, ChartBarIcon, ClipboardDocumentListIcon } from '../components/icons';
-
+import Button from '@/components/ui/Button';
 interface DashboardProps {
   inventory: InventoryItem[];
   boms: BillOfMaterials[];
@@ -170,12 +170,12 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
             </li>
           ))}
         </ul>
-        <button
+        <Button
           onClick={() => setCurrentPage('Purchase Orders')}
           className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 w-full text-right mt-2"
         >
           {requisitionCtaLabel}
-        </button>
+        </Button>
       </div>
     ) : (
       <p className="text-center text-gray-400 py-8">
@@ -225,8 +225,8 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
               ) : <p className="text-sm text-gray-500 mt-1">All artwork has documentation links.</p>}
           </div>
           <div className="flex justify-end gap-4 pt-2">
-              <button onClick={() => setCurrentPage('BOMs')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">Manage BOMs &rarr;</button>
-              <button onClick={() => setCurrentPage('Artwork')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">Manage Artwork &rarr;</button>
+              <Button onClick={() => setCurrentPage('BOMs')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">Manage BOMs &rarr;</Button>
+              <Button onClick={() => setCurrentPage('Artwork')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">Manage Artwork &rarr;</Button>
           </div>
       </div>
   );
@@ -291,13 +291,13 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
             <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
             <p className="text-gray-400 mt-1">Welcome back, here's your company-wide operations snapshot. <span className="text-xs text-gray-500">(Drag sections to reorder)</span></p>
           </div>
-          <button
+          <Button
             onClick={() => setCurrentPage('Purchase Orders')}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-colors flex items-center gap-2"
+            size="lg"
+            leftIcon={<ClipboardDocumentListIcon className="w-5 h-5" aria-hidden="true" />}
           >
-            <ClipboardDocumentListIcon className="w-5 h-5" />
             View Reorder Queue
-          </button>
+          </Button>
         </div>
       </header>
       

@@ -3,6 +3,7 @@ import type { User } from '../types';
 import { BoxIcon, KeyIcon, MailIcon, GmailIcon } from '../components/icons';
 import { supabase } from '../lib/supabase/client';
 
+import Button from '@/components/ui/Button';
 interface NewUserSetupProps {
     user: User;
     onSetupComplete: () => void;
@@ -89,9 +90,9 @@ const NewUserSetup: React.FC<NewUserSetupProps> = ({ user, onSetupComplete }) =>
                             />
                         </div>
                         {error && <p className="text-sm text-red-400">{error}</p>}
-                        <button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-indigo-700 transition-colors">
+                        <Button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-indigo-700 transition-colors">
                             Complete Setup
-                        </button>
+                        </Button>
                     </form>
                     <div className="relative my-4">
                         <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -102,10 +103,10 @@ const NewUserSetup: React.FC<NewUserSetupProps> = ({ user, onSetupComplete }) =>
                         </div>
                     </div>
                     <div>
-                        <button onClick={onSetupComplete} className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 font-semibold py-3 px-4 rounded-md hover:bg-gray-200 transition-colors">
+                        <Button onClick={onSetupComplete} className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 font-semibold py-3 px-4 rounded-md hover:bg-gray-200 transition-colors">
                             <GmailIcon className="w-5 h-5 text-[#DB4437]" />
                             Sign up with Google (Mock)
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </div>

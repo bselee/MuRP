@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Finale Integration Panel
  *
@@ -296,7 +297,7 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
               onChange={(e) => setApiSecret(e.target.value)}
               className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 pr-10 text-sm border border-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono"
             />
-            <button
+            <Button
               onClick={() => setShowApiSecret(!showApiSecret)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
             >
@@ -305,7 +306,7 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
               ) : (
                 <EyeIcon className="w-5 h-5" />
               )}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -350,7 +351,7 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3">
-        <button
+        <Button
           onClick={handleTestConnection}
           disabled={!hasCredentials || isTesting}
           className="flex-1 min-w-[150px] bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -366,9 +367,9 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
               Test Connection
             </>
           )}
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={handleSync}
           disabled={!isConfigured || isSyncing}
           className="flex-1 min-w-[150px] bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -384,15 +385,15 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
               Sync Data
             </>
           )}
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={handleCopySetupInstructions}
           className="bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
         >
           <ClipboardCopyIcon className="w-5 h-5" />
           Copy Setup Guide
-        </button>
+        </Button>
       </div>
 
       {/* Help Text */}

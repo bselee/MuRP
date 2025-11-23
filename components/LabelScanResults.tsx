@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 // Label Scan Results Component
 // Displays AI-extracted data from label scanning with BOM comparison
 
@@ -97,12 +98,12 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
             <p className="text-sm text-red-400 mt-2">{artwork.scanError}</p>
           )}
           {onRescan && (
-            <button
+            <Button
               onClick={() => onRescan(artwork.id)}
               className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
             >
               Retry Scan
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -138,18 +139,18 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
           <div className="flex items-center gap-3">
             {isEditing ? (
               <>
-                <button
+                <Button
                   onClick={handleCancel}
                   className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-md transition-colors font-semibold"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleSave}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors font-semibold"
                 >
                   Save Changes
-                </button>
+                </Button>
               </>
             ) : (
               <>
@@ -160,22 +161,22 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
                   </div>
                 ) : (
                   onVerify && (
-                    <button
+                    <Button
                       onClick={() => onVerify(artwork.id)}
                       className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-semibold"
                     >
                       Mark as Verified
-                    </button>
+                    </Button>
                   )
                 )}
                 {onSave && (
-                  <button
+                  <Button
                     onClick={() => setIsEditing(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md transition-colors font-semibold"
                   >
                     <PencilSquareIcon className="w-5 h-5" />
                     Edit
-                  </button>
+                  </Button>
                 )}
               </>
             )}
@@ -258,21 +259,21 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
             </h3>
             <div className="flex items-center gap-3">
               {isEditing && (
-                <button
+                <Button
                   onClick={handleAddIngredient}
                   className="flex items-center gap-2 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded transition-colors"
                 >
                   <PlusCircleIcon className="w-4 h-4" />
                   Add Ingredient
-                </button>
+                </Button>
               )}
               {bom && !isEditing && (
-                <button
+                <Button
                   onClick={() => setShowComparison(!showComparison)}
                   className="text-sm text-indigo-400 hover:text-indigo-300"
                 >
                   {showComparison ? 'Hide' : 'Show'} BOM Comparison
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -306,13 +307,13 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
                       className="w-24 bg-gray-700 border border-gray-600 rounded px-3 py-1 text-indigo-400 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       placeholder="%"
                     />
-                    <button
+                    <Button
                       onClick={() => handleRemoveIngredient(idx)}
                       className="p-2 text-red-400 hover:bg-red-900/20 rounded transition-colors"
                       title="Remove ingredient"
                     >
                       <TrashIcon className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </>
                 ) : (
                   <>

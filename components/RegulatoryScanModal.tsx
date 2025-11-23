@@ -7,6 +7,7 @@ import { getRegulatoryAdvice, draftComplianceLetter } from '../services/geminiSe
 import { getCachedScan, saveScanToCache, getScanAge } from '../services/regulatoryCacheService';
 import { SparklesIcon, LinkIcon, DocumentDuplicateIcon, ClipboardCopyIcon, ChevronDownIcon, FlagIcon } from './icons';
 
+import Button from '@/components/ui/Button';
 type ArtworkWithProduct = Artwork & { productName: string; bomId: string; };
 
 interface RegulatoryScanModalProps {
@@ -161,9 +162,9 @@ const RegulatoryScanModal: React.FC<RegulatoryScanModalProps> = ({ isOpen, onClo
                             {Object.entries(statesByRegion).map(([region, states]) => (
                                 <CollapsibleRegion key={region} title={region}>
                                     {states.map(state => (
-                                        <button key={state} onClick={() => handleScan(state)} className="text-left p-2 bg-indigo-600/80 hover:bg-indigo-700 rounded-md text-white font-semibold text-xs transition-colors">
+                                        <Button key={state} onClick={() => handleScan(state)} className="text-left p-2 bg-indigo-600/80 hover:bg-indigo-700 rounded-md text-white font-semibold text-xs transition-colors">
                                             {state}
-                                        </button>
+                                        </Button>
                                     ))}
                                 </CollapsibleRegion>
                             ))}
@@ -181,9 +182,9 @@ const RegulatoryScanModal: React.FC<RegulatoryScanModalProps> = ({ isOpen, onClo
                                 className="w-full bg-gray-700 p-2 pl-10 rounded-md text-sm"
                             />
                         </div>
-                        <button onClick={handleUpdateLink} className="mt-2 w-full bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-3 rounded-md text-sm">
+                        <Button onClick={handleUpdateLink} className="mt-2 w-full bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-3 rounded-md text-sm">
                             Save Link
-                        </button>
+                        </Button>
                     </div>
                     <div>
                         <h3 className="text-lg font-semibold text-white mb-2">Product Ingredients</h3>
@@ -244,13 +245,13 @@ const RegulatoryScanModal: React.FC<RegulatoryScanModalProps> = ({ isOpen, onClo
                            </div>
                            
                            <div className="border-t border-gray-700 pt-4">
-                               <button 
+                               <Button 
                                     onClick={handleDraftLetter}
                                     disabled={isDrafting}
                                     className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors disabled:bg-gray-500 disabled:cursor-wait"
                                 >
                                     {isDrafting ? 'Drafting...' : `Draft Inquiry Letter for ${scannedState}`}
-                                </button>
+                                </Button>
                            </div>
 
                            {isDrafting && (
@@ -264,10 +265,10 @@ const RegulatoryScanModal: React.FC<RegulatoryScanModalProps> = ({ isOpen, onClo
                                 <div className="pt-4">
                                     <div className="flex justify-between items-center">
                                         <h4 className="text-white font-semibold">Generated Draft Letter</h4>
-                                        <button onClick={() => handleCopyToClipboard(draftLetter)} className="flex items-center gap-2 text-sm text-gray-300 hover:text-white">
+                                        <Button onClick={() => handleCopyToClipboard(draftLetter)} className="flex items-center gap-2 text-sm text-gray-300 hover:text-white">
                                             <ClipboardCopyIcon className="w-4 h-4" />
                                             Copy
-                                        </button>
+                                        </Button>
                                     </div>
                                     <pre className="mt-2 bg-gray-800 p-3 rounded-md text-xs text-gray-300 whitespace-pre-wrap font-mono max-h-60 overflow-y-auto">{draftLetter}</pre>
                                 </div>

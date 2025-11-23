@@ -18,6 +18,7 @@ import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
 import { useAuth } from '../lib/auth/AuthContext';
 import { isDevelopment } from '../lib/auth/guards';
 
+import Button from '@/components/ui/Button';
 interface SettingsProps {
     currentUser: User;
     aiConfig: AiConfig;
@@ -149,12 +150,12 @@ Thank you!`
                     <p className="text-white font-semibold">Dev God Mode</p>
                     <p className="text-xs text-gray-400">Bypasses auth and RLS (local only).</p>
                   </div>
-                  <button
+                  <Button
                     className={`px-4 py-2 rounded-lg font-semibold ${godMode ? 'bg-red-500/20 text-red-200 border border-red-400/40' : 'bg-gray-700 text-gray-200'}`}
                     onClick={() => setGodMode(!godMode)}
                   >
                     {godMode ? 'Disable' : 'Enable'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </CollapsibleSection>
@@ -272,12 +273,12 @@ Thank you!`
                   records. Use the button below when you need to add, deactivate, or update a supplier profile.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <button
+                  <Button
                     onClick={() => setCurrentPage('Vendors')}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
                   >
                     Manage Vendors
-                  </button>
+                  </Button>
                   <p className="text-xs text-gray-500 flex items-center">
                     Vendor data remains visible elsewhere for job duties, but modifications stay locked to admins.
                   </p>
@@ -339,7 +340,7 @@ Thank you!`
                       Include environment, modules affected (Finale, AfterShip, MCP), and which owners/devs have already approved changes.
                     </p>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     className="mt-4 inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
                     onClick={() => {
@@ -349,7 +350,7 @@ Thank you!`
                     }}
                   >
                     Create Help Ticket
-                  </button>
+                  </Button>
                 </div>
               </div>
 

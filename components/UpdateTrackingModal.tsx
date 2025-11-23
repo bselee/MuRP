@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Modal from './Modal';
 import type { PurchaseOrder, POTrackingStatus } from '../types';
 
+import Button from '@/components/ui/Button';
 interface UpdateTrackingModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -152,20 +153,20 @@ const UpdateTrackingModal: React.FC<UpdateTrackingModalProps> = ({
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
-          <button
+          <Button
             onClick={onClose}
             className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors"
             disabled={isSaving}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit}
             className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-500 transition-colors disabled:opacity-50"
             disabled={isSaving}
           >
             {isSaving ? 'Saving...' : 'Save'}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

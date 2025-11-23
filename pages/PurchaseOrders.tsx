@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
+import Button from '@/components/ui/Button';
     PurchaseOrder,
     Vendor,
     InventoryItem,
@@ -108,13 +109,13 @@ const CollapsibleSection: React.FC<{
   onToggle: () => void;
 }> = ({ title, count, children, isOpen, onToggle }) => (
     <section className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
-        <button onClick={onToggle} className="w-full flex justify-between items-center p-4 bg-gray-800 hover:bg-gray-700/50 transition-colors">
+        <Button onClick={onToggle} className="w-full flex justify-between items-center p-4 bg-gray-800 hover:bg-gray-700/50 transition-colors">
             <h2 className="text-xl font-semibold text-gray-300 flex items-center gap-3">
               {title}
               {count > 0 && <span className="flex items-center justify-center text-xs font-bold text-white bg-yellow-500 rounded-full h-6 w-6">{count}</span>}
             </h2>
             <ChevronDownIcon className={`w-6 h-6 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
+        </Button>
         {isOpen && (
             <div className="border-t border-gray-700">
                 {children}
@@ -457,21 +458,24 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     </div>
                     {canManagePOs && (
                         <div className="flex w-full sm:w-auto gap-2">
-                    {canManagePOs && currentUser.role !== 'Staff' && approvedRequisitions.length > 0 && (
-                        <button
-                            onClick={() => setIsGeneratePoModalOpen(true)}
-                            className="relative flex-1 sm:flex-initial bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
-                        >
+                            {currentUser.role !== 'Staff' && approvedRequisitions.length > 0 && (
+                                <Button
+                                    onClick={() => setIsGeneratePoModalOpen(true)}
+                                    className="relative flex-1 sm:flex-initial bg-green-600 hover:bg-green-500 focus-visible:ring-green-500"
+                                >
                                     Generate from Requisitions
-                                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs">{approvedRequisitions.length}</span>
-                                </button>
+                                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs">
+                                        {approvedRequisitions.length}
+                                    </span>
+                                </Button>
                             )}
-                            <button 
+                            <Button
                                 onClick={handleManualCreateClick}
-                                className="flex-1 sm:flex-initial bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+                                className="flex-1 sm:flex-initial"
+                                variant="primary"
                             >
                                 Create New PO
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </header>
@@ -553,13 +557,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             </p>
                         </div>
                         <div className="flex items-center gap-3 flex-wrap">
-                            <button
+                            <Button
                                 onClick={handleRunFollowUps}
                                 disabled={isRunningFollowUps}
                                 className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 disabled:opacity-60"
                             >
                                 {isRunningFollowUps ? 'Sending…' : 'Nudge Vendors'}
-                            </button>
+                            </Button>
                             <span className="text-[11px] text-indigo-100/70">
                                 Configure templates in Settings → Follow-up Rules.
                             </span>
@@ -644,32 +648,32 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-white font-semibold">${formatPoTotal(po)}</td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
                                             {canManagePOs && (
-                                                <button
+                                                <Button
                                                     onClick={() => handleEditTracking(po)}
                                                     className="p-2 text-indigo-300 hover:text-indigo-100 transition-colors"
                                                     title="Update Tracking"
                                                 >
                                                     <TruckIcon className="w-5 h-5" />
-                                                </button>
+                                                </Button>
                                             )}
                                             {po.trackingNumber && (
-                                                <button
+                                                <Button
                                                     onClick={() => handleOpenTracking(po)}
                                                     className="p-2 text-green-300 hover:text-green-100 transition-colors"
                                                     title="Track Shipment"
                                                 >
                                                     Track
-                                                </button>
+                                                </Button>
                                             )}
-                                            <button onClick={() => handleDownloadPdf(po)} title="Download PDF" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><FileTextIcon className="w-5 h-5"/></button>
-                                            <button onClick={() => handleSendEmailClick(po)} title="Send Email" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><MailIcon className="w-5 h-5"/></button>
-                                            <button
+                                            <Button onClick={() => handleDownloadPdf(po)} title="Download PDF" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><FileTextIcon className="w-5 h-5"/></Button>
+                                            <Button onClick={() => handleSendEmailClick(po)} title="Send Email" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><MailIcon className="w-5 h-5"/></Button>
+                                            <Button
                                                 onClick={() => handleOpenComm(po)}
                                                 title="View Thread"
                                                 className="p-2 text-gray-400 hover:text-emerald-300 transition-colors"
                                             >
                                                 <DocumentTextIcon className="w-5 h-5" />
-                                            </button>
+                                            </Button>
                                         </td>
                                     </tr>
                                 ))}
@@ -787,7 +791,7 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map(stat => (
-                <button
+                <Button
                     key={stat.id}
                     type="button"
                     onClick={() => stat.onClick?.()}
@@ -796,19 +800,19 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
                     <p className="text-[11px] uppercase tracking-wide text-gray-400">{stat.label}</p>
                     <p className="text-3xl font-semibold text-white mt-1">{stat.value}</p>
                     <p className="text-xs text-gray-400 mt-1">{stat.description}</p>
-                </button>
+                </Button>
             ))}
         </div>
         <div className="grid gap-4 md:grid-cols-2">
             <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-gray-200">Requests in Review</p>
-                    <button
+                    <Button
                         className="text-xs text-indigo-300 hover:text-indigo-100"
                         onClick={onFocusRequisitions}
                     >
                         Open queue →
-                    </button>
+                    </Button>
                 </div>
                 {highRiskRequests.length === 0 ? (
                     <p className="text-xs text-gray-500">No escalations — requisitions are flowing smoothly.</p>
@@ -850,12 +854,12 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
             <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-gray-200">Logistics Watchlist</p>
-                    <button
+                    <Button
                         className="text-xs text-indigo-300 hover:text-indigo-100"
                         onClick={onFocusTracking}
                     >
                         Update tracking →
-                    </button>
+                    </Button>
                 </div>
                 {trackingAlerts.length === 0 ? (
                     <p className="text-xs text-gray-500">All active POs have tracking or confirmed ship dates.</p>
@@ -959,9 +963,9 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
         <CollapsibleSection title="Internal Requisitions" count={pendingCount} isOpen={isOpen} onToggle={onToggle}>
             <div className="p-4 flex justify-end">
                 {allowManualCreation && (
-                    <button onClick={onCreate} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
+                    <Button onClick={onCreate} size="sm">
                         Create Manual Requisition
-                    </button>
+                    </Button>
                 )}
             </div>
             <div className="overflow-x-auto">
@@ -1066,22 +1070,22 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                                     <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
                                         {canTakeAction(req) && (
                                             <>
-                                                <button onClick={() => onApprove(req.id)} className="p-2 text-green-400 hover:text-green-300" title="Approve">
+                                                <Button onClick={() => onApprove(req.id)} className="p-2 text-green-400 hover:text-green-300" title="Approve">
                                                     <CheckCircleIcon className="w-6 h-6" />
-                                                </button>
-                                                <button onClick={() => onReject(req.id)} className="p-2 text-red-400 hover:text-red-300" title="Reject">
+                                                </Button>
+                                                <Button onClick={() => onReject(req.id)} className="p-2 text-red-400 hover:text-red-300" title="Reject">
                                                     <XCircleIcon className="w-6 h-6" />
-                                                </button>
+                                                </Button>
                                             </>
                                         )}
                                         {!canTakeAction(req) && canOpsTakeAction(req) && (
                                             <>
-                                                <button onClick={() => onOpsApprove(req.id)} className="p-2 text-purple-300 hover:text-purple-100" title="Operations Approve">
+                                                <Button onClick={() => onOpsApprove(req.id)} className="p-2 text-purple-300 hover:text-purple-100" title="Operations Approve">
                                                     <CheckCircleIcon className="w-6 h-6" />
-                                                </button>
-                                                <button onClick={() => onReject(req.id)} className="p-2 text-red-400 hover:text-red-300" title="Reject">
+                                                </Button>
+                                                <Button onClick={() => onReject(req.id)} className="p-2 text-red-400 hover:text-red-300" title="Reject">
                                                     <XCircleIcon className="w-6 h-6" />
-                                                </button>
+                                                </Button>
                                             </>
                                         )}
                                         {!canTakeAction(req) && !canOpsTakeAction(req) && (

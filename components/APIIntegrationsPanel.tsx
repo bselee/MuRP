@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection } from '../types';
 import {
+import Button from '@/components/ui/Button';
   GmailIcon,
   KeyIcon,
   ClipboardCopyIcon,
@@ -552,12 +553,12 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                   readOnly
                   className="flex-1 bg-transparent text-gray-300 font-mono text-sm focus:outline-none"
                 />
-                <button
+                <Button
                   onClick={handleCopyApiKey}
                   className="p-2 text-gray-400 hover:text-white"
                 >
                   <ClipboardCopyIcon className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
               <div className="flex items-center justify-between">
                 <label className="flex items-center text-sm text-gray-300 cursor-pointer">
@@ -570,37 +571,37 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                   Show Key
                 </label>
                 <div>
-                  <button
+                  <Button
                     onClick={onGenerateApiKey}
                     className="text-sm text-indigo-400 hover:underline mr-4"
                   >
                     Regenerate
-                  </button>
-                  <button onClick={onRevokeApiKey} className="text-sm text-red-400 hover:underline">
+                  </Button>
+                  <Button onClick={onRevokeApiKey} className="text-sm text-red-400 hover:underline">
                     Revoke Key
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
           ) : (
             <div className="text-center py-4">
               <p className="text-gray-400 mb-3">No API key is currently active.</p>
-              <button
+              <Button
                 onClick={onGenerateApiKey}
                 className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
               >
                 Generate API Key
-              </button>
+              </Button>
             </div>
           )}
         </div>
         <div className="mt-4 pt-4 border-t border-gray-700/50 flex justify-end">
-          <button
+          <Button
             onClick={() => setCurrentPage('API Documentation')}
             className="text-sm font-semibold text-indigo-400 hover:text-indigo-300"
           >
             View API Documentation &rarr;
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -614,7 +615,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 onClick={runDiagnostics}
                 disabled={isDiagnosing || isManualSyncing}
                 className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
@@ -634,8 +635,8 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                     Run Diagnostics
                   </>
                 )}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleForceSync}
                 disabled={isManualSyncing}
                 className={`inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
@@ -655,7 +656,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                     Force Sync Now
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -821,12 +822,12 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                     <p className="font-semibold text-white">{conn.name}</p>
                     <p className="text-xs text-gray-400">{conn.apiUrl}</p>
                   </div>
-                  <button
+                  <Button
                     onClick={() => handleDeleteConnection(conn.id)}
                     className="p-2 text-red-500 hover:text-red-400"
                   >
                     <TrashIcon className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -866,12 +867,12 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                 />
               </div>
               <div className="flex justify-end">
-                <button
+                <Button
                   onClick={handleAddNewConnection}
                   className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
                 >
                   Add Connection
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -974,13 +975,13 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                 : 'No API key stored yet.'}
             </span>
             {afterShipStoredKey && (
-              <button
+              <Button
                 type="button"
                 onClick={handleClearAfterShipKey}
                 className="text-rose-300 hover:text-rose-200"
               >
                 Remove stored key
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -990,22 +991,22 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
         )}
 
         <div className="flex items-center justify-end gap-3">
-          <button
+          <Button
             type="button"
             onClick={handleResetAfterShip}
             className="text-sm text-gray-300 hover:text-white"
             disabled={afterShipLoading}
           >
             {afterShipLoading ? 'Refreshing…' : 'Reset Changes'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={handleSaveAfterShip}
             disabled={afterShipLoading}
             className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-600"
           >
             {afterShipLoading ? 'Saving…' : 'Save AfterShip Settings'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -1031,19 +1032,19 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
             <div className="text-sm text-yellow-400">Gmail account is not connected.</div>
           )}
           {gmailConnection.isConnected ? (
-            <button
+            <Button
               onClick={onGmailDisconnect}
               className="bg-red-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-red-700 transition-colors"
             >
               Disconnect
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               onClick={onGmailConnect}
               className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
             >
               Connect Gmail Account
-            </button>
+            </Button>
           )}
         </div>
       </div>

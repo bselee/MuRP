@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronDownIcon } from './icons';
 
+import Button from '@/components/ui/Button';
 interface CollapsibleSectionProps {
   title: string;
   icon: React.ReactNode;
@@ -37,7 +38,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         id={id} 
         className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden scroll-mt-20"
       >
-        <button 
+        <Button 
           onClick={onToggle} 
           className="w-full flex justify-between items-center p-4 bg-gray-800 hover:bg-gray-700/50 transition-colors"
         >
@@ -46,7 +47,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
             {title}
           </h2>
           <ChevronDownIcon className={`w-6 h-6 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
+        </Button>
         {isOpen && (
           <div className="p-4 md:p-6 border-t border-gray-700">
             {children}
@@ -58,7 +59,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
 
   return (
     <section id={id}>
-      <button 
+      <Button 
         onClick={onToggle}
         className="w-full flex justify-between items-center text-left border-b border-gray-700 pb-3 hover:border-gray-600 transition-colors"
       >
@@ -71,7 +72,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         <ChevronDownIcon 
           className={`w-6 h-6 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
         />
-      </button>
+      </Button>
       {isOpen && (
         <div className="mt-4">
           {children}

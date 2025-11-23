@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 // Regulatory Agreement Modal
 // Displays comprehensive legal agreement that users must accept before using compliance features
 
@@ -263,19 +264,19 @@ const RegulatoryAgreementModal: React.FC<RegulatoryAgreementModalProps> = ({
             </div>
 
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={onDecline}
                 className="px-6 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors"
               >
                 Decline
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleAccept}
                 disabled={!canAccept}
                 className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 I Accept
-              </button>
+              </Button>
             </div>
           </div>
         </div>

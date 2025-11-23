@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 📦 REORDER QUEUE DASHBOARD
@@ -215,7 +216,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
     <div className="space-y-4">
       {/* Summary Header */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
-        <button
+        <Button
           onClick={() => setIsExpanded(!isExpanded)}
           className="w-full flex justify-between items-center p-4 bg-gray-800 hover:bg-gray-700/50 transition-colors"
         >
@@ -246,7 +247,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
               className={`w-6 h-6 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
             />
           </div>
-        </button>
+        </Button>
 
         {isExpanded && (
           <div className="border-t border-gray-700">
@@ -262,12 +263,12 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
                   <span className="text-sm text-gray-300">
                     <span className="font-semibold text-white">{selectedItems.size}</span> item(s) selected
                   </span>
-                  <button
+                  <Button
                     onClick={handleClearSelection}
                     className="text-sm text-gray-400 hover:text-white transition-colors"
                   >
                     Clear
-                  </button>
+                  </Button>
                 </div>
                 <div className="flex gap-2">
                   {groupedForPO.length > 0 && (
@@ -275,12 +276,12 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
                       Will create {groupedForPO.length} PO(s)
                     </span>
                   )}
-                    <button
+                    <Button
                       onClick={handleDraftPOs}
                     className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
                   >
                     Create Purchase Orders
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -288,24 +289,24 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
             {/* Quick Select Buttons */}
             {allowPoCreation && (
               <div className="bg-gray-800/50 p-3 border-b border-gray-700 flex gap-2">
-                <button
+                <Button
                   onClick={() => handleSelectAll('critical')}
                   className="text-xs px-3 py-1.5 bg-red-600/20 text-red-400 rounded-md hover:bg-red-600/30 transition-colors"
                 >
                   Select Critical ({itemsByUrgency.critical.length})
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleSelectAll('high')}
                   className="text-xs px-3 py-1.5 bg-orange-600/20 text-orange-400 rounded-md hover:bg-orange-600/30 transition-colors"
                 >
                   Select High ({itemsByUrgency.high.length})
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleSelectAll()}
                   className="text-xs px-3 py-1.5 bg-indigo-600/20 text-indigo-400 rounded-md hover:bg-indigo-600/30 transition-colors"
                 >
                   Select All ({items.length})
-                </button>
+                </Button>
               </div>
             )}
 

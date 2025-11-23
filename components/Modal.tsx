@@ -1,6 +1,7 @@
 import React from 'react';
 import { CloseIcon } from './icons';
 
+import Button from '@/components/ui/Button';
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -40,9 +41,9 @@ const Modal: React.FC<ModalProps> = ({
               <p className="text-sm text-gray-400 mt-1">{subtitle}</p>
             )}
           </div>
-          <button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors ml-4 flex-shrink-0">
+          <Button onClick={onClose} className="p-1 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors ml-4 flex-shrink-0">
             <CloseIcon className="w-6 h-6" />
-          </button>
+          </Button>
         </header>
         <main className="p-6 overflow-y-auto flex-grow">
           {children}

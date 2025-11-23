@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 // Add/Edit Registration Modal
 // Form for adding or editing state product registrations
 
@@ -282,7 +283,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                 Registration Certificate (PDF)
               </label>
               <div className="mt-1">
-                <button
+                <Button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-600 rounded-lg hover:border-indigo-500 hover:bg-gray-700/30 transition-colors"
@@ -291,7 +292,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                   <span className="text-sm text-gray-400">
                     {certificateFile ? certificateFile.name : formData.certificateFileName || 'Upload Certificate PDF'}
                   </span>
-                </button>
+                </Button>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -366,18 +367,18 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
-          <button
+          <Button
             onClick={onClose}
             className="px-6 py-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-lg transition-colors"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit}
             className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
           >
             {isEditing ? 'Update Registration' : 'Add Registration'}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

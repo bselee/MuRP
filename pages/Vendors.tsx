@@ -4,6 +4,7 @@ import VendorAutomationModal from '../components/VendorAutomationModal';
 import VendorManagementModal, { type VendorConfig } from '../components/VendorManagementModal';
 import { SearchIcon, AdjustmentsHorizontalIcon } from '../components/icons';
 
+import Button from '@/components/ui/Button';
 interface VendorsProps {
     vendors: Vendor[];
     addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -90,9 +91,9 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                     <h1 className="text-3xl font-bold text-white tracking-tight">Vendors</h1>
                     <p className="text-gray-400 mt-1">Manage your supplier information.</p>
                 </div>
-                <button className="w-full sm:w-auto bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
+                <Button className="w-full sm:w-auto bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
                     Add New Vendor
-                </button>
+                </Button>
             </header>
 
             {/* Filter Bar */}
@@ -116,14 +117,14 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                             />
                         </div>
                     </div>
-                    <button
+                    <Button
                         onClick={() => setIsVendorManagementOpen(true)}
                         className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
                         title="Show/hide vendors"
                     >
                         <AdjustmentsHorizontalIcon className="w-5 h-5" />
                         <span className="hidden sm:inline">Manage Vendors</span>
-                    </button>
+                    </Button>
                 </div>
                 <div className="mt-3 text-sm text-gray-400">
                     Showing <span className="font-semibold text-white">{filteredVendors.length}</span> of <span className="font-semibold text-white">{vendors.length}</span> vendors
@@ -227,13 +228,13 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                                     Off
                                                 </span>
                                             )}
-                                            <button
+                                            <Button
                                                 onClick={() => handleOpenAutomation(vendor)}
                                                 className="text-indigo-400 hover:text-indigo-300 transition-colors"
                                                 title="Configure auto-PO settings"
                                             >
                                                 ⚙️
-                                            </button>
+                                            </Button>
                                         </div>
                                     </td>
                                 </tr>

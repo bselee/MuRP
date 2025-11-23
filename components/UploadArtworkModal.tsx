@@ -3,6 +3,7 @@ import type { BillOfMaterials, Artwork } from '../types';
 import Modal from './Modal';
 import { fileToBase64, scanLabelImage } from '../services/labelScanningService';
 
+import Button from '@/components/ui/Button';
 interface UploadArtworkModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -326,12 +327,12 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                                         </div>
                                     </div>
                                     {!uploading && fileStatus.status === 'pending' && (
-                                        <button
+                                        <Button
                                             onClick={() => handleRemoveFile(idx)}
                                             className="ml-3 text-red-400 hover:text-red-300 text-xs"
                                         >
                                             Remove
-                                        </button>
+                                        </Button>
                                     )}
                                 </div>
                             ))}
@@ -349,20 +350,20 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
 
                 {/* Action Buttons */}
                 <div className="flex justify-end pt-6 border-t border-gray-700 gap-3">
-                    <button
+                    <Button
                         onClick={onClose}
                         disabled={uploading}
                         className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         onClick={handleSubmit}
                         disabled={!selectedBomId || files.length === 0 || uploading}
                         className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
                     >
                         {uploading ? 'Processing...' : 'Upload & Scan'}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Modal>

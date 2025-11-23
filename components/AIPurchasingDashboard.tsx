@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 💰 AI PURCHASING DASHBOARD - Intelligence at a Glance
@@ -269,7 +270,7 @@ export default function AIPurchasingDashboard() {
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
-          <button
+          <Button
             onClick={() => setActiveTab('anomalies')}
             className={`pb-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'anomalies'
@@ -283,8 +284,8 @@ export default function AIPurchasingDashboard() {
                 {latestAnomalies?.critical_count}
               </span>
             )}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setActiveTab('consolidation')}
             className={`pb-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'consolidation'
@@ -298,8 +299,8 @@ export default function AIPurchasingDashboard() {
                 {consolidationOpps.length}
               </span>
             )}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setActiveTab('budget')}
             className={`pb-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'budget'
@@ -308,7 +309,7 @@ export default function AIPurchasingDashboard() {
             }`}
           >
             Budget & Costs
-          </button>
+          </Button>
         </nav>
       </div>
 
@@ -416,9 +417,9 @@ function AnomaliesTab({ anomalies }: { anomalies: AnomalyLog | null }) {
               </div>
             </div>
 
-            <button className="ml-4 text-blue-600 hover:text-blue-800 text-sm font-medium">
+            <Button className="ml-4 text-blue-600 hover:text-blue-800 text-sm font-medium">
               View SKU →
-            </button>
+            </Button>
           </div>
         </div>
       ))}
@@ -513,18 +514,18 @@ function ConsolidationTab({
           </div>
 
           <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-200">
-            <button
+            <Button
               onClick={() => onAccept(opp.id)}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm"
             >
               Accept & Add Items
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => onReject(opp.id, 'Not needed')}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium text-sm"
             >
               Dismiss
-            </button>
+            </Button>
             <div className="flex-1"></div>
             <p className="text-xs text-gray-500">
               Identified: {new Date(opp.identified_at).toLocaleDateString()}

@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 // Renewal Alerts Widget for Dashboard
 // Displays urgent and upcoming registration renewals
 
@@ -125,12 +126,12 @@ const RenewalAlertsWidget: React.FC<RenewalAlertsWidgetProps> = ({
                 </p>
               </div>
               {onViewDetails && (
-                <button
+                <Button
                   onClick={() => onViewDetails(reg.bomId)}
                   className="ml-4 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors flex-shrink-0"
                 >
                   Renew Now
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -158,12 +159,12 @@ const RenewalAlertsWidget: React.FC<RenewalAlertsWidgetProps> = ({
                 </p>
               </div>
               {onViewDetails && (
-                <button
+                <Button
                   onClick={() => onViewDetails(reg.bomId)}
                   className="ml-4 px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium rounded transition-colors flex-shrink-0"
                 >
                   Review
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -191,12 +192,12 @@ const RenewalAlertsWidget: React.FC<RenewalAlertsWidgetProps> = ({
                 </p>
               </div>
               {onViewDetails && (
-                <button
+                <Button
                   onClick={() => onViewDetails(reg.bomId)}
                   className="ml-4 px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs font-medium rounded transition-colors flex-shrink-0"
                 >
                   View
-                </button>
+                </Button>
               )}
             </div>
           </div>

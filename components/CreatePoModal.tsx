@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import type {
+import Button from '@/components/ui/Button';
     Vendor,
     InventoryItem,
     CreatePurchaseOrderInput,
@@ -422,9 +423,9 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                                     className="w-24 bg-gray-700 text-white rounded-md p-1.5 text-sm"
                                     min="1"
                                 />
-                                <button onClick={() => handleRemoveItem(item.sku)} className="p-1.5 text-red-500 hover:text-red-400">
+                                <Button onClick={() => handleRemoveItem(item.sku)} className="p-1.5 text-red-500 hover:text-red-400">
                                     <TrashIcon className="w-5 h-5"/>
-                                </button>
+                                </Button>
                             </div>
                         ))}
                     </div>
@@ -441,9 +442,9 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                                     .map(item => <option key={item.sku} value={item.sku}>{item.name}</option>
                                 )}
                             </select>
-                            <button onClick={handleAddItem} className="p-2 text-indigo-400 hover:text-indigo-300 disabled:text-gray-600 disabled:cursor-not-allowed" disabled={!itemToAdd}>
+                            <Button onClick={handleAddItem} className="p-2 text-indigo-400 hover:text-indigo-300 disabled:text-gray-600 disabled:cursor-not-allowed" disabled={!itemToAdd}>
                                 <PlusCircleIcon className="w-7 h-7" />
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </div>
@@ -461,14 +462,14 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                 </div>
 
                 <div className="flex justify-end pt-6 border-t border-gray-700">
-                    <button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</button>
-                    <button
+                    <Button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</Button>
+                    <Button
                         onClick={handleSubmit}
                         disabled={!selectedVendorId || poItems.length === 0 || isSubmitting}
                         className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
                     >
                         Create Purchase Order
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Modal>

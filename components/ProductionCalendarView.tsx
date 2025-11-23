@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Production Calendar View
  * 
@@ -560,7 +561,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
         </div>
         
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={() => loadGoogleCalendarEvents()}
             disabled={!calendarSettings?.calendar_sync_enabled}
             className={`px-3 py-1 text-xs rounded transition-colors ${
@@ -570,7 +571,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
             }`}
           >
             Sync Google Calendar
-          </button>
+          </Button>
           <div className="flex flex-col text-xs">
             {calendarSettings?.calendar_sync_enabled ? (
               ingestCalendars.length > 0 ? (
@@ -595,7 +596,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
           
           <div className="flex bg-gray-700 rounded-lg">
             {(['month', 'week', 'day'] as const).map((viewType) => (
-              <button
+              <Button
                 key={viewType}
                 onClick={() => setView(viewType)}
                 className={`px-3 py-1 text-sm capitalize rounded-lg transition-colors ${
@@ -605,7 +606,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
                 }`}
               >
                 {viewType}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -650,7 +651,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
             </div>
             <div className="flex bg-gray-800 rounded-full text-xs overflow-hidden">
               {[30, 60, 90].map((window) => (
-                <button
+                <Button
                   key={window}
                   onClick={() => setDemandWindow(window as DemandWindow)}
                   className={`px-3 py-1 ${
@@ -660,7 +661,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
                   }`}
                 >
                   {window}d
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -737,7 +738,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
                 POs covering out-of-stock or low inventory items. Use this to answer “when is it arriving?” without chasing procurement.
               </p>
             </div>
-            <button
+            <Button
               onClick={handlePushLogisticsToCalendar}
               disabled={
                 !calendarSettings?.calendar_push_enabled ||
@@ -752,7 +753,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
               }`}
             >
               {isPushingLogistics ? 'Pushing…' : 'Push to Calendar'}
-            </button>
+            </Button>
           </div>
 
           {logisticsEvents.length > 0 ? (
@@ -937,12 +938,12 @@ const BuildDetailsModal: React.FC<BuildDetailsModalProps> = ({
               <h3 className="text-xl font-semibold text-white">{buildOrder.name}</h3>
               <p className="text-gray-400 mt-1">Build Order: {buildOrder.id}</p>
             </div>
-            <button
+            <Button
               onClick={onClose}
               className="text-gray-400 hover:text-white"
             >
               <XMarkIcon className="w-6 h-6" />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -1051,31 +1052,31 @@ const BuildDetailsModal: React.FC<BuildDetailsModalProps> = ({
             <div className="flex gap-2">
               {isEditing ? (
                 <>
-                  <button
+                  <Button
                     onClick={handleSave}
                     className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
                   >
                     Save Changes
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => setIsEditing(false)}
                     className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </>
               ) : (
-                <button
+                <Button
                   onClick={() => setIsEditing(true)}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
                 >
                   Edit
-                </button>
+                </Button>
               )}
             </div>
 
             <div className="flex gap-2">
-              <button
+              <Button
                 onClick={onSyncGoogle}
                 disabled={!canSyncGoogle}
                 className={`px-4 py-2 rounded-md transition-colors ${
@@ -1085,7 +1086,7 @@ const BuildDetailsModal: React.FC<BuildDetailsModalProps> = ({
                 }`}
               >
                 {buildOrder.calendarEventId ? 'Update Google Event' : 'Sync to Google Calendar'}
-              </button>
+              </Button>
               {!canSyncGoogle && (
                 <span className="text-[11px] text-gray-400 self-center">
                   Enable calendar sync to push events
@@ -1093,12 +1094,12 @@ const BuildDetailsModal: React.FC<BuildDetailsModalProps> = ({
               )}
               
               {buildOrder.status !== 'Completed' && (
-                <button
+                <Button
                   onClick={onComplete}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
                 >
                   Mark Complete
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -1153,9 +1154,9 @@ const ExternalEventDetailsModal: React.FC<ExternalEventDetailsModalProps> = ({
             <h3 className="text-lg font-semibold text-white">{event.title}</h3>
             <p className="text-xs text-gray-400 mt-1">Source: Google Calendar</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <Button onClick={onClose} className="text-gray-400 hover:text-white">
             <XMarkIcon className="w-6 h-6" />
-          </button>
+          </Button>
         </div>
 
         <div className="p-5 space-y-4 text-sm text-gray-200">
@@ -1228,7 +1229,7 @@ const ExternalEventDetailsModal: React.FC<ExternalEventDetailsModalProps> = ({
           )}
 
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-800">
-            <button
+            <Button
               onClick={handleCreateBuild}
               disabled={!canCreateBuild}
               className={`px-4 py-2 rounded-md text-sm font-medium ${
@@ -1238,13 +1239,13 @@ const ExternalEventDetailsModal: React.FC<ExternalEventDetailsModalProps> = ({
               }`}
             >
               Create Build Order
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={onClose}
               className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-md text-sm"
             >
               Close
-            </button>
+            </Button>
           </div>
         </div>
       </div>

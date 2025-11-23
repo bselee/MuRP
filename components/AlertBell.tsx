@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { BellIcon, XMarkIcon } from './icons';
 import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 
+import Button from '@/components/ui/Button';
 interface AlertBellProps {
   alerts: SystemAlert[];
   onDismiss: (idOrSource: string) => void;
@@ -35,7 +36,7 @@ const AlertBell: React.FC<AlertBellProps> = ({ alerts, onDismiss }) => {
 
   return (
     <div className="relative">
-      <button
+      <Button
         className={`relative p-2 rounded-full transition-colors ${
           hasAlerts
             ? 'text-red-300 hover:bg-red-500/10 hover:text-red-200'
@@ -49,19 +50,19 @@ const AlertBell: React.FC<AlertBellProps> = ({ alerts, onDismiss }) => {
         {hasAlerts && (
           <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-400" />
         )}
-      </button>
+      </Button>
 
       {isOpen && hasAlerts && (
         <div className="absolute right-0 mt-2 w-80 rounded-lg border border-gray-700 bg-gray-900 shadow-xl z-50">
           <div className="flex items-center justify-between border-b border-gray-800 px-3 py-2">
             <p className="text-sm font-semibold text-white">System alerts</p>
-            <button
+            <Button
               className="p-1 text-gray-400 hover:text-gray-200 transition-colors"
               onClick={() => setIsOpen(false)}
               aria-label="Close alerts"
             >
               <XMarkIcon className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
           <ul className="max-h-72 overflow-y-auto">
             {sortedAlerts.map((alert) => (
@@ -72,7 +73,7 @@ const AlertBell: React.FC<AlertBellProps> = ({ alerts, onDismiss }) => {
                 <p className="text-sm text-white">{alert.message}</p>
                 <div className="mt-1 flex items-center justify-between text-xs text-gray-400">
                   <span>{formatRelativeTime(alert.timestamp)}</span>
-                  <button
+                  <Button
                     className="text-indigo-300 hover:text-indigo-100 transition-colors"
                     onClick={() => {
                       onDismiss(alert.source);
@@ -82,7 +83,7 @@ const AlertBell: React.FC<AlertBellProps> = ({ alerts, onDismiss }) => {
                     }}
                   >
                     Dismiss
-                  </button>
+                  </Button>
                 </div>
               </li>
             ))}

@@ -8,6 +8,7 @@ import BomDetailModal from '../components/BomDetailModal';
 import ComplianceDashboard from '../components/ComplianceDashboard';
 import ComplianceDetailModal from '../components/ComplianceDetailModal';
 
+import Button from '@/components/ui/Button';
 interface BOMsProps {
   boms: BillOfMaterials[];
   currentUser: User;
@@ -86,21 +87,21 @@ const BOMs: React.FC<BOMsProps> = ({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={() => handleViewDetails(bom)}
               className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
             >
               <EyeIcon className="w-4 h-4" />
               View
-            </button>
+            </Button>
             {canEdit && (
-              <button
+              <Button
                 onClick={() => handleEditClick(bom)}
                 className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
               >
                 <PencilIcon className="w-4 h-4" />
                 Edit
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -122,9 +123,9 @@ const BOMs: React.FC<BOMsProps> = ({
             <ul className="space-y-1 text-sm">
               {bom.artwork.map(art => (
                 <li key={art.id} className="flex justify-between">
-                  <button onClick={() => onNavigateToArtwork(art.fileName)} className="text-indigo-400 hover:underline text-left truncate">
+                  <Button onClick={() => onNavigateToArtwork(art.fileName)} className="text-indigo-400 hover:underline text-left truncate">
                     {art.fileName}
-                  </button>
+                  </Button>
                   <span className="text-gray-400 font-mono ml-2">Rev {art.revision}</span>
                 </li>
               ))}
@@ -156,7 +157,7 @@ const BOMs: React.FC<BOMsProps> = ({
 
       {/* Compliance Dashboard Section */}
       <section>
-        <button
+        <Button
           onClick={() => setShowComplianceDashboard(!showComplianceDashboard)}
           className="w-full flex justify-between items-center text-left mb-4"
         >
@@ -166,7 +167,7 @@ const BOMs: React.FC<BOMsProps> = ({
               showComplianceDashboard ? 'rotate-180' : ''
             }`}
           />
-        </button>
+        </Button>
         {showComplianceDashboard && (
           <ComplianceDashboard
             boms={boms}

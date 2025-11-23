@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 // Semantic Search Settings: UI for managing embeddings
 // Allows users to generate and track embeddings for semantic search
 
@@ -155,7 +156,7 @@ const SemanticSearchSettings: React.FC<SemanticSearchSettingsProps> = ({
       )}
 
       {/* Generate Button */}
-      <button
+      <Button
         onClick={handleGenerateEmbeddings}
         disabled={generating}
         className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-3 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -166,7 +167,7 @@ const SemanticSearchSettings: React.FC<SemanticSearchSettingsProps> = ({
           : isEnabled
           ? 'Regenerate Embeddings'
           : 'Generate Embeddings'}
-      </button>
+      </Button>
 
       {/* Info */}
       <div className="mt-6 p-4 bg-gray-900/50 rounded-md">

@@ -4,6 +4,7 @@ import { LogoutIcon, MushroomLogo } from './icons';
 import AlertBell from './AlertBell';
 import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 
+import Button from '@/components/ui/Button';
 interface HeaderProps {
     currentUser: User;
     onLogout: () => void;
@@ -41,12 +42,12 @@ const Header: React.FC<HeaderProps> = ({
                             Dev Mode
                         </span>
                     )}
-                    <button
+                    <Button
                         onClick={onQuickRequest}
                         className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
                     >
                         Ask About Product
-                    </button>
+                    </Button>
                     <AlertBell alerts={systemAlerts} onDismiss={onDismissAlert} />
                 <div className="flex items-center space-x-3">
                     <div className="text-right">
@@ -56,9 +57,9 @@ const Header: React.FC<HeaderProps> = ({
                     <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center text-lg font-bold text-white">
                         {currentUser.name.charAt(0)}
                     </div>
-                    <button onClick={onLogout} title="Logout" className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
+                    <Button onClick={onLogout} title="Logout" className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition-colors">
                         <LogoutIcon className="h-6 w-6" />
-                    </button>
+                    </Button>
                 </div>
             </div>
         </header>

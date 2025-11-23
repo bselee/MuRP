@@ -4,6 +4,7 @@ import { GmailIcon } from '../components/icons';
 import { supabase } from '../lib/supabase/client';
 import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
 
+import Button from '@/components/ui/Button';
 interface LoginScreenProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
@@ -126,18 +127,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
               <h2 className="text-2xl font-semibold text-white mt-1">{mode === 'login' ? 'Welcome back' : 'Create account'}</h2>
             </div>
             <div className="flex space-x-2 rounded-full bg-gray-800 p-1">
-              <button
+              <Button
                 className={`px-4 py-1 text-sm rounded-full ${mode === 'login' ? 'bg-indigo-600 text-white' : 'text-gray-400'}`}
                 onClick={() => setMode('login')}
               >
                 Login
-              </button>
-              <button
+              </Button>
+              <Button
                 className={`px-4 py-1 text-sm rounded-full ${mode === 'signup' ? 'bg-indigo-600 text-white' : 'text-gray-400'}`}
                 onClick={() => setMode('signup')}
               >
                 Sign Up
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -218,18 +219,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
                   />
                   Remember me
                 </label>
-                <button type="button" onClick={handleResetPassword} className="text-indigo-400 hover:text-indigo-300">
+                <Button type="button" onClick={handleResetPassword} className="text-indigo-400 hover:text-indigo-300">
                   Forgot password?
-                </button>
+                </Button>
               </div>
             )}
-            <button
+            <Button
               type="submit"
               disabled={loading}
               className="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:bg-indigo-500 disabled:bg-gray-700"
             >
               {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : 'Create Account'}
-            </button>
+            </Button>
           </form>
 
           <p className="text-xs text-gray-500 text-center mt-4">
@@ -251,15 +252,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
               <span className="w-full border-t border-gray-700" />
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <button
+              <Button
                 type="button"
                 className="flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-800/60 p-3 text-white hover:border-indigo-500 hover:bg-gray-800 transition-colors"
                 onClick={handleGoogleSignIn}
               >
                 <GmailIcon className="h-5 w-5 text-[#DB4437]" />
                 Google
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 className="flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-800/60 p-3 text-white hover:border-indigo-500 transition-colors opacity-50 cursor-not-allowed"
                 onClick={() => addToast('Microsoft OAuth coming soon.', 'info')}
@@ -269,7 +270,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
                   <path d="M4 4H11.5V11.5H4V4ZM12.5 4H20V11.5H12.5V4ZM4 12.5H11.5V20H4V12.5ZM12.5 12.5H20V20H12.5V12.5Z" />
                 </svg>
                 Microsoft
-              </button>
+              </Button>
             </div>
           </div>
         </div>

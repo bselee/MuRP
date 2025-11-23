@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase/client';
 import type { CalendarSourceConfig } from '../types/calendar';
 import { normalizeCalendarSources } from '../types/calendar';
 
+import Button from '@/components/ui/Button';
 interface CalendarSettingsPanelProps {
   userId: string;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -213,7 +214,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
           <p className="text-sm text-yellow-200">
             ⚠️ Google account not connected. Connect your Google account to access calendar features.
           </p>
-          <button
+          <Button
             onClick={handleConnectGoogle}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-gray-100 text-gray-900 font-medium rounded-lg transition-colors"
           >
@@ -224,7 +225,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
             Connect Google Account
-          </button>
+          </Button>
         </div>
       )}
 
@@ -255,14 +256,14 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
             <label className="text-sm font-medium text-white">Connected Calendars</label>
             <p className="text-xs text-gray-400">Add multiple calendars and choose which ones to ingest builds from.</p>
           </div>
-          <button
+          <Button
             onClick={loadAvailableCalendars}
             disabled={isLoadingCalendars || !hasGoogleAuth}
             className="flex items-center gap-2 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded transition-colors"
           >
             <RefreshIcon className={`w-4 h-4 ${isLoadingCalendars ? 'animate-spin' : ''}`} />
             {isLoadingCalendars ? 'Loading…' : 'Load Google Calendars'}
-          </button>
+          </Button>
         </div>
 
         {settings.calendar_sources.length === 0 ? (
@@ -281,13 +282,13 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
                       Timezone: {source.timezone || settings.calendar_timezone}
                     </p>
                   </div>
-                  <button
+                  <Button
                     onClick={() => handleRemoveCalendar(source.id)}
                     className="text-gray-400 hover:text-red-400 transition-colors"
                     title="Remove calendar"
                   >
                     <TrashIcon className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="flex items-center justify-between text-sm text-gray-200">
@@ -339,7 +340,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
                           {calendar.id} • {calendar.timeZone}
                         </p>
                       </div>
-                      <button
+                      <Button
                         onClick={() => handleAddCalendar(calendar)}
                         disabled={isLinked}
                         className={`px-3 py-1 rounded text-xs font-semibold ${
@@ -349,7 +350,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
                         }`}
                       >
                         {isLinked ? 'Connected' : 'Add'}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );
@@ -407,13 +408,13 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
 
       {/* Save Button */}
       <div className="flex justify-end pt-4 border-t border-gray-700">
-        <button
+        <Button
           onClick={handleSaveSettings}
           disabled={isSaving || !hasGoogleAuth}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
         >
           {isSaving ? 'Saving...' : 'Save Calendar Settings'}
-        </button>
+        </Button>
       </div>
 
       {/* Usage Instructions */}

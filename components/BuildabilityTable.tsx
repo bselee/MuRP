@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Button from '@/components/ui/Button';
 // Corrected import path for the Buildability type from buildabilityService
 import type { Buildability } from '../services/buildabilityService';
 import { CheckCircleIcon, ChevronDownIcon, ExclamationCircleIcon, XCircleIcon } from './icons';
@@ -61,9 +62,9 @@ const BuildabilityTable: React.FC<BuildabilityTableProps> = ({ data }) => {
                   <td className="px-6 py-1 whitespace-nowrap text-sm font-semibold text-white">{item.buildableUnits}</td>
                   <td className="px-6 py-1 whitespace-nowrap text-sm"><StatusBadge status={item.status} /></td>
                   <td className="px-6 py-1 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={() => toggleRow(item.bom.finishedSku)} className="text-indigo-400 hover:text-indigo-300">
+                    <Button onClick={() => toggleRow(item.bom.finishedSku)} className="text-indigo-400 hover:text-indigo-300">
                       <ChevronDownIcon className={`w-5 h-5 transition-transform duration-200 ${expandedRow === item.bom.finishedSku ? 'rotate-180' : ''}`} />
-                    </button>
+                    </Button>
                   </td>
                 </tr>
                 {expandedRow === item.bom.finishedSku && (

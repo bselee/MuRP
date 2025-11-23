@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 // Tier 1 AI Enhancement: Batch Artwork Verification
 // Modal for uploading and verifying multiple artwork files
 
@@ -135,12 +136,12 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
             <div>
               <p className="text-red-300 font-semibold">Verification Error</p>
               <p className="text-red-200 text-sm mt-1">{error}</p>
-              <button
+              <Button
                 onClick={() => setError(null)}
                 className="text-sm text-red-400 hover:text-red-300 mt-2 underline"
               >
                 Dismiss
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -174,12 +175,12 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
                 onChange={e => handleFileSelect(e.target.files)}
                 className="hidden"
               />
-              <button
+              <Button
                 onClick={() => fileInputRef.current?.click()}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md transition-colors"
               >
                 Select Files
-              </button>
+              </Button>
             </div>
 
             {/* File List */}
@@ -189,12 +190,12 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
                   <h3 className="text-white font-semibold">
                     Selected Files ({files.length})
                   </h3>
-                  <button
+                  <Button
                     onClick={handleReset}
                     className="text-sm text-gray-400 hover:text-white"
                   >
                     Clear All
-                  </button>
+                  </Button>
                 </div>
                 <div className="space-y-2 max-h-60 overflow-y-auto bg-gray-800/50 p-3 rounded-lg">
                   {files.map((file, index) => (
@@ -205,22 +206,22 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
                       <span className="text-sm text-gray-300 truncate flex-1">
                         {file.name}
                       </span>
-                      <button
+                      <Button
                         onClick={() => removeFile(index)}
                         className="ml-2 text-gray-400 hover:text-red-400"
                       >
                         <CloseIcon className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
-                <button
+                <Button
                   onClick={handleVerifyBatch}
                   className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-md transition-colors flex items-center justify-center gap-2"
                 >
                   <SparklesIcon className="w-5 h-5" />
                   Verify All Artwork
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -255,18 +256,18 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
                 Verification Results
               </h3>
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={handleExportCSV}
                   className="text-sm bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-md transition-colors"
                 >
                   Export CSV
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleReset}
                   className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition-colors"
                 >
                   New Batch
-                </button>
+                </Button>
               </div>
             </div>
 

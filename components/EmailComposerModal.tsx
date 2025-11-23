@@ -7,6 +7,7 @@ import { FileTextIcon, GmailIcon } from './icons';
 import { getGoogleGmailService } from '../services/googleGmailService';
 import { logPoEmailTracking } from '../hooks/useSupabaseMutations';
 
+import Button from '@/components/ui/Button';
 interface EmailComposerModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -140,10 +141,10 @@ Procurement Team`);
                     </div>
                     <div>
                         <h4 className="text-sm font-semibold text-gray-300 mb-2">Attachments</h4>
-                        <button onClick={handleDownloadAttachment} className="flex items-center gap-2 text-sm p-2 bg-gray-700 rounded-md text-indigo-300 hover:bg-gray-600">
+                        <Button onClick={handleDownloadAttachment} className="flex items-center gap-2 text-sm p-2 bg-gray-700 rounded-md text-indigo-300 hover:bg-gray-600">
                             <FileTextIcon className="w-5 h-5"/>
                             <span>{(purchaseOrder.orderId || purchaseOrder.id)}.pdf</span>
-                        </button>
+                        </Button>
                     </div>
                 </div>
 
@@ -163,10 +164,10 @@ Procurement Team`);
                             )}
                         </div>
                         <div className="flex items-center">
-                             <button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</button>
-                            <button onClick={handleSendClick} disabled={isSending} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-wait">
+                             <Button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</Button>
+                            <Button onClick={handleSendClick} disabled={isSending} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-wait">
                                 {isSending ? 'Sending...' : 'Send Email'}
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </footer>

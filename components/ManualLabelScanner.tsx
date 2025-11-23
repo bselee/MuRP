@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Manual Label Scanner
  *
@@ -373,12 +374,12 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
               <p className="text-gray-400 mb-6">
                 Supported formats: PDF, PNG, JPG, Adobe Illustrator (.ai)
               </p>
-              <button
+              <Button
                 onClick={() => fileInputRef.current?.click()}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
               >
                 Select File
-              </button>
+              </Button>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -426,27 +427,27 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
               <h3 className="text-xl font-semibold text-white">Extracted Data</h3>
               <div className="flex gap-3">
                 {!isEditing ? (
-                  <button
+                  <Button
                     onClick={() => setIsEditing(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
                   >
                     <PencilSquareIcon className="w-4 h-4" />
                     Edit
-                  </button>
+                  </Button>
                 ) : (
                   <>
-                    <button
+                    <Button
                       onClick={handleCancelEdits}
                       className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
                     >
                       Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={handleSaveEdits}
                       className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
                     >
                       Save Edits
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
@@ -517,13 +518,13 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-gray-400 uppercase">Ingredients</h4>
                   {isEditing && (
-                    <button
+                    <Button
                       onClick={handleAddIngredient}
                       className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300"
                     >
                       <PlusCircleIcon className="w-4 h-4" />
                       Add Ingredient
-                    </button>
+                    </Button>
                   )}
                 </div>
 
@@ -553,12 +554,12 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
                             className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
                             placeholder="%"
                           />
-                          <button
+                          <Button
                             onClick={() => handleRemoveIngredient(idx)}
                             className="text-red-400 hover:text-red-300"
                           >
                             <TrashIcon className="w-4 h-4" />
-                          </button>
+                          </Button>
                         </>
                       ) : (
                         <>
@@ -613,19 +614,19 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
 
             {/* Action Buttons */}
             <div className="flex gap-3 justify-end pt-6 border-t border-gray-700">
-              <button
+              <Button
                 onClick={onClose || handleReset}
                 className="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleSaveToDatabase}
                 disabled={isEditing}
                 className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
               >
                 Save to Database
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -649,12 +650,12 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
               <h3 className="text-xl font-semibold text-white mb-2">Scan Complete!</h3>
               <p className="text-gray-400">Label saved successfully to database</p>
             </div>
-            <button
+            <Button
               onClick={handleReset}
               className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
             >
               Scan Another Label
-            </button>
+            </Button>
           </div>
         )}
       </div>

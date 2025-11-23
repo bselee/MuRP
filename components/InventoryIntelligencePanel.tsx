@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 📊 MASTER PRODUCTION & PLANNING DASHBOARD
@@ -361,12 +362,12 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
                     Blocking {shortage.blocksProducts.length} product(s)
                   </p>
                 </div>
-                <button
+                <Button
                   onClick={() => handleRequestComponent(shortage)}
                   className="ml-3 px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors whitespace-nowrap"
                 >
                   Request Now
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -441,23 +442,23 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
                     <td className="px-4 py-2">
                       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                         {product.status === 'BUILDABLE' && (
-                          <button
+                          <Button
                             onClick={() => handleBuildNow(product)}
                             className="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
                           >
                             Build Now
-                          </button>
+                          </Button>
                         )}
                         {product.status === 'LOW_SOON' && (
-                          <button
+                          <Button
                             onClick={() => handleScheduleBuild(product)}
                             className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white rounded transition-colors"
                           >
                             Schedule
-                          </button>
+                          </Button>
                         )}
                         {product.status === 'BLOCKED' && product.limitingComponent && (
-                          <button
+                          <Button
                             onClick={() => {
                               const shortage = componentShortages.find(s => s.sku === product.limitingComponent!.sku);
                               if (shortage) handleRequestComponent(shortage);
@@ -465,7 +466,7 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
                             className="px-2 py-1 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors"
                           >
                             Request Parts
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </td>

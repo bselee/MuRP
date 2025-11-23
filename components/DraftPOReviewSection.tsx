@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 📝 DRAFT PO REVIEW SECTION
@@ -191,7 +192,7 @@ const DraftPOReviewSection: React.FC<DraftPOReviewSectionProps> = ({ onApprove, 
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
-      <button
+      <Button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex justify-between items-center p-4 bg-gradient-to-r from-yellow-900/30 to-gray-800 hover:from-yellow-900/40 transition-colors border-b border-yellow-700/30"
       >
@@ -212,7 +213,7 @@ const DraftPOReviewSection: React.FC<DraftPOReviewSectionProps> = ({ onApprove, 
         <ChevronDownIcon
           className={`w-6 h-6 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
         />
-      </button>
+      </Button>
 
       {isExpanded && (
         <div className="divide-y divide-gray-700">
@@ -246,12 +247,12 @@ const DraftPOReviewSection: React.FC<DraftPOReviewSectionProps> = ({ onApprove, 
 
                   <div>
                     <p className="text-sm font-semibold text-white">{po.item_count} items</p>
-                    <button
+                    <Button
                       onClick={() => setExpandedPO(expandedPO === po.id ? null : po.id)}
                       className="text-xs text-indigo-400 hover:text-indigo-300"
                     >
                       {expandedPO === po.id ? 'Hide' : 'View'} details
-                    </button>
+                    </Button>
                   </div>
 
                   <div>
@@ -269,22 +270,22 @@ const DraftPOReviewSection: React.FC<DraftPOReviewSectionProps> = ({ onApprove, 
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 ml-4">
-                  <button
+                  <Button
                     onClick={() => handleApprove(po)}
                     className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 transition-colors"
                     title="Approve and move to Pending status"
                   >
                     <CheckCircleIcon className="w-4 h-4" />
                     Approve
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => handleDiscard(po)}
                     className="flex items-center gap-1 px-3 py-2 bg-red-600/80 text-white text-sm font-semibold rounded-md hover:bg-red-600 transition-colors"
                     title="Discard this PO"
                   >
                     <XCircleIcon className="w-4 h-4" />
                     Discard
-                  </button>
+                  </Button>
                 </div>
               </div>
 

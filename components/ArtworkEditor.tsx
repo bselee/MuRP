@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Artwork, ArtworkEditorTool } from '../types';
 
+import Button from '@/components/ui/Button';
 interface ArtworkEditorProps {
   isOpen: boolean;
   artwork: (Artwork & { productName?: string; productSku?: string }) | null;
@@ -330,25 +331,25 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
           )}
         </div>
       <div className="flex items-center gap-3">
-          <button
+          <Button
             onClick={handleUndo}
             disabled={historyStep <= 0}
             className="px-3 py-2 rounded-md border border-gray-700 text-sm text-gray-200 disabled:opacity-30 hover:bg-gray-800"
           >
             Undo
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSave}
             className="px-3 py-2 rounded-md bg-indigo-600 text-white font-semibold hover:bg-indigo-500"
           >
             Save to Library
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onClose}
             className="px-3 py-2 rounded-md border border-gray-700 text-gray-200 hover:bg-gray-800"
           >
             Close
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -358,7 +359,7 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Tool</p>
             <div className="grid grid-cols-3 gap-2">
               {(['brush', 'text', 'eraser'] as ArtworkEditorTool[]).map(t => (
-                <button
+                <Button
                   key={t}
                   onClick={() => setTool(t)}
                   className={`py-2 text-sm rounded-md border ${
@@ -366,7 +367,7 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
                   }`}
                 >
                   {t === 'brush' ? 'Brush' : t === 'text' ? 'Text' : 'Erase'}
-                </button>
+                </Button>
               ))}
             </div>
           </section>
@@ -398,32 +399,32 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
           <section className="space-y-3">
             <p className="text-xs text-gray-400 uppercase tracking-wide">Exports</p>
             <div className="space-y-2">
-              <button
+              <Button
                 onClick={handleDownloadRaster}
                 className="w-full py-2 rounded-md bg-gray-800 text-gray-100 hover:bg-gray-700 text-sm"
               >
                 Download PNG
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleVectorize}
                 disabled={isVectorizing}
                 className="w-full py-2 rounded-md bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50 text-sm"
               >
                 {isVectorizing ? 'Vectorizing...' : 'Generate SVG'}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleDownloadVector}
                 disabled={!vectorSvg}
                 className="w-full py-2 rounded-md border border-gray-700 text-gray-200 hover:bg-gray-800 disabled:opacity-40 text-sm"
               >
                 Download SVG
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleDownloadBundle}
                 className="w-full py-2 rounded-md border border-gray-700 text-gray-200 hover:bg-gray-800 text-sm"
               >
                 Bundle (ZIP)
-              </button>
+              </Button>
             </div>
           </section>
 

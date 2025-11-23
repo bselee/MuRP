@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 // Enhanced Regulatory Compliance: Compliance Dashboard
 // Visual dashboard showing compliance status across all BOMs
 
@@ -108,14 +109,14 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ boms, watchli
             Proactive regulatory compliance monitoring across all products
           </p>
         </div>
-        <button
+        <Button
           onClick={handleScanAll}
           disabled={scanning}
           className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <RefreshIcon className={`w-5 h-5 ${scanning ? 'animate-spin' : ''}`} />
           {scanning ? `Scanning ${scanProgress.current}/${scanProgress.total}...` : 'Scan All BOMs'}
-        </button>
+        </Button>
       </div>
 
       {/* Stats Overview Cards */}

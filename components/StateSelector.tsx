@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
+import Button from '@/components/ui/Button';
 interface StateRating {
   id: string;
   state_code: string;
@@ -148,18 +149,18 @@ export default function StateSelector({
         
         {/* Quick Actions */}
         <div className="flex gap-2">
-          <button
+          <Button
             onClick={() => onStatesChange(stateRatings.map((s) => s.state_code))}
             className="px-3 py-1 text-sm bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
           >
             Select All
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => onStatesChange([])}
             className="px-3 py-1 text-sm bg-gray-700 text-gray-200 rounded hover:bg-gray-600"
           >
             Clear All
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -226,7 +227,7 @@ export default function StateSelector({
                   {/* Group Actions */}
                   {isExpanded && (
                     <>
-                      <button
+                      <Button
                         onClick={(e) => {
                           e.stopPropagation();
                           selectAllInGroup(level);
@@ -234,8 +235,8 @@ export default function StateSelector({
                         className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
                       >
                         Select All
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={(e) => {
                           e.stopPropagation();
                           clearAllInGroup(level);
@@ -243,7 +244,7 @@ export default function StateSelector({
                         className="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600"
                       >
                         Clear
-                      </button>
+                      </Button>
                     </>
                   )}
                   

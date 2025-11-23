@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Finale API Setup Panel
  * 
@@ -368,7 +369,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 />
               </div>
 
-              <button
+              <Button
                 onClick={handleTestConnection}
                 disabled={isTesting || !credentials.apiKey || !credentials.apiSecret || !credentials.accountPath}
                 className="w-full bg-blue-600 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -384,7 +385,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                     Test Connection
                   </>
                 )}
-              </button>
+              </Button>
 
               {testResult && (
                 <div className={`flex items-start gap-3 p-3 rounded-lg border ${
@@ -429,13 +430,13 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 This may take a few minutes depending on your data size.
               </p>
 
-              <button
+              <Button
                 onClick={handleStartSync}
                 className="w-full bg-indigo-600 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
               >
                 <RefreshIcon className="w-5 h-5" />
                 Start Initial Sync
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -448,12 +449,12 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 ✓
               </div>
               <h4 className="text-md font-semibold text-white flex-1">Sync Status & Controls</h4>
-              <button
+              <Button
                 onClick={() => setCurrentStep('credentials')}
                 className="text-xs text-blue-400 hover:text-blue-300 font-medium"
               >
                 Reconfigure Credentials
-              </button>
+              </Button>
             </div>
 
             <div className="ml-11 space-y-4">
@@ -465,7 +466,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                     Inventory: 5min | Vendors: 1hr | POs: 15min
                   </p>
                 </div>
-                <button
+                <Button
                   onClick={handleToggleAutoSync}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                     autoSyncEnabled ? 'bg-green-500' : 'bg-gray-600'
@@ -476,7 +477,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                       autoSyncEnabled ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
-                </button>
+                </Button>
               </div>
 
               {/* Sync stats */}
@@ -531,19 +532,19 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-white">Select Data Sources</p>
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={selectAllSyncSources}
                       className="text-xs text-indigo-400 hover:text-indigo-300"
                     >
                       Select All
-                    </button>
+                    </Button>
                     <span className="text-gray-600">|</span>
-                    <button
+                    <Button
                       onClick={deselectAllSyncSources}
                       className="text-xs text-gray-400 hover:text-white"
                     >
                       Clear
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -591,23 +592,23 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
 
               {/* Manual sync button */}
               <div className="space-y-2">
-                <button
+                <Button
                   onClick={handleManualSync}
                   disabled={syncStatus?.isRunning || selectedSyncSources.size === 0}
                   className="w-full bg-indigo-600 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <RefreshIcon className={`w-5 h-5 ${syncStatus?.isRunning ? 'animate-spin' : ''}`} />
                   {syncStatus?.isRunning ? 'Syncing...' : `Sync Selected (${selectedSyncSources.size})`}
-                </button>
+                </Button>
 
                 {/* Reset button if stuck in running state */}
                 {syncStatus?.isRunning && (
-                  <button
+                  <Button
                     onClick={handleResetSyncStatus}
                     className="w-full bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
                   >
                     Reset Sync Status (if stuck)
-                  </button>
+                  </Button>
                 )}
 
                 {/* Debug info */}

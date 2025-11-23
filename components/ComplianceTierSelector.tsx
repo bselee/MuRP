@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * Compliance Tier Selector Component
  * Helps users choose between Basic (free) and Full AI ($49/mo) modes
@@ -86,7 +87,7 @@ export const ComplianceTierSelector: React.FC<ComplianceTierSelectorProps> = ({ 
             <FeatureRow included={false} text="Industry-specific intelligence" />
           </div>
 
-          <button
+          <Button
             onClick={() => selectTier('basic')}
             disabled={profile?.compliance_tier === 'basic'}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all ${
@@ -96,7 +97,7 @@ export const ComplianceTierSelector: React.FC<ComplianceTierSelectorProps> = ({ 
             }`}
           >
             {profile?.compliance_tier === 'basic' ? 'Current Plan' : 'Start Free'}
-          </button>
+          </Button>
         </div>
 
         {/* Full AI Mode - $49/mo */}
@@ -137,7 +138,7 @@ export const ComplianceTierSelector: React.FC<ComplianceTierSelectorProps> = ({ 
             <FeatureRow included text="✨ Export compliance PDFs" />
           </div>
 
-          <button
+          <Button
             onClick={() => selectTier('full_ai')}
             disabled={profile?.compliance_tier === 'full_ai'}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all ${
@@ -147,7 +148,7 @@ export const ComplianceTierSelector: React.FC<ComplianceTierSelectorProps> = ({ 
             }`}
           >
             {profile?.compliance_tier === 'full_ai' ? 'Current Plan ✓' : 'Upgrade to Full AI'}
-          </button>
+          </Button>
 
           {profile?.compliance_tier === 'basic' && (
             <p className="text-center text-gray-300 text-xs mt-3">

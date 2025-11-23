@@ -2,6 +2,7 @@ import React from 'react';
 import Modal from './Modal';
 import { ArrowDownTrayIcon, ArrowUpTrayIcon } from './icons';
 
+import Button from '@/components/ui/Button';
 interface ImportExportModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -50,13 +51,13 @@ const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, onClose, 
                     <p className="text-sm text-gray-400">
                         Upload a CSV file to bulk-add or update inventory items. Make sure your file matches the template format.
                     </p>
-                    <button 
+                    <Button 
                         onClick={handleDownloadTemplate}
                         className="w-full text-center bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm flex items-center justify-center gap-2"
                     >
                        <ArrowDownTrayIcon className="w-5 h-5" />
                        Download CSV Template
-                    </button>
+                    </Button>
                     <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md">
                         <div className="space-y-1 text-center">
                             <svg className="mx-auto h-12 w-12 text-gray-500" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
@@ -81,30 +82,30 @@ const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, onClose, 
                     </p>
                     <div className="bg-gray-900/50 p-4 rounded-lg space-y-3">
                          <div className="grid grid-cols-2 gap-3">
-                            <button 
+                            <Button 
                                 onClick={onExportCsv}
                                 className="w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
                             >
                                 Export as CSV
-                            </button>
-                             <button 
+                            </Button>
+                             <Button 
                                 onClick={onExportJson}
                                 className="w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
                             >
                                 Export as JSON
-                            </button>
-                             <button 
+                            </Button>
+                             <Button 
                                 onClick={onExportXls}
                                 className="w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
                             >
                                 Export as Excel
-                            </button>
-                            <button 
+                            </Button>
+                            <Button 
                                 onClick={onExportPdf}
                                 className="w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
                             >
                                 Export as PDF
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -3,6 +3,7 @@ import type { BillOfMaterials, BOMComponent, Artwork, Packaging, InventoryItem }
 import Modal from './Modal';
 import { TrashIcon, PlusCircleIcon, MagnifyingGlassIcon, XCircleIcon, ExclamationTriangleIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from './icons';
 
+import Button from '@/components/ui/Button';
 interface BomEditModalProps {
   bom: BillOfMaterials;
   isOpen: boolean;
@@ -319,22 +320,22 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
             </div>
             <div className="flex flex-wrap gap-2">
               {/* Import/Export Buttons */}
-              <button
+              <Button
                 onClick={downloadTemplate}
                 className="flex items-center gap-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-semibold rounded-lg transition-colors"
                 title="Download BOM template"
               >
                 <ArrowDownTrayIcon className="w-4 h-4" />
                 Template
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={exportToCSV}
                 className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors"
                 title="Export BOM to CSV"
               >
                 <ArrowDownTrayIcon className="w-4 h-4" />
                 Export CSV
-              </button>
+              </Button>
               <label className="flex items-center gap-1 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                 title="Import BOM from CSV">
                 <ArrowUpTrayIcon className="w-4 h-4" />
@@ -346,13 +347,13 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
                   className="hidden"
                 />
               </label>
-              <button
+              <Button
                 onClick={() => setShowAddComponent(!showAddComponent)}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 <PlusCircleIcon className="w-5 h-5" />
                 Add Component
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -382,7 +383,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
                   </div>
                 ) : (
                   filteredInventory.map(item => (
-                    <button
+                    <Button
                       key={item.sku}
                       onClick={() => setSelectedInventoryItem(item)}
                       className={`w-full text-left p-3 border-b border-gray-700 hover:bg-gray-700/50 transition-colors ${
@@ -404,7 +405,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
                           </div>
                         </div>
                       </div>
-                    </button>
+                    </Button>
                   ))
                 )}
               </div>
@@ -455,14 +456,14 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
 
               {/* Action Buttons */}
               <div className="flex gap-2">
-                <button
+                <Button
                   onClick={addComponent}
                   disabled={!selectedInventoryItem || newComponentQuantity <= 0}
                   className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-md transition-colors"
                 >
                   Add to BOM
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => {
                     setShowAddComponent(false);
                     setSelectedInventoryItem(null);
@@ -472,7 +473,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
                   className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm font-semibold rounded-md transition-colors"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -541,13 +542,13 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
                         </select>
                       </td>
                       <td className="px-4 py-1 text-center">
-                        <button
+                        <Button
                           onClick={() => removeComponent(index)}
                           className="p-2 text-red-500 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors"
                           title="Remove component"
                         >
                           <TrashIcon className="w-5 h-5"/>
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -561,9 +562,9 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
         <div className="bg-gray-900/30 rounded-lg p-4 border border-gray-700">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-200">Artwork Files</h3>
-            <button onClick={addArtwork} className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300">
+            <Button onClick={addArtwork} className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300">
                 <PlusCircleIcon className="w-5 h-5" /> Add Artwork
-            </button>
+            </Button>
           </div>
           <div className="space-y-3">
             {editedBom.artwork.map((art, index) => (
@@ -577,9 +578,9 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
                     <input type="number" value={art.revision} onChange={e => handleArtworkChange(index, 'revision', parseInt(e.target.value) || 1)} className="w-full bg-gray-700 p-1.5 rounded-md text-sm" />
                 </div>
                 <div className="flex items-end h-full">
-                    <button onClick={() => removeArtwork(index)} className="p-2 text-red-500 hover:text-red-400">
+                    <Button onClick={() => removeArtwork(index)} className="p-2 text-red-500 hover:text-red-400">
                         <TrashIcon className="w-5 h-5"/>
-                    </button>
+                    </Button>
                 </div>
               </div>
             ))}
@@ -609,8 +610,8 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
-            <button onClick={onClose} className="px-6 py-2.5 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-500 transition-colors">Cancel</button>
-            <button onClick={handleSaveChanges} className="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors">Save Changes</button>
+            <Button onClick={onClose} className="px-6 py-2.5 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-500 transition-colors">Cancel</Button>
+            <Button onClick={handleSaveChanges} className="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors">Save Changes</Button>
         </div>
       </div>
     </Modal>

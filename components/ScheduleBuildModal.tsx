@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { BillOfMaterials } from '../types';
 import { XMarkIcon } from './icons';
 
+import Button from '@/components/ui/Button';
 export interface ScheduleBuildModalProps {
   boms: BillOfMaterials[];
   defaultStart?: Date;
@@ -72,9 +73,9 @@ const ScheduleBuildModal: React.FC<ScheduleBuildModalProps> = ({
             <p className="text-xs uppercase tracking-[0.3em] text-indigo-300">Schedule build</p>
             <h3 className="text-xl font-semibold text-white mt-1">Send to production calendar</h3>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <Button onClick={onClose} className="text-gray-400 hover:text-white">
             <XMarkIcon className="w-6 h-6" />
-          </button>
+          </Button>
         </div>
 
         <div className="px-6 py-5 space-y-4">
@@ -148,13 +149,13 @@ const ScheduleBuildModal: React.FC<ScheduleBuildModalProps> = ({
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-gray-800 px-6 py-4">
-          <button
+          <Button
             onClick={onClose}
             className="px-4 py-2 text-sm font-semibold text-gray-400 hover:text-white transition-colors"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit}
             disabled={!selectedBom}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
@@ -164,7 +165,7 @@ const ScheduleBuildModal: React.FC<ScheduleBuildModalProps> = ({
             }`}
           >
             Schedule build
-          </button>
+          </Button>
         </div>
       </div>
     </div>

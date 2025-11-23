@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import type { InternalRequisition, InventoryItem, Vendor, CreatePurchaseOrderItemInput } from '../types';
 import Modal from './Modal';
 
+import Button from '@/components/ui/Button';
 interface GeneratePoModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -99,10 +100,10 @@ const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, appr
                 </div>
 
                 <div className="flex justify-end pt-6 border-t border-gray-700">
-                    <button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</button>
-                    <button onClick={handleGenerate} disabled={posToGenerate.length === 0} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                    <Button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</Button>
+                    <Button onClick={handleGenerate} disabled={posToGenerate.length === 0} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
                         Generate {posToGenerate.length} PO(s)
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Modal>

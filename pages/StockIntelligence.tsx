@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 📊 STOCK INTELLIGENCE DASHBOARD
@@ -240,7 +241,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           ].map(tab => {
             const Icon = tab.icon;
             return (
-              <button
+              <Button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`flex-1 px-4 py-1 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
@@ -251,7 +252,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
               >
                 <Icon className="w-4 h-4" />
                 {tab.label}
-              </button>
+              </Button>
             );
           })}
         </div>

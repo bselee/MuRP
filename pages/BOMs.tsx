@@ -1,3 +1,4 @@
+import Button from '@/components/ui/Button';
 /**
  * BOMs Page - MERGED VERSION
  *
@@ -522,12 +523,12 @@ const BOMs: React.FC<BOMsProps> = ({
           <p className="text-gray-400 mt-1">Manage product recipes, buildability, and compliance status</p>
         </div>
         {canSubmitRequisitions && onQuickRequest && (
-          <button
+          <Button
             onClick={() => onQuickRequest()}
             className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white shadow hover:bg-indigo-500 transition-colors"
           >
             Ask About Product
-          </button>
+          </Button>
         )}
       </header>
 
@@ -541,7 +542,7 @@ const BOMs: React.FC<BOMsProps> = ({
               {componentFilter.componentName ? `Only BOMs that consume ${componentFilter.componentName} are displayed.` : 'Only BOMs that consume this component are displayed.'}
             </p>
           </div>
-          <button
+          <Button
             onClick={() => {
               setComponentFilter(null);
               try {
@@ -553,7 +554,7 @@ const BOMs: React.FC<BOMsProps> = ({
             className="px-4 py-2 rounded-md bg-indigo-700/60 hover:bg-indigo-600 text-sm font-semibold text-white border border-indigo-500"
           >
             Clear Filter
-          </button>
+          </Button>
         </div>
       )}
 
@@ -588,7 +589,7 @@ const BOMs: React.FC<BOMsProps> = ({
             </p>
             <div className="flex flex-wrap gap-2">
               {criticalBoms.map(bom => (
-                <button
+                <Button
                   key={bom.id}
                   onClick={() => {
                     const element = bomRefs.current.get(bom.id);
@@ -601,7 +602,7 @@ const BOMs: React.FC<BOMsProps> = ({
                   className="px-3 py-1.5 bg-red-900/40 hover:bg-red-900/60 text-red-300 text-sm rounded-md border border-red-700 transition-colors"
                 >
                   {bom.finishedSku}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -633,14 +634,14 @@ const BOMs: React.FC<BOMsProps> = ({
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
               {searchQuery && (
-                <button
+                <Button
                   onClick={() => setSearchQuery('')}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -694,7 +695,7 @@ const BOMs: React.FC<BOMsProps> = ({
 
             {/* View Mode Toggle */}
             <div className="flex bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
-              <button
+              <Button
                 onClick={() => setViewMode('card')}
                 className={`px-3 py-2.5 transition-colors ${
                   viewMode === 'card'
@@ -704,8 +705,8 @@ const BOMs: React.FC<BOMsProps> = ({
                 title="Card view"
               >
                 <Squares2X2Icon className="w-5 h-5" />
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setViewMode('table')}
                 className={`px-3 py-2.5 transition-colors border-l border-gray-700 ${
                   viewMode === 'table'
@@ -715,7 +716,7 @@ const BOMs: React.FC<BOMsProps> = ({
                 title="Table view"
               >
                 <ListBulletIcon className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -785,12 +786,12 @@ const BOMs: React.FC<BOMsProps> = ({
                       className="hover:bg-gray-800/50 transition-colors"
                     >
                       <td className="px-6 py-1 whitespace-nowrap">
-                        <button
+                        <Button
                           onClick={() => onNavigateToInventory?.(bom.finishedSku)}
                           className="text-sm font-bold font-mono text-white hover:text-indigo-400 transition-colors underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400"
                         >
                           {bom.finishedSku}
-                        </button>
+                        </Button>
                       </td>
                       <td className="px-6 py-1">
                         <div className="text-sm text-white">{bom.name}</div>
@@ -815,19 +816,19 @@ const BOMs: React.FC<BOMsProps> = ({
                       </td>
                       <td className="px-6 py-1 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button
+                          <Button
                             onClick={() => handleViewDetails(bom)}
                             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
                           >
                             View
-                          </button>
+                          </Button>
                           {canEdit && (
-                            <button
+                            <Button
                               onClick={() => handleEditClick(bom)}
                               className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition-colors"
                             >
                               Edit
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </td>

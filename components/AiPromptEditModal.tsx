@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { AiPrompt } from '../types';
 import Modal from './Modal';
 
+import Button from '@/components/ui/Button';
 interface AiPromptEditModalProps {
   prompt: AiPrompt | null;
   isOpen: boolean;
@@ -54,10 +55,10 @@ const AiPromptEditModal: React.FC<AiPromptEditModalProps> = ({ prompt, isOpen, o
         </div>
 
         <div className="flex justify-end pt-4 border-t border-gray-700">
-            <button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</button>
-            <button onClick={handleSave} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
+            <Button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</Button>
+            <Button onClick={handleSave} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
                 Save Prompt
-            </button>
+            </Button>
         </div>
       </div>
     </Modal>
