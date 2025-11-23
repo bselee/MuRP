@@ -14,13 +14,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:ring-indigo-500 focus-visible:ring-offset-gray-900',
+    'bg-gray-900/85 text-white border border-white/10 shadow-[0_20px_45px_rgba(0,0,0,0.45)] backdrop-blur-lg hover:bg-gray-900/70 hover:border-white/20 hover:shadow-[0_25px_55px_rgba(0,0,0,0.55)] focus-visible:ring-slate-300/60 focus-visible:ring-offset-gray-900',
   secondary:
-    'bg-gray-100 text-gray-900 hover:bg-gray-200 focus-visible:ring-gray-400 focus-visible:ring-offset-gray-900',
+    'bg-gray-800/70 text-gray-100 border border-white/10 shadow-inner shadow-black/40 backdrop-blur-md hover:bg-gray-800/55 hover:border-white/20 focus-visible:ring-slate-200/50 focus-visible:ring-offset-gray-900',
   ghost:
-    'text-gray-300 hover:bg-gray-800 focus-visible:ring-gray-700 focus-visible:ring-offset-gray-900',
+    'text-gray-200 border border-white/0 hover:border-white/15 hover:bg-gray-900/40 backdrop-blur-md focus-visible:ring-slate-200/50 focus-visible:ring-offset-gray-900',
   danger:
-    'bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500 focus-visible:ring-offset-gray-900',
+    'bg-red-600/80 text-white border border-red-400/40 shadow-[0_15px_35px_rgba(185,28,28,0.35)] hover:bg-red-600 hover:border-red-300/60 focus-visible:ring-red-300/60 focus-visible:ring-offset-gray-900',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
