@@ -28,6 +28,10 @@ const applyThemeToDom = (theme: ResolvedTheme) => {
   if (typeof document === 'undefined') return;
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme;
+  if (document.body) {
+    document.body.dataset.theme = theme;
+    document.body.style.colorScheme = theme;
+  }
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
-import type { GmailConnection, ExternalConnection } from '../types';
+import type { GmailConnection, ExternalConnection, POTrackingStatus } from '../types';
 import {
 GmailIcon,
   KeyIcon,
@@ -14,6 +14,7 @@ GmailIcon,
   ExclamationTriangleIcon,
   XCircleIcon,
   TruckIcon,
+  BellIcon,
 } from './icons';
 import { supabase } from '../lib/supabase/client';
 import { dispatchSyncEvent } from '../lib/syncEventBus';
@@ -79,6 +80,38 @@ const AFTERSHIP_CARRIER_OPTIONS = [
   { value: 'usps', label: 'USPS' },
   { value: 'dhl', label: 'DHL' },
   { value: CUSTOM_CARRIER_VALUE, label: 'Custom Carrier' },
+];
+
+const TRACKING_STATUS_CHOICES: Array<{
+  value: POTrackingStatus;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'exception',
+    label: 'Exception',
+    description: 'Carrier flagged an issue – needs purchasing review.',
+  },
+  {
+    value: 'delivered',
+    label: 'Delivered',
+    description: 'Confirm receiving + close the loop.',
+  },
+  {
+    value: 'out_for_delivery',
+    label: 'Out for Delivery',
+    description: 'Heads-up that receiving should prep.',
+  },
+  {
+    value: 'shipped',
+    label: 'Shipped',
+    description: 'Vendor confirmed carrier acceptance.',
+  },
+  {
+    value: 'in_transit',
+    label: 'In Transit',
+    description: 'Optional progress pings while in route.',
+  },
 ];
 
 const resolveCarrierSelection = (slug?: string) => {
@@ -172,6 +205,22 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
   const [afterShipStoredKey, setAfterShipStoredKey] = useState<string | null>(null);
   const [afterShipLoading, setAfterShipLoading] = useState(false);
   const [afterShipError, setAfterShipError] = useState<string | null>(null);
+  const [trackingAlerts, setTrackingAlerts] = useState<{
+    enabled: boolean;
+    slackWebhookUrl: string;
+    channelLabel: string;
+    slackMention: string;
+    triggerStatuses: POTrackingStatus[];
+  }>({
+    enabled: false,
+    slackWebhookUrl: '',
+    channelLabel: '',
+    slackMention: '',
+    triggerStatuses: ['exception', 'delivered'],
+  });
+  const [trackingAlertsLoading, setTrackingAlertsLoading] = useState(false);
+  const [trackingAlertsSaving, setTrackingAlertsSaving] = useState(false);
+  const [trackingAlertsError, setTrackingAlertsError] = useState<string | null>(null);
 
   const fetchSyncHealth = useCallback(async () => {
     try {
@@ -289,6 +338,101 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
     loadAfterShipConfig();
   }, [loadAfterShipConfig]);
 
+  const handleTrackingStatusToggle = (status: POTrackingStatus) => {
+    setTrackingAlertsError(null);
+    setTrackingAlerts((prev) => {
+      const nextSet = new Set(prev.triggerStatuses);
+      if (nextSet.has(status)) {
+        nextSet.delete(status);
+      } else {
+        nextSet.add(status);
+      }
+      const next = Array.from(nextSet) as POTrackingStatus[];
+      return {
+        ...prev,
+        triggerStatuses: next.length > 0 ? next : prev.triggerStatuses,
+      };
+    });
+  };
+
+  const handleSaveTrackingNotifications = useCallback(async () => {
+    if (trackingAlerts.enabled) {
+      if (!trackingAlerts.slackWebhookUrl.trim()) {
+        setTrackingAlertsError('Slack webhook URL is required when alerts are enabled.');
+        return;
+      }
+      if (trackingAlerts.triggerStatuses.length === 0) {
+        setTrackingAlertsError('Select at least one status to broadcast.');
+        return;
+      }
+    }
+    try {
+      setTrackingAlertsSaving(true);
+      setTrackingAlertsError(null);
+      const payload = {
+        enabled: trackingAlerts.enabled,
+        slackWebhookUrl: trackingAlerts.slackWebhookUrl.trim() || null,
+        channelLabel: trackingAlerts.channelLabel.trim() || null,
+        slackMention: trackingAlerts.slackMention.trim() || null,
+        triggerStatuses: trackingAlerts.triggerStatuses,
+        department: 'purchasing',
+      };
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert(
+          {
+            setting_key: 'po_tracking_notifications',
+            setting_category: 'tracking',
+            display_name: 'PO Tracking Notifications',
+            setting_value: payload,
+          },
+          { onConflict: 'setting_key' },
+        );
+      if (error) throw error;
+      addToast?.('PO tracking notifications updated', 'success');
+    } catch (err) {
+      console.error('[APIIntegrations] Failed to save tracking notifications', err);
+      setTrackingAlertsError('Failed to save tracking notification settings.');
+      addToast?.('Failed to save tracking notifications', 'error');
+    } finally {
+      setTrackingAlertsSaving(false);
+    }
+  }, [trackingAlerts, addToast]);
+
+  const handleResetTrackingNotifications = () => {
+    loadTrackingNotifications();
+  };
+
+  const loadTrackingNotifications = useCallback(async () => {
+    try {
+      setTrackingAlertsLoading(true);
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'po_tracking_notifications')
+        .maybeSingle();
+      if (error) throw error;
+
+      const value = data?.setting_value || {};
+      setTrackingAlerts({
+        enabled: Boolean(value.enabled),
+        slackWebhookUrl: value.slackWebhookUrl || '',
+        channelLabel: value.channelLabel || '',
+        slackMention: value.slackMention || '',
+        triggerStatuses:
+          Array.isArray(value.triggerStatuses) && value.triggerStatuses.length > 0
+            ? value.triggerStatuses
+            : (['exception', 'delivered'] as POTrackingStatus[]),
+      });
+      setTrackingAlertsError(null);
+    } catch (err) {
+      console.error('[APIIntegrations] Failed to load tracking notifications', err);
+      setTrackingAlertsError('Unable to load tracking notification settings.');
+    } finally {
+      setTrackingAlertsLoading(false);
+    }
+  }, []);
+
   const startManualPolling = useCallback(() => {
     if (typeof window === 'undefined' || manualPollingRef.current !== null) return;
     manualPollingRef.current = window.setInterval(() => {
@@ -314,7 +458,8 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
 
   useEffect(() => {
     loadAfterShipConfig();
-  }, [loadAfterShipConfig]);
+    loadTrackingNotifications();
+  }, [loadAfterShipConfig, loadTrackingNotifications]);
 
   useEffect(() => {
     return () => {
@@ -602,7 +747,158 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
           >
             View API Documentation &rarr;
           </Button>
+      </div>
+    </div>
+
+      {/* PO Tracking Notifications */}
+      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700 space-y-4">
+        <div className="flex items-center gap-4">
+          <BellIcon className="w-8 h-8 text-amber-300" />
+          <div>
+            <h3 className="text-lg font-semibold text-white">Purchasing Alerts (Slack)</h3>
+            <p className="text-sm text-gray-400 mt-1">
+              Send delivery + exception updates to the purchasing channel for validation before anyone else sees them.
+            </p>
+          </div>
         </div>
+
+        <label className="flex items-center gap-3 text-sm text-gray-300">
+          <input
+            type="checkbox"
+            className="rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-500"
+            checked={trackingAlerts.enabled}
+            onChange={(e) => {
+              setTrackingAlertsError(null);
+              setTrackingAlerts((prev) => ({ ...prev, enabled: e.target.checked }));
+            }}
+          />
+          Enable purchasing-only Slack notifications
+        </label>
+        <p className="text-xs text-gray-500 pl-7">
+          Exceptions and deliveries stay in one designated channel. We’ll append the mention you provide on every alert.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs text-gray-400 uppercase tracking-wide mb-1">
+              Slack Webhook URL
+            </label>
+            <input
+              type="url"
+              value={trackingAlerts.slackWebhookUrl}
+              onChange={(e) => {
+                setTrackingAlertsError(null);
+                setTrackingAlerts((prev) => ({ ...prev, slackWebhookUrl: e.target.value }));
+              }}
+              placeholder="https://hooks.slack.com/services/…"
+              className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm text-white"
+              disabled={!trackingAlerts.enabled || trackingAlertsLoading}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Paste the incoming webhook URL for your purchasing channel.
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 uppercase tracking-wide mb-1">
+              Channel label (optional)
+            </label>
+            <input
+              type="text"
+              value={trackingAlerts.channelLabel}
+              onChange={(e) => {
+                setTrackingAlertsError(null);
+                setTrackingAlerts((prev) => ({ ...prev, channelLabel: e.target.value }));
+              }}
+              placeholder="e.g., #purchasing-tracking"
+              className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm text-white"
+              disabled={!trackingAlerts.enabled || trackingAlertsLoading}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs text-gray-400 uppercase tracking-wide mb-1">
+              Mention (optional)
+            </label>
+            <input
+              type="text"
+              value={trackingAlerts.slackMention}
+              onChange={(e) => {
+                setTrackingAlertsError(null);
+                setTrackingAlerts((prev) => ({ ...prev, slackMention: e.target.value }));
+              }}
+              placeholder="@purchasing-managers"
+              className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm text-white"
+              disabled={!trackingAlerts.enabled || trackingAlertsLoading}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Use Slack handle, user ID, or group mention to get instant validation.
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 uppercase tracking-wide mb-1">
+              Tracked statuses
+            </label>
+            <div className="space-y-2">
+              {TRACKING_STATUS_CHOICES.map((option) => {
+                const checked = trackingAlerts.triggerStatuses.includes(option.value);
+                return (
+                  <label
+                    key={option.value}
+                    className={`flex items-start gap-2 rounded-md border p-3 text-sm transition-colors ${
+                      checked
+                        ? 'border-indigo-500/40 bg-gray-700/40'
+                        : 'border-gray-700/60 bg-gray-900/30'
+                    } ${!trackingAlerts.enabled ? 'opacity-60' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1 rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-500"
+                      checked={checked}
+                      onChange={() => handleTrackingStatusToggle(option.value)}
+                      disabled={!trackingAlerts.enabled || trackingAlertsLoading}
+                    />
+                    <span>
+                      <span className="font-medium text-gray-100 block">{option.label}</span>
+                      <span className="text-xs text-gray-400">{option.description}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {trackingAlertsLoading && (
+          <p className="text-sm text-gray-400">Loading notification settings…</p>
+        )}
+
+        {trackingAlertsError && (
+          <p className="text-sm text-rose-300">{trackingAlertsError}</p>
+        )}
+
+        <div className="flex items-center justify-end gap-3">
+          <Button
+            type="button"
+            onClick={handleResetTrackingNotifications}
+            className="text-sm text-gray-300 hover:text-white"
+            disabled={trackingAlertsLoading || trackingAlertsSaving}
+          >
+            Reset
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSaveTrackingNotifications}
+            disabled={trackingAlertsSaving || trackingAlertsLoading}
+            className="bg-amber-500/80 text-white font-semibold py-2 px-4 rounded-md hover:bg-amber-500 transition-colors disabled:bg-gray-600"
+          >
+            {trackingAlertsSaving ? 'Saving…' : 'Save Alert Settings'}
+          </Button>
+        </div>
+        <p className="text-xs text-gray-500">
+          Notifications stay locked to the purchasing department. Only the statuses you select will ever post to Slack.
+        </p>
       </div>
 
         {/* Manual Finale Sync Controls */}

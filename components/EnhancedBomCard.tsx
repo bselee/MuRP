@@ -74,6 +74,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   // Determine display mode
   const isAdmin = userRole === 'Admin';
   const isManager = userRole === 'Manager';
+  const finishedItem = inventoryMap.get(bom.finishedSku);
   const limitingSummary = buildability.limitingComponents
     .map(lc => `${lc.sku} (need ${lc.needed}, have ${lc.available})`)
     .join(', ');
@@ -145,6 +146,12 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   const estimatedLaborCost = buildHours && laborRate ? buildHours * laborRate : null;
   const queuedCount = queueStatus ? Object.keys(queueStatus).length : 0;
   const hasPoDraft = queueStatus ? Object.values(queueStatus).some(entry => entry.status === 'po_created') : false;
+  const velocityPerDay = typeof finishedItem?.salesVelocity === 'number' ? finishedItem.salesVelocity : null;
+  const sales30Days = typeof finishedItem?.sales30Days === 'number' ? finishedItem.sales30Days : null;
+  const avg30PerDay = sales30Days != null ? sales30Days / 30 : null;
+  const metricGridClass = isManager
+    ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
+    : 'grid-cols-2 md:grid-cols-4 lg:grid-cols-5';
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden transition-all hover:border-gray-600">
@@ -173,7 +180,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             <h4 className="text-sm font-medium text-gray-200 mb-3">{bom.name}</h4>
 
             {/* KEY METRICS ROW - Role-based display with Progress Bars */}
-            <div className={`grid gap-3 text-xs ${isManager ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'}`}>
+            <div className={`grid gap-3 text-xs ${metricGridClass}`}>
               {/* Inventory Status with Progress Bar - Both roles */}
               <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
                 <div className="flex items-center justify-between mb-2">
@@ -224,6 +231,30 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                   <div className={`h-1.5 flex-1 rounded-full ${buildability.maxBuildable > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
                   <span className="text-xs text-gray-600">
                     {buildability.maxBuildable > 0 ? 'Ready' : 'Blocked'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Velocity & 30d Average */}
+              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-500">Velocity</span>
+                  {sales30Days != null && (
+                    <span className="text-[10px] text-gray-600">
+                      {sales30Days.toFixed(0)} sold / 30d
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${velocityPerDay && velocityPerDay > 0 ? 'text-emerald-300' : 'text-gray-400'}`}>
+                    {velocityPerDay != null ? velocityPerDay.toFixed(1) : '--'}
+                  </span>
+                  <span className="text-gray-400 text-xs">per day</span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  30d avg:{' '}
+                  <span className="font-semibold text-gray-300">
+                    {avg30PerDay != null ? `${avg30PerDay.toFixed(1)}/day` : '--'}
                   </span>
                 </div>
               </div>

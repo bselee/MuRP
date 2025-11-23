@@ -1,4 +1,5 @@
 import React, { forwardRef, ButtonHTMLAttributes } from 'react';
+import { useTheme } from '@/components/ThemeProvider';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -12,15 +13,25 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   rightIcon?: React.ReactNode;
 }
 
-const variantStyles: Record<ButtonVariant, string> = {
-  primary:
-    'bg-gray-900/85 text-white border border-white/10 shadow-[0_20px_45px_rgba(0,0,0,0.45)] backdrop-blur-lg hover:bg-gray-900/70 hover:border-white/20 hover:shadow-[0_25px_55px_rgba(0,0,0,0.55)] focus-visible:ring-slate-300/60 focus-visible:ring-offset-gray-900',
-  secondary:
-    'bg-gray-800/70 text-gray-100 border border-white/10 shadow-inner shadow-black/40 backdrop-blur-md hover:bg-gray-800/55 hover:border-white/20 focus-visible:ring-slate-200/50 focus-visible:ring-offset-gray-900',
-  ghost:
-    'text-gray-200 border border-white/0 hover:border-white/15 hover:bg-gray-900/40 backdrop-blur-md focus-visible:ring-slate-200/50 focus-visible:ring-offset-gray-900',
-  danger:
-    'bg-red-600/80 text-white border border-red-400/40 shadow-[0_15px_35px_rgba(185,28,28,0.35)] hover:bg-red-600 hover:border-red-300/60 focus-visible:ring-red-300/60 focus-visible:ring-offset-gray-900',
+type ThemeVariant = 'light' | 'dark';
+
+const variantStyles: Record<ButtonVariant, Record<ThemeVariant, string>> = {
+  primary: {
+    dark: 'bg-gray-900/85 text-white border border-white/10 shadow-[0_20px_45px_rgba(0,0,0,0.45)] backdrop-blur-lg hover:bg-gray-900/70 hover:border-white/20 hover:shadow-[0_25px_55px_rgba(0,0,0,0.55)] focus-visible:ring-slate-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
+    light: 'bg-gradient-to-br from-[#f8e7c9] via-[#f3d7a8] to-[#d9b789] text-[#2b1a10] border border-[#d4b185] shadow-[0_15px_35px_rgba(92,64,31,0.25)] hover:from-[#f4dcb5] hover:to-[#cba371] hover:shadow-[0_18px_40px_rgba(92,64,31,0.3)] focus-visible:ring-[#e4c08f]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+  },
+  secondary: {
+    dark: 'bg-gray-800/70 text-gray-100 border border-white/10 shadow-inner shadow-black/40 backdrop-blur-md hover:bg-gray-800/55 hover:border-white/20 focus-visible:ring-slate-200/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
+    light: 'bg-[#f1ddc1]/40 text-[#2b1a10] border border-[#d4b185]/70 shadow-inner shadow-[rgba(43,26,16,0.15)_inset_0_0_15px] hover:bg-[#f3e4cf]/70 hover:border-[#cda572] focus-visible:ring-[#e4c08f]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+  },
+  ghost: {
+    dark: 'text-gray-200 border border-white/0 hover:border-white/15 hover:bg-gray-900/40 backdrop-blur-md focus-visible:ring-slate-200/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
+    light: 'text-[#b5824d] border border-transparent hover:border-[#d4b185]/60 hover:bg-[#f6e5ce]/30 backdrop-blur-md focus-visible:ring-[#e4c08f]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+  },
+  danger: {
+    dark: 'bg-red-600/80 text-white border border-red-400/40 shadow-[0_15px_35px_rgba(185,28,28,0.35)] hover:bg-red-600 hover:border-red-300/60 focus-visible:ring-red-300/60 focus-visible:ring-offset-gray-900',
+    light: 'bg-red-600 text-white border border-red-400/30 shadow-[0_18px_40px_rgba(185,28,28,0.25)] hover:bg-red-500 focus-visible:ring-red-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+  },
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -68,12 +79,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref,
   ) => {
+    const { resolvedTheme } = useTheme();
+    const themeKey: ThemeVariant = resolvedTheme === 'light' ? 'light' : 'dark';
     const baseClasses =
       'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]';
     const widthClass = fullWidth ? 'w-full' : '';
     const composedClassName = [
       baseClasses,
-      variantStyles[variant],
+      variantStyles[variant][themeKey],
       sizeStyles[size],
       widthClass,
       className,
@@ -87,6 +100,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={composedClassName}
         disabled={disabled || loading}
         data-variant={variant}
+        data-murp-button="true"
         {...props}
       >
         {loading ? (

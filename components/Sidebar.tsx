@@ -6,6 +6,7 @@ import type { Page } from '../App';
 import type { User } from '../types';
 import { HomeIcon, PackageIcon, DocumentTextIcon, UsersIcon, LightBulbIcon, CogIcon, MushroomLogo, MagicSparklesIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, ClipboardListIcon, BotIcon, PhotoIcon, QrCodeIcon, ChartBarIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
+import { useTheme } from './ThemeProvider';
 
 interface SidebarProps {
     currentPage: Page;
@@ -24,15 +25,15 @@ const NavItem: React.FC<{
     icon: React.ReactNode;
     isCollapsed: boolean;
     notificationCount?: number;
-}> = ({ page, currentPage, setCurrentPage, icon, isCollapsed, notificationCount }) => (
+    activeClass: string;
+    inactiveClass: string;
+}> = ({ page, currentPage, setCurrentPage, icon, isCollapsed, notificationCount, activeClass, inactiveClass }) => (
     <li>
         <a
             href="#"
             onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}
-            className={`relative flex items-center p-2 text-base font-normal rounded-lg transition-colors duration-150 group ${
-                currentPage === page 
-                ? 'bg-gray-700 text-white' 
-                : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+            className={`relative flex items-center p-2 text-base font-normal rounded-lg transition-colors duration-150 group border border-transparent ${
+                currentPage === page ? activeClass : inactiveClass
             } ${isCollapsed ? 'justify-center' : ''}`}
         >
             {icon}
@@ -50,6 +51,26 @@ const NavItem: React.FC<{
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollapsed, onToggle, currentUser, pendingRequisitionCount, onOpenAiAssistant }) => {
     
     const permissions = usePermissions();
+    const { resolvedTheme } = useTheme();
+    const isLight = resolvedTheme === 'light';
+
+    const asideClasses = isLight
+        ? 'bg-white/90 border-amber-900/10 text-amber-900 shadow-[0_20px_60px_rgba(15,23,42,0.12)]'
+        : 'bg-gray-800 border-gray-700 text-gray-100';
+
+    const sectionBorder = isLight ? 'border-amber-900/10' : 'border-gray-700';
+    const navActiveClass = isLight
+        ? 'bg-amber-100 text-amber-900 shadow-inner border-amber-200'
+        : 'bg-gray-700 text-white border-white/10';
+    const navInactiveClass = isLight
+        ? 'text-amber-900/70 hover:bg-amber-50 hover:text-amber-900'
+        : 'text-gray-400 hover:bg-gray-700 hover:text-white';
+    const aiLinkClass = isLight
+        ? 'text-amber-900/70 hover:bg-amber-50 hover:text-amber-900'
+        : 'text-gray-400 hover:bg-gray-700 hover:text-white';
+    const toggleButtonClass = isLight
+        ? 'bg-amber-200 hover:bg-amber-300 text-amber-900 border-amber-300'
+        : 'bg-gray-600 hover:bg-indigo-600 text-white border-gray-800';
     
     type NavItemConfig = { page: Page; icon: React.ReactNode; notificationKey?: 'pendingRequisitions'; adminOnly?: boolean; managerAndUp?: boolean; isVisible?: (input: { user: User }) => boolean };
 
@@ -117,17 +138,17 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
     };
 
     return (
-        <aside className={`bg-gray-800 border-r border-gray-700 flex-shrink-0 flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
-            <div className={`h-16 flex items-center border-b border-gray-700 relative ${isCollapsed ? 'justify-center' : 'px-4'}`}>
+        <aside className={`${asideClasses} border-r flex-shrink-0 flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
+            <div className={`h-16 flex items-center border-b ${sectionBorder} relative ${isCollapsed ? 'justify-center' : 'px-4'}`}>
                 {!isCollapsed && (
                     <>
-                        <MushroomLogo className="w-11 h-11 mr-3 text-indigo-200" />
-                        <div className="text-2xl font-bold text-white tracking-tight whitespace-nowrap">MuRP</div>
+                        <MushroomLogo className={`w-11 h-11 mr-3 ${isLight ? 'text-amber-700' : 'text-indigo-200'}`} />
+                        <div className={`text-2xl font-bold tracking-tight whitespace-nowrap ${isLight ? 'text-amber-900' : 'text-white'}`}>MuRP</div>
                     </>
                 )}
                 <Button 
                     onClick={onToggle} 
-                    className="absolute -right-3 top-1/2 -translate-y-1/2 bg-gray-600 hover:bg-indigo-600 text-white rounded-full p-1 border-2 border-gray-800 transition-transform z-10"
+                    className={`absolute -right-3 top-1/2 -translate-y-1/2 rounded-full p-1 border-2 transition-transform z-10 ${toggleButtonClass}`}
                 >
                     <ChevronDoubleLeftIcon className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : 'rotate-0'}`} />
                 </Button>
@@ -143,15 +164,17 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
                             icon={item.icon}
                             isCollapsed={isCollapsed}
                             notificationCount={item.notificationKey ? notificationCounts[item.notificationKey as keyof typeof notificationCounts] : undefined}
+                            activeClass={navActiveClass}
+                            inactiveClass={navInactiveClass}
                         />
                     ))}
                 </ul>
             </nav>
-            <div className="px-2 py-4 mt-auto border-t border-gray-700">
+            <div className={`px-2 py-4 mt-auto border-t ${sectionBorder}`}>
                 <a
                     href="#"
                     onClick={(e) => { e.preventDefault(); onOpenAiAssistant(); }}
-                    className={`flex items-center p-2 text-base font-normal rounded-lg text-gray-400 hover:bg-gray-700 hover:text-white group ${isCollapsed ? 'justify-center' : ''}`}
+                    className={`flex items-center p-2 text-base font-normal rounded-lg group ${aiLinkClass} ${isCollapsed ? 'justify-center' : ''}`}
                 >
                     <MagicSparklesIcon className="w-6 h-6" />
                     <span className={`ml-3 whitespace-nowrap transition-opacity duration-200 ${isCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>AI Assistant</span>

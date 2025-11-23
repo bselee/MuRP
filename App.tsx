@@ -21,7 +21,7 @@ import ArtworkPage from './pages/Artwork';
 import NewUserSetup from './pages/NewUserSetup';
 import ManualLabelScanner from './components/ManualLabelScanner';
 import QuickRequestDrawer from './components/QuickRequestDrawer';
-import { ThemeProvider } from './components/ThemeProvider';
+import { ThemeProvider, useTheme } from './components/ThemeProvider';
 import { UserPreferencesProvider } from './components/UserPreferencesProvider';
 import AuthCallback from './pages/AuthCallback';
 import ResetPassword from './pages/ResetPassword';
@@ -107,6 +107,7 @@ export type ToastInfo = {
 const AppShell: React.FC = () => {
   const { user: currentUser, loading: authLoading, signOut: authSignOut, refreshProfile } = useAuth();
   const permissions = usePermissions();
+  const { resolvedTheme } = useTheme();
   const {
     alerts: systemAlerts,
     upsertAlert,
@@ -1507,8 +1508,16 @@ const AppShell: React.FC = () => {
       return <NewUserSetup user={currentUser} onSetupComplete={() => handleCompleteOnboarding(currentUser.id)} />;
   }
 
+  const shellBackground = resolvedTheme === 'light'
+    ? 'bg-[#f4ede2]'
+    : 'bg-gray-900';
+
+  const mainBackground = resolvedTheme === 'light'
+    ? 'bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.12)] border border-amber-900/10'
+    : 'bg-gray-900';
+
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-100">
+    <div className={`flex h-screen ${shellBackground} text-[var(--text-color)] transition-colors duration-300`}>
       <Sidebar 
         currentPage={currentPage} 
         setCurrentPage={setCurrentPage} 
@@ -1531,7 +1540,10 @@ const AppShell: React.FC = () => {
           onQuickRequest={() => openQuickRequestDrawer()}
         />
         
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-900 p-4 sm:p-6 lg:p-8">
+        <main
+          data-surface="workspace"
+          className={`workspace-surface flex-1 overflow-x-hidden overflow-y-auto ${mainBackground} p-4 sm:p-6 lg:p-8 transition-colors duration-300`}
+        >
           <ErrorBoundary
             key={currentPage}
             fallback={(

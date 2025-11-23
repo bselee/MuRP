@@ -660,7 +660,7 @@ const BOMs: React.FC<BOMsProps> = ({
                   console.warn('[BOMs] Unable to store status filter', error);
                 }
               }}
-              className="px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             >
               <option value="all">All Status</option>
               <option value="buildable">✓ Buildable</option>
@@ -673,7 +673,7 @@ const BOMs: React.FC<BOMsProps> = ({
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             >
               <option value="all">All Categories</option>
               {categories.map(cat => (
@@ -685,7 +685,7 @@ const BOMs: React.FC<BOMsProps> = ({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             >
               <option value="name">Sort: Name</option>
               <option value="sku">Sort: SKU</option>

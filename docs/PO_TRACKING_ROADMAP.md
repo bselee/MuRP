@@ -1,20 +1,22 @@
 # PO Tracking Roadmap
 
+> **Heads-up:** Live status, verification steps, and configuration switches now live in `docs/PO_TRACKING_STATUS.md`. The sections below remain for historical context and future phases.
+
 ## Phase 1 – Manual Tracking (Free)
-- Fields added to `purchase_orders` for carrier, tracking number, and status.
-- Users can enter/update tracking info via the PO modal or edit forms.
-- `po_tracking_events` table captures manual updates for auditing.
-- `POTrackingDashboard` surfaces current status and last check timestamps.
+- ✅ Fields added to `purchase_orders` for carrier, tracking number, and status.
+- ✅ Users can enter/update tracking info via the PO modal or edit forms.
+- ✅ `po_tracking_events` table captures manual updates for auditing.
+- ✅ `POTrackingDashboard` surfaces current status, timeline, and export.
 
 ## Phase 2 – Email Parsing (~$1–2/mo)
-- Reuse existing AI email parser to extract tracking numbers + carriers from vendor replies.
-- When Gmail webhook receives a reply, call `parseVendorEmail()` and hydrate tracking fields.
-- Auto-create `po_tracking_events` entries for extracted milestones.
+- ✅ Reuse existing AI email parser to extract tracking numbers + carriers from vendor replies.
+- ✅ When Gmail webhook receives a reply, call `parseVendorEmail()` and hydrate tracking fields.
+- ✅ Auto-create `po_tracking_events` entries for extracted milestones.
 
 ## Phase 3 – Carrier APIs (~$10–20/mo)
-- Deploy `po-tracking-updater` edge function (hourly) to poll carriers via AfterShip/Shippo or native APIs.
-- Normalize responses into `tracking_status`, `tracking_estimated_delivery`, and events.
-- Raise Slack/Teams notifications on delivered or exception states.
+- ✅ Deploy `po-tracking-updater` edge function (hourly) to poll carriers via AfterShip/Shippo or native APIs.
+- ✅ Normalize responses into `tracking_status`, `tracking_estimated_delivery`, and events.
+- ✅ Slack notifications available (disabled by default, opt-in via Settings).
 
 ## Phase 4 – Full Automation (Custom)
 - Vendor portal scraping through MCP server for carriers without APIs.
@@ -30,6 +32,6 @@
 ## TODO
 - [x] Hook Gmail webhook to AI parsing (with PDF OCR) for auto tracking capture.
 - [x] Wire AfterShip credentials into the tracking edge function (fallback to stub while expanding carriers).
-- [ ] Render timeline detail (events) in `POTrackingDashboard`.
-- [ ] Build bulk export (CSV) of tracking history.
-- [ ] Add Slack/Teams webhooks for delivery + exception notifications.
+- [x] Render timeline detail (events) in `POTrackingDashboard`.
+- [x] Build bulk export (CSV) of tracking history.
+- [x] Add Slack/Teams webhooks for delivery + exception notifications (default off).
