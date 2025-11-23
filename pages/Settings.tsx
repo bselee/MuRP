@@ -7,6 +7,7 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import UserManagementPanel from '../components/UserManagementPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
 import APIIntegrationsPanel from '../components/APIIntegrationsPanel';
+import ShopifyIntegrationPanel from '../components/ShopifyIntegrationPanel';
 import RegulatoryAgreementPanel from '../components/RegulatoryAgreementPanel';
 import AiSettingsPanel from '../components/AiSettingsPanel';
 import SemanticSearchSettings from '../components/SemanticSearchSettings';
@@ -22,6 +23,7 @@ import { useTheme, type ThemePreference } from '../components/ThemeProvider';
 import { useUserPreferences, type RowDensity, type FontScale } from '../components/UserPreferencesProvider';
 import JobDescriptionPanel from '../components/JobDescriptionPanel';
 import TwoFactorSettings from '../components/TwoFactorSettings';
+import { isFeatureEnabled } from '../lib/featureFlags';
 
 interface SettingsProps {
     currentUser: User;
@@ -71,6 +73,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isTablePrefsOpen, setIsTablePrefsOpen] = useState(false);
     const [isJobDocsOpen, setIsJobDocsOpen] = useState(false);
     const [isTwoFactorOpen, setIsTwoFactorOpen] = useState(false);
+    const [isShopifyPanelOpen, setIsShopifyPanelOpen] = useState(false);
     
     // API key visibility state
     const [showApiKey, setShowApiKey] = useState(false);
@@ -365,6 +368,17 @@ Thank you!`
               />
             </div>
           </CollapsibleSection>
+
+          {isFeatureEnabled('shopify') && (
+            <CollapsibleSection
+              title="Sales Channels · Shopify Preview"
+              icon={<ServerStackIcon className="w-6 h-6 text-emerald-300" />}
+              isOpen={isShopifyPanelOpen}
+              onToggle={() => setIsShopifyPanelOpen(!isShopifyPanelOpen)}
+            >
+              <ShopifyIntegrationPanel currentUser={currentUser} inventory={inventory} boms={boms} />
+            </CollapsibleSection>
+          )}
 
           {/* 4. Semantic Search */}
           <CollapsibleSection

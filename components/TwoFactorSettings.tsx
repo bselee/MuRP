@@ -22,6 +22,18 @@ type PendingEnrollment = {
   secret?: string | null;
 };
 
+const persistTwoFactorUsage = (enabled: boolean) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(
+      'murp-twofactor-enabled',
+      JSON.stringify({ enabled, updatedAt: new Date().toISOString() }),
+    );
+  } catch {
+    // ignore
+  }
+};
+
 const TwoFactorSettings: React.FC<TwoFactorSettingsProps> = ({ addToast }) => {
   const [loading, setLoading] = useState(true);
   const [factors, setFactors] = useState<TotpFactor[]>([]);
@@ -158,6 +170,11 @@ const TwoFactorSettings: React.FC<TwoFactorSettingsProps> = ({ addToast }) => {
 
   const hasVerifiedFactor = factors.some((factor) => factor.status === 'verified');
   const inProgress = Boolean(pending);
+
+  useEffect(() => {
+    if (loading) return;
+    persistTwoFactorUsage(hasVerifiedFactor);
+  }, [hasVerifiedFactor, loading]);
 
   return (
     <div className="space-y-5">

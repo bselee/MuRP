@@ -1,6 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../lib/auth/AuthContext';
-import { GmailIcon, GoogleCalendarIcon, GoogleSheetsIcon } from '../components/icons';
+import {
+  GmailIcon,
+  GoogleCalendarIcon,
+  GoogleSheetsIcon,
+  SparklesIcon,
+  ShieldCheckIcon,
+  TimelineIcon,
+  ChartBarIcon,
+} from '../components/icons';
 import { supabase } from '../lib/supabase/client';
 import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
 
@@ -8,6 +16,41 @@ import Button from '@/components/ui/Button';
 interface LoginScreenProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
+
+const LOGIN_SPOTLIGHTS = [
+  {
+    id: 'timeline',
+    title: 'Tall Timeline View',
+    description: 'Slide into the new department timeline to see build orders, incoming POs, and tracking notes stacked vertically with glass rails.',
+    icon: <TimelineIcon className="h-5 w-5 text-emerald-200" />,
+    stat: 'Gantt-style',
+    accent: 'from-emerald-500/20 via-cyan-500/10 to-transparent',
+  },
+  {
+    id: 'spotlights',
+    title: 'Auto feature spotlights',
+    description: 'MuRP rotates tips for unused features so onboarding stays light-touch and human. Snooze or jump straight to Settings.',
+    icon: <SparklesIcon className="h-5 w-5 text-amber-200" />,
+    stat: 'Adaptive',
+    accent: 'from-amber-500/20 via-pink-500/10 to-transparent',
+  },
+  {
+    id: 'security',
+    title: 'Glass-secure workspace',
+    description: 'SOC2-ready controls, MFA reminders, and masked secrets keep purchasing workflows safe without killing the vibe.',
+    icon: <ShieldCheckIcon className="h-5 w-5 text-sky-200" />,
+    stat: 'SOC2 ready',
+    accent: 'from-sky-500/20 via-indigo-500/10 to-transparent',
+  },
+  {
+    id: 'analytics',
+    title: 'Tall view analytics',
+    description: 'Card stacks stretch vertically with density controls so managers see velocity deltas, compliance badges, and AI calls-to-action.',
+    icon: <ChartBarIcon className="h-5 w-5 text-violet-200" />,
+    stat: 'Live metrics',
+    accent: 'from-violet-500/20 via-purple-500/10 to-transparent',
+  },
+];
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
   const { signIn, signUp, resetPassword, godMode } = useAuth();
@@ -85,42 +128,82 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-slate-900 p-4">
-      <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-8 shadow-2xl">
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#05060d] via-[#0b1020] to-[#111b2e] p-4 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 right-16 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl" />
+        <div className="absolute bottom-0 left-10 h-80 w-80 rounded-full bg-fuchsia-600/20 blur-3xl" />
+      </div>
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 relative z-10">
+        <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/5 backdrop-blur-2xl p-8 shadow-[0_40px_140px_rgba(2,10,40,0.6)] space-y-8">
           <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-indigo-500/10 via-fuchsia-500/10 to-cyan-500/10" />
-          <div className="relative z-10 flex flex-col h-full justify-between space-y-6">
+          <div className="relative z-10 space-y-6">
             <div>
-              <p className="text-sm uppercase tracking-widest text-indigo-300">MuRP Access</p>
+              <p className="text-[12px] uppercase tracking-[0.4em] text-indigo-200">MuRP Access</p>
               <h1 className="mt-2 text-4xl font-bold text-white">Manufacturing Resource Portal</h1>
               <p className="mt-3 text-gray-300 text-sm">
-                Securely connect to purchasing intelligence, BOM visibility, and AI copilots.
+                Securely plug into purchasing intelligence, BOM visibility, AI copilots, and the new tall timeline view — all wrapped in black glass.
               </p>
             </div>
-            <div className="space-y-6">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-2xl font-semibold text-white">#1</p>
-                  <p className="text-xs text-gray-400 mt-1">Purchase Assurance</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-2xl font-semibold text-white">24/7</p>
-                  <p className="text-xs text-gray-400 mt-1">AI Coverage</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-2xl font-semibold text-white">SOC2</p>
-                  <p className="text-xs text-gray-400 mt-1">Ready Controls</p>
-                </div>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-2xl font-semibold text-white">#1</p>
+                <p className="text-xs text-gray-400 mt-1">Purchase Assurance</p>
               </div>
-              {godMode && (
-                <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/10 p-3 text-sm text-yellow-200">
-                  Dev God Mode enabled — production safeguards bypassed for this session.
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-2xl font-semibold text-white">24/7</p>
+                <p className="text-xs text-gray-400 mt-1">AI Coverage</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <p className="text-2xl font-semibold text-white">SOC2</p>
+                <p className="text-xs text-gray-400 mt-1">Ready Controls</p>
+              </div>
+            </div>
+            {godMode && (
+              <div className="rounded-2xl border border-yellow-400/30 bg-yellow-400/10 p-3 text-sm text-yellow-200">
+                Dev God Mode enabled — production safeguards bypassed for this session.
+              </div>
+            )}
+            <div className="rounded-3xl border border-white/10 bg-black/30 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`rounded-2xl border border-white/10 bg-gradient-to-br ${activeSpotlight.accent} p-3`}>
+                    {activeSpotlight.icon}
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.4em] text-gray-400">Feature spotlight</p>
+                    <h3 className="text-lg font-semibold text-white">{activeSpotlight.title}</h3>
+                  </div>
                 </div>
-              )}
+                <span className="text-xs text-gray-400">{activeSpotlight.stat}</span>
+              </div>
+              <p className="text-sm text-gray-300">{activeSpotlight.description}</p>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                {LOGIN_SPOTLIGHTS.map((spot, idx) => (
+                  <button
+                    key={spot.id}
+                    type="button"
+                    onClick={() => setSpotlightIndex(idx)}
+                    className={`h-1.5 flex-1 rounded-full transition-colors ${
+                      idx === spotlightIndex ? 'bg-white' : 'bg-white/20 hover:bg-white/40'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-black/20 p-4 space-y-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-gray-400">Up next</p>
+              <div className="flex flex-wrap gap-2">
+                {stackedSpotlights.slice(0, 3).map((spot) => (
+                  <div key={spot.id} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300">
+                    {spot.icon}
+                    {spot.title}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-gray-900/70 backdrop-blur-xl p-8 shadow-xl">
+        <div className="rounded-[32px] border border-white/10 bg-gray-950/80 backdrop-blur-2xl p-8 shadow-[0_30px_100px_rgba(1,5,20,0.55)]">
           <div className="flex items-center justify-between mb-8">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-indigo-400">Access Portal</p>
@@ -290,3 +373,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
 };
 
 export default LoginScreen;
+  const [spotlightIndex, setSpotlightIndex] = useState(0);
+
+  useEffect(() => {
+    const rotation = window.setInterval(() => {
+      setSpotlightIndex((prev) => (prev + 1) % LOGIN_SPOTLIGHTS.length);
+    }, 5500);
+    return () => window.clearInterval(rotation);
+  }, []);
+
+  const activeSpotlight = LOGIN_SPOTLIGHTS[spotlightIndex];
+  const stackedSpotlights = useMemo(
+    () => LOGIN_SPOTLIGHTS.filter((_, idx) => idx !== spotlightIndex),
+    [spotlightIndex],
+  );

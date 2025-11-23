@@ -339,6 +339,14 @@ export const ArrowUpTrayIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+export const TimelineIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M6 6v6m0 6v-2a2 2 0 012-2h2m8 0h-2a2 2 0 00-2 2v2M9 12h6m-6 4h6" />
+    <circle cx="8" cy="12" r="1" />
+    <circle cx="16" cy="16" r="1" />
+  </svg>
+);
+
 export const SparklesIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18l-1.813-2.096a4.5 4.5 0 00-6.364-6.364l-2.096-1.813 2.096-1.813a4.5 4.5 0 006.364-6.364l1.813-2.096L9 6l1.813 2.096a4.5 4.5 0 006.364 6.364l2.096 1.813-2.096 1.813a4.5 4.5 0 00-6.364 6.364zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

@@ -21,6 +21,7 @@ import ArtworkPage from './pages/Artwork';
 import NewUserSetup from './pages/NewUserSetup';
 import ManualLabelScanner from './components/ManualLabelScanner';
 import QuickRequestDrawer from './components/QuickRequestDrawer';
+import FeatureSpotlightReminder from './components/FeatureSpotlightReminder';
 import OnboardingChecklist from './components/OnboardingChecklist';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
 import { UserPreferencesProvider } from './components/UserPreferencesProvider';
@@ -224,6 +225,19 @@ const AppShell: React.FC = () => {
     }
   }, [isDataLoading]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isDataLoading || hasInitialDataLoaded) return;
+
+    const timeoutId = window.setTimeout(() => {
+      console.warn('[App] Initial data load timed out; releasing UI fallback.');
+      setHasInitialDataLoaded(true);
+      addToast('Still syncing live data. Showing last known values.', 'info');
+    }, 12000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isDataLoading, hasInitialDataLoaded, addToast]);
+
   const readOnboardingState = useCallback((): { completed?: boolean; snoozeUntil?: number | null } | null => {
     if (!onboardingStorageKey || typeof window === 'undefined') return null;
     try {
@@ -413,14 +427,14 @@ const AppShell: React.FC = () => {
     autoCompleteOnboarding();
   }, [currentUser, refreshProfile]);
 
-  const addToast = (message: string, type: ToastInfo['type'] = 'info') => {
+  const addToast = useCallback((message: string, type: ToastInfo['type'] = 'info') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
-  };
+  }, []);
 
-  const removeToast = (id: number) => {
+  const removeToast = useCallback((id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
-  };
+  }, []);
 
   useEffect(() => {
     if (!hasInitialDataLoaded) return;
@@ -1662,11 +1676,16 @@ const AppShell: React.FC = () => {
           user={currentUser}
           onClose={() => setShowOnboardingChecklist(false)}
           onComplete={handleChecklistComplete}
+          onSnooze={handleChecklistSnooze}
           navigateTo={(pageName) => {
             navigateToPage(pageName as Page);
             setShowOnboardingChecklist(false);
           }}
         />
+      )}
+
+      {!showOnboardingChecklist && (
+        <FeatureSpotlightReminder currentUser={currentUser ?? null} navigateTo={(pageName) => navigateToPage(pageName as Page)} />
       )}
 
       <AiAssistant

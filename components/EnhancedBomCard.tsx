@@ -22,8 +22,11 @@ import {
   BeakerIcon,
   ClipboardDocumentListIcon,
   SparklesIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
+  TrendingUpIcon,
+  TrendingDownIcon
 } from './icons';
+import StrategicBomMetrics from './StrategicBomMetrics';
 
 interface EnhancedBomCardProps {
   bom: BillOfMaterials;
@@ -52,6 +55,9 @@ interface EnhancedBomCardProps {
   onQuickOrder?: () => void;
   queueStatus?: Record<string, { status: string; poId: string | null }>;
 }
+
+const glassTile =
+  'rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)]';
 
 const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   bom,
@@ -149,14 +155,79 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   const velocityPerDay = typeof finishedItem?.salesVelocity === 'number' ? finishedItem.salesVelocity : null;
   const sales30Days = typeof finishedItem?.sales30Days === 'number' ? finishedItem.sales30Days : null;
   const avg30PerDay = sales30Days != null ? sales30Days / 30 : null;
+  const avg60PerDay = typeof finishedItem?.sales60Days === 'number' ? finishedItem.sales60Days / 60 : null;
+  const avg90PerDay = typeof finishedItem?.sales90Days === 'number' ? finishedItem.sales90Days / 90 : null;
+  const currentVelocity = velocityPerDay ?? avg30PerDay ?? null;
+  const trailingVelocity = avg60PerDay ?? avg90PerDay ?? null;
+  const velocityTrendRaw = currentVelocity != null && trailingVelocity != null && trailingVelocity !== 0
+    ? ((currentVelocity - trailingVelocity) / Math.abs(trailingVelocity)) * 100
+    : null;
+  const velocityTrendPct = velocityTrendRaw != null ? Number(velocityTrendRaw.toFixed(1)) : null;
+  const velocityTrendDirection = velocityTrendPct != null && Math.abs(velocityTrendPct) >= 0.1
+    ? (velocityTrendPct > 0 ? 'up' : 'down')
+    : null;
+  const velocityTrendLabel = velocityTrendPct != null
+    ? `${velocityTrendPct > 0 ? '+' : ''}${velocityTrendPct.toFixed(1)}%`
+    : null;
+  const baselineLabel = avg60PerDay != null ? 'vs 60d' : avg90PerDay != null ? 'vs 90d' : '';
+  const finishedOnOrder = finishedItem?.onOrder ?? 0;
+  const safetyStock = finishedItem?.safetyStock ?? finishedItem?.reorderPoint ?? null;
+  const runwayDays = currentVelocity && currentVelocity > 0 ? finishedStock / currentVelocity : null;
+  const runwayWithInbound = currentVelocity && currentVelocity > 0 ? (finishedStock + finishedOnOrder) / currentVelocity : null;
+  const runwayStatus = runwayDays == null
+    ? 'unknown'
+    : runwayDays <= 1
+      ? 'critical'
+      : runwayDays <= 7
+        ? 'risk'
+        : runwayDays <= 21
+          ? 'watch'
+          : 'healthy';
+  const runwayBadge =
+    runwayStatus === 'critical'
+      ? 'bg-rose-900/40 text-rose-200 border border-rose-700'
+      : runwayStatus === 'risk'
+        ? 'bg-amber-900/40 text-amber-200 border border-amber-600'
+        : runwayStatus === 'watch'
+          ? 'bg-yellow-900/30 text-yellow-200 border border-yellow-700'
+          : runwayStatus === 'healthy'
+            ? 'bg-emerald-900/30 text-emerald-200 border border-emerald-700'
+            : 'bg-gray-800 text-gray-300 border border-gray-600';
+  const runwayLabel =
+    runwayStatus === 'critical'
+      ? 'Stockout now'
+      : runwayStatus === 'risk'
+        ? 'At risk <7d'
+        : runwayStatus === 'watch'
+          ? 'Watch window'
+          : runwayStatus === 'healthy'
+            ? 'Plenty of cover'
+            : 'Need demand signal';
+  const criticalPathComponent = bom.components.reduce<{
+    sku: string;
+    name: string;
+    leadTime: number | null;
+  } | null>((acc, component) => {
+    const leadTime = inventoryMap.get(component.sku)?.leadTimeDays ?? null;
+    if (leadTime == null) {
+      return acc;
+    }
+    if (!acc || (leadTime ?? 0) > (acc.leadTime ?? 0)) {
+      return { sku: component.sku, name: component.name, leadTime };
+    }
+    return acc;
+  }, null);
   const metricGridClass = isManager
-    ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
-    : 'grid-cols-2 md:grid-cols-4 lg:grid-cols-5';
+    ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6'
+    : 'grid-cols-2 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6';
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden transition-all hover:border-gray-600">
+    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] transition-all duration-300 hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]" />
+      <div className="pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20" />
+      <div className="relative">
       {/* MAIN CARD HEADER */}
-      <div className="p-4 bg-gradient-to-r from-gray-800 to-gray-800/80">
+      <div className="p-4 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70">
         <div className="flex items-start justify-between gap-4">
           {/* LEFT: Product Identity & Primary Metrics */}
           <div className="flex-1 min-w-0">
@@ -164,7 +235,8 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             <div className="flex items-center gap-3 mb-2">
               <Button
                 onClick={() => onNavigateToInventory?.(bom.finishedSku)}
-                className="text-lg font-bold text-white font-mono hover:text-indigo-400 transition-colors cursor-pointer underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400"
+                className="font-bold text-white font-mono hover:text-indigo-400 transition-colors cursor-pointer underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400"
+                style={{ fontSize: 'calc(1.125rem + 2pt)' }}
                 title="View this product in Inventory"
               >
                 {bom.finishedSku}
@@ -182,7 +254,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             {/* KEY METRICS ROW - Role-based display with Progress Bars */}
             <div className={`grid gap-3 text-xs ${metricGridClass}`}>
               {/* Inventory Status with Progress Bar - Both roles */}
-              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+              <div className={`${glassTile} p-3`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-gray-500">Inventory</div>
                   {inventoryMap.get(bom.finishedSku)?.reorderPoint && (
@@ -218,7 +290,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
               </div>
 
               {/* Buildability with Visual Indicator - Both roles */}
-              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+              <div className={`${glassTile} p-3`}>
                 <div className="text-gray-500 mb-2">Can Build</div>
                 <div className="flex items-baseline gap-2 mb-2">
                   <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -235,8 +307,8 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 </div>
               </div>
 
-              {/* Velocity & 30d Average */}
-              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+              {/* Velocity & Trend */}
+              <div className={`${glassTile} p-3`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-500">Velocity</span>
                   {sales30Days != null && (
@@ -246,21 +318,82 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                   )}
                 </div>
                 <div className="flex items-baseline gap-2 mb-1">
-                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${velocityPerDay && velocityPerDay > 0 ? 'text-emerald-300' : 'text-gray-400'}`}>
-                    {velocityPerDay != null ? velocityPerDay.toFixed(1) : '--'}
+                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${currentVelocity && currentVelocity > 0 ? 'text-emerald-300' : 'text-gray-400'}`}>
+                    {currentVelocity != null ? currentVelocity.toFixed(1) : '--'}
                   </span>
                   <span className="text-gray-400 text-xs">per day</span>
                 </div>
-                <div className="text-xs text-gray-500">
-                  30d avg:{' '}
-                  <span className="font-semibold text-gray-300">
-                    {avg30PerDay != null ? `${avg30PerDay.toFixed(1)}/day` : '--'}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="text-gray-500">
+                    30d avg:{' '}
+                    <span className="font-semibold text-gray-300">
+                      {avg30PerDay != null ? `${avg30PerDay.toFixed(1)}/day` : '--'}
+                    </span>
+                  </div>
+                  {velocityTrendDirection && velocityTrendLabel && (
+                    <div className={`flex items-center gap-1 font-semibold ${velocityTrendDirection === 'up' ? 'text-emerald-300' : 'text-rose-300'}`}>
+                      {velocityTrendDirection === 'up' ? (
+                        <TrendingUpIcon className="w-3.5 h-3.5" />
+                      ) : (
+                        <TrendingDownIcon className="w-3.5 h-3.5" />
+                      )}
+                      <span>{velocityTrendLabel}</span>
+                      {baselineLabel && <span className="text-[10px] font-normal opacity-70">{baselineLabel}</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Production Runway */}
+              <div className={`${glassTile} p-3`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-500">Runway</span>
+                  {safetyStock != null && (
+                    <span className="text-[10px] text-gray-600">
+                      Safety {safetyStock}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${runwayDays != null && runwayDays > 0 ? 'text-cyan-200' : 'text-rose-300'}`}>
+                    {runwayDays != null ? runwayDays.toFixed(1) : '--'}
                   </span>
+                  <span className="text-gray-400 text-xs">days</span>
+                </div>
+                <div className="text-xs text-gray-500 mb-2">
+                  {runwayWithInbound != null
+                    ? `With inbound: ${runwayWithInbound.toFixed(1)}d`
+                    : 'No inbound POs'}
+                </div>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded ${runwayBadge}`}>
+                  <ClockIcon className="w-3 h-3" />
+                  {runwayLabel}
+                </span>
+              </div>
+
+              {/* Critical Path */}
+              <div className={`${glassTile} p-3`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-500">Critical Path</span>
+                  {criticalPathComponent && (
+                    <span className="text-[10px] text-gray-600">Lead time</span>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${criticalPathComponent ? 'text-sky-300' : 'text-gray-500'}`}>
+                    {criticalPathComponent?.leadTime != null ? criticalPathComponent.leadTime : '--'}
+                  </span>
+                  {criticalPathComponent && <span className="text-gray-400 text-xs">days</span>}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {criticalPathComponent
+                    ? `${criticalPathComponent.name} (${criticalPathComponent.sku})`
+                    : 'Add lead times for components'}
                 </div>
               </div>
 
               {/* Yield - Both roles */}
-              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+              <div className={`${glassTile} p-3`}>
               <div className="text-gray-500 mb-2">Yield</div>
               <div className="flex items-baseline gap-2">
                 <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold text-blue-400`}>{bom.yieldQuantity || 1}</span>
@@ -269,7 +402,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             </div>
 
             {(buildHours || laborRate) && (
-              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+              <div className={`${glassTile} p-3`}>
                 <div className="text-gray-500 mb-2">Labor</div>
                 <div className="text-gray-200 text-sm font-semibold">
                   {buildHours ? `${buildHours.toFixed(1)} hrs` : 'Add estimate'}
@@ -285,7 +418,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 
             {/* Components - Admin only (technical detail) */}
             {isAdmin && (
-              <div className="bg-gray-900/50 rounded p-3 border border-gray-700">
+              <div className={`${glassTile} p-3`}>
                 <div className="text-gray-500 mb-2">Components</div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-xl font-bold text-purple-400">{bom.components.length}</span>
@@ -370,7 +503,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                   });
                   onToggleExpand();
                 }}
-                className="px-2 py-1.5 hover:bg-gray-700 rounded transition-colors"
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-gray-300 transition-colors hover:bg-white/10"
                 title={isExpanded ? 'Collapse components' : 'Expand components'}
               >
                 <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -400,7 +533,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 
         {/* SECONDARY INFO BAR - Simplified for managers, detailed for admins */}
         {isAdmin ? (
-          <div className="mt-4 pt-3 border-t border-gray-700 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+          <div className="mt-4 grid grid-cols-2 gap-4 rounded-2xl border border-white/5 bg-white/5 p-4 text-xs backdrop-blur md:grid-cols-4">
             {/* Packaging - Admin gets details */}
             <div>
               <div className="text-gray-500 mb-1 flex items-center gap-1">
@@ -436,7 +569,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
         ) : (
           /* Manager View - Just description */
           bom.description && (
-            <div className="mt-4 pt-3 border-t border-gray-700">
+            <div className="mt-4 rounded-2xl border border-white/5 bg-white/5 p-4 backdrop-blur">
               <div className="text-gray-400 text-xs line-clamp-2">
                 {bom.description}
               </div>
@@ -474,13 +607,17 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 
       {/* EXPANDED VIEW: Component Details */}
       {isExpanded && (
-        <div className="p-4 space-y-4 border-t border-gray-700 bg-gray-900/30">
-          {console.log('[EnhancedBomCard] EXPANDED VIEW IS RENDERING!', {
-            bomName: bom.name,
-            componentsCount: bom.components?.length || 0,
-            inventoryMapSize: inventoryMap.size,
-            firstComponent: bom.components?.[0]
-          })}
+        <div className="p-4 space-y-4 border-t border-white/5 bg-slate-950/70 backdrop-blur-lg">
+          <StrategicBomMetrics
+            bom={bom}
+            finishedItem={finishedItem}
+            buildability={buildability}
+            inventoryMap={inventoryMap}
+            labels={labels}
+            complianceRecords={complianceRecords}
+            queueStatus={queueStatus}
+            onViewBreakdown={onViewDetails}
+          />
           <div>
             <h4 className="text-xs font-semibold text-gray-400 uppercase mb-3 flex items-center gap-2">
               <BeakerIcon className="w-4 h-4" />
@@ -561,6 +698,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
         </div>
       )}
     </div>
+  </div>
   );
 };
 
