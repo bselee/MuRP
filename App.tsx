@@ -709,11 +709,15 @@ const AppShell: React.FC = () => {
     source: 'Manual' | 'System' = 'Manual',
     options: RequisitionRequestOptions = {}
   ) => {
+    const requiresOpsApproval =
+      options.opsApprovalRequired ??
+      Boolean(options.priority === 'high' || options.autoPo || options.requestType === 'finished_good');
+    const createdAt = new Date().toISOString();
     const newReq: InternalRequisition = {
       id: `REQ-${new Date().getFullYear()}-${(requisitions.length + 1).toString().padStart(3, '0')}`,
       requesterId: source === 'Manual' ? currentUser!.id : 'SYSTEM',
       department: source === 'Manual' ? currentUser!.department : 'Purchasing',
-      createdAt: new Date().toISOString(),
+      createdAt,
       status: 'Pending',
       source,
       items,
@@ -724,8 +728,14 @@ const AppShell: React.FC = () => {
       autoPo: options.autoPo ?? false,
       notifyRequester: options.notifyRequester ?? true,
       context: options.context ?? null,
-      metadata: options.metadata ?? {},
+      metadata: { ...(options.metadata ?? {}), requiresOpsApproval },
       notes: options.notes ?? undefined,
+      managerApprovedBy: null,
+      managerApprovedAt: null,
+      opsApprovalRequired: requiresOpsApproval,
+      opsApprovedBy: null,
+      opsApprovedAt: null,
+      forwardedToPurchasingAt: null,
     };
 
     // 🔥 Save to Supabase
@@ -1021,34 +1031,101 @@ const AppShell: React.FC = () => {
     const req = requisitions.find(r => r.id === reqId);
     if (!req || !currentUser) return;
 
-    if (currentUser.role === 'Admin' || (currentUser.role === 'Manager' && currentUser.department === req.department)) {
-        const result = await updateRequisitionStatus(reqId, 'Approved');
-        if (!result.success) {
-          addToast(`Failed to approve requisition: ${result.error}`, 'error');
-          return;
-        }
-        refetchRequisitions();
-        addToast(`Requisition ${reqId} approved.`, 'success');
-    } else {
-        addToast('You do not have permission to approve this requisition.', 'error');
+    const canManagerApprove =
+      isOpsAdmin ||
+      (currentUser.role === 'Manager' && currentUser.department === req.department);
+
+    if (!canManagerApprove) {
+      addToast('You do not have permission to approve this requisition.', 'error');
+      return;
     }
+
+    if (req.status !== 'Pending') {
+      addToast('This requisition has already been processed.', 'info');
+      return;
+    }
+
+    const requiresOps = req.opsApprovalRequired ?? (req.priority === 'high' || req.autoPo);
+    const nextStatus: InternalRequisition['status'] = requiresOps ? 'OpsPending' : 'ManagerApproved';
+    const nowIso = new Date().toISOString();
+    const extra: Record<string, any> = {
+      manager_approved_by: currentUser.id,
+      manager_approved_at: nowIso,
+      ops_approval_required: requiresOps,
+    };
+    if (!requiresOps) {
+      extra.forwarded_to_purchasing_at = nowIso;
+    }
+
+    const result = await updateRequisitionStatus(reqId, nextStatus, extra);
+    if (!result.success) {
+      addToast(`Failed to approve requisition: ${result.error}`, 'error');
+      return;
+    }
+    refetchRequisitions();
+    addToast(
+      requiresOps
+        ? `Manager approved ${reqId}. Awaiting Operations review.`
+        : `Requisition ${reqId} approved and forwarded to Purchasing.`,
+      'success'
+    );
+  };
+
+  const handleOpsApproveRequisition = async (reqId: string) => {
+    const req = requisitions.find(r => r.id === reqId);
+    if (!req || !currentUser) return;
+
+    const canOpsApprove = isOpsAdmin;
+
+    if (!canOpsApprove) {
+      addToast('Only Operations can approve this requisition.', 'error');
+      return;
+    }
+
+    if (req.status !== 'OpsPending') {
+      addToast('This requisition is not awaiting Operations approval.', 'info');
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const result = await updateRequisitionStatus(reqId, 'OpsApproved', {
+      ops_approved_by: currentUser.id,
+      ops_approved_at: nowIso,
+      forwarded_to_purchasing_at: nowIso,
+    });
+    if (!result.success) {
+      addToast(`Failed to record Operations approval: ${result.error}`, 'error');
+      return;
+    }
+    refetchRequisitions();
+    addToast(`Operations approved ${reqId}. Purchasing notified.`, 'success');
   };
 
   const handleRejectRequisition = async (reqId: string) => {
     const req = requisitions.find(r => r.id === reqId);
     if (!req || !currentUser) return;
 
-    if (currentUser.role === 'Admin' || (currentUser.role === 'Manager' && currentUser.department === req.department)) {
-        const result = await updateRequisitionStatus(reqId, 'Rejected');
-        if (!result.success) {
-          addToast(`Failed to reject requisition: ${result.error}`, 'error');
-          return;
-        }
-        refetchRequisitions();
-        addToast(`Requisition ${reqId} rejected.`, 'info');
-    } else {
-        addToast('You do not have permission to reject this requisition.', 'error');
+    const canManagerReview =
+      isOpsAdmin ||
+      (currentUser.role === 'Manager' && currentUser.department === req.department);
+    const canOpsReview = isOpsAdmin && req.status === 'OpsPending';
+
+    if (!canManagerReview && !canOpsReview) {
+      addToast('You do not have permission to reject this requisition.', 'error');
+      return;
     }
+
+    const result = await updateRequisitionStatus(reqId, 'Rejected', {
+      forwarded_to_purchasing_at: null,
+      ops_approved_by: null,
+      ops_approved_at: null,
+    });
+    if (!result.success) {
+      addToast(`Failed to reject requisition: ${result.error}`, 'error');
+      return;
+    }
+    refetchRequisitions();
+    addToast(`Requisition ${reqId} rejected.`, 'info');
   };
 
   const handleGmailConnect = async () => {
@@ -1190,29 +1267,33 @@ const AppShell: React.FC = () => {
       addToast(error.message ?? 'Failed to finalize onboarding.', 'error');
     }
   };
-
+  const isOpsAdmin = currentUser ? currentUser.role === 'Admin' || currentUser.department === 'Operations' : false;
 
   const pendingRequisitionCount = useMemo(() => {
     if (!currentUser) return 0;
-    if (currentUser.role === 'Admin') {
-        return requisitions.filter(r => r.status === 'Pending').length;
+    if (isOpsAdmin) {
+        return requisitions.filter(r => r.status === 'Pending' || r.status === 'OpsPending').length;
+    }
+    if (currentUser.department === 'Operations') {
+        return requisitions.filter(r => r.status === 'OpsPending').length;
     }
     if (currentUser.role === 'Manager') {
         return requisitions.filter(r => r.status === 'Pending' && r.department === currentUser.department).length;
     }
     return 0;
-  }, [requisitions, currentUser]);
+  }, [requisitions, currentUser, isOpsAdmin]);
   
   const approvedRequisitionsForPoGen = useMemo(() => {
     if (!currentUser || !permissions.canManagePurchaseOrders) return [];
-    if (currentUser.role === 'Admin') {
-        return requisitions.filter(r => r.status === 'Approved');
+    const readyStatuses: InternalRequisition['status'][] = ['ManagerApproved', 'OpsApproved'];
+    if (isOpsAdmin || currentUser.department === 'Purchasing') {
+        return requisitions.filter(r => readyStatuses.includes(r.status));
     }
     if (currentUser.role === 'Manager') {
-        return requisitions.filter(r => r.status === 'Approved' && r.department === currentUser.department);
+        return requisitions.filter(r => readyStatuses.includes(r.status) && r.department === currentUser.department);
     }
     return [];
-  }, [requisitions, currentUser, permissions.canManagePurchaseOrders]);
+  }, [requisitions, currentUser, permissions.canManagePurchaseOrders, isOpsAdmin]);
 
   const navigateToArtwork = (filter: string) => {
     setArtworkFilter(filter);
@@ -1272,6 +1353,7 @@ const AppShell: React.FC = () => {
                     requisitions={requisitions}
                     users={users}
                     onApproveRequisition={handleApproveRequisition}
+                    onOpsApproveRequisition={handleOpsApproveRequisition}
                     onRejectRequisition={handleRejectRequisition}
                     onCreateRequisition={(items, options) => handleCreateRequisition(items, 'Manual', options)}
                 />;

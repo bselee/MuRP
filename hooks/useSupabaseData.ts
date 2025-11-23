@@ -953,7 +953,7 @@ export function useSupabaseRequisitions(): UseSupabaseDataResult<InternalRequisi
         department: req.department,
         status: (req.status ?? 'Pending') as InternalRequisition['status'],
         createdAt: req.created_at,
-        items: req.items as any, // JSONB field
+        items: req.items as any,
         notes: req.notes,
         source: (req.source ?? 'Manual') as 'Manual' | 'System',
         requestType: (req.request_type ?? 'consumable') as RequisitionRequestType,
@@ -964,6 +964,12 @@ export function useSupabaseRequisitions(): UseSupabaseDataResult<InternalRequisi
         notifyRequester: req.notify_requester ?? true,
         context: req.context ?? null,
         metadata: req.metadata ?? {},
+        managerApprovedBy: req.manager_approved_by ?? null,
+        managerApprovedAt: req.manager_approved_at ?? null,
+        opsApprovalRequired: req.ops_approval_required ?? false,
+        opsApprovedBy: req.ops_approved_by ?? null,
+        opsApprovedAt: req.ops_approved_at ?? null,
+        forwardedToPurchasingAt: req.forwarded_to_purchasing_at ?? null,
       }));
 
       setData(transformed);

@@ -84,6 +84,8 @@ Thank you!`
     );
     const helpTicketMailto = `mailto:support@murp.app?subject=${helpTicketSubject}&body=${helpTicketBody}`;
 
+    const isOpsAdmin = currentUser.role === 'Admin' || currentUser.department === 'Operations';
+
     const supportPlaybook = [
       {
         title: 'Plant Owners & Ops Leads',
@@ -112,7 +114,7 @@ Thank you!`
           </header>
           
           {/* 1. User Management Section (Admin/Manager only) */}
-          {(currentUser.role === 'Admin' || currentUser.role === 'Manager') && (
+          {(isOpsAdmin || currentUser.role === 'Manager') && (
             <CollapsibleSection
               title="User Management"
               icon={<UsersIcon className="w-6 h-6 text-indigo-400" />}
@@ -129,7 +131,7 @@ Thank you!`
             </CollapsibleSection>
           )}
 
-          {isDevelopment() && currentUser.role === 'Admin' && (
+          {isDevelopment() && isOpsAdmin && (
             <CollapsibleSection
               title="Developer Tools"
               icon={<KeyIcon className="w-6 h-6 text-amber-300" />}
@@ -173,7 +175,7 @@ Thank you!`
               </div>
 
               {/* AI Provider Configuration (Admin only) */}
-              {currentUser.role === 'Admin' && (
+              {isOpsAdmin && (
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
                   <h3 className="text-lg font-semibold text-white mb-4">Provider & Model Settings</h3>
                   <p className="text-sm text-gray-400 mb-4">Configure AI provider, models, and advanced parameters (Admin only)</p>
@@ -245,7 +247,7 @@ Thank you!`
           </CollapsibleSection>
 
           {/* 5. Document Templates (Admin only) */}
-          {currentUser.role === 'Admin' && (
+          {isOpsAdmin && (
             <CollapsibleSection
               title="Document Templates"
               icon={<DocumentTextIcon className="w-6 h-6 text-yellow-400" />}
@@ -257,7 +259,7 @@ Thank you!`
           )}
 
           {/* Vendor Administration (Admin only) */}
-          {currentUser.role === 'Admin' && (
+          {isOpsAdmin && (
             <CollapsibleSection
               title="Vendor Administration"
               icon={<UsersIcon className="w-6 h-6 text-sky-400" />}
@@ -284,7 +286,7 @@ Thank you!`
             </CollapsibleSection>
           )}
 
-          {currentUser.role === 'Admin' && (
+          {isOpsAdmin && (
             <CollapsibleSection
               title="PO Follow-up Automation"
               icon={<MailIcon className="w-6 h-6 text-sky-400" />}
@@ -385,7 +387,7 @@ Thank you!`
           </CollapsibleSection>
 
           {/* 7. MCP Server Configuration (Admin only) */}
-          {currentUser.role === 'Admin' && (
+          {isOpsAdmin && (
             <CollapsibleSection
               title="MCP Server Configuration"
               icon={<ServerStackIcon className="w-6 h-6 text-cyan-400" />}

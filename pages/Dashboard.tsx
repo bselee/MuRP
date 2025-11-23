@@ -28,6 +28,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = (props) => {
   const { inventory, boms, requisitions, users, currentUser, setCurrentPage } = props;
+  const isOpsAdmin = currentUser.role === 'Admin' || currentUser.department === 'Operations';
 
   const [openSections, setOpenSections] = useState({
     production: false,
@@ -101,11 +102,22 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
   );
 
   const pendingRequisitions = useMemo(() => {
-    const pending = requisitions.filter(r => r.status === 'Pending');
-    if (currentUser.role === 'Admin') return pending;
-    if (currentUser.role === 'Manager') return pending.filter(r => r.department === currentUser.department);
+    const managerQueue = requisitions.filter(r => r.status === 'Pending');
+    const opsQueue = requisitions.filter(r => r.status === 'OpsPending');
+    const sortByCreated = (list: InternalRequisition[]) =>
+      [...list].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    if (isOpsAdmin) {
+      return sortByCreated([...opsQueue, ...managerQueue]);
+    }
+    if (currentUser.department === 'Operations') {
+      return sortByCreated(opsQueue);
+    }
+    if (currentUser.role === 'Manager') {
+      return sortByCreated(managerQueue.filter(r => r.department === currentUser.department));
+    }
     return [];
-  }, [requisitions, currentUser]);
+  }, [requisitions, currentUser, isOpsAdmin]);
 
   const bomsMissingArtwork = useMemo(() => boms.filter(b => b.artwork.length === 0 && b.finishedSku.startsWith('PROD-')), [boms]);
   const artworkMissingDocs = useMemo(() => boms.flatMap(b => b.artwork).filter(a => !a.regulatoryDocLink), [boms]);
@@ -129,23 +141,70 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       </ul>
   ) : <p className="text-center text-gray-400 py-8">No critical shortages. Well done!</p>;
   
-  const pendingRequisitionsContent = (currentUser.role === 'Admin' || currentUser.role === 'Manager') ? (
+  const canViewRequisitionWidget =
+    isOpsAdmin ||
+    currentUser.role === 'Manager' ||
+    currentUser.department === 'Operations';
+
+  const requisitionSectionTitle =
+    currentUser.department === 'Operations' ? 'Ops Review Queue' : 'Pending Requisitions';
+
+  const requisitionCtaLabel =
+    currentUser.department === 'Operations' ? 'Open Ops Queue →' : 'View Queue →';
+
+  const pendingRequisitionsContent = canViewRequisitionWidget ? (
     pendingRequisitions.length > 0 ? (
-        <div className="space-y-3">
-            <ul className="divide-y divide-gray-700">
-               {pendingRequisitions.slice(0, 5).map(req => (
-                   <li key={req.id} className="py-2">
-                       <p className="text-sm font-medium text-white">{req.department} - {req.source === 'System' ? 'System (AI)' : (userMap.get(req.requesterId!) || 'Unknown')}</p>
-                       <p className="text-xs text-gray-400">{req.items.length} item(s) requested on {new Date(req.createdAt).toLocaleDateString()}</p>
-                   </li>
-               ))}
-            </ul>
-             <button onClick={() => setCurrentPage('Purchase Orders')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 w-full text-right mt-2">
-                View All Requisitions &rarr;
-            </button>
-        </div>
-    ) : <p className="text-center text-gray-400 py-8">No requisitions are pending approval.</p>
-  ) : <p className="text-center text-gray-400 py-8">You do not have permission to view requisitions.</p>;
+      <div className="space-y-3">
+        <ul className="divide-y divide-gray-700">
+          {pendingRequisitions.slice(0, 5).map(req => (
+            <li key={req.id} className="py-2">
+              <p className="text-sm font-medium text-white flex items-center justify-between">
+                <span>{req.department} — {req.source === 'System' ? 'AI Signal' : (userMap.get(req.requesterId!) || 'Unknown')}</span>
+                <span className="text-xs text-amber-300">
+                  {req.status === 'OpsPending' ? 'Ops review' : 'Manager review'}
+                </span>
+              </p>
+              <p className="text-xs text-gray-400">
+                {req.items.length} item(s) requested on {new Date(req.createdAt).toLocaleDateString()}
+              </p>
+            </li>
+          ))}
+        </ul>
+        <button
+          onClick={() => setCurrentPage('Purchase Orders')}
+          className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 w-full text-right mt-2"
+        >
+          {requisitionCtaLabel}
+        </button>
+      </div>
+    ) : (
+      <p className="text-center text-gray-400 py-8">
+        {currentUser.department === 'Operations'
+          ? 'No requisitions are awaiting Operations review.'
+          : 'No requisitions are pending approval.'}
+      </p>
+    )
+  ) : (
+    <p className="text-center text-gray-400 py-8">You do not have permission to view requisitions.</p>
+  );
+
+  const handleExecutiveCardClick = (status: 'In Stock' | 'Low Stock' | 'Out of Stock') => {
+    const statusMap: Record<'In Stock' | 'Low Stock' | 'Out of Stock', 'buildable' | 'near-oos' | 'out-of-stock'> = {
+      'In Stock': 'buildable',
+      'Low Stock': 'near-oos',
+      'Out of Stock': 'out-of-stock',
+    };
+    const filterValue = statusMap[status];
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('bomStatusFilter', filterValue);
+        localStorage.setItem('dashboardBuildabilityFilter', filterValue);
+      } catch {
+        // no-op
+      }
+    }
+    setCurrentPage('BOMs');
+  };
 
   const todosContent = (
       <div className="space-y-4">
@@ -213,7 +272,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       ),
     },
     requisitions: {
-      title: 'Pending Requisitions',
+      title: requisitionSectionTitle,
       icon: <ClipboardListIcon className="w-6 h-6 text-yellow-400" />,
       content: pendingRequisitionsContent,
     },
@@ -222,7 +281,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       icon: <BeakerIcon className="w-6 h-6 text-blue-400" />,
       content: todosContent,
     },
-  }), [props, buildabilityData, criticalShortagesContent, pendingRequisitionsContent, todosContent, boms, setCurrentPage]);
+  }), [props, buildabilityData, criticalShortagesContent, pendingRequisitionsContent, todosContent, boms, setCurrentPage, requisitionSectionTitle]);
 
   return (
     <div className="space-y-8">
@@ -242,21 +301,11 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
         </div>
       </header>
       
-      <section>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xl font-semibold text-gray-300">Executive Summary</h2>
-        </div>
-        <ExecutiveSummary data={buildabilityData} onCardClick={(status) => {
-          localStorage.setItem('dashboardBuildabilityFilter', status);
-          setCurrentPage('BOMs');
-          requestAnimationFrame(() => {
-            try {
-              localStorage.setItem('bomStatusFilter', status);
-            } catch {
-              // no-op
-            }
-          });
-        }} />
+      <section className="-mt-2">
+        <ExecutiveSummary
+          data={buildabilityData}
+          onCardClick={handleExecutiveCardClick}
+        />
       </section>
       
       <div className="space-y-6">

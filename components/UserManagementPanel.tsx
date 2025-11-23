@@ -11,6 +11,7 @@ interface UserManagementPanelProps {
 }
 
 const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser, users, onInviteUser, onUpdateUser, onDeleteUser }) => {
+    const isOpsAdmin = currentUser.role === 'Admin' || currentUser.department === 'Operations';
     const [newUser, setNewUser] = useState({
         email: '',
         role: 'Staff' as User['role'],
@@ -27,9 +28,9 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser, 
     };
 
     const visibleUsers = useMemo(() => {
-        if (currentUser.role === 'Admin') return users;
+        if (isOpsAdmin) return users;
         return users.filter(u => u.department === currentUser.department);
-    }, [users, currentUser]);
+    }, [users, currentUser, isOpsAdmin]);
 
     return (
         <div className="space-y-6">
@@ -55,7 +56,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser, 
                         >
                             <option>Staff</option>
                             <option>Manager</option>
-                            {currentUser.role === 'Admin' && <option>Admin</option>}
+                            {isOpsAdmin && <option>Admin</option>}
                         </select>
                     </div>
                      <div>
@@ -67,6 +68,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser, 
                             className="w-full bg-gray-700 p-2 rounded-md mt-1 disabled:bg-gray-600 disabled:cursor-not-allowed"
                         >
                             <option>Purchasing</option>
+                            <option>Operations</option>
                             <option>MFG 1</option>
                             <option>MFG 2</option>
                             <option>Fulfillment</option>
@@ -91,7 +93,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser, 
                                 <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Role</th>
                                 <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Department</th>
                                 <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                {currentUser.role === 'Admin' && <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>}
+                                {isOpsAdmin && <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>}
                             </tr>
                         </thead>
                         <tbody className="bg-gray-800 divide-y divide-gray-700">
@@ -110,7 +112,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser, 
                                             <span className="text-green-400">Active</span>
                                         )}
                                     </td>
-                                    {currentUser.role === 'Admin' && (
+                                    {isOpsAdmin && (
                                         <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
                                             <button className="p-2 text-gray-400 hover:text-indigo-400 transition-colors" title="Edit User">
                                                 <PencilSquareIcon className="w-5 h-5"/>

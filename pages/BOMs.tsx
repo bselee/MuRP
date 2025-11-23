@@ -52,6 +52,21 @@ interface BOMsProps {
   onQuickRequest?: (defaults?: QuickRequestDefaults) => void;
 }
 
+const isBuildabilityFilter = (value: string | null): value is BuildabilityFilter =>
+  value === 'all' ||
+  value === 'buildable' ||
+  value === 'not-buildable' ||
+  value === 'out-of-stock' ||
+  value === 'near-oos';
+
+const readStoredBuildabilityFilter = (): BuildabilityFilter => {
+  if (typeof window === 'undefined') {
+    return 'all';
+  }
+  const stored = localStorage.getItem('bomStatusFilter');
+  return isBuildabilityFilter(stored) ? stored : 'all';
+};
+
 const BOMs: React.FC<BOMsProps> = ({
   boms,
   inventory,
@@ -85,10 +100,7 @@ const BOMs: React.FC<BOMsProps> = ({
   // New UI state
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [buildabilityFilter, setBuildabilityFilter] = useState<BuildabilityFilter>(() => {
-    const stored = localStorage.getItem('bomStatusFilter') as BuildabilityFilter | null;
-    return stored ?? 'all';
-  });
+  const [buildabilityFilter, setBuildabilityFilter] = useState<BuildabilityFilter>(() => readStoredBuildabilityFilter());
   const [sortBy, setSortBy] = useState<SortOption>('name');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);

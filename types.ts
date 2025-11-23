@@ -797,7 +797,7 @@ export interface User {
     name: string;
     email: string;
     role: 'Admin' | 'Manager' | 'Staff';
-    department: 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV';
+    department: 'Purchasing' | 'Operations' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV';
     onboardingComplete?: boolean;
 
     // User agreements - stored for review in Settings
@@ -849,7 +849,7 @@ export interface InternalRequisition {
     source: 'Manual' | 'System';
     department: User['department'];
     createdAt: string;
-    status: 'Pending' | 'Approved' | 'Rejected' | 'Ordered';
+    status: 'Pending' | 'ManagerApproved' | 'OpsPending' | 'OpsApproved' | 'Rejected' | 'Ordered' | 'Fulfilled';
     items: RequisitionItem[];
     requestType?: RequisitionRequestType;
     priority?: RequisitionPriority;
@@ -860,6 +860,12 @@ export interface InternalRequisition {
     context?: string | null;
     metadata?: Record<string, any> | null;
     notes?: string;
+    managerApprovedBy?: string | null;
+    managerApprovedAt?: string | null;
+    opsApprovalRequired?: boolean;
+    opsApprovedBy?: string | null;
+    opsApprovedAt?: string | null;
+    forwardedToPurchasingAt?: string | null;
 }
 
 export interface RequisitionRequestOptions {
@@ -872,6 +878,7 @@ export interface RequisitionRequestOptions {
     context?: string | null;
     notes?: string;
     metadata?: Record<string, any>;
+    opsApprovalRequired?: boolean;
 }
 
 export interface FollowUpRule {
@@ -1197,7 +1204,7 @@ export const mockInternalRequisitions: InternalRequisition[] = [
         source: 'Manual',
         department: 'MFG 1',
         createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), 
-        status: 'Approved',
+        status: 'ManagerApproved',
         requestType: 'consumable',
         priority: 'high',
         needByDate: null,
@@ -1206,6 +1213,9 @@ export const mockInternalRequisitions: InternalRequisition[] = [
         notifyRequester: true,
         context: 'Floor stock getting tight',
         metadata: {},
+        managerApprovedBy: 'user-manager-mfg1',
+        managerApprovedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        opsApprovalRequired: true,
         items: [
             { sku: 'COMP-001', name: 'Worm Castings (1 lb)', quantity: 50, reason: 'Low on production line' },
             { sku: 'BAG-SML', name: 'Small Burlap Bag (1 cu ft)', quantity: 100, reason: 'Stock running out for PROD-A run' }

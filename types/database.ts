@@ -36,7 +36,7 @@ export interface Database {
           email: string
           full_name: string | null
           role: 'Admin' | 'Manager' | 'Staff'
-          department: 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV'
+          department: 'Purchasing' | 'Operations' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV'
           onboarding_complete: boolean
           agreements: Json | null
           metadata: Json | null
@@ -50,7 +50,7 @@ export interface Database {
           email: string
           full_name?: string | null
           role?: 'Admin' | 'Manager' | 'Staff'
-          department?: 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV'
+          department?: 'Purchasing' | 'Operations' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV'
           onboarding_complete?: boolean
           agreements?: Json | null
           metadata?: Json | null
@@ -63,7 +63,7 @@ export interface Database {
           email?: string
           full_name?: string | null
           role?: 'Admin' | 'Manager' | 'Staff'
-          department?: 'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV'
+          department?: 'Purchasing' | 'Operations' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV'
           onboarding_complete?: boolean
           agreements?: Json | null
           metadata?: Json | null
@@ -443,6 +443,12 @@ export interface Database {
           notify_requester?: boolean
           context?: string
           metadata?: Json
+          manager_approved_by?: string | null
+          manager_approved_at?: string | null
+          ops_approval_required?: boolean
+          ops_approved_by?: string | null
+          ops_approved_at?: string | null
+          forwarded_to_purchasing_at?: string | null
         }
         Insert: {
           id?: string
@@ -462,6 +468,12 @@ export interface Database {
           notify_requester?: boolean
           context?: string
           metadata?: Json
+          manager_approved_by?: string | null
+          manager_approved_at?: string | null
+          ops_approval_required?: boolean
+          ops_approved_by?: string | null
+          ops_approved_at?: string | null
+          forwarded_to_purchasing_at?: string | null
         }
         Update: {
           requested_by?: string
@@ -479,6 +491,12 @@ export interface Database {
           notify_requester?: boolean
           context?: string
           metadata?: Json
+          manager_approved_by?: string | null
+          manager_approved_at?: string | null
+          ops_approval_required?: boolean
+          ops_approved_by?: string | null
+          ops_approved_at?: string | null
+          forwarded_to_purchasing_at?: string | null
         }
         Relationships: []
       }

@@ -49,6 +49,7 @@ interface PurchaseOrdersProps {
     requisitions: InternalRequisition[];
     users: User[];
     onApproveRequisition: (reqId: string) => void;
+    onOpsApproveRequisition: (reqId: string) => void;
     onRejectRequisition: (reqId: string) => void;
     onCreateRequisition: (items: RequisitionItem[], options: RequisitionRequestOptions) => void;
 }
@@ -126,7 +127,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const { 
         purchaseOrders, vendors, inventory, onCreatePo, addToast, currentUser, 
         approvedRequisitions, gmailConnection, onSendEmail, onUpdateTracking,
-        requisitions, users, onApproveRequisition, onRejectRequisition, onCreateRequisition
+        requisitions, users, onApproveRequisition, onOpsApproveRequisition, onRejectRequisition, onCreateRequisition
     } = props;
     
     const [isCreatePoModalOpen, setIsCreatePoModalOpen] = useState(false);
@@ -158,6 +159,52 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         ).length,
       [purchaseOrders],
     );
+
+    const managerQueue = useMemo(
+        () => requisitions.filter(r => r.status === 'Pending'),
+        [requisitions]
+    );
+
+    const opsQueue = useMemo(
+        () => requisitions.filter(r => r.status === 'OpsPending'),
+        [requisitions]
+    );
+
+    const readyQueue = useMemo(
+        () => requisitions.filter(r => r.status === 'ManagerApproved' || r.status === 'OpsApproved'),
+        [requisitions]
+    );
+
+    const urgentRequests = useMemo(
+        () =>
+            requisitions
+                .filter(r =>
+                    (r.priority === 'high' || r.opsApprovalRequired) &&
+                    (r.status === 'Pending' || r.status === 'OpsPending')
+                )
+                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                .slice(0, 4),
+        [requisitions]
+    );
+
+    const readyHighlights = useMemo(
+        () => readyQueue.slice(0, 4),
+        [readyQueue]
+    );
+
+    const trackingAlerts = useMemo(
+        () =>
+            purchaseOrders
+                .filter(po =>
+                    (!po.trackingNumber || po.trackingStatus === 'awaiting_confirmation') &&
+                    ['sent', 'pending', 'committed', 'confirmed'].includes(po.status)
+                )
+                .slice(0, 4),
+        [purchaseOrders]
+    );
+
+    const isAdminLike = permissions.isAdminLike;
+    const showCommandCenter = permissions.isPurchasing || permissions.isOperations || isAdminLike;
 
     const canManagePOs = permissions.canManagePurchaseOrders;
     const canSubmitRequisitions = permissions.canSubmitRequisition;
@@ -385,6 +432,21 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         };
     }, [openPoModalWithDrafts]);
 
+    const focusRequisitionSection = useCallback(() => {
+        setIsRequisitionsOpen(true);
+        if (typeof window !== 'undefined') {
+            requestAnimationFrame(() => {
+                document.getElementById('po-requisitions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
+    }, [setIsRequisitionsOpen]);
+
+    const focusTrackingPanel = useCallback(() => {
+        if (typeof window !== 'undefined') {
+            document.getElementById('po-tracking')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, []);
+
     return (
         <>
             <div className="space-y-6">
@@ -414,18 +476,67 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     )}
                 </header>
 
-                <RequisitionsSection
-                    requisitions={requisitions}
-                    currentUser={currentUser}
-                    userMap={userMap}
-                    isOpen={isRequisitionsOpen}
-                    onToggle={() => setIsRequisitionsOpen(!isRequisitionsOpen)}
-                    onApprove={onApproveRequisition}
-                    onReject={onRejectRequisition}
-                    onCreate={() => setIsCreateReqModalOpen(true)}
-                    allowManualCreation={canSubmitRequisitions}
-                    canActOnRequisition={permissions.canApproveRequisition}
-                />
+                {showCommandCenter && (
+                    <PurchasingCommandCenter
+                        stats={[
+                            {
+                                id: 'manager',
+                                label: 'Manager Review',
+                                value: managerQueue.length,
+                                description: 'Awaiting department approval',
+                                accent: managerQueue.length > 0 ? 'border-amber-400/50 text-amber-100' : 'border-gray-600 text-gray-300',
+                                onClick: focusRequisitionSection,
+                            },
+                            {
+                                id: 'ops',
+                                label: 'Ops Review',
+                                value: opsQueue.length,
+                                description: 'Strategic buys waiting on Ops',
+                                accent: opsQueue.length > 0 ? 'border-purple-400/50 text-purple-100' : 'border-gray-600 text-gray-300',
+                                onClick: focusRequisitionSection,
+                            },
+                            {
+                                id: 'ready',
+                                label: 'Ready for PO Build',
+                                value: readyQueue.length,
+                                description: 'Fully approved requisitions',
+                                accent: readyQueue.length > 0 ? 'border-sky-400/50 text-sky-100' : 'border-gray-600 text-gray-300',
+                                onClick: focusRequisitionSection,
+                            },
+                            {
+                                id: 'tracking',
+                                label: 'Tracking Missing',
+                                value: trackingAlerts.length,
+                                description: `${followUpBacklog} vendor nudges queued`,
+                                accent: trackingAlerts.length > 0 ? 'border-rose-400/50 text-rose-100' : 'border-gray-600 text-gray-300',
+                                onClick: focusTrackingPanel,
+                            },
+                        ]}
+                        highRiskRequests={urgentRequests}
+                        readyQueue={readyHighlights}
+                        trackingAlerts={trackingAlerts}
+                        followUpBacklog={followUpBacklog}
+                        onFocusRequisitions={focusRequisitionSection}
+                        onFocusTracking={focusTrackingPanel}
+                    />
+                )}
+
+                <div id="po-requisitions">
+                    <RequisitionsSection
+                        requisitions={requisitions}
+                        currentUser={currentUser}
+                        userMap={userMap}
+                        isAdminLike={isAdminLike}
+                        isOpen={isRequisitionsOpen}
+                        onToggle={() => setIsRequisitionsOpen(!isRequisitionsOpen)}
+                        onApprove={onApproveRequisition}
+                        onOpsApprove={onOpsApproveRequisition}
+                        onReject={onRejectRequisition}
+                        onCreate={() => setIsCreateReqModalOpen(true)}
+                        allowManualCreation={canSubmitRequisitions}
+                        canActOnRequisition={permissions.canApproveRequisition}
+                    />
+                </div>
 
                 <ReorderQueueDashboard
                     onDraftPOs={canManagePOs ? handleReorderQueueDrafts : undefined}
@@ -456,7 +567,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     </div>
                 )}
 
-                <POTrackingDashboard />
+                <div id="po-tracking">
+                    <POTrackingDashboard />
+                </div>
 
                 <DraftPOReviewSection
                     onApprove={(orderId) => {
@@ -609,7 +722,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 onSave={handleSaveTracking}
             />
             
-            {currentUser.role === 'Admin' && (
+            {isAdminLike && (
                 <GeneratePoModal 
                     isOpen={isGeneratePoModalOpen}
                     onClose={() => setIsGeneratePoModalOpen(false)}
@@ -633,45 +746,214 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     );
 };
 
+type PurchasingStat = {
+    id: string;
+    label: string;
+    value: number;
+    description: string;
+    accent: string;
+    onClick?: () => void;
+};
+
+interface PurchasingCommandCenterProps {
+    stats: PurchasingStat[];
+    highRiskRequests: InternalRequisition[];
+    readyQueue: InternalRequisition[];
+    trackingAlerts: PurchaseOrder[];
+    followUpBacklog: number;
+    onFocusRequisitions: () => void;
+    onFocusTracking: () => void;
+}
+
+const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
+    stats,
+    highRiskRequests,
+    readyQueue,
+    trackingAlerts,
+    followUpBacklog,
+    onFocusRequisitions,
+    onFocusTracking,
+}) => (
+    <section className="bg-gray-800/40 border border-gray-700 rounded-2xl p-4 space-y-5 shadow-inner shadow-black/20">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+                <p className="text-lg font-semibold text-white">Purchasing Command Center</p>
+                <p className="text-sm text-gray-400">Approvals, vendor comms, and tracking health at a glance.</p>
+            </div>
+            <div className="text-xs text-gray-400">
+                Follow-up backlog:{' '}
+                <span className="font-semibold text-indigo-200">{followUpBacklog}</span>
+            </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {stats.map(stat => (
+                <button
+                    key={stat.id}
+                    type="button"
+                    onClick={() => stat.onClick?.()}
+                    className={`text-left rounded-xl border bg-gray-900/40 px-4 py-3 transition-colors hover:bg-gray-900/70 ${stat.accent}`}
+                >
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400">{stat.label}</p>
+                    <p className="text-3xl font-semibold text-white mt-1">{stat.value}</p>
+                    <p className="text-xs text-gray-400 mt-1">{stat.description}</p>
+                </button>
+            ))}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+            <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-200">Requests in Review</p>
+                    <button
+                        className="text-xs text-indigo-300 hover:text-indigo-100"
+                        onClick={onFocusRequisitions}
+                    >
+                        Open queue →
+                    </button>
+                </div>
+                {highRiskRequests.length === 0 ? (
+                    <p className="text-xs text-gray-500">No escalations — requisitions are flowing smoothly.</p>
+                ) : (
+                    <ul className="space-y-2 text-sm">
+                        {highRiskRequests.map(req => (
+                            <li key={req.id} className="flex items-start justify-between gap-2">
+                                <div>
+                                    <p className="text-white font-medium">
+                                        {req.items[0]?.name ?? req.id}
+                                    </p>
+                                    <p className="text-xs text-gray-400">
+                                        {req.department} • {req.priority ?? 'medium'} priority
+                                    </p>
+                                </div>
+                                <span className="text-xs text-rose-200">
+                                    {req.status === 'OpsPending' ? 'Ops review' : 'Mgr review'}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <div className="border-t border-gray-800 pt-3">
+                    <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Ready for PO build</p>
+                    {readyQueue.length === 0 ? (
+                        <p className="text-xs text-gray-500">No requisitions are staged for PO creation yet.</p>
+                    ) : (
+                        <ul className="space-y-1 text-sm">
+                            {readyQueue.map(req => (
+                                <li key={req.id} className="flex items-center justify-between">
+                                    <span className="text-gray-200">{req.id}</span>
+                                    <span className="text-xs text-emerald-300">Ready</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            </div>
+            <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-200">Logistics Watchlist</p>
+                    <button
+                        className="text-xs text-indigo-300 hover:text-indigo-100"
+                        onClick={onFocusTracking}
+                    >
+                        Update tracking →
+                    </button>
+                </div>
+                {trackingAlerts.length === 0 ? (
+                    <p className="text-xs text-gray-500">All active POs have tracking or confirmed ship dates.</p>
+                ) : (
+                    <ul className="space-y-2 text-sm">
+                        {trackingAlerts.map(po => (
+                            <li key={po.id} className="flex items-start justify-between gap-2">
+                                <div>
+                                    <p className="text-white font-medium">{po.orderId || po.id}</p>
+                                    <p className="text-xs text-gray-400">
+                                        {po.supplier || 'Vendor TBD'} •{' '}
+                                        {new Date(po.orderDate || po.createdAt).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <span className="text-xs text-yellow-200">
+                                    Awaiting tracking
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                    Keep vendors in the loop — add tracking or run nudges from the automation widget below.
+                </div>
+            </div>
+        </div>
+    </section>
+);
+
 // --- Requisitions Section Component ---
 
 const ReqStatusBadge: React.FC<{ status: InternalRequisition['status'] }> = ({ status }) => {
-    const statusConfig = {
-      'Pending': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-      'Approved': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      'Rejected': 'bg-red-500/20 text-red-400 border-red-500/30',
-      'Ordered': 'bg-green-500/20 text-green-400 border-green-500/30',
+    const statusConfig: Record<InternalRequisition['status'], string> = {
+      Pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      ManagerApproved: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      OpsPending: 'bg-purple-500/20 text-purple-200 border-purple-500/30',
+      OpsApproved: 'bg-sky-500/20 text-sky-200 border-sky-500/30',
+      Rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
+      Ordered: 'bg-green-500/20 text-green-400 border-green-500/30',
+      Fulfilled: 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30',
     };
-    return <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border ${statusConfig[status]}`}>{status}</span>;
+    return <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border ${statusConfig[status]}`}>{status.replace(/([A-Z])/g, ' $1').trim()}</span>;
 };
 
 interface RequisitionsSectionProps {
     requisitions: InternalRequisition[];
     currentUser: User;
     userMap: Map<string, string>;
+    isAdminLike: boolean;
     isOpen: boolean;
     onToggle: () => void;
     onApprove: (id: string) => void;
+    onOpsApprove: (id: string) => void;
     onReject: (id: string) => void;
     onCreate: () => void;
     allowManualCreation: boolean;
     canActOnRequisition: (req: InternalRequisition) => boolean;
 }
 
-const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions, currentUser, userMap, isOpen, onToggle, onApprove, onReject, onCreate, allowManualCreation, canActOnRequisition }) => {
+const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
+    requisitions,
+    currentUser,
+    userMap,
+    isAdminLike,
+    isOpen,
+    onToggle,
+    onApprove,
+    onOpsApprove,
+    onReject,
+    onCreate,
+    allowManualCreation,
+    canActOnRequisition,
+}) => {
 
     const displayedRequisitions = useMemo(() => {
         const sorted = [...requisitions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        if (currentUser.role === 'Admin') return sorted;
+        if (isAdminLike) return sorted;
+        if (currentUser.department === 'Operations') {
+            return sorted;
+        }
         return sorted.filter(r => r.department === currentUser.department);
-    }, [requisitions, currentUser]);
+    }, [requisitions, currentUser, isAdminLike]);
 
-    const pendingCount = useMemo(() => 
-        displayedRequisitions.filter(r => r.status === 'Pending').length, 
-        [displayedRequisitions]
-    );
+    const pendingCount = useMemo(() => {
+        if (isAdminLike) {
+            return displayedRequisitions.filter(r => r.status === 'Pending' || r.status === 'OpsPending').length;
+        }
+        if (currentUser.department === 'Operations') {
+            return displayedRequisitions.filter(r => r.status === 'OpsPending').length;
+        }
+        return displayedRequisitions.filter(r => r.status === 'Pending').length;
+    }, [displayedRequisitions, currentUser, isAdminLike]);
 
     const canTakeAction = (req: InternalRequisition) => req.status === 'Pending' && canActOnRequisition(req);
+    const canOpsTakeAction = (req: InternalRequisition) =>
+        (isAdminLike || currentUser.department === 'Operations') &&
+        req.opsApprovalRequired &&
+        req.status === 'OpsPending';
 
     return (
         <CollapsibleSection title="Internal Requisitions" count={pendingCount} isOpen={isOpen} onToggle={onToggle}>
@@ -693,7 +975,9 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Items</th>
-                            {(currentUser.role === 'Admin' || currentUser.role === 'Manager') && <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>}
+                            {(isAdminLike || currentUser.role === 'Manager' || currentUser.department === 'Operations') && (
+                              <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                            )}
                         </tr>
                     </thead>
                     <tbody className="bg-gray-800 divide-y divide-gray-700">
@@ -745,7 +1029,32 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
                                     </div>
                                 </td>
                                 <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(req.createdAt).toLocaleDateString()}</td>
-                                <td className="px-6 py-1 whitespace-nowrap"><ReqStatusBadge status={req.status} /></td>
+                                <td className="px-6 py-1 whitespace-nowrap align-top">
+                                    <ReqStatusBadge status={req.status} />
+                                    <div className="mt-1 space-y-1 text-xs text-gray-500">
+                                        {req.managerApprovedBy && req.managerApprovedAt && (
+                                            <p>
+                                                Mgr: {userMap.get(req.managerApprovedBy) ?? req.managerApprovedBy} on{' '}
+                                                {new Date(req.managerApprovedAt).toLocaleDateString()}
+                                            </p>
+                                        )}
+                                        {req.opsApprovalRequired && (
+                                            <p>
+                                                Ops:{' '}
+                                                {req.opsApprovedAt
+                                                    ? `${userMap.get(req.opsApprovedBy ?? '') ?? 'Ops'} on ${new Date(
+                                                          req.opsApprovedAt,
+                                                      ).toLocaleDateString()}`
+                                                    : 'Pending'}
+                                            </p>
+                                        )}
+                                        {req.forwardedToPurchasingAt && (
+                                            <p>
+                                                Sent to Purchasing {new Date(req.forwardedToPurchasingAt).toLocaleDateString()}
+                                            </p>
+                                        )}
+                                    </div>
+                                </td>
                                 <td className="px-6 py-1 text-sm text-gray-300">
                                     <ul className="space-y-1">
                                         {req.items.map(item => (
@@ -753,14 +1062,31 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({ requisitions,
                                         ))}
                                     </ul>
                                 </td>
-                                {(currentUser.role === 'Admin' || currentUser.role === 'Manager') && (
+                                {(isAdminLike || currentUser.role === 'Manager' || currentUser.department === 'Operations') && (
                                     <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
-                                        {canTakeAction(req) ? (
+                                        {canTakeAction(req) && (
                                             <>
-                                                <button onClick={() => onApprove(req.id)} className="p-2 text-green-400 hover:text-green-300" title="Approve"><CheckCircleIcon className="w-6 h-6" /></button>
-                                                <button onClick={() => onReject(req.id)} className="p-2 text-red-400 hover:text-red-300" title="Reject"><XCircleIcon className="w-6 h-6" /></button>
+                                                <button onClick={() => onApprove(req.id)} className="p-2 text-green-400 hover:text-green-300" title="Approve">
+                                                    <CheckCircleIcon className="w-6 h-6" />
+                                                </button>
+                                                <button onClick={() => onReject(req.id)} className="p-2 text-red-400 hover:text-red-300" title="Reject">
+                                                    <XCircleIcon className="w-6 h-6" />
+                                                </button>
                                             </>
-                                        ) : <span className="text-xs text-gray-500">Processed</span>}
+                                        )}
+                                        {!canTakeAction(req) && canOpsTakeAction(req) && (
+                                            <>
+                                                <button onClick={() => onOpsApprove(req.id)} className="p-2 text-purple-300 hover:text-purple-100" title="Operations Approve">
+                                                    <CheckCircleIcon className="w-6 h-6" />
+                                                </button>
+                                                <button onClick={() => onReject(req.id)} className="p-2 text-red-400 hover:text-red-300" title="Reject">
+                                                    <XCircleIcon className="w-6 h-6" />
+                                                </button>
+                                            </>
+                                        )}
+                                        {!canTakeAction(req) && !canOpsTakeAction(req) && (
+                                            <span className="text-xs text-gray-500">Processed</span>
+                                        )}
                                     </td>
                                 )}
                             </tr>

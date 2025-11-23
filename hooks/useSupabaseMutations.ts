@@ -338,12 +338,17 @@ export async function createBOM(bom: BillOfMaterials): Promise<{ success: boolea
 
 export async function updateRequisitionStatus(
   id: string,
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Ordered' | 'Fulfilled'
+  status: InternalRequisition['status'],
+  additionalFields?: Record<string, any>
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const payload: Record<string, any> = { status, updated_at: new Date().toISOString() };
+    if (additionalFields) {
+      Object.assign(payload, additionalFields);
+    }
     const { error } = await supabase
       .from('requisitions')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq('id', id);
 
     if (error) throw error;
@@ -356,12 +361,17 @@ export async function updateRequisitionStatus(
 
 export async function updateMultipleRequisitions(
   ids: string[],
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Ordered' | 'Fulfilled'
+  status: InternalRequisition['status'],
+  additionalFields?: Record<string, any>
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const payload: Record<string, any> = { status, updated_at: new Date().toISOString() };
+    if (additionalFields) {
+      Object.assign(payload, additionalFields);
+    }
     const { error } = await supabase
       .from('requisitions')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(payload)
       .in('id', ids);
 
     if (error) throw error;
@@ -393,6 +403,12 @@ export async function createRequisition(req: InternalRequisition): Promise<{ suc
         notify_requester: req.notifyRequester ?? true,
         context: req.context ?? null,
         metadata: req.metadata ?? {},
+        manager_approved_by: req.managerApprovedBy ?? null,
+        manager_approved_at: req.managerApprovedAt ?? null,
+        ops_approval_required: req.opsApprovalRequired ?? false,
+        ops_approved_by: req.opsApprovedBy ?? null,
+        ops_approved_at: req.opsApprovedAt ?? null,
+        forwarded_to_purchasing_at: req.forwardedToPurchasingAt ?? null,
       });
 
     if (error) throw error;

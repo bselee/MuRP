@@ -15,7 +15,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [department, setDepartment] = useState<'Purchasing' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV'>('Purchasing');
+  const [department, setDepartment] = useState<'Purchasing' | 'Operations' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV'>('Purchasing');
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(true);
 
@@ -198,6 +198,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
                     className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-indigo-500 focus:ring-indigo-500"
                   >
                     <option>Purchasing</option>
+                    <option>Operations</option>
                     <option>MFG 1</option>
                     <option>MFG 2</option>
                     <option>Fulfillment</option>

@@ -58,6 +58,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
   const [autoPo, setAutoPo] = useState(false);
   const [notifyRequester, setNotifyRequester] = useState(true);
   const [actionMode, setActionMode] = useState<'question' | 'requisition'>('question');
+  const [needsOpsApproval, setNeedsOpsApproval] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -72,6 +73,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
       setQuantity(1);
       setNotifyRequester(true);
       setActionMode(defaults?.alertOnly ? 'question' : 'requisition');
+      setNeedsOpsApproval(Boolean(defaults?.metadata?.requiresOpsApproval));
     }
   }, [isOpen, defaults]);
 
@@ -153,7 +155,9 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
         quickRequest: true,
         sourceSku: defaults?.sku ?? sku,
         quickCreatedAt: new Date().toISOString(),
+        requiresOpsApproval: needsOpsApproval,
       },
+      opsApprovalRequired: needsOpsApproval,
     });
     onClose();
   };
@@ -414,6 +418,15 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
                   className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
                 />
                 Notify me when someone acknowledges this
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={needsOpsApproval}
+                  onChange={(e) => setNeedsOpsApproval(e.target.checked)}
+                  className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                />
+                Requires Operations approval (large/strategic buy)
               </label>
             </div>
           </div>

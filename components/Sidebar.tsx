@@ -60,7 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
             managerAndUp: true,
             notificationKey: 'pendingRequisitions',
             isVisible: ({ user }) => {
-                if (user.role === 'Admin') return true;
+                if (user.role === 'Admin' || user.department === 'Operations') return true;
                 if (user.role === 'Manager') return true;
                 if (user.role === 'Staff') {
                     return permissions.canSubmitRequisition || permissions.canManagePurchaseOrders;
@@ -82,8 +82,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
     
     const getVisibleNavItems = () => {
         if (!currentUser) return [];
+        const adminLike = currentUser.role === 'Admin' || currentUser.department === 'Operations';
         return navItems.filter(item => {
-            if (currentUser.role === 'Admin') {
+            if (adminLike) {
                 return true;
             }
             if (currentUser.role === 'Manager') {
