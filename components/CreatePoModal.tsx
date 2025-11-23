@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import type {
 import Button from '@/components/ui/Button';
+import type {
     Vendor,
     InventoryItem,
     CreatePurchaseOrderInput,

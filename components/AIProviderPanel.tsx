@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { BotIcon, CheckCircleIcon, ExclamationCircleIcon, PencilIcon } from './icons';
+import Button from '@/components/ui/Button';
 import type { AiConfig, AiPrompt } from '../types';
 import { defaultAiConfig } from '../types';
 import AiPromptEditModal from './AiPromptEditModal';
 import { 
-import Button from '@/components/ui/Button';
-  AIProvider,
+AIProvider,
   getAIProviderSettings,
   updateAIProviderSettings,
   testAIProviderConnection,

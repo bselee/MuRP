@@ -1,13 +1,13 @@
 
 
 import React, { useState, useMemo } from 'react';
+import Button from '@/components/ui/Button';
 import type { Artwork, BillOfMaterials, WatchlistItem, AiConfig } from '../types';
 import Modal from './Modal';
 import { getRegulatoryAdvice, draftComplianceLetter } from '../services/geminiService';
 import { getCachedScan, saveScanToCache, getScanAge } from '../services/regulatoryCacheService';
 import { SparklesIcon, LinkIcon, DocumentDuplicateIcon, ClipboardCopyIcon, ChevronDownIcon, FlagIcon } from './icons';
 
-import Button from '@/components/ui/Button';
 type ArtworkWithProduct = Artwork & { productName: string; bomId: string; };
 
 interface RegulatoryScanModalProps {

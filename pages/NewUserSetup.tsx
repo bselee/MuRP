@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
+import Button from '@/components/ui/Button';
 import type { User } from '../types';
 import { BoxIcon, KeyIcon, MailIcon, GmailIcon } from '../components/icons';
 import { supabase } from '../lib/supabase/client';
 
-import Button from '@/components/ui/Button';
 interface NewUserSetupProps {
     user: User;
     onSetupComplete: () => void;

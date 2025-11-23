@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
+import Button from '@/components/ui/Button';
 import type { InternalRequisition, InventoryItem, Vendor, CreatePurchaseOrderItemInput } from '../types';
 import Modal from './Modal';
 
-import Button from '@/components/ui/Button';
 interface GeneratePoModalProps {
     isOpen: boolean;
     onClose: () => void;

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection } from '../types';
 import {
-import Button from '@/components/ui/Button';
-  GmailIcon,
+GmailIcon,
   KeyIcon,
   ClipboardCopyIcon,
   TrashIcon,

@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { BellIcon, XMarkIcon } from './icons';
+import Button from '@/components/ui/Button';
 import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 
-import Button from '@/components/ui/Button';
 interface AlertBellProps {
   alerts: SystemAlert[];
   onDismiss: (idOrSource: string) => void;

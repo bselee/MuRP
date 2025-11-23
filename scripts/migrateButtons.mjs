@@ -37,40 +37,51 @@ const walk = (dir) => {
 
 walk(ROOT);
 
-const files = tsxFiles
-  .filter(f => f !== 'components/ui/Button.tsx')
-  .filter(f => {
-    const content = readFileSync(f, 'utf8');
-    return content.includes('<button') || content.includes('</button>');
-  });
+const files = tsxFiles.filter(f => f !== 'components/ui/Button.tsx');
 
-console.log(`Discovered ${files.length} TSX files with <button> references.`);
+console.log(`Scanning ${files.length} TSX files for Button usage.`);
 
 const replaceButtons = (content) =>
   content.replaceAll('<button', '<Button').replaceAll('</button>', '</Button>');
 
 const ensureImport = (content) => {
-  if (content.includes(IMPORT_STATEMENT)) return content;
+  const cleaned = content.replace(/import Button from ['"].*?\/ui\/Button['"];?\s*/g, '');
 
-  let updated = content.replace(/import Button from ['"].*?\/ui\/Button['"];?\s*/g, '');
+  const lines = cleaned.split('\n');
 
-  const lines = updated.split('\n');
+  // Determine insertion index
   let insertIndex = 0;
-
   if (lines[0]?.startsWith("'use client'") || lines[0]?.startsWith('"use client"')) {
     insertIndex = 1;
   }
 
+  let foundTypeImport = false;
   for (let i = insertIndex; i < lines.length; i++) {
-    if (lines[i].startsWith('import ')) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith('import type')) {
+      foundTypeImport = true;
+      insertIndex = i;
+      break;
+    }
+    if (trimmed.startsWith('import ')) {
       insertIndex = i + 1;
       continue;
     }
-    if (lines[i].trim() === '') {
+    if (trimmed === '') {
       insertIndex = i + 1;
       continue;
     }
     break;
+  }
+
+  if (!foundTypeImport) {
+    for (let i = insertIndex; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
+      if (!trimmed.startsWith('import ')) {
+        insertIndex = i;
+        break;
+      }
+    }
   }
 
   lines.splice(insertIndex, 0, IMPORT_STATEMENT);
@@ -79,8 +90,24 @@ const ensureImport = (content) => {
 
 files.forEach((file) => {
   const original = readFileSync(file, 'utf8');
-  const withButtons = replaceButtons(original);
-  const withImport = ensureImport(withButtons);
+  let updated = original;
+  const needsButtonComponent =
+    updated.includes('<button') || updated.includes('</button') || updated.includes('<Button');
+
+  if (needsButtonComponent) {
+    updated = replaceButtons(updated);
+  }
+
+  const usesButton = updated.includes('<Button');
+  if (!usesButton) {
+    if (updated !== original) {
+      writeFileSync(file, updated, 'utf8');
+      console.log(`Updated ${file}`);
+    }
+    return;
+  }
+
+  const withImport = ensureImport(updated);
 
   if (withImport !== original) {
     writeFileSync(file, withImport, 'utf8');

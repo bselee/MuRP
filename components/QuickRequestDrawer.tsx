@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import type {
 import Button from '@/components/ui/Button';
+import type {
   InventoryItem,
   PurchaseOrder,
   RequisitionItem,

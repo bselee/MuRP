@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import Button from '@/components/ui/Button';
 import type { AiPrompt } from '../types';
 import Modal from './Modal';
 
-import Button from '@/components/ui/Button';
 interface AiPromptEditModalProps {
   prompt: AiPrompt | null;
   isOpen: boolean;

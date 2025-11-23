@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
+import Button from '@/components/ui/Button';
 import type { InventoryItem, BillOfMaterials, Vendor } from '../types';
 import { SearchIcon, ChevronUpIcon, ChevronDownIcon, ArrowsUpDownIcon } from '../components/icons';
 import ImportExportModal from '../components/ImportExportModal';
 import { exportToCsv, exportToJson, exportToXls } from '../services/exportService';
 import { generateInventoryPdf } from '../services/pdfService';
 
-import Button from '@/components/ui/Button';
 interface InventoryProps {
     inventory: InventoryItem[];
     vendors: Vendor[];

@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
+import Button from '@/components/ui/Button';
 import type { BillOfMaterials, Artwork } from '../types';
 import Modal from './Modal';
 import { fileToBase64, scanLabelImage } from '../services/labelScanningService';
 
-import Button from '@/components/ui/Button';
 interface UploadArtworkModalProps {
     isOpen: boolean;
     onClose: () => void;

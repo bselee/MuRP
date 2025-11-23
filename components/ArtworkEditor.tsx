@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Button from '@/components/ui/Button';
 import type { Artwork, ArtworkEditorTool } from '../types';
 
-import Button from '@/components/ui/Button';
 interface ArtworkEditorProps {
   isOpen: boolean;
   artwork: (Artwork & { productName?: string; productSku?: string }) | null;

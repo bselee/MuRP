@@ -1,6 +1,7 @@
 
 
 import React, { useMemo, useState, useEffect } from 'react';
+import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { BillOfMaterials, InventoryItem, HistoricalSale, Vendor, InternalRequisition, User, AiConfig, RequisitionItem, PurchaseOrder, RequisitionRequestOptions } from '../types';
 import CollapsibleSection from '../components/CollapsibleSection';
@@ -10,7 +11,6 @@ import RenewalAlertsWidget from '../components/RenewalAlertsWidget';
 import InventoryIntelligencePanel from '../components/InventoryIntelligencePanel';
 import { calculateAllBuildability } from '../services/buildabilityService';
 import { LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, BellIcon, CheckCircleIcon, ChartBarIcon, ClipboardDocumentListIcon } from '../components/icons';
-import Button from '@/components/ui/Button';
 interface DashboardProps {
   inventory: InventoryItem[];
   boms: BillOfMaterials[];

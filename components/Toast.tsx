@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import Button from '@/components/ui/Button';
 import type { ToastInfo } from '../App';
 import { CheckCircleIcon, XCircleIcon, InformationCircleIcon, CloseIcon } from './icons';
 
-import Button from '@/components/ui/Button';
 interface ToastProps extends ToastInfo {
   onClose: () => void;
 }

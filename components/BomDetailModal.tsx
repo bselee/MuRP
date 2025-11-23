@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Button from '@/components/ui/Button';
 import type { BillOfMaterials, Artwork, ProductRegistration, ProductDataSheet, Label } from '../types';
 import Modal from './Modal';
 import LabelScanResults from './LabelScanResults';
@@ -7,8 +8,7 @@ import RegistrationManagement from './RegistrationManagement';
 import AddRegistrationModal from './AddRegistrationModal';
 import ProductDataSheetGenerator from './ProductDataSheetGenerator';
 import {
-import Button from '@/components/ui/Button';
-  CheckCircleIcon,
+CheckCircleIcon,
   ExclamationCircleIcon,
   ClockIcon,
   XCircleIcon,

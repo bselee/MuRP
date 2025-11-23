@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor } from '../types';
 import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon } from '../components/icons';
@@ -18,7 +19,6 @@ import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
 import { useAuth } from '../lib/auth/AuthContext';
 import { isDevelopment } from '../lib/auth/guards';
 
-import Button from '@/components/ui/Button';
 interface SettingsProps {
     currentUser: User;
     aiConfig: AiConfig;

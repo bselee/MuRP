@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
+import Button from '@/components/ui/Button';
 import type { User } from '../types';
 import { UserPlusIcon, PencilSquareIcon, TrashIcon } from '../components/icons';
-import Button from '@/components/ui/Button';
 interface UserManagementPanelProps {
     currentUser: User;
     users: User[];

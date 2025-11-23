@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import Button from '@/components/ui/Button';
 import type { PurchaseOrder, Vendor, GmailConnection } from '../types';
 import Modal from './Modal';
 import { generatePoPdf, getPoPdfAttachment } from '../services/pdfService';
@@ -7,7 +8,6 @@ import { FileTextIcon, GmailIcon } from './icons';
 import { getGoogleGmailService } from '../services/googleGmailService';
 import { logPoEmailTracking } from '../hooks/useSupabaseMutations';
 
-import Button from '@/components/ui/Button';
 interface EmailComposerModalProps {
     isOpen: boolean;
     onClose: () => void;

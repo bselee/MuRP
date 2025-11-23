@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Button from '@/components/ui/Button';
 import type { PurchaseOrder, Vendor, GmailConnection } from '../types';
 import Modal from './Modal';
 import { fetchPoEmailTimeline, type PoEmailTimelineEntry } from '../services/poEmailService';
@@ -6,7 +7,6 @@ import { getGoogleGmailService } from '../services/googleGmailService';
 import { logPoEmailTracking } from '../hooks/useSupabaseMutations';
 import { ArrowDownTrayIcon, MailIcon, RefreshCcwIcon } from './icons';
 
-import Button from '@/components/ui/Button';
 interface PoCommunicationModalProps {
   isOpen: boolean;
   onClose: () => void;

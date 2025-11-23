@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import Button from '@/components/ui/Button';
 import type { BillOfMaterials, BOMComponent, Artwork, Packaging, InventoryItem } from '../types';
 import Modal from './Modal';
 import { TrashIcon, PlusCircleIcon, MagnifyingGlassIcon, XCircleIcon, ExclamationTriangleIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from './icons';
 
-import Button from '@/components/ui/Button';
 interface BomEditModalProps {
   bom: BillOfMaterials;
   isOpen: boolean;

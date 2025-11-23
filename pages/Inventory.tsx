@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import Button from '@/components/ui/Button';
 import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults } from '../types';
 import { 
-import Button from '@/components/ui/Button';
-  SearchIcon, 
+SearchIcon, 
   ChevronUpIcon, 
   ChevronDownIcon, 
   ArrowsUpDownIcon,

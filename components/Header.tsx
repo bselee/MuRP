@@ -1,10 +1,10 @@
 import React from 'react';
+import Button from '@/components/ui/Button';
 import type { User } from '../types';
 import { LogoutIcon, MushroomLogo } from './icons';
 import AlertBell from './AlertBell';
 import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 
-import Button from '@/components/ui/Button';
 interface HeaderProps {
     currentUser: User;
     onLogout: () => void;

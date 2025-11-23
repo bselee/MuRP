@@ -1,12 +1,12 @@
 
 
 import React from 'react';
+import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { User } from '../types';
 import { HomeIcon, PackageIcon, DocumentTextIcon, UsersIcon, LightBulbIcon, CogIcon, MushroomLogo, MagicSparklesIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, ClipboardListIcon, BotIcon, PhotoIcon, QrCodeIcon, ChartBarIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 
-import Button from '@/components/ui/Button';
 interface SidebarProps {
     currentPage: Page;
     setCurrentPage: (page: Page) => void;

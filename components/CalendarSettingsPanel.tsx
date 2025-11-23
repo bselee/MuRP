@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { CalendarIcon, RefreshIcon, TrashIcon, ChevronDownIcon } from './icons';
 import { getGoogleCalendarService, type GoogleCalendar } from '../services/googleCalendarService';
 import { supabase } from '../lib/supabase/client';
+import Button from '@/components/ui/Button';
 import type { CalendarSourceConfig } from '../types/calendar';
 import { normalizeCalendarSources } from '../types/calendar';
 
-import Button from '@/components/ui/Button';
 interface CalendarSettingsPanelProps {
   userId: string;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;

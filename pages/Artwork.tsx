@@ -1,6 +1,7 @@
 
 
 import React, { useState, useMemo, useEffect } from 'react';
+import Button from '@/components/ui/Button';
 import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder } from '../types';
 import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon, QrCodeIcon, CheckCircleIcon } from '../components/icons';
 import RegulatoryScanModal from '../components/RegulatoryScanModal';
@@ -8,7 +9,6 @@ import BatchArtworkVerificationModal from '../components/BatchArtworkVerificatio
 import ManualLabelScanner from '../components/ManualLabelScanner';
 import ArtworkEditor from '../components/ArtworkEditor';
 
-import Button from '@/components/ui/Button';
 type ArtworkWithProduct = Artwork & {
     productName: string;
     productSku: string;

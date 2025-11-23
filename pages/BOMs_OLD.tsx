@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import Button from '@/components/ui/Button';
 import type { BillOfMaterials, User, WatchlistItem, Artwork } from '../types';
 import type { ComplianceStatus } from '../types/regulatory';
 import { PencilIcon, ChevronDownIcon, EyeIcon } from '../components/icons';
@@ -8,7 +9,6 @@ import BomDetailModal from '../components/BomDetailModal';
 import ComplianceDashboard from '../components/ComplianceDashboard';
 import ComplianceDetailModal from '../components/ComplianceDetailModal';
 
-import Button from '@/components/ui/Button';
 interface BOMsProps {
   boms: BillOfMaterials[];
   currentUser: User;

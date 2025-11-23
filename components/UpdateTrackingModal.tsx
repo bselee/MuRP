@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import Modal from './Modal';
+import Button from '@/components/ui/Button';
 import type { PurchaseOrder, POTrackingStatus } from '../types';
 
-import Button from '@/components/ui/Button';
 interface UpdateTrackingModalProps {
   isOpen: boolean;
   onClose: () => void;

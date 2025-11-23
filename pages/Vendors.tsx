@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import Button from '@/components/ui/Button';
 import type { Vendor } from '../types';
 import VendorAutomationModal from '../components/VendorAutomationModal';
 import VendorManagementModal, { type VendorConfig } from '../components/VendorManagementModal';
 import { SearchIcon, AdjustmentsHorizontalIcon } from '../components/icons';
 
-import Button from '@/components/ui/Button';
 interface VendorsProps {
     vendors: Vendor[];
     addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;

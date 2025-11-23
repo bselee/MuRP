@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase/client';
+import Button from '@/components/ui/Button';
 import type { FollowUpRule } from '../types';
 import { BotIcon, SaveIcon, TrashIcon, PlusCircleIcon } from './icons';
 
-import Button from '@/components/ui/Button';
 interface FollowUpSettingsPanelProps {
   addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
