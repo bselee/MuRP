@@ -6,6 +6,50 @@
 
 ---
 
+### Session: November 23, 2025 14:30 - 16:15
+
+**Changes Made:**
+- Modified: `.github/copilot-instructions.md` - Enhanced universal codespace workflows (850+ lines total)
+  - Added Vercel deployment loop (deploy → check → fix → redeploy until clean)
+  - Added Supabase error correction workflow (migration checks, edge function deployment)
+  - Added advanced project housekeeping (7-phase deep clean automation)
+  - Added codespace startup context restoration (reads last session, git status)
+  - Added 60-minute idle detection for automatic session documentation
+  - Comprehensive error pattern libraries for Vercel and Supabase
+
+**Key Decisions:**
+- Decision: Add automatic session documentation on codespace startup and 60-minute idle
+- Rationale: Ensures context preservation across codespace restarts and hibernation, never lose track of work in progress
+- Decision: Implement deployment loops (Vercel/Supabase) with error correction
+- Rationale: Automate the "deploy → check logs → fix errors → redeploy" cycle to save time on debugging
+- Decision: 7-phase housekeeping automation for deep project cleanup
+- Rationale: Systematic approach to code quality, dependency audits, and file organization
+
+**Tests:**
+- Verified: All unit tests passing (9/9 schema transformers, 3/3 inventory UI)
+- Verified: TypeScript compilation clean (Vite build successful)
+- Note: TFR protocol now enforced before all GitHub pushes
+
+**Problems & Solutions:**
+- Problem: Context loss when codespace restarts or goes idle
+- Solution: Automatic session doc reading on startup + 60-min idle detection with WIP preservation
+- Problem: Manual deployment debugging is time-consuming
+- Solution: Automated Vercel/Supabase error analysis with pattern matching and fix suggestions
+- Problem: Project files accumulate technical debt (old docs, temp files, unused code)
+- Solution: 7-phase housekeeping workflow with automated cleanup and reporting
+
+**Next Steps:**
+- [ ] Test startup workflow: restart codespace and verify context restoration
+- [ ] Validate 60-minute idle detection in practice
+- [ ] Run deep housekeeping to organize existing project files
+- [ ] Document common Vercel deployment errors as they occur
+
+**Open Questions:**
+- Should idle detection prompt user before documenting, or silently append?
+- Archive strategy: Keep last 3 months of session docs, or milestone-based?
+
+---
+
 ### Session: November 23, 2025 14:30 - 15:45
 
 **Changes Made:**

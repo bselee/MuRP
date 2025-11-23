@@ -9,14 +9,37 @@
 ### 1. Automatic Session Documentation
 
 **Trigger Conditions:**
-- End of development session (user indicates wrapping up)
+- **Codespace startup** - First interaction after codespace/Copilot starts (read last session, prepare context)
+- **60-minute idle** - No user input for 60 minutes, assume session ending (auto-document before hibernation)
+- End of development session (user indicates wrapping up, "done for now", "closing")
 - Significant milestone reached (feature complete, major refactor, deployment)
 - User requests "update session docs" or "document changes"
 - Daily rollover (if session spans multiple days)
 
 **Documentation Process:**
 ```bash
-# Automatic workflow when triggered:
+# STARTUP WORKFLOW (First Copilot interaction):
+1. Read: docs/SESSION_SUMMARY_*_to_CURRENT.md (last session context)
+2. Check: git log -1 (last commit to understand recent work)
+3. Check: git status (uncommitted changes from previous session)
+4. Summarize for user:
+   - "Resuming from: [last session date/time]"
+   - "Last worked on: [feature/task from session doc]"
+   - "Uncommitted changes: [files listed]"
+   - "Next steps from last session: [checklist items]"
+5. Ask: "Ready to continue, or new direction?"
+
+# IDLE DETECTION (60 minutes no input):
+1. Check: git status --short (any uncommitted work?)
+2. If changes exist:
+   - Append to SESSION_SUMMARY with timestamp
+   - Document: Work in progress, files modified
+   - Note: "Session paused - uncommitted changes preserved"
+   - DO NOT commit (preserve WIP state)
+3. If no changes:
+   - Append brief note: "Session idle - no changes since [last-commit-time]"
+
+# MANUAL/MILESTONE DOCUMENTATION:
 1. Identify or create: docs/SESSION_SUMMARY_YYYY-MM-DD_to_CURRENT.md
 2. Append new section with timestamp
 3. Document:
@@ -251,72 +274,281 @@ Root level:                     # Only essential configs
 
 ---
 
-### 5. CLI Diagnostics & Auto-Fix
+### 5. Vercel Deployment Loop (Deploy → Check → Fix → Redeploy)
 
-**Vercel CLI Issues:**
+**Command Trigger:** User says "deploy to vercel", "fix vercel errors", or "redeploy until clean"
+
+**Automated Deployment Workflow:**
 ```bash
-# Common problems and automatic fixes:
+# Loop until deployment succeeds error-free:
 
-Problem: "vercel: command not found"
-Fix: npm install -g vercel
-
-Problem: "Error: No token found"
-Fix: vercel login
-
-Problem: "Project not linked"
-Fix: vercel link
-
-Problem: "Build failed" in deployment
-Diagnose:
-  1. vercel logs <deployment-url>
-  2. Check build command in vercel.json or package.json
-  3. Verify environment variables: vercel env ls
-  4. Test build locally: npm run build
-
-Automatic diagnostic workflow:
-  → Run: vercel --version
-  → Run: vercel whoami
-  → Run: vercel env ls (show without values)
-  → Check: vercel.json exists and valid
-  → Suggest: vercel --prod (for production deploy)
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 1: PRE-DEPLOYMENT CHECKS                                │
+│ - Verify vercel CLI installed: vercel --version              │
+│ - Check authentication: vercel whoami                        │
+│ - Verify project linked: vercel ls (shows current project)   │
+│ - Run local build test: npm run build                        │
+│ - Check environment variables: vercel env ls                 │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 2: DEPLOY TO PREVIEW/PRODUCTION                         │
+│ - Preview: vercel (auto preview URL)                         │
+│ - Production: vercel --prod                                  │
+│ - Capture deployment URL from output                         │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 3: CHECK DEPLOYMENT STATUS                              │
+│ - Wait for build completion (vercel shows progress)          │
+│ - Fetch logs: vercel logs <deployment-url>                   │
+│ - Check for errors in build output                           │
+│ - Verify deployment state: Success | Error | Ready           │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 4: ERROR ANALYSIS (if deployment failed)                │
+│ - Parse error messages from logs                             │
+│ - Common error patterns:                                     │
+│   • TypeScript errors → Fix types, recompile                 │
+│   • Missing env vars → vercel env add KEY                    │
+│   • Build command failed → Check package.json scripts        │
+│   • Import errors → Verify module resolution                 │
+│   • Out of memory → Adjust build config                      │
+│ - Identify root cause, not symptoms                          │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 5: FIX ERRORS                                           │
+│ - Apply fixes to source code                                 │
+│ - Update vercel.json if configuration issue                  │
+│ - Add missing environment variables                          │
+│ - Test fix locally: npm run build                            │
+│ - Commit fix: git commit -m "fix(deploy): resolve X error"   │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 6: REDEPLOY                                             │
+│ - Push to GitHub: git push origin main                       │
+│ - Redeploy: vercel --prod (or wait for auto-deploy)          │
+│ - Return to STEP 3 (check status again)                      │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+                  ✅ LOOP UNTIL ERROR-FREE
 ```
 
-**Supabase CLI Issues:**
-```bash
-# Common problems and automatic fixes:
+**Vercel Error Patterns & Fixes:**
+```typescript
+// TypeScript compilation errors
+Error: "TS2307: Cannot find module 'X'"
+Fix: 
+  1. Check import path is correct
+  2. Verify module is in package.json dependencies
+  3. Run: npm install
+  4. Check tsconfig.json paths configuration
 
-Problem: "supabase: command not found"
-Fix: npm install -g supabase
-
-Problem: "Not linked to any project"
-Fix: supabase link --project-ref <ref>
-
-Problem: "Database connection failed"
-Diagnose:
-  1. supabase status (check local instance)
-  2. Check .env for SUPABASE_URL and SUPABASE_ANON_KEY
-  3. Verify network/firewall not blocking
-
-Problem: "Migration failed"
+// Environment variable errors  
+Error: "process.env.VITE_X is undefined"
 Fix:
-  1. supabase db reset (local dev only!)
-  2. Review migration SQL syntax
-  3. Check migration order (numbered files)
-  4. supabase migration repair (if needed)
+  1. vercel env add VITE_X
+  2. Enter value when prompted
+  3. Select environments (production, preview, development)
+  4. Redeploy to pick up new env var
 
-Problem: "Edge Function deployment failed"
-Diagnose:
-  1. supabase functions serve <name> (test locally)
-  2. Check Deno imports (use full URLs)
-  3. Verify environment variables: supabase secrets list
-  4. Review function logs: supabase functions logs <name>
+// Build command errors
+Error: "Command 'vite build' exited with 1"
+Fix:
+  1. Run locally: npm run build
+  2. Fix any errors shown
+  3. Verify vercel.json has correct buildCommand
+  4. Check package.json "build" script
 
-Automatic diagnostic workflow:
-  → Run: supabase --version
-  → Run: supabase projects list
-  → Run: supabase status
-  → Check: supabase/config.toml exists
-  → Suggest: supabase db push (to sync migrations)
+// Memory/timeout errors
+Error: "Build exceeded maximum duration"
+Fix:
+  1. Add to vercel.json: { "builds": [{ "maxDuration": 60 }] }
+  2. Optimize bundle size (code splitting)
+  3. Check for infinite loops in build scripts
+
+// Import resolution errors
+Error: "Module not found: Can't resolve '@/components/X'"
+Fix:
+  1. Check tsconfig.json paths match vite.config.ts alias
+  2. Verify case sensitivity (Linux is case-sensitive)
+  3. Ensure file exists at import path
+```
+
+**Quick Diagnostic Commands:**
+```bash
+# Check deployment status
+vercel ls
+
+# View recent deployments
+vercel list
+
+# Inspect specific deployment
+vercel inspect <deployment-url>
+
+# Stream logs in real-time
+vercel logs --follow
+
+# Check environment variables (safe, no values shown)
+vercel env ls
+
+# Pull env vars to local .env (for testing)
+vercel env pull .env.local
+```
+
+### 6. Supabase Error Correction & Sync
+
+**Command Trigger:** User says "fix supabase errors", "sync supabase", or "deploy edge functions"
+
+**Automated Supabase Workflow:**
+```bash
+# Check → Diagnose → Fix → Verify
+
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 1: HEALTH CHECK                                         │
+│ - Check CLI installed: supabase --version                    │
+│ - Verify authentication: supabase projects list              │
+│ - Check project link: supabase status                        │
+│ - Verify config: cat supabase/config.toml                    │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 2: DATABASE MIGRATION CHECK                             │
+│ - Check pending migrations: supabase migration list          │
+│ - Validate SQL syntax: supabase db lint                      │
+│ - Check migration order (001_, 002_, etc.)                   │
+│ - Detect conflicts: supabase db diff                         │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 3: APPLY MIGRATIONS (if needed)                         │
+│ - Local: supabase db reset (WARNING: destructive!)           │
+│ - Remote: supabase db push                                   │
+│ - Verify: supabase db diff (should show no changes)          │
+│ - Check RLS policies: Query pg_policies table                │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 4: EDGE FUNCTION CHECK                                  │
+│ - List functions: ls supabase/functions/                     │
+│ - Test locally: supabase functions serve <name>              │
+│ - Check Deno imports (must use full HTTPS URLs)              │
+│ - Verify environment: supabase secrets list                  │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 5: DEPLOY EDGE FUNCTIONS                                │
+│ - Deploy: supabase functions deploy <name>                   │
+│ - Check logs: supabase functions logs <name>                 │
+│ - Test endpoint: curl <function-url>                         │
+│ - Verify no errors in logs                                   │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ STEP 6: ERROR ANALYSIS & FIX                                 │
+│ - Parse error messages                                       │
+│ - Fix and redeploy until error-free                          │
+│ - Update documentation if schema changed                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Supabase Error Patterns & Fixes:**
+```sql
+-- Migration syntax errors
+Error: "syntax error at or near 'X'"
+Fix:
+  1. Review SQL in migration file
+  2. Test query in Supabase SQL Editor
+  3. Check for missing semicolons, typos
+  4. Validate against PostgreSQL 15 syntax
+
+-- Constraint violation errors
+Error: "violates foreign key constraint"
+Fix:
+  1. Check referenced table exists
+  2. Verify ON DELETE CASCADE if needed
+  3. Ensure parent records exist before insert
+  4. Review migration order (dependencies first)
+
+-- Permission/RLS errors
+Error: "new row violates row-level security policy"
+Fix:
+  1. Check RLS policies: supabase db diff
+  2. Verify user authentication in request
+  3. Review policy conditions (USING/WITH CHECK)
+  4. Test with service_role key (bypasses RLS)
+
+-- Type mismatch errors
+Error: "column 'X' is of type Y but expression is of type Z"
+Fix:
+  1. Add explicit cast: ::type
+  2. Use ALTER TABLE to change column type
+  3. Update INSERT values to match schema
+
+-- Edge Function errors
+Error: "error: Uncaught (in promise) TypeError"
+Fix:
+  1. Check Deno imports use full URLs: https://esm.sh/...
+  2. Verify env vars: supabase secrets list
+  3. Add error handling: try/catch blocks
+  4. Test locally: supabase functions serve
+  5. Check function logs: supabase functions logs <name> --tail
+
+-- Connection errors
+Error: "Could not connect to local database"
+Fix:
+  1. Start local Supabase: supabase start
+  2. Check Docker is running: docker ps
+  3. Verify ports not in use: lsof -i :54322
+  4. Reset if needed: supabase stop && supabase start
+```
+
+**Supabase Diagnostic Commands:**
+```bash
+# Project status overview
+supabase status
+
+# Database diff (local vs remote)
+supabase db diff --schema public
+
+# Generate TypeScript types from database
+supabase gen types typescript --local > types/supabase.ts
+
+# List all migrations
+supabase migration list
+
+# Squash migrations (combine multiple into one)
+supabase migration squash
+
+# Check function logs (tail recent entries)
+supabase functions logs <name> --tail
+
+# Test edge function locally
+supabase functions serve <name> --env-file .env.local
+
+# Inspect database tables
+supabase db dump --data-only --schema public
+```
+
+**Migration Safety Checklist:**
+```bash
+# Before applying migrations:
+✅ Backup production: supabase db dump > backup.sql
+✅ Test locally first: supabase db reset
+✅ Review diff: supabase db diff
+✅ Check RLS policies won't lock out users
+✅ Verify foreign key cascade behavior
+✅ Test rollback plan if migration fails
+
+# After applying migrations:
+✅ Verify tables created: \dt in psql
+✅ Check data integrity: SELECT count(*) FROM...
+✅ Test RLS with non-admin user
+✅ Update TypeScript types: supabase gen types
+✅ Document schema changes in /docs/
 ```
 
 **General CLI Fix Protocol:**
@@ -338,7 +570,145 @@ Never run destructive commands without user confirmation
 
 ---
 
-### 6. Error Recovery & Rollback
+### 7. Advanced Project Housekeeping
+
+**Command Trigger:** User says "deep clean", "organize workspace", or "audit project files"
+
+**Comprehensive Housekeeping Workflow:**
+```bash
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 1: DOCUMENTATION AUDIT                                 │
+│ - Scan /docs/ for files older than 30 days                   │
+│ - Archive to /docs/archive/YYYY-MM/                          │
+│ - Keep *_to_CURRENT.md files (active sessions)               │
+│ - Consolidate duplicate READMEs                              │
+│ - Generate /docs/README.md index if missing                  │
+│ - Check for TODO.md, NOTES.md → archive or delete           │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 2: CODE CLEANUP                                        │
+│ - Find commented code blocks: grep -r "^\s*//.*" --include   │
+│ - Remove console.log(): grep -r "console\.log" src/          │
+│ - Find unused imports: Run linter auto-fix                   │
+│ - Delete empty files: find . -type f -empty                  │
+│ - Remove .only() from tests: grep -r "\.only(" e2e/ tests/   │
+│ - Check for debugger statements: grep -r "debugger"          │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 3: DEPENDENCY AUDIT                                    │
+│ - Check outdated packages: npm outdated                      │
+│ - Find unused dependencies: npx depcheck                     │
+│ - Security audit: npm audit                                  │
+│ - Fix vulnerabilities: npm audit fix                         │
+│ - Check bundle size: npm run build (note warnings)           │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 4: FILE ORGANIZATION                                   │
+│ - Move misplaced files to correct directories               │
+│ - Tests: *.test.ts → /tests/ or colocated                   │
+│ - E2E: *.spec.ts → /e2e/                                     │
+│ - Types: *Types.ts → /types/                                 │
+│ - Services: *Service.ts → /services/                         │
+│ - Check for duplicate files (same content, different name)   │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 5: BUILD ARTIFACTS CLEANUP                             │
+│ - Remove: /dist/, /build/, /.next/, /.vite/                 │
+│ - Check .gitignore includes these                            │
+│ - Clean node_modules cache: npm cache clean --force          │
+│ - Remove lock file conflicts: delete and regenerate          │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 6: ENVIRONMENT & CONFIG AUDIT                          │
+│ - Verify .env.example matches required vars                  │
+│ - Check for hardcoded secrets: grep -r "sk_" "pk_"           │
+│ - Validate JSON configs: prettier --check *.json             │
+│ - Review tsconfig.json for unused paths                      │
+│ - Check vercel.json and supabase/config.toml                 │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│ PHASE 7: GIT REPOSITORY CLEANUP                              │
+│ - Check for large files: git rev-list --objects --all |      │
+│   git cat-file --batch-check | sort -k3 -n | tail -10       │
+│ - Find untracked files: git status --short                   │
+│ - Remove .DS_Store: find . -name .DS_Store -delete           │
+│ - Clean git history: git gc --aggressive --prune=now         │
+└─────────────────────────────────────────────────────────────┘
+                         ↓
+                  ✅ WORKSPACE ORGANIZED
+```
+
+**Automated File Organization Rules:**
+```bash
+# Root level (only essentials)
+✅ package.json, tsconfig.json, vite.config.ts
+✅ README.md, .gitignore, .env.example
+✅ vercel.json, playwright.config.ts
+❌ test-*.js, debug-*.ts, scratch-*.tsx (move or delete)
+❌ Multiple README files (consolidate)
+❌ Orphaned config files (audit and remove)
+
+# Documentation structure
+/docs/
+  README.md                    # Index of all documentation
+  ARCHITECTURE.md              # System architecture
+  FEATURE_NAME.md              # Feature-specific docs
+  /archive/
+    /2025-11/                  # Archived by month
+      old-session-summary.md
+  SESSION_SUMMARY_*_to_CURRENT.md  # Active session tracking
+
+# Test structure
+/tests/
+  /unit/                       # Unit tests
+  /integration/                # Integration tests
+  /fixtures/                   # Test data
+  *.test.ts                    # Test files
+
+/e2e/
+  *.spec.ts                    # Playwright E2E tests
+  /screenshots/                # Test artifacts
+
+# Source structure
+/components/                   # React components
+/pages/                        # Page components
+/services/                     # Business logic
+/lib/                          # Utilities
+/types/                        # TypeScript types
+/hooks/                        # Custom React hooks
+```
+
+**Housekeeping Report Template:**
+```markdown
+## Housekeeping Report - YYYY-MM-DD
+
+**Files Archived:** X docs → /docs/archive/YYYY-MM/
+**Files Deleted:** Y temp files, Z empty files
+**Code Cleanup:** Removed N console.logs, M commented blocks
+**Dependencies:** Updated X packages, removed Y unused
+**Security:** Fixed Z vulnerabilities
+**Disk Space Freed:** ~XMB
+
+**Action Items:**
+- [ ] Review archived docs for permanent deletion
+- [ ] Update .env.example with new variables
+- [ ] Consider updating major dependencies (breaking changes)
+
+**Notes:**
+- Found duplicate files: [list]
+- Large files detected: [list with sizes]
+- Potential unused code: [files to review]
+```
+
+---
+
+### 8. Error Recovery & Rollback
 
 **If push fails or tests break after refactoring:**
 ```bash
