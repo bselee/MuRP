@@ -182,6 +182,46 @@
 
 ---
 
+### Session: November 23, 2025 17:45 - 18:00
+
+**Changes Made:**
+- Deployed: Migration `041_shopify_integration.sql` to remote Supabase database
+- Deployed: Edge Functions `shopify-webhook` and `shopify-nightly-sync` to production
+- Updated: `.github/copilot-instructions.md` with sequential migration numbering convention
+- Renamed: Migration from `20251123000001_shopify_integration.sql` to `041_shopify_integration.sql`
+
+**Key Decisions:**
+- Decision: Follow sequential numbering for migrations (XXX_descriptive_name.sql)
+- Rationale: Consistent with existing project convention (001-040)
+- Decision: Apply migration via `supabase migration repair --status applied 041`
+- Rationale: Migration was already applied to remote database, needed history sync
+- Decision: Shopify integration off by default
+- Rationale: Requires manual activation through setup wizard, no auto-sync without explicit enable
+
+**Deployment Status:**
+- ✅ Database schema: 5 tables created (shopify_credentials, shopify_orders, shopify_inventory_verification, shopify_sync_log, shopify_webhook_log)
+- ✅ RLS policies: Admin/ops/purchasing only access enforced
+- ✅ Materialized view: shopify_sales_summary for analytics
+- ✅ Edge Functions: shopify-webhook (real-time), shopify-nightly-sync (reconciliation)
+- ✅ Migration history: 041 marked as applied in remote database
+
+**Production URLs:**
+- Webhook: https://mpuevsmtowyexhsqugkm.supabase.co/functions/v1/shopify-webhook
+- Nightly Sync: https://mpuevsmtowyexhsqugkm.supabase.co/functions/v1/shopify-nightly-sync
+
+**Next Steps:**
+- [ ] Set Supabase secrets: SHOPIFY_API_SECRET, SHOPIFY_SHOP_DOMAIN, SHOPIFY_ACCESS_TOKEN
+- [ ] Build UI: ShopifySetupWizard, ShopifyIntegrationPanel, InventoryDiscrepancyReview
+- [ ] Create services: shopifyAuthService, shopifyInventoryVerificationService
+- [ ] Register webhooks in Shopify admin (when user activates integration)
+- [ ] Schedule nightly sync via Supabase cron (2 AM daily)
+
+**Open Questions:**
+- Add rate limiting monitoring dashboard for Shopify API calls?
+- Implement automatic webhook re-registration on failure?
+
+---
+
 ### Session: November 23, 2025 14:30 - 16:15
 
 **Changes Made:**
