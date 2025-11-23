@@ -36,6 +36,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 
 ### Getting Started
 - **[Supabase Deployment Guide](SUPABASE_DEPLOYMENT_GUIDE.md)** - 🚀 Deploy database migrations
+- **[Migration Conventions](docs/MIGRATION_CONVENTIONS.md)** - 📏 Numbering scheme & workflow for new Supabase migrations
 - **[API Ingestion Setup Guide](API_INGESTION_SETUP.md)** - Complete setup for secure API integration
 - **[BOM Setup Guide](BOM_SETUP_GUIDE.md)** - Bill of Materials configuration and usage
 - **[Usage Examples](USAGE_EXAMPLES.md)** - Code examples for all services

@@ -4,6 +4,26 @@
 
 ---
 
+## 🔒 Feature Flag & Environment Toggle
+
+The Shopify bridge ships **disabled by default**. Only Ops/Admin should enable it during a controlled rollout or local development.
+
+| Variable | Default | Who can flip it | Purpose |
+|----------|---------|-----------------|---------|
+| `SHOPIFY_INTEGRATION_ENABLED` | `false` | Admin/Ops only | Global kill switch (backend + UI) |
+| `SHOPIFY_ALLOWED_ROLES` | `admin,ops,purchasing` | Admin | Enforces the RBAC matrix |
+| `SHOPIFY_SHOP_DOMAIN` | _unset_ | Admin | Shopify shop (e.g., `my-co.myshopify.com`) |
+| `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` | _unset_ | Admin | App credentials for OAuth/webhooks |
+
+**Local dev**: add the variables above to `.env.local` (or `supabase/.env`) only when you’re actively working on the integration. With `SHOPIFY_INTEGRATION_ENABLED=false`, the Setup Wizard, cron jobs, and Edge functions are no-ops.
+
+**Production**: keep the flag `false` until Ops gives the go-ahead, then:
+1. Set the environment variables via `supabase secrets set …`.
+2. Deploy the Shopify Edge functions (`shopify-webhook`, `shopify-nightly-sync`).
+3. Grant Ops/Admin the Settings > Integrations panel entry (Staff/Manager never see it).
+
+---
+
 ## 🎯 Integration Scope
 
 ### What Shopify Provides
@@ -70,6 +90,8 @@ CREATE POLICY "shopify_staff_no_access" ON shopify_orders
 ## 🚀 Autonomous Setup Flow
 
 ### 5-Minute Setup Wizard
+
+> **Prerequisite:** `SHOPIFY_INTEGRATION_ENABLED=true` **and** you are signed in as Admin/Ops/Purchasing. If either condition fails, the UI hides the Shopify card entirely.
 
 **User Experience**: Click "Add Shopify Integration" → Follow 3-step wizard → Start syncing
 
@@ -1191,6 +1213,7 @@ SELECT * FROM pg_policies WHERE tablename = 'shopify_orders';
 Before going live with Shopify integration:
 
 **Environment Configuration**
+- [ ] `SHOPIFY_INTEGRATION_ENABLED=true` only after Ops/Admin sign-off (keep `false` elsewhere)
 - [ ] `SHOPIFY_SHOP_DOMAIN` set in environment variables
 - [ ] `SHOPIFY_API_KEY` and `SHOPIFY_API_SECRET` configured
 - [ ] `SHOPIFY_ACCESS_TOKEN` stored securely (encrypted)

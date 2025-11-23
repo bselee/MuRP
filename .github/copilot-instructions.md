@@ -485,7 +485,10 @@ System ready for production traffic.
 │ STEP 2: DATABASE MIGRATION CHECK                             │
 │ - Check pending migrations: supabase migration list          │
 │ - Validate SQL syntax: supabase db lint                      │
-│ - Check migration order (001_, 002_, etc.)                   │
+│ - Check migration order: Follow sequential numbering         │
+│   Format: XXX_descriptive_name.sql (e.g., 041_feature.sql)  │
+│   Find next number: ls -1 supabase/migrations/ | tail -1     │
+│   Increment from last migration number                       │
 │ - Detect conflicts: supabase db diff                         │
 └─────────────────────────────────────────────────────────────┘
                          ↓
