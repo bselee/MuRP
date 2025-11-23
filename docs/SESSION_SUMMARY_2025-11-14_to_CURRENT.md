@@ -50,6 +50,70 @@
 
 ---
 
+### Session: November 23, 2025 17:00 - 17:30
+
+**Changes Made:**
+- Created: `docs/SHOPIFY_INTEGRATION.md` - Comprehensive Shopify sales injection integration guide (750+ lines)
+  - OAuth2 authentication setup with autonomous wizard
+  - Webhook configuration for real-time order sync
+  - Sales order transformation pipeline (Shopify → Supabase)
+  - Inventory verification service (Shopify ↔ Internal comparison)
+  - Permission system (admin/ops/purchasing only, RLS policies)
+  - Edge function implementations (webhook handlers, nightly sync)
+  - Testing strategy (unit + E2E tests)
+  - Cost analysis & ROI calculation ($8-16/month cost, 2,506% ROI)
+  - 4-week phased rollout plan
+
+**Key Decisions:**
+- Decision: Shopify is source of truth for sales data only
+- Rationale: User specified "If shopify is chosen it would be treated as source of truth for sales and mostly but verify for inventory"
+- Decision: Inventory verification (not automatic sync) from Shopify
+- Rationale: Out of scope to monitor both Shopify and Finale simultaneously
+- Decision: Admin/ops/purchasing permissions only (never staff, manager requires approval)
+- Rationale: User specified "This is admin ops purchasing only not manager without approval and never staff"
+- Decision: 5-minute autonomous setup wizard
+- Rationale: User requested "super easy for user", "autonomus flow", "user walkthough simple for set up and deployment"
+
+**Integration Architecture:**
+- OAuth2 flow with offline access tokens (background sync)
+- Webhooks: `orders/create`, `orders/updated`, `inventory_levels/update`
+- Edge Functions: `shopify-webhook` (real-time), `shopify-nightly-sync` (reconciliation)
+- Services: `shopifyAuthService`, `shopifyWebhookService`, `shopifyInitialSyncService`, `shopifyInventoryVerificationService`
+- Data Flow: Shopify → Webhook → Transform → Supabase → UI
+- Scheduled: Nightly reconciliation to catch missed webhooks
+
+**Database Schema:**
+- `shopify_credentials` - Encrypted OAuth tokens
+- `shopify_orders` - Sales orders (source of truth)
+- `shopify_inventory_verification` - Discrepancy tracking with approval workflow
+- `shopify_sync_log` - Sync health monitoring
+- RLS Policies: Restrict all tables to admin/ops/purchasing roles
+
+**Testing:**
+- Unit tests: Schema transformations, data validation
+- E2E tests: OAuth flow, webhook delivery, permission checks
+- Manual test checklist: Order creation, inventory discrepancy detection
+
+**Cost Analysis:**
+- Monthly costs: $8-16 (Supabase database + Edge Functions)
+- Time savings: 16.7 hours/month (automated order entry)
+- ROI: 2,506% monthly return on investment
+
+**Next Steps:**
+- [ ] Create Shopify service implementations (`services/shopify*.ts`)
+- [ ] Implement Edge Functions (`supabase/functions/shopify-*`)
+- [ ] Add Shopify schema transformers (`lib/schema/shopifySchemas.ts`)
+- [ ] Build UI components (setup wizard, dashboard, discrepancy review)
+- [ ] Add E2E tests for Shopify integration
+- [ ] Deploy to staging for QA review
+
+**Open Questions:**
+- Should we support multiple Shopify stores (multi-tenant)?
+- Add Shopify product catalog sync (currently out of scope)?
+- Implement automatic reorder suggestions from Shopify sales velocity?
+
+---
+
 ### Session: November 23, 2025 14:30 - 16:15
 
 **Changes Made:**
