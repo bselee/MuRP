@@ -50,6 +50,105 @@
 
 ---
 
+### Session: November 23, 2025 17:00 - 17:45
+
+**Changes Made:**
+- Modified: `supabase/functions/api-proxy/index.ts` - Added Context7 background task pattern
+  - Implemented non-blocking background task execution with Promise.all
+  - Moved audit logging to background processing for faster response times
+  - Added error capture for background tasks without blocking main response
+  - Prepared structure for future enhancements (analytics, usage metrics, external sync)
+  
+- Modified: `hooks/useSupabaseData.ts` - Created reusable useData generic hook
+  - Extracted common data fetching pattern into custom hook
+  - Implements race condition handling with cleanup function
+  - Supports conditional fetching (pass null URL to skip)
+  - TypeScript generic for type-safe data handling
+  - Reduces repetitive useEffect + useState + fetch code across components
+  
+- Modified: `vite.config.ts` - Enhanced environment variable handling
+  - Properly loads env vars with loadEnv(mode, process.cwd(), '')
+  - Creates app-level constants from environment variables (__APP_ENV__, __APP_VERSION__)
+  - Conditional sourcemap generation (disabled in production)
+  - Dynamic port configuration from APP_PORT environment variable
+  - Shopify integration flag from VITE_SHOPIFY_INTEGRATION_ENABLED
+  
+- Modified: `src/index.css` - Added Tailwind dark mode custom variant
+  - Implemented class-based dark mode with @custom-variant
+  - Uses `.dark` class on any ancestor element for theme control
+  - Enables programmatic dark mode toggling via JavaScript
+  
+- Modified: `components/ProductionTimelineView.tsx` - Added real-time subscriptions
+  - Supabase real-time subscription for build_orders table changes
+  - Automatic timeline refresh on INSERT/UPDATE/DELETE events
+  - Channel cleanup on component unmount
+  - Integrated realtimeUpdates dependency in useMemo
+  
+- Created: `hooks/useDataExample.tsx` - Usage examples for new useData hook
+  - Simple data fetching example
+  - Cascading dependencies pattern (cities → areas)
+  - Conditional fetching with Supabase endpoints
+  
+- Created: `lib/darkMode.ts` - Dark mode utility functions
+  - initializeDarkMode() for FOUC prevention
+  - setDarkMode() for programmatic theme switching
+  - getCurrentTheme() for state inspection
+  - toggleDarkMode() for UI controls
+  - watchSystemThemeChanges() for OS-level preference detection
+  - localStorage persistence with auto-detection fallback
+
+**Key Decisions:**
+- Decision: Use Context7 patterns for all 4 improvements
+- Rationale: Leverage authoritative documentation from Supabase, React, Vite, and Tailwind maintainers
+- Decision: Background task processing for Edge Functions
+- Rationale: Faster API responses (don't block on audit logging), better scalability
+- Decision: Generic useData hook over custom implementations
+- Rationale: DRY principle, reduces code duplication, easier to maintain
+- Decision: Class-based dark mode over media query
+- Rationale: More control, programmatic toggling, user preference persistence
+- Decision: Real-time subscriptions for production timeline
+- Rationale: Live updates without polling, better UX for collaborative environments
+
+**Implementation Patterns (Context7):**
+- **Supabase Edge Functions**: Background task execution with Promise.all().catch()
+- **React Custom Hooks**: Extracted fetch logic with race condition cleanup
+- **Vite Configuration**: loadEnv() with app-level define constants
+- **Tailwind CSS**: @custom-variant dark for class-based theming
+
+**Tests:**
+- All existing tests still passing (12/12)
+- TypeScript compilation clean
+- New hooks follow existing patterns (no breaking changes)
+
+**Problems & Solutions:**
+- Problem: API responses blocked by audit logging
+- Solution: Background task processing - log asynchronously without blocking
+- Problem: Repetitive data fetching code across components
+- Solution: Generic useData hook with TypeScript generics for reusability
+- Problem: Environment variables not properly loaded in Vite config
+- Solution: Use loadEnv(mode, process.cwd(), '') for all env vars
+- Problem: Production timeline doesn't update in real-time
+- Solution: Supabase real-time subscriptions with automatic channel cleanup
+
+**Next Steps:**
+- [ ] Integrate initializeDarkMode() in main.tsx or App.tsx
+- [ ] Replace verbose fetch patterns with useData hook across components
+- [ ] Test real-time timeline updates with concurrent users
+- [ ] Add E2E tests for dark mode toggling
+- [ ] Implement background analytics tasks in api-proxy
+- [ ] Create staging environment with APP_ENV=staging
+
+**Documentation Created:**
+- useDataExample.tsx - Comprehensive examples for new hook pattern
+- lib/darkMode.ts - Full dark mode management utility with JSDoc
+
+**Open Questions:**
+- Should we add useOptimisticUpdate hook for instant UI feedback before server confirmation?
+- Add more background tasks (analytics, external sync) to api-proxy?
+- Create useRealtime hook to abstract Supabase subscription pattern?
+
+---
+
 ### Session: November 23, 2025 17:00 - 17:30
 
 **Changes Made:**

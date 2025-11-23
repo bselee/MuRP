@@ -1,5 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase/client';
 import type { BillOfMaterials, BuildOrder, PurchaseOrder } from '../types';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface ProductionTimelineViewProps {
   buildOrders: BuildOrder[];
@@ -66,6 +68,32 @@ const formatRange = (start: Date, end: Date) => {
 const clampPercent = (value: number) => Math.min(100, Math.max(0, value));
 
 const ProductionTimelineView: React.FC<ProductionTimelineViewProps> = ({ buildOrders, boms, purchaseOrders }) => {
+  const [realtimeUpdates, setRealtimeUpdates] = useState(0);
+
+  // Real-time subscription for build order updates
+  useEffect(() => {
+    const channel: RealtimeChannel = supabase
+      .channel('production-timeline-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'build_orders',
+        },
+        (payload) => {
+          console.log('[ProductionTimelineView] Real-time update:', payload);
+          // Trigger re-render by updating state
+          setRealtimeUpdates(prev => prev + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const timeline = useMemo(() => {
     if (buildOrders.length === 0) {
       return { rows: [], label: '' };
@@ -129,7 +157,7 @@ const ProductionTimelineView: React.FC<ProductionTimelineViewProps> = ({ buildOr
         : '';
 
     return { rows, label };
-  }, [buildOrders, boms, purchaseOrders]);
+  }, [buildOrders, boms, purchaseOrders, realtimeUpdates]);
 
   if (timeline.rows.length === 0) {
     return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FC, type FormEvent } from 'react';
 import { useAuth } from '../lib/auth/AuthContext';
 import {
   GmailIcon,
@@ -52,7 +52,7 @@ const LOGIN_SPOTLIGHTS = [
   },
 ];
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
+const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
   const { signIn, signUp, resetPassword, godMode } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -63,7 +63,25 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
   const [loading, setLoading] = useState(false);
   const [remember, setRemember] = useState(true);
 
-  const handleLogin = async (event: React.FormEvent) => {
+  const [spotlightIndex, setSpotlightIndex] = useState(0);
+
+  useEffect(() => {
+    const rotation = window.setInterval(() => {
+      setSpotlightIndex((prev) => (prev + 1) % LOGIN_SPOTLIGHTS.length);
+    }, 5500);
+    return () => window.clearInterval(rotation);
+  }, []);
+
+  const activeSpotlight = useMemo(
+    () => LOGIN_SPOTLIGHTS[spotlightIndex],
+    [spotlightIndex],
+  );
+  const stackedSpotlights = useMemo(
+    () => LOGIN_SPOTLIGHTS.filter((_, idx) => idx !== spotlightIndex),
+    [spotlightIndex],
+  );
+
+  const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true);
     const result = await signIn({ email, password });
@@ -75,7 +93,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
     setLoading(false);
   };
 
-  const handleSignup = async (event: React.FormEvent) => {
+  const handleSignup = async (event: FormEvent) => {
     event.preventDefault();
     if (password !== confirmPassword) {
       addToast("Passwords don't match.", 'error');
@@ -373,17 +391,3 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ addToast }) => {
 };
 
 export default LoginScreen;
-  const [spotlightIndex, setSpotlightIndex] = useState(0);
-
-  useEffect(() => {
-    const rotation = window.setInterval(() => {
-      setSpotlightIndex((prev) => (prev + 1) % LOGIN_SPOTLIGHTS.length);
-    }, 5500);
-    return () => window.clearInterval(rotation);
-  }, []);
-
-  const activeSpotlight = LOGIN_SPOTLIGHTS[spotlightIndex];
-  const stackedSpotlights = useMemo(
-    () => LOGIN_SPOTLIGHTS.filter((_, idx) => idx !== spotlightIndex),
-    [spotlightIndex],
-  );

@@ -101,14 +101,27 @@ serve(async (req) => {
 
     const executionTime = Date.now() - startTime
 
-    // Log successful request
-    await logAuditEntry(supabaseClient, {
-      user_id: user.id,
-      service,
-      action,
-      success: true,
-      execution_time_ms: executionTime,
-      request_id: requestId,
+    // Start background tasks without blocking response
+    // These run asynchronously for data enrichment, analytics, etc.
+    const backgroundTasks = [
+      logAuditEntry(supabaseClient, {
+        user_id: user.id,
+        service,
+        action,
+        success: true,
+        execution_time_ms: executionTime,
+        request_id: requestId,
+      }),
+      // Add more background tasks as needed:
+      // - updateUsageMetrics(user.id, service)
+      // - generateAnalytics(service, action, result)
+      // - syncToExternalSystems(result)
+    ]
+
+    // Execute background tasks without blocking the main response
+    Promise.all(backgroundTasks).catch(error => {
+      console.error(`[${requestId}] Background task failed:`, error)
+      // Non-critical errors don't affect the response
     })
 
     const response: ApiProxyResponse = {

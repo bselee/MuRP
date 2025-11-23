@@ -11,6 +11,12 @@ const serve = sirv(distDir, {
   dev: false,
   etag: true,
   maxAge: 31536000,
+  setHeaders: (res, pathname) => {
+    // Never cache HTML shell so fresh bundles load after each build.
+    if (pathname === '/' || pathname.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  },
 });
 
 const server = createServer((req, res) => {

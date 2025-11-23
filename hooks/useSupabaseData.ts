@@ -47,6 +47,56 @@ export interface UseSupabaseSingleResult<T> {
 }
 
 // ============================================================================
+// GENERIC DATA FETCHING HOOK
+// ============================================================================
+
+/**
+ * Generic data fetching hook with race condition handling
+ * Context7 Pattern: Reusable fetch logic extracted from repetitive code
+ * 
+ * @param url - API endpoint or null to skip fetching
+ * @returns Fetched data with loading and error states
+ */
+export function useData<T = unknown>(url: string | null): { data: T | null; loading: boolean; error: Error | null } {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!url) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
+    let ignore = false;
+    setLoading(true);
+    setError(null);
+
+    fetch(url)
+      .then(response => response.json())
+      .then(json => {
+        if (!ignore) {
+          setData(json);
+          setLoading(false);
+        }
+      })
+      .catch(err => {
+        if (!ignore) {
+          setError(err instanceof Error ? err : new Error('Fetch failed'));
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [url]);
+
+  return { data, loading, error };
+}
+
+// ============================================================================
 // INVENTORY HOOKS
 // ============================================================================
 

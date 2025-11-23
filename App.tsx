@@ -225,19 +225,6 @@ const AppShell: React.FC = () => {
     }
   }, [isDataLoading]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!isDataLoading || hasInitialDataLoaded) return;
-
-    const timeoutId = window.setTimeout(() => {
-      console.warn('[App] Initial data load timed out; releasing UI fallback.');
-      setHasInitialDataLoaded(true);
-      addToast('Still syncing live data. Showing last known values.', 'info');
-    }, 12000);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [isDataLoading, hasInitialDataLoaded, addToast]);
-
   const readOnboardingState = useCallback((): { completed?: boolean; snoozeUntil?: number | null } | null => {
     if (!onboardingStorageKey || typeof window === 'undefined') return null;
     try {
@@ -435,6 +422,19 @@ const AppShell: React.FC = () => {
   const removeToast = useCallback((id: number) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isDataLoading || hasInitialDataLoaded) return;
+
+    const timeoutId = window.setTimeout(() => {
+      console.warn('[App] Initial data load timed out; releasing UI fallback.');
+      setHasInitialDataLoaded(true);
+      addToast('Still syncing live data. Showing last known values.', 'info');
+    }, 12000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isDataLoading, hasInitialDataLoaded, addToast]);
 
   useEffect(() => {
     if (!hasInitialDataLoaded) return;

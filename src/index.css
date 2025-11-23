@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom dark mode variant - uses .dark class on any ancestor */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --surface-100: #050506;
