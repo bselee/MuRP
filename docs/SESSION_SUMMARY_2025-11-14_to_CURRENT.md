@@ -6,6 +6,71 @@
 
 ---
 
+### Session: November 24, 2025 19:00 - 19:15
+
+**Changes Made:**
+- Modified: `App.tsx` - Amazon tracking integration in requisition creation (lines 97, 813-879)
+  - Imports amazonTracking utility for ASIN extraction and metadata
+  - Normalizes requisition items with Amazon metadata (ASIN, marketplace, canonical URL)
+  - Auto-assigns tracking email (shipment-tracking@amazon.com) for Gmail bridge
+  - Aggregates Amazon tracking data in requisitions.metadata.amazonTracking
+- Modified: `components/CreateRequisitionModal.tsx` - Amazon link input field (lines 3, 30, 48-68, 130-150)
+  - New externalUrl field with automatic https:// prepending
+  - Real-time Amazon link detection with user feedback
+  - Enriches items with Amazon metadata before submission
+- Modified: `components/QuickRequestDrawer.tsx` - Amazon support in quick requests (lines 12, 58, 76, 119-121, 142-183, 419-437)
+  - External link input with Amazon ASIN/marketplace display
+  - Metadata attachment for downstream automation
+- Modified: `pages/PurchaseOrders.tsx` - Display Amazon context in requisitions table (lines 1064-1095)
+  - Clickable Amazon link badges next to requisition items
+  - ASIN, marketplace, and tracking email display in item details
+  - Enables purchasing team visibility without context switching
+- Modified: `types.ts` - Extended requisition types for external sources (lines 859, 869-872, 942)
+  - New ExternalRequisitionSource type ('amazon' | 'external_link')
+  - RequisitionItem extended: externalUrl, externalSource, metadata fields
+  - QuickRequestDefaults extended with metadata field
+- Modified: `PURCHASE_ORDER_WORKFLOW.md` - Amazon tracking documentation (lines 222-230)
+  - Documented ASIN capture flow and Gmail routing strategy
+  - Explained future order reconciliation automation
+- Created: `lib/amazonTracking.ts` - Amazon URL parsing utility (67 lines)
+  - Extracts ASINs from multiple URL formats (/dp/, /gp/product/, query params)
+  - Normalizes marketplace domains (amazon.com, .ca, .co.uk, etc.)
+  - Generates canonical URLs for deduplication
+  - Exports DEFAULT_AMAZON_TRACKING_EMAIL constant
+
+**Key Decisions:**
+- Decision: Implement Amazon tracking via requisition metadata (not immediate API integration)
+- Rationale: Low-friction approach - users paste links, system captures ASINs, enables future automation
+- Decision: Route tracking emails to shipment-tracking@amazon.com in Gmail bridge
+- Rationale: Amazon sends updates to this address, Gmail integration can auto-match by ASIN
+- Decision: Store canonical URLs for deduplication and order matching
+- Rationale: Amazon URLs have variations - normalize to /dp/{ASIN} format for reliable matching
+
+**Tests:**
+- Verified: All tests passing (12/12 schema transformers + inventory UI)
+- Verified: TypeScript compilation clean (Vite build 5.77s, 788 modules transformed)
+- Verified: No breaking changes (optional fields, backwards compatible)
+
+**Implementation Details:**
+- Amazon ASIN Extraction: Supports 5 URL patterns via regex
+- Metadata Structure: `{ asin, marketplace, canonicalUrl, rawUrl }`
+- Requisition Enrichment: Items and options.metadata both capture Amazon context
+- UI Feedback: Real-time detection shows "Amazon link detected" with tracking email
+- Future Hook: Gmail bridge can correlate by ASIN to auto-update PO tracking
+
+**Next Steps:**
+- [ ] Test Amazon link workflow end-to-end (requisition → approval → PO)
+- [ ] Implement Gmail bridge ASIN matching logic
+- [ ] Add Amazon carrier to UpdateTrackingModal dropdown
+- [ ] Consider Amazon Order History API for bulk import
+
+**Open Questions:**
+- Should we validate ASINs against Amazon Product API before accepting?
+- Display Amazon product title/image thumbnails in requisition review?
+- Enable bulk Amazon order import via CSV or API?
+
+---
+
 ### Session: November 24, 2025 18:00 - 18:45
 
 **Changes Made:**

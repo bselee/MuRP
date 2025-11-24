@@ -219,6 +219,13 @@ components/
 ├── ReorderQueueDashboard.tsx   # Reorder recommendations UI
 ├── CreatePoModal.tsx           # Manual PO creation
 └── GeneratePoModal.tsx         # Batch PO from requisitions
+
+#### Amazon Marketplace Tracking (New)
+
+- **Entry points:** `components/CreateRequisitionModal.tsx` and `components/QuickRequestDrawer.tsx`
+- **What happens:** Users can paste Amazon product URLs directly into a requisition line. The UI parses the link, extracts the ASIN + marketplace, and stores it alongside the requisition item (`items[].metadata.amazon`).
+- **Why it matters:** Purchasing can now see the Amazon link + ASIN inside `RequisitionsSection` on `pages/PurchaseOrders.tsx`. Downstream automations (order matching, shipment ingestion) can key off the stored ASIN via `requisitions.metadata.amazonTracking`.
+- **Future hook:** When we ingest Amazon order reports, we can reconcile by ASIN + canonical URL to auto-complete receipt + tracking events. We also stash Amazon’s shipment sender (`shipment-tracking@amazon.com`) in `requisitions.metadata.trackingEmail` so the Gmail bridge knows which inbox threads contain shipping updates.
 ```
 
 ---

@@ -857,6 +857,8 @@ export interface JobDescription {
 export type RequisitionRequestType = 'consumable' | 'product_alert' | 'finished_good' | 'other';
 export type RequisitionPriority = 'low' | 'medium' | 'high';
 
+export type ExternalRequisitionSource = 'amazon' | 'external_link';
+
 export interface RequisitionItem {
     sku: string;
     name: string;
@@ -864,6 +866,9 @@ export interface RequisitionItem {
     reason: string;
     notes?: string;
     isCustomSku?: boolean;
+    externalUrl?: string | null;
+    externalSource?: ExternalRequisitionSource | null;
+    metadata?: Record<string, any> | null;
 }
 
 export interface InternalRequisition {
@@ -934,6 +939,7 @@ export interface QuickRequestDefaults {
     alertOnly?: boolean;
     autoPo?: boolean;
     context?: string;
+    metadata?: Record<string, any>;
 }
 
 export interface ExternalConnection {

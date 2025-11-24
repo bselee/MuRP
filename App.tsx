@@ -97,6 +97,7 @@ import {
   useSystemAlerts,
 } from './lib/systemAlerts/SystemAlertContext';
 import type { SyncHealthRow } from './lib/sync/healthUtils';
+import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amazonTracking';
 
 export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner';
 
@@ -812,6 +813,71 @@ const AppShell: React.FC = () => {
       options.opsApprovalRequired ??
       Boolean(options.priority === 'high' || options.autoPo || options.requestType === 'finished_good');
     const createdAt = new Date().toISOString();
+
+    const normalizedItems = items.map(item => {
+      const trimmedLink = typeof item.externalUrl === 'string' ? item.externalUrl.trim() : '';
+      const externalUrl = trimmedLink
+        ? trimmedLink.startsWith('http')
+          ? trimmedLink
+          : `https://${trimmedLink}`
+        : undefined;
+
+      const existingAmazonMeta = item.metadata?.amazon;
+      const derivedAmazonMeta = existingAmazonMeta ?? extractAmazonMetadata(externalUrl);
+      const metadata = {
+        ...(item.metadata ?? {}),
+        ...(derivedAmazonMeta
+          ? {
+              amazon: derivedAmazonMeta,
+              trackingEmail:
+                item.metadata?.trackingEmail ?? DEFAULT_AMAZON_TRACKING_EMAIL,
+            }
+          : {}),
+      };
+
+      return {
+        ...item,
+        externalUrl,
+        externalSource: derivedAmazonMeta
+          ? 'amazon'
+          : item.externalSource ?? (externalUrl ? 'external_link' : null),
+        metadata: Object.keys(metadata).length ? metadata : undefined,
+      };
+    });
+
+    const amazonTrackingEmails = new Set<string>();
+
+    const amazonItems = normalizedItems
+      .map((item, idx) => {
+        const amazonMeta = item.metadata?.amazon;
+        if (!amazonMeta) return null;
+        const trackingEmail = item.metadata?.trackingEmail ?? DEFAULT_AMAZON_TRACKING_EMAIL;
+        if (trackingEmail) {
+          amazonTrackingEmails.add(trackingEmail);
+        }
+        return {
+          index: idx,
+          sku: item.sku,
+          asin: amazonMeta.asin ?? null,
+          marketplace: amazonMeta.marketplace ?? 'amazon.com',
+          canonicalUrl: amazonMeta.canonicalUrl,
+          trackingEmail: trackingEmail ?? null,
+        };
+      })
+      .filter(Boolean);
+
+    const metadata = { ...(options.metadata ?? {}), requiresOpsApproval } as Record<string, any>;
+    if (amazonItems.length > 0) {
+      metadata.amazonTracking = {
+        capturedAt: createdAt,
+        items: amazonItems,
+        trackingEmails: Array.from(amazonTrackingEmails),
+      };
+      if (!metadata.trackingEmail && amazonTrackingEmails.size > 0) {
+        metadata.trackingEmail = Array.from(amazonTrackingEmails)[0];
+      }
+    }
+
     const newReq: InternalRequisition = {
       id: `REQ-${new Date().getFullYear()}-${(requisitions.length + 1).toString().padStart(3, '0')}`,
       requesterId: source === 'Manual' ? currentUser!.id : 'SYSTEM',
@@ -819,7 +885,7 @@ const AppShell: React.FC = () => {
       createdAt,
       status: 'Pending',
       source,
-      items,
+      items: normalizedItems,
       requestType: options.requestType ?? 'consumable',
       priority: options.priority ?? 'medium',
       needByDate: options.needByDate ?? null,
@@ -827,7 +893,7 @@ const AppShell: React.FC = () => {
       autoPo: options.autoPo ?? false,
       notifyRequester: options.notifyRequester ?? true,
       context: options.context ?? null,
-      metadata: { ...(options.metadata ?? {}), requiresOpsApproval },
+      metadata,
       notes: options.notes ?? undefined,
       managerApprovedBy: null,
       managerApprovedAt: null,

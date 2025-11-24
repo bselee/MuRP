@@ -3,6 +3,7 @@ import Button from '@/components/ui/Button';
 import type { InventoryItem, RequisitionItem, RequisitionRequestOptions, RequisitionRequestType, RequisitionPriority } from '../types';
 import Modal from './Modal';
 import { PlusCircleIcon, TrashIcon } from './icons';
+import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from '../lib/amazonTracking';
 
 interface CreateRequisitionModalProps {
     isOpen: boolean;
@@ -27,7 +28,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
 
     const inventoryMap = useMemo(() => new Map(inventory.map(i => [i.sku, i])), [inventory]);
 
-    const handleItemChange = (sku: string, field: 'quantity' | 'reason', value: string | number) => {
+    const handleItemChange = (sku: string, field: 'quantity' | 'reason' | 'externalUrl', value: string | number) => {
         setReqItems(prev => prev.map(item => item.sku === sku ? { ...item, [field]: value } : item));
     };
     
@@ -37,7 +38,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
 
     const handleAddItem = () => {
         if (itemToAdd && !reqItems.some(i => i.sku === itemToAdd)) {
-            setReqItems(prev => [...prev, { sku: itemToAdd, quantity: 1, reason: '' }]);
+            setReqItems(prev => [...prev, { sku: itemToAdd, quantity: 1, reason: '', externalUrl: '' }]);
         }
         setItemToAdd('');
     };
@@ -45,10 +46,28 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
     const handleSubmit = () => {
         const finalItems: RequisitionItem[] = reqItems
             .filter(item => item.quantity > 0)
-            .map(item => ({
-                ...item,
-                name: inventoryMap.get(item.sku)?.name || 'Unknown Item'
-            }));
+            .map(item => {
+                const trimmed = typeof item.externalUrl === 'string' ? item.externalUrl.trim() : '';
+                const cleanedUrl = trimmed ? (trimmed.startsWith('http') ? trimmed : `https://${trimmed}`) : undefined;
+                const amazonMeta = extractAmazonMetadata(cleanedUrl);
+                const metadata = {
+                    ...(item.metadata ?? {}),
+                    ...(amazonMeta
+                        ? {
+                            amazon: amazonMeta,
+                            trackingEmail: item.metadata?.trackingEmail ?? DEFAULT_AMAZON_TRACKING_EMAIL,
+                          }
+                        : {}),
+                };
+
+                return {
+                    ...item,
+                    name: inventoryMap.get(item.sku)?.name || 'Unknown Item',
+                    externalUrl: cleanedUrl,
+                    externalSource: amazonMeta ? 'amazon' : cleanedUrl ? 'external_link' : item.externalSource ?? null,
+                    metadata: Object.keys(metadata).length ? metadata : undefined,
+                };
+            });
         
         if (finalItems.length === 0) return;
 
@@ -109,13 +128,27 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                                             <TrashIcon className="w-5 h-5"/>
                                         </Button>
                                     </div>
-                                    <input
-                                        type="text"
-                                        value={item.reason}
-                                        onChange={(e) => handleItemChange(item.sku, 'reason', e.target.value)}
-                                        className="w-full bg-gray-700/80 text-white rounded-md p-1.5 text-sm mt-2"
-                                        placeholder="Reason for request (optional)"
-                                    />
+                                        <input
+                                            type="text"
+                                            value={item.reason}
+                                            onChange={(e) => handleItemChange(item.sku, 'reason', e.target.value)}
+                                            className="w-full bg-gray-700/80 text-white rounded-md p-1.5 text-sm mt-2"
+                                            placeholder="Reason for request (optional)"
+                                        />
+                                        <input
+                                            type="url"
+                                            value={item.externalUrl ?? ''}
+                                            onChange={(e) => handleItemChange(item.sku, 'externalUrl', e.target.value)}
+                                            className="w-full bg-gray-700/80 text-white rounded-md p-1.5 text-sm mt-2"
+                                            placeholder="Amazon / external link (optional)"
+                                        />
+                                        {item.externalUrl && (
+                                            <p className="text-[11px] text-gray-500 mt-1">
+                                                {extractAmazonMetadata(item.externalUrl)
+                                                    ? `Amazon link detected — we’ll watch ${DEFAULT_AMAZON_TRACKING_EMAIL} for updates.`
+                                                    : 'We will attach this link to the requisition so purchasing can revisit it.'}
+                                            </p>
+                                        )}
                                 </div>
                             )
                         })}

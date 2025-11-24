@@ -1061,9 +1061,40 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                                 </td>
                                 <td className="px-6 py-1 text-sm text-gray-300">
                                     <ul className="space-y-1">
-                                        {req.items.map(item => (
-                                            <li key={item.sku} title={item.reason}>{item.quantity}x {item.name}</li>
-                                        ))}
+                                        {req.items.map(item => {
+                                            const amazonMeta = item.metadata?.amazon;
+                                            return (
+                                                <li key={`${req.id}-${item.sku}`} className="space-y-0.5" title={item.reason}>
+                                                    <div>{item.quantity}x {item.name}</div>
+                                                    {item.externalUrl && (
+                                                        <a
+                                                            href={item.externalUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-xs text-indigo-300 hover:text-indigo-200 underline decoration-dotted"
+                                                        >
+                                                            {item.externalSource === 'amazon' ? 'Amazon link' : 'External link'}
+                                                        </a>
+                                                    )}
+                                                    {(amazonMeta?.asin || item.metadata?.trackingEmail) && (
+                                                        <p className="text-[11px] text-gray-500">
+                                                            {amazonMeta?.asin ? (
+                                                                <>
+                                                                    ASIN {amazonMeta.asin}
+                                                                    {amazonMeta.marketplace ? ` • ${amazonMeta.marketplace}` : ''}
+                                                                </>
+                                                            ) : null}
+                                                            {item.metadata?.trackingEmail && (
+                                                                <>
+                                                                    {amazonMeta?.asin ? ' • ' : ''}
+                                                                    Tracking via {item.metadata.trackingEmail}
+                                                                </>
+                                                            )}
+                                                        </p>
+                                                    )}
+                                                </li>
+                                            );
+                                        })}
                                     </ul>
                                 </td>
                                 {(isAdminLike || currentUser.role === 'Manager' || currentUser.department === 'Operations') && (

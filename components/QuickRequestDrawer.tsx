@@ -10,6 +10,7 @@ import type {
   QuickRequestDefaults,
 } from '../types';
 import { PlusCircleIcon, BellIcon, XCircleIcon } from './icons';
+import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from '../lib/amazonTracking';
 interface QuickRequestDrawerProps {
   isOpen: boolean;
   inventory: InventoryItem[];
@@ -54,6 +55,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
   const [requestType, setRequestType] = useState<RequisitionRequestType>('consumable');
   const [priority, setPriority] = useState<RequisitionPriority>('medium');
   const [needByDate, setNeedByDate] = useState('');
+  const [externalLink, setExternalLink] = useState('');
   const [alertOnly, setAlertOnly] = useState(false);
   const [autoPo, setAutoPo] = useState(false);
   const [notifyRequester, setNotifyRequester] = useState(true);
@@ -71,6 +73,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
       setNeedByDate('');
       setCustomName('');
       setQuantity(1);
+      setExternalLink(defaults?.metadata?.externalUrl ?? '');
       setNotifyRequester(true);
       setActionMode(defaults?.alertOnly ? 'question' : 'requisition');
       setNeedsOpsApproval(Boolean(defaults?.metadata?.requiresOpsApproval));
@@ -113,6 +116,9 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
 
   const canSubmit = Boolean((matchedInventory || customName.trim().length > 2) && (alertOnly || quantity > 0));
 
+  const amazonMetadata = useMemo(() => extractAmazonMetadata(externalLink), [externalLink]);
+  const amazonTrackingEmail = amazonMetadata ? DEFAULT_AMAZON_TRACKING_EMAIL : undefined;
+
   useEffect(() => {
     setActionMode(alertOnly ? 'question' : 'requisition');
   }, [alertOnly]);
@@ -134,6 +140,9 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
     const itemName = displayName || 'Requested Item';
     const finalSku = matchedInventory ? matchedInventory.sku : sku || `CUSTOM-${Date.now()}`;
 
+    const normalizedLink = externalLink.trim();
+    const cleanedLink = normalizedLink ? (normalizedLink.startsWith('http') ? normalizedLink : `https://${normalizedLink}`) : undefined;
+
     const item: RequisitionItem = {
       sku: finalSku,
       name: itemName,
@@ -141,7 +150,30 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
       reason: reason || (alertOnly ? 'Alert only' : 'Requested via quick drawer'),
       isCustomSku: !matchedInventory,
       notes: defaults?.context,
+      externalUrl: cleanedLink,
+      externalSource: amazonMetadata ? 'amazon' : cleanedLink ? 'external_link' : undefined,
+      metadata: amazonMetadata
+        ? { amazon: amazonMetadata, trackingEmail: amazonTrackingEmail }
+        : undefined,
     };
+
+    const optionsMetadata = {
+      ...(defaults?.metadata ?? {}),
+      quickRequest: true,
+      sourceSku: defaults?.sku ?? sku,
+      quickCreatedAt: new Date().toISOString(),
+      requiresOpsApproval: needsOpsApproval,
+      externalUrl: cleanedLink,
+    } as Record<string, any>;
+
+    if (amazonMetadata) {
+      optionsMetadata.amazon = {
+        asin: amazonMetadata.asin,
+        marketplace: amazonMetadata.marketplace,
+        canonicalUrl: amazonMetadata.canonicalUrl,
+      };
+      optionsMetadata.trackingEmail = amazonTrackingEmail;
+    }
 
     await onSubmit([item], {
       requestType,
@@ -151,12 +183,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
       autoPo,
       notifyRequester,
       context: reason,
-      metadata: {
-        quickRequest: true,
-        sourceSku: defaults?.sku ?? sku,
-        quickCreatedAt: new Date().toISOString(),
-        requiresOpsApproval: needsOpsApproval,
-      },
+      metadata: optionsMetadata,
       opsApprovalRequired: needsOpsApproval,
     });
     onClose();
@@ -387,6 +414,24 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
               placeholder="Add details (where the need came from, urgency, customer, etc.)"
               className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
+              Amazon / External Link
+            </label>
+            <input
+              type="url"
+              value={externalLink}
+              onChange={(e) => setExternalLink(e.target.value)}
+              placeholder="https://www.amazon.com/dp/ASIN..."
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p className="text-[11px] text-gray-400">
+              {amazonMetadata
+                ? `Tracking Amazon ASIN ${amazonMetadata.asin ?? 'unknown'} (${amazonMetadata.marketplace ?? 'amazon.com'}) — routing updates from ${DEFAULT_AMAZON_TRACKING_EMAIL}.`
+                : 'Paste an Amazon product link so we can tie this requisition to the eventual Amazon order.'}
+            </p>
           </div>
 
           <div className="space-y-3">
