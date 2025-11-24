@@ -1,8 +1,66 @@
-# Development Session Summary: November 14-23, 2025
+# Development Session Summary: November 14-24, 2025
 
-**Period:** November 14-23, 2025 (9-day sprint)  
-**Status:** ✅ Production-Ready with Major Features + PO Tracking System + Universal Codespace Workflows  
+**Period:** November 14-24, 2025 (10-day sprint)  
+**Status:** ✅ Production-Ready with Amazon PO Integration Planning + BOM Enhancements  
 **Project:** MuRP (Ultra Material Resource Planner) Manufacturing Resource Planning System
+
+---
+
+### Session: November 24, 2025 18:00 - 18:45
+
+**Changes Made:**
+- Modified: `App.tsx` - Added purchaseOrders prop to Production page component (line 1417)
+  - Enables production timeline to display PO tracking data for component ordering
+  - Part of unified BOM card enhancements for comprehensive data display
+- Modified: `components/EnhancedBomCard.tsx` - UI layout optimization (lines 429-522)
+  - Refactored action button layout from flex-col to flex-wrap for better responsive flow
+  - Improved horizontal space utilization on wide screens
+  - Simplified DOM structure (13 lines removed) for better rendering performance
+- Modified: `hooks/useSupabaseData.ts` - Added registrations field to BOM transformation (line 493)
+  - Maps `registrations` JSONB field from database to BOM interface
+  - Supports compliance record display in BOM detail views
+- Created: Amazon PO Integration Research (comprehensive 10-section analysis)
+  - Researched feasibility of Amazon order import for consumables/repairs tracking
+  - Documented current system architecture flexibility (nullable vendor_id, no SKU FK constraints)
+  - Planned 4-phase implementation roadmap
+
+**Key Decisions:**
+- Decision: Plan Amazon integration as consumables/repairs workflow (description-only items)
+- Rationale: Existing PO system already supports non-SKU items via RequisitionRequestType='consumable'
+- Decision: Use single "Amazon.com" vendor with AMZN-{ASIN} SKU format
+- Rationale: Simplifies vendor management, Amazon handles fulfillment regardless of seller
+- Decision: Defer implementation pending user confirmation
+- Rationale: Wait for user feedback on integration strategy (Amazon Business API vs personal account)
+
+**Tests:**
+- Verified: All tests passing (12/12: 9 schema transformers + 3 inventory UI)
+- Verified: TypeScript compilation clean (Vite build successful, 788 modules)
+- Verified: No breaking changes (backwards compatible prop additions)
+
+**Research Findings:**
+- System Architecture Analysis:
+  - ✅ Flexible PO system: vendor_id nullable, SKU accepts any string (no FK constraint)
+  - ✅ Full tracking infrastructure exists: POTrackingStatus, events table, carrier support
+  - ✅ Consumable workflow ready: RequisitionRequestType includes 'consumable'
+  - ✅ API proxy pattern established: can extend to Amazon SP-API
+  - ✅ Resilience built-in: rate limiting, circuit breaker, retry logic
+- Required Changes (Minimal):
+  - Add 'amazon_order' to source enum in purchase_orders table
+  - Create services/amazonOrderIngestion.ts (follows finaleIngestion.ts pattern)
+  - Add "Amazon Logistics" carrier option to UpdateTrackingModal
+  - Optional: amazon_order_id, amazon_asin metadata fields
+
+**Next Steps:**
+- [ ] User confirmation on Amazon integration approach
+- [ ] If approved: Phase 1 - Create Amazon vendor, test manual PO creation
+- [ ] If approved: Phase 2 - Build AmazonOrderImportModal with date range picker
+- [ ] If approved: Phase 3 - Implement Amazon SP-API ingestion service
+- [ ] If approved: Phase 4 - Enable requisition flow with Amazon product search
+
+**Open Questions:**
+- Amazon Business API or personal Amazon account for initial integration?
+- Enable requisition → Amazon product search → auto-fill pricing workflow?
+- Returns/refunds handling: negative line items vs quantity_received adjustment?
 
 ---
 

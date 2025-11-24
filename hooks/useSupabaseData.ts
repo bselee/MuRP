@@ -490,6 +490,7 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
         averageCost: bom.average_cost || 0,
         components: bom.components as any || [], // JSONB field
         artwork: bom.artwork as any || [], // JSONB field
+        registrations: bom.registrations as any || [],
         packaging: bom.packaging as any || {}, // JSONB field
         barcode: bom.barcode || '',
         notes: bom.notes || '',
