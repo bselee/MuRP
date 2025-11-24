@@ -97,6 +97,90 @@
 - Files Changed: 4 (+343, -398 lines)
 - Pushed to: origin/main
 - Vercel: Auto-deployment triggered
+
+---
+
+### Session: November 24, 2025 18:30 - 18:45
+
+**Changes Made:**
+- Created: `supabase/migrations/042_semantic_embeddings.sql` - Persistent AI vector storage
+  - New semantic_embeddings table for inventory/BOM/vendor embeddings
+  - Unique index on (entity_type, entity_id) for efficient lookups
+  - RLS policies for authenticated user access
+  - Enables semantic search to survive page reloads and share across users
+- Created: `supabase/migrations/043_po_followup_campaigns.sql` - Campaign-based PO follow-ups
+  - New po_followup_campaigns table with trigger types (tracking_missing, invoice_missing, custom)
+  - Migrated po_followup_rules to campaign-scoped (added campaign_id foreign key)
+  - New po_followup_campaign_state table for per-PO campaign tracking
+  - Seeded default campaigns: "Tracking / No Response" and "Invoice Collection"
+  - Admin-only policies for campaign management
+  - Backfilled existing follow-up data to tracking campaign
+  - Added invoice reminder stages (48h, 120h templates)
+- Created: `supabase/migrations/044_template_layout_config.sql` - Drag-drop template editing
+  - Added layout_config JSONB column to email_templates
+  - Added layout_config JSONB column to pdf_templates
+  - Enables visual editor metadata storage
+- Modified: `components/DocumentTemplatesPanel.tsx` - Major template management UI overhaul
+  - Enhanced template creation and editing workflows
+  - Improved layout configuration controls
+  - Better visual hierarchy and user experience
+- Modified: `components/FollowUpSettingsPanel.tsx` - Campaign-based flow configuration
+  - Campaign selection and management UI
+  - Multi-stage follow-up rule editor per campaign
+  - Campaign activation/deactivation controls
+- Modified: `components/SemanticSearchSettings.tsx` - Embedding persistence controls
+  - Settings for embedding storage and sync
+  - Load/save embedding state management
+- Modified: `services/geminiService.ts` - Ensure embeddings loaded before search
+  - Added ensureEmbeddingsLoaded() call before semantic search operations
+  - Prevents race conditions in AI assistant responses
+- Modified: `services/semanticSearch.ts` - Lazy embedding loading
+  - New ensureEmbeddingsLoaded() function for on-demand loading
+  - Improved embedding stats tracking
+- Modified: `services/pdfService.ts` - Template layout rendering support
+  - Enhanced template processing with layout_config
+  - Better PDF generation from structured templates
+- Modified: `services/templateService.ts` - Layout config helpers
+  - Utility functions for template layout manipulation
+- Modified: `supabase/functions/po-followup-runner/index.ts` - Campaign-aware edge function
+  - Updated to query campaign-based follow-up rules
+  - Tracks campaign_id in follow-up events
+  - Supports multi-campaign parallel execution
+- Modified: `types.ts` - Campaign type definitions
+  - New FollowUpCampaign interface
+  - New FollowUpTriggerType type ('tracking_missing' | 'invoice_missing' | 'custom')
+  - Extended FollowUpRule with campaignId
+  - Extended VendorFollowUpEvent with campaignId tracking
+
+**Key Decisions:**
+- Decision: Implement campaign-based follow-up system instead of global stages
+- Rationale: Enables parallel workflows (tracking AND invoice reminders), better organization, campaign-specific analytics
+- Decision: Store AI embeddings in Supabase instead of browser-only
+- Rationale: Embeddings expensive to compute, persist across sessions, share across team, enable server-side search
+- Decision: Add layout_config as JSONB instead of separate layout tables
+- Rationale: Flexible schema for drag-drop metadata, simpler queries, easier to version with templates
+- Decision: Seed default campaigns (tracking, invoice) in migration
+- Rationale: Provides working defaults out-of-box, demonstrates campaign structure, reduces setup friction
+
+**Database Schema Changes:**
+- Tables Added: semantic_embeddings (5 columns), po_followup_campaigns (6 columns), po_followup_campaign_state (7 columns)
+- Columns Added: po_followup_rules.campaign_id, vendor_followup_events.campaign_id, email_templates.layout_config, pdf_templates.layout_config
+- Constraints Modified: po_followup_rules unique constraint changed from stage to (campaign_id, stage)
+- Policies Added: 8 new RLS policies across 3 tables
+- Seed Data: 2 default campaigns, 2 invoice reminder stages
+
+**Tests:**
+- Verified: TypeScript compilation clean (Vite build 6.65s, 792 modules transformed)
+- Verified: Production bundle 2,030.15 kB (gzip: 530.21 kB)
+- Note: Local Supabase migrations skipped due to CLI version issue (v2.54.11 has storage migration bug)
+- Action Required: Apply migrations 042-044 manually to production Supabase via SQL Editor
+
+**Deployment:**
+- Commit: faa47da - "feat(db): add semantic embeddings, campaign-based PO follow-ups, and template layouts"
+- Files Changed: 12 (+2055, -557 lines)
+- Migrations: 3 new SQL files (042, 043, 044)
+- Pushed to: origin/main
+- Vercel: Auto-deployment triggered
 - Verified: No breaking changes (optional fields, backwards compatible)
 
 **Implementation Details:**
