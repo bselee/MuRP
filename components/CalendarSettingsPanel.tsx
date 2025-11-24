@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { CalendarIcon, RefreshIcon, TrashIcon, ChevronDownIcon } from './icons';
 import { getGoogleCalendarService, type GoogleCalendar } from '../services/googleCalendarService';
 import { supabase } from '../lib/supabase/client';
@@ -48,6 +48,47 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
   const calendarService = useMemo(
     () => getGoogleCalendarService(primaryCalendar?.id || undefined, primaryCalendar?.timezone || settings.calendar_timezone),
     [primaryCalendar?.id, primaryCalendar?.timezone, settings.calendar_timezone]
+  );
+
+  const handleRemoveCalendar = useCallback((id: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      calendar_sources: prev.calendar_sources.filter((src) => src.id !== id),
+    }));
+  }, []);
+
+  const handleToggleIngest = useCallback((id: string, enabled: boolean) => {
+    setSettings((prev) => {
+      const nextSources = prev.calendar_sources.map((src) => {
+        if (src.id === id) {
+          return { ...src, ingestEnabled: enabled };
+        }
+        return enabled ? { ...src, ingestEnabled: false } : src;
+      });
+
+      if (!nextSources.some((src) => src.ingestEnabled) && nextSources.length > 0) {
+        nextSources[0] = { ...nextSources[0], ingestEnabled: true };
+      }
+
+      return { ...prev, calendar_sources: nextSources };
+    });
+  }, []);
+
+  const handleTogglePush = useCallback(
+    (id: string, enabled: boolean) => {
+      if (enabled && !settings.calendar_push_enabled) {
+        addToast('Enable calendar push before selecting calendars to broadcast.', 'info');
+        return;
+      }
+
+      setSettings((prev) => ({
+        ...prev,
+        calendar_sources: prev.calendar_sources.map((src) =>
+          src.id === id ? { ...src, pushEnabled: enabled } : src
+        ),
+      }));
+    },
+    [addToast, settings.calendar_push_enabled]
   );
 
   useEffect(() => {
@@ -145,26 +186,30 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
     }
   };
 
-  const handleAddCalendar = (calendar: GoogleCalendar) => {
-    if (settings.calendar_sources.some((src) => src.id === calendar.id)) {
-      addToast('Calendar already connected', 'info');
-      return;
-    }
+  const handleAddCalendar = useCallback(
+    (calendar: GoogleCalendar) => {
+      setSettings((prev) => {
+        if (prev.calendar_sources.some((src) => src.id === calendar.id)) {
+          addToast('Calendar already connected', 'info');
+          return prev;
+        }
 
-    setSettings((prev) => ({
-      ...prev,
-      calendar_sources: [
-        ...prev.calendar_sources,
-        {
-          id: calendar.id,
-          name: calendar.summary,
-          timezone: calendar.timeZone || prev.calendar_timezone,
-          ingestEnabled: prev.calendar_sources.length === 0,
-          pushEnabled: false,
-        },
-      ],
-    }));
-  };
+        const nextSources = [
+          ...prev.calendar_sources,
+          {
+            id: calendar.id,
+            name: calendar.summary,
+            timezone: calendar.timeZone || prev.calendar_timezone,
+            ingestEnabled: prev.calendar_sources.length === 0,
+            pushEnabled: false,
+          },
+        ];
+
+        return { ...prev, calendar_sources: nextSources };
+      });
+    },
+    [addToast]
+  );
 
   const handleSaveSettings = async () => {
     try {
@@ -433,28 +478,3 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
 };
 
 export default CalendarSettingsPanel;
-  const handleRemoveCalendar = (id: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      calendar_sources: prev.calendar_sources.filter((src) => src.id !== id),
-    }));
-  };
-
-  const handleToggleIngest = (id: string, enabled: boolean) => {
-    setSettings((prev) => ({
-      ...prev,
-      calendar_sources: prev.calendar_sources.map((src) =>
-        src.id === id ? { ...src, ingestEnabled: enabled } : src
-      ),
-    }));
-  };
-
-  const handleTogglePush = (id: string, enabled: boolean) => {
-    if (!settings.calendar_push_enabled && enabled) return;
-    setSettings((prev) => ({
-      ...prev,
-      calendar_sources: prev.calendar_sources.map((src) =>
-        src.id === id ? { ...src, pushEnabled: enabled } : src
-      ),
-    }));
-  };

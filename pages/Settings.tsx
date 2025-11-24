@@ -17,6 +17,9 @@ import FollowUpSettingsPanel from '../components/FollowUpSettingsPanel';
 import DataPipelineGuide from '../components/DataPipelineGuide';
 import GoogleDataPanel from '../components/GoogleDataPanel';
 import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
+import googleOAuthDocUrl from '../docs/GOOGLE_OAUTH_SETUP.md?url';
+import googleSheetsDocUrl from '../GOOGLE_SHEETS_INTEGRATION.md?url';
+import apiIngestionDocUrl from '../API_INGESTION_SETUP.md?url';
 import { useAuth } from '../lib/auth/AuthContext';
 import { isDevelopment } from '../lib/auth/guards';
 import { useTheme, type ThemePreference } from '../components/ThemeProvider';
@@ -338,16 +341,37 @@ Thank you!`
               <DataPipelineGuide
                 items={[
                   {
-                    label: 'Connect Google',
-                    description: 'Grant Calendar + Sheets scopes once and reuse everywhere.',
+                    label: 'Connect Google Workspace',
+                    description: 'Authenticate Calendar + Sheets scopes once, then reuse the token for Gmail, Docs, and integrations.',
+                    checklist: [
+                      'Click "Connect Google Workspace" below to launch OAuth.',
+                      'Approve calendar, drive, sheets scopes with the ops/admin account.',
+                      'Refresh the status card to confirm token + expiry time.',
+                    ],
+                    docHref: googleOAuthDocUrl,
+                    docLabel: 'Google OAuth setup',
                   },
                   {
-                    label: 'Sync Finale',
-                    description: 'Monitor the auto-sync function and run manual jobs on demand.',
+                    label: 'Sync Finale / Sheets',
+                    description: 'Pull curated data from Finale or a Sheet, then keep nightly backups in Google Drive.',
+                    checklist: [
+                      'Choose import strategy (update, add-only, or replace) before running.',
+                      'Use "Create Backup" after each major Finale sync to snapshot inventory.',
+                      'Store sheet IDs in the panel so everyone uses the same source.',
+                    ],
+                    docHref: googleSheetsDocUrl,
+                    docLabel: 'Sheets integration guide',
                   },
                   {
                     label: 'Custom APIs',
-                    description: 'Issue API keys and register vendor or ERP webhooks.',
+                    description: 'Share data with ERPs/vendors via API keys and the ingestion proxy.',
+                    checklist: [
+                      'Generate an API key, store it in the vendor portal, and limit the scopes.',
+                      'Document the payload format in the linked guide before handing off.',
+                      'Use the external connections list below to track every webhook.',
+                    ],
+                    docHref: apiIngestionDocUrl,
+                    docLabel: 'API ingestion playbook',
                   },
                 ]}
               />

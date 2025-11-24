@@ -9,7 +9,7 @@ import Button from '@/components/ui/Button';
  * - Creating automatic backups
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getGoogleAuthService, type GoogleAuthStatus } from '../services/googleAuthService';
 import { getGoogleSheetsSyncService, type ImportOptions, type ExportOptions } from '../services/googleSheetsSyncService';
 import { getGoogleSheetsService } from '../services/googleSheetsService';
@@ -19,10 +19,7 @@ interface GoogleSheetsPanelProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-type SetupStep = 'auth' | 'import' | 'export' | 'backup';
-
 const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
-  const [currentStep, setCurrentStep] = useState<SetupStep>('auth');
   const [authStatus, setAuthStatus] = useState<GoogleAuthStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,13 +33,29 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
   
   // Auto-backup state
   const [autoBackupEnabled, setAutoBackupEnabled] = useState(() => {
-    return localStorage.getItem('google_sheets_auto_backup') === 'true';
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('google_sheets_auto_backup') === 'true';
   });
 
   const authService = getGoogleAuthService();
   const syncService = getGoogleSheetsSyncService();
   const sheetsService = getGoogleSheetsService();
   const { upsertAlert, resolveAlert } = useSystemAlerts();
+
+  const isConnected = Boolean(authStatus?.isAuthenticated && authStatus?.hasValidToken);
+
+  const scopesSummary = useMemo(() => {
+    const scopes = authStatus?.scopes ?? [];
+    if (!scopes.length) return 'No scopes granted yet';
+    const preview = scopes.slice(0, 2).join(', ');
+    return `${preview}${scopes.length > 2 ? ` +${scopes.length - 2}` : ''}`;
+  }, [authStatus?.scopes]);
+
+  const expiresLabel = authStatus?.expiresAt
+    ? authStatus.expiresAt instanceof Date
+      ? authStatus.expiresAt.toLocaleString()
+      : new Date(authStatus.expiresAt).toLocaleString()
+    : '—';
 
   const notifySheetsFailure = (action: string, error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
@@ -65,9 +78,6 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
     try {
       const status = await authService.getAuthStatus();
       setAuthStatus(status);
-      if (status.isAuthenticated && status.hasValidToken) {
-        setCurrentStep('import');
-      }
     } catch (error) {
       console.error('Error checking auth status:', error);
     }
@@ -96,7 +106,6 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
       setIsLoading(true);
       await authService.revokeAccess();
       setAuthStatus(null);
-      setCurrentStep('auth');
       addToast('Disconnected from Google Workspace.', 'success');
     } catch (error) {
       console.error('Error disconnecting:', error);
@@ -190,7 +199,9 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
 
   const handleToggleAutoBackup = (enabled: boolean) => {
     setAutoBackupEnabled(enabled);
-    localStorage.setItem('google_sheets_auto_backup', String(enabled));
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('google_sheets_auto_backup', String(enabled));
+    }
     addToast(
       enabled 
         ? 'Automatic backups enabled. Inventory will backup to Google Sheets after each Finale sync.' 
@@ -200,331 +211,197 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
   };
 
   return (
-    <div className="google-sheets-panel">
-      <h2>Google Sheets Integration</h2>
-
-      {/* Authentication Section */}
-      <div className="section">
-        <h3>1. Connect Google Workspace</h3>
-        {authStatus?.isAuthenticated ? (
-          <div className="auth-status connected">
-            <p>✓ Connected to Google Workspace</p>
-            <p className="scopes">Scopes: {authStatus.scopes.join(', ')}</p>
-            {authStatus.expiresAt && (
-              <p className="expires">Expires: {authStatus.expiresAt.toLocaleString()}</p>
-            )}
-            <Button onClick={handleDisconnect} disabled={isLoading}>
-              Disconnect
-            </Button>
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-emerald-200">Step 2</p>
+            <h3 className="mt-1 text-xl font-semibold text-white">Google Sheets Integration</h3>
+            <p className="text-sm text-gray-300 mt-1">
+              Import curated datasets, export the live warehouse, and keep rolling backups in Drive.
+            </p>
           </div>
-        ) : (
-          <div className="auth-status disconnected">
-            <p>Not connected to Google Workspace</p>
-            <Button onClick={handleConnect} disabled={isLoading}>
-                {isLoading ? 'Connecting...' : 'Connect Google Workspace'}
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Import Section */}
-      {authStatus?.isAuthenticated && (
-        <div className="section">
-          <h3>2. Import from Google Sheets</h3>
-          <p>Import inventory data from an existing Google Sheet</p>
-
-          <div className="form-group">
-            <label>Spreadsheet URL or ID:</label>
-            <input
-              type="text"
-              value={importSpreadsheetUrl}
-              onChange={(e) => setImportSpreadsheetUrl(e.target.value)}
-              placeholder="https://docs.google.com/spreadsheets/d/..."
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Sheet Name:</label>
-            <input
-              type="text"
-              value={importSheetName}
-              onChange={(e) => setImportSheetName(e.target.value)}
-              placeholder="Sheet1"
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Import Strategy:</label>
-            <select
-              value={importStrategy}
-              onChange={(e) => setImportStrategy(e.target.value as any)}
-              disabled={isLoading}
-            >
-              <option value="update_existing">Update Existing (Merge)</option>
-              <option value="add_new">Add New Only (Skip Existing)</option>
-              <option value="replace">Replace All (Clear & Import)</option>
-            </select>
-          </div>
-
-          <Button
-            onClick={handleImport}
-            disabled={isLoading || !importSpreadsheetUrl}
-            className="btn-primary"
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+              isConnected
+                ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-400/30'
+                : 'bg-rose-500/15 text-rose-200 border border-rose-400/30'
+            }`}
           >
-            {isLoading ? 'Importing...' : 'Import Inventory'}
-          </Button>
+            {isConnected ? 'Connected' : 'Not Connected'}
+          </span>
         </div>
-      )}
 
-      {/* Export Section */}
-      {authStatus?.isAuthenticated && (
-        <div className="section">
-          <h3>3. Export to Google Sheets</h3>
-          <p>Export current inventory to a new Google Sheet</p>
-
-          <Button
-            onClick={handleExport}
-            disabled={isLoading}
-            className="btn-primary"
-          >
-            {isLoading ? 'Exporting...' : 'Export Inventory'}
-          </Button>
-
-          {exportResult && (
-            <div className="export-result">
-              <p>✓ Exported {exportResult.itemsExported} items</p>
-              {exportResult.spreadsheetUrl && (
-                <a href={exportResult.spreadsheetUrl} target="_blank" rel="noopener noreferrer">
-                  Open Spreadsheet →
-                </a>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-white/10 bg-gray-900/40 p-4">
+            <p className="text-xs uppercase text-gray-400">Workspace account</p>
+            <p className="text-base font-semibold text-white mt-1">{authStatus?.email ?? 'Link an account'}</p>
+            <p className="text-xs text-gray-500 mt-2">
+              Token expires: {expiresLabel}
+            </p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-gray-900/40 p-4">
+            <p className="text-xs uppercase text-gray-400">Scopes granted</p>
+            <p className="text-base font-semibold text-white mt-1">{scopesSummary}</p>
+            <p className="text-xs text-gray-500 mt-2">Calendar + Sheets scopes are required for imports/exports.</p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-gray-900/40 p-4">
+            <p className="text-xs uppercase text-gray-400">Actions</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {isConnected ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={checkAuthStatus}
+                    loading={isLoading}
+                  >
+                    Refresh status
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDisconnect}
+                    disabled={isLoading}
+                  >
+                    Disconnect
+                  </Button>
+                </>
+              ) : (
+                <Button onClick={handleConnect} loading={isLoading}>
+                  Connect Google Workspace
+                </Button>
               )}
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Backup Section */}
-      {authStatus?.isAuthenticated && (
-        <div className="section">
-          <h3>4. Automatic Backups</h3>
-          <p>Automatically backup inventory to Google Sheets after each Finale sync</p>
-
-          <div className="auto-backup-toggle">
-            <label className="toggle-container">
-              <input
-                type="checkbox"
-                checked={autoBackupEnabled}
-                onChange={(e) => handleToggleAutoBackup(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-              <span className="toggle-label">
-                {autoBackupEnabled ? 'Auto-Backup Enabled' : 'Auto-Backup Disabled'}
-              </span>
-            </label>
-            <p className="toggle-description">
-              {autoBackupEnabled 
-                ? '✓ Inventory will be automatically backed up to Google Sheets after Finale syncs' 
-                : 'Enable to create automatic backups after each Finale sync'}
-            </p>
-          </div>
-
-          <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e0e0e0' }}>
-            <h4 style={{ fontSize: '1em', marginBottom: '10px' }}>Manual Backup</h4>
-            <p style={{ fontSize: '0.9em', color: '#666', marginBottom: '10px' }}>
-              Create a backup right now without waiting for next Finale sync
-            </p>
-            <Button
-              onClick={handleCreateBackup}
-              disabled={isLoading}
-              className="btn-secondary"
-            >
-              {isLoading ? 'Creating Backup...' : 'Create Backup Now'}
-            </Button>
           </div>
         </div>
+      </div>
+
+      {isConnected && (
+        <>
+          <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 space-y-4">
+            <div>
+              <h4 className="text-lg font-semibold text-white">Import from Google Sheets</h4>
+              <p className="text-sm text-gray-400">
+                Paste any inventory worksheet URL, choose how to merge rows, and MuRP will ingest it instantly.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs uppercase tracking-wide text-gray-400">Spreadsheet URL or ID</label>
+                <input
+                  type="text"
+                  value={importSpreadsheetUrl}
+                  onChange={(e) => setImportSpreadsheetUrl(e.target.value)}
+                  placeholder="https://docs.google.com/spreadsheets/d/…"
+                  disabled={isLoading}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-gray-900/70 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-xs uppercase tracking-wide text-gray-400">Sheet name</label>
+                  <input
+                    type="text"
+                    value={importSheetName}
+                    onChange={(e) => setImportSheetName(e.target.value)}
+                    placeholder="Sheet1"
+                    disabled={isLoading}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-gray-900/70 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs uppercase tracking-wide text-gray-400">Import strategy</label>
+                  <select
+                    value={importStrategy}
+                    onChange={(e) => setImportStrategy(e.target.value as any)}
+                    disabled={isLoading}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-gray-900/70 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+                  >
+                    <option value="update_existing">Update existing (merge rows)</option>
+                    <option value="add_new">Add new only (skip matches)</option>
+                    <option value="replace">Replace all data (dangerous)</option>
+                  </select>
+                </div>
+              </div>
+              <Button
+                onClick={handleImport}
+                disabled={isLoading || !importSpreadsheetUrl}
+                loading={isLoading}
+              >
+                {isLoading ? 'Processing import…' : 'Import inventory'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 space-y-4">
+              <div>
+                <h4 className="text-lg font-semibold text-white">Export live inventory</h4>
+                <p className="text-sm text-gray-400">
+                  Generates a brand-new spreadsheet with the latest counts, headers, and formatting.
+                </p>
+              </div>
+              <Button onClick={handleExport} disabled={isLoading} loading={isLoading}>
+                {isLoading ? 'Exporting…' : 'Export inventory to Sheets'}
+              </Button>
+              {exportResult && (
+                <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+                  <p className="font-semibold">
+                    ✓ Exported {exportResult.itemsExported} items
+                  </p>
+                  {exportResult.spreadsheetUrl && (
+                    <a
+                      href={exportResult.spreadsheetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-flex items-center text-xs font-semibold text-emerald-200 hover:text-emerald-100"
+                    >
+                      Open spreadsheet →
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 space-y-4">
+              <div>
+                <h4 className="text-lg font-semibold text-white">Automatic & manual backups</h4>
+                <p className="text-sm text-gray-400">
+                  Keep a rolling snapshot every time Finale syncs, or trigger a backup on demand before big changes.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-gray-950/40 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Automatic backups</p>
+                    <p className="text-xs text-gray-400">
+                      Stores a dated sheet after each Finale sync job.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoBackupEnabled}
+                      onChange={(e) => handleToggleAutoBackup(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="h-6 w-11 rounded-full bg-gray-700 peer-checked:bg-emerald-500/70 transition-all after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5"></div>
+                  </label>
+                </div>
+                <p className="text-xs text-gray-400">
+                  {autoBackupEnabled
+                    ? 'Backups will trigger automatically and appear in your Google Drive.'
+                    : 'Enable to capture a sheet after every Finale sync run.'}
+                </p>
+              </div>
+              <Button onClick={handleCreateBackup} disabled={isLoading} loading={isLoading}>
+                {isLoading ? 'Creating backup…' : 'Create backup now'}
+              </Button>
+            </div>
+          </div>
+        </>
       )}
-
-      <style>{`
-        .google-sheets-panel {
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 20px;
-        }
-
-        .section {
-          background: #f9f9f9;
-          border: 1px solid #e0e0e0;
-          border-radius: 8px;
-          padding: 20px;
-          margin-bottom: 20px;
-        }
-
-        .section h3 {
-          margin-top: 0;
-          color: #333;
-        }
-
-        .auth-status {
-          padding: 15px;
-          border-radius: 4px;
-          margin: 10px 0;
-        }
-
-        .auth-status.connected {
-          background: #e8f5e9;
-          border: 1px solid #4caf50;
-        }
-
-        .auth-status.disconnected {
-          background: #fff3e0;
-          border: 1px solid #ff9800;
-        }
-
-        .scopes, .expires {
-          font-size: 0.9em;
-          color: #666;
-          margin: 5px 0;
-        }
-
-        .form-group {
-          margin: 15px 0;
-        }
-
-        .form-group label {
-          display: block;
-          margin-bottom: 5px;
-          font-weight: 500;
-          color: #333;
-        }
-
-        .form-group input,
-        .form-group select {
-          width: 100%;
-          padding: 10px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 14px;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-          outline: none;
-          border-color: #4285f4;
-        }
-
-        button {
-          padding: 10px 20px;
-          border: none;
-          border-radius: 4px;
-          font-size: 14px;
-          cursor: pointer;
-          margin-right: 10px;
-        }
-
-        button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .btn-primary {
-          background: #4285f4;
-          color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-          background: #357ae8;
-        }
-
-        .btn-secondary {
-          background: #34a853;
-          color: white;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-          background: #2d8e47;
-        }
-
-        .export-result {
-          margin-top: 15px;
-          padding: 15px;
-          background: #e8f5e9;
-          border: 1px solid #4caf50;
-          border-radius: 4px;
-        }
-
-        .export-result a {
-          color: #4285f4;
-          text-decoration: none;
-          font-weight: 500;
-        }
-
-        .export-result a:hover {
-          text-decoration: underline;
-        }
-
-        .auto-backup-toggle {
-          margin: 15px 0;
-        }
-
-        .toggle-container {
-          display: flex;
-          align-items: center;
-          cursor: pointer;
-          user-select: none;
-          margin-bottom: 10px;
-        }
-
-        .toggle-container input[type="checkbox"] {
-          position: absolute;
-          opacity: 0;
-          cursor: pointer;
-        }
-
-        .toggle-slider {
-          position: relative;
-          display: inline-block;
-          width: 50px;
-          height: 26px;
-          background-color: #ccc;
-          border-radius: 34px;
-          transition: background-color 0.3s;
-          margin-right: 12px;
-        }
-
-        .toggle-slider::before {
-          content: '';
-          position: absolute;
-          height: 20px;
-          width: 20px;
-          left: 3px;
-          bottom: 3px;
-          background-color: white;
-          border-radius: 50%;
-          transition: transform 0.3s;
-        }
-
-        .toggle-container input:checked + .toggle-slider {
-          background-color: #4caf50;
-        }
-
-        .toggle-container input:checked + .toggle-slider::before {
-          transform: translateX(24px);
-        }
-
-        .toggle-label {
-          font-weight: 500;
-          color: #333;
-        }
-
-        .toggle-description {
-          font-size: 0.9em;
-          color: #666;
-          margin: 5px 0 0 0;
-          padding-left: 62px;
-        }
-      `}</style>
     </div>
   );
 };
