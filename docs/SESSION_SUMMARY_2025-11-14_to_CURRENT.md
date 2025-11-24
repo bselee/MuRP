@@ -49,6 +49,54 @@
 **Tests:**
 - Verified: All tests passing (12/12 schema transformers + inventory UI)
 - Verified: TypeScript compilation clean (Vite build 5.77s, 788 modules transformed)
+
+---
+
+### Session: January 24, 2025 19:30 - 20:00
+
+**Changes Made:**
+- Modified: `components/CalendarSettingsPanel.tsx` - Performance optimization with useCallback
+  - Wrapped handleRemoveCalendar, handleToggleIngest, handleTogglePush in useCallback hooks
+  - Converted handleAddCalendar to useCallback for proper memoization
+  - Improved re-render performance by stabilizing callback references
+- Modified: `components/DataPipelineGuide.tsx` - Enhanced with interactive checklist UI
+  - Added GuideItem interface with optional checklist, docHref, docLabel fields
+  - Upgraded visual design with step numbers in bordered circles
+  - Added per-step checklists with bullet points for action items
+  - Added documentation links with "Open guide →" CTAs
+  - Improved responsive grid layout (md:grid-cols-3)
+- Modified: `components/GoogleSheetsPanel.tsx` - Major state management refactor
+  - Removed SetupStep state machine (simplified flow)
+  - Added useMemo for isConnected, scopesSummary, expiresLabel computed values
+  - Added SSR-safe localStorage access checks (typeof window !== 'undefined')
+  - Improved visual hierarchy with modern card design (border-white/10, backdrop-blur-xl)
+  - Added connection status badge with conditional styling
+  - Better TypeScript null safety throughout
+- Modified: `pages/Settings.tsx` - Enhanced data pipeline guide with documentation
+  - Imported 3 new documentation URLs (googleOAuthDocUrl, googleSheetsDocUrl, apiIngestionDocUrl)
+  - Expanded DataPipelineGuide items with detailed checklists per step
+  - Added doc links to external markdown guides for each pipeline stage
+  - Better descriptions: OAuth → Finale/Sheets sync → API ingestion flow
+  - Improved user onboarding with step-by-step action items
+
+**Key Decisions:**
+- Decision: Use useCallback extensively in CalendarSettingsPanel
+- Rationale: Prevents unnecessary re-renders of child components that depend on callback props
+- Decision: Add checklists and doc links to DataPipelineGuide
+- Rationale: Reduces support burden by providing inline guidance for complex setup flows
+- Decision: Remove step-based state machine from GoogleSheetsPanel
+- Rationale: Simplified UX - users can access all features once authenticated, no wizard flow
+
+**Tests:**
+- Verified: TypeScript compilation clean (Vite build 6.29s, 792 modules transformed)
+- Verified: Production bundle size 2,006.21 kB (gzip: 524.03 kB)
+- Build warnings: Large bundle size (expected for full MRP system), dynamic import optimization opportunity
+
+**Deployment:**
+- Commit: 5ce3bc5 - "refactor(ui): improve Settings panels with enhanced UX and performance"
+- Files Changed: 4 (+343, -398 lines)
+- Pushed to: origin/main
+- Vercel: Auto-deployment triggered
 - Verified: No breaking changes (optional fields, backwards compatible)
 
 **Implementation Details:**
