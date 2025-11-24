@@ -909,8 +909,21 @@ export interface RequisitionRequestOptions {
     opsApprovalRequired?: boolean;
 }
 
+export type FollowUpTriggerType = 'tracking_missing' | 'invoice_missing' | 'custom';
+
+export interface FollowUpCampaign {
+  id: string;
+  name: string;
+  description?: string | null;
+  triggerType: FollowUpTriggerType;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface FollowUpRule {
   id: string;
+  campaignId: string;
   stage: number;
   waitHours: number;
   subjectTemplate: string;
@@ -924,6 +937,7 @@ export interface VendorFollowUpEvent {
   id: string;
   poId: string;
   vendorId?: string | null;
+  campaignId?: string | null;
   stage: number;
   sentAt: string;
   respondedAt?: string | null;

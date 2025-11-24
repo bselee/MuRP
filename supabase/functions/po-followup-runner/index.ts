@@ -40,41 +40,80 @@ const corsHeaders = {
 };
 
 async function runFollowUps() {
-  const { data: rules, error: ruleError } = await supabase
-    .from('po_followup_rules')
+  const { data: campaigns, error: campaignError } = await supabase
+    .from('po_followup_campaigns')
     .select('*')
     .eq('active', true)
-    .order('stage', { ascending: true });
+    .order('created_at', { ascending: true });
 
-  if (ruleError) throw ruleError;
-  if (!rules || rules.length === 0) {
-    return { success: true, sent: 0, reason: 'no_rules' };
+  if (campaignError) throw campaignError;
+  if (!campaigns || campaigns.length === 0) {
+    return { success: true, sent: 0, reason: 'no_campaigns' };
   }
 
-  const candidateStatuses = ['draft', 'sent', 'confirmed'];
-  const { data: purchaseOrders, error: poError } = await supabase
-    .from('purchase_orders')
-    .select(
-      'id, order_id, vendor_id, vendor_name, supplier, status, sent_at, last_follow_up_stage, last_follow_up_sent_at, follow_up_required, tracking_status, total, created_at',
-    )
-    .in('status', candidateStatuses)
-    .eq('follow_up_required', true);
+  let totalSent = 0;
 
-  if (poError) throw poError;
-  if (!purchaseOrders || purchaseOrders.length === 0) {
-    return { success: true, sent: 0, reason: 'no_candidates' };
+  for (const campaign of campaigns) {
+    const { data: rules, error: ruleError } = await supabase
+      .from('po_followup_rules')
+      .select('*')
+      .eq('campaign_id', campaign.id)
+      .eq('active', true)
+      .order('stage', { ascending: true });
+
+    if (ruleError) {
+      console.error('[po-followup-runner] unable to load rules for campaign', campaign.id, ruleError);
+      continue;
+    }
+
+    if (!rules || rules.length === 0) {
+      continue;
+    }
+
+    const sent = await processCampaign(campaign, rules);
+    totalSent += sent;
   }
+
+  return { success: true, sent: totalSent };
+}
+
+async function processCampaign(campaign: any, rules: any[]) {
+  const candidates = await fetchCandidates(campaign);
+  if (!candidates.length) {
+    return 0;
+  }
+
+  const poIds = candidates.map((po) => po.id);
+  const { data: stateRows, error: stateError } = await supabase
+    .from('po_followup_campaign_state')
+    .select('po_id, last_stage, last_sent_at')
+    .eq('campaign_id', campaign.id)
+    .in('po_id', poIds);
+
+  if (stateError) {
+    console.error('[po-followup-runner] failed loading campaign state', campaign.id, stateError);
+  }
+
+  const stateMap = new Map<string, { last_stage: number; last_sent_at: string | null }>();
+  (stateRows || []).forEach((row) => stateMap.set(row.po_id, row));
 
   const now = new Date();
   let sentCount = 0;
 
-  for (const po of purchaseOrders) {
-    const currentStage = po.last_follow_up_stage ?? 0;
+  for (const po of candidates) {
+    const state = stateMap.get(po.id);
+    const currentStage = state?.last_stage ?? 0;
     const nextStage = currentStage + 1;
     const rule = rules.find((r) => r.stage === nextStage);
     if (!rule) continue;
 
-    const baseline = po.last_follow_up_stage ? po.last_follow_up_sent_at : po.sent_at;
+    const baseline =
+      state?.last_sent_at ??
+      (campaign.trigger_type === 'invoice_missing'
+        ? po.received_at ?? po.sent_at
+        : po.last_follow_up_stage
+        ? po.last_follow_up_sent_at
+        : po.sent_at);
     if (!baseline) continue;
 
     const elapsedMs = now.getTime() - new Date(baseline).getTime();
@@ -85,9 +124,9 @@ async function runFollowUps() {
     const contactEmail = vendor?.contact_emails?.[0] || vendor?.email || vendor?.billing_email;
     if (!contactEmail) continue;
 
-    const threadMeta = await fetchThreadMetadata(po.id);
-    const threadId = threadMeta?.gmail_thread_id ?? null;
-    if (!threadId) continue; // ensure we keep thread continuity
+    const threadId = await resolveThreadId(po.id);
+    const requiresThread = campaign.trigger_type === 'tracking_missing';
+    if (requiresThread && !threadId) continue;
 
     const context = buildTemplateContext(po, vendor);
     const subject = compileTemplate(rule.subject_template, context);
@@ -98,7 +137,7 @@ async function runFollowUps() {
         to: contactEmail,
         subject,
         body,
-        threadId,
+        threadId: threadId ?? null,
       });
 
       const sentAt = new Date().toISOString();
@@ -111,6 +150,7 @@ async function runFollowUps() {
           gmail_thread_id: gmail.threadId,
           metadata: {
             followUpStage: rule.stage,
+            campaignId: campaign.id,
             auto: true,
             template: 'follow_up',
           },
@@ -122,6 +162,7 @@ async function runFollowUps() {
         .insert({
           po_id: po.id,
           vendor_id: vendor?.id ?? null,
+          campaign_id: campaign.id,
           stage: rule.stage,
           sent_at: sentAt,
           metadata: {
@@ -130,13 +171,25 @@ async function runFollowUps() {
         });
 
       await supabase
-        .from('purchase_orders')
-        .update({
-          last_follow_up_stage: rule.stage,
-          last_follow_up_sent_at: sentAt,
-          follow_up_status: 'awaiting_vendor',
-        })
-        .eq('id', po.id);
+        .from('po_followup_campaign_state')
+        .upsert({
+          po_id: po.id,
+          campaign_id: campaign.id,
+          last_stage: rule.stage,
+          last_sent_at: sentAt,
+          status: campaign.trigger_type === 'invoice_missing' ? 'awaiting_invoice' : 'awaiting_vendor',
+        });
+
+      if (campaign.trigger_type === 'tracking_missing') {
+        await supabase
+          .from('purchase_orders')
+          .update({
+            last_follow_up_stage: rule.stage,
+            last_follow_up_sent_at: sentAt,
+            follow_up_status: 'awaiting_vendor',
+          })
+          .eq('id', po.id);
+      }
 
       sentCount++;
     } catch (error) {
@@ -144,7 +197,38 @@ async function runFollowUps() {
     }
   }
 
-  return { success: true, sent: sentCount };
+  return sentCount;
+}
+
+async function fetchCandidates(campaign: any) {
+  if (campaign.trigger_type === 'invoice_missing') {
+    const { data, error } = await supabase
+      .from('purchase_orders')
+    .select(
+      'id, order_id, vendor_id, vendor_name, supplier, status, sent_at, received_at, invoice_detected_at, tracking_status, total, created_at',
+    )
+      .in('status', ['received', 'Fulfilled'])
+      .is('invoice_detected_at', null);
+    if (error) {
+      console.error('[po-followup-runner] invoice candidate query failed', error);
+      return [];
+    }
+    return (data || []).filter((po) => !!po.sent_at);
+  }
+
+  const candidateStatuses = ['draft', 'sent', 'confirmed'];
+  const { data, error } = await supabase
+    .from('purchase_orders')
+    .select(
+      'id, order_id, vendor_id, vendor_name, supplier, status, sent_at, last_follow_up_stage, last_follow_up_sent_at, follow_up_required, tracking_status, total, created_at',
+    )
+    .in('status', candidateStatuses)
+    .eq('follow_up_required', true);
+  if (error) {
+    console.error('[po-followup-runner] tracking candidate query failed', error);
+    return [];
+  }
+  return data || [];
 }
 
 async function fetchVendor(id?: string | null) {
@@ -164,16 +248,16 @@ async function fetchVendor(id?: string | null) {
   };
 }
 
-async function fetchThreadMetadata(poId: string) {
+async function resolveThreadId(poId: string) {
   const { data } = await supabase
     .from('po_email_tracking')
     .select('gmail_thread_id')
     .eq('po_id', poId)
     .not('gmail_thread_id', 'is', null)
-    .order('sent_at', { ascending: true })
+    .order('sent_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  return data;
+  return data?.gmail_thread_id ?? null;
 }
 
 function buildTemplateContext(po: any, vendor: any) {

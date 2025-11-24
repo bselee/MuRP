@@ -22,9 +22,12 @@ interface CompanySettings {
   city?: string;
   state?: string;
   postal_code?: string;
+  country?: string;
   phone?: string;
   email?: string;
+  website?: string;
   tax_rate: number;
+  logo_url?: string | null;
 }
 
 interface EmailTemplate {
@@ -40,6 +43,14 @@ interface PDFTemplate {
   show_logo: boolean;
   show_company_info: boolean;
   show_tax: boolean;
+  font_family?: string;
+  layout_config?: {
+    sections?: Array<{
+      id: string;
+      enabled?: boolean;
+      title?: string;
+    }>;
+  };
 }
 
 export class TemplateService {
@@ -69,9 +80,12 @@ export class TemplateService {
         city: data.city,
         state: data.state,
         postal_code: data.postal_code,
+        country: data.country,
         phone: data.phone,
         email: data.email,
+        website: data.website,
         tax_rate: data.tax_rate || 0.08,
+        logo_url: data.logo_url,
       };
 
       this.settingsLoaded = true;
@@ -86,9 +100,12 @@ export class TemplateService {
         city: 'Mycelia',
         state: 'CA',
         postal_code: '90210',
+        country: 'USA',
         phone: '(555) 123-4567',
         email: 'contact@murp.app',
+        website: 'https://murp.app',
         tax_rate: 0.08,
+        logo_url: null,
       };
     }
   }
@@ -200,6 +217,8 @@ ${company.phone}`,
           show_logo: template.show_logo !== false,
           show_company_info: template.show_company_info !== false,
           show_tax: template.show_tax !== false,
+          font_family: template.font_family || 'helvetica',
+          layout_config: template.layout_config ?? null,
         };
       }
     } catch (error) {
@@ -214,6 +233,7 @@ ${company.phone}`,
       show_logo: true,
       show_company_info: true,
       show_tax: true,
+      font_family: 'helvetica',
     };
   }
 
@@ -266,6 +286,7 @@ ${company.phone}`,
       company.address_line1,
       company.address_line2,
       [company.city, company.state, company.postal_code].filter(Boolean).join(', '),
+      company.country,
     ].filter(Boolean);
 
     return parts.join('\n');

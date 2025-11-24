@@ -14,6 +14,7 @@ import {
   setBOMEmbeddings,
   setVendorEmbeddings,
   getEmbeddingStats,
+  ensureEmbeddingsLoaded,
 } from '../services/semanticSearch';
 import { RefreshIcon, SparklesIcon, ChartBarIcon, CheckCircleIcon } from './icons';
 
@@ -33,11 +34,14 @@ const SemanticSearchSettings: React.FC<SemanticSearchSettingsProps> = ({
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, type: '' });
   const [stats, setStats] = useState(getEmbeddingStats());
+  const [refreshingStats, setRefreshingStats] = useState(false);
 
   useEffect(() => {
-    // Update stats on mount and when data changes
-    setStats(getEmbeddingStats());
-  }, [inventory, boms, vendors]);
+    // Ensure persisted embeddings are loaded when viewing the panel.
+    ensureEmbeddingsLoaded()
+      .then(() => setStats(getEmbeddingStats()))
+      .catch((error) => console.error('[Semantic Search Settings] bootstrap failed', error));
+  }, []);
 
   const handleGenerateEmbeddings = async () => {
     setGenerating(true);
@@ -48,21 +52,21 @@ const SemanticSearchSettings: React.FC<SemanticSearchSettingsProps> = ({
       const inventoryEmbeds = await generateInventoryEmbeddings(inventory, (current, total) => {
         setProgress({ current, total, type: 'Inventory' });
       });
-      setInventoryEmbeddings(inventoryEmbeds);
+      await setInventoryEmbeddings(inventoryEmbeds);
 
       // Generate BOM embeddings
       setProgress({ current: 0, total: boms.length, type: 'BOMs' });
       const bomEmbeds = await generateBOMEmbeddings(boms, (current, total) => {
         setProgress({ current, total, type: 'BOMs' });
       });
-      setBOMEmbeddings(bomEmbeds);
+      await setBOMEmbeddings(bomEmbeds);
 
       // Generate vendor embeddings
       setProgress({ current: 0, total: vendors.length, type: 'Vendors' });
       const vendorEmbeds = await generateVendorEmbeddings(vendors, (current, total) => {
         setProgress({ current, total, type: 'Vendors' });
       });
-      setVendorEmbeddings(vendorEmbeds);
+      await setVendorEmbeddings(vendorEmbeds);
 
       // Update stats
       setStats(getEmbeddingStats());
@@ -84,9 +88,23 @@ const SemanticSearchSettings: React.FC<SemanticSearchSettingsProps> = ({
 
   const isEnabled = stats.total > 0;
 
+  const handleRefreshStats = async () => {
+    try {
+      setRefreshingStats(true);
+      await ensureEmbeddingsLoaded();
+      setStats(getEmbeddingStats());
+      addToast('Embedding stats refreshed.', 'info');
+    } catch (error) {
+      console.error('[Semantic Search Settings] refresh failed', error);
+      addToast('Unable to refresh stats right now.', 'error');
+    } finally {
+      setRefreshingStats(false);
+    }
+  };
+
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-wrap items-center gap-4 mb-6">
         <SparklesIcon className="w-8 h-8 text-indigo-400" />
         <div>
           <h3 className="text-lg font-semibold text-white">Semantic Search</h3>
@@ -94,6 +112,16 @@ const SemanticSearchSettings: React.FC<SemanticSearchSettingsProps> = ({
             AI-powered vector embeddings for 90% relevance accuracy (vs 60% with keywords)
           </p>
         </div>
+        <div className="flex-1" />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleRefreshStats}
+          disabled={generating || refreshingStats}
+        >
+          <RefreshIcon className={`w-4 h-4 ${refreshingStats ? 'animate-spin' : ''}`} />
+          Refresh stats
+        </Button>
       </div>
 
       {/* Status Badge */}

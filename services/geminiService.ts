@@ -3,7 +3,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, BOMComponent, WatchlistItem } from '../types';
 import type { Forecast } from './forecastingService';
-import { searchInventory, searchBOMs, searchVendors, getEmbeddingStats } from './semanticSearch';
+import { searchInventory, searchBOMs, searchVendors, getEmbeddingStats, ensureEmbeddingsLoaded } from './semanticSearch';
 import { isComplianceQuestion, routeComplianceQuestion, isMcpServerAvailable } from './mcpService';
 
 // Support both import.meta.env (Vite) and process.env (Node cli/backends)
@@ -232,6 +232,7 @@ export async function askAboutInventory(
   });
 
   // Check if semantic search embeddings are available
+  await ensureEmbeddingsLoaded();
   const embeddingStats = getEmbeddingStats();
   const useSemanticSearch = embeddingStats.total > 0;
 
