@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import React, { useState, useEffect } from 'react';
 import { CheckCircleIcon, SparklesIcon, XCircleIcon } from './icons';
 import complianceService, { type UserComplianceProfile } from '../services/complianceService';
+import billingService from '../services/billingService';
 
 interface ComplianceTierSelectorProps {
   userId: string;
@@ -34,10 +35,27 @@ export const ComplianceTierSelector: React.FC<ComplianceTierSelectorProps> = ({ 
 
   const selectTier = async (tier: 'basic' | 'full_ai') => {
     if (tier === 'full_ai') {
-      // In production, integrate with Stripe here
-      await complianceService.upgradeToFullAI(userId);
+      if (!billingService.isBillingLive) {
+        window.alert('Billing preview is active. Upgrade checkout will go live soon.');
+        return;
+      }
+      try {
+        const url = await billingService.startCheckout({
+          planId: 'full_ai',
+          billingInterval: 'monthly',
+          seatQuantity: 1,
+          returnUrl: `${window.location.origin}/settings`,
+        });
+        if (url) {
+          window.location.href = url;
+        }
+      } catch (error) {
+        console.error('[ComplianceTierSelector] Failed to start checkout', error);
+        window.alert('Unable to start checkout. Please contact support.');
+      }
+      return;
     }
-    onTierSelected(tier);
+    onTierSelected('basic');
   };
 
   if (loading) {

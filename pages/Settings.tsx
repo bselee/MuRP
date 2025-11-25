@@ -29,6 +29,7 @@ import TwoFactorSettings from '../components/TwoFactorSettings';
 import { isFeatureEnabled } from '../lib/featureFlags';
 import TermsOfServiceModal from '../components/TermsOfServiceModal';
 import ComponentSwapSettingsPanel from '../components/ComponentSwapSettingsPanel';
+import BillingPanel from '../components/BillingPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -65,6 +66,7 @@ const Settings: React.FC<SettingsProps> = ({
 }) => {
     // Collapsible section states (reordered by usage frequency)
     const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+    const [isBillingOpen, setIsBillingOpen] = useState(true);
     const [isAiConfigOpen, setIsAiConfigOpen] = useState(false);
     const [isDataIntegrationsOpen, setIsDataIntegrationsOpen] = useState(false);
     const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
@@ -151,6 +153,15 @@ Thank you!`
             <h1 className="text-3xl font-bold text-white tracking-tight">Settings</h1>
             <p className="text-gray-400 mt-1">Manage users, integrations, API keys, and application preferences.</p>
           </header>
+
+          <CollapsibleSection
+            title="Billing & Subscription"
+            icon={<SparklesIcon className="w-6 h-6 text-indigo-300" />}
+            isOpen={isBillingOpen}
+            onToggle={() => setIsBillingOpen(!isBillingOpen)}
+          >
+            <BillingPanel currentUser={currentUser} addToast={addToast} />
+          </CollapsibleSection>
 
           <CollapsibleSection
             title="Appearance & Theme"

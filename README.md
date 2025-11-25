@@ -50,6 +50,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 - **[MCP Setup Guide](docs/MCP_SETUP_GUIDE.md)** - Admin guide for MCP server configuration
 - **[AI Gateway Integration](docs/AI_GATEWAY_INTEGRATION.md)** - ✨ Vercel AI Gateway with tier-based routing
 - **[Session Summary](docs/SESSION_SUMMARY_2025-11-13.md)** - Latest development session details
+- **[Pricing & Billing Rollout Checklist](docs/PRICING_ROLLOUT_CHECKLIST.md)** - Flags + steps for launching the new landing page and Stripe billing
 
 ## 🔐 Security Features
 

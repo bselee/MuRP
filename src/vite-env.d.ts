@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_FINALE_FACILITY_ID?: string;
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  readonly VITE_SHOW_NEW_PRICING?: string;
+  readonly VITE_BILLING_LIVE?: string;
 }
 
 interface ImportMeta {
