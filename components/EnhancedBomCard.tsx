@@ -58,9 +58,9 @@ const DARK_CARD_OVERLAY =
 const LIGHT_CARD_OVERLAY =
   'pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.6),rgba(253,244,223,0))]';
 const DARK_HEADER_BACKGROUND =
-  'p-3 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70';
+  'p-2.5 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70';
 const LIGHT_HEADER_BACKGROUND =
-  'p-3 bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90';
+  'p-2.5 bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90';
 const DARK_HEADER_RIBBON =
   'pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20';
 const LIGHT_HEADER_RIBBON =
@@ -369,9 +369,9 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
     }
     return acc;
   }, null);
-  const metricGridClass = isManager
-    ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6'
-    : 'grid-cols-2 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6';
+  const metricGridClass = isExpanded
+    ? (isManager ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6' : 'grid-cols-2 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6')
+    : 'grid-cols-3'; // Compact: 3 key metrics when collapsed
 
   const [activeTab, setActiveTab] = useState<'components' | 'financials'>('components');
   const getSwapRuleForSku = (sku: string) => {
@@ -396,7 +396,14 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   const totalCost = totalMaterialCost + laborCost;
 
   return (
-    <div className={cardShellClass}>
+    <div 
+      className={`${cardShellClass} cursor-pointer`}
+      onClick={(e) => {
+        // Don't trigger if clicking buttons or interactive elements
+        if ((e.target as HTMLElement).closest('button, a, input')) return;
+        onViewDetails();
+      }}
+    >
       <div className={cardOverlayClass} />
       <div className={ribbonClass} />
       <div className="relative">
@@ -405,73 +412,74 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
         <div className="flex items-center justify-between gap-4">
           {/* LEFT: Product Identity & Primary Metrics */}
           <div className="flex-1 min-w-0">
-            {/* SKU, Name, Description, Components Toggle - All in one line */}
-            <div className="flex flex-wrap md:flex-nowrap items-center gap-2 mb-1">
-              <Button
-                onClick={() => onNavigateToInventory?.(bom.finishedSku)}
-                className={`font-bold font-mono transition-colors cursor-pointer underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400 ${isLightTheme ? 'text-indigo-700 hover:text-indigo-500' : 'text-white hover:text-indigo-400'}`}
-                style={{ fontSize: '1.1rem' }}
-                title="View this product in Inventory"
-              >
-                {bom.finishedSku}
-              </Button>
-              
-              <h4 className={`${bodyHeadingClass} !mb-0 whitespace-nowrap text-sm`}>{bom.name}</h4>
-
-              {bom.category && (
-                <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-700 text-gray-300 border border-gray-600 whitespace-nowrap">
-                  {bom.category}
-                </span>
-              )}
-              
-              {bom.description && (
-                <span className={`${passiveBodyText} text-xs flex-1 min-w-0 truncate border-l border-gray-700/30 pl-2 hidden md:block`}>
-                  {bom.description}
-                </span>
-              )}
-
-              {/* Component Toggle with Hover Tooltip */}
-              <div className="relative group ml-auto flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleExpand();
-                  }}
-                  className={componentToggleClass}
-                  title={isExpanded ? 'Hide component breakdown' : 'Show component breakdown'}
-                >
-                  <BeakerIcon className="w-3.5 h-3.5" />
-                  <span>{bom.components?.length || 0} components</span>
-                  {hasSwapHints && <SparklesIcon className="w-3 h-3 text-emerald-300" title="Swap suggestions available" />}
-                  <ChevronDownIcon className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                </button>
-                
-                {/* Hover Tooltip */}
-                <div className={componentPreviewShellClass}>
-                  <div className={componentPreviewHeaderClass}>Component Preview</div>
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                    {bom.components.slice(0, 8).map(c => (
-                      <div key={c.sku} className={componentPreviewRowClass}>
-                        <span className={componentPreviewSkuClass}>{c.sku}</span>
-                        <span className="truncate">{c.name}</span>
-                        <span className={componentPreviewQuantityClass}>{c.quantity} {c.unit}</span>
-                      </div>
-                    ))}
-                    {bom.components.length > 8 && (
-                      <div className="text-center text-xs opacity-70 pt-1">
-                        + {bom.components.length - 8} more...
-                      </div>
-                    )}
+            {/* SKU, Name, Description - All in one line */}
+            <div className="flex items-start gap-3 mb-1">
+              {/* Artwork Placeholder */}
+              <div className={`flex-shrink-0 w-16 h-16 rounded-lg border-2 overflow-hidden ${
+                labels.length > 0 
+                  ? themeSwap('border-emerald-400/40', 'border-emerald-500/40')
+                  : themeSwap('border-gray-300', 'border-gray-700')
+              }`}>
+                {labels.length > 0 && labels[0].url ? (
+                  <div className="relative w-full h-full group">
+                    <img 
+                      src={labels[0].url} 
+                      alt={`${bom.finishedSku} label`}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className={`absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center`}>
+                      <span className="text-white text-[8px] text-center px-1">{labels[0].fileName}</span>
+                    </div>
                   </div>
+                ) : (
+                  <div className={`w-full h-full flex flex-col items-center justify-center ${
+                    themeSwap('bg-gray-100', 'bg-gray-800/50')
+                  }`}>
+                    <DocumentTextIcon className={`w-6 h-6 ${themeSwap('text-gray-400', 'text-gray-600')}`} />
+                    <span className={`text-[8px] mt-1 ${themeSwap('text-gray-500', 'text-gray-600')}`}>No artwork</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Product Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
+                  <Button
+                    onClick={() => onNavigateToInventory?.(bom.finishedSku)}
+                    className={`font-extrabold font-mono transition-colors cursor-pointer ${isLightTheme ? 'text-indigo-700 hover:text-indigo-500' : 'text-white hover:text-indigo-400'}`}
+                    style={{ fontSize: '1.3rem', letterSpacing: '0.02em' }}
+                    title="View this product in Inventory"
+                  >
+                    {bom.finishedSku}
+                  </Button>
+                  
+                  <h4 className={`${bodyHeadingClass} !mb-0 whitespace-nowrap text-sm`}>{bom.name}</h4>
+
+                  {bom.category && (
+                    <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-700 text-gray-300 border border-gray-600 whitespace-nowrap">
+                      {bom.category}
+                    </span>
+                  )}
+                  
+                  {bom.description && (
+                    <span className={`${passiveBodyText} text-xs flex-1 min-w-0 truncate border-l border-gray-700/30 pl-2 hidden md:block`}>
+                      {bom.description}
+                    </span>
+                  )}
                 </div>
+                {/* Artwork filename if available */}
+                {labels.length > 0 && labels[0].fileName && (
+                  <div className={`text-[10px] mt-0.5 ${themeSwap('text-gray-600', 'text-gray-500')} truncate`}>
+                    📄 {labels[0].fileName}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* KEY METRICS ROW - Role-based display with Progress Bars */}
-            <div className={`grid gap-3 text-xs ${metricGridClass}`}>
+            {/* KEY METRICS ROW - Compact when collapsed, full when expanded */}
+            <div className={`grid gap-2 text-xs ${metricGridClass}`}>
               {/* Inventory Status with Progress Bar - Both roles */}
-              <div className={`${glassTile} p-3`}>
+              <div className={`${glassTile} ${isExpanded ? 'p-3' : 'p-2'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-gray-500">Inventory</div>
                   {inventoryMap.get(bom.finishedSku)?.reorderPoint && (
@@ -524,8 +532,8 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 </div>
               </div>
 
-              {/* Velocity & Trend */}
-              <div className={`${glassTile} p-3`}>
+              {/* Velocity & Trend - Show when collapsed */}
+              <div className={`${glassTile} ${isExpanded ? 'p-3' : 'p-2'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-500">Velocity</span>
                   {sales30Days != null && (
@@ -561,8 +569,8 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                 </div>
               </div>
 
-              {/* Production Runway */}
-              <div className={`${glassTile} p-3`}>
+              {/* Production Runway - Only when expanded */}
+              {isExpanded && <div className={`${glassTile} p-3`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-500">Runway</span>
                   {safetyStock != null && (
@@ -586,10 +594,10 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                   <ClockIcon className="w-3 h-3" />
                   {runwayLabel}
                 </span>
-              </div>
+              </div>}
 
-              {/* Critical Path */}
-              <div className={`${glassTile} p-3`}>
+              {/* Critical Path - Only when expanded */}
+              {isExpanded && <div className={`${glassTile} p-3`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-500">Critical Path</span>
                   {criticalPathComponent && (
@@ -607,16 +615,18 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                     ? `${criticalPathComponent.name} (${criticalPathComponent.sku})`
                     : 'Add lead times for components'}
                 </div>
-              </div>
+              </div>}
 
-              {/* Yield - Both roles */}
-              <div className={`${glassTile} p-3`}>
-              <div className="text-gray-500 mb-2">Yield</div>
-              <div className="flex items-baseline gap-2">
-                <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold text-blue-400`}>{bom.yieldQuantity || 1}</span>
-                <span className="text-gray-400 text-xs">{isManager ? '/batch' : 'per batch'}</span>
-              </div>
-            </div>
+              {/* Yield - Only when expanded */}
+              {isExpanded && (
+                <div className={`${glassTile} p-3`}>
+                  <div className="text-gray-500 mb-2">Yield</div>
+                  <div className="flex items-baseline gap-2">
+                    <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold text-blue-400`}>{bom.yieldQuantity || 1}</span>
+                    <span className="text-gray-400 text-xs">{isManager ? '/batch' : 'per batch'}</span>
+                  </div>
+                </div>
+              )}
 
           </div>
         </div>
@@ -685,6 +695,23 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 	            <span>Edit</span>
 	          </Button>
 	        )}
+
+          {/* Expand/Collapse Toggle */}
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpand();
+            }}
+            className={themeSwap(
+              'flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded transition-colors',
+              'flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded transition-colors'
+            )}
+            title={isExpanded ? 'Hide recipe ingredients' : 'Show recipe ingredients'}
+          >
+            <BeakerIcon className="w-3.5 h-3.5" />
+            {hasSwapHints && <SparklesIcon className="w-3 h-3" title="Swap suggestions available" />}
+            <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          </Button>
 	      </div>
 
       {queuedCount > 0 && (
@@ -694,8 +721,8 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
         </div>
       )}
 	    </div>
-        {/* SECONDARY INFO BAR - Simplified for managers, detailed for admins */}
-        {isAdmin ? (
+        {/* SECONDARY INFO BAR - Only show when expanded */}
+        {isExpanded && (isAdmin ? (
           <div className={secondaryPanelClass}>
             {/* Packaging - Admin gets details */}
             <div>
@@ -748,7 +775,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
               </span>
             </div>
           </div>
-        )}
+        ))}
 
         {/* LIMITING COMPONENT WARNING */}
         {buildability.maxBuildable === 0 && buildability.limitingComponents.length > 0 && (

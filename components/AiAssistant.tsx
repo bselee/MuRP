@@ -22,7 +22,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { sendChatMessage, type ChatRequest } from '../services/aiGatewayService';
 import { getUserProfile } from '../services/complianceService';
 import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, AiConfig, AiSettings } from '../types';
-import { BotIcon, CloseIcon, SendIcon, MagicSparklesIcon } from './icons';
+import { CloseIcon, SendIcon, AiSwirlIcon } from './icons';
 
 interface AiAssistantProps {
   isOpen: boolean;
@@ -203,9 +203,19 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
         {/* Header */}
         <header className="flex items-center justify-between p-4 bg-gray-900/50 border-b border-gray-700">
           <div className="flex items-center gap-3">
-            <MagicSparklesIcon className="w-6 h-6 text-indigo-300" />
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 via-indigo-500 to-purple-600 shadow-[0_10px_25px_rgba(15,23,42,0.45)]">
+              <AiSwirlIcon className="w-6 h-6 text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" />
+              <div className="absolute inset-0 rounded-2xl border border-white/20" />
+            </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">AI Assistant</h2>
+              <h2 className="text-xl font-black tracking-tight text-white">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-indigo-200 to-purple-200 uppercase tracking-[0.35em]">
+                  Ai
+                </span>
+                <span className="ml-2 text-sm uppercase tracking-[0.35em] text-gray-300 font-semibold">
+                  Copilot
+                </span>
+              </h2>
               {messagesRemaining !== null && (
                 <p className="text-xs text-gray-400">
                   {messagesRemaining} messages remaining this month
@@ -249,8 +259,8 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
               className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.sender === 'bot' && (
-                <div className="w-8 h-8 rounded-full bg-indigo-500 flex-shrink-0 flex items-center justify-center">
-                  <MagicSparklesIcon className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 via-indigo-500 to-purple-600 flex-shrink-0 flex items-center justify-center shadow-[0_6px_15px_rgba(79,70,229,0.45)]">
+                  <AiSwirlIcon className="w-4 h-4 text-white" />
                 </div>
               )}
               <div className="flex flex-col gap-1 max-w-xs md:max-w-md">
@@ -274,8 +284,8 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
           ))}
           {isLoading && (
             <div className="flex gap-3 justify-start">
-              <div className="w-8 h-8 rounded-full bg-indigo-500 flex-shrink-0 flex items-center justify-center">
-                <MagicSparklesIcon className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 via-indigo-500 to-purple-600 flex-shrink-0 flex items-center justify-center shadow-[0_6px_15px_rgba(79,70,229,0.45)]">
+                <AiSwirlIcon className="w-4 h-4 text-white" />
               </div>
               <div className="max-w-xs md:max-w-md p-3 rounded-lg bg-gray-700 text-gray-200">
                 <div className="flex items-center space-x-1">

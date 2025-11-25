@@ -36,8 +36,9 @@ import { supabase } from '../lib/supabase/client';
 import { fetchComponentSwapRules, mapComponentSwaps } from '../services/componentSwapService';
 
 type ViewMode = 'card' | 'table';
-type SortOption = 'name' | 'sku' | 'inventory' | 'buildability';
+type SortOption = 'name' | 'sku' | 'inventory' | 'buildability' | 'category' | 'velocity' | 'runway';
 type BuildabilityFilter = 'all' | 'buildable' | 'not-buildable' | 'out-of-stock' | 'near-oos';
+type GroupByOption = 'none' | 'category' | 'buildability' | 'compliance';
 
 interface BOMsProps {
   boms: BillOfMaterials[];
@@ -67,6 +68,25 @@ const readStoredBuildabilityFilter = (): BuildabilityFilter => {
   }
   const stored = localStorage.getItem('bomStatusFilter');
   return isBuildabilityFilter(stored) ? stored : 'all';
+};
+
+const readStoredSortOption = (): SortOption => {
+  if (typeof window === 'undefined') return 'name';
+  const stored = localStorage.getItem('bomSortBy');
+  const validOptions: SortOption[] = ['name', 'sku', 'inventory', 'buildability', 'category', 'velocity', 'runway'];
+  return validOptions.includes(stored as SortOption) ? (stored as SortOption) : 'name';
+};
+
+const readStoredGroupBy = (): GroupByOption => {
+  if (typeof window === 'undefined') return 'none';
+  const stored = localStorage.getItem('bomGroupBy');
+  const validOptions: GroupByOption[] = ['none', 'category', 'buildability', 'compliance'];
+  return validOptions.includes(stored as GroupByOption) ? (stored as GroupByOption) : 'none';
+};
+
+const readStoredCategoryFilter = (): string => {
+  if (typeof window === 'undefined') return 'all';
+  return localStorage.getItem('bomCategoryFilter') || 'all';
 };
 
 const BOMs: React.FC<BOMsProps> = ({
@@ -100,13 +120,24 @@ const BOMs: React.FC<BOMsProps> = ({
   const canEdit = permissions.canEditBoms;
   const canSubmitRequisitions = permissions.canSubmitRequisition;
 
-  // New UI state
+  // New UI state with persistent storage
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>(() => readStoredCategoryFilter());
   const [buildabilityFilter, setBuildabilityFilter] = useState<BuildabilityFilter>(() => readStoredBuildabilityFilter());
-  const [sortBy, setSortBy] = useState<SortOption>('name');
+  const [sortBy, setSortBy] = useState<SortOption>(() => readStoredSortOption());
+  const [groupBy, setGroupBy] = useState<GroupByOption>(() => readStoredGroupBy());
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);
+  
+  // Persist filter preferences
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bomStatusFilter', buildabilityFilter);
+      localStorage.setItem('bomSortBy', sortBy);
+      localStorage.setItem('bomGroupBy', groupBy);
+      localStorage.setItem('bomCategoryFilter', categoryFilter);
+    }
+  }, [buildabilityFilter, sortBy, groupBy, categoryFilter]);
   
   // Collapsible sections state
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
@@ -482,6 +513,18 @@ const BOMs: React.FC<BOMsProps> = ({
           const buildB = calculateBuildability(b).maxBuildable;
           return buildB - buildA;
         }
+        case 'category':
+          return (a.category || '').localeCompare(b.category || '');
+        case 'velocity': {
+          const velA = inventoryMap.get(a.finishedSku)?.velocity || 0;
+          const velB = inventoryMap.get(b.finishedSku)?.velocity || 0;
+          return velB - velA;
+        }
+        case 'runway': {
+          const runwayA = inventoryMap.get(a.finishedSku)?.daysOfStock || 0;
+          const runwayB = inventoryMap.get(b.finishedSku)?.daysOfStock || 0;
+          return runwayA - runwayB; // Ascending: shortest runway first
+        }
         case 'name':
         default:
           return a.name.localeCompare(b.name);
@@ -498,6 +541,53 @@ const BOMs: React.FC<BOMsProps> = ({
       return maxBuildable === 0 && (inventoryMap.get(bom.finishedSku)?.stock || 0) === 0;
     });
   }, [processedBoms, inventoryMap]);
+
+  // Group BOMs if groupBy is not 'none'
+  const groupedBoms = useMemo(() => {
+    if (groupBy === 'none') {
+      return { 'All BOMs': processedBoms };
+    }
+
+    const groups: Record<string, BillOfMaterials[]> = {};
+
+    processedBoms.forEach(bom => {
+      let groupKey: string;
+
+      switch (groupBy) {
+        case 'category':
+          groupKey = bom.category || 'Uncategorized';
+          break;
+        case 'buildability': {
+          const { maxBuildable } = calculateBuildability(bom);
+          const stock = inventoryMap.get(bom.finishedSku)?.stock || 0;
+          if (maxBuildable === 0 && stock === 0) {
+            groupKey = '🔴 Critical (No Stock, Cannot Build)';
+          } else if (maxBuildable === 0) {
+            groupKey = '🟡 Cannot Build';
+          } else if (stock <= 0) {
+            groupKey = '🟠 Out of Stock (Can Build)';
+          } else {
+            groupKey = '🟢 Ready to Build';
+          }
+          break;
+        }
+        case 'compliance': {
+          // TODO: Add compliance grouping logic when compliance data available
+          groupKey = 'Pending Compliance Review';
+          break;
+        }
+        default:
+          groupKey = 'Other';
+      }
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push(bom);
+    });
+
+    return groups;
+  }, [processedBoms, groupBy, inventoryMap]);
 
   const BomCard: React.FC<{ bom: BillOfMaterials }> = ({ bom }) => {
     const isExpanded = expandedBoms.has(bom.id);
@@ -736,6 +826,21 @@ const BOMs: React.FC<BOMsProps> = ({
               <option value="sku">Sort: SKU</option>
               <option value="inventory">Sort: Inventory</option>
               <option value="buildability">Sort: Buildability</option>
+              <option value="category">Sort: Category</option>
+              <option value="velocity">Sort: Velocity</option>
+              <option value="runway">Sort: Runway</option>
+            </select>
+
+            {/* Group By */}
+            <select
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value as GroupByOption)}
+              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            >
+              <option value="none">Group: None</option>
+              <option value="category">Group: Category</option>
+              <option value="buildability">Group: Buildability</option>
+              <option value="compliance">Group: Compliance</option>
             </select>
 
             {/* View Mode Toggle */}
@@ -783,9 +888,21 @@ const BOMs: React.FC<BOMsProps> = ({
           </p>
         </div>
       ) : viewMode === 'card' ? (
-        <div className="grid gap-4">
-          {processedBoms.map(bom => (
-            <BomCard key={bom.id} bom={bom} />
+        <div className="space-y-6">
+          {Object.entries(groupedBoms).map(([groupName, boms]) => (
+            <div key={groupName}>
+              {groupBy !== 'none' && (
+                <h3 className="text-lg font-semibold text-white mb-3 px-2 flex items-center gap-2">
+                  {groupName}
+                  <span className="text-sm font-normal text-gray-400">({boms.length})</span>
+                </h3>
+              )}
+              <div className="grid gap-4">
+                {boms.map(bom => (
+                  <BomCard key={bom.id} bom={bom} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       ) : (

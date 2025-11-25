@@ -4,7 +4,7 @@ import React from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, UsersIcon, LightBulbIcon, CogIcon, MushroomLogo, MagicSparklesIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, ClipboardListIcon, BotIcon, PhotoIcon, QrCodeIcon, ChartBarIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MushroomLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, AiSwirlIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
 
@@ -27,7 +27,8 @@ const NavItem: React.FC<{
     notificationCount?: number;
     activeClass: string;
     inactiveClass: string;
-}> = ({ page, currentPage, setCurrentPage, icon, isCollapsed, notificationCount, activeClass, inactiveClass }) => (
+    tooltipClass: string;
+}> = ({ page, currentPage, setCurrentPage, icon, isCollapsed, notificationCount, activeClass, inactiveClass, tooltipClass }) => (
     <li>
         <a
             href="#"
@@ -42,6 +43,11 @@ const NavItem: React.FC<{
                 <span className={`absolute top-1 right-1 flex items-center justify-center text-xs font-bold text-white bg-red-500 rounded-full h-5 ${isCollapsed ? 'w-5' : 'px-1.5'}`}>
                     {isCollapsed ? '' : notificationCount}
                     {isCollapsed && <span className="absolute w-2 h-2 bg-red-500 rounded-full"></span>}
+                </span>
+            )}
+            {isCollapsed && (
+                <span className={`pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-150 ${tooltipClass}`}>
+                    {page}
                 </span>
             )}
         </a>
@@ -71,6 +77,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
     const toggleButtonClass = isLight
         ? 'bg-amber-200 hover:bg-amber-300 text-amber-900 border-amber-300'
         : 'bg-gray-600 hover:bg-indigo-600 text-white border-gray-800';
+    const tooltipClass = isLight
+        ? 'bg-amber-900 text-amber-50 border border-amber-200 shadow-lg shadow-amber-900/20'
+        : 'bg-gray-900 text-white border border-gray-600 shadow-xl shadow-black/40';
     
     type NavItemConfig = { page: Page; icon: React.ReactNode; notificationKey?: 'pendingRequisitions'; adminOnly?: boolean; managerAndUp?: boolean; isVisible?: (input: { user: User }) => boolean };
 
@@ -166,6 +175,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
                             notificationCount={item.notificationKey ? notificationCounts[item.notificationKey as keyof typeof notificationCounts] : undefined}
                             activeClass={navActiveClass}
                             inactiveClass={navInactiveClass}
+                            tooltipClass={tooltipClass}
                         />
                     ))}
                 </ul>
@@ -174,10 +184,22 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
                 <a
                     href="#"
                     onClick={(e) => { e.preventDefault(); onOpenAiAssistant(); }}
-                    className={`flex items-center p-2 text-base font-normal rounded-lg group ${aiLinkClass} ${isCollapsed ? 'justify-center' : ''}`}
+                    className={`relative flex items-center p-2 text-base font-normal rounded-lg group ${aiLinkClass} ${isCollapsed ? 'justify-center' : ''}`}
                 >
-                    <MagicSparklesIcon className="w-6 h-6" />
-                    <span className={`ml-3 whitespace-nowrap transition-opacity duration-200 ${isCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>AI Assistant</span>
+                    <div className="flex items-center justify-center">
+                        <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 via-indigo-500 to-purple-600 shadow-lg">
+                            <AiSwirlIcon className="w-5 h-5 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.65)]" />
+                        </div>
+                    </div>
+                    <span className={`ml-3 whitespace-nowrap transition-opacity duration-200 font-semibold ${isCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-indigo-200 to-purple-200 uppercase tracking-widest">Ai</span>
+                        <span className="ml-1 text-sm text-inherit">Copilot</span>
+                    </span>
+                    {isCollapsed && (
+                        <span className={`pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-150 ${tooltipClass}`}>
+                            Ai Copilot
+                        </span>
+                    )}
                 </a>
             </div>
         </aside>
