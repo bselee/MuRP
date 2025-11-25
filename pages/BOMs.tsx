@@ -897,7 +897,7 @@ const BOMs: React.FC<BOMsProps> = ({
                   <span className="text-sm font-normal text-gray-400">({boms.length})</span>
                 </h3>
               )}
-              <div className="grid gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {boms.map(bom => (
                   <BomCard key={bom.id} bom={bom} />
                 ))}

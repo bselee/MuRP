@@ -1672,7 +1672,7 @@ const AppShell: React.FC = () => {
   }
 
   const shellBackground = resolvedTheme === 'light'
-    ? 'bg-[#f4ede2]'
+    ? 'bg-[#f5f1e8]'
     : 'bg-gray-900';
 
   const mainBackground = resolvedTheme === 'light'

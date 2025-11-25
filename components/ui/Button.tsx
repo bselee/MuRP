@@ -18,7 +18,7 @@ type ThemeVariant = 'light' | 'dark';
 const variantStyles: Record<ButtonVariant, Record<ThemeVariant, string>> = {
   primary: {
     dark: 'bg-gray-900/85 text-white border border-white/10 shadow-[0_20px_45px_rgba(0,0,0,0.45)] backdrop-blur-lg hover:bg-gray-900/70 hover:border-white/20 hover:shadow-[0_25px_55px_rgba(0,0,0,0.55)] focus-visible:ring-slate-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
-    light: 'bg-gradient-to-br from-[#f8e7c9] via-[#f3d7a8] to-[#d9b789] text-[#2b1a10] border border-[#d4b185] shadow-[0_15px_35px_rgba(92,64,31,0.25)] hover:from-[#f4dcb5] hover:to-[#cba371] hover:shadow-[0_18px_40px_rgba(92,64,31,0.3)] focus-visible:ring-[#e4c08f]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+    light: 'bg-gradient-to-br from-[#f5efe5] via-[#e8dfd0] to-[#d4c7b0] text-[#3d3024] border border-[#c9bcaa] shadow-[0_15px_35px_rgba(80,70,60,0.2)] hover:from-[#ede4d5] hover:to-[#c9bca5] hover:shadow-[0_18px_40px_rgba(80,70,60,0.25)] focus-visible:ring-[#d4c7b0]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
   },
   secondary: {
     dark: 'bg-gray-800/70 text-gray-100 border border-white/10 shadow-inner shadow-black/40 backdrop-blur-md hover:bg-gray-800/55 hover:border-white/20 focus-visible:ring-slate-200/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',

@@ -52,7 +52,7 @@ interface EnhancedBomCardProps {
 const DARK_CARD_SHELL =
   'relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] transition-all duration-300 hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]';
 const LIGHT_CARD_SHELL =
-  'relative overflow-hidden rounded-2xl border border-amber-900/20 bg-gradient-to-br from-white/95 via-amber-50/80 to-white/95 shadow-[0_30px_90px_rgba(15,23,42,0.25)] transition-all duration-300 hover:border-amber-500/60 hover:shadow-[0_32px_110px_rgba(251,191,36,0.35)]';
+  'relative overflow-hidden rounded-2xl border border-stone-300/30 bg-gradient-to-br from-white/95 via-stone-100/60 to-white/95 shadow-[0_30px_90px_rgba(15,23,42,0.25)] transition-all duration-300 hover:border-stone-400/50 hover:shadow-[0_32px_110px_rgba(120,113,108,0.3)]';
 const DARK_CARD_OVERLAY =
   'pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]';
 const LIGHT_CARD_OVERLAY =
@@ -68,11 +68,11 @@ const LIGHT_HEADER_RIBBON =
 const DARK_GLASS_TILE =
   'rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)]';
 const LIGHT_GLASS_TILE =
-  'rounded-xl border border-amber-900/15 bg-gradient-to-br from-white/98 via-amber-50/70 to-white/92 backdrop-blur-lg shadow-[0_18px_40px_rgba(15,23,42,0.18)]';
+  'rounded-xl border border-stone-300/25 bg-gradient-to-br from-white/98 via-stone-100/50 to-white/92 backdrop-blur-lg shadow-[0_18px_40px_rgba(15,23,42,0.18)]';
 const DARK_RECIPE_CARD =
   'rounded-lg border border-emerald-600/30 bg-gradient-to-br from-slate-900/90 via-emerald-950/40 to-slate-900/90 backdrop-blur-sm';
 const LIGHT_RECIPE_CARD =
-  'rounded-lg border border-emerald-600/20 bg-gradient-to-br from-white/95 via-emerald-50/50 to-white/95 backdrop-blur-sm';
+  'rounded-lg border border-emerald-600/20 bg-gradient-to-br from-white/95 via-emerald-50/40 to-white/95 backdrop-blur-sm';
 const DARK_SECONDARY_PANEL =
   'mt-4 grid grid-cols-2 gap-4 rounded-2xl border border-white/5 bg-white/5 p-4 text-xs backdrop-blur md:grid-cols-4';
 const LIGHT_SECONDARY_PANEL =
