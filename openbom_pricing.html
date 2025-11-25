@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<!--[if IE 7 ]><html class="ie7"> <![endif]-->
+<!--[if IE 8 ]><html class="ie8"> <![endif]-->
+<!--[if IE 9 ]><html class="ie9"> <![endif]-->
+<!--[if (gte IE 10)|!(IE)]><!-->
+<!--<![endif]-->
+<html lang="en">
+<head><meta charset="UTF-8"><script>if(navigator.userAgent.match(/MSIE|Internet Explorer/i)||navigator.userAgent.match(/Trident\/7\..*?rv:11/i)){var href=document.location.href;if(!href.match(/[?&]nowprocket/)){if(href.indexOf("?")==-1){if(href.indexOf("#")==-1){document.location.href=href+"?nowprocket=1"}else{document.location.href=href.replace("#","?nowprocket=1#")}}else{if(href.indexOf("#")==-1){document.location.href=href+"&nowprocket=1"}else{document.location.href=href.replace("#","&nowprocket=1#")}}}}</script><script>(()=>{class RocketLazyLoadScripts{constructor(){this.v="2.0.2",this.userEvents=["keydown","keyup","mousedown","mouseup","mousemove","mouseover","mouseenter","mouseout","mouseleave","touchmove","touchstart","touchend","touchcancel","wheel","click","dblclick","input","visibilitychange"],this.attributeEvents=["onblur","onclick","oncontextmenu","ondblclick","onfocus","onmousedown","onmouseenter","onmouseleave","onmousemove","onmouseout","onmouseover","onmouseup","onmousewheel","onscroll","onsubmit"]}async t(){this.i(),this.o(),/iP(ad|hone)/.test(navigator.userAgent)&&this.h(),this.u(),this.l(this),this.m(),this.k(this),this.p(this),this._(),await Promise.all([this.R(),this.L()]),this.lastBreath=Date.now(),this.S(this),this.P(),this.D(),this.O(),this.M(),await this.C(this.delayedScripts.normal),await this.C(this.delayedScripts.defer),await this.C(this.delayedScripts.async),this.T("domReady"),await this.F(),await this.j(),await this.I(),this.T("windowLoad"),await this.A(),window.dispatchEvent(new Event("rocket-allScriptsLoaded")),this.everythingLoaded=!0,this.lastTouchEnd&&await new Promise((t=>setTimeout(t,500-Date.now()+this.lastTouchEnd))),this.H(),this.T("all"),this.U(),this.W()}i(){this.CSPIssue=sessionStorage.getItem("rocketCSPIssue"),document.addEventListener("securitypolicyviolation",(t=>{this.CSPIssue||"script-src-elem"!==t.violatedDirective||"data"!==t.blockedURI||(this.CSPIssue=!0,sessionStorage.setItem("rocketCSPIssue",!0))}),{isRocket:!0})}o(){window.addEventListener("pageshow",(t=>{this.persisted=t.persisted,this.realWindowLoadedFired=!0}),{isRocket:!0}),window.addEventListener("pagehide",(()=>{this.onFirstUserAction=null}),{isRocket:!0})}h(){let t;function e(e){t=e}window.addEventListener("touchstart",e,{isRocket:!0}),window.addEventListener("touchend",(function i(o){Math.abs(o.changedTouches[0].pageX-t.changedTouches[0].pageX)<10&&Math.abs(o.changedTouches[0].pageY-t.changedTouches[0].pageY)<10&&o.timeStamp-t.timeStamp<200&&(o.target.dispatchEvent(new PointerEvent("click",{target:o.target,bubbles:!0,cancelable:!0})),event.preventDefault(),window.removeEventListener("touchstart",e,{isRocket:!0}),window.removeEventListener("touchend",i,{isRocket:!0}))}),{isRocket:!0})}q(t){this.userActionTriggered||("mousemove"!==t.type||this.firstMousemoveIgnored?"keyup"===t.type||"mouseover"===t.type||"mouseout"===t.type||(this.userActionTriggered=!0,this.onFirstUserAction&&this.onFirstUserAction()):this.firstMousemoveIgnored=!0),"click"===t.type&&t.preventDefault(),this.savedUserEvents.length>0&&(t.stopPropagation(),t.stopImmediatePropagation()),"touchstart"===this.lastEvent&&"touchend"===t.type&&(this.lastTouchEnd=Date.now()),"click"===t.type&&(this.lastTouchEnd=0),this.lastEvent=t.type,this.savedUserEvents.push(t)}u(){this.savedUserEvents=[],this.userEventHandler=this.q.bind(this),this.userEvents.forEach((t=>window.addEventListener(t,this.userEventHandler,{passive:!1,isRocket:!0})))}U(){this.userEvents.forEach((t=>window.removeEventListener(t,this.userEventHandler,{passive:!1,isRocket:!0}))),this.savedUserEvents.forEach((t=>{t.target.dispatchEvent(new window[t.constructor.name](t.type,t))}))}m(){this.eventsMutationObserver=new MutationObserver((t=>{const e="return false";for(const i of t){if("attributes"===i.type){const t=i.target.getAttribute(i.attributeName);t&&t!==e&&(i.target.setAttribute("data-rocket-"+i.attributeName,t),i.target.setAttribute(i.attributeName,e))}"childList"===i.type&&i.addedNodes.forEach((t=>{if(t.nodeType===Node.ELEMENT_NODE)for(const i of t.attributes)this.attributeEvents.includes(i.name)&&i.value&&""!==i.value&&(t.setAttribute("data-rocket-"+i.name,i.value),t.setAttribute(i.name,e))}))}})),this.eventsMutationObserver.observe(document,{subtree:!0,childList:!0,attributeFilter:this.attributeEvents})}H(){this.eventsMutationObserver.disconnect(),this.attributeEvents.forEach((t=>{document.querySelectorAll("[data-rocket-"+t+"]").forEach((e=>{e.setAttribute(t,e.getAttribute("data-rocket-"+t)),e.removeAttribute("data-rocket-"+t)}))}))}k(t){Object.defineProperty(HTMLElement.prototype,"onclick",{get(){return this.rocketonclick},set(e){this.rocketonclick=e,this.setAttribute(t.everythingLoaded?"onclick":"data-rocket-onclick","this.rocketonclick(event)")}})}S(t){function e(e,i){let o=e[i];e[i]=null,Object.defineProperty(e,i,{get:()=>o,set(s){t.everythingLoaded?o=s:e["rocket"+i]=o=s}})}e(document,"onreadystatechange"),e(window,"onload"),e(window,"onpageshow");try{Object.defineProperty(document,"readyState",{get:()=>t.rocketReadyState,set(e){t.rocketReadyState=e},configurable:!0}),document.readyState="loading"}catch(t){console.log("WPRocket DJE readyState conflict, bypassing")}}l(t){this.originalAddEventListener=EventTarget.prototype.addEventListener,this.originalRemoveEventListener=EventTarget.prototype.removeEventListener,this.savedEventListeners=[],EventTarget.prototype.addEventListener=function(e,i,o){o&&o.isRocket||!t.B(e,this)&&!t.userEvents.includes(e)||t.B(e,this)&&!t.userActionTriggered||e.startsWith("rocket-")?t.originalAddEventListener.call(this,e,i,o):t.savedEventListeners.push({target:this,remove:!1,type:e,func:i,options:o})},EventTarget.prototype.removeEventListener=function(e,i,o){o&&o.isRocket||!t.B(e,this)&&!t.userEvents.includes(e)||t.B(e,this)&&!t.userActionTriggered||e.startsWith("rocket-")?t.originalRemoveEventListener.call(this,e,i,o):t.savedEventListeners.push({target:this,remove:!0,type:e,func:i,options:o})}}T(t){"all"===t&&(EventTarget.prototype.addEventListener=this.originalAddEventListener,EventTarget.prototype.removeEventListener=this.originalRemoveEventListener),this.savedEventListeners=this.savedEventListeners.filter((e=>{let i=e.type,o=e.target||window;return"domReady"===t&&"DOMContentLoaded"!==i&&"readystatechange"!==i||("windowLoad"===t&&"load"!==i&&"readystatechange"!==i&&"pageshow"!==i||(this.B(i,o)&&(i="rocket-"+i),e.remove?o.removeEventListener(i,e.func,e.options):o.addEventListener(i,e.func,e.options),!1))}))}p(t){let e;function i(e){return t.everythingLoaded?e:e.split(" ").map((t=>"load"===t||t.startsWith("load.")?"rocket-jquery-load":t)).join(" ")}function o(o){function s(e){const s=o.fn[e];o.fn[e]=o.fn.init.prototype[e]=function(){return this[0]===window&&t.userActionTriggered&&("string"==typeof arguments[0]||arguments[0]instanceof String?arguments[0]=i(arguments[0]):"object"==typeof arguments[0]&&Object.keys(arguments[0]).forEach((t=>{const e=arguments[0][t];delete arguments[0][t],arguments[0][i(t)]=e}))),s.apply(this,arguments),this}}if(o&&o.fn&&!t.allJQueries.includes(o)){const e={DOMContentLoaded:[],"rocket-DOMContentLoaded":[]};for(const t in e)document.addEventListener(t,(()=>{e[t].forEach((t=>t()))}),{isRocket:!0});o.fn.ready=o.fn.init.prototype.ready=function(i){function s(){parseInt(o.fn.jquery)>2?setTimeout((()=>i.bind(document)(o))):i.bind(document)(o)}return t.realDomReadyFired?!t.userActionTriggered||t.fauxDomReadyFired?s():e["rocket-DOMContentLoaded"].push(s):e.DOMContentLoaded.push(s),o([])},s("on"),s("one"),s("off"),t.allJQueries.push(o)}e=o}t.allJQueries=[],o(window.jQuery),Object.defineProperty(window,"jQuery",{get:()=>e,set(t){o(t)}})}P(){const t=new Map;document.write=document.writeln=function(e){const i=document.currentScript,o=document.createRange(),s=i.parentElement;let n=t.get(i);void 0===n&&(n=i.nextSibling,t.set(i,n));const a=document.createDocumentFragment();o.setStart(a,0),a.appendChild(o.createContextualFragment(e)),s.insertBefore(a,n)}}async R(){return new Promise((t=>{this.userActionTriggered?t():this.onFirstUserAction=t}))}async L(){return new Promise((t=>{document.addEventListener("DOMContentLoaded",(()=>{this.realDomReadyFired=!0,t()}),{isRocket:!0})}))}async I(){return this.realWindowLoadedFired?Promise.resolve():new Promise((t=>{window.addEventListener("load",t,{isRocket:!0})}))}M(){this.pendingScripts=[];this.scriptsMutationObserver=new MutationObserver((t=>{for(const e of t)e.addedNodes.forEach((t=>{"SCRIPT"!==t.tagName||t.noModule||t.isWPRocket||this.pendingScripts.push({script:t,promise:new Promise((e=>{const i=()=>{const i=this.pendingScripts.findIndex((e=>e.script===t));i>=0&&this.pendingScripts.splice(i,1),e()};t.addEventListener("load",i,{isRocket:!0}),t.addEventListener("error",i,{isRocket:!0}),setTimeout(i,1e3)}))})}))})),this.scriptsMutationObserver.observe(document,{childList:!0,subtree:!0})}async j(){await this.J(),this.pendingScripts.length?(await this.pendingScripts[0].promise,await this.j()):this.scriptsMutationObserver.disconnect()}D(){this.delayedScripts={normal:[],async:[],defer:[]},document.querySelectorAll("script[type$=rocketlazyloadscript]").forEach((t=>{t.hasAttribute("data-rocket-src")?t.hasAttribute("async")&&!1!==t.async?this.delayedScripts.async.push(t):t.hasAttribute("defer")&&!1!==t.defer||"module"===t.getAttribute("data-rocket-type")?this.delayedScripts.defer.push(t):this.delayedScripts.normal.push(t):this.delayedScripts.normal.push(t)}))}async _(){await this.L();let t=[];document.querySelectorAll("script[type$=rocketlazyloadscript][data-rocket-src]").forEach((e=>{let i=e.getAttribute("data-rocket-src");if(i&&!i.startsWith("data:")){i.startsWith("//")&&(i=location.protocol+i);try{const o=new URL(i).origin;o!==location.origin&&t.push({src:o,crossOrigin:e.crossOrigin||"module"===e.getAttribute("data-rocket-type")})}catch(t){}}})),t=[...new Map(t.map((t=>[JSON.stringify(t),t]))).values()],this.N(t,"preconnect")}async $(t){if(await this.G(),!0!==t.noModule||!("noModule"in HTMLScriptElement.prototype))return new Promise((e=>{let i;function o(){(i||t).setAttribute("data-rocket-status","executed"),e()}try{if(navigator.userAgent.includes("Firefox/")||""===navigator.vendor||this.CSPIssue)i=document.createElement("script"),[...t.attributes].forEach((t=>{let e=t.nodeName;"type"!==e&&("data-rocket-type"===e&&(e="type"),"data-rocket-src"===e&&(e="src"),i.setAttribute(e,t.nodeValue))})),t.text&&(i.text=t.text),t.nonce&&(i.nonce=t.nonce),i.hasAttribute("src")?(i.addEventListener("load",o,{isRocket:!0}),i.addEventListener("error",(()=>{i.setAttribute("data-rocket-status","failed-network"),e()}),{isRocket:!0}),setTimeout((()=>{i.isConnected||e()}),1)):(i.text=t.text,o()),i.isWPRocket=!0,t.parentNode.replaceChild(i,t);else{const i=t.getAttribute("data-rocket-type"),s=t.getAttribute("data-rocket-src");i?(t.type=i,t.removeAttribute("data-rocket-type")):t.removeAttribute("type"),t.addEventListener("load",o,{isRocket:!0}),t.addEventListener("error",(i=>{this.CSPIssue&&i.target.src.startsWith("data:")?(console.log("WPRocket: CSP fallback activated"),t.removeAttribute("src"),this.$(t).then(e)):(t.setAttribute("data-rocket-status","failed-network"),e())}),{isRocket:!0}),s?(t.fetchPriority="high",t.removeAttribute("data-rocket-src"),t.src=s):t.src="data:text/javascript;base64,"+window.btoa(unescape(encodeURIComponent(t.text)))}}catch(i){t.setAttribute("data-rocket-status","failed-transform"),e()}}));t.setAttribute("data-rocket-status","skipped")}async C(t){const e=t.shift();return e?(e.isConnected&&await this.$(e),this.C(t)):Promise.resolve()}O(){this.N([...this.delayedScripts.normal,...this.delayedScripts.defer,...this.delayedScripts.async],"preload")}N(t,e){this.trash=this.trash||[];let i=!0;var o=document.createDocumentFragment();t.forEach((t=>{const s=t.getAttribute&&t.getAttribute("data-rocket-src")||t.src;if(s&&!s.startsWith("data:")){const n=document.createElement("link");n.href=s,n.rel=e,"preconnect"!==e&&(n.as="script",n.fetchPriority=i?"high":"low"),t.getAttribute&&"module"===t.getAttribute("data-rocket-type")&&(n.crossOrigin=!0),t.crossOrigin&&(n.crossOrigin=t.crossOrigin),t.integrity&&(n.integrity=t.integrity),t.nonce&&(n.nonce=t.nonce),o.appendChild(n),this.trash.push(n),i=!1}})),document.head.appendChild(o)}W(){this.trash.forEach((t=>t.remove()))}async F(){try{document.readyState="interactive"}catch(t){}this.fauxDomReadyFired=!0;try{await this.G(),document.dispatchEvent(new Event("rocket-readystatechange")),await this.G(),document.rocketonreadystatechange&&document.rocketonreadystatechange(),await this.G(),document.dispatchEvent(new Event("rocket-DOMContentLoaded")),await this.G(),window.dispatchEvent(new Event("rocket-DOMContentLoaded"))}catch(t){console.error(t)}}async A(){try{document.readyState="complete"}catch(t){}try{await this.G(),document.dispatchEvent(new Event("rocket-readystatechange")),await this.G(),document.rocketonreadystatechange&&document.rocketonreadystatechange(),await this.G(),window.dispatchEvent(new Event("rocket-load")),await this.G(),window.rocketonload&&window.rocketonload(),await this.G(),this.allJQueries.forEach((t=>t(window).trigger("rocket-jquery-load"))),await this.G();const t=new Event("rocket-pageshow");t.persisted=this.persisted,window.dispatchEvent(t),await this.G(),window.rocketonpageshow&&window.rocketonpageshow({persisted:this.persisted})}catch(t){console.error(t)}}async G(){Date.now()-this.lastBreath>45&&(await this.J(),this.lastBreath=Date.now())}async J(){return document.hidden?new Promise((t=>setTimeout(t))):new Promise((t=>requestAnimationFrame(t)))}B(t,e){return e===document&&"readystatechange"===t||(e===document&&"DOMContentLoaded"===t||(e===window&&"DOMContentLoaded"===t||(e===window&&"load"===t||e===window&&"pageshow"===t)))}static run(){(new RocketLazyLoadScripts).t()}}RocketLazyLoadScripts.run()})();</script>
+	
+	<script type="rocketlazyloadscript" data-rocket-type="text/javascript"> (function(c,l,a,r,i,t,y){ c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)}; t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i; y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y); })(window, document, "clarity", "script", "hxs2xlq8ld"); </script>
+	
+	
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="SKYPE_TOOLBAR" content="SKYPE_TOOLBAR_PARSER_COMPATIBLE" />
+    <!--favicon-->
+    <link rel="apple-touch-icon" sizes="57x57" href="/dist/img/favicon/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/dist/img/favicon/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/dist/img/favicon/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/dist/img/favicon/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/dist/img/favicon/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/dist/img/favicon/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/dist/img/favicon/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/dist/img/favicon/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/dist/img/favicon/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192"  href="/dist/img/favicon/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/dist/img/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/dist/img/favicon/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/dist/img/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/dist/img/favicon/manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/dist/img/favicon/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    <!--preload -->
+	<link rel="dns-prefetch" href="//www.googletagmanager.com">
+		<link rel="preload" href="/dist/fonts/poppins-v20-latin-300.woff2" as="font" type="font/woff2" crossorigin>
+	<link rel="preload" href="/dist/fonts/poppins-v20-latin-regular.woff2" as="font" type="font/woff2" crossorigin>
+	<link rel="preload" href="/dist/fonts/poppins-v20-latin-500.woff2" as="font" type="font/woff2" crossorigin>
+	<link rel="preload" href="/dist/fonts/poppins-v20-latin-600.woff2" as="font" type="font/woff2" crossorigin>
+	<link rel="preload" href="/dist/fonts/poppins-v20-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+		<!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <script src="http://css3-mediaqueries-js.googlecode.com/svn/trunk/css3-mediaqueries.js"></script>
+    <![endif]-->	
+	<meta name='robots' content='index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' />
+	<style>img:is([sizes="auto" i], [sizes^="auto," i]) { contain-intrinsic-size: 3000px 1500px }</style>
+	
+	<!-- This site is optimized with the Yoast SEO plugin v24.4 - https://yoast.com/wordpress/plugins/seo/ -->
+	<title>Pricing - OpenBOM</title><link rel="preload" data-rocket-preload as="image" href="https://www.openbom.com/dist/img/icons/icon-arrowcircleright.svg" fetchpriority="high">
+	<meta name="description" content="OpenBOM provides tier based subscription. There are four tiers – Design, Team, Company, and Enterprise." />
+	<link rel="canonical" href="https://www.openbom.com/pricing" />
+	<meta property="og:locale" content="en_US" />
+	<meta property="og:type" content="article" />
+	<meta property="og:title" content="Pricing - OpenBOM" />
+	<meta property="og:description" content="OpenBOM provides tier based subscription. There are four tiers – Design, Team, Company, and Enterprise." />
+	<meta property="og:url" content="https://www.openbom.com/pricing" />
+	<meta property="og:site_name" content="OpenBOM" />
+	<meta property="article:modified_time" content="2025-11-07T01:02:30+00:00" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<script type="application/ld+json" class="yoast-schema-graph">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://www.openbom.com/pricing","url":"https://www.openbom.com/pricing","name":"Pricing - OpenBOM","isPartOf":{"@id":"https://www.openbom.com/#website"},"datePublished":"2022-09-26T17:15:13+00:00","dateModified":"2025-11-07T01:02:30+00:00","description":"OpenBOM provides tier based subscription. There are four tiers – Design, Team, Company, and Enterprise.","breadcrumb":{"@id":"https://www.openbom.com/pricing#breadcrumb"},"inLanguage":"en-US","potentialAction":[{"@type":"ReadAction","target":["https://www.openbom.com/pricing"]}]},{"@type":"BreadcrumbList","@id":"https://www.openbom.com/pricing#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.openbom.com/"},{"@type":"ListItem","position":2,"name":"OpenBOM Subscription Plans"}]},{"@type":"WebSite","@id":"https://www.openbom.com/#website","url":"https://www.openbom.com/","name":"OpenBOM","description":"Bill of Materials ᐈ BOM engineering - manufacturing bill of materials","potentialAction":[{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://www.openbom.com/?s={search_term_string}"},"query-input":{"@type":"PropertyValueSpecification","valueRequired":true,"valueName":"search_term_string"}}],"inLanguage":"en-US"}]}</script>
+	<!-- / Yoast SEO plugin. -->
+
+
+<style id='classic-theme-styles-inline-css' type='text/css'>
+/*! This file is auto-generated */
+.wp-block-button__link{color:#fff;background-color:#32373c;border-radius:9999px;box-shadow:none;text-decoration:none;padding:calc(.667em + 2px) calc(1.333em + 2px);font-size:1.125em}.wp-block-file__button{background:#32373c;color:#fff;text-decoration:none}
+</style>
+<link rel='stylesheet' id='vendor-css' href='https://www.openbom.com/dist/css/vendor.min.css?ver=6.8.3' type='text/css' media='all' />
+<link data-minify="1" rel='stylesheet' id='main-css-css' href='https://www.openbom.com/wp-content/cache/min/1/dist/css/main.min.css?ver=1764051727' type='text/css' media='all' />
+<link rel='stylesheet' id='media-css-css' href='https://www.openbom.com/dist/css/media.min.css?ver=6.8.3' type='text/css' media='all' />
+<style id='rocket-lazyload-inline-css' type='text/css'>
+.rll-youtube-player{position:relative;padding-bottom:56.23%;height:0;overflow:hidden;max-width:100%;}.rll-youtube-player:focus-within{outline: 2px solid currentColor;outline-offset: 5px;}.rll-youtube-player iframe{position:absolute;top:0;left:0;width:100%;height:100%;z-index:100;background:0 0}.rll-youtube-player img{bottom:0;display:block;left:0;margin:auto;max-width:100%;width:100%;position:absolute;right:0;top:0;border:none;height:auto;-webkit-transition:.4s all;-moz-transition:.4s all;transition:.4s all}.rll-youtube-player img:hover{-webkit-filter:brightness(75%)}.rll-youtube-player .play{height:100%;width:100%;left:0;top:0;position:absolute;background:url(https://www.openbom.com/wp-content/plugins/wp-rocket/assets/img/youtube.png) no-repeat center;background-color: transparent !important;cursor:pointer;border:none;}
+</style>
+		<style type="text/css" id="wp-custom-css">
+			.videoo
+{
+	width:49%;
+	margin-bottom:20px
+}
+.videoo p
+{
+	font-size:16px !important; 
+}
+@media screen and (max-width:600px)
+{
+	.videoo
+	{
+		width:100%
+	}
+}		</style>
+		<noscript><style id="rocket-lazyload-nojs-css">.rll-youtube-player, [data-lazy-src]{display:none !important;}</style></noscript>		<script type="rocketlazyloadscript">
+function load_gtm(){
+	(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+	new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+	j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+	'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+	})(window,document,'script','dataLayer','GTM-526VH2S');
+}
+</script><style id="rocket-lazyrender-inline-css">[data-wpr-lazyrender] {content-visibility: auto;}</style><meta name="generator" content="WP Rocket 3.18.1.5" data-wpr-features="wpr_delay_js wpr_defer_js wpr_minify_js wpr_lazyload_images wpr_lazyload_iframes wpr_automatic_lazy_rendering wpr_oci wpr_minify_css wpr_desktop wpr_preload_links" /></head>
+<body>
+	<!-- Google Tag Manager (noscript) --> <noscript><iframe class="lazyload" data-expand="-100" src="https://www.googletagmanager.com/ns.html?id=GTM-526VH2S" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript> <!-- End Google Tag Manager (noscript) -->	<header  class="header">
+		<div  class="container">
+			<div  class="header__wrap">
+				<div class="left-block">
+										<div class="logo">
+													<a href="https://www.openbom.com"><img src="https://www.openbom.com/wp-content/uploads/2022/09/logo.svg" alt="OpenBOM logo" width="160" height="28"></a>
+											</div>
+					<div class="menu">
+						<ul><li id="menu-item-13" class="active has-children"><a href="/pricing">Pricing</a>
+<ul class="sub-menu">
+	<li id="menu-item-20" class="active"><a href="/pricing">Pricing Plans</a></li>
+	<li id="menu-item-21"><a href="https://bom.openbom.com/trial-sign-up">14-days free trial</a></li>
+	<li id="menu-item-13088"><a href="https://pages.openbom.com/openbom-trial-implementation-consulting-accelerated-success-program/">Trial Implementation Consulting</a></li>
+	<li id="menu-item-22"><a href="/openbom-non-commercial-subscription">Education and Non-Commercial</a></li>
+	<li id="menu-item-7411"><a href="https://start.openbom.com/openbom-for-startups">OpenBOM for Startups</a></li>
+	<li id="menu-item-23"><a href="https://help.openbom.com/onboarding-experience/">Premium Onboarding Service</a></li>
+</ul>
+</li>
+<li id="menu-item-14" class="has-children"><span>Product</span>
+<ul class="sub-menu">
+	<li id="menu-item-24"><a href="/product-tour">Product Tour</a></li>
+	<li id="menu-item-13450" class="-type-post_type -object-page"><a href="https://www.openbom.com/openbom-product-presentation">Product Presentation</a></li>
+	<li id="menu-item-10899"><a href="https://help.openbom.com/how-it-works/">How it works (video)</a></li>
+	<li id="menu-item-10746" class="has-children"><span>Product Capabilities</span>
+	<ul class="sub-menu">
+		<li id="menu-item-12722"><a href="https://www.openbom.com/product-lifecycle-management">PLM</a></li>
+		<li id="menu-item-10761" class="-type-post_type -object-page"><a href="https://www.openbom.com/cad-integrations">CAD Integrations</a></li>
+		<li id="menu-item-10765"><a href="https://www.openbom.com/item-management-capability">Item Management</a></li>
+		<li id="menu-item-10764"><a href="https://www.openbom.com/bom-management-capability">BOM Management</a></li>
+		<li id="menu-item-10757" class="-type-post_type -object-page"><a href="https://www.openbom.com/revision-control">Revision Control</a></li>
+		<li id="menu-item-10763"><a href="https://www.openbom.com/change-management">Change Management</a></li>
+		<li id="menu-item-10756" class="-type-post_type -object-page"><a href="https://www.openbom.com/production-planning">Production Planning and Agile New Product Development</a></li>
+		<li id="menu-item-10755" class="-type-post_type -object-page"><a href="https://www.openbom.com/document-management-capabilities">Document Management</a></li>
+		<li id="menu-item-10748" class="-type-post_type -object-page"><a href="https://www.openbom.com/data-import">Data Import</a></li>
+		<li id="menu-item-10747"><a href="https://www.openbom.com/data-export">Data Export</a></li>
+		<li id="menu-item-10758" class="-type-post_type -object-page"><a href="https://www.openbom.com/team-collaboration">Team Collaboration</a></li>
+		<li id="menu-item-10762"><a href="https://www.openbom.com/product-cost-management">Product Cost Management</a></li>
+		<li id="menu-item-10759" class="-type-post_type -object-page"><a href="https://www.openbom.com/compliance-management">Compliance Management</a></li>
+		<li id="menu-item-10760" class="-type-post_type -object-page"><a href="https://www.openbom.com/supply-chain-collaboration">Supply Chain Collaboration</a></li>
+		<li id="menu-item-10753" class="-type-post_type -object-page"><a href="https://www.openbom.com/product-sourcing">Product Sourcing</a></li>
+		<li id="menu-item-10754" class="-type-post_type -object-page"><a href="https://www.openbom.com/quality-management">Quality Management</a></li>
+		<li id="menu-item-10751" class="-type-post_type -object-page"><a href="https://www.openbom.com/search-and-analytics">Search and Analytics</a></li>
+		<li id="menu-item-10750" class="-type-post_type -object-page"><a href="https://www.openbom.com/user-defined-views">User-Defined Views</a></li>
+		<li id="menu-item-10749" class="-type-post_type -object-page"><a href="https://www.openbom.com/custom-integrations">Integrations</a></li>
+	</ul>
+</li>
+	<li id="menu-item-25" class="has-children"><a href="/integrations">Integrations</a>
+	<ul class="sub-menu">
+		<li id="menu-item-11044"><a href="https://www.openbom.com/integrations">All Integrations</a></li>
+		<li id="menu-item-11041"><a href="https://www.openbom.com/integrations">CAD Integrations</a></li>
+		<li id="menu-item-11042"><a href="https://www.openbom.com/integrations">ERP Integrations</a></li>
+		<li id="menu-item-11043"><a href="https://www.openbom.com/integrations">PDM and PLM Integrations</a></li>
+		<li id="menu-item-11045"><a href="https://help.openbom.com/developers/">REST API Integrations</a></li>
+	</ul>
+</li>
+	<li id="menu-item-26"><a href="/openbom-security">Security</a></li>
+	<li id="menu-item-27" class="has-children"><span>Subscriptions</span>
+	<ul class="sub-menu">
+		<li id="menu-item-33"><a href="/free-user">Free Trial</a></li>
+		<li id="menu-item-29"><a href="/professional-team">Professional Team</a></li>
+		<li id="menu-item-30"><a href="/company">Company</a></li>
+		<li id="menu-item-31"><a href="/enterprise">Enterprise</a></li>
+	</ul>
+</li>
+	<li id="menu-item-34" class="has-children"><span>Verticals and Industries</span>
+	<ul class="sub-menu">
+		<li id="menu-item-35"><a href="/machine-design">Machine Design</a></li>
+		<li id="menu-item-36"><a href="/high-tech-and-electronics">High Tech and Electronics</a></li>
+		<li id="menu-item-37"><a href="/furniture-apparel-and-consumer-packaged-goods">Furniture, Apparel and Consumer Packaged Goods</a></li>
+		<li id="menu-item-38"><a href="/architecture-engineering-and-construction-aec">Architecture, Engineering and Construction (AEC)</a></li>
+		<li id="menu-item-39"><a href="/food-and-process">Food and Process</a></li>
+	</ul>
+</li>
+	<li id="menu-item-10841" class="has-children"><span>Partner Solutions</span>
+	<ul class="sub-menu">
+		<li id="menu-item-10842"><a href="https://www.vdr.com/nexus/openbom">Enterprise Integrations</a></li>
+		<li id="menu-item-10843"><a href="https://www.openbom.com/blog/enabling-integrated-plm-and-qms-by-connecting-openbom-and-orcanos">QMS</a></li>
+	</ul>
+</li>
+	<li id="menu-item-53"><a href="https://aecbom.com/">AECBOM</a></li>
+</ul>
+</li>
+<li id="menu-item-15"><a href="https://help.openbom.com/">Training</a></li>
+<li id="menu-item-16" class="has-children"><a href="/user-stories">Customers</a>
+<ul class="sub-menu">
+	<li id="menu-item-54"><a href="/user-stories">Customer Stories</a></li>
+	<li id="menu-item-55"><a href="https://www.g2.com/products/openbom/reviews">OpenBOM reviews on G2 Crowd</a></li>
+	<li id="menu-item-11062"><a href="https://community.openbom.com/">User Community</a></li>
+</ul>
+</li>
+<li id="menu-item-17" class="has-children"><a href="https://help.openbom.com/certified-consultants/">Partner</a>
+<ul class="sub-menu">
+	<li id="menu-item-10840"><a href="https://help.openbom.com/certified-consultants/">All partners and certified consultants</a></li>
+	<li id="menu-item-10838"><a href="https://www.vdr.com/nexus/openbom">vdR Nexus Enterprise Integrations</a></li>
+	<li id="menu-item-10839"><a href="https://www.openbom.com/blog/enabling-integrated-plm-and-qms-by-connecting-openbom-and-orcanos">QMS solution (with Orcanos)</a></li>
+</ul>
+</li>
+<li id="menu-item-18" class="has-children"><a href="/blog">Blog</a>
+<ul class="sub-menu">
+	<li id="menu-item-14101" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/plm-and-bom-management">PLM and BOM Management</a></li>
+	<li id="menu-item-14090" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/cad-integration">CAD Integration</a></li>
+	<li id="menu-item-14093" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/contract-manufacturing-supplier-collaboration">Contract Manufacturing &amp; Supplier Collaboration</a></li>
+	<li id="menu-item-14091" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/ai-and-product-knowledge-graphs">AI and Product Knowledge Graphs</a></li>
+	<li id="menu-item-14102" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/product-feature-updates">Product &amp; Feature Updates</a></li>
+	<li id="menu-item-14100" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/platform-ux-updates-dashboards">Platform UX Updates &amp; Dashboards</a></li>
+	<li id="menu-item-14105" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/xbom-data-modeling">xBOM &amp; Data Modeling</a></li>
+	<li id="menu-item-14103" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/product-data-strategy-digitalization">Product Data Strategy &amp; Digitalization</a></li>
+	<li id="menu-item-14095" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/customer-stories-success-cases">Customer Stories &amp; Success Cases</a></li>
+	<li id="menu-item-14092" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/cad-file-management-and-pdm">CAD File Management and PDM</a></li>
+	<li id="menu-item-14094" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/cost-optimization-production-planning">Cost Optimization &amp; Production Planning</a></li>
+	<li id="menu-item-14097" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/erp-integration">ERP Integration</a></li>
+	<li id="menu-item-14106" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/webinars-live-demos-conferences">Webinars &amp; Live Demos, Conferences</a></li>
+	<li id="menu-item-14098" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/inventory-management">Inventory Management</a></li>
+	<li id="menu-item-14096" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/digital-transformation">Digital Transformation</a></li>
+	<li id="menu-item-14107" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/use-cases-best-practices">Use Cases &amp; Best Practices</a></li>
+	<li id="menu-item-14104" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/supply-chain-rfq-and-procurement">Supply Chain &amp; RFQ and Procurement</a></li>
+	<li id="menu-item-14099" class="-type-taxonomy -object-category"><a href="https://www.openbom.com/blog/other">Other</a></li>
+</ul>
+</li>
+<li id="menu-item-19" class="has-children"><a href="/about">Company</a>
+<ul class="sub-menu">
+	<li id="menu-item-56"><a href="/join-our-team">Join our team!</a></li>
+	<li id="menu-item-57"><a href="/news">News</a></li>
+	<li id="menu-item-11317" class="-type-post_type -object-page"><a href="https://www.openbom.com/investors">Information For Investors</a></li>
+</ul>
+</li>
+</ul>					</div>
+					<div class="hamburger">
+						<i class="icon icon-hamburger"></i>
+					</div>
+				</div>
+								<div class="sign-block">
+					<div class="icon"></div>
+					<ul>
+						<li>
+							<a href="https://bom.openbom.com/" class="btn btn-default"><span>Sign In</span></a>
+						</li>
+						<li>
+							<a href="https://bom.openbom.com/sign-up" class="btn btn-main"><span>Register for free</span></a>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</header>
+	<div  class="menu-mob">
+		<div  class="menu-mob__wrapper">
+			<div  class="menu-mob__title">
+				<div class="back"></div>
+				<div class="text">Home</div>
+				<div class="close">
+					<i class="icon icon-close"></i>
+				</div>
+			</div>
+			<ul class="menu-mob__list"><li class="menu-mob__item active has-children"><a class="link" href="/pricing"><span>Pricing</span></a><div class="btn-arrow"><i class="icon icon-arrow"></i></div><div class="menu-mob-second"><div class="menu-mob__title">
+					<div class="back">
+						<i class="icon icon-arrow"></i>
+					</div>
+                    <div class="text">Pricing</div>
+                    <div class="close">
+						<i class="icon icon-close"></i>
+                    </div>
+				</div><ul class="menu-mob__list">	<li class="menu-mob__item active"><a class="link" href="/pricing"><span>Pricing Plans</span></a></li>
+	<li class="menu-mob__item"><a class="link" href="https://bom.openbom.com/trial-sign-up"><span>14-days free trial</span></a></li>
+	<li class="menu-mob__item"><a class="link" href="https://pages.openbom.com/openbom-trial-implementation-consulting-accelerated-success-program/"><span>Trial Implementation Consulting</span></a></li>
+	<li class="menu-mob__item"><a class="link" href="/openbom-non-commercial-subscription"><span>Education and Non-Commercial</span></a></li>
+	<li class="menu-mob__item"><a class="link" href="https://start.openbom.com/openbom-for-startups"><span>OpenBOM for Startups</span></a></li>
+	<li class="menu-mob__item"><a class="link" href="https://help.openbom.com/onboarding-experience/"><span>Premium Onboarding Service</span></a></li>
+</ul></div>
+</li>
+<li class="menu-mob__item has-children"><span class="link">Product</span><div class="btn-arrow"><i class="icon icon-arrow"></i></div><div class="menu-mob-second"><div class="menu-mob__title">
+					<div class="back">
+						<i class="icon icon-arrow"></i>
+					</div>
+                    <div class="text">Product</div>
+                    <div class="close">
+						<i class="icon icon-close"></i>
+                    </div>
+				</div><ul class="menu-mob__list">	<li class="menu-mob__item"><a class="link" href="/product-tour"><span>Product Tour</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/openbom-product-presentation"><span>Product Presentation</span></a></li>
+	<li class="menu-mob__item"><a class="link" href="https://help.openbom.com/how-it-works/"><span>How it works (video)</span></a></li>
+	<li class="menu-mob__item has-children"><span class="link">Product Capabilities</span><div class="btn-arrow"><i class="icon icon-arrow"></i></div>	<div class="menu-mob-third"><div class="menu-mob__title">
+					<div class="back">
+						<i class="icon icon-arrow"></i>
+					</div>
+                    <div class="text">Product Capabilities</div>
+                    <div class="close">
+						<i class="icon icon-close"></i>
+                    </div>
+				</div><ul class="menu-mob__list">		<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/product-lifecycle-management"><span>PLM</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/cad-integrations"><span>CAD Integrations</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/item-management-capability"><span>Item Management</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/bom-management-capability"><span>BOM Management</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/revision-control"><span>Revision Control</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/change-management"><span>Change Management</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/production-planning"><span>Production Planning and Agile New Product Development</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/document-management-capabilities"><span>Document Management</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/data-import"><span>Data Import</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/data-export"><span>Data Export</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/team-collaboration"><span>Team Collaboration</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/product-cost-management"><span>Product Cost Management</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/compliance-management"><span>Compliance Management</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/supply-chain-collaboration"><span>Supply Chain Collaboration</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/product-sourcing"><span>Product Sourcing</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/quality-management"><span>Quality Management</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/search-and-analytics"><span>Search and Analytics</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/user-defined-views"><span>User-Defined Views</span></a></li>
+		<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/custom-integrations"><span>Integrations</span></a></li>
+	</ul></div>
+</li>
+	<li class="menu-mob__item has-children"><a class="link" href="/integrations"><span>Integrations</span></a><div class="btn-arrow"><i class="icon icon-arrow"></i></div>	<div class="menu-mob-third"><div class="menu-mob__title">
+					<div class="back">
+						<i class="icon icon-arrow"></i>
+					</div>
+                    <div class="text">Integrations</div>
+                    <div class="close">
+						<i class="icon icon-close"></i>
+                    </div>
+				</div><ul class="menu-mob__list">		<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/integrations"><span>All Integrations</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/integrations"><span>CAD Integrations</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/integrations"><span>ERP Integrations</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/integrations"><span>PDM and PLM Integrations</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="https://help.openbom.com/developers/"><span>REST API Integrations</span></a></li>
+	</ul></div>
+</li>
+	<li class="menu-mob__item"><a class="link" href="/openbom-security"><span>Security</span></a></li>
+	<li class="menu-mob__item has-children"><span class="link">Subscriptions</span><div class="btn-arrow"><i class="icon icon-arrow"></i></div>	<div class="menu-mob-third"><div class="menu-mob__title">
+					<div class="back">
+						<i class="icon icon-arrow"></i>
+					</div>
+                    <div class="text">Subscriptions</div>
+                    <div class="close">
+						<i class="icon icon-close"></i>
+                    </div>
+				</div><ul class="menu-mob__list">		<li class="menu-mob__item"><a class="link" href="/free-user"><span>Free Trial</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="/professional-team"><span>Professional Team</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="/company"><span>Company</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="/enterprise"><span>Enterprise</span></a></li>
+	</ul></div>
+</li>
+	<li class="menu-mob__item has-children"><span class="link">Verticals and Industries</span><div class="btn-arrow"><i class="icon icon-arrow"></i></div>	<div class="menu-mob-third"><div class="menu-mob__title">
+					<div class="back">
+						<i class="icon icon-arrow"></i>
+					</div>
+                    <div class="text">Verticals and Industries</div>
+                    <div class="close">
+						<i class="icon icon-close"></i>
+                    </div>
+				</div><ul class="menu-mob__list">		<li class="menu-mob__item"><a class="link" href="/machine-design"><span>Machine Design</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="/high-tech-and-electronics"><span>High Tech and Electronics</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="/furniture-apparel-and-consumer-packaged-goods"><span>Furniture, Apparel and Consumer Packaged Goods</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="/architecture-engineering-and-construction-aec"><span>Architecture, Engineering and Construction (AEC)</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="/food-and-process"><span>Food and Process</span></a></li>
+	</ul></div>
+</li>
+	<li class="menu-mob__item has-children"><span class="link">Partner Solutions</span><div class="btn-arrow"><i class="icon icon-arrow"></i></div>	<div class="menu-mob-third"><div class="menu-mob__title">
+					<div class="back">
+						<i class="icon icon-arrow"></i>
+					</div>
+                    <div class="text">Partner Solutions</div>
+                    <div class="close">
+						<i class="icon icon-close"></i>
+                    </div>
+				</div><ul class="menu-mob__list">		<li class="menu-mob__item"><a class="link" href="https://www.vdr.com/nexus/openbom"><span>Enterprise Integrations</span></a></li>
+		<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/blog/enabling-integrated-plm-and-qms-by-connecting-openbom-and-orcanos"><span>QMS</span></a></li>
+	</ul></div>
+</li>
+	<li class="menu-mob__item"><a class="link" href="https://aecbom.com/"><span>AECBOM</span></a></li>
+</ul></div>
+</li>
+<li class="menu-mob__item"><a class="link" href="https://help.openbom.com/"><span>Training</span></a></li>
+<li class="menu-mob__item has-children"><a class="link" href="/user-stories"><span>Customers</span></a><div class="btn-arrow"><i class="icon icon-arrow"></i></div><div class="menu-mob-second"><div class="menu-mob__title">
+					<div class="back">
+						<i class="icon icon-arrow"></i>
+					</div>
+                    <div class="text">Customers</div>
+                    <div class="close">
+						<i class="icon icon-close"></i>
+                    </div>
+				</div><ul class="menu-mob__list">	<li class="menu-mob__item"><a class="link" href="/user-stories"><span>Customer Stories</span></a></li>
+	<li class="menu-mob__item"><a class="link" href="https://www.g2.com/products/openbom/reviews"><span>OpenBOM reviews on G2 Crowd</span></a></li>
+	<li class="menu-mob__item"><a class="link" href="https://community.openbom.com/"><span>User Community</span></a></li>
+</ul></div>
+</li>
+<li class="menu-mob__item has-children"><a class="link" href="https://help.openbom.com/certified-consultants/"><span>Partner</span></a><div class="btn-arrow"><i class="icon icon-arrow"></i></div><div class="menu-mob-second"><div class="menu-mob__title">
+					<div class="back">
+						<i class="icon icon-arrow"></i>
+					</div>
+                    <div class="text">Partner</div>
+                    <div class="close">
+						<i class="icon icon-close"></i>
+                    </div>
+				</div><ul class="menu-mob__list">	<li class="menu-mob__item"><a class="link" href="https://help.openbom.com/certified-consultants/"><span>All partners and certified consultants</span></a></li>
+	<li class="menu-mob__item"><a class="link" href="https://www.vdr.com/nexus/openbom"><span>vdR Nexus Enterprise Integrations</span></a></li>
+	<li class="menu-mob__item"><a class="link" href="https://www.openbom.com/blog/enabling-integrated-plm-and-qms-by-connecting-openbom-and-orcanos"><span>QMS solution (with Orcanos)</span></a></li>
+</ul></div>
+</li>
+<li class="menu-mob__item has-children"><a class="link" href="/blog"><span>Blog</span></a><div class="btn-arrow"><i class="icon icon-arrow"></i></div><div class="menu-mob-second"><div class="menu-mob__title">
+					<div class="back">
+						<i class="icon icon-arrow"></i>
+					</div>
+                    <div class="text">Blog</div>
+                    <div class="close">
+						<i class="icon icon-close"></i>
+                    </div>
+				</div><ul class="menu-mob__list">	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/plm-and-bom-management"><span>PLM and BOM Management</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/cad-integration"><span>CAD Integration</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/contract-manufacturing-supplier-collaboration"><span>Contract Manufacturing &amp; Supplier Collaboration</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/ai-and-product-knowledge-graphs"><span>AI and Product Knowledge Graphs</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/product-feature-updates"><span>Product &amp; Feature Updates</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/platform-ux-updates-dashboards"><span>Platform UX Updates &amp; Dashboards</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/xbom-data-modeling"><span>xBOM &amp; Data Modeling</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/product-data-strategy-digitalization"><span>Product Data Strategy &amp; Digitalization</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/customer-stories-success-cases"><span>Customer Stories &amp; Success Cases</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/cad-file-management-and-pdm"><span>CAD File Management and PDM</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/cost-optimization-production-planning"><span>Cost Optimization &amp; Production Planning</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/erp-integration"><span>ERP Integration</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/webinars-live-demos-conferences"><span>Webinars &amp; Live Demos, Conferences</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/inventory-management"><span>Inventory Management</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/digital-transformation"><span>Digital Transformation</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/use-cases-best-practices"><span>Use Cases &amp; Best Practices</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/supply-chain-rfq-and-procurement"><span>Supply Chain &amp; RFQ and Procurement</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-taxonomy menu-mob__item-object-category"><a class="link" href="https://www.openbom.com/blog/other"><span>Other</span></a></li>
+</ul></div>
+</li>
+<li class="menu-mob__item has-children"><a class="link" href="/about"><span>Company</span></a><div class="btn-arrow"><i class="icon icon-arrow"></i></div><div class="menu-mob-second"><div class="menu-mob__title">
+					<div class="back">
+						<i class="icon icon-arrow"></i>
+					</div>
+                    <div class="text">Company</div>
+                    <div class="close">
+						<i class="icon icon-close"></i>
+                    </div>
+				</div><ul class="menu-mob__list">	<li class="menu-mob__item"><a class="link" href="/join-our-team"><span>Join our team!</span></a></li>
+	<li class="menu-mob__item"><a class="link" href="/news"><span>News</span></a></li>
+	<li class="menu-mob__item menu-mob__item-type-post_type menu-mob__item-object-page"><a class="link" href="https://www.openbom.com/investors"><span>Information For Investors</span></a></li>
+</ul></div>
+</li>
+</ul>		</div>
+	</div>
+<div  class="page page-subscription">
+    <div  class="container">
+        <div  class="breadcrumbs">
+            <ul><li><a href="https://www.openbom.com/">Home</a></li>  <li><span>OpenBOM Subscription Plans</span></li></ul>        </div>
+        <div  class="page__title page-subscription__title">
+            <h1 class="h1">OpenBOM Subscription Plans</h1>
+            						<div class="button">
+                <a href="https://bom.openbom.com/trial-sign-up" class="btn btn-main"><span>Get started with your 14-day Free Trial</span></a>
+            </div>
+			        </div>
+    </div>
+</div>
+<div  class="subscription-plans">
+    <div  class="container">
+        <div  class="subscription-plans__wrap">
+            <div class="plans-tab">
+                <div class="plans-tab__item"><span>Monthly</span></div>
+                <div class="plans-tab__item active"><span>Yearly</span></div>
+            </div>
+						<div class="subscription-plans__button">
+				<a href="https://docs.google.com/spreadsheets/d/1dTSOy6D_DpjEu5MNE4Q6t0X8XLoFlpD91Dr5dMPCDKE/edit?usp=sharing" class="btn btn-default"><span>Download Detailed Features</span></a>
+			</div>
+			        </div>
+    </div>
+    <div  class="plans-content">
+        <div  class="plans-content__item">
+            <div class="subscription-plans__center">
+                				<div class="subscription-plans__side">
+                    <div class="subscription-plans__side__top">
+                        <div class="title h5">Choose Your Plan</div>
+                        <div class="text">
+                           <p><p>If you have questions about OpenBOM pricing, please contact <a href="mailto:sales@openbom.com">sales@openbom.com</a></p>
+<p>OpenBOM offers a free plan for non-commercial and educational use. Check the Pricing menu for details</p>
+</p>
+						</div>
+                    </div>
+                    <div class="subscription-plans__side__bottom">
+												<div class="subscription-plans__side__item">
+                            <div class="name">License type</div>
+                        </div>
+                        						<div class="subscription-plans__side__item">
+                            <div class="name">Seats</div>
+                        </div>
+                        						<div class="subscription-plans__side__item">
+                            <div class="name">Database Storage</div>
+                        </div>
+                        						<div class="subscription-plans__side__item">
+                            <div class="name">Design File Storage</div>
+                        </div>
+                        						<div class="subscription-plans__side__item">
+                            <div class="name">Onboarding Service</div>
+                        </div>
+                                            </div>
+                </div>
+				                <div class="subscription-plans__slider">
+                    <div class="tns-subscription-plans">
+                        						<div class="item">
+                            <div class="subscription-plans__item">
+                                <div class="subscription-plans__item__top">
+                                    <div class="title">Free</div>
+                                    <div class="icon">
+                                        <img src="https://www.openbom.com/wp-content/uploads/2022/09/plans-1.svg" alt="Free" width="48px" height="48px">
+                                    </div>
+                                    <div class="cost">
+                                        <div class="price">Trial</div>
+                                        <div class="billed">n/a</div>
+                                    </div>
+                                    <div class="button">
+										<a href="https://bom.openbom.com/sign-up" class="btn btn-second"><span>Register Now</span></a>
+                                    </div>
+                                    <div class="text">
+										<p>Allows you to explore all OpenBOM features included in standard subscription plans<ul><li>Instant 14-days trial</li><li>Consulting: $4,000/mo</li><li>Free non-commercial (navigate Pricing menu)</li></ul> </p>
+									</div>
+                                </div>
+                                <div class="subscription-plans__item__bottom">
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--normal">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--dark">n/a</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="button">
+                                            <a href="https://bom.openbom.com/sign-up" class="btn btn-second"><span>Register Now</span></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+												<div class="item">
+                            <div class="subscription-plans__item">
+                                <div class="subscription-plans__item__top">
+                                    <div class="title">Team</div>
+                                    <div class="icon">
+                                        <img src="https://www.openbom.com/wp-content/uploads/2022/09/plans-3.svg" alt="Team" width="48px" height="48px">
+                                    </div>
+                                    <div class="cost">
+                                        <div class="price">$190 /Seat</div>
+                                        <div class="billed">billed monthly</div>
+                                    </div>
+                                    <div class="button">
+										<a href="https://buy.stripe.com/eVq4gygs8coKczp4Qs3gk02" class="btn btn-main"><span>Buy Now</span></a>
+                                    </div>
+                                    <div class="text">
+										<p>Collaborative Workspace for Digital BOM that connects engineering and streamlines inventory, RFQs, and purchasing <ul><li>Item/BOM management</li><li>Part numbers and catalogs</li><li>CAD add-ins</li><li>Rollup / Formulas</li><li>Inventory, RFQ, PO</li><li>Import/Exports</li><li>Tree / Graph navigation</li><li>REST API</li><li>Onboarding training</li></ul></p>
+									</div>
+                                </div>
+                                <div class="subscription-plans__item__bottom">
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Per Seat</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--normal">Starts at 3</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Included</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="button">
+                                            <a href="https://buy.stripe.com/eVq4gygs8coKczp4Qs3gk02" class="btn btn-main"><span>Buy Now</span></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+												<div class="item">
+                            <div class="subscription-plans__item">
+                                <div class="subscription-plans__item__top">
+                                    <div class="title">Company</div>
+                                    <div class="icon">
+                                        <img src="https://www.openbom.com/wp-content/uploads/2022/09/plans-4.svg" alt="Company" width="48px" height="48px">
+                                    </div>
+                                    <div class="cost">
+                                        <div class="price">$270 /Seat</div>
+                                        <div class="billed">billed monthly</div>
+                                    </div>
+                                    <div class="button">
+										<a href="https://buy.stripe.com/28EcN44Jq3SegPF3Mo3gk03" class="btn btn-main"><span>Buy Now</span></a>
+                                    </div>
+                                    <div class="text">
+										<p>Collaborative Workspace for Product Lifecycle and Change Management to deliver PDM/PLM capabilities for governance and control <ul> <li class="dark-bullet" style="font-weight:500">Everything in Team, plus</li><li>Design projects</li><li>CAD & Doc versions</li><li>xBOM (EBOM, MBOM, SBOM, etc) </li><li>Revision and ECOs </li><li>MFA</li><li>Onboarding Consulting</li> </ul></p>
+									</div>
+                                </div>
+                                <div class="subscription-plans__item__bottom">
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Per Seat</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--normal">Starts at 5</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Included</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="button">
+                                            <a href="https://buy.stripe.com/28EcN44Jq3SegPF3Mo3gk03" class="btn btn-main"><span>Buy Now</span></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+												<div class="item">
+                            <div class="subscription-plans__item">
+                                <div class="subscription-plans__item__top">
+                                    <div class="title">Enterprise</div>
+                                    <div class="icon">
+                                        <img src="https://www.openbom.com/wp-content/uploads/2022/09/plans-5.svg" alt="Enterprise" width="48px" height="48px">
+                                    </div>
+                                    <div class="cost">
+                                        <div class="price">Call</div>
+                                        <div class="billed">billed yearly</div>
+                                    </div>
+                                    <div class="button">
+										<a href="#footer-form" class="btn btn-main"><span>Contact Us</span></a>
+                                    </div>
+                                    <div class="text">
+										<p>Advanced tools, enterprise-grade security, custom hosting and enterprise integrations <br/><ul><li class="dark-bullet" style="font-weight:500">Everything in Company, plus</li><li>Enterprise integrations (ERP, PLM, MES)</li><li>Enterprise file management</li><li>Custom Integrations  REST API </li><li>Custom Hosting</li><li>SSO</li><li>Enterprise Support</li></ul></p>
+									</div>
+                                </div>
+                                <div class="subscription-plans__item__bottom">
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Contact us</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Included</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="button">
+                                            <a href="#footer-form" class="btn btn-main"><span>Contact Us</span></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+						                    </div>
+                </div>
+            </div>
+        </div>
+        <div  class="plans-content__item active">
+            <div class="subscription-plans__center">
+                				<div class="subscription-plans__side">
+                    <div class="subscription-plans__side__top">
+                        <div class="title h5">Choose Your Plan</div>
+                        <div class="text">
+                           <p><p>If you have questions about OpenBOM pricing, please contact <a href="mailto:sales@openbom.com">sales@openbom.com</a></p>
+<p>OpenBOM offers a free plan for non-commercial and educational use. Check the Pricing menu for details</p>
+</p>
+						</div>
+                    </div>
+                    <div class="subscription-plans__side__bottom">
+												<div class="subscription-plans__side__item">
+                            <div class="name">License type</div>
+                        </div>
+                        						<div class="subscription-plans__side__item">
+                            <div class="name">Seats</div>
+                        </div>
+                        						<div class="subscription-plans__side__item">
+                            <div class="name">Database Storage</div>
+                        </div>
+                        						<div class="subscription-plans__side__item">
+                            <div class="name">Design File Storage</div>
+                        </div>
+                        						<div class="subscription-plans__side__item">
+                            <div class="name">Onboarding Service</div>
+                        </div>
+                                            </div>
+                </div>
+				                <div class="subscription-plans__slider">
+                    <div class="tns-subscription-plans">
+                        						<div class="item">
+                            <div class="subscription-plans__item">
+                                <div class="subscription-plans__item__top">
+                                    <div class="title">Free</div>
+                                    <div class="icon">
+                                        <img src="https://www.openbom.com/wp-content/uploads/2022/09/plans-1.svg" alt="Free" width="48px" height="48px">
+                                    </div>
+                                    <div class="cost">
+                                        <div class="price">Trial</div>
+                                        <div class="billed">n/a</div>
+                                    </div>
+                                    <div class="button">
+										<a href="https://bom.openbom.com/sign-up" class="btn btn-second"><span>Register Now</span></a>
+                                    </div>
+                                    <div class="text">
+										<p>Allows you to explore all OpenBOM features included in standard subscription plans<ul><li>Instant 14-days trial</li><li>Consulting: $4,000/mo</li><li>Free non-commercial (navigate Pricing menu)</li></ul> </p>
+									</div>
+                                </div>
+                                <div class="subscription-plans__item__bottom">
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--normal">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--dark">n/a</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="button">
+                                            <a href="https://bom.openbom.com/sign-up" class="btn btn-second"><span>Register Now</span></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+												<div class="item">
+                            <div class="subscription-plans__item">
+                                <div class="subscription-plans__item__top">
+                                    <div class="title">Team</div>
+                                    <div class="icon">
+                                        <img src="https://www.openbom.com/wp-content/uploads/2022/09/plans-3.svg" alt="Team" width="48px" height="48px">
+                                    </div>
+                                    <div class="cost">
+                                        <div class="price">$100 /Seat /Month</div>
+                                        <div class="billed">billed yearly</div>
+                                    </div>
+                                    <div class="button">
+										<a href="https://buy.stripe.com/5kQaEW6RybkG0QHaaM3gk00" class="btn btn-main"><span>Buy Now</span></a>
+                                    </div>
+                                    <div class="text">
+										<p>Collaborative Workspace for Digital BOM that connects engineering and streamlines inventory, RFQs, and purchasing <ul><li>Item/BOM management</li><li>Part numbers and catalogs</li><li>CAD add-ins</li><li>Rollup / Formulas</li><li>Inventory, RFQ, PO</li><li>Import/Exports</li><li>Tree / Graph navigation</li><li>REST API</li><li>Onboarding training</li></ul></p>
+									</div>
+                                </div>
+                                <div class="subscription-plans__item__bottom">
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Per Seat</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--normal">Starts at 3</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Included</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="button">
+                                            <a href="https://buy.stripe.com/5kQaEW6RybkG0QHaaM3gk00" class="btn btn-main"><span>Buy Now</span></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+												<div class="item">
+                            <div class="subscription-plans__item">
+                                <div class="subscription-plans__item__top">
+                                    <div class="title">Company</div>
+                                    <div class="icon">
+                                        <img src="https://www.openbom.com/wp-content/uploads/2022/09/plans-4.svg" alt="Company" width="48px" height="48px">
+                                    </div>
+                                    <div class="cost">
+                                        <div class="price">$150/Seat /Month</div>
+                                        <div class="billed">billed yearly</div>
+                                    </div>
+                                    <div class="button">
+										<a href="https://buy.stripe.com/bJe5kC7VC1K656X82E3gk01" class="btn btn-main"><span>Buy Now</span></a>
+                                    </div>
+                                    <div class="text">
+										<p>Collaborative Workspace for Product Lifecycle and Change Management to deliver PDM/PLM capabilities for governance and control <ul> <li class="dark-bullet" style="font-weight:500">Everything in Team, plus</li><li>Design projects</li><li>CAD & Doc versions</li><li>xBOM (EBOM, MBOM, SBOM, etc) </li><li>Revision and ECOs </li><li>MFA</li><li>Onboarding Consulting</li> </ul></p>
+									</div>
+                                </div>
+                                <div class="subscription-plans__item__bottom">
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Per Seat</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--normal">Starts at 5</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Included</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="button">
+                                            <a href="https://buy.stripe.com/bJe5kC7VC1K656X82E3gk01" class="btn btn-main"><span>Buy Now</span></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+												<div class="item">
+                            <div class="subscription-plans__item">
+                                <div class="subscription-plans__item__top">
+                                    <div class="title">Enterprise</div>
+                                    <div class="icon">
+                                        <img src="https://www.openbom.com/wp-content/uploads/2022/09/plans-5.svg" alt="Enterprise" width="48px" height="48px">
+                                    </div>
+                                    <div class="cost">
+                                        <div class="price">Call</div>
+                                        <div class="billed">billed yearly</div>
+                                    </div>
+                                    <div class="button">
+										<a href="#footer-form" class="btn btn-main"><span>Contact Us</span></a>
+                                    </div>
+                                    <div class="text">
+										<p>Advanced tools, enterprise-grade security, custom hosting and enterprise integrations <br/><ul><li class="dark-bullet" style="font-weight:500">Everything in Company, plus</li><li>Enterprise integrations (ERP, PLM, MES)</li><li>Enterprise file management</li><li>Custom Integrations  REST API </li><li>Custom Hosting</li><li>SSO</li><li>Enterprise Support</li></ul></p>
+									</div>
+                                </div>
+                                <div class="subscription-plans__item__bottom">
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Contact us</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Unlimited</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="text"><span class="text--info">Included</span></div>
+                                    </div>
+                                    <div class="column">
+                                        <div class="button">
+                                            <a href="#footer-form" class="btn btn-main"><span>Contact Us</span></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+						                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    	<div  class="container">
+        <div  class="plans__button">
+            <a href="https://docs.google.com/spreadsheets/d/1dTSOy6D_DpjEu5MNE4Q6t0X8XLoFlpD91Dr5dMPCDKE/edit?usp=sharing" class="btn btn-default"><span>Download Detailed Features</span></a>
+        </div>
+    </div>
+	</div>
+
+<div  class="subscription-service">
+    <div  class="container">
+        <div  class="subscription-service__title">
+            <h2></h2>
+        </div>
+        <div  class="subscription-service__wrap">
+            <div class="plans-tab">
+                <div class="plans-tab__item"><span>Monthly</span></div>
+                <div class="plans-tab__item active"><span>Yearly</span></div>
+            </div>
+        </div>
+        <div  class="plans-content">
+            <div class="plans-content__item">
+                <div class="subscription-service__list">
+                    					<div class="subscription-service__item">
+                        <div class="content">
+                            <div class="name h4">Consulting</div>
+                            <div class="text"><p>Consulting services (1 month) </p></div>
+                        </div>
+                        <div class="price">$4,000</div>
+                        <div class="button">
+                            <a href="https://checkout.bluesnap.com/buynow/checkout?sku3454281=1&storeid=547957" class="btn btn-main"><span>Buy Now</span></a>
+                        </div>
+                    </div>
+					                </div>
+            </div>
+            <div class="plans-content__item active">
+                <div class="subscription-service__list">
+					                    <div class="subscription-service__item">
+                        <div class="content">
+                            <div class="name h4">Consulting</div>
+                            <div class="text"><p>Consulting services (1 month) </p></div>
+                        </div>
+                        <div class="price">$4,000</div>
+                        <div class="button">
+                            <a href="https://checkout.bluesnap.com/buynow/checkout?sku3454281=1&storeid=547957" class="btn btn-main"><span>Buy Now</span></a>
+                        </div>
+                    </div>
+					                    <div class="subscription-service__item">
+                        <div class="content">
+                            <div class="name h4">Read-only seat</div>
+                            <div class="text"><p>Read only access license seat available in both Team and Company Plans </p></div>
+                        </div>
+                        <div class="price">$700</div>
+                        <div class="button">
+                            <a href="mailto:sales@openbom.com" class="btn btn-main"><span>Call sales </span></a>
+                        </div>
+                    </div>
+					                </div>
+            </div>
+        </div>
+		        <div  class="plans__button">
+            <a href="https://docs.google.com/spreadsheets/d/1dTSOy6D_DpjEu5MNE4Q6t0X8XLoFlpD91Dr5dMPCDKE/edit?usp=sharing" class="btn btn-default"><span>View all additional services</span></a>
+        </div>
+		    </div>
+</div>
+<div  class="faqs">
+	<div  class="container">
+		<div  class="faqs__wrap">
+			<div class="faqs__title">
+				<h2>Pricing and Subscription FAQs</h2>
+			</div>
+						<div class="faqs__content">
+				<div class="faqs-list">
+															<div class="faqs-item">
+						<div class="faqs-title  active  h4">What licensing and subscription OpenBOM provides</div>
+						<div class="faqs-text"  style="display: block" >
+							<p>OpenBOM provides tier based subscription. There are four tiers &#8211; Free, Team, Company, and Enterprise.</p>
+<p>Free gives you an instant 14-days trial. Also, we provide free non-commercial subscription available to qualified educational institutions, non-profit engineering teams and other organizations. Check with us about qualification for non-commercial subscription.</p>
+<p>Team subscription focuses on making <span style="font-weight: 400;">engineering data available for business (Item, BOM, Inventory, RFQ, purchasing). </span></p>
+<p>Company subscription focuses on providing a C<span style="font-weight: 400;">ollaborative Workspace for product life cycles and change management. It includes functions to manage CAD files versions, vault, check-out/in, complex xBOM management, Item/BOM revisions, </span>ECO process and additional security capabilities like multi-factor authentication.</p>
+<p>Enterprise subscription focused on a custom enterprise integration including special REST API use cases, integrations with ERP, CRM, PLM and also hosting OpenBOM platform in your AWS account.</p>
+<p>OpenBOM provides seat based licenses. Each user must have a dedicated seat license to use a product. The price is per seat. All seats have the same price (special price for read-only seats). If you have an old grandfathered subscription please contact OpenBOM Support for transition to seat based licenses.</p>
+<p>If you have questions about subscriptions, your historical plans and pricing, please contact support@openbom.com.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">How is OpenBOM subscription work?</div>
+						<div class="faqs-text" >
+							<p>OpenBOM provides monthly or yearly subscriptions. The subscriptions can be purchased online using this page. Please use your OpenBOM Account email or follow the instructions on the purchasing page. If you have any questions, please contact support (support@openbom.com). For more information about OpenBOM subscriptions, please read OpenBOM Terms of Services online.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">What is implementation consulting and how it works? </div>
+						<div class="faqs-text" >
+							<p>OpenBOM provides a consulting service that helps you learn about OpenBOM&#8217;s capabilities and align your requirements with the potential implementation scope. This service is offered during free trials and includes dedicated consulting support and meetings over a one-month period to ensure that OpenBOM meets your requirements.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">What payment options are available?</div>
+						<div class="faqs-text" >
+							<p>You can pay for your subscription using credit cards online (via the BlueSnap credit card payment system) or by invoice and bank transfer to OpenBOM&#8217;s Bank of America account in the United States.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">What is the difference between data storage and file storage</div>
+						<div class="faqs-text" >
+							<p>OpenBOM Is a data management system. The data you store in OpeBOM &#8211; items, properties, records, BOMs, etc. However, you can attach files and upload files to OpenBOM (using specific property type &#8211; reference properties).</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Is there a limit how much data I can store in OpenBOM?</div>
+						<div class="faqs-text" >
+							<p>OpenBOM doesn&#8217;t limit you on how much data you can store in OpenBOM.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">What is included in onboarding service?</div>
+						<div class="faqs-text" >
+							<p>OpenBOM provides a special premium onboarding experience. Check details in the OpenBOM Training Library &#8211; https://help.openbom.com/onboarding-experience/</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">What is the cost of onboarding service? </div>
+						<div class="faqs-text" >
+							<p>OpenBOM Onboarding training is included in annual subscription. If you want to purchase Onboarding Training with monthly subscription, the price is $1,500.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Is there a free plan for Education and non-commercial usage?</div>
+						<div class="faqs-text" >
+							<p>OpenBOM provides a free subscription plan for education projects and personal users such as a hobby or home projects. Check the Pricing &#8211;&gt; Non-commercial menu on the website. The plan is for a single user only. You cannot use it together with free Design subscription. Contact support@openbom.com to ask about your project or organization qualification for non-commercial subscription.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">What are the differences between OpenBOM plans?</div>
+						<div class="faqs-text" >
+							<p>OpenBOM features are different between plans. Check the feature table above to see what features are supported. The transitions between plans are automatic, your data is preserved, no migration is needed. For more details about OpenBOM features, check help.openbom.com.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Where can I find detailed information about OpenBOM product features and functions?</div>
+						<div class="faqs-text" >
+							<p>Please navigate to OpenBOM Online Training (help.openbom.com) for detailed product documentation, videos, training course, webinars, and product F.A.Q.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Can I use the same user account multiple times in different browser tabs (or windows)?</div>
+						<div class="faqs-text" >
+							<p>Absolutely, you can open as many windows and tabs as you want in the same browser</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Can I use the same user account in CAD integration and browser at the same time?</div>
+						<div class="faqs-text" >
+							<p>Absolutely, you can use OpenBOM in CAD (Eg. Onshape, Autodesk Fusion, Dassault Systemes SolidWorks, etc) and use it in the browser at the same time.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">What if I forgot to sign-out from my computer in my office/ home and I need to sign-in on another device?</div>
+						<div class="faqs-text" >
+							<p>OpenBOM’s alert message will give you an option to sign out remotely.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Will the OpenBOM session expire automatically?</div>
+						<div class="faqs-text" >
+							<p>Yes, the OpenBOM session expires automatically in 24 hours after you sign in. So, you will need to re-login after 24 hours. However, to release the license you need to sign-out from the service.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Are there any differences between different users in my team with licenses (Eg. read-only user vs Editing user)?</div>
+						<div class="faqs-text" >
+							<p>Administrator can configure your team account with a different access right using administrator dashboard (edit, user-defined view, read-only, special access) . OpenBOM provide special discounts for View only licenses.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Can I use the same user account multiple times on different computers?</div>
+						<div class="faqs-text" >
+							<p>No, you can use an OpenBOM user in a specific device and browser. If you want to use it on another device, you need to sign out from your other active session.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">How to purchase an additional seat?</div>
+						<div class="faqs-text" >
+							<p>You can click on &#8220;Buy&#8221; command and specify the number of additional seats you want to purchase. Contact sales@openbom.com if you have questions.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Is there a cost for OpenBOM CAD Add-ins</div>
+						<div class="faqs-text" >
+							<p>Some CAD integrations are included in OpenBOM team and company subscriptions. For a detailed list of what is included in a specific subscription, please check our integration page (openbom.com/integrations)</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">How to install OpenBOM CAD Add-ins?</div>
+						<div class="faqs-text" >
+							<p>Installation packages are available for each integration on OpenBOM Integration Page (openbom.com/integrations).</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Should I pay separately for CAD Add-ins?</div>
+						<div class="faqs-text" >
+							<p>It depends on the CAD Add-in. Please check OpenBOM Integration Page (openbom.com/integrations).</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">What’s the difference between Team and Company subscriptions?</div>
+						<div class="faqs-text" >
+							<p>Team and Company subscriptions are different in features. Navigate to the list of detailed features to learn more.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Is there a limit to the number of BOMs I can create in the free or paid plans?</div>
+						<div class="faqs-text" >
+							<p>No limits for the number of BOMs, Catalogs, Vendors, etc. OpenBOM Storage size is not limited.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">How can a Team (or Company) administrator add more users to OpenBOM?</div>
+						<div class="faqs-text" >
+							<p>OpenBOM Team/Company administrator has access to a special menu in the OpenBOM tool that allows managing users – add, remove, and manage their access rights.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Is there an annual subscription plan, i.e. I pay a full 12-month subscription up front?</div>
+						<div class="faqs-text" >
+							<p>Yes, we provide monthly and annual (yearly) plans. The annual plan is for 12 months paid upfront.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Can I cancel a subscription plan at any time?</div>
+						<div class="faqs-text" >
+							<p>Yes, you can. However, keep in mind we have a “no refund policy”. A canceled paid monthly plan will conclude at the end of the monthly term. A canceled annual (yearly) plan will conclude at the of the annual term. We will respect the privacy of your data per our Privacy Policy. Monthly and Annual subscription plans renew automatically unless canceled per the Terms of Service.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">How to delete my free account? </div>
+						<div class="faqs-text" >
+							<p>To delete your account, please contact support@openbom.com</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">What happens to my data if I cancel my subscription?</div>
+						<div class="faqs-text" >
+							<p>Your data is private and confidential to you and all registered users regardless of subscription license. If you cancel the subscription, your account automatically will turn into a free trial with expired trial. Should you choose to delete your account we will not retain your data. More info can be found at Privacy Policy.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">What is the Enterprise subscription?</div>
+						<div class="faqs-text" >
+							<p>The Enterprise subscription applies to organizations that wish to deploy OpenBOM with additional security options, develop custom integrations, or support custom or private hosting options. Check features in the table above. Please email support@openbom.com for more information.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">Does OpenBOM support Multi-Factor Authentication?</div>
+						<div class="faqs-text" >
+							<p>OpenBOM supports MFA at the Company Subscription level.</p>
+						</div>
+					</div>
+															<div class="faqs-item">
+						<div class="faqs-title  h4">I did't find the answer on my question. What should I do?</div>
+						<div class="faqs-text" >
+							<p>Please contact support @ openbom dot com.</p>
+						</div>
+					</div>
+														</div>
+			</div>
+					</div>
+	</div>
+</div>
+
+<div data-wpr-lazyrender="1" class="button-top">
+	<div  class="container">
+		<div  class="button-top__arrow"><span>To the top</span></div>
+	</div>
+</div>
+
+<footer data-wpr-lazyrender="1" class="footer">
+	<div  class="container">
+		<div  class="footer__top">
+			<div class="row">
+				<div class="column">
+					<div class="footer-menu menu-first">
+						<ul><li id="menu-item-63"><span>Pricing</span>
+<ul class="sub-menu">
+	<li id="menu-item-64" class="active"><a href="/pricing">Pricing Plans</a></li>
+	<li id="menu-item-65"><a href="https://bom.openbom.com/trial-sign-up">14-days free trial</a></li>
+	<li id="menu-item-66"><a href="/openbom-non-commercial-subscription">Education and Non-Commercial</a></li>
+	<li id="menu-item-7412"><a href="https://pages.openbom.com/openbom-for-startups/">OpenBOM for Startups</a></li>
+	<li id="menu-item-67"><a href="https://help.openbom.com/onboarding-experience/">Premium Onboarding Service</a></li>
+</ul>
+</li>
+<li id="menu-item-68"><a href="https://help.openbom.com/">Training</a></li>
+<li id="menu-item-69"><a href="/user-stories">Customers</a>
+<ul class="sub-menu">
+	<li id="menu-item-70"><a href="/user-stories">Customer Stories</a></li>
+	<li id="menu-item-71"><a href="https://www.g2.com/products/openbom/reviews">OpenBOM reviews on G2 Crowd</a></li>
+</ul>
+</li>
+<li id="menu-item-72"><a href="https://help.openbom.com/certified-consultants/">Partners</a></li>
+<li id="menu-item-73"><a href="/blog">Blog</a></li>
+<li id="menu-item-74"><a href="/about">Company</a>
+<ul class="sub-menu">
+	<li id="menu-item-75"><a href="/join-our-team">Join our team!</a></li>
+	<li id="menu-item-76"><a href="/news">News</a></li>
+</ul>
+</li>
+</ul>					</div>
+				</div>
+				<div class="column">
+					<div class="footer-menu menu-second">
+						<ul><li id="menu-item-77"><span>Product</span>
+<ul class="sub-menu">
+	<li id="menu-item-78"><a href="/product-tour">Product Tour</a></li>
+	<li id="menu-item-79"><a href="/integrations">Integrations</a></li>
+	<li id="menu-item-620"><a href="/openbom-security">Security</a></li>
+	<li id="menu-item-80"><span>Subscriptions</span>
+	<ul class="sub-menu">
+		<li id="menu-item-82"><a href="/professional-team">Professional Team</a></li>
+		<li id="menu-item-83"><a href="/company">Company</a></li>
+		<li id="menu-item-85"><a href="/enterprise">Enterprise</a></li>
+		<li id="menu-item-621"><a href="/free-user">Free user</a></li>
+	</ul>
+</li>
+	<li id="menu-item-86"><span>Verticals and Industries</span>
+	<ul class="sub-menu">
+		<li id="menu-item-87"><a href="/machine-design">Machine Design</a></li>
+		<li id="menu-item-88"><a href="/high-tech-and-electronics">High Tech and Electronics</a></li>
+		<li id="menu-item-89"><a href="/furniture-apparel-and-consumer-packaged-goods">Furniture, Apparel and Consumer Packaged Goods</a></li>
+		<li id="menu-item-90"><a href="/architecture-engineering-and-construction-aec">Architecture, Engineering and Construction (AEC)</a></li>
+		<li id="menu-item-91"><a href="/food-and-process">Food and Process</a></li>
+	</ul>
+</li>
+</ul>
+</li>
+</ul>					</div>
+				</div>
+				<div class="column">
+					<div class="footer-menu menu-third">
+						<ul><li id="menu-item-92"><span>Capabilities</span>
+<ul class="sub-menu">
+	<li id="menu-item-10780"><a href="https://www.openbom.com/cad-integrations">CAD Integrations</a></li>
+	<li id="menu-item-10781"><a href="https://www.openbom.com/item-management-capability">Item Management</a></li>
+	<li id="menu-item-10782"><a href="https://www.openbom.com/bom-management-capability">BOM Management</a></li>
+	<li id="menu-item-10783"><a href="https://www.openbom.com/revision-control">Revision Control</a></li>
+	<li id="menu-item-10784"><a href="https://www.openbom.com/change-management">Change Management</a></li>
+	<li id="menu-item-10775"><a href="https://www.openbom.com/production-planning">Production Planning and Agile New Product Development</a></li>
+	<li id="menu-item-10774"><a href="https://www.openbom.com/document-management-capabilities">Document Management</a></li>
+	<li id="menu-item-10767"><a href="https://www.openbom.com/data-import">Data Import</a></li>
+	<li id="menu-item-10766"><a href="https://www.openbom.com/data-export">Data Export</a></li>
+	<li id="menu-item-10777"><a href="https://www.openbom.com/team-collaboration">Team Collaboration</a></li>
+	<li id="menu-item-10771"><a href="https://www.openbom.com/product-cost-management">Product Cost Management</a></li>
+	<li id="menu-item-10778"><a href="https://www.openbom.com/compliance-management">Compliance Management</a></li>
+	<li id="menu-item-10779"><a href="https://www.openbom.com/supply-chain-collaboration">Supply Chain Collaboration</a></li>
+	<li id="menu-item-10772"><a href="https://www.openbom.com/product-sourcing">Product Sourcing</a></li>
+	<li id="menu-item-10773"><a href="https://www.openbom.com/quality-management">Quality Management</a></li>
+	<li id="menu-item-10770"><a href="https://www.openbom.com/search-and-analytics">Search and Analytics</a></li>
+	<li id="menu-item-10769"><a href="https://www.openbom.com/user-defined-views">User-Defined Views</a></li>
+	<li id="menu-item-10768"><a href="https://www.openbom.com/custom-integrations">Integrations</a></li>
+	<li id="menu-item-105"><a href="https://aecbom.com">OpenBOM for AEC</a></li>
+</ul>
+</li>
+</ul>					</div>
+				</div>
+								<div class="column">
+					<div class="footer__block">
+												<div class="footer__head h5">Contacts</div>
+						<div class="footer__contacts">
+							<div class="text">Corporate Headquarters: Newton, MA</div>
+						</div>
+												
+												<div class="footer__phones">
+							<div class="head">Phone</div>
+							<div class="text">
+								<a href="tel:+18442999333">1-844-299-9333</a>
+							</div>
+						</div>
+												
+												<div class="footer__email">
+							<div class="head">Email</div>
+							<div class="text">support at openbom dot com</div>
+						</div>
+												
+												<div class="footer__follow">
+							<div class="head">Follow us</div>
+														<div class="links">
+								<ul>
+																		<li>
+										<a href="https://www.facebook.com/openbom/"><i class="icon icon-facebook"></i></a>
+									</li>
+																		<li>
+										<a href="https://twitter.com/openbom"><i class="icon icon-twitter"></i></a>
+									</li>
+																		<li>
+										<a href="https://www.youtube.com/channel/UCCYTcA4b5_cDTaME5N8CYzw/playlists"><i class="icon icon-youtube"></i></a>
+									</li>
+																		<li>
+										<a href="https://www.linkedin.com/company/openbom"><i class="icon icon-linkedin"></i></a>
+									</li>
+																	</ul>
+							</div>
+													</div>
+												
+																								<div class="footer__g2-review">
+														<a href="https://www.g2.com/products/openbom/reviews?utm_source=review-widget" rel="nofollow noopener">
+								<img class="lazyload" data-src="https://www.openbom.com/wp-content/uploads/2022/09/g2.svg" alt="g2" width="145" height="68">
+							</a>
+																					<a href="https://aicpa.org/soc4so" rel="nofollow noopener">
+								<img class="lazyload" data-src="https://www.openbom.com/wp-content/uploads/2023/11/aicpa.png" alt="" width="68" height="68">
+							</a>
+													</div>
+											</div>
+					
+															<div class="footer__block">
+						<div class="footer__head h5">Ask a question</div>
+												<div class="footer__form" id="footer-form">
+							
+<div class="wpcf7 no-js" id="wpcf7-f7399-o1" lang="en-US" dir="ltr" data-wpcf7-id="7399">
+<div class="screen-reader-response"><p role="status" aria-live="polite" aria-atomic="true"></p> <ul></ul></div>
+<form action="/pricing#wpcf7-f7399-o1" method="post" class="wpcf7-form init form" aria-label="Contact form" novalidate="novalidate" data-status="init">
+<div style="display: none;">
+<input type="hidden" name="_wpcf7" value="7399" />
+<input type="hidden" name="_wpcf7_version" value="6.0.3" />
+<input type="hidden" name="_wpcf7_locale" value="en_US" />
+<input type="hidden" name="_wpcf7_unit_tag" value="wpcf7-f7399-o1" />
+<input type="hidden" name="_wpcf7_container_post" value="0" />
+<input type="hidden" name="_wpcf7_posted_data_hash" value="" />
+</div>
+<div class="wpcf7-response-output" aria-hidden="true"></div>
+<div class="fields">
+	<p><span class="wpcf7-form-control-wrap" data-name="feedback-name"><input size="40" maxlength="400" class="wpcf7-form-control wpcf7-text wpcf7-validates-as-required" aria-required="true" aria-invalid="false" placeholder="Name" value="" type="text" name="feedback-name" /></span>
+	</p>
+</div>
+<div class="fields">
+	<p><span id="wpcf7-692618713f555-wrapper" class="wpcf7-form-control-wrap feedback-surname-wrap" ><input type="hidden" name="feedback-surname-time-start" value="1764104305"><input type="hidden" name="feedback-surname-time-check" value="4"><input id="wpcf7-692618713f555-field"  placeholder="Surname"  class="wpcf7-form-control wpcf7-text" type="text" name="feedback-surname" value="" size="40" tabindex="-1" autocomplete="new-password" /></span>
+	</p>
+</div>
+<div class="fields">
+	<p><span class="wpcf7-form-control-wrap" data-name="feedback-email"><input size="40" maxlength="400" class="wpcf7-form-control wpcf7-email wpcf7-validates-as-required wpcf7-text wpcf7-validates-as-email" aria-required="true" aria-invalid="false" placeholder="Email" value="" type="email" name="feedback-email" /></span>
+	</p>
+</div>
+<div class="fields">
+	<p><span class="wpcf7-form-control-wrap" data-name="feedback-message"><textarea cols="40" rows="3" maxlength="2000" class="wpcf7-form-control wpcf7-textarea wpcf7-validates-as-required" aria-required="true" aria-invalid="false" placeholder="Message" name="feedback-message"></textarea></span>
+	</p>
+</div>
+<div class="fields">
+	<p><button type="submit" class="btn btn-main"><span>Submit</span></button>
+	</p>
+</div>
+</form>
+</div>
+						</div>
+											</div>
+									</div>
+			</div>
+		</div>
+		<div  class="footer__bottom">
+						<div class="copyright">OpenBOM™ is a registered Trademark of Newman Cloud, Inc. | © 2016 - 2025</div>
+			<div class="menu-bottom">
+				<ul><li id="menu-item-58"><a href="/about">About</a></li>
+<li id="menu-item-59"><a href="/user-stories">User Stories</a></li>
+<li id="menu-item-60"><a href="/join-our-team">Join our Team</a></li>
+<li id="menu-item-61"><a href="/terms">Terms of Service</a></li>
+<li id="menu-item-62"><a href="/privacy">Privacy Policy</a></li>
+</ul>			</div>
+		</div>
+	</div>
+</footer>
+
+<div  class="overlay"></div>
+<script type="speculationrules">
+{"prefetch":[{"source":"document","where":{"and":[{"href_matches":"\/*"},{"not":{"href_matches":["\/wp-*.php","\/wp-admin\/*","\/wp-content\/uploads\/*","\/wp-content\/*","\/wp-content\/plugins\/*","\/wp-content\/themes\/openbom\/*","\/*\\?(.+)"]}},{"not":{"selector_matches":"a[rel~=\"nofollow\"]"}},{"not":{"selector_matches":".no-prefetch, .no-prefetch a"}}]},"eagerness":"conservative"}]}
+</script>
+<style id='wpcf7-692618713f555-inline-inline-css' type='text/css'>
+#wpcf7-692618713f555-wrapper {display:none !important; visibility:hidden !important;}
+</style>
+<script type="rocketlazyloadscript" data-rocket-type="text/javascript" id="rocket-browser-checker-js-after">
+/* <![CDATA[ */
+"use strict";var _createClass=function(){function defineProperties(target,props){for(var i=0;i<props.length;i++){var descriptor=props[i];descriptor.enumerable=descriptor.enumerable||!1,descriptor.configurable=!0,"value"in descriptor&&(descriptor.writable=!0),Object.defineProperty(target,descriptor.key,descriptor)}}return function(Constructor,protoProps,staticProps){return protoProps&&defineProperties(Constructor.prototype,protoProps),staticProps&&defineProperties(Constructor,staticProps),Constructor}}();function _classCallCheck(instance,Constructor){if(!(instance instanceof Constructor))throw new TypeError("Cannot call a class as a function")}var RocketBrowserCompatibilityChecker=function(){function RocketBrowserCompatibilityChecker(options){_classCallCheck(this,RocketBrowserCompatibilityChecker),this.passiveSupported=!1,this._checkPassiveOption(this),this.options=!!this.passiveSupported&&options}return _createClass(RocketBrowserCompatibilityChecker,[{key:"_checkPassiveOption",value:function(self){try{var options={get passive(){return!(self.passiveSupported=!0)}};window.addEventListener("test",null,options),window.removeEventListener("test",null,options)}catch(err){self.passiveSupported=!1}}},{key:"initRequestIdleCallback",value:function(){!1 in window&&(window.requestIdleCallback=function(cb){var start=Date.now();return setTimeout(function(){cb({didTimeout:!1,timeRemaining:function(){return Math.max(0,50-(Date.now()-start))}})},1)}),!1 in window&&(window.cancelIdleCallback=function(id){return clearTimeout(id)})}},{key:"isDataSaverModeOn",value:function(){return"connection"in navigator&&!0===navigator.connection.saveData}},{key:"supportsLinkPrefetch",value:function(){var elem=document.createElement("link");return elem.relList&&elem.relList.supports&&elem.relList.supports("prefetch")&&window.IntersectionObserver&&"isIntersecting"in IntersectionObserverEntry.prototype}},{key:"isSlowConnection",value:function(){return"connection"in navigator&&"effectiveType"in navigator.connection&&("2g"===navigator.connection.effectiveType||"slow-2g"===navigator.connection.effectiveType)}}]),RocketBrowserCompatibilityChecker}();
+/* ]]> */
+</script>
+<script type="text/javascript" id="rocket-preload-links-js-extra">
+/* <![CDATA[ */
+var RocketPreloadLinksConfig = {"excludeUris":"\/(?:.+\/)?feed(?:\/(?:.+\/?)?)?$|\/(?:.+\/)?embed\/|\/(index.php\/)?(.*)wp-json(\/.*|$)|\/refer\/|\/go\/|\/recommend\/|\/recommends\/","usesTrailingSlash":"","imageExt":"jpg|jpeg|gif|png|tiff|bmp|webp|avif|pdf|doc|docx|xls|xlsx|php","fileExt":"jpg|jpeg|gif|png|tiff|bmp|webp|avif|pdf|doc|docx|xls|xlsx|php|html|htm","siteUrl":"https:\/\/www.openbom.com","onHoverDelay":"100","rateThrottle":"3"};
+/* ]]> */
+</script>
+<script type="rocketlazyloadscript" data-rocket-type="text/javascript" id="rocket-preload-links-js-after">
+/* <![CDATA[ */
+(function() {
+"use strict";var r="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(e){return typeof e}:function(e){return e&&"function"==typeof Symbol&&e.constructor===Symbol&&e!==Symbol.prototype?"symbol":typeof e},e=function(){function i(e,t){for(var n=0;n<t.length;n++){var i=t[n];i.enumerable=i.enumerable||!1,i.configurable=!0,"value"in i&&(i.writable=!0),Object.defineProperty(e,i.key,i)}}return function(e,t,n){return t&&i(e.prototype,t),n&&i(e,n),e}}();function i(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}var t=function(){function n(e,t){i(this,n),this.browser=e,this.config=t,this.options=this.browser.options,this.prefetched=new Set,this.eventTime=null,this.threshold=1111,this.numOnHover=0}return e(n,[{key:"init",value:function(){!this.browser.supportsLinkPrefetch()||this.browser.isDataSaverModeOn()||this.browser.isSlowConnection()||(this.regex={excludeUris:RegExp(this.config.excludeUris,"i"),images:RegExp(".("+this.config.imageExt+")$","i"),fileExt:RegExp(".("+this.config.fileExt+")$","i")},this._initListeners(this))}},{key:"_initListeners",value:function(e){-1<this.config.onHoverDelay&&document.addEventListener("mouseover",e.listener.bind(e),e.listenerOptions),document.addEventListener("mousedown",e.listener.bind(e),e.listenerOptions),document.addEventListener("touchstart",e.listener.bind(e),e.listenerOptions)}},{key:"listener",value:function(e){var t=e.target.closest("a"),n=this._prepareUrl(t);if(null!==n)switch(e.type){case"mousedown":case"touchstart":this._addPrefetchLink(n);break;case"mouseover":this._earlyPrefetch(t,n,"mouseout")}}},{key:"_earlyPrefetch",value:function(t,e,n){var i=this,r=setTimeout(function(){if(r=null,0===i.numOnHover)setTimeout(function(){return i.numOnHover=0},1e3);else if(i.numOnHover>i.config.rateThrottle)return;i.numOnHover++,i._addPrefetchLink(e)},this.config.onHoverDelay);t.addEventListener(n,function e(){t.removeEventListener(n,e,{passive:!0}),null!==r&&(clearTimeout(r),r=null)},{passive:!0})}},{key:"_addPrefetchLink",value:function(i){return this.prefetched.add(i.href),new Promise(function(e,t){var n=document.createElement("link");n.rel="prefetch",n.href=i.href,n.onload=e,n.onerror=t,document.head.appendChild(n)}).catch(function(){})}},{key:"_prepareUrl",value:function(e){if(null===e||"object"!==(void 0===e?"undefined":r(e))||!1 in e||-1===["http:","https:"].indexOf(e.protocol))return null;var t=e.href.substring(0,this.config.siteUrl.length),n=this._getPathname(e.href,t),i={original:e.href,protocol:e.protocol,origin:t,pathname:n,href:t+n};return this._isLinkOk(i)?i:null}},{key:"_getPathname",value:function(e,t){var n=t?e.substring(this.config.siteUrl.length):e;return n.startsWith("/")||(n="/"+n),this._shouldAddTrailingSlash(n)?n+"/":n}},{key:"_shouldAddTrailingSlash",value:function(e){return this.config.usesTrailingSlash&&!e.endsWith("/")&&!this.regex.fileExt.test(e)}},{key:"_isLinkOk",value:function(e){return null!==e&&"object"===(void 0===e?"undefined":r(e))&&(!this.prefetched.has(e.href)&&e.origin===this.config.siteUrl&&-1===e.href.indexOf("?")&&-1===e.href.indexOf("#")&&!this.regex.excludeUris.test(e.href)&&!this.regex.images.test(e.href))}}],[{key:"run",value:function(){"undefined"!=typeof RocketPreloadLinksConfig&&new n(new RocketBrowserCompatibilityChecker({capture:!0,passive:!0}),RocketPreloadLinksConfig).init()}}]),n}();t.run();
+}());
+/* ]]> */
+</script>
+<script type="text/javascript" src="https://www.openbom.com/dist/js/vendor.min.js?ver=6.8.3" id="vendor-js" data-rocket-defer defer></script>
+<script type="text/javascript" src="https://www.openbom.com/dist/js/custom.min.js?ver=6.8.3" id="custom-js" data-rocket-defer defer></script>
+<script type="text/javascript" id="openbom_loadmore-js-extra">
+/* <![CDATA[ */
+var openbom_loadmore_params = {"ajaxurl":"https:\/\/www.openbom.com\/wp-admin\/admin-ajax.php","posts":"{\"page\":0,\"pagename\":\"pricing\",\"error\":\"\",\"m\":\"\",\"p\":0,\"post_parent\":\"\",\"subpost\":\"\",\"subpost_id\":\"\",\"attachment\":\"\",\"attachment_id\":0,\"name\":\"pricing\",\"page_id\":0,\"second\":\"\",\"minute\":\"\",\"hour\":\"\",\"day\":0,\"monthnum\":0,\"year\":0,\"w\":0,\"category_name\":\"\",\"tag\":\"\",\"cat\":\"\",\"tag_id\":\"\",\"author\":\"\",\"author_name\":\"\",\"feed\":\"\",\"tb\":\"\",\"paged\":0,\"meta_key\":\"\",\"meta_value\":\"\",\"preview\":\"\",\"s\":\"\",\"sentence\":\"\",\"title\":\"\",\"fields\":\"all\",\"menu_order\":\"\",\"embed\":\"\",\"category__in\":[],\"category__not_in\":[],\"category__and\":[],\"post__in\":[],\"post__not_in\":[],\"post_name__in\":[],\"tag__in\":[],\"tag__not_in\":[],\"tag__and\":[],\"tag_slug__in\":[],\"tag_slug__and\":[],\"post_parent__in\":[],\"post_parent__not_in\":[],\"author__in\":[],\"author__not_in\":[],\"search_columns\":[],\"ignore_sticky_posts\":false,\"suppress_filters\":false,\"cache_results\":true,\"update_post_term_cache\":true,\"update_menu_item_cache\":false,\"lazy_load_term_meta\":true,\"update_post_meta_cache\":true,\"post_type\":\"\",\"posts_per_page\":12,\"nopaging\":false,\"comments_per_page\":\"50\",\"no_found_rows\":false,\"order\":\"DESC\"}","current_page":"1","max_page":"0"};
+/* ]]> */
+</script>
+<script type="rocketlazyloadscript" data-rocket-type="text/javascript" data-rocket-src="https://www.openbom.com/dist/js/loadmore.min.js" id="openbom_loadmore-js" data-rocket-defer defer></script>
+<script type="rocketlazyloadscript" data-rocket-type="text/javascript" data-rocket-src="https://www.openbom.com/wp-includes/js/dist/hooks.min.js?ver=4d63a3d491d11ffd8ac6" id="wp-hooks-js"></script>
+<script type="rocketlazyloadscript" data-rocket-type="text/javascript" data-rocket-src="https://www.openbom.com/wp-includes/js/dist/i18n.min.js?ver=5e580eb46a90c2b997e6" id="wp-i18n-js"></script>
+<script type="rocketlazyloadscript" data-rocket-type="text/javascript" id="wp-i18n-js-after">
+/* <![CDATA[ */
+wp.i18n.setLocaleData( { 'text direction\u0004ltr': [ 'ltr' ] } );
+/* ]]> */
+</script>
+<script type="rocketlazyloadscript" data-minify="1" data-rocket-type="text/javascript" data-rocket-src="https://www.openbom.com/wp-content/cache/min/1/wp-content/plugins/contact-form-7/includes/swv/js/index.js?ver=1764051727" id="swv-js" data-rocket-defer defer></script>
+<script type="rocketlazyloadscript" data-rocket-type="text/javascript" id="contact-form-7-js-before">
+/* <![CDATA[ */
+var wpcf7 = {
+    "api": {
+        "root": "https:\/\/www.openbom.com\/wp-json\/",
+        "namespace": "contact-form-7\/v1"
+    },
+    "cached": 1
+};
+/* ]]> */
+</script>
+<script type="rocketlazyloadscript" data-minify="1" data-rocket-type="text/javascript" data-rocket-src="https://www.openbom.com/wp-content/cache/min/1/wp-content/plugins/contact-form-7/includes/js/index.js?ver=1764051727" id="contact-form-7-js" data-rocket-defer defer></script>
+<script>window.lazyLoadOptions=[{elements_selector:"img[data-lazy-src],.rocket-lazyload,iframe[data-lazy-src]",data_src:"lazy-src",data_srcset:"lazy-srcset",data_sizes:"lazy-sizes",class_loading:"lazyloading",class_loaded:"lazyloaded",threshold:300,callback_loaded:function(element){if(element.tagName==="IFRAME"&&element.dataset.rocketLazyload=="fitvidscompatible"){if(element.classList.contains("lazyloaded")){if(typeof window.jQuery!="undefined"){if(jQuery.fn.fitVids){jQuery(element).parent().fitVids()}}}}}},{elements_selector:".rocket-lazyload",data_src:"lazy-src",data_srcset:"lazy-srcset",data_sizes:"lazy-sizes",class_loading:"lazyloading",class_loaded:"lazyloaded",threshold:300,}];window.addEventListener('LazyLoad::Initialized',function(e){var lazyLoadInstance=e.detail.instance;if(window.MutationObserver){var observer=new MutationObserver(function(mutations){var image_count=0;var iframe_count=0;var rocketlazy_count=0;mutations.forEach(function(mutation){for(var i=0;i<mutation.addedNodes.length;i++){if(typeof mutation.addedNodes[i].getElementsByTagName!=='function'){continue}
+if(typeof mutation.addedNodes[i].getElementsByClassName!=='function'){continue}
+images=mutation.addedNodes[i].getElementsByTagName('img');is_image=mutation.addedNodes[i].tagName=="IMG";iframes=mutation.addedNodes[i].getElementsByTagName('iframe');is_iframe=mutation.addedNodes[i].tagName=="IFRAME";rocket_lazy=mutation.addedNodes[i].getElementsByClassName('rocket-lazyload');image_count+=images.length;iframe_count+=iframes.length;rocketlazy_count+=rocket_lazy.length;if(is_image){image_count+=1}
+if(is_iframe){iframe_count+=1}}});if(image_count>0||iframe_count>0||rocketlazy_count>0){lazyLoadInstance.update()}});var b=document.getElementsByTagName("body")[0];var config={childList:!0,subtree:!0};observer.observe(b,config)}},!1)</script><script data-no-minify="1" async src="https://www.openbom.com/wp-content/plugins/wp-rocket/assets/js/lazyload/17.8.3/lazyload.min.js"></script><script>function lazyLoadThumb(e,alt,l){var t='<img data-lazy-src="https://i.ytimg.com/vi/ID/hqdefault.jpg" alt="" width="480" height="360"><noscript><img src="https://i.ytimg.com/vi/ID/hqdefault.jpg" alt="" width="480" height="360"></noscript>',a='<button class="play" aria-label="Play Youtube video"></button>';if(l){t=t.replace('data-lazy-','');t=t.replace('loading="lazy"','');t=t.replace(/<noscript>.*?<\/noscript>/g,'');}t=t.replace('alt=""','alt="'+alt+'"');return t.replace("ID",e)+a}function lazyLoadYoutubeIframe(){var e=document.createElement("iframe"),t="ID?autoplay=1";t+=0===this.parentNode.dataset.query.length?"":"&"+this.parentNode.dataset.query;e.setAttribute("src",t.replace("ID",this.parentNode.dataset.src)),e.setAttribute("frameborder","0"),e.setAttribute("allowfullscreen","1"),e.setAttribute("allow","accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"),this.parentNode.parentNode.replaceChild(e,this.parentNode)}document.addEventListener("DOMContentLoaded",function(){var exclusions=[];var e,t,p,u,l,a=document.getElementsByClassName("rll-youtube-player");for(t=0;t<a.length;t++)(e=document.createElement("div")),(u='https://i.ytimg.com/vi/ID/hqdefault.jpg'),(u=u.replace('ID',a[t].dataset.id)),(l=exclusions.some(exclusion=>u.includes(exclusion))),e.setAttribute("data-id",a[t].dataset.id),e.setAttribute("data-query",a[t].dataset.query),e.setAttribute("data-src",a[t].dataset.src),(e.innerHTML=lazyLoadThumb(a[t].dataset.id,a[t].dataset.alt,l)),a[t].appendChild(e),(p=e.querySelector(".play")),(p.onclick=lazyLoadYoutubeIframe)});</script><script type="rocketlazyloadscript">
+(function(){ 
+	document.jsheadsiteloaded=0;
+	var d=document;
+	var w=window;
+	function zy(){
+		if(w.detachEvent){ //support IE8
+			w.detachEvent('onscroll',zy);
+			w.detachEvent('onmousemove',zy);
+			w.detachEvent('ontouchmove',zy);
+			w.detachEvent('onresize',zy);
+		} else {
+			w.removeEventListener('scroll', zy, false);
+			w.removeEventListener('mousemove', zy, false);
+			w.removeEventListener('touchmove', zy, false);
+			w.removeEventListener('resize', zy, false);
+		}
+		
+		if(d.readyState=='complete'){
+			load_gtm();
+		} else {
+			if(w.attachEvent){
+				w.attachEvent('onload',load_gtm);
+			} else {
+				w.addEventListener('load',load_gtm,false);
+			}
+		}
+		
+		var cookie_date = new Date();
+		cookie_date.setTime(cookie_date.getTime()+60*60*28*1000);
+		d.cookie = 'JsHeadSiteLoaded=1;path=/;expires=' + cookie_date.toGMTString();
+	}
+	if (d.cookie.search ('JsHeadSiteLoaded')<0){ 
+		if(w.attachEvent){ 
+			w.attachEvent('onscroll',zy);
+			w.attachEvent('onmousemove',zy);
+			w.attachEvent('ontouchmove',zy);
+			w.attachEvent('onresize',zy);
+		} else {
+			w.addEventListener('scroll', zy, {capture: false, passive: true});
+			w.addEventListener('mousemove', zy, {capture: false, passive: true});
+			w.addEventListener('touchmove', zy, {capture: false, passive: true});
+			w.addEventListener('resize', zy, {capture: false, passive: true});
+		}
+	} else {
+		zy();
+	}
+})();
+</script> 
+</body>
+</html>
+<!-- This website is like a Rocket, isn't it? Performance optimized by WP Rocket. Learn more: https://wp-rocket.me -->

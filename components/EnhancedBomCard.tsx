@@ -371,7 +371,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   }, null);
   const metricGridClass = isExpanded
     ? (isManager ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6' : 'grid-cols-2 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6')
-    : 'grid-cols-3'; // Compact: 3 key metrics when collapsed
+    : 'grid-cols-2'; // Compact: 2 key metrics when collapsed for 2-col card layout
 
   const [activeTab, setActiveTab] = useState<'components' | 'financials'>('components');
   const getSwapRuleForSku = (sku: string) => {
@@ -632,7 +632,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
         </div>
 
 	      {/* RIGHT: Status Indicators & Actions */}
-	      <div className="flex flex-wrap items-center justify-end gap-2">
+	      <div className="flex flex-col items-end gap-2">
 	        {isAdmin && npkRatio && (
 	          <div className="px-2 py-1 rounded text-xs font-mono bg-green-900/30 text-green-300 border border-green-700">
 	            <BeakerIcon className="w-3 h-3 inline mr-1" />
