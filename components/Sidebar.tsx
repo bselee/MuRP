@@ -46,7 +46,7 @@ const NavItem: React.FC<{
                 </span>
             )}
             {isCollapsed && (
-                <span className={`pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-150 ${tooltipClass}`}>
+                <span className={`pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 ${tooltipClass}`}>
                     {page}
                 </span>
             )}
@@ -196,7 +196,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
                         <span className="ml-1 text-sm text-inherit">Copilot</span>
                     </span>
                     {isCollapsed && (
-                        <span className={`pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-150 ${tooltipClass}`}>
+                        <span className={`pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 ${tooltipClass}`}>
                             Ai Copilot
                         </span>
                     )}

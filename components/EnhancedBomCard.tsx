@@ -370,7 +370,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
     return acc;
   }, null);
   const metricGridClass = isExpanded
-    ? (isManager ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6' : 'grid-cols-2 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6')
+    ? 'grid-cols-2 md:grid-cols-3' // Expanded: Max 3 columns for smooth 2-col card layout
     : 'grid-cols-2'; // Compact: 2 key metrics when collapsed for 2-col card layout
 
   const [activeTab, setActiveTab] = useState<'components' | 'financials'>('components');
