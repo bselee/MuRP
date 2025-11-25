@@ -10,9 +10,9 @@ import {
   ChartBarIcon,
 } from '../components/icons';
 import { supabase } from '../lib/supabase/client';
-import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
 
 import Button from '@/components/ui/Button';
+import TermsOfServiceModal from '../components/TermsOfServiceModal';
 interface LoginScreenProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
@@ -64,6 +64,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
   const [remember, setRemember] = useState(true);
 
   const [spotlightIndex, setSpotlightIndex] = useState(0);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
 
   useEffect(() => {
     const rotation = window.setInterval(() => {
@@ -156,10 +157,13 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
           <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-indigo-500/10 via-fuchsia-500/10 to-cyan-500/10" />
           <div className="relative z-10 space-y-6">
             <div>
-              <p className="text-[12px] uppercase tracking-[0.4em] text-indigo-200">MuRP Access</p>
-              <h1 className="mt-2 text-4xl font-bold text-white">Manufacturing Resource Portal</h1>
+              <p className="text-[11px] uppercase tracking-[0.45em] text-indigo-200/80">Manufacturing Portal</p>
+              <div className="mt-1 flex flex-wrap items-baseline gap-3">
+                <h1 className="text-5xl sm:text-6xl font-black text-white leading-none tracking-tight">MuRP</h1>
+                <span className="text-xs sm:text-sm font-semibold uppercase tracking-[0.5em] text-indigo-100/80">Manufacturing Resource Portal</span>
+              </div>
               <p className="mt-3 text-gray-300 text-sm">
-                Securely plug into purchasing intelligence, BOM visibility, AI copilots, and the new tall timeline view — all wrapped in black glass.
+                MuRP is the manufacturing resource portal for purchasing and ops leads—plug into intelligence, BOM visibility, AI copilots, and the tall timeline view without hunting for the brand.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-4 text-center">
@@ -336,14 +340,13 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
 
           <p className="text-xs text-gray-500 text-center mt-4">
             By continuing you agree to our{' '}
-            <a
-              href={termsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => setIsTermsModalOpen(true)}
               className="text-indigo-300 hover:text-indigo-100 underline decoration-dotted"
             >
               Terms of Service
-            </a>.
+            </button>.
           </p>
 
           <div className="mt-6">
@@ -386,6 +389,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
           </div>
         </div>
       </div>
+      <TermsOfServiceModal isOpen={isTermsModalOpen} onClose={() => setIsTermsModalOpen(false)} />
     </div>
   );
 };

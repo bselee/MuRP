@@ -6,8 +6,9 @@ import Button from '@/components/ui/Button';
  * Shows all pertinent info at-a-glance: specs, packaging, compliance, artwork, production
  */
 
-import React from 'react';
-import type { BillOfMaterials, InventoryItem, Label, ComplianceRecord } from '../types';
+import React, { useState } from 'react';
+import { useTheme } from './ThemeProvider';
+import type { BillOfMaterials, InventoryItem, Label, ComplianceRecord, ComponentSwapMap } from '../types';
 import {
   PencilIcon,
   ChevronDownIcon,
@@ -26,27 +27,19 @@ import {
   TrendingUpIcon,
   TrendingDownIcon
 } from './icons';
-import StrategicBomMetrics from './StrategicBomMetrics';
+import type { BuildabilityInfo } from './StrategicBomMetrics';
 
 interface EnhancedBomCardProps {
   bom: BillOfMaterials;
   isExpanded: boolean;
   finishedStock: number;
-  buildability: {
-    maxBuildable: number;
-    limitingComponents: Array<{
-      sku: string;
-      name: string;
-      available: number;
-      needed: number;
-      canBuild: number;
-    }>;
-  };
+  buildability: BuildabilityInfo;
   inventoryMap: Map<string, InventoryItem>;
   canEdit: boolean;
   userRole: 'Admin' | 'Manager' | 'User'; // Role-based display
   labels?: Label[]; // Labels from relational table
   complianceRecords?: ComplianceRecord[]; // Compliance records from relational table
+  componentSwapMap?: ComponentSwapMap;
   onToggleExpand: () => void;
   onViewDetails: () => void;
   onEdit: () => void;
@@ -56,8 +49,54 @@ interface EnhancedBomCardProps {
   queueStatus?: Record<string, { status: string; poId: string | null }>;
 }
 
-const glassTile =
+const DARK_CARD_SHELL =
+  'relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] transition-all duration-300 hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]';
+const LIGHT_CARD_SHELL =
+  'relative overflow-hidden rounded-2xl border border-amber-900/20 bg-gradient-to-br from-white/95 via-amber-50/80 to-white/95 shadow-[0_30px_90px_rgba(15,23,42,0.25)] transition-all duration-300 hover:border-amber-500/60 hover:shadow-[0_32px_110px_rgba(251,191,36,0.35)]';
+const DARK_CARD_OVERLAY =
+  'pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]';
+const LIGHT_CARD_OVERLAY =
+  'pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.6),rgba(253,244,223,0))]';
+const DARK_HEADER_BACKGROUND =
+  'p-3 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70';
+const LIGHT_HEADER_BACKGROUND =
+  'p-3 bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90';
+const DARK_HEADER_RIBBON =
+  'pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20';
+const LIGHT_HEADER_RIBBON =
+  'pointer-events-none absolute inset-x-10 top-0 h-2 opacity-80 blur-2xl bg-amber-200/60';
+const DARK_GLASS_TILE =
   'rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)]';
+const LIGHT_GLASS_TILE =
+  'rounded-xl border border-amber-900/15 bg-gradient-to-br from-white/98 via-amber-50/70 to-white/92 backdrop-blur-lg shadow-[0_18px_40px_rgba(15,23,42,0.18)]';
+const DARK_RECIPE_CARD =
+  'rounded-lg border border-emerald-600/30 bg-gradient-to-br from-slate-900/90 via-emerald-950/40 to-slate-900/90 backdrop-blur-sm';
+const LIGHT_RECIPE_CARD =
+  'rounded-lg border border-emerald-600/20 bg-gradient-to-br from-white/95 via-emerald-50/50 to-white/95 backdrop-blur-sm';
+const DARK_SECONDARY_PANEL =
+  'mt-4 grid grid-cols-2 gap-4 rounded-2xl border border-white/5 bg-white/5 p-4 text-xs backdrop-blur md:grid-cols-4';
+const LIGHT_SECONDARY_PANEL =
+  'mt-4 grid grid-cols-2 gap-4 rounded-2xl border border-amber-900/10 bg-amber-50/80 p-4 text-xs text-slate-900 shadow-inner md:grid-cols-4';
+const DARK_MANAGER_PANEL =
+  'mt-4 rounded-2xl border border-white/5 bg-white/5 p-4 backdrop-blur';
+const LIGHT_MANAGER_PANEL =
+  'mt-4 rounded-2xl border border-amber-900/10 bg-amber-50/80 p-4 shadow-inner';
+const DARK_EXPANDED_PANEL =
+  'p-4 space-y-4 border-t border-white/5 bg-slate-950/70 backdrop-blur-lg';
+const LIGHT_EXPANDED_PANEL =
+  'p-4 space-y-4 border-t border-amber-900/15 bg-amber-50/80 backdrop-blur-lg';
+const DARK_COMPONENT_ROW =
+  'bg-gray-800/50 border border-gray-700 hover:border-gray-600';
+const LIGHT_COMPONENT_ROW =
+  'bg-white/94 border border-amber-900/20 hover:border-amber-700/40';
+const DARK_QUEUE_BANNER =
+  'text-xs text-emerald-200 bg-emerald-900/15 border border-emerald-600/40 rounded px-3 py-1';
+const LIGHT_QUEUE_BANNER =
+  'text-xs text-emerald-800 bg-emerald-100 border border-emerald-400/60 rounded px-3 py-1';
+const DARK_INSIGHTS_PANEL =
+  'absolute right-6 top-6 z-30 w-full max-w-xl rounded-2xl border border-white/10 bg-slate-950/95 p-5 shadow-[0_25px_60px_rgba(2,6,23,0.7)] backdrop-blur-xl';
+const LIGHT_INSIGHTS_PANEL =
+  'absolute right-6 top-6 z-30 w-full max-w-xl rounded-2xl border border-amber-900/10 bg-white/95 p-5 shadow-[0_35px_80px_rgba(15,23,42,0.2)]';
 
 const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   bom,
@@ -69,6 +108,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   userRole,
   labels = [],
   complianceRecords = [],
+  componentSwapMap = {},
   onToggleExpand,
   onViewDetails,
   onEdit,
@@ -77,6 +117,91 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   onQuickOrder,
   queueStatus = {}
 }) => {
+  const { resolvedTheme } = useTheme();
+  const isLightTheme = resolvedTheme === 'light';
+  const themeSwap = (light: string, dark: string) => (isLightTheme ? light : dark);
+  const glassTile = themeSwap(LIGHT_GLASS_TILE, DARK_GLASS_TILE);
+  const recipeCard = themeSwap(LIGHT_RECIPE_CARD, DARK_RECIPE_CARD);
+  const cardShellClass = themeSwap(LIGHT_CARD_SHELL, DARK_CARD_SHELL);
+  const cardOverlayClass = themeSwap(LIGHT_CARD_OVERLAY, DARK_CARD_OVERLAY);
+  const headerClass = themeSwap(LIGHT_HEADER_BACKGROUND, DARK_HEADER_BACKGROUND);
+  const ribbonClass = themeSwap(LIGHT_HEADER_RIBBON, DARK_HEADER_RIBBON);
+  const secondaryPanelClass = themeSwap(LIGHT_SECONDARY_PANEL, DARK_SECONDARY_PANEL);
+  const managerPanelClass = themeSwap(LIGHT_MANAGER_PANEL, DARK_MANAGER_PANEL);
+  const expandedPanelClass = themeSwap(LIGHT_EXPANDED_PANEL, DARK_EXPANDED_PANEL);
+  const defaultComponentRowClass = themeSwap(LIGHT_COMPONENT_ROW, DARK_COMPONENT_ROW);
+  const queueBannerClass = themeSwap(LIGHT_QUEUE_BANNER, DARK_QUEUE_BANNER);
+  const componentToggleClass = themeSwap(
+    'inline-flex items-center gap-1 rounded-full border border-emerald-600/40 bg-emerald-50/80 px-3 py-1.5 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100',
+    'inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-950/30 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition-colors hover:bg-emerald-900/40'
+  );
+  const dividerClass = themeSwap('text-amber-900/30', 'text-gray-600');
+  const bodyHeadingClass = themeSwap('text-sm font-medium text-gray-800 mb-3', 'text-sm font-medium text-gray-200 mb-3');
+  const passiveBodyText = themeSwap('text-gray-700', 'text-gray-300');
+  const reorderBadgeClass = themeSwap(
+    'px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800 border border-yellow-300',
+    'px-2 py-1 rounded text-xs bg-yellow-900/30 text-yellow-300 border border-yellow-700'
+  );
+  const blockingAlertClass = themeSwap(
+    'mt-3 p-2 bg-red-50 border border-red-300 rounded text-xs',
+    'mt-3 p-2 bg-red-900/20 border border-red-700 rounded text-xs'
+  );
+  const limitingAlertClass = themeSwap(
+    'mt-3 p-2 bg-amber-50 border border-amber-300 rounded text-xs',
+    'mt-3 p-2 bg-amber-900/20 border border-amber-600 rounded text-xs'
+  );
+  const blockingIconClass = themeSwap('w-4 h-4 text-red-500 flex-shrink-0', 'w-4 h-4 text-red-400 flex-shrink-0');
+  const limitingIconClass = themeSwap('w-4 h-4 text-amber-600 flex-shrink-0', 'w-4 h-4 text-amber-200 flex-shrink-0');
+  const blockingAccentText = themeSwap('text-red-600 font-medium', 'text-red-400 font-medium');
+  const limitingAccentText = themeSwap('text-amber-600 font-medium', 'text-amber-200 font-medium');
+  const limitingSummaryText = themeSwap('text-gray-700', 'text-gray-300');
+  const emphasizedBodyText = themeSwap('text-gray-900', 'text-gray-200');
+  const componentSkuLinkClass = themeSwap(
+    'font-semibold font-mono text-sm text-indigo-700 hover:text-indigo-500 hover:underline transition-colors',
+    'font-semibold font-mono text-sm text-indigo-400 hover:text-indigo-300 hover:underline transition-colors'
+  );
+  const componentSkuTextClass = themeSwap('font-semibold font-mono text-sm text-slate-900', 'font-semibold font-mono text-sm text-white');
+  const instructionsPanelClass = themeSwap(
+    'bg-blue-50 border border-blue-200 rounded-lg p-3',
+    'bg-blue-900/20 border border-blue-700 rounded-lg p-3'
+  );
+  const instructionsHeadingClass = themeSwap('text-xs font-semibold text-blue-700 mb-1', 'text-xs font-semibold text-blue-400 mb-1');
+  const instructionsBodyClass = themeSwap('text-xs text-gray-700', 'text-xs text-gray-300');
+  const componentPreviewShellClass = isLightTheme
+    ? 'absolute right-0 top-full mt-2 w-80 p-3 bg-white/95 border border-amber-900/20 text-slate-900 text-xs rounded-xl shadow-[0_20px_60px_rgba(15,23,42,0.25)] opacity-0 group-hover:opacity-100 transition-all z-50 pointer-events-none translate-y-1 group-hover:translate-y-0 duration-200'
+    : 'absolute right-0 top-full mt-2 w-80 p-3 bg-slate-950 border border-slate-800 text-gray-200 text-xs rounded-xl shadow-[0_25px_70px_rgba(2,6,23,0.65)] opacity-0 group-hover:opacity-100 transition-all z-50 pointer-events-none translate-y-1 group-hover:translate-y-0 duration-200';
+  const componentPreviewHeaderClass = themeSwap(
+    'font-semibold text-amber-900 mb-2 border-b border-amber-200 pb-1',
+    'font-semibold text-gray-100 mb-2 border-b border-gray-700 pb-1'
+  );
+  const componentPreviewRowClass = themeSwap(
+    'grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg bg-amber-50/80 px-2 py-1 text-[11px] text-amber-900',
+    'grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg bg-slate-900/60 px-2 py-1 text-[11px] text-gray-100'
+  );
+  const componentPreviewSkuClass = themeSwap('font-mono text-indigo-700', 'font-mono text-indigo-300');
+  const componentPreviewQuantityClass = themeSwap('font-mono text-slate-900', 'font-mono text-gray-100');
+  const swapPanelClass = themeSwap(
+    'mt-3 rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 text-emerald-900 shadow-[0_15px_35px_rgba(16,185,129,0.15)]',
+    'mt-3 rounded-lg border border-emerald-500/40 bg-emerald-900/20 p-3 text-emerald-100 shadow-[0_20px_40px_rgba(16,185,129,0.25)]'
+  );
+  const swapChipClass = themeSwap(
+    'rounded-lg border border-emerald-200 bg-white px-3 py-2 text-left text-sm text-emerald-900 transition hover:border-emerald-400 hover:bg-white/90',
+    'rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-3 py-2 text-left text-sm text-emerald-100 transition hover:border-emerald-400/80 hover:bg-emerald-900/40'
+  );
+  const swapChipMetaClass = themeSwap('text-emerald-800/80', 'text-emerald-200/70');
+  const amountPillClass = themeSwap(
+    'inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900',
+    'inline-flex items-center rounded-full border border-amber-600/50 bg-amber-900/30 px-2 py-0.5 text-[11px] font-semibold text-amber-100'
+  );
+  const financialPanelClass = themeSwap(
+    'bg-white/95 text-slate-900 border border-amber-900/15 shadow-[0_25px_50px_rgba(15,23,42,0.12)]',
+    'bg-slate-900/50 text-gray-100 border border-slate-800 shadow-[0_25px_60px_rgba(2,6,23,0.55)]'
+  );
+  const financialDividerClass = themeSwap('divide-amber-100', 'divide-gray-800');
+  const financialHeaderClass = themeSwap('text-amber-900', 'text-gray-400');
+  const financialTableHeaderClass = themeSwap('text-amber-900', 'text-gray-500');
+  const financialTableRowClass = themeSwap('text-slate-700', 'text-gray-300');
+
   // Determine display mode
   const isAdmin = userRole === 'Admin';
   const isManager = userRole === 'Manager';
@@ -86,13 +211,13 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
     .join(', ');
   const limitingHighlight = buildability.maxBuildable === 0
     ? {
-        row: 'bg-red-900/20 border-2 border-red-700/50',
-        badge: 'text-red-300 bg-red-900/40 border border-red-700',
+        row: themeSwap('bg-red-50 border-2 border-red-300', 'bg-red-900/20 border-2 border-red-700/50'),
+        badge: themeSwap('text-red-800 bg-red-100 border border-red-300', 'text-red-300 bg-red-900/40 border border-red-700'),
         label: 'BLOCKING'
       }
     : {
-        row: 'bg-amber-900/20 border-2 border-amber-500/60',
-        badge: 'text-amber-200 bg-amber-900/40 border border-amber-500',
+        row: themeSwap('bg-amber-50 border-2 border-amber-300', 'bg-amber-900/20 border-2 border-amber-500/60'),
+        badge: themeSwap('text-amber-800 bg-amber-100 border border-amber-300', 'text-amber-200 bg-amber-900/40 border border-amber-500'),
         label: 'LIMITING'
       };
 
@@ -147,9 +272,18 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
     }
     return sum;
   }, 0);
-  const buildHours = bom.buildTimeMinutes ? bom.buildTimeMinutes / 60 : null;
-  const laborRate = bom.laborCostPerHour ?? null;
-  const estimatedLaborCost = buildHours && laborRate ? buildHours * laborRate : null;
+  const dataSourceLabel = (() => {
+    switch (bom.dataSource) {
+      case 'csv':
+        return 'Finale CSV';
+      case 'api':
+        return 'API';
+      case 'manual':
+        return 'Manual';
+      default:
+        return 'Manual';
+    }
+  })();
   const queuedCount = queueStatus ? Object.keys(queueStatus).length : 0;
   const hasPoDraft = queueStatus ? Object.values(queueStatus).some(entry => entry.status === 'po_created') : false;
   const velocityPerDay = typeof finishedItem?.salesVelocity === 'number' ? finishedItem.salesVelocity : null;
@@ -183,16 +317,34 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
         : runwayDays <= 21
           ? 'watch'
           : 'healthy';
-  const runwayBadge =
-    runwayStatus === 'critical'
-      ? 'bg-rose-900/40 text-rose-200 border border-rose-700'
-      : runwayStatus === 'risk'
-        ? 'bg-amber-900/40 text-amber-200 border border-amber-600'
-        : runwayStatus === 'watch'
-          ? 'bg-yellow-900/30 text-yellow-200 border border-yellow-700'
-          : runwayStatus === 'healthy'
-            ? 'bg-emerald-900/30 text-emerald-200 border border-emerald-700'
-            : 'bg-gray-800 text-gray-300 border border-gray-600';
+  const runwayBadge = (() => {
+    if (isLightTheme) {
+      switch (runwayStatus) {
+        case 'critical':
+          return 'bg-rose-100 text-rose-800 border border-rose-300';
+        case 'risk':
+          return 'bg-amber-100 text-amber-800 border border-amber-300';
+        case 'watch':
+          return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
+        case 'healthy':
+          return 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+        default:
+          return 'bg-gray-100 text-gray-700 border border-gray-300';
+      }
+    }
+    switch (runwayStatus) {
+      case 'critical':
+        return 'bg-rose-900/40 text-rose-200 border border-rose-700';
+      case 'risk':
+        return 'bg-amber-900/40 text-amber-200 border border-amber-600';
+      case 'watch':
+        return 'bg-yellow-900/30 text-yellow-200 border border-yellow-700';
+      case 'healthy':
+        return 'bg-emerald-900/30 text-emerald-200 border border-emerald-700';
+      default:
+        return 'bg-gray-800 text-gray-300 border border-gray-600';
+    }
+  })();
   const runwayLabel =
     runwayStatus === 'critical'
       ? 'Stockout now'
@@ -221,35 +373,100 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
     ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6'
     : 'grid-cols-2 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6';
 
+  const [activeTab, setActiveTab] = useState<'components' | 'financials'>('components');
+  const getSwapRuleForSku = (sku: string) => {
+    if (!sku) return undefined;
+    const normalized = sku.trim();
+    if (!normalized) return undefined;
+    return (
+      componentSwapMap[normalized] ||
+      componentSwapMap[normalized.toUpperCase()] ||
+      componentSwapMap[normalized.toLowerCase()]
+    );
+  };
+  const hasSwapHints = bom.components?.some(component => Boolean(getSwapRuleForSku(component.sku)));
+
+  // Calculate financial metrics if available
+  const totalMaterialCost = bom.components.reduce((sum, c) => {
+    const cost = c.unitCost || 0;
+    return sum + (cost * c.quantity);
+  }, 0);
+  
+  const laborCost = (bom.buildTimeMinutes || 0) / 60 * (bom.laborCostPerHour || 0);
+  const totalCost = totalMaterialCost + laborCost;
+
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] transition-all duration-300 hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]" />
-      <div className="pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20" />
+    <div className={cardShellClass}>
+      <div className={cardOverlayClass} />
+      <div className={ribbonClass} />
       <div className="relative">
       {/* MAIN CARD HEADER */}
-      <div className="p-4 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70">
-        <div className="flex items-start justify-between gap-4">
+      <div className={headerClass}>
+        <div className="flex items-center justify-between gap-4">
           {/* LEFT: Product Identity & Primary Metrics */}
           <div className="flex-1 min-w-0">
-            {/* SKU and Category */}
-            <div className="flex items-center gap-3 mb-2">
+            {/* SKU, Name, Description, Components Toggle - All in one line */}
+            <div className="flex flex-wrap md:flex-nowrap items-center gap-2 mb-1">
               <Button
                 onClick={() => onNavigateToInventory?.(bom.finishedSku)}
-                className="font-bold text-white font-mono hover:text-indigo-400 transition-colors cursor-pointer underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400"
-                style={{ fontSize: 'calc(1.125rem + 2pt)' }}
+                className={`font-bold font-mono transition-colors cursor-pointer underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400 ${isLightTheme ? 'text-indigo-700 hover:text-indigo-500' : 'text-white hover:text-indigo-400'}`}
+                style={{ fontSize: '1.1rem' }}
                 title="View this product in Inventory"
               >
                 {bom.finishedSku}
               </Button>
+              
+              <h4 className={`${bodyHeadingClass} !mb-0 whitespace-nowrap text-sm`}>{bom.name}</h4>
+
               {bom.category && (
-                <span className="px-2 py-0.5 text-xs rounded bg-gray-700 text-gray-300 border border-gray-600">
+                <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-700 text-gray-300 border border-gray-600 whitespace-nowrap">
                   {bom.category}
                 </span>
               )}
-            </div>
+              
+              {bom.description && (
+                <span className={`${passiveBodyText} text-xs flex-1 min-w-0 truncate border-l border-gray-700/30 pl-2 hidden md:block`}>
+                  {bom.description}
+                </span>
+              )}
 
-            {/* Product Name */}
-            <h4 className="text-sm font-medium text-gray-200 mb-3">{bom.name}</h4>
+              {/* Component Toggle with Hover Tooltip */}
+              <div className="relative group ml-auto flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleExpand();
+                  }}
+                  className={componentToggleClass}
+                  title={isExpanded ? 'Hide component breakdown' : 'Show component breakdown'}
+                >
+                  <BeakerIcon className="w-3.5 h-3.5" />
+                  <span>{bom.components?.length || 0} components</span>
+                  {hasSwapHints && <SparklesIcon className="w-3 h-3 text-emerald-300" title="Swap suggestions available" />}
+                  <ChevronDownIcon className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {/* Hover Tooltip */}
+                <div className={componentPreviewShellClass}>
+                  <div className={componentPreviewHeaderClass}>Component Preview</div>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {bom.components.slice(0, 8).map(c => (
+                      <div key={c.sku} className={componentPreviewRowClass}>
+                        <span className={componentPreviewSkuClass}>{c.sku}</span>
+                        <span className="truncate">{c.name}</span>
+                        <span className={componentPreviewQuantityClass}>{c.quantity} {c.unit}</span>
+                      </div>
+                    ))}
+                    {bom.components.length > 8 && (
+                      <div className="text-center text-xs opacity-70 pt-1">
+                        + {bom.components.length - 8} more...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* KEY METRICS ROW - Role-based display with Progress Bars */}
             <div className={`grid gap-3 text-xs ${metricGridClass}`}>
@@ -401,31 +618,6 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
               </div>
             </div>
 
-            {(buildHours || laborRate) && (
-              <div className={`${glassTile} p-3`}>
-                <div className="text-gray-500 mb-2">Labor</div>
-                <div className="text-gray-200 text-sm font-semibold">
-                  {buildHours ? `${buildHours.toFixed(1)} hrs` : 'Add estimate'}
-                </div>
-                {laborRate && (
-                  <p className="text-xs text-gray-500 mt-1">${laborRate.toFixed(2)}/hr</p>
-                )}
-                {estimatedLaborCost && (
-                  <p className="text-xs text-gray-500">≈ ${estimatedLaborCost.toFixed(2)} per batch</p>
-                )}
-              </div>
-            )}
-
-            {/* Components - Admin only (technical detail) */}
-            {isAdmin && (
-              <div className={`${glassTile} p-3`}>
-                <div className="text-gray-500 mb-2">Components</div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xl font-bold text-purple-400">{bom.components.length}</span>
-                  <span className="text-gray-400 text-xs">items</span>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
@@ -483,25 +675,9 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 	          </Button>
 	        )}
 
-	        <Button
-	          onClick={(e) => {
-	            console.log('[EnhancedBomCard] EXPAND BUTTON CLICKED!', {
-	              bomId: bom.id,
-	              bomName: bom.name,
-	              currentIsExpanded: isExpanded,
-	              componentsCount: bom.components?.length || 0
-	            });
-	            onToggleExpand();
-	          }}
-	          className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-gray-300 transition-colors hover:bg-white/10"
-	          title={isExpanded ? 'Collapse components' : 'Expand components'}
-	        >
-	          <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-	        </Button>
-
-	        {isAdmin && canEdit && (
-	          <Button
-	            onClick={onEdit}
+        {isAdmin && canEdit && (
+          <Button
+            onClick={onEdit}
 	            className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded transition-colors"
 	            title="Edit BOM configuration"
 	          >
@@ -511,23 +687,23 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 	        )}
 	      </div>
 
-	      {queuedCount > 0 && (
-	        <div className="text-xs text-emerald-200 bg-emerald-900/15 border border-emerald-600/40 rounded px-3 py-1">
-	          {queuedCount} component{queuedCount > 1 ? 's' : ''} in PO queue &middot;{' '}
-	          {hasPoDraft ? 'PO drafting' : 'Awaiting PO creation'}
-	        </div>
-	      )}
+      {queuedCount > 0 && (
+        <div className={queueBannerClass}>
+          {queuedCount} component{queuedCount > 1 ? 's' : ''} in PO queue &middot;{' '}
+          {hasPoDraft ? 'PO drafting' : 'Awaiting PO creation'}
+        </div>
+      )}
 	    </div>
         {/* SECONDARY INFO BAR - Simplified for managers, detailed for admins */}
         {isAdmin ? (
-          <div className="mt-4 grid grid-cols-2 gap-4 rounded-2xl border border-white/5 bg-white/5 p-4 text-xs backdrop-blur md:grid-cols-4">
+          <div className={secondaryPanelClass}>
             {/* Packaging - Admin gets details */}
             <div>
               <div className="text-gray-500 mb-1 flex items-center gap-1">
                 <PackageIcon className="w-3 h-3" />
                 Packaging
               </div>
-              <div className="text-gray-300">
+              <div className={passiveBodyText}>
                 {bom.packaging?.bagType || 'Not specified'}
               </div>
               {totalMaterialWeight > 0 && (
@@ -540,146 +716,340 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             {/* Label Type */}
             <div>
               <div className="text-gray-500 mb-1">Label Type</div>
-              <div className="text-gray-300">
+              <div className={passiveBodyText}>
                 {bom.packaging?.labelType || 'Not specified'}
               </div>
             </div>
 
-            {/* Description Preview */}
-            <div className="col-span-2">
-              <div className="text-gray-500 mb-1">Description</div>
-              <div className="text-gray-300 text-xs line-clamp-2">
-                {bom.description || 'No description provided'}
+            <div>
+              <div className="text-gray-500 mb-1">Yield / Batch</div>
+              <div className={passiveBodyText}>
+                {bom.yieldQuantity || 1} units
+              </div>
+            </div>
+
+            <div>
+              <div className="text-gray-500 mb-1">Data Source</div>
+              <div className={passiveBodyText}>
+                {dataSourceLabel}
               </div>
             </div>
           </div>
         ) : (
-          /* Manager View - Just description */
-          bom.description && (
-            <div className="mt-4 rounded-2xl border border-white/5 bg-white/5 p-4 backdrop-blur">
-              <div className="text-gray-400 text-xs line-clamp-2">
-                {bom.description}
-              </div>
+          <div className={managerPanelClass}>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
+              <span className="flex items-center gap-1">
+                <PackageIcon className="w-3 h-3" />
+                {bom.packaging?.bagType || 'No packaging set'}
+              </span>
+              <span className="flex items-center gap-1">
+                <DocumentTextIcon className="w-3 h-3" />
+                {bom.packaging?.labelType || 'Label TBD'}
+              </span>
             </div>
-          )
+          </div>
         )}
 
         {/* LIMITING COMPONENT WARNING */}
         {buildability.maxBuildable === 0 && buildability.limitingComponents.length > 0 && (
-          <div className="mt-3 p-2 bg-red-900/20 border border-red-700 rounded text-xs">
+          <div className={blockingAlertClass}>
             <div className="flex items-center gap-2">
-              <ExclamationCircleIcon className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <ExclamationCircleIcon className={blockingIconClass} />
               <div>
-                <span className="text-red-400 font-medium">Cannot build - Limiting: </span>
-                <span className="text-gray-300">{limitingSummary}</span>
+                <span className={blockingAccentText}>Cannot build - Limiting: </span>
+                <span className={limitingSummaryText}>{limitingSummary}</span>
               </div>
             </div>
           </div>
         )}
 
         {buildability.maxBuildable > 0 && buildability.limitingComponents.length > 0 && (
-          <div className="mt-3 p-2 bg-amber-900/20 border border-amber-600 rounded text-xs">
+          <div className={limitingAlertClass}>
             <div className="flex items-center gap-2">
-              <ExclamationTriangleIcon className="w-4 h-4 text-amber-200 flex-shrink-0" />
+              <ExclamationTriangleIcon className={limitingIconClass} />
               <div>
-                <span className="text-amber-200 font-medium">
+                <span className={limitingAccentText}>
                   Limited to {buildability.maxBuildable} build{buildability.maxBuildable !== 1 ? 's' : ''}
                 </span>
-                <span className="text-gray-300"> — constrained by {limitingSummary}</span>
+                <span className={limitingSummaryText}> — constrained by {limitingSummary}</span>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* EXPANDED VIEW: Component Details */}
+      {/* EXPANDED VIEW: Component Details & Financials */}
       {isExpanded && (
-        <div className="p-4 space-y-4 border-t border-white/5 bg-slate-950/70 backdrop-blur-lg">
-          <StrategicBomMetrics
-            bom={bom}
-            finishedItem={finishedItem}
-            buildability={buildability}
-            inventoryMap={inventoryMap}
-            labels={labels}
-            complianceRecords={complianceRecords}
-            queueStatus={queueStatus}
-            onViewBreakdown={onViewDetails}
-          />
-          <div>
-            <h4 className="text-xs font-semibold text-gray-400 uppercase mb-3 flex items-center gap-2">
-              <BeakerIcon className="w-4 h-4" />
-              Component Breakdown ({bom.components?.length || 0} components)
-            </h4>
-            <div className="space-y-2">
-              {bom.components.map(c => {
-                const componentItem = inventoryMap.get(c.sku);
-                const available = componentItem?.stock || 0;
-                const needed = c.quantity || 1;
-                const canBuild = Math.floor(available / needed);
-                const isLimiting = buildability.limitingComponents.some(lc => lc.sku === c.sku);
-                const rowClass = isLimiting
-                  ? limitingHighlight.row
-                  : 'bg-gray-800/50 border border-gray-700 hover:border-gray-600';
-
-                return (
-                  <div
-                    key={c.sku}
-                    className={`flex items-center justify-between p-3 rounded-lg transition-colors ${rowClass}`}
-                  >
-                    <div className="flex-1">
-                      {onNavigateToInventory ? (
-                        <Button
-                          onClick={() => onNavigateToInventory(c.sku)}
-                          className="font-semibold font-mono text-sm text-indigo-400 hover:text-indigo-300 hover:underline"
-                        >
-                          {c.sku}
-                        </Button>
-                      ) : (
-                        <span className="font-semibold font-mono text-sm text-white">{c.sku}</span>
-                      )}
-                      <span className="text-gray-400 ml-2 text-sm">/ {c.name}</span>
-
-                      <div className="flex items-center gap-3 mt-1 text-xs">
-                        <span className={`font-semibold ${available >= needed ? 'text-green-400' : 'text-red-400'}`}>
-                          Stock: {available}
-                        </span>
-                        <span className="text-gray-600">|</span>
-                        <span className="text-gray-500">Need: {needed} {c.unit}</span>
-                        <span className="text-gray-600">|</span>
-                        <span className={`font-semibold ${canBuild > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          Can build: {canBuild}
-                        </span>
-                        {isLimiting && (
-                          <>
-                            <span className="text-gray-600">|</span>
-                            <span className={`px-2 py-0.5 rounded font-semibold ${limitingHighlight.badge}`}>
-                              ⚠ {limitingHighlight.label}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {componentItem && componentItem.reorderPoint && available < componentItem.reorderPoint && (
-                      <div className="ml-4">
-                        <span className="px-2 py-1 rounded text-xs bg-yellow-900/30 text-yellow-300 border border-yellow-700">
-                          Below reorder
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+        <div className={expandedPanelClass}>
+          {/* Tabs */}
+          <div className="flex items-center gap-4 border-b border-gray-700/50 mb-4">
+            <button
+              onClick={() => setActiveTab('components')}
+              className={`pb-2 text-xs font-semibold uppercase transition-colors ${
+                activeTab === 'components'
+                  ? 'text-indigo-400 border-b-2 border-indigo-400'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <BeakerIcon className="w-4 h-4" />
+                Components ({bom.components?.length || 0})
+              </div>
+            </button>
+            
+            {(isAdmin || isManager) && (
+              <button
+                onClick={() => setActiveTab('financials')}
+                className={`pb-2 text-xs font-semibold uppercase transition-colors ${
+                  activeTab === 'financials'
+                    ? 'text-emerald-400 border-b-2 border-emerald-400'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg leading-none">$</span>
+                  Financials
+                </div>
+              </button>
+            )}
           </div>
 
-          {/* Special Instructions if present */}
-          {bom.packaging?.specialInstructions && (
-            <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-3">
-              <h5 className="text-xs font-semibold text-blue-400 mb-1">Special Instructions</h5>
-              <p className="text-xs text-gray-300 whitespace-pre-wrap">
-                {bom.packaging.specialInstructions}
-              </p>
+          {activeTab === 'components' ? (
+            <div>
+              {/* Recipe Header */}
+              <div className={`${recipeCard} p-4 mb-4`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <BeakerIcon className={themeSwap('w-5 h-5 text-emerald-700', 'w-5 h-5 text-emerald-400')} />
+                  <h5 className={themeSwap('text-sm font-bold text-emerald-800 uppercase tracking-wide', 'text-sm font-bold text-emerald-300 uppercase tracking-wide')}>Recipe / Ingredients</h5>
+                </div>
+                <p className={themeSwap('text-xs text-gray-700', 'text-xs text-gray-400')}>
+                  {bom.components.length} ingredients • {bom.yieldQuantity || 1} unit yield per batch
+                </p>
+              </div>
+
+              {/* Ingredient List */}
+              <div className="space-y-3">
+                {bom.components.map((c, idx) => {
+                  const componentItem = inventoryMap.get(c.sku);
+                  const available = componentItem?.stock || 0;
+                  const needed = c.quantity || 1;
+                  const canBuild = Math.floor(available / needed);
+                  const isLimiting = buildability.limitingComponents.some(lc => lc.sku === c.sku);
+                  const isOutOfStock = available === 0;
+                  const hasSubstitutes = c.substitutes && c.substitutes.length > 0;
+                  
+                  const rowClass = isLimiting
+                    ? limitingHighlight.row
+                    : themeSwap(
+                        'bg-white/80 border border-emerald-600/10 hover:border-emerald-600/30 hover:bg-emerald-50/50',
+                        'bg-slate-900/50 border border-emerald-500/10 hover:border-emerald-500/30 hover:bg-emerald-950/20'
+                      );
+
+                  return (
+                    <div
+                      key={c.sku}
+                      className={`rounded-lg transition-all ${rowClass}`}
+                    >
+                      {/* Main Ingredient Row */}
+                      <div className="flex items-start justify-between p-3">
+                        <div className="flex items-start gap-3 flex-1">
+                          {/* Step Number */}
+                          <div className={themeSwap(
+                            'flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center text-xs font-bold text-emerald-800',
+                            'flex-shrink-0 w-7 h-7 rounded-full bg-emerald-950/50 border border-emerald-600/40 flex items-center justify-center text-xs font-bold text-emerald-300'
+                          )}>
+                            {idx + 1}
+                          </div>
+
+                          {/* Ingredient Details */}
+                          <div className="flex-1 min-w-0">
+                            {/* SKU + Name */}
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                              {onNavigateToInventory ? (
+                                <Button
+                                  onClick={() => onNavigateToInventory(c.sku)}
+                                  className={themeSwap(
+                                    'font-bold font-mono text-sm text-emerald-700 hover:text-emerald-600 underline decoration-dotted',
+                                    'font-bold font-mono text-sm text-emerald-400 hover:text-emerald-300 underline decoration-dotted'
+                                  )}
+                                >
+                                  {c.sku}
+                                </Button>
+                              ) : (
+                                <span className={themeSwap('font-bold font-mono text-sm text-emerald-800', 'font-bold font-mono text-sm text-emerald-300')}>{c.sku}</span>
+                              )}
+                              <span className={themeSwap('text-sm text-gray-800', 'text-sm text-gray-200')}>— {c.name}</span>
+                            </div>
+
+                            {/* Amount (Recipe Style) */}
+                            <div className={themeSwap('mt-1 text-base font-semibold text-gray-900', 'mt-1 text-base font-semibold text-white')}>
+                              {needed} {c.unit}
+                            </div>
+
+                            {/* Stock Status */}
+                            <div className="flex items-center gap-3 mt-2 text-xs">
+                              <span className={`font-semibold ${available >= needed ? themeSwap('text-emerald-700', 'text-emerald-400') : themeSwap('text-rose-700', 'text-rose-400')}`}>
+                                {available >= needed ? '✓' : '✗'} Stock: {available} {c.unit}
+                              </span>
+                              {isLimiting && (
+                                <>
+                                  <span className={dividerClass}>•</span>
+                                  <span className={`px-2 py-0.5 rounded font-semibold text-[10px] ${limitingHighlight.badge}`}>
+                                    ⚠ {limitingHighlight.label}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right Side Status */}
+                        <div className="flex flex-col items-end gap-2 ml-4">
+                          {isOutOfStock && hasSubstitutes && (
+                            <span className={themeSwap(
+                              'px-2 py-1 rounded text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300',
+                              'px-2 py-1 rounded text-xs font-semibold bg-amber-900/30 text-amber-300 border border-amber-600'
+                            )}>
+                              Out of stock
+                            </span>
+                          )}
+                          {componentItem && componentItem.reorderPoint && available < componentItem.reorderPoint && (
+                            <span className={reorderBadgeClass}>
+                              Below reorder
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Substitution Panel */}
+                      {hasSubstitutes && (isOutOfStock || available < needed) && (
+                        <div className={themeSwap(
+                          'mx-3 mb-3 px-3 py-2 rounded-md bg-blue-50 border border-blue-200',
+                          'mx-3 mb-3 px-3 py-2 rounded-md bg-blue-950/30 border border-blue-700/50'
+                        )}>
+                          <div className="flex items-start gap-2">
+                            <SparklesIcon className={themeSwap('w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5', 'w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5')} />
+                            <div className="flex-1">
+                              <div className={themeSwap('text-xs font-semibold text-blue-800 mb-1', 'text-xs font-semibold text-blue-300 mb-1')}>
+                                Suggested Substitutes:
+                              </div>
+                              <div className="space-y-1">
+                                {c.substitutes!.map(sub => {
+                                  const subItem = inventoryMap.get(sub.sku);
+                                  const subStock = subItem?.stock || 0;
+                                  return (
+                                    <div key={sub.sku} className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        {onNavigateToInventory ? (
+                                          <Button
+                                            onClick={() => onNavigateToInventory(sub.sku)}
+                                            className={themeSwap(
+                                              'font-mono text-xs text-blue-700 hover:text-blue-600 underline',
+                                              'font-mono text-xs text-blue-400 hover:text-blue-300 underline'
+                                            )}
+                                          >
+                                            {sub.sku}
+                                          </Button>
+                                        ) : (
+                                          <span className={themeSwap('font-mono text-xs text-blue-800', 'font-mono text-xs text-blue-300')}>{sub.sku}</span>
+                                        )}
+                                        <span className={themeSwap('text-xs text-gray-700', 'text-xs text-gray-300')}>— {sub.name}</span>
+                                        {sub.reason && (
+                                          <span className={themeSwap('text-xs italic text-gray-600', 'text-xs italic text-gray-500')}>({sub.reason})</span>
+                                        )}
+                                      </div>
+                                      <span className={`text-xs font-semibold ${subStock > 0 ? themeSwap('text-emerald-700', 'text-emerald-400') : themeSwap('text-gray-500', 'text-gray-600')}`}>
+                                        Stock: {subStock}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Special Instructions if present */}
+              {bom.packaging?.specialInstructions && (
+                <div className={`${instructionsPanelClass} mt-4`}>
+                  <h5 className={instructionsHeadingClass}>Special Instructions</h5>
+                  <p className={`${instructionsBodyClass} whitespace-pre-wrap`}>
+                    {bom.packaging.specialInstructions}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Financial Breakdown */}
+              <div className="space-y-4">
+                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
+                  <h5 className="text-gray-400 text-xs uppercase font-semibold mb-3">Cost Analysis</h5>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Material Cost</span>
+                      <span className="text-gray-200 font-mono">${totalMaterialCost.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Labor Cost ({bom.buildTimeMinutes || 0}m @ ${bom.laborCostPerHour || 0}/hr)</span>
+                      <span className="text-gray-200 font-mono">${laborCost.toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-gray-700 my-2 pt-2 flex justify-between items-center font-bold">
+                      <span className="text-gray-300">Total Cost</span>
+                      <span className="text-emerald-400 font-mono">${totalCost.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800">
+                  <h5 className="text-gray-400 text-xs uppercase font-semibold mb-3">Unit Economics</h5>
+                  <div className="space-y-2 text-sm">
+                     <div className="flex justify-between items-center">
+                      <span className="text-gray-400">Yield per Batch</span>
+                      <span className="text-gray-200 font-mono">{bom.yieldQuantity || 1} units</span>
+                    </div>
+                    <div className="flex justify-between items-center font-bold">
+                      <span className="text-gray-300">Cost per Unit</span>
+                      <span className="text-emerald-400 font-mono">
+                        ${((totalCost) / (bom.yieldQuantity || 1)).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Component Cost Table */}
+              <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800 overflow-hidden">
+                 <h5 className="text-gray-400 text-xs uppercase font-semibold mb-3">Material Cost Breakdown</h5>
+                 <div className="overflow-y-auto max-h-64">
+                   <table className="w-full text-xs text-left">
+                     <thead className="text-gray-500 border-b border-gray-700">
+                       <tr>
+                         <th className="pb-2">Component</th>
+                         <th className="pb-2 text-right">Qty</th>
+                         <th className="pb-2 text-right">Unit Cost</th>
+                         <th className="pb-2 text-right">Total</th>
+                       </tr>
+                     </thead>
+                     <tbody className="divide-y divide-gray-800">
+                       {bom.components.map(c => (
+                         <tr key={c.sku}>
+                           <td className="py-2 text-gray-300">{c.name}</td>
+                           <td className="py-2 text-right text-gray-400">{c.quantity} {c.unit}</td>
+                           <td className="py-2 text-right text-gray-400">${(c.unitCost || 0).toFixed(2)}</td>
+                           <td className="py-2 text-right text-gray-200 font-mono">${((c.unitCost || 0) * c.quantity).toFixed(2)}</td>
+                         </tr>
+                       ))}
+                     </tbody>
+                   </table>
+                 </div>
+              </div>
             </div>
           )}
         </div>

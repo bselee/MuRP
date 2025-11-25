@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
-import type { BillOfMaterials, Artwork, ProductRegistration, ProductDataSheet, Label } from '../types';
+import type { BillOfMaterials, Artwork, ProductRegistration, ProductDataSheet, Label, InventoryItem, ComplianceRecord } from '../types';
 import Modal from './Modal';
 import LabelScanResults from './LabelScanResults';
 import UploadArtworkModal from './UploadArtworkModal';
 import RegistrationManagement from './RegistrationManagement';
 import AddRegistrationModal from './AddRegistrationModal';
 import ProductDataSheetGenerator from './ProductDataSheetGenerator';
+import StrategicBomMetrics, { type BuildabilityInfo } from './StrategicBomMetrics';
+import { useSupabaseLabels, useSupabaseComplianceRecords } from '../hooks/useSupabaseData';
 import {
 CheckCircleIcon,
   ExclamationCircleIcon,
@@ -17,7 +19,8 @@ CheckCircleIcon,
   PackageIcon,
   BeakerIcon,
   ClipboardDocumentListIcon,
-  SparklesIcon
+  SparklesIcon,
+  DollarSignIcon
 } from './icons';
 
 interface BomDetailModalProps {
@@ -48,7 +51,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
   const [dataSheets, setDataSheets] = useState<ProductDataSheet[]>([]);
 
   // Filter artwork to show only labels
-  const labels = bom.artwork.filter(art => art.fileType === 'label');
+  const labelArtwork = bom.artwork.filter(art => art.fileType === 'label');
 
   const handleViewLabel = (label: Artwork) => {
     setSelectedLabel(label);
@@ -211,7 +214,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
   const tabs = [
     { id: 'components' as TabType, label: 'Components', icon: BeakerIcon },
     { id: 'packaging' as TabType, label: 'Packaging Specs', icon: PackageIcon },
-    { id: 'labels' as TabType, label: 'Packaging & Labels', icon: DocumentTextIcon, count: labels.length },
+    { id: 'labels' as TabType, label: 'Packaging & Labels', icon: DocumentTextIcon, count: labelArtwork.length },
     { id: 'datasheets' as TabType, label: 'Data Sheets', icon: SparklesIcon, count: dataSheets.length },
     { id: 'registrations' as TabType, label: 'Registrations', icon: ClipboardDocumentListIcon, count: bom.registrations?.length || 0 }
   ];
@@ -404,7 +407,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                       )}
                     </div>
 
-                    {labels.length === 0 ? (
+                    {labelArtwork.length === 0 ? (
                       <div className="bg-gray-800/30 rounded-lg border-2 border-dashed border-gray-700 p-12 text-center">
                         <DocumentTextIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                         <h4 className="text-lg font-medium text-gray-400 mb-2">No packaging/labels uploaded yet</h4>
@@ -423,7 +426,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {labels.map((label) => (
+                        {labelArtwork.map((label) => (
                           <div
                             key={label.id}
                             className="bg-gray-800/30 rounded-lg border border-gray-700 p-4 hover:bg-gray-800/50 transition-colors"
@@ -639,7 +642,7 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
                 ) : (
                   <ProductDataSheetGenerator
                     bom={bom}
-                    labels={labels.map(artwork => ({
+                    labels={labelArtwork.map(artwork => ({
                       id: artwork.id,
                       fileName: artwork.fileName,
                       fileUrl: artwork.url,

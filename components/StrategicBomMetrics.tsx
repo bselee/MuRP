@@ -22,7 +22,7 @@ import {
 const HOLDING_COST_RATE = 0.0175;
 const DAY_MS = 1000 * 60 * 60 * 24;
 
-type BuildabilityInfo = {
+export type BuildabilityInfo = {
   maxBuildable: number;
   limitingComponents: Array<{
     sku: string;

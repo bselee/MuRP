@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions, QuickRequestDefaults } from '../types';
+import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions, QuickRequestDefaults, ComponentSwapMap } from '../types';
 import type { ComplianceStatus } from '../types/regulatory';
 import {
   PencilIcon,
@@ -33,6 +33,7 @@ import ScheduleBuildModal from '../components/ScheduleBuildModal';
 import { usePermissions } from '../hooks/usePermissions';
 import { useSupabaseLabels, useSupabaseComplianceRecords } from '../hooks/useSupabaseData';
 import { supabase } from '../lib/supabase/client';
+import { fetchComponentSwapRules, mapComponentSwaps } from '../services/componentSwapService';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability';
@@ -93,6 +94,7 @@ const BOMs: React.FC<BOMsProps> = ({
   const [isRequisitionModalOpen, setIsRequisitionModalOpen] = useState(false);
   const [scheduleModalConfig, setScheduleModalConfig] = useState<{ bomId: string; defaultQuantity: number; start: Date } | null>(null);
   const [queueStatusBySku, setQueueStatusBySku] = useState<Record<string, { status: string; poId: string | null }>>({});
+  const [componentSwaps, setComponentSwaps] = useState<ComponentSwapMap>({});
   const permissions = usePermissions();
   const canViewBoms = permissions.canViewBoms;
   const canEdit = permissions.canEditBoms;
@@ -122,6 +124,48 @@ const BOMs: React.FC<BOMsProps> = ({
     }
     console.log('======================================');
   }, [boms, inventory]);
+
+  // Load component swap settings so staff can see curated alternates
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSwaps = async () => {
+      try {
+        const { rules } = await fetchComponentSwapRules();
+        if (isMounted) {
+          setComponentSwaps(mapComponentSwaps(rules));
+        }
+      } catch (error) {
+        console.error('[BOMs] Failed to load component swap settings', error);
+        if (isMounted) {
+          setComponentSwaps({});
+        }
+      }
+    };
+
+    void loadSwaps();
+
+    const channel = supabase
+      .channel('app_settings_bom_swaps')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'app_settings',
+          filter: 'setting_key=eq.bom_component_swaps'
+        },
+        () => {
+          void loadSwaps();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Filter BOMs to remove those with only one component
   const filteredBoms = useMemo(() => {
@@ -492,6 +536,7 @@ const BOMs: React.FC<BOMsProps> = ({
           userRole={currentUser.role}
           labels={labels}
           complianceRecords={complianceRecords}
+          componentSwapMap={componentSwaps}
           onToggleExpand={() => toggleBomExpanded(bom.id)}
           onViewDetails={() => handleViewDetails(bom)}
           onEdit={() => handleEditClick(bom)}

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, LightBulbIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, LightBulbIcon, SparklesIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import UserManagementPanel from '../components/UserManagementPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
@@ -27,6 +27,8 @@ import { useUserPreferences, type RowDensity, type FontScale } from '../componen
 import JobDescriptionPanel from '../components/JobDescriptionPanel';
 import TwoFactorSettings from '../components/TwoFactorSettings';
 import { isFeatureEnabled } from '../lib/featureFlags';
+import TermsOfServiceModal from '../components/TermsOfServiceModal';
+import ComponentSwapSettingsPanel from '../components/ComponentSwapSettingsPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -74,9 +76,11 @@ const Settings: React.FC<SettingsProps> = ({
     const [isSupportComplianceOpen, setIsSupportComplianceOpen] = useState(false);
     const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
     const [isTablePrefsOpen, setIsTablePrefsOpen] = useState(false);
+    const [isComponentSwapOpen, setIsComponentSwapOpen] = useState(false);
     const [isJobDocsOpen, setIsJobDocsOpen] = useState(false);
     const [isTwoFactorOpen, setIsTwoFactorOpen] = useState(false);
     const [isShopifyPanelOpen, setIsShopifyPanelOpen] = useState(false);
+    const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     
     // API key visibility state
     const [showApiKey, setShowApiKey] = useState(false);
@@ -393,6 +397,15 @@ Thank you!`
             </div>
           </CollapsibleSection>
 
+          <CollapsibleSection
+            title="BOM Swap Suggestions"
+            icon={<SparklesIcon className="w-6 h-6 text-amber-300" />}
+            isOpen={isComponentSwapOpen}
+            onToggle={() => setIsComponentSwapOpen(!isComponentSwapOpen)}
+          >
+            <ComponentSwapSettingsPanel addToast={addToast} />
+          </CollapsibleSection>
+
           {isFeatureEnabled('shopify') && (
             <CollapsibleSection
               title="Sales Channels · Shopify Preview"
@@ -491,14 +504,13 @@ Thank you!`
                     <li>Section 16 clarifies compliance responsibilities.</li>
                     <li>Section 12 reminds teams AI output is not legal advice.</li>
                   </ul>
-                  <a
-                    href={termsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-indigo-300 hover:text-indigo-100"
+                  <button
+                    type="button"
+                    onClick={() => setIsTermsModalOpen(true)}
+                    className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-indigo-300 hover:text-indigo-100 underline decoration-dotted"
                   >
                     View Terms of Service &rarr;
-                  </a>
+                  </button>
                 </div>
                 <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-5 flex flex-col justify-between">
                   <div>
@@ -573,6 +585,7 @@ Thank you!`
             </CollapsibleSection>
           )}
         </div>
+        <TermsOfServiceModal isOpen={isTermsModalOpen} onClose={() => setIsTermsModalOpen(false)} />
     </>
   );
 };

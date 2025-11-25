@@ -9,7 +9,32 @@ export interface BOMComponent {
   unitCost?: number;
   supplierSku?: string;
   leadTimeDays?: number;
+  // Substitution alternatives for out-of-stock scenarios
+  substitutes?: Array<{
+    sku: string;
+    name: string;
+    reason?: string; // e.g., "Same grade", "Lower cost", "Better availability"
+  }>;
 }
+
+export interface ComponentSwapSuggestion {
+  sku: string;
+  description?: string;
+  note?: string;
+  similarityTag?: string;
+  availabilityTag?: 'in_stock' | 'limited' | 'special_order';
+  priority?: 'preferred' | 'alternate' | 'experimental';
+}
+
+export interface ComponentSwapRule {
+  sku: string;
+  reason?: string;
+  flaggedBy?: string;
+  updatedAt?: string;
+  suggestions: ComponentSwapSuggestion[];
+}
+
+export type ComponentSwapMap = Record<string, ComponentSwapRule>;
 
 export interface Artwork {
   id: string;

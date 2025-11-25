@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "gemini": "tsx gemini-cli.ts",
     "test:transformers": "tsx lib/schema/transformers.smoke.ts",
     "test:transformers:all": "tsx lib/schema/transformers.runner.ts",
     "test:inventory-ui": "tsx tests/inventoryDisplay.test.ts",
@@ -23,10 +24,12 @@
     "ai": "^5.0.93",
     "dotenv": "^17.2.3",
     "googleapis": "^166.0.0",
+    "marked": "^17.0.1",
     "moment": "^2.30.1",
     "react": "^19.2.0",
     "react-big-calendar": "^1.19.4",
     "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
