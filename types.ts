@@ -971,6 +971,23 @@ export interface VendorFollowUpEvent {
   metadata?: Record<string, any> | null;
 }
 
+export interface ArtworkShareEvent {
+  id: string;
+  artworkId: string;
+  bomId: string;
+  productSku?: string;
+  productName?: string;
+  to: string[];
+  cc: string[];
+  subject: string;
+  includeCompliance: boolean;
+  attachFile: boolean;
+  attachmentHash?: string | null;
+  sentViaGmail: boolean;
+  senderEmail?: string | null;
+  timestamp: string;
+}
+
 export interface QuickRequestDefaults {
     sku?: string;
     requestType?: RequisitionRequestType;

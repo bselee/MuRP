@@ -80,6 +80,7 @@ import type {
     POTrackingStatus,
     RequisitionRequestOptions,
     QuickRequestDefaults,
+    ArtworkShareEvent,
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
 import { getGoogleAuthService } from './services/googleAuthService';
@@ -134,6 +135,7 @@ const AppShell: React.FC = () => {
   const [aiConfig, setAiConfig] = usePersistentState<AiConfig>('aiConfig', defaultAiConfig);
   const [aiSettings, setAiSettings] = usePersistentState<AiSettings>('aiSettings', getDefaultAiSettings());
   const [artworkFolders, setArtworkFolders] = usePersistentState<ArtworkFolder[]>('artworkFolders', mockArtworkFolders);
+  const [artworkShareHistory, setArtworkShareHistory] = usePersistentState<ArtworkShareEvent[]>('artworkShareHistory', []);
   
   const {
     isOpen: isAiAssistantOpen,
@@ -667,32 +669,41 @@ const AppShell: React.FC = () => {
     addToast(`Successfully updated BOM for ${updatedBom.name}.`, 'success');
   };
 
-  const handleAddArtworkToBom = async (finishedSku: string, fileName: string) => {
-    const bom = boms.find(b => b.finishedSku === finishedSku);
+  const handleAddArtworkToBom = async (bomId: string, artworkPayload: Omit<Artwork, 'id'>) => {
+    const bom = boms.find(b => b.id === bomId || b.finishedSku === bomId);
     if (!bom) {
-      addToast(`Could not add artwork: BOM with SKU ${finishedSku} not found.`, 'error');
+      addToast('Could not add artwork: BOM not found.', 'error');
       return;
     }
 
-    const highestRevision = bom.artwork.reduce((max, art) => Math.max(max, art.revision), 0);
+    const highestRevision = bom.artwork.reduce((max, art) => Math.max(max, art.revision || 0), 0);
+    const resolvedRevision =
+      typeof artworkPayload.revision === 'number' && !Number.isNaN(artworkPayload.revision)
+        ? artworkPayload.revision
+        : Number((highestRevision + 0.01).toFixed(2));
+
+    const generatedId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `art-${Date.now()}`;
 
     const newArtwork: Artwork = {
-      id: `art-${Date.now()}`,
-      fileName,
-      revision: highestRevision + 1,
-      url: `/art/${fileName.replace(/\s+/g, '-').toLowerCase()}-v${highestRevision + 1}.pdf`, // Mock URL
-      verified: false,
-      fileType: 'artwork',
-      uploadedBy: currentUser?.id,
-      uploadedAt: new Date().toISOString(),
+      id: generatedId,
+      fileName: artworkPayload.fileName || `Artwork Rev ${resolvedRevision}`,
+      uploadedAt: artworkPayload.uploadedAt ?? new Date().toISOString(),
+      uploadedBy: artworkPayload.uploadedBy ?? currentUser?.id,
+      fileType: artworkPayload.fileType ?? 'artwork',
+      verified: artworkPayload.verified ?? false,
+      status: artworkPayload.status ?? 'draft',
+      ...artworkPayload,
+      revision: resolvedRevision,
     };
-    
+
     const updatedBom = {
       ...bom,
       artwork: [...bom.artwork, newArtwork],
     };
 
-    // 🔥 Update in Supabase
     const result = await updateBOM(updatedBom);
     if (!result.success) {
       addToast(`Failed to add artwork: ${result.error}`, 'error');
@@ -700,7 +711,7 @@ const AppShell: React.FC = () => {
     }
 
     refetchBOMs();
-    addToast(`Added artwork '${fileName}' (Rev ${newArtwork.revision}) to ${bom.name}.`, 'success');
+    addToast(`Uploaded '${newArtwork.fileName}' (Rev ${newArtwork.revision}) to ${bom.name}.`, 'success');
     navigateToPage('Artwork');
   };
 
@@ -802,6 +813,10 @@ const AppShell: React.FC = () => {
     const newFolder: ArtworkFolder = { id: `folder-${Date.now()}`, name };
     setArtworkFolders(prev => [...prev, newFolder]);
     addToast(`Folder "${name}" created successfully.`, 'success');
+  };
+
+  const handleRecordArtworkShare = (event: ArtworkShareEvent) => {
+    setArtworkShareHistory(prev => [...prev, event]);
   };
 
   const handleCreateRequisition = async (
@@ -1562,6 +1577,8 @@ const AppShell: React.FC = () => {
       case 'Artwork':
         return <ArtworkPage 
             boms={boms}
+            inventory={inventory}
+            vendors={vendors}
             onAddArtwork={handleAddArtworkToBom}
             onCreatePoFromArtwork={handleCreatePoFromArtwork}
             onUpdateArtwork={handleUpdateArtwork}
@@ -1572,6 +1589,10 @@ const AppShell: React.FC = () => {
             artworkFolders={artworkFolders}
             onCreateArtworkFolder={handleCreateArtworkFolder}
             currentUser={currentUser}
+            gmailConnection={gmailConnection}
+            addToast={addToast}
+            artworkShareHistory={artworkShareHistory}
+            onRecordArtworkShare={handleRecordArtworkShare}
         />;
       case 'API Documentation':
           return <ApiDocs />;

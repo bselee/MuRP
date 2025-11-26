@@ -2,12 +2,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Button from '@/components/ui/Button';
-import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder } from '../types';
-import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon, QrCodeIcon, CheckCircleIcon } from '../components/icons';
+import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder, GmailConnection, InventoryItem, Vendor, ArtworkShareEvent } from '../types';
+import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon, QrCodeIcon, CheckCircleIcon, CloudUploadIcon, SendIcon } from '../components/icons';
 import RegulatoryScanModal from '../components/RegulatoryScanModal';
 import BatchArtworkVerificationModal from '../components/BatchArtworkVerificationModal';
 import ManualLabelScanner from '../components/ManualLabelScanner';
 import ArtworkEditor from '../components/ArtworkEditor';
+import UploadArtworkModal from '../components/UploadArtworkModal';
+import ShareArtworkModal from '../components/ShareArtworkModal';
 
 type ArtworkWithProduct = Artwork & {
     productName: string;
@@ -15,9 +17,27 @@ type ArtworkWithProduct = Artwork & {
     bomId: string;
 };
 
+type PackagingContactSuggestion = {
+    vendorId: string;
+    vendorName: string;
+    email: string;
+};
+
+type ShareLogPayload = {
+    to: string[];
+    cc: string[];
+    subject: string;
+    includeCompliance: boolean;
+    attachFile: boolean;
+    attachmentHash?: string | null;
+    sentViaGmail: boolean;
+};
+
 interface ArtworkPageProps {
     boms: BillOfMaterials[];
-    onAddArtwork: (finishedSku: string, fileName: string) => void;
+    inventory: InventoryItem[];
+    vendors: Vendor[];
+    onAddArtwork: (bomId: string, artwork: Omit<Artwork, 'id'>) => void;
     onCreatePoFromArtwork: (artworkIds: string[]) => void;
     onUpdateArtwork: (artworkId: string, bomId: string, updates: Partial<Artwork>) => void;
     initialFilter: string;
@@ -27,11 +47,16 @@ interface ArtworkPageProps {
     artworkFolders: ArtworkFolder[];
     onCreateArtworkFolder: (name: string) => void;
     currentUser?: { id: string; email: string };
+    gmailConnection: GmailConnection;
+    addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+    artworkShareHistory: ArtworkShareEvent[];
+    onRecordArtworkShare: (event: ArtworkShareEvent) => void;
 }
 
-const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, onUpdateArtwork, initialFilter, onClearFilter, watchlist, aiConfig, artworkFolders, onCreateArtworkFolder, currentUser }) => {
+const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onAddArtwork, onCreatePoFromArtwork, onUpdateArtwork, initialFilter, onClearFilter, watchlist, aiConfig, artworkFolders, onCreateArtworkFolder, currentUser, gmailConnection, addToast, artworkShareHistory, onRecordArtworkShare }) => {
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [isBatchVerificationModalOpen, setIsBatchVerificationModalOpen] = useState(false);
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isLabelScannerOpen, setIsLabelScannerOpen] = useState(false);
     const [selectedArtworkForScan, setSelectedArtworkForScan] = useState<ArtworkWithProduct | null>(null);
     const [selectedArtworkForDetails, setSelectedArtworkForDetails] = useState<ArtworkWithProduct | null>(null);
@@ -41,12 +66,27 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
     const [newFolderName, setNewFolderName] = useState('');
     const [isCreatingFolder, setIsCreatingFolder] = useState(false);
     const [artworkBeingEdited, setArtworkBeingEdited] = useState<ArtworkWithProduct | null>(null);
+    const [metadataDraft, setMetadataDraft] = useState({ fileName: '', notes: '' });
+    const [isSavingMetadata, setIsSavingMetadata] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [selectedShareArtwork, setSelectedShareArtwork] = useState<ArtworkWithProduct | null>(null);
     
     useEffect(() => {
         return () => {
             if (initialFilter) onClearFilter();
         };
     }, [initialFilter, onClearFilter]);
+
+    useEffect(() => {
+        if (selectedArtworkForDetails) {
+            setMetadataDraft({
+                fileName: selectedArtworkForDetails.fileName,
+                notes: selectedArtworkForDetails.notes ?? '',
+            });
+        } else {
+            setMetadataDraft({ fileName: '', notes: '' });
+        }
+    }, [selectedArtworkForDetails]);
 
     const allArtwork = useMemo(() => {
         return boms.flatMap(bom =>
@@ -73,6 +113,51 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
             art.productSku.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [filteredByFolder, searchTerm]);
+
+    const inventoryBySku = useMemo(() => new Map(inventory.map(item => [item.sku, item])), [inventory]);
+    const vendorById = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
+
+    const packagingContactsByArtworkId = useMemo(() => {
+        const map = new Map<string, PackagingContactSuggestion[]>();
+        const isPackagingCategory = (category?: string) => category?.toLowerCase().includes('pack');
+
+        boms.forEach(bom => {
+            const vendorContactMap = new Map<string, PackagingContactSuggestion>();
+            bom.components.forEach(component => {
+                const inventoryItem = inventoryBySku.get(component.sku);
+                if (!inventoryItem) return;
+                if (!isPackagingCategory(inventoryItem.category)) return;
+                const vendor = vendorById.get(inventoryItem.vendorId);
+                if (!vendor || !vendor.contactEmails?.length) return;
+                vendor.contactEmails.forEach(email => {
+                    if (!email) return;
+                    const key = `${vendor.id}:${email.toLowerCase()}`;
+                    if (!vendorContactMap.has(key)) {
+                        vendorContactMap.set(key, {
+                            vendorId: vendor.id,
+                            vendorName: vendor.name,
+                            email,
+                        });
+                    }
+                });
+            });
+            const suggestions = Array.from(vendorContactMap.values());
+            bom.artwork.forEach(art => {
+                map.set(art.id, suggestions);
+            });
+        });
+        return map;
+    }, [boms, inventoryBySku, vendorById]);
+
+    const shareHistoryByArtworkId = useMemo(() => {
+        const map = new Map<string, ArtworkShareEvent[]>();
+        artworkShareHistory.forEach(event => {
+            const entries = map.get(event.artworkId) ?? [];
+            entries.push(event);
+            map.set(event.artworkId, entries);
+        });
+        return map;
+    }, [artworkShareHistory]);
     
     const handleScanClick = (artwork: ArtworkWithProduct) => {
         setSelectedArtworkForScan(artwork);
@@ -112,12 +197,121 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
         });
         setArtworkBeingEdited(null);
     };
+
+    const handleMetadataChange = (field: 'fileName' | 'notes', value: string) => {
+        setMetadataDraft(prev => ({
+            ...prev,
+            [field]: value,
+        }));
+    };
+
+    const metadataDirty = Boolean(
+        selectedArtworkForDetails &&
+        (
+            metadataDraft.fileName.trim() !== selectedArtworkForDetails.fileName ||
+            (metadataDraft.notes ?? '').trim() !== (selectedArtworkForDetails.notes ?? '')
+        )
+    );
+
+    const handleMetadataSave = async () => {
+        if (!selectedArtworkForDetails) return;
+        setIsSavingMetadata(true);
+        const updates: Partial<Artwork> = {
+            fileName: metadataDraft.fileName.trim() || selectedArtworkForDetails.fileName,
+            notes: metadataDraft.notes.trim() ? metadataDraft.notes : undefined,
+            updatedAt: new Date().toISOString(),
+        };
+
+        await awaitMaybePromise(onUpdateArtwork(selectedArtworkForDetails.id, selectedArtworkForDetails.bomId, updates));
+        setSelectedArtworkForDetails(prev => prev && prev.id === selectedArtworkForDetails.id ? { ...prev, ...updates } : prev);
+        setIsSavingMetadata(false);
+    };
+
+    const handleShareClick = (artwork: ArtworkWithProduct) => {
+        setSelectedShareArtwork(artwork);
+        setIsShareModalOpen(true);
+    };
+
+    const handleCopyLink = async (artwork: ArtworkWithProduct) => {
+        if (!artwork.url) {
+            addToast('No shareable link available for this artwork.', 'error');
+            return;
+        }
+        try {
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(artwork.url);
+                addToast('Artwork link copied to clipboard.', 'success');
+            } else {
+                throw new Error('Clipboard API unavailable');
+            }
+        } catch (error) {
+            console.error('Copy link error:', error);
+            addToast('Unable to copy link. Please copy manually.', 'error');
+        }
+    };
+
+    const handleShareLogged = (artwork: ArtworkWithProduct, payload: ShareLogPayload) => {
+        const event: ArtworkShareEvent = {
+            id: `share-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            artworkId: artwork.id,
+            bomId: artwork.bomId,
+            productSku: artwork.productSku,
+            productName: artwork.productName,
+            to: payload.to,
+            cc: payload.cc,
+            subject: payload.subject,
+            includeCompliance: payload.includeCompliance,
+            attachFile: payload.attachFile,
+            attachmentHash: payload.attachmentHash ?? null,
+            sentViaGmail: payload.sentViaGmail,
+            senderEmail: currentUser?.email ?? gmailConnection.email,
+            timestamp: new Date().toISOString(),
+        };
+        onRecordArtworkShare(event);
+    };
     
+    const awaitMaybePromise = async (maybePromise: void | Promise<void>) => {
+        if (maybePromise && typeof (maybePromise as Promise<void>).then === 'function') {
+            await maybePromise;
+        }
+    };
+
     const FolderButton: React.FC<{folderId: string | null, name: string}> = ({folderId, name}) => (
         <Button onClick={() => setSelectedFolderId(folderId)} className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${selectedFolderId === folderId ? 'bg-indigo-600 text-white font-semibold' : 'text-gray-300 hover:bg-gray-700'}`}>
             {name}
         </Button>
     );
+
+    const selectedShareHistory = selectedArtworkForDetails
+        ? [...(shareHistoryByArtworkId.get(selectedArtworkForDetails.id) ?? [])].sort((a, b) => (
+            (new Date(b.timestamp).valueOf()) - (new Date(a.timestamp).valueOf())
+          ))
+        : [];
+
+    const selectedShareSuggestions = selectedShareArtwork
+        ? packagingContactsByArtworkId.get(selectedShareArtwork.id) ?? []
+        : [];
+
+    const complianceHighlights = selectedArtworkForDetails ? [
+        {
+            label: 'AI Scan',
+            value: selectedArtworkForDetails.scanStatus
+                ? selectedArtworkForDetails.scanStatus === 'completed'
+                    ? 'Completed'
+                    : selectedArtworkForDetails.scanStatus
+                : 'Not started',
+        },
+        {
+            label: 'Verification',
+            value: selectedArtworkForDetails.verified ? 'Verified' : 'Pending',
+            accent: selectedArtworkForDetails.verified ? 'text-green-300' : 'text-yellow-300',
+        },
+        {
+            label: 'Reg Doc Link',
+            value: selectedArtworkForDetails.regulatoryDocLink ? 'Linked' : 'Missing',
+            accent: selectedArtworkForDetails.regulatoryDocLink ? 'text-emerald-300' : 'text-red-300',
+        },
+    ] : [];
 
     return (
         <>
@@ -165,6 +359,13 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                             </div>
                             <div className="flex gap-2">
                                 <Button 
+                                    onClick={() => setIsUploadModalOpen(true)}
+                                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2"
+                                >
+                                    <CloudUploadIcon className="w-5 h-5" />
+                                    Upload Artwork
+                                </Button>
+                                <Button 
                                     onClick={() => setIsLabelScannerOpen(true)}
                                     className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2"
                                 >
@@ -203,6 +404,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                                 onSelect={() => setSelectedArtworkForDetails(art)}
                                 isSelected={selectedArtworkForDetails?.id === art.id}
                                 onEdit={() => setArtworkBeingEdited(art)}
+                                onShare={() => handleShareClick(art)}
                             />
                         ))}
                     </div>
@@ -317,6 +519,52 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                             )}
                         </div>
 
+                        <div className="mt-6 pt-4 border-t border-gray-700 space-y-3">
+                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Metadata Editor</h3>
+                            <div>
+                                <label className="text-xs text-gray-400">Display Name</label>
+                                <input
+                                    type="text"
+                                    value={metadataDraft.fileName}
+                                    onChange={e => handleMetadataChange('fileName', e.target.value)}
+                                    className="mt-1 w-full bg-gray-900/60 text-white text-sm rounded-md p-2 border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400">Notes</label>
+                                <textarea
+                                    value={metadataDraft.notes}
+                                    onChange={e => handleMetadataChange('notes', e.target.value)}
+                                    rows={3}
+                                    className="mt-1 w-full bg-gray-900/60 text-white text-sm rounded-md p-2 border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                />
+                            </div>
+                            <Button
+                                onClick={handleMetadataSave}
+                                disabled={!metadataDirty || isSavingMetadata}
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-400 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                            >
+                                {isSavingMetadata ? 'Saving...' : 'Save Details'}
+                            </Button>
+                        </div>
+
+                        {complianceHighlights.length > 0 && (
+                            <div className="mt-6 pt-4 border-t border-gray-700">
+                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Compliance Snapshot</h3>
+                                <div className="space-y-2">
+                                    {complianceHighlights.map(item => (
+                                        <div key={item.label} className="flex justify-between text-sm text-gray-300">
+                                            <span className="text-gray-400">{item.label}</span>
+                                            <span className={item.accent ?? ''}>{item.value}</span>
+                                        </div>
+                                    ))}
+                                    {selectedArtworkForDetails?.scanError && (
+                                        <p className="text-xs text-red-300">Scan Error: {selectedArtworkForDetails.scanError}</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Actions */}
                         <div className="mt-6 pt-6 border-t border-gray-700 space-y-2">
                             <a 
@@ -341,7 +589,52 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                                 <DocumentDuplicateIcon className="w-5 h-5" />
                                 Edit Artwork
                             </Button>
+                            <Button
+                                onClick={() => handleShareClick(selectedArtworkForDetails)}
+                                className="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                            >
+                                <SendIcon className="w-5 h-5" />
+                                Email Packaging
+                            </Button>
+                            <Button
+                                onClick={() => handleCopyLink(selectedArtworkForDetails)}
+                                className="flex items-center justify-center gap-2 w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                            >
+                                <DocumentDuplicateIcon className="w-5 h-5" />
+                                Copy Share Link
+                            </Button>
                         </div>
+
+                        {selectedShareHistory.length > 0 && (
+                            <div className="mt-6 pt-6 border-t border-gray-700 space-y-3">
+                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Share History</h3>
+                                <div className="space-y-3">
+                                    {selectedShareHistory.slice(0, 4).map(event => (
+                                        <div key={event.id} className="bg-gray-900/40 rounded-md p-3 border border-gray-800">
+                                            <div className="flex items-center justify-between text-xs text-gray-400">
+                                                <span>{new Date(event.timestamp).toLocaleString()}</span>
+                                                <span className={event.sentViaGmail ? 'text-emerald-300' : 'text-yellow-300'}>
+                                                    {event.sentViaGmail ? 'Gmail' : 'Simulated'}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-white mt-1 truncate">
+                                                To: {event.to.join(', ')}
+                                            </p>
+                                            {event.cc.length > 0 && (
+                                                <p className="text-xs text-gray-400 truncate">
+                                                    Cc: {event.cc.join(', ')}
+                                                </p>
+                                            )}
+                                            {event.attachmentHash && (
+                                                <p className="text-[10px] text-gray-500 mt-1 font-mono">
+                                                    Hash: {event.attachmentHash.slice(0, 12)}…
+                                                </p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </aside>
                 )}
             </div>
@@ -397,6 +690,28 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, onCreatePoFromArtwork, 
                 onClose={() => setArtworkBeingEdited(null)}
                 onSave={handleSaveEditedArtwork}
             />
+
+            <UploadArtworkModal
+                isOpen={isUploadModalOpen}
+                onClose={() => setIsUploadModalOpen(false)}
+                boms={boms}
+                onUpload={onAddArtwork}
+                currentUser={currentUser}
+            />
+
+            <ShareArtworkModal
+                isOpen={isShareModalOpen}
+                onClose={() => {
+                    setIsShareModalOpen(false);
+                    setSelectedShareArtwork(null);
+                }}
+                artwork={selectedShareArtwork}
+                gmailConnection={gmailConnection}
+                addToast={addToast}
+                currentUser={currentUser}
+                suggestedContacts={selectedShareSuggestions}
+                onShareLogged={(artwork, payload) => handleShareLogged(artwork as ArtworkWithProduct, payload)}
+            />
         </>
     );
 };
@@ -411,7 +726,8 @@ const ArtworkCard: React.FC<{
     onSelect: () => void;
     isSelected: boolean;
     onEdit: () => void;
-}> = ({art, selectedArtworkIds, onCheckboxChange, onScanClick, onUpdateArtwork, artworkFolders, onSelect, isSelected, onEdit}) => {
+    onShare: () => void;
+}> = ({art, selectedArtworkIds, onCheckboxChange, onScanClick, onUpdateArtwork, artworkFolders, onSelect, isSelected, onEdit, onShare}) => {
     
     const handleMove = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newFolderId = e.target.value === 'unassigned' ? undefined : e.target.value;
@@ -448,7 +764,7 @@ const ArtworkCard: React.FC<{
                         {artworkFolders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                      </select>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                     <a href={art.url} download className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
                         <ArrowDownTrayIcon className="w-4 h-4" /> <span>Download</span>
                     </a>
@@ -457,6 +773,9 @@ const ArtworkCard: React.FC<{
                     </Button>
                     <Button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
                         <PhotoIcon className="w-4 h-4" /> <span>Edit</span>
+                    </Button>
+                    <Button onClick={(e) => { e.stopPropagation(); onShare(); }} className="flex items-center justify-center gap-1 w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
+                        <SendIcon className="w-4 h-4" /> <span>Share</span>
                     </Button>
                 </div>
             </div>

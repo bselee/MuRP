@@ -8,6 +8,46 @@
 
 ---
 
+# Reg Data Service Backbone
+
+## Purpose
+Every downstream experience—label QA, registration workflows, and notice responses—depends on timely statutes. The Reg Data Service ingests, ranks, and publishes regulatory requirements with an explicit bias toward the toughest jurisdictions (CA, OR, TX, plus the next 3-5 “red flag” states) before fanning out to national coverage.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         REG DATA SERVICE                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  SOURCE ADAPTERS                                                            │
+│  ├── High-priority states refreshed daily                                   │
+│  ├── Remaining states refreshed weekly (batch)                              │
+│  ├── Federal + AAPFCO publications (event-driven webhooks/scrapes)          │
+│  └── Manual upload queue for edge cases                                     │
+│                                                                             │
+│  NORMALIZATION & VERSIONING                                                 │
+│  ├── Schema: requirement type, citation, effective dates, enforcement notes │
+│  ├── Diff engine flags changes + notifies downstream caches                 │
+│  ├── Confidence metadata (auto vs human verified)                           │
+│  └── Rollback capability for bad upstream data                              │
+│                                                                             │
+│  DISTRIBUTION LAYER                                                         │
+│  ├── REST/GraphQL for Label Copilot + Registration Autopilot                │
+│  ├── Low-latency local cache for label QA checks                            │
+│  ├── Change feed → Action Board (auto-create review tasks)                  │
+│  └── Export bundle (PDF/CSV) for compliance teams                           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Operational Cadence
+- Daily health checks confirm priority-state refreshes; failures raise an Action Board card tagged “Data Integrity”.
+- Weekly digests enumerate rule changes, consumers, and impacted products for traceability.
+- Reviewers can flag a rule as stale, automatically routing to ops for verification and patch release.
+
+---
+
 # Legendary Feature 1: Predictive Compliance™
 
 ## Vision
@@ -428,7 +468,7 @@ Don't just react to regulatory changes—anticipate them. RegVault monitors sign
 # Legendary Feature 2: Label Copilot™
 
 ## Vision
-An AI assistant that guides users through creating compliant labels from scratch—or validates existing labels against all applicable regulations. Not just a checker, but a creative partner that suggests claim language, calculates guaranteed analysis, and formats everything correctly.
+Turn RegVault into the definitive checkpoint between creative (Adobe, Figma, Illustrator) and production. Users upload finished art, let AI verify weights, spelling, layout, and multi-state rules, collaborate with teammates inside the review, then export a manufacturer-ready packet. Guided creation tools still exist, but the hero workflow is “upload → validate → collaborate → send.”
 
 ---
 
@@ -501,6 +541,26 @@ An AI assistant that guides users through creating compliant labels from scratch
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Asset Intake & Versioning
+- Accepts Illustrator/Photoshop exports (PDF, AI, EPS), production-ready PDFs, and flattened images.
+- Each upload is hashed, versioned, and diffed so reviewers can see “what changed since last approval” before rechecking.
+- Automatic OCR + layout detection map elements (GA table, warnings, net weight callouts) onto structured blocks for validation.
+
+### Collaboration & Approvals
+- Inline comments with @mentions, status transitions (Draft → In Review → Approved), and change logs live alongside the art.
+- Shareable review links replace ad-hoc email threads; every comment is timestamped to serve as an audit trail.
+- Action Board cards are automatically created when issues are detected, so ops/manufacturing can own the fix.
+
+### State-First Validation Pipeline
+- Label scans always run CA → OR → TX rule packs first, then the next “hard state” tier before cascading to the full rule set.
+- Checks include math (net weight, GA rounding), prohibited language, required registration numbers, font-size minimums, and packaging-size layout rules.
+- Failures point to the exact citation pulled from the Reg Data Service so users understand *why* a correction is required.
+
+### Manufacturer Handoff Package
+- Once approved, RegVault bundles the validated PDF, change summary, compliance checklist, and an editable email template addressed to the packaging manufacturer.
+- Users can send directly via connected email or download the package; delivery receipts are stored on the associated Action Board card.
+- Generated packets include state-specific highlights (e.g., “CA registration number updated on panel 2”) so vendors can double-check before printing.
 
 ---
 
@@ -796,6 +856,16 @@ An AI assistant that guides users through creating compliant labels from scratch
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## State Notice Intake & Packaging Fix Flow
+
+1. **Notice Upload:** User drops in the PDF/email/image received from the state. OCR identifies jurisdiction, citation, deadlines, and required corrective actions. If CA/OR/TX, the workflow automatically blocks downstream tasks until the fix is logged.
+2. **Packaging Selection:** User selects the affected product and package size variant; RegVault surfaces the latest approved art plus any in-flight edits.
+3. **AI Diagnosis:** The system compares the notice text with current label data, highlights the offending elements, and suggests exact fixes (e.g., GA decimal rounding, missing registration number format).
+4. **Draft Reply:** RegVault generates a response email/PDF referencing the citation, outlining the corrective action, and attaching the updated label proof. Users can edit before sending.
+5. **Action Board Sync:** The entire thread—notice, draft reply, updated art, due dates—is tracked via a single card assigned to the correct team member, ensuring nothing slips through.
 
 ---
 
@@ -1143,6 +1213,35 @@ Every product gets a real-time compliance health score—like a credit score for
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## RegVault Action Board
+
+### Purpose
+Provide an Asana-style command center where every insight (label error, registration renewal, data integrity issue, state notice) becomes a tracked task with owners, due dates, and linked assets.
+
+### Card Sources
+- **Label QA:** Failed checks open cards with screenshots, citations, and required fixes. When the user re-uploads art, the card auto-updates status.
+- **Registration Autopilot:** Renewals, deficiencies, and fee approvals spawn cards with direct links to the portal packet.
+- **Reg Data Service:** Scrape failures or high-impact rule changes create “Data Integrity” cards so ops can intervene quickly.
+- **State Notices:** Intake flow attaches the original notice, AI diagnosis, and draft reply while preserving the deadline.
+
+### Board Experience
+```
+┌──────────────────────────────────────────────┐
+│  ACTION BOARD                                │
+├───────────────┬───────────────┬──────────────┤
+│  Backlog      │  In Review    │  Ready to Send│
+├───────────────┼───────────────┼──────────────┤
+│ CA Label Fix  │ OR Renewal    │ Package Email │
+│ Due: Jun 12   │ Due: Jun 30   │ Due: Jun 15   │
+│ Owner: Maya   │ Owner: Chris  │ Owner: Ops    │
+└───────────────┴───────────────┴──────────────┘
+```
+- Cards embed relevant artifacts (label PDFs, SDS, notices, AI drafts) and show status history for audits.
+- Completing a card pushes the outcome back to the originating module (e.g., compliance score recalculates, notice marked resolved).
+- Users can filter by product, state, team, or due date to support manufacturing, compliance, and ops squads without clutter.
 
 ---
 
