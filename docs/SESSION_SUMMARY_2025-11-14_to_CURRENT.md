@@ -2219,3 +2219,18 @@ WHERE setting_key = 'aftership_config';
 **Open Questions:**
 - Should timeline view become default for Production page after user adoption?
 - Add export functionality to timeline view (PNG/PDF)?
+
+---
+
+### Session: 2025-11-26 (Push Workflow)
+
+**Changes Made:**
+- Modified: `pages/BOMs.tsx` - Fixed BOM filtering logic to properly handle empty component arrays
+  - Changed: Filter condition from `bom.components.length > 1` to `Array.isArray(bom.components) && bom.components.length > 0`
+  - Purpose: Show BOMs with any valid components, not just those with 2+ components
+
+**TFR Protocol Results:**
+- ✅ Tests: 12/12 passing (9 transformer tests + 3 inventory-ui tests)
+- ✅ Build: TypeScript compilation clean (vite build success in 6.50s)
+
+**Commit:** `fix(ui): correct BOM filtering to include single-component BOMs`

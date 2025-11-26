@@ -226,9 +226,9 @@ const BOMs: React.FC<BOMsProps> = ({
     };
   }, []);
 
-  // Filter BOMs to remove those with only one component
+  // Filter BOMs to remove those missing component data entirely
   const filteredBoms = useMemo(() => {
-    const filtered = boms.filter(bom => bom.components && bom.components.length > 1);
+    const filtered = boms.filter(bom => Array.isArray(bom.components) && bom.components.length > 0);
     console.log(`[BOMs] Filtered ${boms.length} BOMs down to ${filtered.length}`);
     return filtered;
   }, [boms]);
