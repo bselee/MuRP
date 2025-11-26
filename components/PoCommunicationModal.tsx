@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Button from '@/components/ui/Button';
 import type { PurchaseOrder, Vendor, GmailConnection } from '../types';
 import Modal from './Modal';
@@ -6,6 +6,7 @@ import { fetchPoEmailTimeline, type PoEmailTimelineEntry } from '../services/poE
 import { getGoogleGmailService } from '../services/googleGmailService';
 import { logPoEmailTracking } from '../hooks/useSupabaseMutations';
 import { ArrowDownTrayIcon, MailIcon, RefreshCcwIcon } from './icons';
+import { useGoogleAuthPrompt } from '../hooks/useGoogleAuthPrompt';
 
 interface PoCommunicationModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface PoCommunicationModalProps {
   vendor: Vendor | null;
   gmailConnection: GmailConnection;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  onConnectGoogle?: () => Promise<boolean>;
 }
 
 const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
@@ -23,12 +25,14 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
   vendor,
   gmailConnection,
   addToast,
+  onConnectGoogle,
 }) => {
   const [timeline, setTimeline] = useState<PoEmailTimelineEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [replySubject, setReplySubject] = useState('');
   const [replyBody, setReplyBody] = useState('');
   const [sending, setSending] = useState(false);
+  const promptGoogleAuth = useGoogleAuthPrompt(addToast);
 
   const refreshTimeline = async () => {
     if (!purchaseOrder) return;
@@ -53,10 +57,20 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, purchaseOrder?.id]);
 
+  const ensureGmailReady = useCallback(async () => {
+    if (gmailConnection.isConnected) return true;
+    const connected = await promptGoogleAuth({
+      reason: 'reply to vendors via Google Workspace Gmail',
+      connect: onConnectGoogle,
+      postConnectMessage: 'Google Workspace connected. You can reply via Gmail now.',
+    });
+    return connected;
+  }, [gmailConnection.isConnected, onConnectGoogle, promptGoogleAuth]);
+
   const handleSendReply = async () => {
     if (!purchaseOrder || !vendor) return;
-    if (!gmailConnection.isConnected) {
-      addToast('Connect Google Workspace Gmail in Settings to send replies.', 'error');
+    if (!(await ensureGmailReady())) {
+      addToast('Connect Google Workspace Gmail to send replies.', 'error');
       return;
     }
     if (!replyBody.trim()) {

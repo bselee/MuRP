@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Button from '@/components/ui/Button';
 import type { PurchaseOrder, Vendor, GmailConnection } from '../types';
 import Modal from './Modal';
@@ -7,6 +7,7 @@ import { generatePoPdf, getPoPdfAttachment } from '../services/pdfService';
 import { FileTextIcon, GmailIcon } from './icons';
 import { getGoogleGmailService } from '../services/googleGmailService';
 import { logPoEmailTracking } from '../hooks/useSupabaseMutations';
+import { useGoogleAuthPrompt } from '../hooks/useGoogleAuthPrompt';
 
 interface EmailComposerModalProps {
     isOpen: boolean;
@@ -16,14 +17,16 @@ interface EmailComposerModalProps {
     vendor: Vendor;
     gmailConnection: GmailConnection;
     addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+    onConnectGoogle?: () => Promise<boolean>;
 }
 
-const EmailComposerModal: React.FC<EmailComposerModalProps> = ({ isOpen, onClose, onSend, purchaseOrder, vendor, gmailConnection, addToast }) => {
+const EmailComposerModal: React.FC<EmailComposerModalProps> = ({ isOpen, onClose, onSend, purchaseOrder, vendor, gmailConnection, addToast, onConnectGoogle }) => {
     const [to, setTo] = useState('');
     const [from, setFrom] = useState('');
     const [subject, setSubject] = useState('');
     const [body, setBody] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const promptGoogleAuth = useGoogleAuthPrompt(addToast);
 
     useEffect(() => {
         if (isOpen) {
@@ -64,13 +67,33 @@ Procurement Team`);
         }
     };
 
+    const ensureGmailReady = useCallback(async () => {
+        if (gmailConnection.isConnected) {
+            return true;
+        }
+        const connected = await promptGoogleAuth({
+            reason: 'send purchase order emails via Google Workspace Gmail',
+            connect: onConnectGoogle,
+            postConnectMessage: 'Google Workspace connected. Sending via Gmail...',
+        });
+        return connected;
+    }, [gmailConnection.isConnected, onConnectGoogle, promptGoogleAuth]);
+
     const handleSendClick = async () => {
         if (isSending) return;
         setIsSending(true);
 
         try {
+            let canSendViaGmail = gmailConnection.isConnected;
+            if (!canSendViaGmail) {
+                const connected = await ensureGmailReady();
+                if (connected) {
+                    canSendViaGmail = true;
+                }
+            }
+
             const attachment = await getPoPdfAttachment(purchaseOrder, vendor);
-            if (gmailConnection.isConnected) {
+            if (canSendViaGmail) {
                 const gmailService = getGoogleGmailService();
                 const sendResult = await gmailService.sendEmail({
                     to,

@@ -39,6 +39,8 @@ const transformProfile = (row: any): User => ({
   onboardingComplete: row.onboarding_complete,
   agreements: row.agreements ?? {},
   regulatoryAgreement: row.agreements?.regulatory,
+  metadata: row.metadata ?? null,
+  guidedLaunchState: row.metadata?.guided_launch ?? null,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

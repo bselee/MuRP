@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase/client';
 import Button from '@/components/ui/Button';
 import type { CalendarSourceConfig } from '../types/calendar';
 import { normalizeCalendarSources } from '../types/calendar';
+import { useGoogleAuthPrompt } from '../hooks/useGoogleAuthPrompt';
 
 interface CalendarSettingsPanelProps {
   userId: string;
@@ -40,6 +41,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
   const [isLoadingCalendars, setIsLoadingCalendars] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasGoogleAuth, setHasGoogleAuth] = useState(false);
+  const promptGoogleAuth = useGoogleAuthPrompt(addToast);
   const primaryCalendar = useMemo(() => {
     if (settings.calendar_sources.length === 0) return null;
     return settings.calendar_sources.find((src) => src.ingestEnabled) ?? settings.calendar_sources[0];
@@ -95,11 +97,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
     loadSettings();
   }, [userId]);
 
-  useEffect(() => {
-    checkGoogleAuth();
-  }, [calendarService]);
-
-  const checkGoogleAuth = async () => {
+  const checkGoogleAuth = useCallback(async () => {
     try {
       await calendarService.listCalendars();
       setHasGoogleAuth(true);
@@ -107,29 +105,28 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
       console.error('Error checking Google auth:', error);
       setHasGoogleAuth(false);
     }
-  };
+  }, [calendarService]);
+
+  useEffect(() => {
+    checkGoogleAuth();
+  }, [checkGoogleAuth]);
+
+  const ensureCalendarAuth = useCallback(async () => {
+    if (hasGoogleAuth) return true;
+    const connected = await promptGoogleAuth({
+      reason: 'manage Google Calendar access',
+      postConnectMessage: 'Google Workspace connected. Refreshing calendar sources...',
+    });
+    if (connected) {
+      await checkGoogleAuth();
+    }
+    return connected;
+  }, [hasGoogleAuth, promptGoogleAuth, checkGoogleAuth]);
 
   const handleConnectGoogle = async () => {
-    try {
-      // Use Supabase's built-in Google OAuth with comprehensive scopes
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          scopes: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets',
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
-      });
-
-      if (error) throw error;
-      
-      // The page will redirect to Google OAuth
-    } catch (error) {
-      console.error('Error connecting to Google:', error);
-      addToast('Failed to connect to Google', 'error');
+    const connected = await ensureCalendarAuth();
+    if (connected) {
+      await loadSettings();
     }
   };
 
@@ -164,10 +161,8 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
   };
 
   const loadAvailableCalendars = async () => {
-    if (!hasGoogleAuth) {
-      addToast('Please connect your Google Workspace account first', 'error');
-      return;
-    }
+    const ready = await ensureCalendarAuth();
+    if (!ready) return;
 
     try {
       setIsLoadingCalendars(true);

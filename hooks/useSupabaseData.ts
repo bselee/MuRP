@@ -10,9 +10,9 @@
  * const { data: vendors, loading, error } = useSupabaseVendors();
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase/client';
-import type { RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel, PostgrestError } from '@supabase/supabase-js';
 import type {
   InventoryItem,
   Vendor,
@@ -558,20 +558,30 @@ const transformBomRevisionRow = (row: any): BomRevision => {
   };
 };
 
+const shouldFallbackToLegacyBomFetch = (error: PostgrestError | null | undefined): boolean => {
+  if (!error) return false;
+  const fallbackCodes = new Set(['PGRST201', 'PGRST200', 'PGRST203', 'PGRST204', '42P01', '42703']);
+  if (error.code && fallbackCodes.has(error.code)) {
+    return true;
+  }
+  const message = (error.message || '').toLowerCase();
+  return message.includes('bom_artwork_assets') || message.includes('artwork_assets');
+};
+
 export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
   const [data, setData] = useState<BillOfMaterials[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const artworkJoinSupportedRef = useRef(true);
 
   const fetchBOMs = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data: boms, error: fetchError } = await supabase
-        .from('boms')
-        .select(`
+      const selectFields = artworkJoinSupportedRef.current
+        ? `
           *,
           bom_artwork_assets:bom_artwork_assets (
             usage_type,
@@ -579,10 +589,28 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
             is_primary,
             asset:artwork_assets (*)
           )
-        `)
+        `
+        : '*';
+
+      const { data: boms, error: fetchError } = await supabase
+        .from('boms')
+        .select(selectFields)
         .order('name');
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        if (artworkJoinSupportedRef.current && shouldFallbackToLegacyBomFetch(fetchError)) {
+          artworkJoinSupportedRef.current = false;
+          console.warn('[useSupabaseBOMs] Artwork join unavailable, retrying without attachments');
+          const { data: fallbackBoms, error: fallbackError } = await supabase
+            .from('boms')
+            .select('*')
+            .order('name');
+          if (fallbackError) throw fallbackError;
+          setData((fallbackBoms || []).map(transformBomRow));
+          return;
+        }
+        throw fetchError;
+      }
 
       setData((boms || []).map(transformBomRow));
     } catch (err) {
@@ -1205,6 +1233,8 @@ const transformProfileRow = (row: any): User => ({
   onboardingComplete: row.onboarding_complete,
   agreements: row.agreements ?? {},
   regulatoryAgreement: row.agreements?.regulatory,
+  metadata: row.metadata ?? null,
+  guidedLaunchState: row.metadata?.guided_launch ?? null,
 });
 
 export function useSupabaseUserProfiles(): UseSupabaseDataResult<User> {

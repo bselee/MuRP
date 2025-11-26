@@ -337,6 +337,8 @@ export class GoogleAuthService {
    * Get current authentication status
    */
   async getAuthStatus(): Promise<GoogleAuthStatus> {
+    await this.initialize();
+
     if (!this.currentTokens) {
       return {
         isAuthenticated: false,

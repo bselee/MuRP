@@ -884,6 +884,12 @@ export interface BuildOrder {
     assignedUserId?: string; // Who is responsible for the build
 }
 
+export interface GuidedLaunchState {
+    completed?: boolean;
+    snoozeUntil?: string | null;
+    updatedAt?: string;
+}
+
 export interface User {
     id: string;
     name: string;
@@ -891,6 +897,8 @@ export interface User {
     role: 'Admin' | 'Manager' | 'Staff';
     department: 'Purchasing' | 'Operations' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV';
     onboardingComplete?: boolean;
+    metadata?: Record<string, unknown> | null;
+    guidedLaunchState?: GuidedLaunchState | null;
 
     // User agreements - stored for review in Settings
     agreements?: {

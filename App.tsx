@@ -83,6 +83,7 @@ import type {
     RequisitionRequestOptions,
     QuickRequestDefaults,
     BomRevisionRequestOptions,
+    GuidedLaunchState,
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
 import { getGoogleAuthService } from './services/googleAuthService';
@@ -109,6 +110,8 @@ export type ToastInfo = {
   message: string;
   type: 'success' | 'error' | 'info';
 };
+
+const CHECKLIST_DISMISS_SNOOZE_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 const AppShell: React.FC = () => {
   const { user: currentUser, loading: authLoading, signOut: authSignOut, refreshProfile } = useAuth();
@@ -157,7 +160,7 @@ const AppShell: React.FC = () => {
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
   const [quickRequestDefaults, setQuickRequestDefaults] = useState<QuickRequestDefaults | null>(null);
   const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(false);
-  const onboardingStorageKey = currentUser?.id ? `murp-onboarding-${currentUser.id}` : null;
+  const [guidedLaunchState, setGuidedLaunchState] = useState<GuidedLaunchState | null>(null);
   const navigateToPage = useCallback((nextPage: Page) => {
     setNavigationHistory(prev => {
       if (prev[prev.length - 1] === nextPage) {
@@ -229,23 +232,46 @@ const AppShell: React.FC = () => {
     }
   }, [isDataLoading]);
 
-  const readOnboardingState = useCallback((): { completed?: boolean; snoozeUntil?: number | null } | null => {
-    if (!onboardingStorageKey || typeof window === 'undefined') return null;
-    try {
-      const stored = window.localStorage.getItem(onboardingStorageKey);
-      if (!stored) return null;
-      return JSON.parse(stored);
-    } catch {
-      return null;
+  useEffect(() => {
+    if (!currentUser?.guidedLaunchState) {
+      setGuidedLaunchState(null);
+      return;
     }
-  }, [onboardingStorageKey]);
+    setGuidedLaunchState(currentUser.guidedLaunchState);
+  }, [currentUser?.guidedLaunchState]);
 
-  const writeOnboardingState = useCallback((update: Partial<{ completed: boolean; snoozeUntil: number | null }>) => {
-    if (!onboardingStorageKey || typeof window === 'undefined') return;
-    const existing = readOnboardingState() ?? {};
-    const next = { ...existing, ...update };
-    window.localStorage.setItem(onboardingStorageKey, JSON.stringify(next));
-  }, [onboardingStorageKey, readOnboardingState]);
+  const persistGuidedLaunchState = useCallback(
+    async (update: Partial<GuidedLaunchState>) => {
+      if (!currentUser?.id) return;
+
+      const next: GuidedLaunchState = {
+        completed: update.completed ?? guidedLaunchState?.completed ?? false,
+        snoozeUntil: update.snoozeUntil ?? guidedLaunchState?.snoozeUntil ?? null,
+        updatedAt: new Date().toISOString(),
+      };
+
+      setGuidedLaunchState(next);
+
+      if (isE2ETestMode) {
+        return;
+      }
+
+      try {
+        const metadata = {
+          ...(currentUser.metadata ?? {}),
+          guided_launch: next,
+        };
+
+        await supabase
+          .from('user_profiles')
+          .update({ metadata })
+          .eq('id', currentUser.id);
+      } catch (error) {
+        console.error('[App] Failed to persist guided launch state:', error);
+      }
+    },
+    [currentUser, guidedLaunchState, isE2ETestMode],
+  );
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -253,34 +279,45 @@ const AppShell: React.FC = () => {
       setShowOnboardingChecklist(false);
       return;
     }
-    const state = readOnboardingState();
-    if (!state) {
+    if (!guidedLaunchState) {
       setShowOnboardingChecklist(true);
       return;
     }
-    if (state.completed) {
+    if (guidedLaunchState.completed) {
       setShowOnboardingChecklist(false);
       return;
     }
-    if (state.snoozeUntil && state.snoozeUntil > Date.now()) {
+    const snoozeUntil = guidedLaunchState.snoozeUntil ? new Date(guidedLaunchState.snoozeUntil).getTime() : null;
+    if (snoozeUntil && snoozeUntil > Date.now()) {
       setShowOnboardingChecklist(false);
       return;
     }
     setShowOnboardingChecklist(true);
-  }, [currentUser, isE2ETestMode, readOnboardingState]);
+  }, [currentUser, guidedLaunchState, isE2ETestMode]);
 
   const handleChecklistComplete = useCallback(() => {
-    writeOnboardingState({ completed: true, snoozeUntil: null });
+    persistGuidedLaunchState({ completed: true, snoozeUntil: null });
     setShowOnboardingChecklist(false);
-  }, [writeOnboardingState]);
+  }, [persistGuidedLaunchState]);
 
-  const handleChecklistSnooze = useCallback((durationMs: number) => {
-    writeOnboardingState({
+  const handleChecklistSnooze = useCallback(
+    (durationMs: number) => {
+      persistGuidedLaunchState({
+        completed: false,
+        snoozeUntil: new Date(Date.now() + durationMs).toISOString(),
+      });
+      setShowOnboardingChecklist(false);
+    },
+    [persistGuidedLaunchState],
+  );
+
+  const handleChecklistDismiss = useCallback(() => {
+    persistGuidedLaunchState({
       completed: false,
-      snoozeUntil: Date.now() + durationMs,
+      snoozeUntil: new Date(Date.now() + CHECKLIST_DISMISS_SNOOZE_MS).toISOString(),
     });
     setShowOnboardingChecklist(false);
-  }, [writeOnboardingState]);
+  }, [persistGuidedLaunchState]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -1338,16 +1375,23 @@ const AppShell: React.FC = () => {
     addToast(`Requisition ${reqId} rejected.`, 'info');
   };
 
-  const handleGmailConnect = async () => {
+  const handleGmailConnect = useCallback(async () => {
     try {
       await googleAuthService.startOAuthFlow();
       await refreshGmailConnection();
       addToast('Google Workspace account connected successfully!', 'success');
+      return true;
     } catch (error) {
       console.error('[App] Gmail connect error:', error);
-      addToast(`Failed to connect Google Workspace Gmail: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      addToast(
+        `Failed to connect Google Workspace Gmail: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+        'error',
+      );
+      return false;
     }
-  };
+  }, [googleAuthService, refreshGmailConnection, addToast]);
 
   const handleGmailDisconnect = async () => {
     try {
@@ -1567,6 +1611,7 @@ const AppShell: React.FC = () => {
                     onOpsApproveRequisition={handleOpsApproveRequisition}
                     onRejectRequisition={handleRejectRequisition}
                     onCreateRequisition={(items, options) => handleCreateRequisition(items, 'Manual', options)}
+                    onConnectGoogle={handleGmailConnect}
                 />;
       case 'Vendors':
         return <Vendors vendors={vendors} />;
@@ -1789,12 +1834,12 @@ const AppShell: React.FC = () => {
       {showOnboardingChecklist && currentUser && (
         <OnboardingChecklist
           user={currentUser}
-          onClose={() => setShowOnboardingChecklist(false)}
+          onClose={handleChecklistDismiss}
           onComplete={handleChecklistComplete}
           onSnooze={handleChecklistSnooze}
           navigateTo={(pageName) => {
             navigateToPage(pageName as Page);
-            setShowOnboardingChecklist(false);
+            handleChecklistDismiss();
           }}
         />
       )}

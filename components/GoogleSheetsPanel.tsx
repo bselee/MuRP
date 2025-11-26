@@ -9,11 +9,12 @@ import Button from '@/components/ui/Button';
  * - Creating automatic backups
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getGoogleAuthService, type GoogleAuthStatus } from '../services/googleAuthService';
 import { getGoogleSheetsSyncService, type ImportOptions, type ExportOptions } from '../services/googleSheetsSyncService';
 import { getGoogleSheetsService } from '../services/googleSheetsService';
 import { useSystemAlerts } from '../lib/systemAlerts/SystemAlertContext';
+import { useGoogleAuthPrompt } from '../hooks/useGoogleAuthPrompt';
 
 interface GoogleSheetsPanelProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -41,6 +42,7 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
   const syncService = getGoogleSheetsSyncService();
   const sheetsService = getGoogleSheetsService();
   const { upsertAlert, resolveAlert } = useSystemAlerts();
+  const promptGoogleAuth = useGoogleAuthPrompt(addToast);
 
   const isConnected = Boolean(authStatus?.isAuthenticated && authStatus?.hasValidToken);
 
@@ -70,28 +72,41 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
   };
 
   // Check auth status on mount
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = useCallback(async () => {
     try {
       const status = await authService.getAuthStatus();
       setAuthStatus(status);
     } catch (error) {
       console.error('Error checking auth status:', error);
     }
-  };
+  }, [authService]);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
+
+  const ensureGoogleWorkspace = useCallback(async () => {
+    if (isConnected) return true;
+    const connected = await promptGoogleAuth({
+      reason: 'import or export inventory with Google Sheets',
+      postConnectMessage: 'Google Workspace connected. Retry your action.',
+    });
+    if (connected) {
+      await checkAuthStatus();
+    }
+    return connected;
+  }, [isConnected, promptGoogleAuth, checkAuthStatus]);
 
   const handleConnect = async () => {
     try {
       setIsLoading(true);
-      await authService.startOAuthFlow();
-      await checkAuthStatus();
-      addToast('Connected to Google Workspace.', 'success');
-    } catch (error) {
-      console.error('Error connecting to Google Workspace:', error);
-      addToast(`Failed to connect: ${error instanceof Error ? error.message : String(error)}`, 'error');
+      const connected = await promptGoogleAuth({
+        reason: 'manage Google Sheets integrations',
+        postConnectMessage: 'Google Workspace connected.',
+      });
+      if (connected) {
+        await checkAuthStatus();
+      }
     } finally {
       setIsLoading(false);
     }
@@ -118,6 +133,9 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
   const handleImport = async () => {
     try {
       setIsLoading(true);
+      if (!(await ensureGoogleWorkspace())) {
+        return;
+      }
 
       const spreadsheetId = sheetsService.parseSpreadsheetId(importSpreadsheetUrl);
       if (!spreadsheetId) {
@@ -154,6 +172,9 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
   const handleExport = async () => {
     try {
       setIsLoading(true);
+      if (!(await ensureGoogleWorkspace())) {
+        return;
+      }
 
       const result = await syncService.exportInventory({
         includeHeaders: true,
@@ -179,6 +200,9 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
   const handleCreateBackup = async () => {
     try {
       setIsLoading(true);
+      if (!(await ensureGoogleWorkspace())) {
+        return;
+      }
 
       const result = await syncService.createAutoBackup();
 
@@ -197,7 +221,13 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
     }
   };
 
-  const handleToggleAutoBackup = (enabled: boolean) => {
+  const handleToggleAutoBackup = async (enabled: boolean) => {
+    if (enabled && !isConnected) {
+      const connected = await ensureGoogleWorkspace();
+      if (!connected) {
+        return;
+      }
+    }
     setAutoBackupEnabled(enabled);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('google_sheets_auto_backup', String(enabled));

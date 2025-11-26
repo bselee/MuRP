@@ -255,7 +255,6 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({
     markEngaged(spotlight.id);
     const target = spotlight.ctaPage ?? 'Settings';
     navigateTo(target);
-    onClose();
   };
 
   const handleSpotlightLater = () => {
@@ -313,7 +312,6 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({
                   <Button
                     onClick={() => {
                       onSnooze(selectedSnooze);
-                      onClose();
                     }}
                     className="rounded-lg border border-amber-400/50 bg-amber-400/10 px-3 py-1 text-xs text-amber-100 hover:bg-amber-400/20"
                   >

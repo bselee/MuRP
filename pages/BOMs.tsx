@@ -226,11 +226,17 @@ const BOMs: React.FC<BOMsProps> = ({
     };
   }, []);
 
-  // Filter BOMs to remove those missing component data entirely
+  // Normalize BOMs so missing component arrays don't hide entire records
   const filteredBoms = useMemo(() => {
-    const filtered = boms.filter(bom => Array.isArray(bom.components) && bom.components.length > 0);
-    console.log(`[BOMs] Filtered ${boms.length} BOMs down to ${filtered.length}`);
-    return filtered;
+    const normalized = boms.map((bom) => ({
+      ...bom,
+      components: Array.isArray(bom.components) ? bom.components : [],
+    }));
+    const missingComponentCount = normalized.filter((bom) => bom.components.length === 0).length;
+    if (missingComponentCount > 0) {
+      console.warn(`[BOMs] ${missingComponentCount} BOM(s) have no component list yet, showing them with 0 components.`);
+    }
+    return normalized;
   }, [boms]);
 
   // Create inventory lookup map for O(1) access

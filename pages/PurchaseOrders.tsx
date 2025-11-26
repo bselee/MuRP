@@ -53,6 +53,7 @@ interface PurchaseOrdersProps {
     onOpsApproveRequisition: (reqId: string) => void;
     onRejectRequisition: (reqId: string) => void;
     onCreateRequisition: (items: RequisitionItem[], options: RequisitionRequestOptions) => void;
+    onConnectGoogle: () => Promise<boolean>;
 }
 
 type PoDraftConfig = {
@@ -128,7 +129,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const { 
         purchaseOrders, vendors, inventory, onCreatePo, addToast, currentUser, 
         approvedRequisitions, gmailConnection, onSendEmail, onUpdateTracking,
-        requisitions, users, onApproveRequisition, onOpsApproveRequisition, onRejectRequisition, onCreateRequisition
+        requisitions, users, onApproveRequisition, onOpsApproveRequisition, onRejectRequisition, onCreateRequisition,
+        onConnectGoogle,
     } = props;
     
     const [isCreatePoModalOpen, setIsCreatePoModalOpen] = useState(false);
@@ -702,6 +704,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     vendor={vendorMap.get(selectedPoForEmail.vendorId)!}
                     gmailConnection={gmailConnection}
                     addToast={addToast}
+                    onConnectGoogle={onConnectGoogle}
                 />
             )}
             
@@ -713,6 +716,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     vendor={vendorMap.get(selectedPoForComm.vendorId)!}
                     gmailConnection={gmailConnection}
                     addToast={addToast}
+                    onConnectGoogle={onConnectGoogle}
                 />
             )}
             

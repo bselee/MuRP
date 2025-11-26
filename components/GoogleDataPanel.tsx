@@ -86,6 +86,22 @@ const formatRelativeTime = (value?: string | Date | null): string => {
   return date.toLocaleDateString();
 };
 
+const isExpectedNoDataError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
+  const code = (error as any)?.code;
+  if (code && (code === 'PGRST116' || code === 'PGRST107' || code === '404' || code === '406')) {
+    return true;
+  }
+  const message = typeof (error as any)?.message === 'string' ? (error as any).message.toLowerCase() : '';
+  return (
+    message.includes('pgrst116') ||
+    message.includes('pgrst107') ||
+    message.includes('status 406') ||
+    message.includes('no rows') ||
+    message.includes('not found')
+  );
+};
+
 const GoogleDataPanel: React.FC<GoogleDataPanelProps> = ({ userId, gmailConnection, addToast }) => {
   const [workspaceStatus, setWorkspaceStatus] = useState<WorkspaceStatus>({
     isConnected: false,
@@ -187,27 +203,40 @@ const GoogleDataPanel: React.FC<GoogleDataPanelProps> = ({ userId, gmailConnecti
           expiresAt: status.expiresAt ?? null,
         });
       } else {
-        console.warn('[GoogleDataPanel] Failed to load workspace status:', workspaceResult.reason);
+        if (!isExpectedNoDataError(workspaceResult.reason)) {
+          console.warn('[GoogleDataPanel] Failed to load workspace status:', workspaceResult.reason);
+        }
+        setWorkspaceStatus({
+          isConnected: false,
+          scopes: [],
+          expiresAt: null,
+        });
       }
 
       if (calendarResult.status === 'fulfilled') {
         setCalendarStatus(calendarResult.value);
       } else {
-        console.warn('[GoogleDataPanel] Failed to load calendar status:', calendarResult.reason);
+        if (!isExpectedNoDataError(calendarResult.reason)) {
+          console.warn('[GoogleDataPanel] Failed to load calendar status:', calendarResult.reason);
+        }
         setCalendarStatus(DEFAULT_CALENDAR_STATUS);
       }
 
       if (sheetsResult.status === 'fulfilled') {
         setSheetsStatus(sheetsResult.value);
       } else {
-        console.warn('[GoogleDataPanel] Failed to load sheets status:', sheetsResult.reason);
+        if (!isExpectedNoDataError(sheetsResult.reason)) {
+          console.warn('[GoogleDataPanel] Failed to load sheets status:', sheetsResult.reason);
+        }
         setSheetsStatus(DEFAULT_SHEETS_STATUS);
       }
 
       if (docsResult.status === 'fulfilled') {
         setDocsStatus(docsResult.value);
       } else {
-        console.warn('[GoogleDataPanel] Failed to load docs status:', docsResult.reason);
+        if (!isExpectedNoDataError(docsResult.reason)) {
+          console.warn('[GoogleDataPanel] Failed to load docs status:', docsResult.reason);
+        }
         setDocsStatus(DEFAULT_DOCS_STATUS);
       }
     } catch (error) {
@@ -294,6 +323,11 @@ const GoogleDataPanel: React.FC<GoogleDataPanelProps> = ({ userId, gmailConnecti
           <p className="text-xs text-gray-500">
             {workspaceStatus.expiresAt ? `Renews ${formatRelativeTime(workspaceStatus.expiresAt)}` : 'Stored via Supabase tokens'}
           </p>
+          {!workspaceStatus.isConnected && !statusLoading && (
+            <p className="mt-2 text-xs text-amber-200">
+              No OAuth token detected. Use the Connect buttons below to link Google Workspace.
+            </p>
+          )}
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
@@ -314,6 +348,9 @@ const GoogleDataPanel: React.FC<GoogleDataPanelProps> = ({ userId, gmailConnecti
             <li>Push enabled on {calendarStatus.pushEnabledCount} calendars</li>
             <li>Timezone: {calendarStatus.timezone}</li>
           </ul>
+          {!calendarStatus.connectedSources && (
+            <p className="mt-3 text-xs text-amber-200">No Supabase calendar sources configured yet.</p>
+          )}
           <div className="mt-3 flex items-center justify-between">
             <p className="text-xs text-gray-500">
               Updated {calendarStatus.updatedAt ? formatRelativeTime(calendarStatus.updatedAt) : 'never'}
@@ -351,6 +388,9 @@ const GoogleDataPanel: React.FC<GoogleDataPanelProps> = ({ userId, gmailConnecti
             <li>Last export: {formatRelativeTime(sheetsStatus.lastExportAt)}</li>
             <li>Last backup: {formatRelativeTime(sheetsStatus.lastBackupAt)}</li>
           </ul>
+          {!sheetsStatus.spreadsheetId && (
+            <p className="mt-3 text-xs text-amber-200">No default spreadsheet on file yet.</p>
+          )}
           <div className="mt-3 flex items-center justify-between">
             <span className="text-xs text-gray-500">
               {sheetsStatus.spreadsheetId ? `Sheet ${sheetsStatus.spreadsheetId.slice(0, 6)}…` : 'No sheet linked'}
@@ -388,6 +428,9 @@ const GoogleDataPanel: React.FC<GoogleDataPanelProps> = ({ userId, gmailConnecti
             <li>Last doc export: {formatRelativeTime(docsStatus.lastDocUpdate)}</li>
             <li>Replies route through Gmail threads automatically.</li>
           </ul>
+          {!docsStatus.hasCompanyProfile && (
+            <p className="mt-3 text-xs text-amber-200">Complete your company profile to unlock Docs & templates.</p>
+          )}
           <div className="mt-3 flex flex-wrap gap-2">
             <Button
               variant="ghost"

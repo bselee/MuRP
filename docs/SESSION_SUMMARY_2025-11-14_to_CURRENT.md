@@ -2234,3 +2234,19 @@ WHERE setting_key = 'aftership_config';
 - ✅ Build: TypeScript compilation clean (vite build success in 6.50s)
 
 **Commit:** `fix(ui): correct BOM filtering to include single-component BOMs`
+
+---
+
+### Session: 2025-11-26 (Merge All)
+
+**Changes Made:**
+- **Database:** Added `supabase/migrations/000_initial_schema.sql` to fix missing base tables.
+- **Google Integration:** Added `GoogleWorkspaceStatusCard.tsx` and `useGoogleAuthPrompt.ts` for better auth flow.
+- **UI:** Updated `App.tsx`, `BOMs.tsx`, `PurchaseOrders.tsx`, and various components.
+- **Cleanup:** Removed temporary Supabase CLI files.
+
+**TFR Protocol Results:**
+- ✅ Tests: 12/12 passing
+- ✅ Build: TypeScript compilation clean
+
+**Commit:** `feat(app): merge all pending changes including google auth and db schema fixes`
