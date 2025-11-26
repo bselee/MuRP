@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
-import type { BillOfMaterials, Artwork, ProductRegistration, ProductDataSheet, Label, InventoryItem, ComplianceRecord } from '../types';
+import type { BillOfMaterials, Artwork, ProductRegistration, ProductDataSheet, Label, InventoryItem, ComplianceRecord, User, BomRevision } from '../types';
 import Modal from './Modal';
 import LabelScanResults from './LabelScanResults';
 import UploadArtworkModal from './UploadArtworkModal';
@@ -8,7 +8,7 @@ import RegistrationManagement from './RegistrationManagement';
 import AddRegistrationModal from './AddRegistrationModal';
 import ProductDataSheetGenerator from './ProductDataSheetGenerator';
 import StrategicBomMetrics, { type BuildabilityInfo } from './StrategicBomMetrics';
-import { useSupabaseLabels, useSupabaseComplianceRecords } from '../hooks/useSupabaseData';
+import { useSupabaseLabels, useSupabaseComplianceRecords, useBomRevisions } from '../hooks/useSupabaseData';
 import {
 CheckCircleIcon,
   ExclamationCircleIcon,
@@ -29,7 +29,10 @@ interface BomDetailModalProps {
   onClose: () => void;
   onUploadArtwork?: (bomId: string, artwork: Omit<Artwork, 'id'>) => void;
   onUpdateBom?: (updatedBom: BillOfMaterials) => void;
-  currentUser?: { id: string; email: string };
+  currentUser?: User;
+  onApproveRevision?: (bom: BillOfMaterials) => void;
+  onRevertRevision?: (bom: BillOfMaterials, revisionNumber: number) => void;
+  reviewers?: User[];
 }
 
 type TabType = 'components' | 'packaging' | 'labels' | 'datasheets' | 'registrations';
@@ -40,7 +43,10 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
   onClose,
   onUploadArtwork,
   onUpdateBom,
-  currentUser
+  currentUser,
+  onApproveRevision,
+  onRevertRevision,
+  reviewers = [],
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('components');
   const [selectedLabel, setSelectedLabel] = useState<Artwork | null>(null);
@@ -211,13 +217,17 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
     }
   };
 
-  const tabs = [
-    { id: 'components' as TabType, label: 'Components', icon: BeakerIcon },
-    { id: 'packaging' as TabType, label: 'Packaging Specs', icon: PackageIcon },
-    { id: 'labels' as TabType, label: 'Packaging & Labels', icon: DocumentTextIcon, count: labelArtwork.length },
-    { id: 'datasheets' as TabType, label: 'Data Sheets', icon: SparklesIcon, count: dataSheets.length },
-    { id: 'registrations' as TabType, label: 'Registrations', icon: ClipboardDocumentListIcon, count: bom.registrations?.length || 0 }
-  ];
+const tabs = [
+  { id: 'components' as TabType, label: 'Components', icon: BeakerIcon },
+  { id: 'packaging' as TabType, label: 'Packaging Specs', icon: PackageIcon },
+  { id: 'labels' as TabType, label: 'Packaging & Labels', icon: DocumentTextIcon, count: labelArtwork.length },
+  { id: 'datasheets' as TabType, label: 'Data Sheets', icon: SparklesIcon, count: dataSheets.length },
+  { id: 'registrations' as TabType, label: 'Registrations', icon: ClipboardDocumentListIcon, count: bom.registrations?.length || 0 }
+];
+const { data: revisionHistory, loading: revisionsLoading } = useBomRevisions(isOpen ? bom.id : null);
+const canApproveRevision = Boolean(currentUser && (currentUser.role === 'Admin' || currentUser.department === 'Operations'));
+const reviewerMap = useMemo(() => new Map(reviewers.map(user => [user.id, user])), [reviewers]);
+const assignedReviewer = bom.revisionReviewerId ? reviewerMap.get(bom.revisionReviewerId) : null;
 
   return (
     <>
@@ -229,6 +239,104 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
         size="large"
       >
         <div className="flex flex-col h-full">
+          <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-4 mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500">Revision</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <p className="text-2xl font-semibold text-white">REV {bom.revisionNumber ?? 1}</p>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      bom.revisionStatus === 'approved'
+                        ? 'bg-emerald-900/30 text-emerald-200 ring-1 ring-emerald-500/40'
+                        : 'bg-rose-900/30 text-rose-200 ring-1 ring-rose-500/40 animate-pulse'
+                    }`}
+                  >
+                    {bom.revisionStatus === 'approved' ? 'Approved' : 'Awaiting Ops Approval'}
+                  </span>
+                </div>
+                {bom.revisionSummary && (
+                  <p className="text-sm text-gray-400 mt-1">{bom.revisionSummary}</p>
+                )}
+                {bom.revisionRequestedAt && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Requested {new Date(bom.revisionRequestedAt).toLocaleString()}
+                  </p>
+                )}
+                {assignedReviewer && (
+                  <p className="text-xs text-gray-500">
+                    Assigned to {assignedReviewer.name} ({assignedReviewer.department})
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {bom.revisionStatus !== 'approved' && canApproveRevision && (
+                  <Button
+                    onClick={() => onApproveRevision?.(bom)}
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-500 transition-colors"
+                  >
+                    Approve Revision
+                  </Button>
+                )}
+                <Button
+                  onClick={() => setActiveTab('components')}
+                  className="px-4 py-2 bg-gray-800 text-gray-200 rounded-md hover:bg-gray-700 transition-colors"
+                >
+                  View Components
+                </Button>
+              </div>
+            </div>
+            <div className="mt-4">
+              <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Revision History</p>
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-800 divide-y divide-gray-800">
+                {revisionsLoading && (
+                  <div className="p-3 text-sm text-gray-400">Loading revisions…</div>
+                )}
+                {!revisionsLoading && revisionHistory.length === 0 && (
+                  <div className="p-3 text-sm text-gray-400">No prior revisions recorded.</div>
+                )}
+                {revisionHistory.map((revision: BomRevision) => (
+                  <div key={revision.id} className="p-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">
+                        REV {revision.revisionNumber}{' '}
+                        <span className="text-xs text-gray-500">
+                          • {new Date(revision.createdAt).toLocaleString()}
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {revision.summary || '—'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          revision.status === 'approved'
+                            ? 'bg-emerald-900/30 text-emerald-200'
+                            : revision.status === 'pending'
+                              ? 'bg-amber-900/30 text-amber-200'
+                              : 'bg-gray-700 text-gray-200'
+                        }`}
+                      >
+                        {revision.status}
+                      </span>
+                      {onRevertRevision &&
+                        revision.revisionNumber !== (bom.revisionNumber ?? 1) &&
+                        canApproveRevision && (
+                          <Button
+                            onClick={() => onRevertRevision(bom, revision.revisionNumber)}
+                            className="px-3 py-1 text-xs bg-gray-800 text-gray-200 rounded hover:bg-gray-700"
+                          >
+                            Revert
+                          </Button>
+                        )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Tab Navigation */}
           <div className="border-b border-gray-700 mb-6">
             <nav className="flex gap-2" aria-label="Tabs">

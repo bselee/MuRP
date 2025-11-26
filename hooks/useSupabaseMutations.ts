@@ -15,6 +15,7 @@ import type {
   BuildOrder,
   InternalRequisition,
   CreatePurchaseOrderInput,
+  BomRevisionRequestOptions,
 } from '../types';
 
 // ============================================================================
@@ -284,22 +285,93 @@ export async function updateBuildOrder(buildOrder: BuildOrder): Promise<{ succes
 }
 
 // ============================================================================
-// BOMS
+// BOMS & REVISION CONTROL
 // ============================================================================
 
-export async function updateBOM(bom: BillOfMaterials): Promise<{ success: boolean; error?: string }> {
+const mapBomToDbPayload = (bom: BillOfMaterials) => ({
+  finished_sku: bom.finishedSku,
+  name: bom.name,
+  components: bom.components as any,
+  artwork: bom.artwork as any,
+  packaging: bom.packaging as any,
+  barcode: bom.barcode ?? null,
+  description: bom.description ?? null,
+  category: bom.category ?? null,
+  yield_quantity: bom.yieldQuantity ?? null,
+  potential_build_qty: bom.potentialBuildQty ?? null,
+  average_cost: bom.averageCost ?? null,
+  notes: bom.notes ?? null,
+  data_source: bom.dataSource ?? 'manual',
+  last_sync_at: bom.lastSyncAt ?? null,
+  sync_status: bom.syncStatus ?? 'pending',
+  primary_label_id: bom.primaryLabelId ?? null,
+  primary_data_sheet_id: bom.primaryDataSheetId ?? null,
+  compliance_status: bom.complianceStatus ?? null,
+  total_state_registrations: bom.totalStateRegistrations ?? null,
+  expiring_registrations_count: bom.expiringRegistrationsCount ?? null,
+  compliance_last_checked: bom.complianceLastChecked ?? null,
+  build_time_minutes: bom.buildTimeMinutes ?? null,
+  labor_cost_per_hour: bom.laborCostPerHour ?? null,
+});
+
+export async function updateBOM(
+  bom: BillOfMaterials,
+  options: BomRevisionRequestOptions & { requestedBy?: string } = {}
+): Promise<{ success: boolean; error?: string }> {
   try {
+    const requestedBy = options.requestedBy ?? null;
+    const reviewerId = options.reviewerId ?? null;
+    const summary = options.summary ?? 'Manual update';
+    const autoApprove = Boolean(options.autoApprove);
+    const nextRevisionNumber = (bom.revisionNumber ?? 1) + 1;
+    const revisionStatus = autoApprove ? 'approved' : 'pending';
+    const now = new Date().toISOString();
+    const dbPayload = mapBomToDbPayload(bom);
+    const snapshotPayload = {
+      ...dbPayload,
+      revision_number: nextRevisionNumber,
+      revision_status: revisionStatus,
+      id: bom.id,
+    };
+
+    const { error: revisionError } = await supabase
+      .from('bom_revisions')
+      .insert({
+        bom_id: bom.id,
+        revision_number: nextRevisionNumber,
+        status: revisionStatus,
+        summary,
+        change_summary: options.changeType ?? null,
+        snapshot: snapshotPayload,
+        created_by: requestedBy,
+        reviewer_id: reviewerId,
+        approved_by: autoApprove ? requestedBy : null,
+        approved_at: autoApprove ? now : null,
+      });
+
+    if (revisionError) throw revisionError;
+
+    const updatePayload: Record<string, any> = {
+      ...dbPayload,
+      revision_number: nextRevisionNumber,
+      revision_status: revisionStatus,
+      revision_summary: summary,
+      revision_requested_by: requestedBy,
+      revision_requested_at: now,
+      revision_reviewer_id: reviewerId,
+      revision_approved_by: autoApprove ? requestedBy : null,
+      revision_approved_at: autoApprove ? now : null,
+      updated_at: now,
+    };
+
+    if (autoApprove) {
+      updatePayload.last_approved_at = now;
+      updatePayload.last_approved_by = requestedBy;
+    }
+
     const { error } = await supabase
       .from('boms')
-      .update({
-        finished_sku: bom.finishedSku,
-        name: bom.name,
-        components: bom.components as any,
-        artwork: bom.artwork as any,
-        packaging: bom.packaging as any,
-        barcode: bom.barcode,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', bom.id);
 
     if (error) throw error;
@@ -307,6 +379,114 @@ export async function updateBOM(bom: BillOfMaterials): Promise<{ success: boolea
   } catch (error) {
     console.error('[updateBOM] Error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Failed to update BOM' };
+  }
+}
+
+export async function approveBomRevision(
+  bom: BillOfMaterials,
+  approverId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const revisionNumber = bom.revisionNumber ?? 1;
+    const now = new Date().toISOString();
+
+    const { error: revisionError } = await supabase
+      .from('bom_revisions')
+      .update({
+        status: 'approved',
+        approved_by: approverId,
+        approved_at: now,
+      })
+      .eq('bom_id', bom.id)
+      .eq('revision_number', revisionNumber);
+
+    if (revisionError) throw revisionError;
+
+    const { error } = await supabase
+      .from('boms')
+      .update({
+        revision_number: revisionNumber,
+        revision_status: 'approved',
+        revision_approved_by: approverId,
+        revision_approved_at: now,
+        last_approved_at: now,
+        last_approved_by: approverId,
+        updated_at: now,
+      })
+      .eq('id', bom.id);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('[approveBomRevision] Error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to approve BOM revision' };
+  }
+}
+
+export async function revertBomToRevision(
+  bom: BillOfMaterials,
+  targetRevisionNumber: number,
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data: targetRevision, error: fetchError } = await supabase
+      .from('bom_revisions')
+      .select('*')
+      .eq('bom_id', bom.id)
+      .eq('revision_number', targetRevisionNumber)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const snapshot = targetRevision?.snapshot;
+    if (!snapshot) throw new Error('Revision snapshot unavailable');
+
+    const now = new Date().toISOString();
+    const nextRevisionNumber = (bom.revisionNumber ?? 1) + 1;
+
+    const { error: insertError } = await supabase
+      .from('bom_revisions')
+      .insert({
+        bom_id: bom.id,
+        revision_number: nextRevisionNumber,
+        status: 'approved',
+        summary: `Reverted to REV ${targetRevisionNumber}`,
+        snapshot,
+        created_by: userId,
+        reviewer_id: userId,
+        approved_by: userId,
+        approved_at: now,
+        reverted_from_revision_id: targetRevision.id,
+      });
+
+    if (insertError) throw insertError;
+
+    const updatePayload: Record<string, any> = {
+      ...(snapshot as Record<string, any>),
+      revision_number: nextRevisionNumber,
+      revision_status: 'approved',
+      revision_summary: `Reverted to REV ${targetRevisionNumber}`,
+      revision_requested_by: userId,
+      revision_requested_at: now,
+      revision_reviewer_id: userId,
+      revision_approved_by: userId,
+      revision_approved_at: now,
+      last_approved_at: now,
+      last_approved_by: userId,
+      updated_at: now,
+    };
+
+    const { error: updateError } = await supabase
+      .from('boms')
+      .update(updatePayload)
+      .eq('id', bom.id);
+
+    if (updateError) throw updateError;
+
+    return { success: true };
+  } catch (error) {
+    console.error('[revertBomToRevision] Error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to revert BOM revision' };
   }
 }
 

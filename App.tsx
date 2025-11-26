@@ -51,6 +51,8 @@ import {
   createRequisition,
   updateRequisitionStatus,
   updatePurchaseOrderStatus,
+  approveBomRevision,
+  revertBomToRevision,
 } from './hooks/useSupabaseMutations';
 import {
     mockHistoricalSales,
@@ -80,7 +82,7 @@ import type {
     POTrackingStatus,
     RequisitionRequestOptions,
     QuickRequestDefaults,
-    ArtworkShareEvent,
+    BomRevisionRequestOptions,
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
 import { getGoogleAuthService } from './services/googleAuthService';
@@ -135,7 +137,6 @@ const AppShell: React.FC = () => {
   const [aiConfig, setAiConfig] = usePersistentState<AiConfig>('aiConfig', defaultAiConfig);
   const [aiSettings, setAiSettings] = usePersistentState<AiSettings>('aiSettings', getDefaultAiSettings());
   const [artworkFolders, setArtworkFolders] = usePersistentState<ArtworkFolder[]>('artworkFolders', mockArtworkFolders);
-  const [artworkShareHistory, setArtworkShareHistory] = usePersistentState<ArtworkShareEvent[]>('artworkShareHistory', []);
   
   const {
     isOpen: isAiAssistantOpen,
@@ -657,61 +658,68 @@ const AppShell: React.FC = () => {
     addToast(`${order.id} marked as completed. Inventory updated.`, 'success');
   };
 
-  const handleUpdateBom = async (updatedBom: BillOfMaterials) => {
-    // 🔥 Update in Supabase
-    const result = await updateBOM(updatedBom);
+  const handleUpdateBom = async (
+    updatedBom: BillOfMaterials,
+    options: BomRevisionRequestOptions = {}
+  ): Promise<boolean> => {
+    if (!currentUser) {
+      addToast('You must be signed in to update BOMs.', 'error');
+      return false;
+    }
+
+    const result = await updateBOM(updatedBom, {
+      ...options,
+      requestedBy: currentUser.id,
+    });
+
     if (!result.success) {
       addToast(`Failed to update BOM: ${result.error}`, 'error');
-      return;
+      return false;
     }
 
     refetchBOMs();
-    addToast(`Successfully updated BOM for ${updatedBom.name}.`, 'success');
+    addToast(
+      options.autoApprove
+        ? `BOM for ${updatedBom.name} updated and auto-approved.`
+        : `BOM update for ${updatedBom.name} submitted for Ops approval.`,
+      options.autoApprove ? 'success' : 'info'
+    );
+    return true;
   };
 
-  const handleAddArtworkToBom = async (bomId: string, artworkPayload: Omit<Artwork, 'id'>) => {
-    const bom = boms.find(b => b.id === bomId || b.finishedSku === bomId);
+  const handleAddArtworkToBom = async (finishedSku: string, fileName: string) => {
+    const bom = boms.find(b => b.finishedSku === finishedSku);
     if (!bom) {
-      addToast('Could not add artwork: BOM not found.', 'error');
+      addToast(`Could not add artwork: BOM with SKU ${finishedSku} not found.`, 'error');
       return;
     }
 
-    const highestRevision = bom.artwork.reduce((max, art) => Math.max(max, art.revision || 0), 0);
-    const resolvedRevision =
-      typeof artworkPayload.revision === 'number' && !Number.isNaN(artworkPayload.revision)
-        ? artworkPayload.revision
-        : Number((highestRevision + 0.01).toFixed(2));
-
-    const generatedId =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `art-${Date.now()}`;
+    const highestRevision = bom.artwork.reduce((max, art) => Math.max(max, art.revision), 0);
 
     const newArtwork: Artwork = {
-      id: generatedId,
-      fileName: artworkPayload.fileName || `Artwork Rev ${resolvedRevision}`,
-      uploadedAt: artworkPayload.uploadedAt ?? new Date().toISOString(),
-      uploadedBy: artworkPayload.uploadedBy ?? currentUser?.id,
-      fileType: artworkPayload.fileType ?? 'artwork',
-      verified: artworkPayload.verified ?? false,
-      status: artworkPayload.status ?? 'draft',
-      ...artworkPayload,
-      revision: resolvedRevision,
+      id: `art-${Date.now()}`,
+      fileName,
+      revision: highestRevision + 1,
+      url: `/art/${fileName.replace(/\s+/g, '-').toLowerCase()}-v${highestRevision + 1}.pdf`, // Mock URL
+      verified: false,
+      fileType: 'artwork',
+      uploadedBy: currentUser?.id,
+      uploadedAt: new Date().toISOString(),
     };
-
+    
     const updatedBom = {
       ...bom,
       artwork: [...bom.artwork, newArtwork],
     };
 
-    const result = await updateBOM(updatedBom);
-    if (!result.success) {
-      addToast(`Failed to add artwork: ${result.error}`, 'error');
+    const success = await handleUpdateBom(updatedBom, {
+      summary: `Attached artwork ${fileName}`,
+      changeType: 'artwork',
+    });
+    if (!success) {
       return;
     }
 
-    refetchBOMs();
-    addToast(`Uploaded '${newArtwork.fileName}' (Rev ${newArtwork.revision}) to ${bom.name}.`, 'success');
     navigateToPage('Artwork');
   };
 
@@ -798,25 +806,47 @@ const AppShell: React.FC = () => {
       artwork: updatedArtwork,
     };
 
-    // 🔥 Update in Supabase
-    const result = await updateBOM(updatedBom);
-    if (!result.success) {
-      addToast(`Failed to update artwork: ${result.error}`, 'error');
+    const success = await handleUpdateBom(updatedBom, {
+      summary: 'Artwork metadata updated',
+      changeType: 'artwork',
+    });
+    if (success) {
+      addToast('Artwork updated.', 'success');
+    }
+  };
+
+  const handleApproveBom = async (bom: BillOfMaterials) => {
+    if (!currentUser) {
+      addToast('You must be signed in to approve revisions.', 'error');
       return;
     }
-
+    const result = await approveBomRevision(bom, currentUser.id);
+    if (!result.success) {
+      addToast(`Failed to approve revision: ${result.error}`, 'error');
+      return;
+    }
     refetchBOMs();
-    addToast('Artwork updated.', 'success');
+    addToast(`Revision ${bom.revisionNumber ?? ''} approved.`, 'success');
+  };
+
+  const handleRevertBom = async (bom: BillOfMaterials, targetRevision: number) => {
+    if (!currentUser) {
+      addToast('You must be signed in to revert revisions.', 'error');
+      return;
+    }
+    const result = await revertBomToRevision(bom, targetRevision, currentUser.id);
+    if (!result.success) {
+      addToast(`Failed to revert BOM: ${result.error}`, 'error');
+      return;
+    }
+    refetchBOMs();
+    addToast(`Reverted ${bom.finishedSku} to REV ${targetRevision}.`, 'success');
   };
   
   const handleCreateArtworkFolder = (name: string) => {
     const newFolder: ArtworkFolder = { id: `folder-${Date.now()}`, name };
     setArtworkFolders(prev => [...prev, newFolder]);
     addToast(`Folder "${name}" created successfully.`, 'success');
-  };
-
-  const handleRecordArtworkShare = (event: ArtworkShareEvent) => {
-    setArtworkShareHistory(prev => [...prev, event]);
   };
 
   const handleCreateRequisition = async (
@@ -1566,6 +1596,8 @@ const AppShell: React.FC = () => {
           currentUser={currentUser}
           watchlist={watchlist}
           onUpdateBom={handleUpdateBom}
+          onApproveRevision={handleApproveBom}
+          onRevertToRevision={handleRevertBom}
           onNavigateToArtwork={navigateToArtwork}
           onNavigateToInventory={handleNavigateToInventory}
           onUploadArtwork={handleAddArtworkToBom}
@@ -1573,12 +1605,11 @@ const AppShell: React.FC = () => {
           onCreateBuildOrder={handleCreateBuildOrder}
           addToast={addToast}
           onQuickRequest={openQuickRequestDrawer}
+          users={userProfiles}
         />;
       case 'Artwork':
         return <ArtworkPage 
             boms={boms}
-            inventory={inventory}
-            vendors={vendors}
             onAddArtwork={handleAddArtworkToBom}
             onCreatePoFromArtwork={handleCreatePoFromArtwork}
             onUpdateArtwork={handleUpdateArtwork}
@@ -1589,10 +1620,6 @@ const AppShell: React.FC = () => {
             artworkFolders={artworkFolders}
             onCreateArtworkFolder={handleCreateArtworkFolder}
             currentUser={currentUser}
-            gmailConnection={gmailConnection}
-            addToast={addToast}
-            artworkShareHistory={artworkShareHistory}
-            onRecordArtworkShare={handleRecordArtworkShare}
         />;
       case 'API Documentation':
           return <ApiDocs />;

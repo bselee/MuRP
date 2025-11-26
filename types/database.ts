@@ -81,6 +81,236 @@ export interface Database {
           }
         ]
       }
+      bom_revisions: {
+        Row: {
+          id: string
+          bom_id: string
+          revision_number: number
+          status: string
+          summary?: string | null
+          change_summary?: string | null
+          change_diff?: Json | null
+          snapshot: Json
+          created_by?: string | null
+          created_at: string
+          reviewer_id?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          reverted_from_revision_id?: string | null
+          approval_notes?: string | null
+          metadata?: Json | null
+        }
+        Insert: {
+          id?: string
+          bom_id: string
+          revision_number: number
+          status?: string
+          summary?: string | null
+          change_summary?: string | null
+          change_diff?: Json | null
+          snapshot: Json
+          created_by?: string | null
+          created_at?: string
+          reviewer_id?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          reverted_from_revision_id?: string | null
+          approval_notes?: string | null
+          metadata?: Json | null
+        }
+        Update: {
+          bom_id?: string
+          revision_number?: number
+          status?: string
+          summary?: string | null
+          change_summary?: string | null
+          change_diff?: Json | null
+          snapshot?: Json
+          created_by?: string | null
+          created_at?: string
+          reviewer_id?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          reverted_from_revision_id?: string | null
+          approval_notes?: string | null
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'bom_revisions_bom_id_fkey'
+            columns: ['bom_id']
+            referencedRelation: 'boms'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      artwork_assets: {
+        Row: {
+          id: string
+          legacy_id?: string | null
+          file_name: string
+          file_type: string
+          status: string
+          revision: number
+          storage_path?: string | null
+          download_url?: string | null
+          preview_url?: string | null
+          barcode?: string | null
+          notes?: string | null
+          metadata?: Json | null
+          rtp_flag?: boolean
+          uploaded_by?: string | null
+          uploaded_at: string
+          updated_at: string
+          last_edited_by?: string | null
+          last_edited_at?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          approval_notes?: string | null
+          is_archived?: boolean
+        }
+        Insert: {
+          id?: string
+          legacy_id?: string | null
+          file_name: string
+          file_type?: string
+          status?: string
+          revision?: number
+          storage_path?: string | null
+          download_url?: string | null
+          preview_url?: string | null
+          barcode?: string | null
+          notes?: string | null
+          metadata?: Json | null
+          rtp_flag?: boolean
+          uploaded_by?: string | null
+          uploaded_at?: string
+          updated_at?: string
+          last_edited_by?: string | null
+          last_edited_at?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          approval_notes?: string | null
+          is_archived?: boolean
+        }
+        Update: {
+          legacy_id?: string | null
+          file_name?: string
+          file_type?: string
+          status?: string
+          revision?: number
+          storage_path?: string | null
+          download_url?: string | null
+          preview_url?: string | null
+          barcode?: string | null
+          notes?: string | null
+          metadata?: Json | null
+          rtp_flag?: boolean
+          uploaded_by?: string | null
+          uploaded_at?: string
+          updated_at?: string
+          last_edited_by?: string | null
+          last_edited_at?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          approval_notes?: string | null
+          is_archived?: boolean
+        }
+        Relationships: []
+      }
+      bom_artwork_assets: {
+        Row: {
+          id: string
+          bom_id: string
+          asset_id: string
+          usage_type: string
+          workflow_state: string
+          is_primary: boolean
+          attached_at: string
+          attached_by?: string | null
+          notes?: string | null
+        }
+        Insert: {
+          id?: string
+          bom_id: string
+          asset_id: string
+          usage_type?: string
+          workflow_state?: string
+          is_primary?: boolean
+          attached_at?: string
+          attached_by?: string | null
+          notes?: string | null
+        }
+        Update: {
+          bom_id?: string
+          asset_id?: string
+          usage_type?: string
+          workflow_state?: string
+          is_primary?: boolean
+          attached_at?: string
+          attached_by?: string | null
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'bom_artwork_assets_asset_id_fkey'
+            columns: ['asset_id']
+            referencedRelation: 'artwork_assets'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'bom_artwork_assets_bom_id_fkey'
+            columns: ['bom_id']
+            referencedRelation: 'boms'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      asset_compliance_checks: {
+        Row: {
+          id: string
+          asset_id: string
+          check_type: string
+          jurisdiction?: string | null
+          status: string
+          findings?: Json | null
+          created_at: string
+          checked_at?: string | null
+          checked_by?: string | null
+          metadata?: Json | null
+        }
+        Insert: {
+          id?: string
+          asset_id: string
+          check_type: string
+          jurisdiction?: string | null
+          status?: string
+          findings?: Json | null
+          created_at?: string
+          checked_at?: string | null
+          checked_by?: string | null
+          metadata?: Json | null
+        }
+        Update: {
+          asset_id?: string
+          check_type?: string
+          jurisdiction?: string | null
+          status?: string
+          findings?: Json | null
+          created_at?: string
+          checked_at?: string | null
+          checked_by?: string | null
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'asset_compliance_checks_asset_id_fkey'
+            columns: ['asset_id']
+            referencedRelation: 'artwork_assets'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       vendors: {
         Row: {
           id: string
@@ -295,6 +525,16 @@ export interface Database {
           compliance_last_checked?: string
           created_at?: string
           updated_at?: string
+          revision_number?: number
+          revision_status?: string
+          revision_summary?: string | null
+          revision_requested_by?: string | null
+          revision_requested_at?: string | null
+          revision_reviewer_id?: string | null
+          revision_approved_by?: string | null
+          revision_approved_at?: string | null
+          last_approved_at?: string | null
+          last_approved_by?: string | null
         }
         Insert: {
           id?: string
@@ -321,6 +561,16 @@ export interface Database {
           compliance_last_checked?: string
           created_at?: string
           updated_at?: string
+          revision_number?: number
+          revision_status?: string
+          revision_summary?: string | null
+          revision_requested_by?: string | null
+          revision_requested_at?: string | null
+          revision_reviewer_id?: string | null
+          revision_approved_by?: string | null
+          revision_approved_at?: string | null
+          last_approved_at?: string | null
+          last_approved_by?: string | null
         }
         Update: {
           finished_sku?: string
@@ -345,6 +595,16 @@ export interface Database {
           expiring_registrations_count?: number
           compliance_last_checked?: string
           updated_at?: string
+          revision_number?: number
+          revision_status?: string
+          revision_summary?: string | null
+          revision_requested_by?: string | null
+          revision_requested_at?: string | null
+          revision_reviewer_id?: string | null
+          revision_approved_by?: string | null
+          revision_approved_at?: string | null
+          last_approved_at?: string | null
+          last_approved_by?: string | null
         }
         Relationships: []
       }

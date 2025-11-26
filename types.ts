@@ -118,6 +118,60 @@ export interface Artwork {
 
 export type ArtworkEditorTool = 'brush' | 'text' | 'eraser';
 
+export interface ArtworkAsset {
+  id: string;
+  legacyId?: string;
+  fileName: string;
+  fileType: Artwork['fileType'];
+  status: Artwork['status'];
+  revision: number;
+  downloadUrl?: string;
+  notes?: string | null;
+  barcode?: string | null;
+  metadata?: Record<string, any>;
+  uploadedBy?: string | null;
+  uploadedAt?: string;
+  updatedAt?: string;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
+  approvalNotes?: string | null;
+  isArchived?: boolean;
+}
+
+export interface BomArtworkAssetLink {
+  asset: ArtworkAsset;
+  usageType?: string;
+  workflowState?: string;
+  isPrimary?: boolean;
+}
+
+export type BomRevisionStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'reverted' | 'superseded';
+
+export interface BomRevision {
+  id: string;
+  bomId: string;
+  revisionNumber: number;
+  status: BomRevisionStatus;
+  summary?: string | null;
+  changeSummary?: string | null;
+  changeDiff?: Record<string, any> | null;
+  snapshot: BillOfMaterials;
+  createdBy?: string | null;
+  createdAt: string;
+  reviewerId?: string | null;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
+  revertedFromRevisionId?: string | null;
+  approvalNotes?: string | null;
+}
+
+export interface BomRevisionRequestOptions {
+  summary?: string;
+  reviewerId?: string | null;
+  autoApprove?: boolean;
+  changeType?: 'components' | 'artwork' | 'packaging' | 'compliance' | 'metadata';
+}
+
 export interface ArtworkFolder {
     id: string;
     name: string;
@@ -571,6 +625,7 @@ export interface BillOfMaterials {
   name: string;
   components: BOMComponent[];
   artwork: Artwork[];
+  artworkAssets?: BomArtworkAssetLink[];
   packaging: Packaging;
   barcode?: string;
   // Enhanced fields for sync and tracking
@@ -595,6 +650,18 @@ export interface BillOfMaterials {
   // Production metadata
   buildTimeMinutes?: number;
   laborCostPerHour?: number;
+
+  // Revision + approval tracking
+  revisionNumber?: number;
+  revisionStatus?: BomRevisionStatus;
+  revisionSummary?: string | null;
+  revisionRequestedBy?: string | null;
+  revisionRequestedAt?: string | null;
+  revisionReviewerId?: string | null;
+  revisionApprovedBy?: string | null;
+  revisionApprovedAt?: string | null;
+  lastApprovedAt?: string | null;
+  lastApprovedBy?: string | null;
 
   // Legacy compliance fields (deprecated, use compliance_records table instead)
   complianceStatusId?: string; // Links to ComplianceStatus in regulatory cache

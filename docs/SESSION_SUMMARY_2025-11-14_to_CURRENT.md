@@ -52,6 +52,13 @@ Migration 045: billing_infrastructure.sql
 └── subscription_events (audit trail for billing changes)
 ```
 
+```
+Migration 046: bom_revisions_and_dam.sql
+├── bom_revisions (snapshot history + approval metadata)
+├── artwork_assets / bom_artwork_assets (normalized DAM layer w/ trigger)
+└── asset_compliance_checks (per-asset state tracking)
+```
+
 ### Current Uncommitted Changes
 - `docs/DAM_INTEGRATION.md` - RegVault vision + MuRP gap analysis
 - `docs/SESSION_SUMMARY_*` - This documentation update
@@ -88,6 +95,13 @@ Raw Schema → Parsed Schema → Database Schema → Display Schema
 ### Session: November 26, 2025 (Current)
 
 **Changes Made:**
+- Added: BOM revision control + Ops approval workflow
+  - New `bom_revisions` table with immutable snapshots and revert path
+  - `boms` now carry `revision_number`, status, and reviewer metadata surfaced in UI (pills + Ops-only approve buttons)
+  - BOM edit modal captures change summaries, assigns reviewers, and routes approvals/glowy pill states automatically
+- Added: Artwork DAM normalization layer
+  - Created `artwork_assets`, `bom_artwork_assets`, and `asset_compliance_checks` tables with sync trigger on `boms.artwork`
+  - Artwork/label data now mirrored into the canonical DAM tables so the add-on can stay self-contained
 - Updated: `docs/DAM_INTEGRATION.md` - Added MuRP vs RegVault gap analysis section
   - Mapped 5 feature areas: Artwork/DAM, Registration Autopilot, Compliance Scoring, Predictive Signals, Tenant Support
   - Documented current MuRP schema limitations and RegVault target state
@@ -2205,4 +2219,3 @@ WHERE setting_key = 'aftership_config';
 **Open Questions:**
 - Should timeline view become default for Production page after user adoption?
 - Add export functionality to timeline view (PNG/PDF)?
-

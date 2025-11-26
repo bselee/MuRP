@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import Button from '@/components/ui/Button';
-import type { BillOfMaterials, User, WatchlistItem, Artwork } from '../types';
+import type { BillOfMaterials, User, WatchlistItem, Artwork, InventoryItem } from '../types';
 import type { ComplianceStatus } from '../types/regulatory';
 import { PencilIcon, ChevronDownIcon, EyeIcon } from '../components/icons';
 import BomEditModal from '../components/BomEditModal';
@@ -16,6 +16,10 @@ interface BOMsProps {
   onUpdateBom: (updatedBom: BillOfMaterials) => void;
   onNavigateToArtwork: (filter: string) => void;
   onUploadArtwork?: (bomId: string, artwork: Omit<Artwork, 'id'>) => void;
+  inventory?: InventoryItem[];
+  users?: User[];
+  onApproveRevision?: (bom: BillOfMaterials) => void;
+  onRevertToRevision?: (bom: BillOfMaterials, revisionNumber: number) => void;
 }
 
 const BOMs: React.FC<BOMsProps> = ({
@@ -24,7 +28,11 @@ const BOMs: React.FC<BOMsProps> = ({
   watchlist,
   onUpdateBom,
   onNavigateToArtwork,
-  onUploadArtwork
+  onUploadArtwork,
+  inventory = [],
+  users = [],
+  onApproveRevision,
+  onRevertToRevision,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
@@ -197,6 +205,9 @@ const BOMs: React.FC<BOMsProps> = ({
             onClose={handleCloseModal}
             bom={selectedBom}
             onSave={onUpdateBom}
+            inventory={inventory}
+            reviewers={users}
+            currentUser={currentUser}
         />
       )}
 
@@ -215,6 +226,9 @@ const BOMs: React.FC<BOMsProps> = ({
           onUploadArtwork={onUploadArtwork}
           onUpdateBom={onUpdateBom}
           currentUser={currentUser}
+          onApproveRevision={onApproveRevision}
+          onRevertRevision={onRevertToRevision}
+          reviewers={users}
         />
       )}
     </div>

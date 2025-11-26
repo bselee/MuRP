@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Button from '@/components/ui/Button';
-import type { BillOfMaterials, BOMComponent, Artwork, Packaging, InventoryItem } from '../types';
+import type { BillOfMaterials, BOMComponent, Artwork, Packaging, InventoryItem, User, BomRevisionRequestOptions } from '../types';
 import Modal from './Modal';
 import { TrashIcon, PlusCircleIcon, MagnifyingGlassIcon, XCircleIcon, ExclamationTriangleIcon, ArrowDownTrayIcon, ArrowUpTrayIcon } from './icons';
 
@@ -8,11 +8,21 @@ interface BomEditModalProps {
   bom: BillOfMaterials;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedBom: BillOfMaterials) => void;
+  onSave: (updatedBom: BillOfMaterials, options?: BomRevisionRequestOptions) => void;
   inventory?: InventoryItem[];
+  reviewers?: User[];
+  currentUser: User;
 }
 
-const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSave, inventory = [] }) => {
+const BomEditModal: React.FC<BomEditModalProps> = ({
+  bom,
+  isOpen,
+  onClose,
+  onSave,
+  inventory = [],
+  reviewers = [],
+  currentUser,
+}) => {
   const [editedBom, setEditedBom] = useState<BillOfMaterials>(bom);
   const [componentSearchQuery, setComponentSearchQuery] = useState('');
   const [showAddComponent, setShowAddComponent] = useState(false);
@@ -20,6 +30,14 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
   const [newComponentQuantity, setNewComponentQuantity] = useState<number>(1);
   const [newComponentUnit, setNewComponentUnit] = useState<string>('lbs');
   const [duplicateWarning, setDuplicateWarning] = useState<string>('');
+  const [changeSummary, setChangeSummary] = useState('');
+  const [selectedReviewerId, setSelectedReviewerId] = useState<string | null>(null);
+
+  const opsReviewers = useMemo(
+    () => reviewers.filter(user => user.department === 'Operations' || user.role === 'Admin'),
+    [reviewers]
+  );
+  const canAutoApprove = currentUser.department === 'Operations' || currentUser.role === 'Admin';
 
   useEffect(() => {
     // Reset state when the modal is opened with a new BOM
@@ -30,7 +48,9 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
     setNewComponentQuantity(1);
     setNewComponentUnit('lbs');
     setDuplicateWarning('');
-  }, [bom, isOpen]);
+    setChangeSummary('');
+    setSelectedReviewerId(opsReviewers[0]?.id ?? null);
+  }, [bom, isOpen, opsReviewers]);
 
   // Show all inventory items (don't exclude already-used ones)
   const availableInventory = useMemo(() => {
@@ -121,8 +141,13 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
     handleFieldChange('components', newComponents);
   };
 
-  const handleSaveChanges = () => {
-    onSave(editedBom);
+  const handleSaveChanges = (autoApprove = false) => {
+    onSave(editedBom, {
+      summary: changeSummary.trim() || 'BOM updated',
+      reviewerId: selectedReviewerId ?? undefined,
+      changeType: 'components',
+      autoApprove,
+    });
     onClose();
   };
 
@@ -608,10 +633,57 @@ const BomEditModal: React.FC<BomEditModalProps> = ({ bom, isOpen, onClose, onSav
           </div>
         </div>
 
+        {/* Revision Summary & Reviewer */}
+        <div className="bg-gray-900/30 rounded-lg p-4 border border-gray-700">
+          <h3 className="text-lg font-medium text-gray-200 mb-3">Revision Notes & Ops Routing</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col">
+              <label className="text-sm text-gray-400 mb-2">What changed?</label>
+              <textarea
+                value={changeSummary}
+                onChange={(e) => setChangeSummary(e.target.value)}
+                rows={3}
+                className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g., updated peat ratio + bag spec"
+              />
+              <p className="text-xs text-gray-500 mt-1">Ops uses this note when reviewing the new revision.</p>
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm text-gray-400 mb-2">Send approval request to</label>
+              <select
+                value={selectedReviewerId ?? ''}
+                onChange={(e) => setSelectedReviewerId(e.target.value || null)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Unassigned (Ops triage)</option>
+                {opsReviewers.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} • {user.department}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">If unassigned, Ops queue will pick it up.</p>
+            </div>
+          </div>
+        </div>
+
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
             <Button onClick={onClose} className="px-6 py-2.5 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-500 transition-colors">Cancel</Button>
-            <Button onClick={handleSaveChanges} className="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors">Save Changes</Button>
+            <Button
+              onClick={() => handleSaveChanges(false)}
+              className="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors"
+            >
+              Save & Request Ops Approval
+            </Button>
+            {canAutoApprove && (
+              <Button
+                onClick={() => handleSaveChanges(true)}
+                className="px-6 py-2.5 bg-emerald-600 text-white font-semibold rounded-md hover:bg-emerald-500 transition-colors"
+              >
+                Save & Approve
+              </Button>
+            )}
         </div>
       </div>
     </Modal>

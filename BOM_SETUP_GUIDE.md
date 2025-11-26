@@ -382,6 +382,42 @@ The BOMs page (`pages/BOMs.tsx`) can be enhanced with:
 
 ---
 
+## 🔐 Revision & Approval Workflow
+
+Every edit to a BOM now goes through the revision control pipeline so Ops can verify changes before production uses them.
+
+### Core Tables
+- `boms.revision_number` and `boms.revision_status` track the live state (pending vs approved).
+- `bom_revisions` holds the immutable audit trail with a JSON snapshot of each change set.
+- `bom_artwork_assets` + `artwork_assets` stay in sync via trigger so asset approvals map back to revisions.
+
+### Requesting Ops Approval
+1. Open any BOM and click **Edit**.
+2. Add a short summary of what changed (ex: “Peat ratio ↑ / bag spec = kraft 5lb”).
+3. Assign an Ops reviewer or leave unassigned to drop into the Ops queue.
+4. Click **Save & Request Ops Approval** – this bumps the revision pill to red (`REV N`) until Ops signs off.
+
+### Auto-Approval (Ops/Admin)
+If you belong to the Operations department or carry the Admin role you’ll see a **Save & Approve** button for low-risk tweaks. This immediately approves the revision and the pill glows green.
+
+### Approving & Reverting
+- Ops can approve from the BOM list, the detail modal, or the card view.
+- Previous revisions stay in the timeline; hit **Revert** in the detail modal to roll forward a prior snapshot (creates a new `REV` entry so history stays linear).
+
+---
+
+## 🧩 Artwork Normalization (DAM Ready)
+
+A normalized DAM layer now backs every artwork attachment:
+
+- **`artwork_assets`**: canonical asset record (status, revision, barcode, notes, timestamps).
+- **`bom_artwork_assets`**: attachment metadata (usage type, workflow state, primary flag).
+- **`asset_compliance_checks`**: hook for state-by-state verification runs.
+
+A trigger on `boms.artwork` keeps legacy JSON in sync with the new tables so the existing Artwork page keeps working while the RegVault DAM add-on can read/write from the normalized schema.
+
+---
+
 ## 🚀 Benefits
 
 ### **For Production Planning:**

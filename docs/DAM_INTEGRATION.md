@@ -1844,8 +1844,8 @@ License RegVault to other manufacturers, co-packers, consultants, or industry as
 
 ### 1. Artwork & DAM Layer
 - **RegVault expectation:** Dedicated DAM with reusable assets, RTP certification flags, barcode/AI metadata, and workflow-state assets that auto-attach inside registration workflows (`STEP 2 OF 5` mockup above).
-- **MuRP today:** Artwork is a JSON array embedded in `boms` (see `BOM_SETUP_GUIDE.md`), so files live inside each BOM record with minimal lifecycle tracking. No standalone asset table, version history, or cross-product reuse.
-- **Gap:** Need normalized `artwork_assets` table (versioning, approval status, RTP flags, document links) plus linking tables (`asset_boms`, `asset_compliance_checks`) before we can deliver true DAM behaviour.
+- **MuRP today:** JSON artwork still rides along with each BOM for backwards compatibility, but the new `artwork_assets`, `bom_artwork_assets`, and `asset_compliance_checks` tables now normalize every file with triggers that hydrate the DAM layer automatically.
+- **Next Step:** Shift the Artwork/DAM UI to read/write from the normalized tables (instead of the legacy JSON) so approvals, sharing, and compliance runs operate on the same canonical asset record.
 
 ### 2. Registration Autopilot
 - **RegVault expectation:** State portal profiles, fee engines, auto-filled forms, deficiency workflows, and document bundles.

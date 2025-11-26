@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions, QuickRequestDefaults, ComponentSwapMap } from '../types';
+import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions, QuickRequestDefaults, ComponentSwapMap, BomRevisionRequestOptions } from '../types';
 import type { ComplianceStatus } from '../types/regulatory';
 import {
   PencilIcon,
@@ -44,8 +44,11 @@ interface BOMsProps {
   boms: BillOfMaterials[];
   inventory: InventoryItem[];
   currentUser: User;
+  users: User[];
   watchlist: WatchlistItem[];
-  onUpdateBom: (updatedBom: BillOfMaterials) => void;
+  onUpdateBom: (updatedBom: BillOfMaterials, options?: BomRevisionRequestOptions) => void | Promise<boolean>;
+  onApproveRevision: (bom: BillOfMaterials) => void;
+  onRevertToRevision: (bom: BillOfMaterials, revisionNumber: number) => void;
   onNavigateToArtwork: (filter: string) => void;
   onNavigateToInventory?: (sku: string) => void;
   onUploadArtwork?: (bomId: string, artwork: Omit<Artwork, 'id'>) => void;
@@ -93,8 +96,11 @@ const BOMs: React.FC<BOMsProps> = ({
   boms,
   inventory,
   currentUser,
+  users,
   watchlist,
   onUpdateBom,
+  onApproveRevision,
+  onRevertToRevision,
   onNavigateToArtwork,
   onNavigateToInventory,
   onUploadArtwork,
@@ -119,6 +125,22 @@ const BOMs: React.FC<BOMsProps> = ({
   const canViewBoms = permissions.canViewBoms;
   const canEdit = permissions.canEditBoms;
   const canSubmitRequisitions = permissions.canSubmitRequisition;
+  const isOpsApprover = currentUser.role === 'Admin' || currentUser.department === 'Operations';
+
+  const revisionPillClass = (status?: string) =>
+    status === 'approved'
+      ? 'bg-emerald-900/30 text-emerald-200 border border-emerald-600/40'
+      : 'bg-rose-900/30 text-rose-200 border border-rose-500/40 animate-pulse';
+
+  const renderRevisionPill = (bom: BillOfMaterials) => (
+    <span
+      className={`text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full ${revisionPillClass(
+        bom.revisionStatus
+      )}`}
+    >
+      REV {bom.revisionNumber ?? 1}
+    </span>
+  );
 
   // New UI state with persistent storage
   const [searchQuery, setSearchQuery] = useState('');
@@ -138,6 +160,12 @@ const BOMs: React.FC<BOMsProps> = ({
       localStorage.setItem('bomCategoryFilter', categoryFilter);
     }
   }, [buildabilityFilter, sortBy, groupBy, categoryFilter]);
+
+  const bomLookupBySku = useMemo(() => {
+    const map = new Map<string, BillOfMaterials>();
+    boms.forEach(bom => map.set(bom.finishedSku, bom));
+    return map;
+  }, [boms]);
   
   // Collapsible sections state
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
@@ -624,6 +652,10 @@ const BOMs: React.FC<BOMsProps> = ({
           inventoryMap={inventoryMap}
           canEdit={canEdit}
           userRole={currentUser.role}
+          canApprove={isOpsApprover}
+          onApproveRevision={() => onApproveRevision(bom)}
+          nestedBomLookup={bomLookupBySku}
+          onOpenNestedBom={(nestedBom) => handleViewDetails(nestedBom)}
           labels={labels}
           complianceRecords={complianceRecords}
           componentSwapMap={componentSwaps}
@@ -948,12 +980,15 @@ const BOMs: React.FC<BOMsProps> = ({
                       className="hover:bg-gray-800/50 transition-colors"
                     >
                       <td className="px-6 py-1 whitespace-nowrap">
-                        <Button
-                          onClick={() => onNavigateToInventory?.(bom.finishedSku)}
-                          className="text-sm font-bold font-mono text-white hover:text-indigo-400 transition-colors underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400"
-                        >
-                          {bom.finishedSku}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={() => onNavigateToInventory?.(bom.finishedSku)}
+                            className="text-sm font-bold font-mono text-white hover:text-indigo-400 transition-colors underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400"
+                          >
+                            {bom.finishedSku}
+                          </Button>
+                          {renderRevisionPill(bom)}
+                        </div>
                       </td>
                       <td className="px-6 py-1">
                         <div className="text-sm text-white">{bom.name}</div>
@@ -978,6 +1013,14 @@ const BOMs: React.FC<BOMsProps> = ({
                       </td>
                       <td className="px-6 py-1 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {isOpsApprover && bom.revisionStatus !== 'approved' && (
+                            <Button
+                              onClick={() => onApproveRevision(bom)}
+                              className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded transition-colors"
+                            >
+                              Approve REV {bom.revisionNumber}
+                            </Button>
+                          )}
                           <Button
                             onClick={() => handleViewDetails(bom)}
                             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
@@ -1011,6 +1054,8 @@ const BOMs: React.FC<BOMsProps> = ({
           bom={selectedBom}
           onSave={onUpdateBom}
           inventory={inventory}
+          reviewers={users}
+          currentUser={currentUser}
         />
       )}
 
@@ -1023,6 +1068,9 @@ const BOMs: React.FC<BOMsProps> = ({
           onUploadArtwork={onUploadArtwork}
           onUpdateBom={onUpdateBom}
           currentUser={currentUser}
+          onApproveRevision={onApproveRevision}
+          onRevertRevision={onRevertToRevision}
+          reviewers={users}
         />
       )}
 

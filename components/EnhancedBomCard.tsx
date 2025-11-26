@@ -37,12 +37,16 @@ interface EnhancedBomCardProps {
   inventoryMap: Map<string, InventoryItem>;
   canEdit: boolean;
   userRole: 'Admin' | 'Manager' | 'User'; // Role-based display
+  canApprove?: boolean;
+  nestedBomLookup?: Map<string, BillOfMaterials>;
   labels?: Label[]; // Labels from relational table
   complianceRecords?: ComplianceRecord[]; // Compliance records from relational table
   componentSwapMap?: ComponentSwapMap;
   onToggleExpand: () => void;
   onViewDetails: () => void;
   onEdit: () => void;
+  onApproveRevision?: () => void;
+  onOpenNestedBom?: (bom: BillOfMaterials) => void;
   onNavigateToInventory?: (sku: string) => void;
   onQuickBuild?: () => void;
   onQuickOrder?: () => void;
@@ -106,12 +110,16 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   inventoryMap,
   canEdit,
   userRole,
+  canApprove = false,
+  nestedBomLookup,
   labels = [],
   complianceRecords = [],
   componentSwapMap = {},
   onToggleExpand,
   onViewDetails,
   onEdit,
+  onApproveRevision,
+  onOpenNestedBom,
   onNavigateToInventory,
   onQuickBuild,
   onQuickOrder,
@@ -385,6 +393,10 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
     );
   };
   const hasSwapHints = bom.components?.some(component => Boolean(getSwapRuleForSku(component.sku)));
+  const isRevisionApproved = bom.revisionStatus === 'approved';
+  const revisionBadgeClass = isRevisionApproved
+    ? 'bg-emerald-900/30 text-emerald-200 border border-emerald-600/40'
+    : 'bg-rose-900/30 text-rose-200 border border-rose-500/40 animate-pulse';
 
   // Calculate financial metrics if available
   const totalMaterialCost = bom.components.reduce((sum, c) => {
@@ -452,6 +464,20 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                   >
                     {bom.finishedSku}
                   </Button>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wide ${revisionBadgeClass}`}>
+                    REV {bom.revisionNumber ?? 1}
+                  </span>
+                  {canApprove && !isRevisionApproved && onApproveRevision && (
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onApproveRevision();
+                      }}
+                      className="text-[10px] px-2 py-0.5 bg-emerald-700 text-white rounded-full hover:bg-emerald-600"
+                    >
+                      Approve
+                    </Button>
+                  )}
                   
                   <h4 className={`${bodyHeadingClass} !mb-0 whitespace-nowrap text-sm`}>{bom.name}</h4>
 
@@ -864,6 +890,12 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                   const isLimiting = buildability.limitingComponents.some(lc => lc.sku === c.sku);
                   const isOutOfStock = available === 0;
                   const hasSubstitutes = c.substitutes && c.substitutes.length > 0;
+                  const nestedBom = nestedBomLookup?.get(c.sku);
+                  const nestedTooltipLines = nestedBom?.components?.map((component) => {
+                    const amount = component.quantity !== undefined ? `${component.quantity}${component.unit ? ` ${component.unit}` : ''}` : '';
+                    return `${component.sku} — ${component.name ?? 'Unnamed'}${amount ? ` — ${amount}` : ''}`;
+                  }) ?? [];
+                  const nestedTooltipText = nestedTooltipLines.join('\n');
                   
                   const rowClass = isLimiting
                     ? limitingHighlight.row
@@ -906,6 +938,32 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                                 <span className={themeSwap('font-bold font-mono text-sm text-emerald-800', 'font-bold font-mono text-sm text-emerald-300')}>{c.sku}</span>
                               )}
                               <span className={themeSwap('text-sm text-gray-800', 'text-sm text-gray-200')}>— {c.name}</span>
+                              {nestedBom && (
+                                <div className="relative group flex-shrink-0">
+                                  <Button
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      onOpenNestedBom?.(nestedBom);
+                                    }}
+                                    className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full text-[10px] font-semibold hover:bg-blue-500/30 transition-colors"
+                                    title={nestedTooltipText || `View BOM ${nestedBom.finishedSku}`}
+                                  >
+                                    BOM
+                                  </Button>
+                                  {nestedTooltipLines.length > 0 && (
+                                    <div className="hidden group-hover:block absolute left-0 top-full mt-2 w-64 bg-slate-950 border border-slate-800 rounded-lg shadow-2xl z-40 p-3 text-left">
+                                      <p className="text-xs text-gray-400 mb-1">Ingredients</p>
+                                      <ul className="space-y-1 max-h-48 overflow-auto pr-1">
+                                        {nestedTooltipLines.map((line, lineIdx) => (
+                                          <li key={`${nestedBom.id}-line-${lineIdx}`} className="text-[11px] text-gray-100 font-mono">
+                                            {line}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
                             {/* Amount (Recipe Style) */}
