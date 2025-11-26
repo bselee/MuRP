@@ -1739,4 +1739,37 @@ License RegVault to other manufacturers, co-packers, consultants, or industry as
 
 ---
 
+## MuRP Schema vs. RegVault Vision Reference
+
+> Quick reference for mapping today’s MuRP implementation to the RegVault roadmap. Use this when prioritizing schema work or answering “what’s missing?” questions.
+
+### 1. Artwork & DAM Layer
+- **RegVault expectation:** Dedicated DAM with reusable assets, RTP certification flags, barcode/AI metadata, and workflow-state assets that auto-attach inside registration workflows (`STEP 2 OF 5` mockup above).
+- **MuRP today:** Artwork is a JSON array embedded in `boms` (see `BOM_SETUP_GUIDE.md`), so files live inside each BOM record with minimal lifecycle tracking. No standalone asset table, version history, or cross-product reuse.
+- **Gap:** Need normalized `artwork_assets` table (versioning, approval status, RTP flags, document links) plus linking tables (`asset_boms`, `asset_compliance_checks`) before we can deliver true DAM behaviour.
+
+### 2. Registration Autopilot
+- **RegVault expectation:** State portal profiles, fee engines, auto-filled forms, deficiency workflows, and document bundles.
+- **MuRP today:** `compliance_records` tracks registrations/certifications (`supabase/migrations/006_add_mcp_tables.sql`), and BOM summary columns count expiring registrations, but there’s no portal metadata, workflow states, or automation pipeline.
+- **Gap:** Introduce tables for `state_portal_profiles`, `registration_jobs`, and `deficiency_cases`, plus a service layer that populates `compliance_records` and generates submission packets.
+
+### 3. Compliance Intelligence & Scoring
+- **RegVault expectation:** Product-level compliance score that blends registrations, label checks, documentation freshness, reporting, and supply-chain signals.
+- **MuRP today:** Strong foundations (`state_regulations`, `compliance_checks`, `extraction_prompts`, `regulation_changes`), but no aggregated score per product and no historical snapshots.
+- **Gap:** Add a `product_compliance_scores` table (with timestamps, contributing metrics, and weights) and surface it in dashboards to match the scoring model described earlier.
+
+### 4. Predictive Signals
+- **RegVault expectation:** Multi-source signal collection, adoption cascade models, lifecycle predictions, and benchmarking data.
+- **MuRP today:** No signal ingestion tables yet; compliance data is authoritative but reactive.
+- **Gap:** Create `regulatory_signals`, `predicted_events`, and `benchmark_metrics` tables fed by MCP/LLM pipelines to unlock predictive + benchmarking phases.
+
+### 5. Tenant / White-Label Support
+- **RegVault expectation:** White-label deployments, partner branding, tenant isolation, and partner analytics.
+- **MuRP today:** Single-tenant assumptions—`user_profiles`, `boms`, `compliance_records` all belong to one org with no tenant key.
+- **Gap:** Long-term effort introducing `tenants`, partner-specific configs, and scoped data access before white-label/partner models become feasible.
+
+Keep this section updated as the schema evolves—especially when artwork normalization, registration workflows, or compliance scoring tables ship. It should serve as the canonical “current vs. target” map during exec reviews.
+
+---
+
 Want me to dive deeper into any of these features, create detailed API specifications, or start mapping out the technical implementation for a specific component?

@@ -1,8 +1,154 @@
-# Development Session Summary: November 14-24, 2025
+# Development Session Summary: November 14 - November 26, 2025
 
-**Period:** November 14-24, 2025 (10-day sprint)  
-**Status:** ✅ Production-Ready with Amazon PO Integration Planning + BOM Enhancements  
+**Period:** November 14-26, 2025 (12-day sprint)  
+**Status:** ✅ Production-Ready with Stripe Billing + Recipe-Style BOMs + Compliance Tier Pricing  
 **Project:** MuRP (Ultra Material Resource Planner) Manufacturing Resource Planning System
+
+---
+
+## Project Analysis - November 26, 2025
+
+### Codebase Statistics
+| Metric | Count |
+|--------|-------|
+| Components | 85 `.tsx` files |
+| Services | 59 `.ts` files |
+| Pages | 21 `.tsx` files |
+| Migrations | 45 SQL files |
+| Types | 1,529 lines in `types.ts` |
+| App Shell | 1,786 lines in `App.tsx` |
+
+### Recent Development (Nov 24-26, 2025)
+
+**Major Features Shipped:**
+1. **Stripe Billing Infrastructure** (commit `fd74588`)
+   - 4-tier pricing: Basic (free), Ops Pod ($140/mo), Full AI ($49/mo add-on), Enterprise (custom)
+   - `billing_plans`, `user_subscriptions`, `subscription_events` tables
+   - Stripe Checkout + Customer Portal integration via `billingService.ts`
+   - Full RLS policies for subscription data isolation
+
+2. **Recipe-Style BOM Cards** (commits `56e244f`, `de2c418`, `19148dd`)
+   - Ingredient substitution UI with swap icons
+   - 2-column responsive layout on large screens
+   - Persistent filtering with grouping and advanced sorting
+   - Compact card density with tooltips
+
+3. **RegVault Vision Documentation** (updated `DAM_INTEGRATION.md`)
+   - Brand identity: "Regulatory Intelligence. Asset Control. Print Confidence."
+   - Predictive Compliance™ architecture with signal collection layers
+   - MuRP-to-RegVault gap analysis (5 feature areas mapped)
+   - Schema evolution roadmap for artwork normalization, registration workflows, compliance scoring
+
+4. **Amazon Order Tracking** (commit `2180648`)
+   - ASIN extraction from Amazon URLs (5 regex patterns)
+   - Gmail bridge routing via `shipment-tracking@amazon.com`
+   - Requisition metadata enrichment with marketplace normalization
+
+### Schema Evolution
+```
+Migration 045: billing_infrastructure.sql
+├── billing_plans (pricing tiers with Stripe price keys)
+├── user_subscriptions (per-user plan assignments)
+└── subscription_events (audit trail for billing changes)
+```
+
+### Current Uncommitted Changes
+- `docs/DAM_INTEGRATION.md` - RegVault vision + MuRP gap analysis
+- `docs/SESSION_SUMMARY_*` - This documentation update
+- `src/index.css` - CSS cleanup (removed unused `.terms-markdown` styles)
+
+### Architecture Highlights
+
+**AI Gateway Tiers:**
+- Basic: Free Gemini access (100 messages/month)
+- Full AI: Premium models via Vercel AI Gateway (GPT-4o, Claude, Gemini Pro)
+- Automatic fallback from Gateway to direct Gemini on failure
+
+**Data Flow Pattern:**
+```
+Raw Schema → Parsed Schema → Database Schema → Display Schema
+(CSV/API)    (Zod validated)   (Supabase)        (UI components)
+```
+
+**Service Layer Resilience:**
+- Rate limiting with request queuing (`rateLimiter.ts`)
+- Circuit breaker for failure detection (`circuitBreaker.ts`)
+- Exponential backoff retry logic (`retryWithBackoff.ts`)
+- Secure proxy pattern for all external APIs
+
+### Next Development Priorities
+1. [ ] Apply migration 045 to production Supabase
+2. [ ] Enable Stripe webhooks for subscription lifecycle
+3. [ ] Test billing flow end-to-end (checkout → portal → upgrade)
+4. [ ] Implement Gmail bridge ASIN matching for Amazon tracking
+5. [ ] Begin artwork normalization for RegVault DAM layer
+
+---
+
+### Session: November 26, 2025 (Current)
+
+**Changes Made:**
+- Updated: `docs/DAM_INTEGRATION.md` - Added MuRP vs RegVault gap analysis section
+  - Mapped 5 feature areas: Artwork/DAM, Registration Autopilot, Compliance Scoring, Predictive Signals, Tenant Support
+  - Documented current MuRP schema limitations and RegVault target state
+  - Created reference table for prioritizing schema evolution work
+- Updated: `src/index.css` - CSS cleanup
+  - Removed 53 lines of unused `.terms-markdown` utility classes
+  - Styles were orphaned from previous Terms & Conditions component refactor
+- Updated: `docs/SESSION_SUMMARY_2025-11-14_to_CURRENT.md` - Comprehensive project analysis
+  - Added codebase statistics and file counts
+  - Documented Nov 24-26 feature development (Stripe billing, BOM cards, RegVault vision)
+  - Schema evolution notes for migration 045
+  - Architecture highlights and next priorities
+
+**Key Decisions:**
+- Decision: Document MuRP-to-RegVault gap analysis in DAM_INTEGRATION.md
+- Rationale: Provides canonical "current vs. target" map for exec reviews and schema prioritization
+- Decision: Clean up orphaned CSS utilities
+- Rationale: Reduces bundle size and removes dead code that could cause confusion
+
+---
+
+### Session: November 25-26, 2025 (Stripe Billing + BOM Enhancements)
+
+**Changes Made:**
+- Created: `supabase/migrations/045_billing_infrastructure.sql` - Stripe billing schema
+  - `billing_plans` table with 4 seeded tiers (Basic, Ops Pod, Full AI, Enterprise)
+  - `user_subscriptions` table with Stripe customer/subscription IDs
+  - `subscription_events` table for billing audit trail
+  - Full RLS policies for data isolation
+- Created: `lib/pricing/plans.ts` - Centralized pricing configuration
+  - `PRICING_PLAN_MAP` with tier definitions, pricing, features
+  - Type-safe `BillingPlanId` union type
+- Created: `services/billingService.ts` - Stripe integration service
+  - `startCheckout()` - Creates Stripe Checkout session
+  - `openBillingPortal()` - Opens Stripe Customer Portal
+  - `getSubscriptionSummary()` - Fetches current subscription state
+  - Preview mode flag for pre-launch testing
+- Modified: `components/BillingPanel.tsx` - Billing UI in Settings
+  - Current plan display with status, seats, interval
+  - Upgrade prompts with next tier preview
+  - Stripe portal access button
+- Modified: `components/EnhancedBomCard.tsx` - Recipe-style card transformation
+  - Ingredient list with substitution swap icons
+  - 2-column grid layout on xl screens
+  - Compact density with reduced padding
+  - Persistent group/sort state via localStorage
+- Modified: `components/Sidebar.tsx` - Tooltip z-index fix
+  - Added `z-50` to tooltip container for proper layering
+
+**Key Decisions:**
+- Decision: Implement 4-tier pricing with Full AI as add-on
+- Rationale: Allows Ops Pod users to optionally add AI features, maximizes revenue flexibility
+- Decision: Use Stripe Checkout instead of embedded payment forms
+- Rationale: Faster implementation, PCI compliance handled by Stripe, better mobile UX
+- Decision: Preview mode for billing before Stripe webhooks live
+- Rationale: Enables UI testing and user feedback without real transactions
+
+**Tests:**
+- Verified: TypeScript compilation clean
+- Verified: Build successful with billing components
+- Note: Stripe integration requires webhook endpoint before production use
 
 ---
 
@@ -49,138 +195,6 @@
 **Tests:**
 - Verified: All tests passing (12/12 schema transformers + inventory UI)
 - Verified: TypeScript compilation clean (Vite build 5.77s, 788 modules transformed)
-
----
-
-### Session: January 24, 2025 19:30 - 20:00
-
-**Changes Made:**
-- Modified: `components/CalendarSettingsPanel.tsx` - Performance optimization with useCallback
-  - Wrapped handleRemoveCalendar, handleToggleIngest, handleTogglePush in useCallback hooks
-  - Converted handleAddCalendar to useCallback for proper memoization
-  - Improved re-render performance by stabilizing callback references
-- Modified: `components/DataPipelineGuide.tsx` - Enhanced with interactive checklist UI
-  - Added GuideItem interface with optional checklist, docHref, docLabel fields
-  - Upgraded visual design with step numbers in bordered circles
-  - Added per-step checklists with bullet points for action items
-  - Added documentation links with "Open guide →" CTAs
-  - Improved responsive grid layout (md:grid-cols-3)
-- Modified: `components/GoogleSheetsPanel.tsx` - Major state management refactor
-  - Removed SetupStep state machine (simplified flow)
-  - Added useMemo for isConnected, scopesSummary, expiresLabel computed values
-  - Added SSR-safe localStorage access checks (typeof window !== 'undefined')
-  - Improved visual hierarchy with modern card design (border-white/10, backdrop-blur-xl)
-  - Added connection status badge with conditional styling
-  - Better TypeScript null safety throughout
-- Modified: `pages/Settings.tsx` - Enhanced data pipeline guide with documentation
-  - Imported 3 new documentation URLs (googleOAuthDocUrl, googleSheetsDocUrl, apiIngestionDocUrl)
-  - Expanded DataPipelineGuide items with detailed checklists per step
-  - Added doc links to external markdown guides for each pipeline stage
-  - Better descriptions: OAuth → Finale/Sheets sync → API ingestion flow
-  - Improved user onboarding with step-by-step action items
-
-**Key Decisions:**
-- Decision: Use useCallback extensively in CalendarSettingsPanel
-- Rationale: Prevents unnecessary re-renders of child components that depend on callback props
-- Decision: Add checklists and doc links to DataPipelineGuide
-- Rationale: Reduces support burden by providing inline guidance for complex setup flows
-- Decision: Remove step-based state machine from GoogleSheetsPanel
-- Rationale: Simplified UX - users can access all features once authenticated, no wizard flow
-
-**Tests:**
-- Verified: TypeScript compilation clean (Vite build 6.29s, 792 modules transformed)
-- Verified: Production bundle size 2,006.21 kB (gzip: 524.03 kB)
-- Build warnings: Large bundle size (expected for full MRP system), dynamic import optimization opportunity
-
-**Deployment:**
-- Commit: 5ce3bc5 - "refactor(ui): improve Settings panels with enhanced UX and performance"
-- Files Changed: 4 (+343, -398 lines)
-- Pushed to: origin/main
-- Vercel: Auto-deployment triggered
-
----
-
-### Session: November 24, 2025 18:30 - 18:45
-
-**Changes Made:**
-- Created: `supabase/migrations/042_semantic_embeddings.sql` - Persistent AI vector storage
-  - New semantic_embeddings table for inventory/BOM/vendor embeddings
-  - Unique index on (entity_type, entity_id) for efficient lookups
-  - RLS policies for authenticated user access
-  - Enables semantic search to survive page reloads and share across users
-- Created: `supabase/migrations/043_po_followup_campaigns.sql` - Campaign-based PO follow-ups
-  - New po_followup_campaigns table with trigger types (tracking_missing, invoice_missing, custom)
-  - Migrated po_followup_rules to campaign-scoped (added campaign_id foreign key)
-  - New po_followup_campaign_state table for per-PO campaign tracking
-  - Seeded default campaigns: "Tracking / No Response" and "Invoice Collection"
-  - Admin-only policies for campaign management
-  - Backfilled existing follow-up data to tracking campaign
-  - Added invoice reminder stages (48h, 120h templates)
-- Created: `supabase/migrations/044_template_layout_config.sql` - Drag-drop template editing
-  - Added layout_config JSONB column to email_templates
-  - Added layout_config JSONB column to pdf_templates
-  - Enables visual editor metadata storage
-- Modified: `components/DocumentTemplatesPanel.tsx` - Major template management UI overhaul
-  - Enhanced template creation and editing workflows
-  - Improved layout configuration controls
-  - Better visual hierarchy and user experience
-- Modified: `components/FollowUpSettingsPanel.tsx` - Campaign-based flow configuration
-  - Campaign selection and management UI
-  - Multi-stage follow-up rule editor per campaign
-  - Campaign activation/deactivation controls
-- Modified: `components/SemanticSearchSettings.tsx` - Embedding persistence controls
-  - Settings for embedding storage and sync
-  - Load/save embedding state management
-- Modified: `services/geminiService.ts` - Ensure embeddings loaded before search
-  - Added ensureEmbeddingsLoaded() call before semantic search operations
-  - Prevents race conditions in AI assistant responses
-- Modified: `services/semanticSearch.ts` - Lazy embedding loading
-  - New ensureEmbeddingsLoaded() function for on-demand loading
-  - Improved embedding stats tracking
-- Modified: `services/pdfService.ts` - Template layout rendering support
-  - Enhanced template processing with layout_config
-  - Better PDF generation from structured templates
-- Modified: `services/templateService.ts` - Layout config helpers
-  - Utility functions for template layout manipulation
-- Modified: `supabase/functions/po-followup-runner/index.ts` - Campaign-aware edge function
-  - Updated to query campaign-based follow-up rules
-  - Tracks campaign_id in follow-up events
-  - Supports multi-campaign parallel execution
-- Modified: `types.ts` - Campaign type definitions
-  - New FollowUpCampaign interface
-  - New FollowUpTriggerType type ('tracking_missing' | 'invoice_missing' | 'custom')
-  - Extended FollowUpRule with campaignId
-  - Extended VendorFollowUpEvent with campaignId tracking
-
-**Key Decisions:**
-- Decision: Implement campaign-based follow-up system instead of global stages
-- Rationale: Enables parallel workflows (tracking AND invoice reminders), better organization, campaign-specific analytics
-- Decision: Store AI embeddings in Supabase instead of browser-only
-- Rationale: Embeddings expensive to compute, persist across sessions, share across team, enable server-side search
-- Decision: Add layout_config as JSONB instead of separate layout tables
-- Rationale: Flexible schema for drag-drop metadata, simpler queries, easier to version with templates
-- Decision: Seed default campaigns (tracking, invoice) in migration
-- Rationale: Provides working defaults out-of-box, demonstrates campaign structure, reduces setup friction
-
-**Database Schema Changes:**
-- Tables Added: semantic_embeddings (5 columns), po_followup_campaigns (6 columns), po_followup_campaign_state (7 columns)
-- Columns Added: po_followup_rules.campaign_id, vendor_followup_events.campaign_id, email_templates.layout_config, pdf_templates.layout_config
-- Constraints Modified: po_followup_rules unique constraint changed from stage to (campaign_id, stage)
-- Policies Added: 8 new RLS policies across 3 tables
-- Seed Data: 2 default campaigns, 2 invoice reminder stages
-
-**Tests:**
-- Verified: TypeScript compilation clean (Vite build 6.65s, 792 modules transformed)
-- Verified: Production bundle 2,030.15 kB (gzip: 530.21 kB)
-- Note: Local Supabase migrations skipped due to CLI version issue (v2.54.11 has storage migration bug)
-- Action Required: Apply migrations 042-044 manually to production Supabase via SQL Editor
-
-**Deployment:**
-- Commit: faa47da - "feat(db): add semantic embeddings, campaign-based PO follow-ups, and template layouts"
-- Files Changed: 12 (+2055, -557 lines)
-- Migrations: 3 new SQL files (042, 043, 044)
-- Pushed to: origin/main
-- Vercel: Auto-deployment triggered
 - Verified: No breaking changes (optional fields, backwards compatible)
 
 **Implementation Details:**
