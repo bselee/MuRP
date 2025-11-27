@@ -25,6 +25,7 @@ import ReorderQueueDashboard, { ReorderQueueVendorGroup } from '../components/Re
 import DraftPOReviewSection from '../components/DraftPOReviewSection';
 import POTrackingDashboard from '../components/POTrackingDashboard';
 import UpdateTrackingModal from '../components/UpdateTrackingModal';
+import VendorResponseWorkbench from '../components/VendorResponseWorkbench';
 import { subscribeToPoDrafts } from '../lib/poDraftBridge';
 import { generatePoPdf } from '../services/pdfService';
 import { usePermissions } from '../hooks/usePermissions';
@@ -585,6 +586,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         addToast(`Discarded ${orderId}`, 'info');
                     }}
                     addToast={addToast}
+                />
+
+                <VendorResponseWorkbench
+                    onSendEmail={(commId) => {
+                        addToast(`Response sent for communication ${commId}`, 'success');
+                    }}
                 />
 
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">

@@ -596,6 +596,24 @@ export const ChevronRightIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+export const InboxIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-17.5 0a2.25 2.25 0 01.659-1.591l3.182-3.182a2.25 2.25 0 011.591-.659h8.636a2.25 2.25 0 011.591.659l3.182 3.182a2.25 2.25 0 01.659 1.591v3.75a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25v-3.75z" />
+  </svg>
+);
+
+export const CurrencyDollarIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+export const ArrowTopRightOnSquareIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+  </svg>
+);
+
 export const SlackIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
     <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12a2.527 2.527 0 0 1 2.52 2.523 2.528 2.528 0 0 1-2.52 2.522zm4.313-9.69a2.527 2.527 0 0 1 2.521-2.522 2.527 2.527 0 0 1 2.521 2.522A2.528 2.528 0 0 1 11.876 8a2.528 2.528 0 0 1-2.52-2.525zM15.165 5.042a2.528 2.528 0 0 1 2.523-2.52 2.527 2.527 0 0 1 2.522 2.52A2.528 2.528 0 0 1 17.688 7.56a2.528 2.528 0 0 1-2.523-2.52zm4.313 4.313a2.528 2.528 0 0 1 2.522 2.52 2.528 2.528 0 0 1-2.522 2.522 2.528 2.528 0 0 1-2.522-2.522 2.528 2.528 0 0 1 2.522-2.52zM8.69 15.165a2.527 2.527 0 0 1 2.523 2.522A2.528 2.528 0 0 1 8.69 20.21a2.527 2.527 0 0 1-2.522-2.523A2.528 2.528 0 0 1 8.69 15.165z"/>

@@ -291,12 +291,18 @@ serve(async (req) => {
     communicationMetadata.aiConfidence = parsed.confidence ?? null;
     communicationMetadata.aiCostUsd = aiAnalysis.costUsd;
 
+    // Annotate with workbench fields for response queue
     await annotateVendorCommunication(messageId, {
       metadata: communicationMetadata,
       extracted_data: parsed,
       ai_confidence: parsed.confidence ?? null,
       ai_cost_usd: aiAnalysis.costUsd,
       ai_extracted: true,
+      // Response workbench fields
+      response_category: parsed.responseCategory ?? 'other',
+      suggested_action: parsed.suggestedAction ?? 'review_required',
+      action_reasoning: parsed.actionReasoning ?? null,
+      requires_user_action: parsed.requiresUserResponse ?? true,
     });
 
     await applyTrackingUpdate(poRecord.id, parsed);
@@ -704,6 +710,35 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
+// Response category types for the workbench
+type VendorResponseCategory =
+  | 'shipment_confirmation'
+  | 'delivery_update'
+  | 'delivery_exception'
+  | 'price_change'
+  | 'out_of_stock'
+  | 'substitution_offer'
+  | 'invoice_attached'
+  | 'order_confirmation'
+  | 'lead_time_update'
+  | 'general_inquiry'
+  | 'thank_you'
+  | 'other';
+
+type VendorSuggestedAction =
+  | 'acknowledge_receipt'
+  | 'confirm_acceptance'
+  | 'request_clarification'
+  | 'approve_pricing'
+  | 'reject_pricing'
+  | 'update_inventory'
+  | 'escalate_to_manager'
+  | 'forward_to_ap'
+  | 'update_po_tracking'
+  | 'create_backorder'
+  | 'no_action_required'
+  | 'review_required';
+
 interface ParsedTrackingResult {
   trackingNumber?: string | null;
   carrier?: string | null;
@@ -712,7 +747,21 @@ interface ParsedTrackingResult {
   notes?: string | null;
   action?: string;
   confidence?: number | null;
-  invoiceData?: any; // Full invoice data when detected
+  invoiceData?: any;
+  // Enhanced fields for response workbench
+  responseCategory?: VendorResponseCategory;
+  suggestedAction?: VendorSuggestedAction;
+  actionReasoning?: string;
+  requiresUserResponse?: boolean;
+  pricingData?: any;
+  stockData?: any;
+  extractedDetails?: {
+    keyPoints?: string[];
+    datesMentioned?: string[];
+    amountsMentioned?: { value: number; context: string }[];
+    actionItems?: string[];
+    urgency?: 'low' | 'medium' | 'high';
+  };
 }
 
 interface AIAnalysisResult {
@@ -739,76 +788,76 @@ async function analyzeEmailWithAI(
   }
 
   const prompt = `
-You are an assistant that extracts purchase order and invoice information from vendor emails.
+You are an intelligent assistant that analyzes vendor emails for purchase order management. Your job is to:
+1. Classify the email into a response category
+2. Extract relevant data (tracking, pricing, stock status, etc.)
+3. Recommend an action for the purchasing team
+4. Assess if this requires a human response
 
 Subject: ${context.subject}
 From: ${context.from}
 To: ${context.to}
+Vendor: ${context.vendor}
 Body + Attachments:
 """
 ${context.content.slice(0, 12000)}
 """
 
-First, determine if this email contains INVOICE data. Look for:
-- Invoice number, date, due date
-- Line items with SKUs, quantities, prices
-- Subtotal, tax, shipping, total amounts
-- Vendor and ship-to addresses
-
-If this is an INVOICE, return ONLY JSON with this shape:
+Analyze this email and return JSON with this structure:
 {
-  "is_invoice": true,
+  "response_category": "shipment_confirmation" | "delivery_update" | "delivery_exception" | "price_change" | "out_of_stock" | "substitution_offer" | "invoice_attached" | "order_confirmation" | "lead_time_update" | "general_inquiry" | "thank_you" | "other",
+  
+  "suggested_action": "acknowledge_receipt" | "confirm_acceptance" | "request_clarification" | "approve_pricing" | "reject_pricing" | "update_inventory" | "escalate_to_manager" | "forward_to_ap" | "update_po_tracking" | "create_backorder" | "no_action_required" | "review_required",
+  
+  "action_reasoning": "Brief explanation of why this action is recommended",
+  
+  "requires_user_response": true | false,
+  
+  "is_invoice": true | false,
   "invoice_data": {
     "invoice_number": "INV-12345" | null,
-    "invoice_date": "2025-01-15" | null,
-    "due_date": "2025-02-14" | null,
-    "vendor_name": "Vendor Company Name" | null,
-    "vendor_address": "123 Vendor St, City, ST 12345" | null,
-    "vendor_contact": "billing@vendor.com" | null,
-    "ship_to_name": "Customer Company" | null,
-    "ship_to_address": "456 Customer Ave, City, ST 67890" | null,
-    "line_items": [
-      {
-        "sku": "VENDOR-SKU-123" | "INTERNAL-SKU-456",
-        "description": "Product description",
-        "quantity": 10,
-        "unit_price": 25.50,
-        "line_total": 255.00
-      }
-    ],
-    "subtotal": 255.00,
-    "tax_amount": 20.40,
-    "shipping_amount": 15.00,
-    "total_amount": 290.40,
-    "currency": "USD"
-  },
-  "tracking_data": null,
-  "confidence": 0.95
-}
-
-If this is NOT an invoice but contains TRACKING information, return:
-{
-  "is_invoice": false,
-  "invoice_data": null,
+    "invoice_date": "YYYY-MM-DD" | null,
+    "due_date": "YYYY-MM-DD" | null,
+    "total_amount": 290.40 | null,
+    "line_items": [{"sku": "SKU", "description": "desc", "quantity": 10, "unit_price": 25.50}] | null
+  } | null,
+  
   "tracking_data": {
     "trackingNumber": "1Z123" | null,
-    "carrier": "UPS" | null,
-    "status": "awaiting_confirmation" | "confirmed" | "processing" | "shipped" | "in_transit" | "out_for_delivery" | "delivered" | "exception" | "cancelled",
-    "expectedDelivery": "YYYY-MM-DD" | null,
-    "notes": "Any additional details",
-    "action": "confirmation" | "tracking_update" | "exception" | "other",
-    "confidence": 0.95
+    "carrier": "UPS" | "FedEx" | "USPS" | "DHL" | null,
+    "status": "shipped" | "in_transit" | "out_for_delivery" | "delivered" | "exception" | null,
+    "expectedDelivery": "YYYY-MM-DD" | null
+  } | null,
+  
+  "pricing_data": {
+    "type": "increase" | "decrease" | "quote" | null,
+    "items": [{"sku": "SKU", "old_price": 25.00, "new_price": 27.50}] | null,
+    "effective_date": "YYYY-MM-DD" | null,
+    "reason": "explanation" | null
+  } | null,
+  
+  "stock_data": {
+    "type": "out_of_stock" | "low_stock" | "back_in_stock" | "discontinued" | null,
+    "items": [{"sku": "SKU", "status": "out_of_stock", "available_date": "YYYY-MM-DD" | null}] | null,
+    "alternatives_offered": true | false
+  } | null,
+  
+  "extracted_details": {
+    "key_points": ["Main point 1", "Main point 2"],
+    "dates_mentioned": ["YYYY-MM-DD"],
+    "amounts_mentioned": [{"value": 100.00, "context": "shipping cost"}],
+    "action_items": ["What vendor expects from us"],
+    "urgency": "low" | "medium" | "high"
   },
+  
   "confidence": 0.95
 }
 
-If neither invoice nor tracking data is found, return:
-{
-  "is_invoice": false,
-  "invoice_data": null,
-  "tracking_data": null,
-  "confidence": 0.0
-}
+Guidelines:
+- requires_user_response should be TRUE for: price changes needing approval, stock issues requiring decisions, questions, exceptions, anything ambiguous
+- requires_user_response should be FALSE for: simple confirmations, tracking updates, thank you messages
+- suggested_action should match the most appropriate next step
+- Extract ALL relevant structured data even if category is "other"
 
 Return ONLY valid JSON, no other text.`;
 
@@ -847,23 +896,52 @@ Return ONLY valid JSON, no other text.`;
     const outputTokens = Math.max(1, Math.round(raw.length / 4));
     const costUsd = ((inputTokens * AI_PRICING.input) + (outputTokens * AI_PRICING.output)) / 1_000_000;
 
-    // Normalize the response to match expected interface
-    let normalizedParsed: ParsedTrackingResult | null = null;
+    // Normalize the response to match expected interface with enhanced workbench fields
+    let normalizedParsed: ParsedTrackingResult = {
+      // Response workbench fields (always present)
+      responseCategory: parsed.response_category || 'other',
+      suggestedAction: parsed.suggested_action || 'review_required',
+      actionReasoning: parsed.action_reasoning || null,
+      requiresUserResponse: parsed.requires_user_response ?? true,
+      confidence: parsed.confidence || 0.5,
+      extractedDetails: parsed.extracted_details || null,
+    };
 
+    // Handle invoice data
     if (parsed.is_invoice && parsed.invoice_data) {
-      // For invoices, store the full invoice data and create a basic tracking result
       normalizedParsed = {
+        ...normalizedParsed,
         trackingNumber: null,
         carrier: null,
         status: 'invoice_received',
         expectedDelivery: null,
         notes: `Invoice ${parsed.invoice_data.invoice_number || 'detected'} - Total: $${parsed.invoice_data.total_amount || 0}`,
         action: 'invoice_received',
-        confidence: parsed.confidence || 0.8,
-        invoiceData: parsed.invoice_data // Store full invoice data
+        invoiceData: parsed.invoice_data,
+        responseCategory: 'invoice_attached',
+        suggestedAction: 'forward_to_ap',
       };
-    } else if (parsed.tracking_data) {
-      normalizedParsed = parsed.tracking_data;
+    }
+    
+    // Handle tracking data
+    if (parsed.tracking_data) {
+      normalizedParsed = {
+        ...normalizedParsed,
+        trackingNumber: parsed.tracking_data.trackingNumber,
+        carrier: parsed.tracking_data.carrier,
+        status: parsed.tracking_data.status,
+        expectedDelivery: parsed.tracking_data.expectedDelivery,
+      };
+    }
+
+    // Handle pricing data
+    if (parsed.pricing_data) {
+      normalizedParsed.pricingData = parsed.pricing_data;
+    }
+
+    // Handle stock data
+    if (parsed.stock_data) {
+      normalizedParsed.stockData = parsed.stock_data;
     }
 
     return {
