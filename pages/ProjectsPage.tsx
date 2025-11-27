@@ -45,6 +45,9 @@ import {
   CheckCircleIcon,
   ArrowPathIcon,
   FunnelIcon,
+  CalendarDaysIcon,
+  Bars3BottomLeftIcon,
+  ChevronRightIcon,
 } from '../components/icons';
 
 interface ProjectsPageProps {
@@ -53,7 +56,7 @@ interface ProjectsPageProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-type ViewMode = 'projects' | 'board' | 'my-tickets';
+type ViewMode = 'projects' | 'board' | 'my-tickets' | 'list' | 'timeline';
 
 const ProjectsPage: React.FC<ProjectsPageProps> = ({
   currentUser,
@@ -190,27 +193,43 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
               ? 'Your assigned tickets and questions'
               : viewMode === 'board' && selectedProject
                 ? selectedProject.name
-                : 'Manage projects and track work'}
+                : viewMode === 'list'
+                  ? 'Owner → Delegate task assignments'
+                  : viewMode === 'timeline' && selectedProject
+                    ? `${selectedProject.name} - Timeline`
+                    : 'Manage projects and track work'}
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           {/* View Toggle */}
-          <div className="flex bg-gray-800 rounded-lg p-1">
+          <div className="flex bg-gray-800 rounded-lg p-1 flex-wrap gap-1">
             <button
               onClick={() => { setViewMode('projects'); setSelectedProjectId(null); }}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'projects' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
               }`}
+              title="Projects"
             >
               <FolderIcon className="w-4 h-4 inline mr-1" />
               Projects
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'list' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+              }`}
+              title="Owner → Delegate View"
+            >
+              <Bars3BottomLeftIcon className="w-4 h-4 inline mr-1" />
+              List
             </button>
             <button
               onClick={() => setViewMode('my-tickets')}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'my-tickets' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
               }`}
+              title="My Tickets"
             >
               <UserIcon className="w-4 h-4 inline mr-1" />
               My Tickets
@@ -251,11 +270,11 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
           ) : (
             projects.map(project => {
               const stats = projectStats[project.id] || { total: 0, open: 0, done: 0 };
+              const owner = users.find(u => u.id === project.ownerId);
               return (
-                <button
+                <div
                   key={project.id}
-                  onClick={() => handleSelectProject(project)}
-                  className="bg-gray-800/50 border border-gray-700 rounded-xl p-5 text-left hover:border-indigo-500/50 hover:bg-gray-800/70 transition-all group"
+                  className="bg-gray-800/50 border border-gray-700 rounded-xl p-5 hover:border-indigo-500/50 hover:bg-gray-800/70 transition-all group"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -277,10 +296,18 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   </div>
 
                   {project.description && (
-                    <p className="text-sm text-gray-400 mb-4 line-clamp-2">{project.description}</p>
+                    <p className="text-sm text-gray-400 mb-3 line-clamp-2">{project.description}</p>
                   )}
 
-                  <div className="flex items-center gap-4 text-sm">
+                  {/* Owner info */}
+                  {owner && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                      <UserIcon className="w-4 h-4" />
+                      <span>{owner.name}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-4 text-sm mb-4">
                     <span className="text-gray-500">
                       <span className="text-white font-medium">{stats.total}</span> tickets
                     </span>
@@ -294,6 +321,24 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                     </span>
                   </div>
 
+                  {/* View options */}
+                  <div className="flex gap-2 border-t border-gray-700 pt-3">
+                    <button
+                      onClick={() => handleSelectProject(project)}
+                      className="flex-1 px-3 py-1.5 bg-gray-700/50 hover:bg-gray-700 rounded-lg text-sm text-gray-300 hover:text-white transition-colors flex items-center justify-center gap-1"
+                    >
+                      <ViewColumnsIcon className="w-4 h-4" />
+                      Kanban
+                    </button>
+                    <button
+                      onClick={() => { setSelectedProjectId(project.id); setViewMode('timeline'); }}
+                      className="flex-1 px-3 py-1.5 bg-gray-700/50 hover:bg-gray-700 rounded-lg text-sm text-gray-300 hover:text-white transition-colors flex items-center justify-center gap-1"
+                    >
+                      <CalendarDaysIcon className="w-4 h-4" />
+                      Timeline
+                    </button>
+                  </div>
+
                   {project.tags && project.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-3">
                       {project.tags.map(tag => (
@@ -303,7 +348,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                       ))}
                     </div>
                   )}
-                </button>
+                </div>
               );
             })
           )}
@@ -312,12 +357,30 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
       {viewMode === 'board' && selectedProject && (
         <div>
-          <button
-            onClick={() => { setViewMode('projects'); setSelectedProjectId(null); }}
-            className="text-sm text-gray-400 hover:text-white mb-4 flex items-center gap-1"
-          >
-            ← Back to Projects
-          </button>
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => { setViewMode('projects'); setSelectedProjectId(null); }}
+              className="text-sm text-gray-400 hover:text-white flex items-center gap-1"
+            >
+              ← Back to Projects
+            </button>
+            <div className="flex bg-gray-800 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('board')}
+                className="px-3 py-1 rounded-md text-sm font-medium bg-gray-700 text-white"
+              >
+                <ViewColumnsIcon className="w-4 h-4 inline mr-1" />
+                Kanban
+              </button>
+              <button
+                onClick={() => setViewMode('timeline')}
+                className="px-3 py-1 rounded-md text-sm font-medium text-gray-400 hover:text-white"
+              >
+                <CalendarDaysIcon className="w-4 h-4 inline mr-1" />
+                Timeline
+              </button>
+            </div>
+          </div>
           <TicketBoard
             tickets={tickets}
             project={selectedProject}
@@ -328,6 +391,359 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
             onCreateTicket={handleCreateTicketInColumn}
             loading={loadingTickets}
           />
+        </div>
+      )}
+
+      {/* Timeline/Gantt View */}
+      {viewMode === 'timeline' && selectedProject && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => { setViewMode('projects'); setSelectedProjectId(null); }}
+              className="text-sm text-gray-400 hover:text-white flex items-center gap-1"
+            >
+              ← Back to Projects
+            </button>
+            <div className="flex bg-gray-800 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('board')}
+                className="px-3 py-1 rounded-md text-sm font-medium text-gray-400 hover:text-white"
+              >
+                <ViewColumnsIcon className="w-4 h-4 inline mr-1" />
+                Kanban
+              </button>
+              <button
+                onClick={() => setViewMode('timeline')}
+                className="px-3 py-1 rounded-md text-sm font-medium bg-gray-700 text-white"
+              >
+                <CalendarDaysIcon className="w-4 h-4 inline mr-1" />
+                Timeline
+              </button>
+            </div>
+          </div>
+          
+          {/* Timeline Header with date scale */}
+          <div className="bg-gray-800/30 rounded-xl border border-gray-700 overflow-hidden">
+            {loadingTickets ? (
+              <div className="flex justify-center py-12">
+                <ArrowPathIcon className="w-8 h-8 text-indigo-400 animate-spin" />
+              </div>
+            ) : tickets.length === 0 ? (
+              <div className="text-center py-12">
+                <CalendarDaysIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-white mb-2">No Tasks Yet</h3>
+                <p className="text-gray-400">Create tickets with due dates to see them on the timeline.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                {/* Timeline scale header */}
+                <div className="flex border-b border-gray-700 bg-gray-800/50 sticky top-0">
+                  <div className="w-64 flex-shrink-0 px-4 py-3 text-xs font-semibold text-gray-400 uppercase border-r border-gray-700">
+                    Task
+                  </div>
+                  <div className="flex-1 flex">
+                    {(() => {
+                      // Generate date columns for next 30 days
+                      const today = new Date();
+                      const days = [];
+                      for (let i = 0; i < 30; i++) {
+                        const date = new Date(today);
+                        date.setDate(date.getDate() + i);
+                        days.push(date);
+                      }
+                      return days.map((date, idx) => (
+                        <div
+                          key={idx}
+                          className={`w-10 flex-shrink-0 px-1 py-3 text-xs text-center border-r border-gray-700 ${
+                            date.getDay() === 0 || date.getDay() === 6 ? 'bg-gray-800/30' : ''
+                          } ${idx === 0 ? 'bg-indigo-500/10' : ''}`}
+                        >
+                          <div className="text-gray-500">{date.toLocaleDateString('en-US', { weekday: 'narrow' })}</div>
+                          <div className={`font-medium ${idx === 0 ? 'text-indigo-400' : 'text-gray-400'}`}>
+                            {date.getDate()}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+                
+                {/* Timeline rows */}
+                <div className="divide-y divide-gray-800">
+                  {tickets
+                    .filter(t => t.status !== 'cancelled' && t.status !== 'closed')
+                    .sort((a, b) => {
+                      // Sort by due date, then by priority
+                      if (a.dueDate && b.dueDate) {
+                        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+                      }
+                      if (a.dueDate) return -1;
+                      if (b.dueDate) return 1;
+                      const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+                      return priorityOrder[a.priority] - priorityOrder[b.priority];
+                    })
+                    .map(ticket => {
+                      const assignee = users.find(u => u.id === ticket.assigneeId);
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      
+                      // Calculate bar position
+                      let barStart = 0;
+                      let barWidth = 1;
+                      
+                      if (ticket.dueDate) {
+                        const dueDate = new Date(ticket.dueDate);
+                        dueDate.setHours(0, 0, 0, 0);
+                        const startDate = ticket.startedAt ? new Date(ticket.startedAt) : new Date(ticket.createdAt);
+                        startDate.setHours(0, 0, 0, 0);
+                        
+                        const diffFromToday = Math.floor((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                        barStart = Math.max(0, diffFromToday);
+                        
+                        const duration = Math.max(1, Math.floor((dueDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+                        barWidth = Math.min(duration, 30 - barStart);
+                      }
+                      
+                      const isOverdue = ticket.dueDate && new Date(ticket.dueDate) < today && ticket.status !== 'done';
+                      
+                      return (
+                        <div
+                          key={ticket.id}
+                          className="flex hover:bg-gray-800/30 cursor-pointer transition-colors"
+                          onClick={() => handleTicketClick(ticket)}
+                        >
+                          <div className="w-64 flex-shrink-0 px-4 py-3 border-r border-gray-700">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                ticket.priority === 'urgent' ? 'bg-red-500' :
+                                ticket.priority === 'high' ? 'bg-orange-500' :
+                                ticket.priority === 'medium' ? 'bg-yellow-500' :
+                                'bg-gray-500'
+                              }`} />
+                              <span className="text-sm text-white truncate">{ticket.title}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-gray-500">#{ticket.ticketNumber}</span>
+                              {assignee && (
+                                <span className="text-xs text-gray-500 truncate">{assignee.name}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex-1 flex items-center relative">
+                            {/* Timeline bar */}
+                            {ticket.dueDate && (
+                              <div
+                                className={`absolute h-6 rounded ${
+                                  ticket.status === 'done' ? 'bg-emerald-500/40 border border-emerald-500/60' :
+                                  isOverdue ? 'bg-red-500/40 border border-red-500/60' :
+                                  ticket.status === 'in_progress' ? 'bg-amber-500/40 border border-amber-500/60' :
+                                  'bg-indigo-500/40 border border-indigo-500/60'
+                                }`}
+                                style={{
+                                  left: `${barStart * 40}px`,
+                                  width: `${Math.max(barWidth * 40 - 4, 36)}px`,
+                                }}
+                              >
+                                <span className="text-xs text-white px-2 truncate block leading-6">
+                                  {ticket.title}
+                                </span>
+                              </div>
+                            )}
+                            {!ticket.dueDate && (
+                              <span className="text-xs text-gray-500 px-4">No due date</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* List View - Owner → Delegate */}
+      {viewMode === 'list' && (
+        <div className="space-y-6">
+          {loadingProjects ? (
+            <div className="flex justify-center py-12">
+              <ArrowPathIcon className="w-8 h-8 text-indigo-400 animate-spin" />
+            </div>
+          ) : (
+            <>
+              {/* Group by project owner or assignee */}
+              {(() => {
+                // Get all tickets across projects
+                const allTickets = tickets.length > 0 ? tickets : myTickets;
+                
+                // Group tickets by reporter (delegator) → assignee
+                const delegationMap = new Map<string, Map<string, Ticket[]>>();
+                
+                allTickets.forEach(ticket => {
+                  const reporterId = ticket.reporterId || 'unassigned';
+                  const assigneeId = ticket.assigneeId || 'unassigned';
+                  
+                  if (!delegationMap.has(reporterId)) {
+                    delegationMap.set(reporterId, new Map());
+                  }
+                  const assigneeMap = delegationMap.get(reporterId)!;
+                  if (!assigneeMap.has(assigneeId)) {
+                    assigneeMap.set(assigneeId, []);
+                  }
+                  assigneeMap.get(assigneeId)!.push(ticket);
+                });
+
+                // Also show project owners with their delegated work
+                const projectOwners = new Map<string, Project[]>();
+                projects.forEach(project => {
+                  const ownerId = project.ownerId || 'unassigned';
+                  if (!projectOwners.has(ownerId)) {
+                    projectOwners.set(ownerId, []);
+                  }
+                  projectOwners.get(ownerId)!.push(project);
+                });
+
+                return (
+                  <div className="space-y-6">
+                    {/* Project Owners Section */}
+                    <div className="bg-gray-800/30 rounded-xl border border-gray-700 overflow-hidden">
+                      <div className="px-4 py-3 bg-gray-800/50 border-b border-gray-700">
+                        <h3 className="text-sm font-semibold text-white">Project Ownership</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Who owns which projects</p>
+                      </div>
+                      <div className="divide-y divide-gray-800">
+                        {Array.from(projectOwners.entries()).map(([ownerId, ownerProjects]) => {
+                          const owner = users.find(u => u.id === ownerId);
+                          return (
+                            <div key={ownerId} className="p-4">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                                  <UserIcon className="w-4 h-4 text-indigo-400" />
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium text-white">
+                                    {owner?.name || 'Unassigned'}
+                                  </span>
+                                  <span className="text-xs text-gray-500 ml-2">
+                                    {ownerProjects.length} project{ownerProjects.length !== 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="ml-11 space-y-2">
+                                {ownerProjects.map(project => (
+                                  <button
+                                    key={project.id}
+                                    onClick={() => handleSelectProject(project)}
+                                    className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
+                                  >
+                                    <FolderIcon className="w-4 h-4 text-gray-500" />
+                                    {project.name}
+                                    <span className={`px-1.5 py-0.5 rounded text-xs ${
+                                      project.status === 'active' ? 'bg-emerald-500/20 text-emerald-300' :
+                                      'bg-gray-500/20 text-gray-300'
+                                    }`}>
+                                      {project.status}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {projectOwners.size === 0 && (
+                          <div className="p-8 text-center text-gray-500">
+                            No projects yet
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Task Delegation Section */}
+                    <div className="bg-gray-800/30 rounded-xl border border-gray-700 overflow-hidden">
+                      <div className="px-4 py-3 bg-gray-800/50 border-b border-gray-700">
+                        <h3 className="text-sm font-semibold text-white">Task Delegation</h3>
+                        <p className="text-xs text-gray-500 mt-0.5">Owner → Delegate assignments</p>
+                      </div>
+                      <div className="divide-y divide-gray-800">
+                        {Array.from(delegationMap.entries()).map(([reporterId, assigneeMap]) => {
+                          const reporter = users.find(u => u.id === reporterId);
+                          return (
+                            <div key={reporterId} className="p-4">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                  <UserIcon className="w-4 h-4 text-purple-400" />
+                                </div>
+                                <span className="text-sm font-medium text-white">
+                                  {reporter?.name || 'System'}
+                                </span>
+                                <span className="text-xs text-gray-500">delegated to:</span>
+                              </div>
+                              
+                              <div className="ml-6 space-y-3">
+                                {Array.from(assigneeMap.entries()).map(([assigneeId, assignedTickets]) => {
+                                  const assignee = users.find(u => u.id === assigneeId);
+                                  const openCount = assignedTickets.filter(t => t.status !== 'done' && t.status !== 'closed').length;
+                                  
+                                  return (
+                                    <div key={assigneeId} className="border-l-2 border-gray-700 pl-4">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <ChevronRightIcon className="w-4 h-4 text-gray-600" />
+                                        <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                          <UserIcon className="w-3 h-3 text-emerald-400" />
+                                        </div>
+                                        <span className="text-sm text-gray-300">
+                                          {assignee?.name || 'Unassigned'}
+                                        </span>
+                                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                          openCount > 0 ? 'bg-blue-500/20 text-blue-300' : 'bg-gray-500/20 text-gray-400'
+                                        }`}>
+                                          {openCount} open
+                                        </span>
+                                      </div>
+                                      <div className="ml-8 space-y-1">
+                                        {assignedTickets.slice(0, 3).map(ticket => (
+                                          <button
+                                            key={ticket.id}
+                                            onClick={() => handleTicketClick(ticket)}
+                                            className="flex items-center gap-2 text-xs text-gray-400 hover:text-white transition-colors w-full text-left"
+                                          >
+                                            <span className={`w-1.5 h-1.5 rounded-full ${
+                                              ticket.status === 'done' ? 'bg-emerald-500' :
+                                              ticket.status === 'in_progress' ? 'bg-amber-500' :
+                                              'bg-blue-500'
+                                            }`} />
+                                            <span className="truncate">{ticket.title}</span>
+                                            {ticket.ticketType === 'question' && (
+                                              <span className="text-purple-400">?</span>
+                                            )}
+                                          </button>
+                                        ))}
+                                        {assignedTickets.length > 3 && (
+                                          <span className="text-xs text-gray-500 ml-3">
+                                            +{assignedTickets.length - 3} more
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {delegationMap.size === 0 && (
+                          <div className="p-8 text-center text-gray-500">
+                            No delegated tasks yet
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </>
+          )}
         </div>
       )}
 
