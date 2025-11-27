@@ -1,4 +1,6 @@
 import React from 'react';
+import Button from '@/components/ui/Button';
+import context7GuideUrl from '../CONTEXT7_SETUP.md?url';
 
 const CodeBlock: React.FC<{ code: string; lang?: string }> = ({ code, lang = 'json' }) => (
   <pre className="bg-gray-900/70 rounded-md p-4 text-sm text-gray-300 overflow-x-auto border border-gray-700">
@@ -186,6 +188,41 @@ const ApiDocs: React.FC = () => {
 }`}
           />
         </div>
+      </section>
+
+      {/* Context7 Research Assistant */}
+      <section aria-label="Context7 Research Assistant" className="border border-blue-900/40 rounded-2xl bg-gradient-to-br from-blue-950/60 via-indigo-900/40 to-slate-900/30 p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-white">Context7 Research Assistant</h2>
+            <p className="text-sm text-blue-100 mt-2 max-w-2xl">
+              Need up-to-date SDK guidance while building against the MuRP APIs? The Context7 MCP server pipes live documentation into the VS Code assistant.
+              Use it to resolve package IDs, pull the latest REST examples, or stage migration notes without leaving the console.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <a
+              href={context7GuideUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors shadow-lg shadow-blue-900/40"
+            >
+              Open Context7 Setup Guide
+            </a>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.open('https://context7.com/', '_blank', 'noopener')}
+            >
+              Learn about Context7
+            </Button>
+          </div>
+        </div>
+        <ul className="mt-5 text-sm text-blue-100 list-disc list-inside space-y-1">
+          <li>Launch the Context7 MCP server via the VS Code extension or CLI task.</li>
+          <li>Use <code className="text-blue-200">resolve-library-id</code> to map packages, then <code className="text-blue-200">get-library-docs</code> for deep dives.</li>
+          <li>Results stay cached locally for seven days, so repeated lookups are instant—even offline.</li>
+        </ul>
       </section>
     </div>
   );

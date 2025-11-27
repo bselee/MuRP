@@ -32,6 +32,20 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
    npm run build
    ```
 
+## 🧰 Supabase CLI (VSCode Ready)
+
+- **Install once, use everywhere:** Run the following to place the latest Linux binary in `~/.local/bin` (already first on the Codespace/VSCodium PATH). This keeps the CLI available to any VSCode workspace you open:
+  ```bash
+  TMP=$(mktemp -d) \
+  && curl -sL https://github.com/supabase/cli/releases/download/v2.62.10/supabase_linux_amd64.tar.gz -o "$TMP/supabase.tar.gz" \
+  && tar -xzf "$TMP/supabase.tar.gz" -C "$TMP" \
+  && install -m 755 "$TMP/supabase" ~/.local/bin/supabase \
+  && rm -rf "$TMP"
+  ```
+- **Verify inside VSCode:** Open any VSCode terminal and run `supabase --version` (expected `2.62.10` or newer). If the command is missing, ensure `~/.local/bin` is on your PATH (`settings.json` → `"terminal.integrated.env.linux": { "PATH": "$HOME/.local/bin:${env:PATH}" }"`).
+- **Run common commands via Tasks:** Use `Terminal → Run Task…` to access the Supabase tasks we ship in `.vscode/tasks.json` (`Check Version`, `Link Project`, `Push Database`, `Generate Types`). They wrap the CLI so you can trigger migrations or type generation without remembering the exact flags.
+- **Multi-project tip:** Because the binary lives in your home directory, any other repository you open in VSCode inherits the same CLI availability—no per-project installs or npm globals required.
+
 ## 📚 Documentation
 
 ### Getting Started
@@ -39,6 +53,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 - **[Migration Conventions](docs/MIGRATION_CONVENTIONS.md)** - 📏 Numbering scheme & workflow for new Supabase migrations
 - **[API Ingestion Setup Guide](API_INGESTION_SETUP.md)** - Complete setup for secure API integration
 - **[BOM Setup Guide](BOM_SETUP_GUIDE.md)** - Bill of Materials configuration and usage
+- **[Context7 Setup](CONTEXT7_SETUP.md)** - Wire up the Context7 MCP server for live documentation lookups inside the app
 - **[Usage Examples](USAGE_EXAMPLES.md)** - Code examples for all services
 
 ### Architecture & Schema
@@ -48,6 +63,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 ### Compliance & MCP System
 - **[Compliance System Architecture](docs/COMPLIANCE_SYSTEM_ARCHITECTURE.md)** - Multi-state regulatory compliance
 - **[MCP Setup Guide](docs/MCP_SETUP_GUIDE.md)** - Admin guide for MCP server configuration
+- **[Context7 Integration Guide](docs/CONTEXT7_INTEGRATION.md)** - How Context7 patterns power the new data + automation layers
 - **[AI Gateway Integration](docs/AI_GATEWAY_INTEGRATION.md)** - ✨ Vercel AI Gateway with tier-based routing
 - **[Session Summary](docs/SESSION_SUMMARY_2025-11-13.md)** - Latest development session details
 - **[Pricing & Billing Rollout Checklist](docs/PRICING_ROLLOUT_CHECKLIST.md)** - Flags + steps for launching the new landing page and Stripe billing

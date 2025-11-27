@@ -1120,6 +1120,17 @@ export interface ArtworkShareEvent {
   sentViaGmail: boolean;
   senderEmail?: string | null;
   timestamp: string;
+  channel?: 'gmail' | 'resend' | 'simulation';
+}
+
+export interface DamSettingsState {
+  defaultPrintSize: string;
+  showPrintReadyWarning: boolean;
+  requireApproval: boolean;
+  allowedDomains: string;
+  autoArchive: boolean;
+  emailNotifications: boolean;
+  defaultShareCc: string;
 }
 
 export interface QuickRequestDefaults {
@@ -1142,6 +1153,17 @@ export interface ExternalConnection {
 export interface GmailConnection {
   isConnected: boolean;
   email: string | null;
+}
+
+export interface CompanyEmailSettings {
+  fromAddress: string;
+  enforceCompanySender: boolean;
+  provider: 'resend' | 'gmail';
+  workspaceMailbox?: {
+    email: string;
+    connectedBy?: string | null;
+    connectedAt?: string | null;
+  };
 }
 
 export interface WatchlistItem {

@@ -1,13 +1,15 @@
 const DEV_FLAG_KEY = 'murp::devGodMode';
 const DEV_PARAM = 'dev';
 const E2E_PARAM = 'e2e';
+const FORCE_MOCK_KEY = 'murp::forceMockData';
 
 export const isDevelopment = () => Boolean(import.meta.env?.DEV);
 
 export const isE2ETesting = () => {
   if (typeof window === 'undefined') return false;
   const params = new URLSearchParams(window.location.search);
-  return params.get(E2E_PARAM) === '1';
+  const forceMock = window.localStorage.getItem(FORCE_MOCK_KEY) === '1';
+  return params.get(E2E_PARAM) === '1' || forceMock;
 };
 
 export const canBypassAuth = () => isDevelopment();

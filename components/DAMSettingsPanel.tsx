@@ -1,30 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
-import { DAM_TIER_LIMITS, DAMTier } from '../types';
+import { DAM_TIER_LIMITS, DAMTier, type DamSettingsState } from '../types';
 
 interface DAMSettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   currentTier: DAMTier;
   onUpgrade: (tier: DAMTier) => void;
-  settings: {
-    defaultPrintSize: string;
-    showPrintReadyWarning: boolean;
-    requireApproval: boolean;
-    allowedDomains: string;
-    autoArchive: boolean;
-    emailNotifications: boolean;
-    defaultShareCc: string;
-  };
-  onUpdateSettings: (settings: { 
-    defaultPrintSize: string; 
-    showPrintReadyWarning: boolean;
-    requireApproval: boolean;
-    allowedDomains: string;
-    autoArchive: boolean;
-    emailNotifications: boolean;
-    defaultShareCc: string;
-  }) => void;
+  settings: DamSettingsState;
+  onUpdateSettings: (settings: DamSettingsState) => void;
+  storageUsedBytes?: number;
+  storageLimitBytes?: number;
+  normalizedAssetCount?: number;
+  legacyAssetCount?: number;
 }
 
 export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
@@ -34,9 +22,19 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
   onUpgrade,
   settings,
   onUpdateSettings,
+  storageUsedBytes = 0,
+  storageLimitBytes,
+  normalizedAssetCount = 0,
+  legacyAssetCount = 0,
 }) => {
   const [localSettings, setLocalSettings] = useState(settings);
   const [activeTab, setActiveTab] = useState<'general' | 'user' | 'admin'>('general');
+  const resolvedStorageLimit = storageLimitBytes ?? DAM_TIER_LIMITS[currentTier].storage;
+  const usagePercent = resolvedStorageLimit > 0 ? Math.min(100, Math.round((storageUsedBytes / resolvedStorageLimit) * 100)) : 0;
+
+  useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
 
   if (!isOpen) return null;
 
@@ -117,6 +115,32 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                       )}
                     </div>
                   ))}
+                </div>
+              </section>
+
+              <section className="bg-gray-900/30 border border-gray-800 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Storage Usage</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>{(storageUsedBytes / (1024 * 1024)).toFixed(2)} MB used</span>
+                    <span>{(resolvedStorageLimit / (1024 * 1024)).toFixed(0)} MB limit</span>
+                  </div>
+                  <div className="h-3 rounded-full bg-gray-800 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${usagePercent > 90 ? 'bg-red-500' : usagePercent > 70 ? 'bg-yellow-500' : 'bg-indigo-500'}`}
+                      style={{ width: `${usagePercent}%` }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm text-gray-300">
+                    <div>
+                      <p className="text-xs uppercase text-gray-500">Normalized Assets</p>
+                      <p className="font-semibold text-white">{normalizedAssetCount}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-gray-500">Legacy JSON</p>
+                      <p className="font-semibold text-white">{legacyAssetCount}</p>
+                    </div>
+                  </div>
                 </div>
               </section>
 

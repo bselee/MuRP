@@ -38,15 +38,15 @@ ALTER TABLE boms ADD COLUMN IF NOT EXISTS
 ALTER TABLE labels ADD CONSTRAINT fk_labels_bom_id
   FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE SET NULL;
 
--- Add foreign key constraints from labels to users
+-- Add foreign key constraints from labels to auth.users
 ALTER TABLE labels ADD CONSTRAINT fk_labels_uploaded_by
-  FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL;
+  FOREIGN KEY (uploaded_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 ALTER TABLE labels ADD CONSTRAINT fk_labels_verified_by
-  FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL;
+  FOREIGN KEY (verified_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 ALTER TABLE labels ADD CONSTRAINT fk_labels_approved_by
-  FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL;
+  FOREIGN KEY (approved_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 -- Add foreign key constraints from product_data_sheets to boms and labels
 ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_bom_id
@@ -55,15 +55,15 @@ ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_bom_id
 ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_label_id
   FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE SET NULL;
 
--- Add foreign key constraints from product_data_sheets to users
+-- Add foreign key constraints from product_data_sheets to auth.users
 ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_created_by
-  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+  FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_last_edited_by
-  FOREIGN KEY (last_edited_by) REFERENCES users(id) ON DELETE SET NULL;
+  FOREIGN KEY (last_edited_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_approved_by
-  FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL;
+  FOREIGN KEY (approved_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 -- Add foreign key constraints from compliance_records to boms and labels
 ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_bom_id
@@ -72,15 +72,15 @@ ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_bom_id
 ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_label_id
   FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE SET NULL;
 
--- Add foreign key constraints from compliance_records to users
+-- Add foreign key constraints from compliance_records to auth.users
 ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_created_by
-  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+  FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_assigned_to
-  FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL;
+  FOREIGN KEY (assigned_to) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_last_verified_by
-  FOREIGN KEY (last_verified_by) REFERENCES users(id) ON DELETE SET NULL;
+  FOREIGN KEY (last_verified_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 -- ============================================================================
 -- Indexes for New BOM Columns

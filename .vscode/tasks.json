@@ -1,0 +1,57 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Supabase: Check Version",
+      "type": "shell",
+      "command": "supabase --version",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Supabase: Link Project",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "supabase link --project-ref ${input:projectRef}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Supabase: Push Database",
+      "type": "shell",
+      "command": "supabase db push",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Supabase: Generate Types",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "supabase gen types typescript --local > types/database.ts"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "projectRef",
+      "type": "promptString",
+      "description": "Supabase project reference ID (found in the dashboard).",
+      "default": ""
+    }
+  ]
+}

@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
 import Modal from './Modal';
-import type { Artwork, GmailConnection } from '../types';
+import type { Artwork, GmailConnection, CompanyEmailSettings } from '../types';
 import { GmailIcon, SendIcon, DocumentTextIcon } from './icons';
 import { getGoogleGmailService, GmailAttachment } from '../services/googleGmailService';
+import { useGoogleAuthPrompt } from '../hooks/useGoogleAuthPrompt';
+import { sendCompanyEmail } from '../services/companyEmailService';
 
 interface ContactSuggestion {
   vendorId: string;
@@ -30,6 +32,10 @@ interface ShareArtworkModalProps {
   currentUser?: { id: string; email: string };
   suggestedContacts?: ContactSuggestion[];
   onShareLogged?: (artworks: (Artwork & { productName?: string; productSku?: string })[], payload: ShareLogResult) => void;
+  defaultCc?: string;
+  allowedDomains?: string[];
+  onConnectGoogle?: () => Promise<boolean>;
+  companyEmailSettings: CompanyEmailSettings;
 }
 
 type Nullable<T> = T | null;
@@ -46,6 +52,18 @@ const addEmailToField = (current: string, email: string) => {
   return [...emails, email].join(', ');
 };
 
+const plaintextToHtml = (text: string): string => {
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped
+    .split(/\n{2,}/)
+    .map(segment => segment.split('\n').join('<br/>'))
+    .map(paragraph => `<p>${paragraph}</p>`)
+    .join('');
+};
+
 const ShareArtworkModal: React.FC<ShareArtworkModalProps> = ({
   isOpen,
   artworks,
@@ -55,6 +73,10 @@ const ShareArtworkModal: React.FC<ShareArtworkModalProps> = ({
   currentUser,
   suggestedContacts,
   onShareLogged,
+  defaultCc,
+  allowedDomains,
+  onConnectGoogle,
+  companyEmailSettings,
 }) => {
   const [to, setTo] = useState('');
   const [cc, setCc] = useState('');
@@ -63,6 +85,49 @@ const ShareArtworkModal: React.FC<ShareArtworkModalProps> = ({
   const [includeCompliance, setIncludeCompliance] = useState(true);
   const [attachFile, setAttachFile] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const promptGoogleAuth = useGoogleAuthPrompt(addToast);
+  const enforcedDomains = useMemo(
+    () => allowedDomains?.map(domain => domain.trim().replace(/^@/, '').toLowerCase()).filter(Boolean) ?? [],
+    [allowedDomains],
+  );
+  const fallbackFrom = gmailConnection.email ?? currentUser?.email ?? 'packaging@regvault.app (simulation)';
+  const companySenderActive =
+    Boolean(companyEmailSettings.enforceCompanySender && companyEmailSettings.fromAddress);
+  const companyProvider = companyEmailSettings.provider ?? 'resend';
+  const workspaceMailboxEmail = companyEmailSettings.workspaceMailbox?.email ?? null;
+  const displayFromAddress = companySenderActive
+    ? companyEmailSettings.fromAddress || workspaceMailboxEmail || fallbackFrom
+    : fallbackFrom;
+  const useCompanyResend = companySenderActive && companyProvider === 'resend';
+  const useCompanyWorkspaceMailbox =
+    companySenderActive && companyProvider === 'gmail' && Boolean(workspaceMailboxEmail);
+  const companySenderDescription = companySenderActive
+    ? `Company sender enforced via ${companyProvider === 'resend' ? 'Resend' : 'Workspace Gmail'}`
+    : null;
+  const requestGmailConnection = useCallback(async () => {
+    if (!onConnectGoogle) {
+      return false;
+    }
+    return promptGoogleAuth({
+      reason: 'send artwork packages via Google Workspace Gmail',
+      connect: onConnectGoogle,
+      postConnectMessage: 'Google Workspace connected. You can now email artwork directly.',
+    });
+  }, [onConnectGoogle, promptGoogleAuth]);
+
+  const ensureGmailReady = useCallback(async () => {
+    if (gmailConnection.isConnected) {
+      return true;
+    }
+    return Boolean(await requestGmailConnection());
+  }, [gmailConnection.isConnected, requestGmailConnection]);
+
+  const handleConnectClick = useCallback(async () => {
+    if (gmailConnection.isConnected) {
+      return;
+    }
+    await requestGmailConnection();
+  }, [gmailConnection.isConnected, requestGmailConnection]);
 
   useEffect(() => {
     if (isOpen && artworks.length > 0) {
@@ -89,16 +154,16 @@ ${currentUser?.email ?? 'RegVault Ops'}
       setSubject(defaultSubject);
       setMessage([intro, closing].join('\n\n'));
       setTo(prev => prev || suggestedContacts?.[0]?.email || '');
-      setCc('');
+      setCc(defaultCc ?? '');
       setIncludeCompliance(true);
       setAttachFile(true);
     } else if (!isOpen) {
       setTo('');
-      setCc('');
+      setCc(defaultCc ?? '');
       setSubject('');
       setMessage('');
     }
-  }, [isOpen, artworks, currentUser?.email, suggestedContacts]);
+  }, [isOpen, artworks, currentUser?.email, suggestedContacts, defaultCc]);
 
   const handleSuggestionClick = (email: string, target: 'to' | 'cc') => {
     if (target === 'to') {
@@ -142,11 +207,29 @@ ${currentUser?.email ?? 'RegVault Ops'}
       return;
     }
     const ccList = parseEmails(cc);
+    if (enforcedDomains.length) {
+      const invalid = [...toList, ...ccList].filter(email => {
+        const [, domain = ''] = email.toLowerCase().split('@');
+        return domain ? !enforcedDomains.includes(domain) : true;
+      });
+      if (invalid.length) {
+        addToast(
+          `Blocked recipients. Allowed domains: ${enforcedDomains.join(', ')}. Invalid: ${invalid.join(', ')}`,
+          'error',
+        );
+        return;
+      }
+    }
     setIsSending(true);
     try {
+      let canSendViaGmail = gmailConnection.isConnected;
+      if (!canSendViaGmail) {
+        canSendViaGmail = await ensureGmailReady();
+      }
+
       let attachments: GmailAttachment[] = [];
-      let attachmentHash: string | null = null; // Hash of first attachment for logging simplicity, or composite?
-      
+      let attachmentHash: string | null = null;
+
       if (attachFile) {
         for (const art of artworks) {
           try {
@@ -160,9 +243,9 @@ ${currentUser?.email ?? 'RegVault Ops'}
             addToast(`Skipped attachment ${art.fileName}: ${(err as Error).message}`, 'error');
           }
         }
-        
+
         if (attachments.length === 0 && artworks.length > 0) {
-           addToast('Unable to attach artwork files. Sending links only.', 'info');
+          addToast('Unable to attach artwork files. Sending links only.', 'info');
         }
       }
 
@@ -170,57 +253,120 @@ ${currentUser?.email ?? 'RegVault Ops'}
       if (includeCompliance && complianceSummary.trim().length > 0) {
         sections.push(`---\nCompliance Snapshot:\n${complianceSummary}`);
       }
-      
-      const links = artworks.map(a => a.url ? `- ${a.fileName}: ${a.url}` : null).filter(Boolean);
+
+      const links = artworks.map(a => (a.url ? `- ${a.fileName}: ${a.url}` : null)).filter(Boolean);
       if (links.length > 0) {
         sections.push(`Preview/Download Links:\n${links.join('\n')}`);
       }
 
       const finalBody = sections.filter(Boolean).join('\n\n');
 
-      if (gmailConnection.isConnected) {
+      if (useCompanyResend) {
+        await sendCompanyEmail({
+          from: companyEmailSettings.fromAddress,
+          to: toList,
+          cc: ccList.length ? ccList : undefined,
+          subject,
+          bodyText: finalBody,
+          bodyHtml: plaintextToHtml(finalBody),
+          metadata: {
+            source: 'artwork_share',
+            artworkIds: artworks.map(art => art.id),
+          },
+        });
+        addToast('Artwork emailed via company sender policy.', 'success');
+        onShareLogged?.(artworks, {
+          to: toList,
+          cc: ccList,
+          subject,
+          includeCompliance,
+          attachFile,
+          attachmentHash,
+          sentViaGmail: false,
+          channel: 'resend',
+          senderEmail: companyEmailSettings.fromAddress,
+        });
+        onClose();
+        return;
+      }
+
+      if (canSendViaGmail) {
+        const fromAddress = workspaceMailboxEmail ?? gmailConnection.email ?? currentUser?.email ?? undefined;
         const gmailService = getGoogleGmailService();
         await gmailService.sendEmail({
-          to: to.trim(),
+          to: toList.join(', '),
           cc: ccList.length ? ccList : undefined,
           subject,
           body: finalBody,
-          from: gmailConnection.email ?? currentUser?.email,
+          from: fromAddress,
           attachments: attachments.length ? attachments : undefined,
         });
         addToast('Artwork emailed via Google Workspace Gmail.', 'success');
+        onShareLogged?.(artworks, {
+          to: toList,
+          cc: ccList,
+          subject,
+          includeCompliance,
+          attachFile,
+          attachmentHash,
+          sentViaGmail: true,
+          channel: 'gmail',
+          senderEmail: fromAddress ?? null,
+        });
       } else {
         addToast('Workspace Gmail not connected. Simulating email send.', 'info');
+        onShareLogged?.(artworks, {
+          to: toList,
+          cc: ccList,
+          subject,
+          includeCompliance,
+          attachFile,
+          attachmentHash,
+          sentViaGmail: false,
+          channel: 'simulation',
+          senderEmail: gmailConnection.email ?? currentUser?.email ?? null,
+        });
       }
-
-      onShareLogged?.(artworks, {
-        to: toList,
-        cc: ccList,
-        subject,
-        includeCompliance,
-        attachFile,
-        attachmentHash,
-        sentViaGmail: gmailConnection.isConnected,
-      });
-
       onClose();
     } catch (error) {
       console.error('Share artwork email error:', error);
       addToast(
         `Failed to send artwork email: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'error'
+        'error',
       );
     } finally {
       setIsSending(false);
     }
   };
 
-  const disableSend = artworks.length === 0 || !to.trim() || !subject.trim() || !message.trim();
+  const disableSend = artworks.length === 0 || !to.trim() || !subject.trim() || !message.trim() || isSending;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Email Artwork Package">
       {artworks.length > 0 ? (
-        <div className="space-y-5">
+        <div className="space-y-6">
+          <section className="rounded-2xl border border-white/5 bg-gradient-to-br from-gray-900/80 via-gray-900/60 to-slate-900/80 p-5 shadow-xl shadow-indigo-900/20">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.3em] text-indigo-300">Artwork Delivery</p>
+                <h3 className="text-xl font-semibold text-white mt-1">Share {artworks.length} asset{artworks.length > 1 ? 's' : ''}</h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  {companySenderActive
+                    ? `Company mailbox ${displayFromAddress} will handle this send.`
+                    : 'Use your connected Gmail account or simulate for testing.'}
+                </p>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <span className={`px-3 py-1 rounded-full border ${companySenderActive ? 'border-emerald-400 text-emerald-300' : 'border-gray-600 text-gray-300'}`}>
+                  {companySenderActive ? 'Managed Mailbox' : 'Personal Sender'}
+                </span>
+                <span className="px-3 py-1 rounded-full border border-indigo-400 text-indigo-200">
+                  {includeCompliance ? 'Compliance Attached' : 'Metadata Only'}
+                </span>
+              </div>
+            </div>
+          </section>
+
           <section className="bg-gray-900/40 rounded-lg border border-gray-800 p-4 max-h-32 overflow-y-auto">
             {artworks.map(art => (
               <div key={art.id} className="mb-2 last:mb-0 border-b border-gray-700 last:border-0 pb-2 last:pb-0">
@@ -234,39 +380,65 @@ ${currentUser?.email ?? 'RegVault Ops'}
 
           <div className="space-y-3">
             <div>
+              <label className="text-xs text-gray-400 uppercase">From</label>
+              <input
+                type="text"
+                value={displayFromAddress}
+                readOnly
+                className="w-full bg-gray-900/50 text-gray-300 rounded-md p-2 mt-1 text-sm border border-gray-700 cursor-not-allowed"
+              />
+            </div>
+            {companySenderActive && (
+              <div className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-md p-2">
+                {companySenderDescription}. Replies will go to {companyEmailSettings.fromAddress}.
+              </div>
+            )}
+            <div className="space-y-1">
               <label className="text-xs text-gray-400 uppercase">To</label>
               <input
                 type="text"
                 value={to}
                 onChange={e => setTo(e.target.value)}
+                aria-label="Artwork recipient emails"
                 className="w-full bg-gray-900/50 text-white rounded-md p-2 mt-1 text-sm border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                 placeholder="packaging@example.com"
               />
               {suggestedContacts && suggestedContacts.length > 0 && (
-                <div className="mt-2 space-y-1">
+                <div className="mt-2 space-y-2">
                   <p className="text-[11px] text-gray-500">Suggested packaging contacts</p>
                   <div className="flex flex-wrap gap-2">
                     {suggestedContacts.map(contact => (
-                      <div key={`${contact.vendorId}-${contact.email}`} className="flex items-center gap-1 bg-gray-800/60 border border-gray-700 rounded-full pl-3 pr-1 py-1">
-                        <span className="text-[11px] text-gray-200">{contact.vendorName}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleSuggestionClick(contact.email, 'to')}
-                          className="text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-0.5 rounded-full"
-                        >
-                          To
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSuggestionClick(contact.email, 'cc')}
-                          className="text-[10px] bg-gray-600 hover:bg-gray-500 text-white px-2 py-0.5 rounded-full"
-                        >
-                          Cc
-                        </button>
+                      <div
+                        key={`${contact.vendorId}-${contact.email}`}
+                        className="group flex items-center gap-2 rounded-full bg-gray-900/50 border border-gray-700 px-3 py-1.5 text-xs text-gray-200 shadow-inner shadow-black/40"
+                      >
+                        <span className="font-medium">{contact.vendorName}</span>
+                        <span className="text-[11px] text-gray-400">{contact.email}</span>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleSuggestionClick(contact.email, 'to')}
+                            className="rounded-full bg-indigo-600/80 px-2 py-0.5 text-[10px] text-white hover:bg-indigo-500"
+                          >
+                            To
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSuggestionClick(contact.email, 'cc')}
+                            className="rounded-full bg-gray-600/80 px-2 py-0.5 text-[10px] text-white hover:bg-gray-500"
+                          >
+                            Cc
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
+              )}
+              {enforcedDomains.length > 0 && (
+                <p className="text-[11px] text-amber-300 mt-2">
+                  Allowed domains: {enforcedDomains.join(', ')}.
+                </p>
               )}
             </div>
             <div>
@@ -275,6 +447,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
                 type="text"
                 value={cc}
                 onChange={e => setCc(e.target.value)}
+                aria-label="Artwork cc emails"
                 className="w-full bg-gray-900/50 text-white rounded-md p-2 mt-1 text-sm border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                 placeholder="optional"
               />
@@ -285,6 +458,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
                 type="text"
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
+                aria-label="Artwork email subject"
                 className="w-full bg-gray-900/50 text-white rounded-md p-2 mt-1 text-sm border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
@@ -294,12 +468,13 @@ ${currentUser?.email ?? 'RegVault Ops'}
                 value={message}
                 onChange={e => setMessage(e.target.value)}
                 rows={6}
+                aria-label="Artwork email body"
                 className="w-full bg-gray-900/50 text-white rounded-md p-3 mt-1 text-sm border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-between bg-gray-900/40 border border-gray-800 rounded-lg p-3">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between bg-gray-900/40 border border-gray-800 rounded-lg p-4">
             <div className="flex items-center gap-3">
               <input
                 id="attach-file"
@@ -334,13 +509,37 @@ ${currentUser?.email ?? 'RegVault Ops'}
             </section>
           )}
 
-          <footer className="flex flex-col gap-3 pt-4 border-t border-gray-800">
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <GmailIcon className={`w-4 h-4 ${gmailConnection.isConnected ? 'text-green-400' : 'text-yellow-400'}`} />
-              {gmailConnection.isConnected
-                ? `Sending as ${gmailConnection.email ?? 'connected account'}`
-                : 'Workspace Gmail not connected — message will be simulated.'}
+          <footer className="flex flex-col gap-4 pt-4 border-t border-gray-800">
+            <div className="flex flex-col gap-2 text-xs text-gray-400 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <GmailIcon
+                  className={`w-4 h-4 ${
+                    useCompanyResend ? 'text-emerald-300' : gmailConnection.isConnected ? 'text-green-400' : 'text-yellow-400'
+                  }`}
+                />
+                {useCompanyResend
+                  ? `Sending as ${companyEmailSettings.fromAddress} via company Resend channel`
+                  : useCompanyWorkspaceMailbox
+                      ? `Workspace mailbox ${workspaceMailboxEmail} authorized by ${companyEmailSettings.workspaceMailbox?.connectedBy ?? 'admin'}`
+                      : gmailConnection.isConnected
+                          ? `Sending as ${gmailConnection.email ?? fallbackFrom}`
+                          : 'Workspace Gmail not connected — message will be simulated.'}
+              </div>
+              {!useCompanyResend && !gmailConnection.isConnected && onConnectGoogle && (
+                <Button
+                  onClick={handleConnectClick}
+                  className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded-md"
+                  disabled={isSending}
+                >
+                  Connect Google Workspace
+                </Button>
+              )}
             </div>
+            {companySenderDescription && (
+              <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-100">
+                {companySenderDescription}. Message metadata will be logged automatically for audit and agent hand-off.
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button onClick={onClose} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md">
                 Cancel

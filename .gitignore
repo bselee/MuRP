@@ -15,6 +15,7 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/tasks.json
 .idea
 .DS_Store
 *.suo
@@ -23,7 +24,6 @@ dist-ssr
 *.sln
 *.sw?
 .env*.local
-.vscode/
 
 # Playwright console test scripts
 scripts/playwright-console.js

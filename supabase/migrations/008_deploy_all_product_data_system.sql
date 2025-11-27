@@ -49,22 +49,37 @@ CREATE TABLE IF NOT EXISTS labels (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_labels_bom_id ON labels(bom_id) WHERE bom_id IS NOT NULL;
-CREATE INDEX idx_labels_barcode ON labels(barcode) WHERE barcode IS NOT NULL;
-CREATE INDEX idx_labels_scan_status ON labels(scan_status);
-CREATE INDEX idx_labels_status ON labels(status);
-CREATE INDEX idx_labels_verified ON labels(verified);
-CREATE INDEX idx_labels_created_at ON labels(created_at DESC);
-CREATE INDEX idx_labels_uploaded_by ON labels(uploaded_by);
-CREATE INDEX idx_labels_extracted_data ON labels USING GIN (extracted_data);
-CREATE INDEX idx_labels_ingredient_comparison ON labels USING GIN (ingredient_comparison);
+CREATE INDEX IF NOT EXISTS idx_labels_bom_id ON labels(bom_id) WHERE bom_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_labels_barcode ON labels(barcode) WHERE barcode IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_labels_scan_status ON labels(scan_status);
+CREATE INDEX IF NOT EXISTS idx_labels_status ON labels(status);
+CREATE INDEX IF NOT EXISTS idx_labels_verified ON labels(verified);
+CREATE INDEX IF NOT EXISTS idx_labels_created_at ON labels(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_labels_uploaded_by ON labels(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_labels_extracted_data ON labels USING GIN (extracted_data);
+CREATE INDEX IF NOT EXISTS idx_labels_ingredient_comparison ON labels USING GIN (ingredient_comparison);
 
-ALTER TABLE labels ADD CONSTRAINT labels_scan_status_check
-  CHECK (scan_status IN ('pending', 'scanning', 'completed', 'failed'));
-ALTER TABLE labels ADD CONSTRAINT labels_status_check
-  CHECK (status IN ('draft', 'approved', 'archived'));
-ALTER TABLE labels ADD CONSTRAINT labels_file_type_check
-  CHECK (file_type IN ('label', 'regulatory', 'other'));
+-- Add constraints only if they don't exist
+DO $$ BEGIN
+  ALTER TABLE labels ADD CONSTRAINT labels_scan_status_check
+    CHECK (scan_status IN ('pending', 'scanning', 'completed', 'failed'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE labels ADD CONSTRAINT labels_status_check
+    CHECK (status IN ('draft', 'approved', 'archived'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE labels ADD CONSTRAINT labels_file_type_check
+    CHECK (file_type IN ('label', 'regulatory', 'other'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 ALTER TABLE labels ENABLE ROW LEVEL SECURITY;
 

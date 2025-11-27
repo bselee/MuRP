@@ -60,6 +60,8 @@ import {
     defaultAiConfig,
     mockArtworkFolders,
     mockVendors,
+    mockInventory,
+    mockBOMs,
 } from './types';
 import type {
     BillOfMaterials,
@@ -84,6 +86,8 @@ import type {
     QuickRequestDefaults,
     BomRevisionRequestOptions,
     GuidedLaunchState,
+    ArtworkShareEvent,
+    CompanyEmailSettings,
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
 import { getGoogleAuthService } from './services/googleAuthService';
@@ -126,10 +130,10 @@ const AppShell: React.FC = () => {
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
   // 🔥 LIVE DATA FROM SUPABASE (Real-time subscriptions enabled)
-  const { data: inventory, loading: inventoryLoading, error: inventoryError, refetch: refetchInventory } = useSupabaseInventory();
+  const { data: inventoryData, loading: inventoryLoading, error: inventoryError, refetch: refetchInventory } = useSupabaseInventory();
   const { data: vendorsData, loading: vendorsLoading, error: vendorsError, refetch: refetchVendors } = useSupabaseVendors();
-  const { data: boms, loading: bomsLoading, error: bomsError, refetch: refetchBOMs } = useSupabaseBOMs();
-  const { data: purchaseOrders, loading: posLoading, error: posError, refetch: refetchPOs } = useSupabasePurchaseOrders();
+  const { data: bomsData, loading: bomsLoading, error: bomsError, refetch: refetchBOMs } = useSupabaseBOMs();
+  const { data: purchaseOrdersData, loading: posLoading, error: posError, refetch: refetchPOs } = useSupabasePurchaseOrders();
   const { data: buildOrders, loading: buildOrdersLoading, error: buildOrdersError, refetch: refetchBuildOrders } = useSupabaseBuildOrders();
   const { data: requisitions, loading: requisitionsLoading, error: requisitionsError, refetch: refetchRequisitions } = useSupabaseRequisitions();
   const { data: userProfiles, loading: userProfilesLoading, refetch: refetchUserProfiles } = useSupabaseUserProfiles();
@@ -140,6 +144,13 @@ const AppShell: React.FC = () => {
   const [aiConfig, setAiConfig] = usePersistentState<AiConfig>('aiConfig', defaultAiConfig);
   const [aiSettings, setAiSettings] = usePersistentState<AiSettings>('aiSettings', getDefaultAiSettings());
   const [artworkFolders, setArtworkFolders] = usePersistentState<ArtworkFolder[]>('artworkFolders', mockArtworkFolders);
+  const [artworkShareHistory, setArtworkShareHistory] = usePersistentState<ArtworkShareEvent[]>('artworkShareHistory', []);
+  const [companyEmailSettings, setCompanyEmailSettings] = usePersistentState<CompanyEmailSettings>('companyEmailSettings', {
+    fromAddress: '',
+    enforceCompanySender: false,
+    provider: 'resend',
+    workspaceMailbox: undefined,
+  });
   
   const {
     isOpen: isAiAssistantOpen,
@@ -172,6 +183,16 @@ const AppShell: React.FC = () => {
     setCurrentPage(nextPage);
   }, [setCurrentPage]);
 
+  const handleRecordArtworkShare = useCallback(
+    (event: ArtworkShareEvent) => {
+      setArtworkShareHistory(prev => {
+        const next = [event, ...prev];
+        return next.length > 200 ? next.slice(0, 200) : next;
+      });
+    },
+    [setArtworkShareHistory],
+  );
+
   const handleGoBack = useCallback(() => {
     setNavigationHistory(prev => {
       if (prev.length <= 1) {
@@ -191,6 +212,9 @@ const AppShell: React.FC = () => {
   const googleAuthService = useMemo(() => getGoogleAuthService(), []);
   const gmailService = useMemo(() => getGoogleGmailService(), []);
   const isE2ETestMode = isE2ETesting();
+  const inventory = useMemo(() => (isE2ETestMode ? mockInventory : inventoryData) ?? [], [isE2ETestMode, inventoryData]);
+  const boms = useMemo(() => (isE2ETestMode ? mockBOMs : bomsData) ?? [], [isE2ETestMode, bomsData]);
+  const purchaseOrders = useMemo(() => purchaseOrdersData ?? [], [purchaseOrdersData]);
   const vendors = isE2ETestMode ? mockVendors : vendorsData;
   const inventoryMap = useMemo(() => new Map((inventory || []).map(item => [item.sku, item])), [inventory]);
   const vendorMap = useMemo(() => new Map((vendors || []).map(vendor => [vendor.id, vendor])), [vendors]);
@@ -214,6 +238,11 @@ const AppShell: React.FC = () => {
       setGmailConnection({ isConnected: false, email: null });
     }
   }, [googleAuthService, gmailService, setGmailConnection]);
+
+  useEffect(() => {
+    if (!isE2ETestMode || typeof window === 'undefined') return;
+    (window as any).__murpE2E = { boms: boms.length, inventory: inventory.length };
+  }, [isE2ETestMode, boms.length, inventory.length]);
 
   const effectiveVendorsLoading = isE2ETestMode ? false : vendorsLoading;
 
@@ -1655,6 +1684,8 @@ const AppShell: React.FC = () => {
       case 'Artwork':
         return <ArtworkPage 
             boms={boms}
+            inventory={inventory}
+            vendors={vendors}
             onAddArtwork={handleAddArtworkToBom}
             onCreatePoFromArtwork={handleCreatePoFromArtwork}
             onUpdateArtwork={handleUpdateArtwork}
@@ -1665,6 +1696,12 @@ const AppShell: React.FC = () => {
             artworkFolders={artworkFolders}
             onCreateArtworkFolder={handleCreateArtworkFolder}
             currentUser={currentUser}
+            gmailConnection={gmailConnection}
+            addToast={addToast}
+            artworkShareHistory={artworkShareHistory}
+            onRecordArtworkShare={handleRecordArtworkShare}
+            onConnectGoogle={handleGmailConnect}
+            companyEmailSettings={companyEmailSettings}
         />;
       case 'API Documentation':
           return <ApiDocs />;
@@ -1697,6 +1734,8 @@ const AppShell: React.FC = () => {
             inventory={inventory}
             boms={boms}
             vendors={vendors}
+            companyEmailSettings={companyEmailSettings}
+            onUpdateCompanyEmailSettings={setCompanyEmailSettings}
         />;
       default:
         return <Dashboard 

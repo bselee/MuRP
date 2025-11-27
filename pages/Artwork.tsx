@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Button from '@/components/ui/Button';
-import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder, GmailConnection, InventoryItem, Vendor, ArtworkShareEvent, DAMTier } from '../types';
+import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder, GmailConnection, InventoryItem, Vendor, ArtworkShareEvent, DAMTier, DamSettingsState, CompanyEmailSettings } from '../types';
+import { mockBOMs } from '../types';
+import { isE2ETesting } from '../lib/auth/guards';
 import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon, QrCodeIcon, CheckCircleIcon, CloudUploadIcon, SendIcon } from '../components/icons';
 import RegulatoryScanModal from '../components/RegulatoryScanModal';
 import BatchArtworkVerificationModal from '../components/BatchArtworkVerificationModal';
@@ -10,6 +12,7 @@ import UploadArtworkModal from '../components/UploadArtworkModal';
 import ShareArtworkModal from '../components/ShareArtworkModal';
 import { DAMSettingsPanel } from '../components/DAMSettingsPanel';
 import { DAM_TIER_LIMITS } from '../types';
+import { loadState, saveState } from '../services/storageService';
 
 type ArtworkWithProduct = Artwork & {
     productName: string;
@@ -31,6 +34,37 @@ type ShareLogPayload = {
     attachFile: boolean;
     attachmentHash?: string | null;
     sentViaGmail: boolean;
+    channel?: 'gmail' | 'resend' | 'simulation';
+    senderEmail?: string | null;
+};
+
+const DEFAULT_DAM_SETTINGS: DamSettingsState = {
+    defaultPrintSize: '4x6',
+    showPrintReadyWarning: true,
+    requireApproval: false,
+    allowedDomains: 'gmail.com, company.com',
+    autoArchive: false,
+    emailNotifications: true,
+    defaultShareCc: '',
+};
+
+const damSettingsEqual = (a: DamSettingsState, b: DamSettingsState): boolean =>
+    a.defaultPrintSize === b.defaultPrintSize &&
+    a.showPrintReadyWarning === b.showPrintReadyWarning &&
+    a.requireApproval === b.requireApproval &&
+    a.allowedDomains === b.allowedDomains &&
+    a.autoArchive === b.autoArchive &&
+    a.emailNotifications === b.emailNotifications &&
+    a.defaultShareCc === b.defaultShareCc;
+
+const getDamStorageKey = (userId: string | undefined, suffix: 'tier' | 'settings') =>
+    `dam-settings:${userId ?? 'global'}:${suffix}`;
+
+const formatStorageSize = (bytes: number): string => {
+    if (bytes >= 1024 * 1024 * 1024) {
+        return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+    }
+    return `${(bytes / (1024 * 1024)).toFixed(0)} MB`;
 };
 
 interface ArtworkPageProps {
@@ -51,9 +85,11 @@ interface ArtworkPageProps {
     addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
     artworkShareHistory: ArtworkShareEvent[];
     onRecordArtworkShare: (event: ArtworkShareEvent) => void;
+    onConnectGoogle?: () => Promise<boolean>;
+    companyEmailSettings: CompanyEmailSettings;
 }
 
-const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onAddArtwork, onCreatePoFromArtwork, onUpdateArtwork, initialFilter, onClearFilter, watchlist, aiConfig, artworkFolders, onCreateArtworkFolder, currentUser, gmailConnection, addToast, artworkShareHistory, onRecordArtworkShare }) => {
+const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onAddArtwork, onCreatePoFromArtwork, onUpdateArtwork, initialFilter, onClearFilter, watchlist, aiConfig, artworkFolders, onCreateArtworkFolder, currentUser, gmailConnection, addToast, artworkShareHistory, onRecordArtworkShare, onConnectGoogle, companyEmailSettings }) => {
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [isBatchVerificationModalOpen, setIsBatchVerificationModalOpen] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -71,18 +107,34 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [selectedShareArtworks, setSelectedShareArtworks] = useState<ArtworkWithProduct[]>([]);
     
-    // DAM Settings State
+    // DAM Settings State (persisted per-user)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    const [damTier, setDamTier] = useState<DAMTier>('basic');
-    const [damSettings, setDamSettings] = useState({
-        defaultPrintSize: '4x6',
-        showPrintReadyWarning: true,
-        requireApproval: false,
-        allowedDomains: 'gmail.com, company.com',
-        autoArchive: false,
-        emailNotifications: true,
-        defaultShareCc: '',
-    });
+    const damTierStorageKey = getDamStorageKey(currentUser?.id, 'tier');
+    const damSettingsStorageKey = getDamStorageKey(currentUser?.id, 'settings');
+    const [damTier, setDamTier] = useState<DAMTier>(() => loadState<DAMTier>(damTierStorageKey, 'basic'));
+    const [damSettings, setDamSettings] = useState<DamSettingsState>(() =>
+        loadState<DamSettingsState>(damSettingsStorageKey, DEFAULT_DAM_SETTINGS)
+    );
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        const storedTier = loadState<DAMTier>(damTierStorageKey, 'basic');
+        if (storedTier !== damTier) {
+            setDamTier(storedTier);
+        }
+        const storedSettings = loadState<DamSettingsState>(damSettingsStorageKey, DEFAULT_DAM_SETTINGS);
+        if (!damSettingsEqual(storedSettings, damSettings)) {
+            setDamSettings(storedSettings);
+        }
+    }, [damTierStorageKey, damSettingsStorageKey]);
+
+    useEffect(() => {
+        saveState<DAMTier>(damTierStorageKey, damTier);
+    }, [damTier, damTierStorageKey]);
+
+    useEffect(() => {
+        saveState<DamSettingsState>(damSettingsStorageKey, damSettings);
+    }, [damSettings, damSettingsStorageKey]);
 
     // Download Warning State
     const [pendingDownload, setPendingDownload] = useState<{ artwork: ArtworkWithProduct; url: string } | null>(null);
@@ -104,8 +156,16 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
         }
     }, [selectedArtworkForDetails]);
 
+    const isArtworkE2EMode = typeof window !== 'undefined' && isE2ETesting();
+    const effectiveBoms = useMemo(() => {
+        if (isArtworkE2EMode && (!boms || boms.length === 0)) {
+            return mockBOMs;
+        }
+        return boms;
+    }, [boms, isArtworkE2EMode]);
+
     const allArtwork = useMemo(() => {
-        return boms.flatMap(bom =>
+        return effectiveBoms.flatMap(bom =>
             bom.artwork.map(art => ({
                 ...art,
                 productName: bom.name,
@@ -113,7 +173,35 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                 bomId: bom.id,
             }))
         ).sort((a,b) => a.fileName.localeCompare(b.fileName));
-    }, [boms]);
+    }, [effectiveBoms]);
+
+    const normalizedAssets = useMemo(() => {
+        return effectiveBoms.flatMap(bom => bom.artworkAssets?.map(link => link.asset) ?? []);
+    }, [effectiveBoms]);
+
+    const normalizedStorageBytes = useMemo(() => {
+        return normalizedAssets.reduce((total, asset) => {
+            const metadata = (asset.metadata as { fileSizeBytes?: number; fileSize?: number } | null) ?? null;
+            const size = metadata?.fileSizeBytes ?? metadata?.fileSize ?? 0;
+            return total + (typeof size === 'number' ? size : 0);
+        }, 0);
+    }, [normalizedAssets]);
+
+    const legacyStorageBytes = useMemo(() => {
+        return allArtwork.reduce((acc, art) => acc + (art.fileSize ?? 0), 0);
+    }, [allArtwork]);
+
+    const storageUsageBytes = normalizedStorageBytes || legacyStorageBytes;
+    const storageLimitBytes = DAM_TIER_LIMITS[damTier].storage;
+    const normalizedAssetCount = normalizedAssets.length;
+    const legacyAssetCount = allArtwork.length;
+
+    const allowedDomainsList = useMemo(() => {
+        return damSettings.allowedDomains
+            .split(',')
+            .map(domain => domain.trim().replace(/^@/, '').toLowerCase())
+            .filter(Boolean);
+    }, [damSettings.allowedDomains]);
 
     const filteredByFolder = useMemo(() => {
         if (selectedFolderId === null) return allArtwork;
@@ -137,7 +225,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
         const map = new Map<string, PackagingContactSuggestion[]>();
         const isPackagingCategory = (category?: string) => category?.toLowerCase().includes('pack');
 
-        boms.forEach(bom => {
+        effectiveBoms.forEach(bom => {
             const vendorContactMap = new Map<string, PackagingContactSuggestion>();
             bom.components.forEach(component => {
                 const inventoryItem = inventoryBySku.get(component.sku);
@@ -163,7 +251,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
             });
         });
         return map;
-    }, [boms, inventoryBySku, vendorById]);
+    }, [effectiveBoms, inventoryBySku, vendorById]);
 
     const shareHistoryByArtworkId = useMemo(() => {
         const map = new Map<string, ArtworkShareEvent[]>();
@@ -314,8 +402,9 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                 attachFile: payload.attachFile,
                 attachmentHash: payload.attachmentHash ?? null,
                 sentViaGmail: payload.sentViaGmail,
-                senderEmail: currentUser?.email ?? gmailConnection.email,
+                senderEmail: payload.senderEmail ?? currentUser?.email ?? gmailConnection.email,
                 timestamp: new Date().toISOString(),
+                channel: payload.channel ?? (payload.sentViaGmail ? 'gmail' : 'simulation'),
             };
             onRecordArtworkShare(event);
         });
@@ -482,12 +571,8 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                             <div className="flex gap-2">
                                 <Button 
                                     onClick={() => {
-                                        const totalSize = allArtwork.reduce((acc, art) => acc + (art.fileSize || 0), 0);
-                                        const limitGB = DAM_TIER_LIMITS[damTier].storage;
-                                        const limitBytes = limitGB * 1024 * 1024 * 1024;
-                                        
-                                        if (totalSize >= limitBytes) {
-                                            addToast(`Storage limit reached for ${damTier} tier (${limitGB}GB). Please upgrade to upload more.`, 'error');
+                                        if (storageUsageBytes >= storageLimitBytes) {
+                                            addToast(`Storage limit reached for ${damTier} tier (${formatStorageSize(storageLimitBytes)}). Please upgrade to upload more.`, 'error');
                                             return;
                                         }
                                         setIsUploadModalOpen(true);
@@ -769,8 +854,14 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                         <div key={event.id} className="bg-gray-900/40 rounded-md p-3 border border-gray-800">
                                             <div className="flex items-center justify-between text-xs text-gray-400">
                                                 <span>{new Date(event.timestamp).toLocaleString()}</span>
-                                                <span className={event.sentViaGmail ? 'text-emerald-300' : 'text-yellow-300'}>
-                                                    {event.sentViaGmail ? 'Gmail' : 'Simulated'}
+                                                <span className={
+                                                    event.channel === 'resend'
+                                                        ? 'text-emerald-300'
+                                                        : event.channel === 'gmail'
+                                                            ? 'text-emerald-200'
+                                                            : 'text-yellow-300'
+                                                }>
+                                                    {event.channel ? event.channel.toUpperCase() : event.sentViaGmail ? 'GMAIL' : 'SIM'}
                                                 </span>
                                             </div>
                                             <p className="text-sm text-white mt-1 truncate">
@@ -800,7 +891,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                     isOpen={isScanModalOpen}
                     onClose={() => setIsScanModalOpen(false)}
                     artwork={selectedArtworkForScan}
-                    bom={boms.find(b => b.id === selectedArtworkForScan.bomId)!}
+                    bom={effectiveBoms.find(b => b.id === selectedArtworkForScan.bomId)!}
                     onUpdateLink={(link) => onUpdateArtwork(selectedArtworkForScan.id, selectedArtworkForScan.bomId, { regulatoryDocLink: link })}
                     watchlist={watchlist}
                     aiConfig={aiConfig}
@@ -810,7 +901,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
             <BatchArtworkVerificationModal
                 isOpen={isBatchVerificationModalOpen}
                 onClose={() => setIsBatchVerificationModalOpen(false)}
-                boms={boms}
+                boms={effectiveBoms}
                 aiConfig={aiConfig}
             />
 
@@ -831,7 +922,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                         </div>
                         <div className="p-6">
                             <ManualLabelScanner
-                                boms={boms}
+                                boms={effectiveBoms}
                                 currentUser={currentUser}
                                 onClose={() => setIsLabelScannerOpen(false)}
                             />
@@ -850,7 +941,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
             <UploadArtworkModal
                 isOpen={isUploadModalOpen}
                 onClose={() => setIsUploadModalOpen(false)}
-                boms={boms}
+                boms={effectiveBoms}
                 onUpload={onAddArtwork}
                 currentUser={currentUser}
             />
@@ -862,6 +953,10 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                 onUpgrade={setDamTier}
                 settings={damSettings}
                 onUpdateSettings={setDamSettings}
+                storageUsedBytes={storageUsageBytes}
+                storageLimitBytes={storageLimitBytes}
+                normalizedAssetCount={normalizedAssetCount}
+                legacyAssetCount={legacyAssetCount}
             />
 
             {/* Download Warning Modal */}
@@ -901,6 +996,10 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                 currentUser={currentUser}
                 suggestedContacts={selectedShareSuggestions}
                 onShareLogged={(artworks, payload) => handleShareLogged(artworks as ArtworkWithProduct[], payload)}
+                defaultCc={damSettings.defaultShareCc}
+                allowedDomains={allowedDomainsList}
+                onConnectGoogle={onConnectGoogle}
+                companyEmailSettings={companyEmailSettings}
             />
         </>
     );
@@ -928,6 +1027,7 @@ const ArtworkCard: React.FC<{
         <div 
             key={art.id} 
             onClick={onSelect}
+            data-testid="artwork-card"
             className={`bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden group flex flex-col cursor-pointer transition-all hover:shadow-xl ${
                 isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/50' : 'border-gray-700 hover:border-gray-600'
             }`}
@@ -964,7 +1064,11 @@ const ArtworkCard: React.FC<{
                     <Button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
                         <PhotoIcon className="w-4 h-4" /> <span>Edit</span>
                     </Button>
-                    <Button onClick={(e) => { e.stopPropagation(); onShare(); }} className="flex items-center justify-center gap-1 w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
+                    <Button
+                        data-testid="artwork-card-share"
+                        onClick={(e) => { e.stopPropagation(); onShare(); }}
+                        className="flex items-center justify-center gap-1 w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors"
+                    >
                         <SendIcon className="w-4 h-4" /> <span>Share</span>
                     </Button>
                 </div>

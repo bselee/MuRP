@@ -1,7 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
-import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor } from '../types';
+import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor, CompanyEmailSettings } from '../types';
 import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, LightBulbIcon, SparklesIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import UserManagementPanel from '../components/UserManagementPanel';
@@ -55,6 +55,8 @@ interface SettingsProps {
     inventory: InventoryItem[];
     boms: BillOfMaterials[];
     vendors: Vendor[];
+    companyEmailSettings: CompanyEmailSettings;
+    onUpdateCompanyEmailSettings: (settings: CompanyEmailSettings) => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({
@@ -63,7 +65,8 @@ const Settings: React.FC<SettingsProps> = ({
     apiKey, onGenerateApiKey, onRevokeApiKey, addToast,
     setCurrentPage, externalConnections, onSetExternalConnections,
     users, onInviteUser, onUpdateUser, onDeleteUser,
-    inventory, boms, vendors
+    inventory, boms, vendors,
+    companyEmailSettings, onUpdateCompanyEmailSettings
 }) => {
     // Collapsible section states (reordered by usage frequency)
     const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
@@ -84,9 +87,15 @@ const Settings: React.FC<SettingsProps> = ({
     const [isTwoFactorOpen, setIsTwoFactorOpen] = useState(false);
     const [isShopifyPanelOpen, setIsShopifyPanelOpen] = useState(false);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+    const [isEmailPolicyOpen, setIsEmailPolicyOpen] = useState(false);
     
     // API key visibility state
     const [showApiKey, setShowApiKey] = useState(false);
+    const [emailPolicyDraft, setEmailPolicyDraft] = useState<CompanyEmailSettings>(companyEmailSettings);
+
+    useEffect(() => {
+      setEmailPolicyDraft(companyEmailSettings);
+    }, [companyEmailSettings]);
 
     const { godMode, setGodMode, session } = useAuth();
     const { theme, resolvedTheme, setTheme } = useTheme();
@@ -135,6 +144,18 @@ Thank you!`
         ],
       },
     ];
+
+    const handleSaveEmailPolicy = () => {
+      if (emailPolicyDraft.enforceCompanySender && !emailPolicyDraft.fromAddress.trim()) {
+        addToast('Enter a company sender email before enforcing policy.', 'error');
+        return;
+      }
+      onUpdateCompanyEmailSettings({
+        ...emailPolicyDraft,
+        fromAddress: emailPolicyDraft.fromAddress.trim(),
+      });
+      addToast('Company email policy updated.', 'success');
+    };
 
     const themeOptions: { label: string; value: ThemePreference; description: string }[] = [
       { label: 'System', value: 'system', description: 'Match your OS theme automatically' },
@@ -421,6 +442,135 @@ Thank you!`
                 setCurrentPage={setCurrentPage}
                 addToast={addToast}
               />
+            </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Email Sender Policy"
+            icon={<MailIcon className="w-6 h-6 text-emerald-300" />}
+            isOpen={isEmailPolicyOpen}
+            onToggle={() => setIsEmailPolicyOpen(!isEmailPolicyOpen)}
+          >
+            <div className="space-y-6">
+              <p className="text-sm text-gray-400">
+                Define a company-wide sender address (e.g., <span className="text-gray-200 font-mono">purchasing@yourdomain.com</span>) for all
+                automated compliance and artwork emails. When enforcement is enabled, users will send via this channel unless the policy is disabled.
+              </p>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-xs font-semibold text-gray-400 uppercase">Company From Address</label>
+                  <input
+                    type="email"
+                    value={emailPolicyDraft.fromAddress}
+                    onChange={e => setEmailPolicyDraft(prev => ({ ...prev, fromAddress: e.target.value }))}
+                    placeholder="purchasing@yourdomain.com"
+                    aria-label="Company from address"
+                    className="w-full bg-gray-900/60 border border-gray-700 rounded-md p-3 text-sm text-white focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Used as the visible sender on enforced emails.</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-400 uppercase">Delivery Provider</label>
+                  <div className="mt-2 space-y-2">
+                    {[
+                      { value: 'resend' as const, label: 'Resend (recommended)', description: 'Send through the built-in Resend integration.' },
+                      { value: 'gmail' as const, label: 'Workspace Gmail', description: 'Require each user to connect Google Workspace before sending.' },
+                    ].map(option => (
+                      <label
+                        key={option.value}
+                        className={`flex items-start gap-3 p-3 border rounded-md cursor-pointer ${
+                          emailPolicyDraft.provider === option.value ? 'border-emerald-400 bg-emerald-400/5' : 'border-gray-700 bg-gray-900/40'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="email-provider"
+                          checked={emailPolicyDraft.provider === option.value}
+                          onChange={() => setEmailPolicyDraft(prev => ({ ...prev, provider: option.value }))}
+                          aria-label={option.label}
+                          className="mt-1 text-emerald-400 focus:ring-emerald-400"
+                        />
+                        <span className="text-sm text-gray-200">
+                          <span className="font-semibold">{option.label}</span>
+                          <span className="block text-xs text-gray-400">{option.description}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {emailPolicyDraft.provider === 'gmail' && (
+                    <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3 text-xs text-sky-100">
+                      {emailPolicyDraft.workspaceMailbox?.email ? (
+                        <>
+                          Workspace mailbox <span className="font-semibold text-white">{emailPolicyDraft.workspaceMailbox.email}</span> connected
+                          by {emailPolicyDraft.workspaceMailbox.connectedBy || 'an admin'} on{' '}
+                          {emailPolicyDraft.workspaceMailbox.connectedAt
+                            ? new Date(emailPolicyDraft.workspaceMailbox.connectedAt).toLocaleString()
+                            : '—'}
+                          .
+                        </>
+                      ) : gmailConnection.isConnected ? (
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <span>Use your current Workspace login ({gmailConnection.email ?? 'unknown'}) as the managed mailbox.</span>
+                          <Button
+                            onClick={() =>
+                              setEmailPolicyDraft(prev => ({
+                                ...prev,
+                                workspaceMailbox: {
+                                  email: gmailConnection.email || prev.fromAddress || '',
+                                  connectedBy: currentUser.name || currentUser.email,
+                                  connectedAt: new Date().toISOString(),
+                                },
+                              }))
+                            }
+                            className="bg-sky-500 hover:bg-sky-400 text-white px-3 py-1.5 rounded-md"
+                          >
+                            Assign Workspace Mailbox
+                          </Button>
+                        </div>
+                      ) : (
+                        <span>
+                          Connect Google Workspace (top of Integrations) with the account you want to dedicate, then assign it here.
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-gray-900/40 border border-gray-800 rounded-lg p-4">
+                <div>
+                  <p className="text-sm text-gray-200 font-semibold">Enforce company sender on Artwork emails</p>
+                  <p className="text-xs text-gray-400">
+                    Users will no longer send from personal accounts. Messages route through the selected channel and are logged for audit.
+                  </p>
+                </div>
+                <label className="inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={emailPolicyDraft.enforceCompanySender}
+                    onChange={e => setEmailPolicyDraft(prev => ({ ...prev, enforceCompanySender: e.target.checked }))}
+                    aria-label="Enforce company sender on artwork emails"
+                    className="sr-only peer"
+                  />
+                  <div className="w-12 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-400 rounded-full peer peer-checked:bg-emerald-500 transition-all"></div>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  onClick={() => setEmailPolicyDraft(companyEmailSettings)}
+                  className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
+                >
+                  Reset
+                </Button>
+                <Button
+                  onClick={handleSaveEmailPolicy}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md"
+                >
+                  Save Policy
+                </Button>
+              </div>
             </div>
           </CollapsibleSection>
 

@@ -27,6 +27,8 @@ import type {
   RequisitionRequestType,
   MaterialRequirement,
 } from '../types';
+import { mockBOMs } from '../types';
+import { isE2ETesting } from '../lib/auth/guards';
 
 // ============================================================================
 // TYPES
@@ -467,6 +469,13 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
 
   const fetchBOMs = useCallback(async () => {
+    if (isE2ETesting()) {
+      setData(mockBOMs);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -506,6 +515,12 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
   }, []);
 
   useEffect(() => {
+    if (isE2ETesting()) {
+      setData(mockBOMs);
+      setLoading(false);
+      return;
+    }
+
     // Initial fetch
     fetchBOMs();
 
