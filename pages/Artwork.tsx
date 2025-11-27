@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Button from '@/components/ui/Button';
 import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder, GmailConnection, InventoryItem, Vendor, ArtworkShareEvent, DAMTier, DamSettingsState, CompanyEmailSettings } from '../types';
 import { mockBOMs } from '../types';
@@ -13,6 +13,8 @@ import ShareArtworkModal from '../components/ShareArtworkModal';
 import { DAMSettingsPanel } from '../components/DAMSettingsPanel';
 import { DAM_TIER_LIMITS } from '../types';
 import { loadState, saveState } from '../services/storageService';
+import { fileToBase64, scanLabelImage } from '../services/labelScanningService';
+import SupportTicketModal from '../components/SupportTicketModal';
 
 type ArtworkWithProduct = Artwork & {
     productName: string;
@@ -36,6 +38,16 @@ type ShareLogPayload = {
     sentViaGmail: boolean;
     channel?: 'gmail' | 'resend' | 'simulation';
     senderEmail?: string | null;
+};
+
+type DropzoneUpload = {
+    id: string;
+    file: File;
+    bomId?: string;
+    status: 'pending' | 'uploading' | 'scanning' | 'complete' | 'error';
+    progress: string;
+    error?: string;
+    preview?: string;
 };
 
 const DEFAULT_DAM_SETTINGS: DamSettingsState = {
@@ -106,6 +118,9 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
     const [isSavingMetadata, setIsSavingMetadata] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [selectedShareArtworks, setSelectedShareArtworks] = useState<ArtworkWithProduct[]>([]);
+    const [dropzoneItems, setDropzoneItems] = useState<DropzoneUpload[]>([]);
+    const [isDragActive, setIsDragActive] = useState(false);
+    const dropInputRef = useRef<HTMLInputElement | null>(null);
     
     // DAM Settings State (persisted per-user)
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -523,6 +538,118 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
 
         setSelectedArtworkIds([]);
     };
+
+    const handleDropzoneFiles = (fileList: FileList | File[]) => {
+        const accepted: DropzoneUpload[] = [];
+        const maxSize = 75 * 1024 * 1024;
+        Array.from(fileList).forEach((file, idx) => {
+            if (file.size > maxSize) {
+                return;
+            }
+            const id = `${file.name}-${Date.now()}-${idx}`;
+            const preview = file.type?.startsWith('image/') ? URL.createObjectURL(file) : undefined;
+            accepted.push({
+                id,
+                file,
+                status: 'pending',
+                progress: 'Queued',
+                preview,
+            });
+        });
+        if (accepted.length === 0) return;
+        setDropzoneItems(prev => [...prev, ...accepted]);
+    };
+
+    const handleDropzoneRemove = (id: string) => {
+        setDropzoneItems(prev => {
+            const target = prev.find(item => item.id === id);
+            if (target?.preview) URL.revokeObjectURL(target.preview);
+            return prev.filter(item => item.id !== id);
+        });
+    };
+
+    const handleDropzoneBomChange = (id: string, bomId: string) => {
+        setDropzoneItems(prev => prev.map(item => item.id === id ? { ...item, bomId } : item));
+    };
+
+    const inferArtworkFileType = (file: File): Artwork['fileType'] => {
+        const lower = file.name.toLowerCase();
+        if (lower.includes('label')) return 'label';
+        if (lower.includes('bag')) return 'bag';
+        if (lower.includes('doc')) return 'document';
+        if (lower.endsWith('.pdf')) return 'artwork';
+        if (lower.endsWith('.ai') || lower.endsWith('.ps') || lower.endsWith('.eps')) return 'artwork';
+        return 'document';
+    };
+
+    const handleDropzoneUpload = async () => {
+        if (dropzoneItems.length === 0) return;
+        const items = [...dropzoneItems];
+        for (let idx = 0; idx < items.length; idx++) {
+            const item = items[idx];
+            if (item.status !== 'pending' && item.status !== 'error') continue;
+            if (!item.bomId) {
+                setDropzoneItems(prev => prev.map(entry => entry.id === item.id ? { ...entry, status: 'error', progress: 'Select a product first', error: 'Choose a product' } : entry));
+                continue;
+            }
+            setDropzoneItems(prev => prev.map(entry => entry.id === item.id ? { ...entry, status: 'uploading', progress: 'Uploading...' } : entry));
+            try {
+                const base64 = await fileToBase64(item.file);
+                const dataUrl = `data:${item.file.type || 'application/octet-stream'};base64,${base64}`;
+                const artworkPayload: Omit<Artwork, 'id'> = {
+                    fileName: item.file.name,
+                    revision: 1,
+                    url: dataUrl,
+                    fileType: inferArtworkFileType(item.file),
+                    fileSize: item.file.size,
+                    mimeType: item.file.type || 'application/octet-stream',
+                    uploadedAt: new Date().toISOString(),
+                    uploadedBy: currentUser?.id,
+                    status: 'draft',
+                    scanStatus: 'pending',
+                    verified: false,
+                };
+                if (artworkPayload.fileType === 'label') {
+                    setDropzoneItems(prev => prev.map(entry => entry.id === item.id ? { ...entry, status: 'scanning', progress: 'Scanning label...' } : entry));
+                    try {
+                        const extracted = await scanLabelImage(base64);
+                        artworkPayload.extractedData = extracted;
+                        artworkPayload.scanStatus = 'completed';
+                        artworkPayload.scanCompletedAt = new Date().toISOString();
+                        if (extracted?.barcode) {
+                            artworkPayload.barcode = extracted.barcode;
+                        }
+                    } catch (scanError) {
+                        console.error('Dropzone scan error', scanError);
+                        artworkPayload.scanStatus = 'failed';
+                        artworkPayload.scanError = scanError instanceof Error ? scanError.message : 'Scan failed';
+                    }
+                }
+                onUpload(item.bomId, artworkPayload);
+                setDropzoneItems(prev => prev.map(entry => entry.id === item.id ? { ...entry, status: 'complete', progress: 'Uploaded!' } : entry));
+                if (item.preview) URL.revokeObjectURL(item.preview);
+            } catch (error) {
+                console.error('Dropzone upload error:', error);
+                setDropzoneItems(prev => prev.map(entry => entry.id === item.id ? {
+                    ...entry,
+                    status: 'error',
+                    progress: 'Upload failed',
+                    error: error instanceof Error ? error.message : 'Upload failed',
+                } : entry));
+            }
+        }
+    };
+
+    const pendingDropUploads = dropzoneItems.filter(item => item.status === 'pending' || item.status === 'error').length;
+
+    useEffect(() => {
+        if (dropzoneItems.length === 0) return;
+        const allComplete = dropzoneItems.every(item => item.status === 'complete');
+        if (allComplete) {
+            const timeout = window.setTimeout(() => setDropzoneItems([]), 1500);
+            return () => window.clearTimeout(timeout);
+        }
+    }, [dropzoneItems]);
 
     return (
         <>

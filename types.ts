@@ -1720,3 +1720,276 @@ export const DAM_TIER_LIMITS: Record<DAMTier, { storage: number; compliance: boo
   mid: { storage: 10 * 1024 * 1024 * 1024, compliance: false, editing: true }, // 10GB
   full: { storage: 100 * 1024 * 1024 * 1024, compliance: true, editing: true }, // 100GB
 };
+
+// ============================================================================
+// PROJECT MANAGEMENT & TICKETING SYSTEM
+// ============================================================================
+
+export type TicketStatus = 'open' | 'in_progress' | 'review' | 'blocked' | 'done' | 'closed' | 'cancelled';
+export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TicketType = 'task' | 'question' | 'bug' | 'feature' | 'maintenance' | 'follow_up' | 'approval_request' | 'escalation';
+export type ProjectStatus = 'active' | 'on_hold' | 'completed' | 'archived';
+export type ProjectType = 'general' | 'production' | 'maintenance' | 'compliance' | 'development' | 'operations';
+export type DelegationTaskType = 'maintenance' | 'build_order' | 'bom_revision_approval' | 'artwork_approval' | 'po_approval' | 'requisition_approval' | 'general_task' | 'question' | 'follow_up';
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  code?: string;
+  status: ProjectStatus;
+  projectType: ProjectType;
+  ownerId?: string;
+  department?: string;
+  defaultAssigneeId?: string;
+  boardColumns: string[];
+  startDate?: string;
+  targetEndDate?: string;
+  actualEndDate?: string;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Ticket {
+  id: string;
+  ticketNumber: number;
+  projectId?: string;
+  title: string;
+  description?: string;
+  status: TicketStatus;
+  ticketType: TicketType;
+  priority: TicketPriority;
+  reporterId?: string;
+  assigneeId?: string;
+  directedToId?: string;
+  directedToRole?: User['role'];
+  department?: string;
+  dueDate?: string;
+  startedAt?: string;
+  completedAt?: string;
+  estimatedHours?: number;
+  actualHours?: number;
+  parentTicketId?: string;
+  relatedEntityType?: 'purchase_order' | 'bom' | 'requisition' | 'build_order';
+  relatedEntityId?: string;
+  tags?: string[];
+  boardColumn: string;
+  boardPosition: number;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Joined fields for display
+  reporter?: User;
+  assignee?: User;
+  directedTo?: User;
+  project?: Project;
+  subtasks?: Ticket[];
+  commentCount?: number;
+}
+
+export interface TicketComment {
+  id: string;
+  ticketId: string;
+  authorId?: string;
+  content: string;
+  commentType: 'comment' | 'reply' | 'resolution' | 'internal_note' | 'system';
+  parentCommentId?: string;
+  mentionedUserIds?: string[];
+  attachments?: Array<{ name: string; url: string; type: string }>;
+  editedAt?: string;
+  createdAt: string;
+  
+  // Joined fields
+  author?: User;
+  replies?: TicketComment[];
+}
+
+export type TicketActivityAction =
+  | 'created'
+  | 'updated'
+  | 'status_changed'
+  | 'assigned'
+  | 'unassigned'
+  | 'priority_changed'
+  | 'due_date_changed'
+  | 'commented'
+  | 'mentioned'
+  | 'moved'
+  | 'linked'
+  | 'unlinked'
+  | 'escalated'
+  | 'resolved'
+  | 'reopened'
+  | 'closed';
+
+export interface TicketActivity {
+  id: string;
+  ticketId: string;
+  actorId?: string;
+  action: TicketActivityAction;
+  fieldName?: string;
+  oldValue?: unknown;
+  newValue?: unknown;
+  comment?: string;
+  createdAt: string;
+  
+  // Joined fields
+  actor?: User;
+}
+
+export interface DelegationSetting {
+  id: string;
+  taskType: DelegationTaskType;
+  canCreateRoles: User['role'][];
+  canAssignRoles: User['role'][];
+  assignableToRoles: User['role'][];
+  restrictedToDepartments?: User['department'][];
+  requiresApproval: boolean;
+  approvalChain?: User['role'][];
+  autoEscalateHours?: number;
+  escalationTargetRole?: User['role'];
+  notifyOnCreate: boolean;
+  notifyOnAssign: boolean;
+  notifyOnComplete: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+}
+
+// Input types for mutations
+export interface CreateTicketInput {
+  projectId?: string;
+  title: string;
+  description?: string;
+  ticketType?: TicketType;
+  priority?: TicketPriority;
+  assigneeId?: string;
+  directedToId?: string;
+  directedToRole?: User['role'];
+  department?: string;
+  dueDate?: string;
+  estimatedHours?: number;
+  parentTicketId?: string;
+  relatedEntityType?: Ticket['relatedEntityType'];
+  relatedEntityId?: string;
+  tags?: string[];
+}
+
+export interface UpdateTicketInput {
+  title?: string;
+  description?: string;
+  status?: TicketStatus;
+  ticketType?: TicketType;
+  priority?: TicketPriority;
+  assigneeId?: string | null;
+  directedToId?: string | null;
+  dueDate?: string | null;
+  estimatedHours?: number | null;
+  actualHours?: number | null;
+  boardColumn?: string;
+  boardPosition?: number;
+  tags?: string[];
+}
+
+export interface CreateProjectInput {
+  name: string;
+  description?: string;
+  code?: string;
+  projectType?: ProjectType;
+  department?: string;
+  defaultAssigneeId?: string;
+  startDate?: string;
+  targetEndDate?: string;
+  tags?: string[];
+}
+
+// Mock data for E2E testing
+export const mockProjects: Project[] = [
+  {
+    id: 'proj-001',
+    name: 'Q4 Production Ramp',
+    description: 'Scale up production for holiday season',
+    code: 'Q4-PROD',
+    status: 'active',
+    projectType: 'production',
+    department: 'Operations',
+    boardColumns: ['open', 'in_progress', 'review', 'done'],
+    tags: ['priority', 'seasonal'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'proj-002',
+    name: 'Compliance Audit 2025',
+    description: 'Annual regulatory compliance review',
+    code: 'COMPLY-25',
+    status: 'active',
+    projectType: 'compliance',
+    department: 'Operations',
+    boardColumns: ['open', 'in_progress', 'review', 'done'],
+    tags: ['compliance', 'annual'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+export const mockTickets: Ticket[] = [
+  {
+    id: 'ticket-001',
+    ticketNumber: 1,
+    projectId: 'proj-001',
+    title: 'Increase worm castings order for Q4',
+    description: 'Need to double our usual order to meet holiday demand',
+    status: 'open',
+    ticketType: 'task',
+    priority: 'high',
+    reporterId: 'user-staff-mfg1',
+    assigneeId: 'user-manager-mfg1',
+    department: 'MFG 1',
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    boardColumn: 'open',
+    boardPosition: 0,
+    tags: ['purchasing', 'urgent'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'ticket-002',
+    ticketNumber: 2,
+    projectId: 'proj-001',
+    title: 'Question: Can we expedite the biochar shipment?',
+    description: 'Vendor says 3 weeks lead time but we need it in 2. What options do we have?',
+    status: 'open',
+    ticketType: 'question',
+    priority: 'medium',
+    reporterId: 'user-staff-mfg1',
+    directedToRole: 'Manager',
+    department: 'MFG 1',
+    boardColumn: 'open',
+    boardPosition: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'ticket-003',
+    ticketNumber: 3,
+    projectId: 'proj-002',
+    title: 'Review CA registration renewal',
+    description: 'California product registration expires next month',
+    status: 'in_progress',
+    ticketType: 'approval_request',
+    priority: 'urgent',
+    reporterId: 'user-admin',
+    assigneeId: 'user-admin',
+    department: 'Operations',
+    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    boardColumn: 'in_progress',
+    boardPosition: 0,
+    tags: ['compliance', 'california'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];

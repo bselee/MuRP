@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Button from '@/components/ui/Button';
 import { DAM_TIER_LIMITS, DAMTier, type DamSettingsState } from '../types';
 
@@ -13,6 +13,8 @@ interface DAMSettingsPanelProps {
   storageLimitBytes?: number;
   normalizedAssetCount?: number;
   legacyAssetCount?: number;
+  mode?: 'user' | 'admin';
+  onRequestUpgrade?: () => void;
 }
 
 export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
@@ -26,11 +28,14 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
   storageLimitBytes,
   normalizedAssetCount = 0,
   legacyAssetCount = 0,
+  mode = 'user',
+  onRequestUpgrade,
 }) => {
   const [localSettings, setLocalSettings] = useState(settings);
   const [activeTab, setActiveTab] = useState<'general' | 'user' | 'admin'>('general');
   const resolvedStorageLimit = storageLimitBytes ?? DAM_TIER_LIMITS[currentTier].storage;
   const usagePercent = resolvedStorageLimit > 0 ? Math.min(100, Math.round((storageUsedBytes / resolvedStorageLimit) * 100)) : 0;
+  const tabs = useMemo(() => (mode === 'admin' ? (['general', 'user', 'admin'] as const) : (['general', 'user'] as const)), [mode]);
 
   useEffect(() => {
     setLocalSettings(settings);
@@ -63,7 +68,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
 
         {/* Tabs */}
         <div className="flex border-b border-gray-700 px-6 flex-shrink-0">
-          {(['general', 'user', 'admin'] as const).map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -81,42 +86,59 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
         <div className="p-6 space-y-8 overflow-y-auto flex-grow">
           {activeTab === 'general' && (
             <>
-              {/* Tier Management */}
-              <section>
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Subscription Tier</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  {(['basic', 'mid', 'full'] as DAMTier[]).map((tier) => (
-                    <div
-                      key={tier}
-                      className={`border rounded-lg p-4 relative ${
-                        currentTier === tier
-                          ? 'border-indigo-500 bg-indigo-500/10'
-                          : 'border-gray-700 bg-gray-800/50 opacity-75'
-                      }`}
-                    >
-                      {currentTier === tier && (
-                        <div className="absolute -top-2 -right-2 bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full">
-                          Current
-                        </div>
-                      )}
-                      <h4 className="font-bold text-white capitalize">{tier} Tier</h4>
-                      <ul className="mt-2 space-y-1 text-xs text-gray-400">
-                        <li>Storage: {DAM_TIER_LIMITS[tier].storage / (1024 * 1024)} MB</li>
-                        <li>Editing: {DAM_TIER_LIMITS[tier].editing ? '✅' : '❌'}</li>
-                        <li>Compliance: {DAM_TIER_LIMITS[tier].compliance ? '✅' : '❌'}</li>
-                      </ul>
-                      {currentTier !== tier && (
-                        <Button
-                          onClick={() => onUpgrade(tier)}
-                          className="mt-3 w-full text-xs bg-gray-700 hover:bg-gray-600"
-                        >
-                          {tier === 'basic' ? 'Downgrade' : 'Upgrade'}
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
+              {mode === 'admin' && (
+                <section>
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Subscription Tier</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    {(['basic', 'mid', 'full'] as DAMTier[]).map((tier) => (
+                      <div
+                        key={tier}
+                        className={`border rounded-lg p-4 relative ${
+                          currentTier === tier
+                            ? 'border-indigo-500 bg-indigo-500/10'
+                            : 'border-gray-700 bg-gray-800/50 opacity-75'
+                        }`}
+                      >
+                        {currentTier === tier && (
+                          <div className="absolute -top-2 -right-2 bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full">
+                            Current
+                          </div>
+                        )}
+                        <h4 className="font-bold text-white capitalize">{tier} Tier</h4>
+                        <ul className="mt-2 space-y-1 text-xs text-gray-400">
+                          <li>Storage: {DAM_TIER_LIMITS[tier].storage / (1024 * 1024)} MB</li>
+                          <li>Editing: {DAM_TIER_LIMITS[tier].editing ? '✅' : '❌'}</li>
+                          <li>Compliance: {DAM_TIER_LIMITS[tier].compliance ? '✅' : '❌'}</li>
+                        </ul>
+                        {currentTier !== tier && (
+                          <Button
+                            onClick={() => onUpgrade(tier)}
+                            className="mt-3 w-full text-xs bg-gray-700 hover:bg-gray-600"
+                          >
+                            {tier === 'basic' ? 'Downgrade' : 'Upgrade'}
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+              {mode === 'user' && (
+                <section className="bg-indigo-900/20 border border-indigo-800/60 rounded-lg p-4 flex flex-col gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-indigo-100 uppercase tracking-wider mb-1">Creative Playground</h3>
+                    <p className="text-xs text-indigo-200">Drag in vector art, print-ready PDFs, or moodboards—MuRP will keep them tidy.</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="self-start text-indigo-200 hover:text-white"
+                    onClick={onRequestUpgrade}
+                  >
+                    Need more storage? Tap here to nudge Ops.
+                  </Button>
+                </section>
+              )}
 
               <section className="bg-gray-900/30 border border-gray-800 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Storage Usage</h3>
@@ -220,7 +242,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
             </section>
           )}
 
-          {activeTab === 'admin' && (
+          {activeTab === 'admin' && mode === 'admin' && (
             <section className="space-y-6">
               <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Admin Controls</h3>
               

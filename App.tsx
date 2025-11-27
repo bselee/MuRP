@@ -14,6 +14,7 @@ import Production from './pages/Production';
 import BOMs from './pages/BOMs';
 import Settings from './pages/Settings';
 import StockIntelligence from './pages/StockIntelligence';
+import ProjectsPage from './pages/ProjectsPage';
 import LoginScreen from './pages/LoginScreen';
 import Toast from './components/Toast';
 import ApiDocs from './pages/ApiDocs';
@@ -107,7 +108,7 @@ import {
 import type { SyncHealthRow } from './lib/sync/healthUtils';
 import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amazonTracking';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner' | 'Projects';
 
 export type ToastInfo = {
   id: number;
@@ -143,7 +144,7 @@ const AppShell: React.FC = () => {
   const [watchlist] = usePersistentState<WatchlistItem[]>('watchlist', mockWatchlist);
   const [aiConfig, setAiConfig] = usePersistentState<AiConfig>('aiConfig', defaultAiConfig);
   const [aiSettings, setAiSettings] = usePersistentState<AiSettings>('aiSettings', getDefaultAiSettings());
-  const [artworkFolders, setArtworkFolders] = usePersistentState<ArtworkFolder[]>('artworkFolders', mockArtworkFolders);
+  const [artworkFolders, setArtworkFolders] = usePersistentState<ArtworkFolder[]>('artworkFolders', []);
   const [artworkShareHistory, setArtworkShareHistory] = usePersistentState<ArtworkShareEvent[]>('artworkShareHistory', []);
   const [companyEmailSettings, setCompanyEmailSettings] = usePersistentState<CompanyEmailSettings>('companyEmailSettings', {
     fromAddress: '',
@@ -441,6 +442,7 @@ const AppShell: React.FC = () => {
         '/artwork': 'Artwork',
         '/label-scanner': 'Label Scanner',
         '/labels': 'Label Scanner',
+        '/projects': 'Projects',
       };
       const nextPage = map[path] ?? 'Dashboard';
       setNavigationHistory([nextPage]);
@@ -753,40 +755,33 @@ const AppShell: React.FC = () => {
     return true;
   };
 
-  const handleAddArtworkToBom = async (finishedSku: string, fileName: string) => {
-    const bom = boms.find(b => b.finishedSku === finishedSku);
+  const handleAddArtworkToBom = async (targetId: string, artworkData: Omit<Artwork, 'id'>) => {
+    const bom = boms.find(b => b.id === targetId) ?? boms.find(b => b.finishedSku === targetId);
     if (!bom) {
-      addToast(`Could not add artwork: BOM with SKU ${finishedSku} not found.`, 'error');
+      addToast('Could not add artwork: product not found.', 'error');
       return;
     }
 
-    const highestRevision = bom.artwork.reduce((max, art) => Math.max(max, art.revision), 0);
-
+    const highestRevision = bom.artwork.reduce((max, art) => Math.max(max, art.revision ?? 0), 0);
     const newArtwork: Artwork = {
       id: `art-${Date.now()}`,
-      fileName,
-      revision: highestRevision + 1,
-      url: `/art/${fileName.replace(/\s+/g, '-').toLowerCase()}-v${highestRevision + 1}.pdf`, // Mock URL
-      verified: false,
-      fileType: 'artwork',
-      uploadedBy: currentUser?.id,
-      uploadedAt: new Date().toISOString(),
+      ...artworkData,
+      revision: artworkData.revision ?? highestRevision + 1,
     };
-    
+
     const updatedBom = {
       ...bom,
       artwork: [...bom.artwork, newArtwork],
     };
 
     const success = await handleUpdateBom(updatedBom, {
-      summary: `Attached artwork ${fileName}`,
+      summary: `Attached artwork ${artworkData.fileName}`,
       changeType: 'artwork',
+      autoApprove: true,
     });
-    if (!success) {
-      return;
+    if (success) {
+      navigateToPage('Artwork');
     }
-
-    navigateToPage('Artwork');
   };
 
   const handleCreatePoFromArtwork = (artworkIds: string[]) => {
@@ -1709,6 +1704,12 @@ const AppShell: React.FC = () => {
         return <ManualLabelScanner
           boms={boms}
           currentUser={currentUser}
+        />;
+      case 'Projects':
+        return <ProjectsPage
+          currentUser={currentUser}
+          users={users}
+          addToast={addToast}
         />;
       case 'Settings':
         return <Settings

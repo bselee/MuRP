@@ -4,7 +4,7 @@ import React from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MushroomLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, AiSwirlIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MushroomLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, AiSwirlIcon, Squares2X2Icon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
 
@@ -85,6 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
 
     const navItems: NavItemConfig[] = [
         { page: 'Dashboard', icon: <HomeIcon className="w-6 h-6" /> },
+        { page: 'Projects', icon: <Squares2X2Icon className="w-6 h-6" /> },
         { 
             page: 'Purchase Orders',
             icon: <DocumentTextIcon className="w-6 h-6" />,

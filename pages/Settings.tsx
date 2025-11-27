@@ -30,6 +30,7 @@ import TwoFactorSettings from '../components/TwoFactorSettings';
 import { isFeatureEnabled } from '../lib/featureFlags';
 import TermsOfServiceModal from '../components/TermsOfServiceModal';
 import ComponentSwapSettingsPanel from '../components/ComponentSwapSettingsPanel';
+import DelegationSettingsPanel from '../components/DelegationSettingsPanel';
 import BillingPanel from '../components/BillingPanel';
 
 interface SettingsProps {
@@ -86,6 +87,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isJobDocsOpen, setIsJobDocsOpen] = useState(false);
     const [isTwoFactorOpen, setIsTwoFactorOpen] = useState(false);
     const [isShopifyPanelOpen, setIsShopifyPanelOpen] = useState(false);
+    const [isDelegationSettingsOpen, setIsDelegationSettingsOpen] = useState(false);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const [isEmailPolicyOpen, setIsEmailPolicyOpen] = useState(false);
     
@@ -313,6 +315,18 @@ Thank you!`
                 onUpdateUser={onUpdateUser}
                 onDeleteUser={onDeleteUser}
               />
+            </CollapsibleSection>
+          )}
+
+          {/* Delegation Settings (Admin/Ops only) */}
+          {isOpsAdmin && (
+            <CollapsibleSection
+              title="Task Delegation Settings"
+              icon={<UsersIcon className="w-6 h-6 text-purple-400" />}
+              isOpen={isDelegationSettingsOpen}
+              onToggle={() => setIsDelegationSettingsOpen(!isDelegationSettingsOpen)}
+            >
+              <DelegationSettingsPanel addToast={addToast} />
             </CollapsibleSection>
           )}
 
