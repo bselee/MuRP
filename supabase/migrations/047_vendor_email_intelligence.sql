@@ -38,7 +38,7 @@ ALTER TABLE public.purchase_orders
       WHEN follow_up_status::text = 'resolved' THEN 'verified_confirmed'
       WHEN follow_up_status::text = 'escalated' THEN 'requires_clarification'
       ELSE 'pending_response'
-    END
+    END::vendor_response_status
   );
 
 ALTER TABLE public.purchase_orders

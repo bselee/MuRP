@@ -308,9 +308,11 @@ ALTER TABLE ticket_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ticket_activity ENABLE ROW LEVEL SECURITY;
 
 -- Delegation settings: Admin only for write, everyone can read
+DROP POLICY IF EXISTS delegation_settings_select ON delegation_settings;
 CREATE POLICY delegation_settings_select ON delegation_settings 
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS delegation_settings_admin ON delegation_settings;
 CREATE POLICY delegation_settings_admin ON delegation_settings 
   FOR ALL TO authenticated 
   USING (
@@ -322,13 +324,16 @@ CREATE POLICY delegation_settings_admin ON delegation_settings
   );
 
 -- Projects: All authenticated users can view, creators and admins can modify
+DROP POLICY IF EXISTS projects_select ON projects;
 CREATE POLICY projects_select ON projects 
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS projects_insert ON projects;
 CREATE POLICY projects_insert ON projects 
   FOR INSERT TO authenticated 
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS projects_update ON projects;
 CREATE POLICY projects_update ON projects 
   FOR UPDATE TO authenticated 
   USING (
@@ -341,13 +346,16 @@ CREATE POLICY projects_update ON projects
   );
 
 -- Tickets: Viewable by all, editable by reporter, assignee, and admins/managers
+DROP POLICY IF EXISTS tickets_select ON tickets;
 CREATE POLICY tickets_select ON tickets 
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS tickets_insert ON tickets;
 CREATE POLICY tickets_insert ON tickets 
   FOR INSERT TO authenticated 
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS tickets_update ON tickets;
 CREATE POLICY tickets_update ON tickets 
   FOR UPDATE TO authenticated 
   USING (
@@ -361,6 +369,7 @@ CREATE POLICY tickets_update ON tickets
     )
   );
 
+DROP POLICY IF EXISTS tickets_delete ON tickets;
 CREATE POLICY tickets_delete ON tickets 
   FOR DELETE TO authenticated 
   USING (
@@ -373,17 +382,21 @@ CREATE POLICY tickets_delete ON tickets
   );
 
 -- Comments: Anyone can read, authors can edit their own
+DROP POLICY IF EXISTS ticket_comments_select ON ticket_comments;
 CREATE POLICY ticket_comments_select ON ticket_comments 
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS ticket_comments_insert ON ticket_comments;
 CREATE POLICY ticket_comments_insert ON ticket_comments 
   FOR INSERT TO authenticated 
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS ticket_comments_update ON ticket_comments;
 CREATE POLICY ticket_comments_update ON ticket_comments 
   FOR UPDATE TO authenticated 
   USING (author_id = auth.uid());
 
+DROP POLICY IF EXISTS ticket_comments_delete ON ticket_comments;
 CREATE POLICY ticket_comments_delete ON ticket_comments 
   FOR DELETE TO authenticated 
   USING (
@@ -396,9 +409,11 @@ CREATE POLICY ticket_comments_delete ON ticket_comments
   );
 
 -- Activity: Read-only for authenticated, system writes
+DROP POLICY IF EXISTS ticket_activity_select ON ticket_activity;
 CREATE POLICY ticket_activity_select ON ticket_activity 
   FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS ticket_activity_insert ON ticket_activity;
 CREATE POLICY ticket_activity_insert ON ticket_activity 
   FOR INSERT TO authenticated 
   WITH CHECK (true);
