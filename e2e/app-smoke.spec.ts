@@ -65,10 +65,19 @@ const routes: RouteCheck[] = [
     },
   },
   {
+    name: 'Projects',
+    path: '/projects',
+    assert: async (page) => {
+      await expect(page.getByRole('heading', { name: /Projects & Tasks/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /New Project/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /Projects/i })).toBeVisible();
+    },
+  },
+  {
     name: 'Settings',
     path: '/settings',
     assert: async (page) => {
-      await expect(page.getByRole('heading', { name: /Settings/i })).toBeVisible();
+      await expect(page.locator('h1').filter({ hasText: 'Settings' })).toBeVisible();
       await expect(page.getByRole('button', { name: /Email Sender Policy/i })).toBeVisible();
     },
   },

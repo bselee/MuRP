@@ -595,3 +595,27 @@ export const ChevronRightIcon = ({ className }: { className?: string }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
   </svg>
 );
+
+export const SlackIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52-2.523A2.528 2.528 0 0 1 5.042 10.12a2.527 2.527 0 0 1 2.52 2.523 2.528 2.528 0 0 1-2.52 2.522zm4.313-9.69a2.527 2.527 0 0 1 2.521-2.522 2.527 2.527 0 0 1 2.521 2.522A2.528 2.528 0 0 1 11.876 8a2.528 2.528 0 0 1-2.52-2.525zM15.165 5.042a2.528 2.528 0 0 1 2.523-2.52 2.527 2.527 0 0 1 2.522 2.52A2.528 2.528 0 0 1 17.688 7.56a2.528 2.528 0 0 1-2.523-2.52zm4.313 4.313a2.528 2.528 0 0 1 2.522 2.52 2.528 2.528 0 0 1-2.522 2.522 2.528 2.528 0 0 1-2.522-2.522 2.528 2.528 0 0 1 2.522-2.52zM8.69 15.165a2.527 2.527 0 0 1 2.523 2.522A2.528 2.528 0 0 1 8.69 20.21a2.527 2.527 0 0 1-2.522-2.523A2.528 2.528 0 0 1 8.69 15.165z"/>
+  </svg>
+);
+
+export const GlobeIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+export const HashtagIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+  </svg>
+);
+
+export const AtSymbolIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+  </svg>
+);

@@ -8,7 +8,7 @@
  * - Create project/ticket functionality
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import type { 
   Project, 
@@ -50,6 +50,13 @@ import {
   ChevronRightIcon,
 } from '../components/icons';
 
+const formatDateInput = (date: Date) => date.toISOString().split('T')[0];
+const formatDateDisplay = (iso?: string) => {
+  if (!iso) return '—';
+  const parsed = new Date(iso);
+  return isNaN(parsed.getTime()) ? '—' : parsed.toLocaleDateString();
+};
+
 interface ProjectsPageProps {
   currentUser?: User;
   users: User[];
@@ -76,6 +83,37 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
+  const [newProjectStartDate, setNewProjectStartDate] = useState(() => formatDateInput(new Date()));
+  const [newProjectEndDate, setNewProjectEndDate] = useState(() => {
+    const future = new Date();
+    future.setDate(future.getDate() + 14);
+    return formatDateInput(future);
+  });
+  const [newProjectOwnerId, setNewProjectOwnerId] = useState(currentUser?.id ?? '');
+  const [newProjectDelegateId, setNewProjectDelegateId] = useState(currentUser?.id ?? '');
+  const projectFormIds = useMemo(
+    () => ({
+      name: 'project-name-input',
+      description: 'project-description-input',
+      start: 'project-start-date',
+      target: 'project-target-date',
+      owner: 'project-owner-select',
+      delegate: 'project-delegate-select',
+    }),
+    [],
+  );
+  useEffect(() => {
+    if (isCreateProjectOpen) {
+      const today = new Date();
+      setNewProjectStartDate(formatDateInput(today));
+      const defaultEnd = new Date(today);
+      defaultEnd.setDate(defaultEnd.getDate() + 14);
+      setNewProjectEndDate(formatDateInput(defaultEnd));
+      const ownerDefault = currentUser?.id ?? '';
+      setNewProjectOwnerId(ownerDefault);
+      setNewProjectDelegateId(ownerDefault);
+    }
+  }, [isCreateProjectOpen, currentUser?.id]);
 
   // Ticket detail data
   const { data: ticketComments, loading: loadingComments } = useTicketComments(selectedTicket?.id || '');
@@ -146,11 +184,32 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
   const handleCreateProject = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
+    if (!newProjectOwnerId) {
+      addToast('Select a project owner', 'error');
+      return;
+    }
+    if (!newProjectStartDate || !newProjectEndDate) {
+      addToast('Provide both start and target dates', 'error');
+      return;
+    }
+    if (!newProjectDelegateId) {
+      addToast('Select a delegate to own day-to-day execution', 'error');
+      return;
+    }
+    if (new Date(newProjectEndDate) < new Date(newProjectStartDate)) {
+      addToast('Target date must be after the start date', 'error');
+      return;
+    }
 
     const input: CreateProjectInput = {
       name: newProjectName.trim(),
       description: newProjectDescription.trim() || undefined,
       department: currentUser?.department,
+      ownerId: newProjectOwnerId,
+      delegateId: newProjectDelegateId,
+      startDate: newProjectStartDate,
+      targetEndDate: newProjectEndDate,
+      defaultAssigneeId: newProjectDelegateId,
     };
 
     const result = await createProject(input);
@@ -158,12 +217,30 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
       addToast('Project created successfully', 'success');
       setNewProjectName('');
       setNewProjectDescription('');
+      const today = new Date();
+      setNewProjectStartDate(formatDateInput(today));
+      const defaultEnd = new Date(today);
+      defaultEnd.setDate(defaultEnd.getDate() + 14);
+      setNewProjectEndDate(formatDateInput(defaultEnd));
+      setNewProjectOwnerId(currentUser?.id ?? '');
+      setNewProjectDelegateId('');
       setIsCreateProjectOpen(false);
       refetchProjects();
     } else {
       addToast(result.error || 'Failed to create project', 'error');
     }
-  }, [newProjectName, newProjectDescription, currentUser?.department, refetchProjects, addToast]);
+  }, [
+    newProjectName,
+    newProjectDescription,
+    newProjectOwnerId,
+    newProjectDelegateId,
+    newProjectStartDate,
+    newProjectEndDate,
+    currentUser?.department,
+    currentUser?.id,
+    refetchProjects,
+    addToast,
+  ]);
 
   const handleCreateTicketInColumn = useCallback((column: string) => {
     // This will be handled by the QuickTicketFab with the column pre-selected
@@ -271,6 +348,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
             projects.map(project => {
               const stats = projectStats[project.id] || { total: 0, open: 0, done: 0 };
               const owner = users.find(u => u.id === project.ownerId);
+              const delegate = project.delegateId ? users.find(u => u.id === project.delegateId) : undefined;
               return (
                 <div
                   key={project.id}
@@ -300,12 +378,22 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   )}
 
                   {/* Owner info */}
-                  {owner && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                  <div className="space-y-1 mb-3">
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
                       <UserIcon className="w-4 h-4" />
-                      <span>{owner.name}</span>
+                      <span>{owner?.name || 'Owner unknown'}</span>
                     </div>
-                  )}
+                    {delegate && (
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <ChevronRightIcon className="w-3 h-3" />
+                        <span>Delegate: {delegate.name}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <CalendarDaysIcon className="w-3 h-3" />
+                      <span>{formatDateDisplay(project.startDate)} → {formatDateDisplay(project.targetEndDate)}</span>
+                    </div>
+                  </div>
 
                   <div className="flex items-center gap-4 text-sm mb-4">
                     <span className="text-gray-500">
@@ -420,6 +508,28 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 Timeline
               </button>
             </div>
+          </div>
+          <div className="mb-4 text-sm text-gray-400 space-x-4">
+            <span>
+              Owner:{' '}
+              <span className="text-white">
+                {users.find(u => u.id === selectedProject.ownerId)?.name ?? 'Unknown'}
+              </span>
+            </span>
+            {selectedProject.delegateId && (
+              <span>
+                Delegate:{' '}
+                <span className="text-white">
+                  {users.find(u => u.id === selectedProject.delegateId)?.name ?? '—'}
+                </span>
+              </span>
+            )}
+            <span>
+              Window:{' '}
+              <span className="text-white">
+                {formatDateDisplay(selectedProject.startDate)} → {formatDateDisplay(selectedProject.targetEndDate)}
+              </span>
+            </span>
           </div>
           
           {/* Timeline Header with date scale */}
@@ -597,7 +707,8 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 // Also show project owners with their delegated work
                 const projectOwners = new Map<string, Project[]>();
                 projects.forEach(project => {
-                  const ownerId = project.ownerId || 'unassigned';
+                  const ownerId = project.ownerId;
+                  if (!ownerId) return;
                   if (!projectOwners.has(ownerId)) {
                     projectOwners.set(ownerId, []);
                   }
@@ -828,8 +939,11 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
             <h2 className="text-xl font-semibold text-white mb-4">Create Project</h2>
             <form onSubmit={handleCreateProject} className="space-y-4">
               <div>
-                <label className="text-sm text-gray-400 block mb-1">Project Name</label>
+                <label htmlFor={projectFormIds.name} className="text-sm text-gray-400 block mb-1">
+                  Project Name
+                </label>
                 <input
+                  id={projectFormIds.name}
                   type="text"
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
@@ -839,14 +953,86 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 />
               </div>
               <div>
-                <label className="text-sm text-gray-400 block mb-1">Description (optional)</label>
+                <label htmlFor={projectFormIds.description} className="text-sm text-gray-400 block mb-1">
+                  Description (optional)
+                </label>
                 <textarea
+                  id={projectFormIds.description}
                   value={newProjectDescription}
                   onChange={(e) => setNewProjectDescription(e.target.value)}
                   placeholder="What is this project about?"
                   rows={3}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
                 />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor={projectFormIds.start} className="text-sm text-gray-400 block mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    id={projectFormIds.start}
+                    type="date"
+                    value={newProjectStartDate}
+                    onChange={(e) => setNewProjectStartDate(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor={projectFormIds.target} className="text-sm text-gray-400 block mb-1">
+                    Target Date
+                  </label>
+                  <input
+                    id={projectFormIds.target}
+                    type="date"
+                    value={newProjectEndDate}
+                    onChange={(e) => setNewProjectEndDate(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor={projectFormIds.owner} className="text-sm text-gray-400 block mb-1">
+                  Project Owner
+                </label>
+                <select
+                  id={projectFormIds.owner}
+                  value={newProjectOwnerId}
+                  onChange={(e) => setNewProjectOwnerId(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                  required
+                >
+                  <option value="">Select owner</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor={projectFormIds.delegate} className="text-sm text-gray-400 block mb-1">
+                  Delegate / Delivery Lead
+                </label>
+                <select
+                  id={projectFormIds.delegate}
+                  value={newProjectDelegateId}
+                  onChange={(e) => setNewProjectDelegateId(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                  required
+                >
+                  <option value="">Select delegate</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.role})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Delegates receive daily nudges and default assignments for this project.
+                </p>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <Button
@@ -858,7 +1044,13 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={!newProjectName.trim()}
+                  disabled={
+                    !newProjectName.trim() ||
+                    !newProjectOwnerId ||
+                    !newProjectDelegateId ||
+                    !newProjectStartDate ||
+                    !newProjectEndDate
+                  }
                   className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white px-4 py-2 rounded-lg"
                 >
                   Create Project

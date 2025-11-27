@@ -23,6 +23,7 @@ import type {
   mockTickets,
 } from '../types';
 import { isE2ETesting } from '../lib/auth/guards';
+import { createNotificationWithPrefs, type TicketNotificationData } from '../services/notificationService';
 
 // ============================================================================
 // TYPES
@@ -422,6 +423,22 @@ export function useDelegationSettings(): UseDataResult<DelegationSetting> {
 // MUTATIONS
 // ============================================================================
 
+// Helper function to get user profile
+async function getUserProfile(userId: string): Promise<{ id: string; name: string; email: string } | null> {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('id, name, email')
+    .eq('id', userId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching user profile:', error);
+    return null;
+  }
+
+  return data;
+}
+
 export async function createProject(input: CreateProjectInput): Promise<MutationResult<Project>> {
   try {
     const { data, error } = await supabase
@@ -432,7 +449,9 @@ export async function createProject(input: CreateProjectInput): Promise<Mutation
         code: input.code,
         project_type: input.projectType || 'general',
         department: input.department,
-        default_assignee_id: input.defaultAssigneeId,
+        default_assignee_id: input.defaultAssigneeId ?? input.delegateId,
+        owner_id: input.ownerId,
+        delegate_id: input.delegateId,
         start_date: input.startDate,
         target_end_date: input.targetEndDate,
         tags: input.tags,
@@ -480,6 +499,29 @@ export async function createTicket(input: CreateTicketInput, reporterId: string)
       ticket_id: data.id,
       actor_id: reporterId,
       action: 'created',
+    });
+
+    // Send notifications
+    const reporter = await getUserProfile(reporterId);
+    const notificationData: TicketNotificationData = {
+      ticketId: data.id,
+      ticketNumber: data.ticket_number,
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      status: data.status,
+      reporterName: reporter?.name || 'Unknown',
+      assigneeName: data.assignee ? data.assignee.name : undefined,
+      directedToName: data.directed_to ? data.directed_to.name : undefined,
+      projectName: data.project ? data.project.name : undefined,
+      dueDate: data.due_date,
+      action: 'created',
+      actorName: reporter?.name || 'Unknown',
+    };
+
+    // Send notification asynchronously (don't block ticket creation)
+    createNotificationWithPrefs(notificationData).catch(error => {
+      console.error('Failed to send ticket creation notification:', error);
     });
 
     return { success: true, data: transformTicketFromDb(data) };
@@ -579,7 +621,59 @@ export async function updateTicket(
       });
     }
 
-    return { success: true, data: transformTicketFromDb(data) };
+    // Send notifications for significant changes
+    const updatedTicket = transformTicketFromDb(data);
+    const actor = await getUserProfile(actorId);
+
+    // Notify on assignment
+    if (input.assigneeId !== undefined && input.assigneeId !== currentTicket?.assignee_id) {
+      const notificationData: TicketNotificationData = {
+        ticketId: ticketId,
+        ticketNumber: updatedTicket.ticketNumber,
+        title: updatedTicket.title,
+        description: updatedTicket.description,
+        priority: updatedTicket.priority,
+        status: updatedTicket.status,
+        reporterName: updatedTicket.reporter?.name || 'Unknown',
+        assigneeName: updatedTicket.assignee?.name,
+        directedToName: updatedTicket.directedTo?.name,
+        projectName: updatedTicket.project?.name,
+        dueDate: updatedTicket.dueDate,
+        action: 'assigned',
+        actorName: actor?.name || 'Unknown',
+        oldValue: currentTicket?.assignee?.name,
+        newValue: updatedTicket.assignee?.name,
+      };
+
+      createNotificationWithPrefs(notificationData, input.assigneeId ? [input.assigneeId] : undefined)
+        .catch(error => console.error('Failed to send assignment notification:', error));
+    }
+
+    // Notify on status change
+    if (input.status !== undefined && input.status !== currentTicket?.status) {
+      const notificationData: TicketNotificationData = {
+        ticketId: ticketId,
+        ticketNumber: updatedTicket.ticketNumber,
+        title: updatedTicket.title,
+        description: updatedTicket.description,
+        priority: updatedTicket.priority,
+        status: updatedTicket.status,
+        reporterName: updatedTicket.reporter?.name || 'Unknown',
+        assigneeName: updatedTicket.assignee?.name,
+        directedToName: updatedTicket.directedTo?.name,
+        projectName: updatedTicket.project?.name,
+        dueDate: updatedTicket.dueDate,
+        action: 'status_changed',
+        actorName: actor?.name || 'Unknown',
+        oldValue: currentTicket?.status,
+        newValue: input.status,
+      };
+
+      createNotificationWithPrefs(notificationData)
+        .catch(error => console.error('Failed to send status change notification:', error));
+    }
+
+    return { success: true, data: updatedTicket };
   } catch (err) {
     console.error('Error updating ticket:', err);
     return { success: false, error: (err as Error).message };
@@ -669,6 +763,7 @@ function transformProjectFromDb(row: any): Project {
     status: row.status,
     projectType: row.project_type,
     ownerId: row.owner_id,
+    delegateId: row.delegate_id ?? row.owner_id,
     department: row.department,
     defaultAssigneeId: row.default_assignee_id,
     boardColumns: row.board_columns || ['open', 'in_progress', 'review', 'done'],

@@ -1739,12 +1739,13 @@ export interface Project {
   code?: string;
   status: ProjectStatus;
   projectType: ProjectType;
-  ownerId?: string;
+  ownerId: string;
+  delegateId: string;
   department?: string;
   defaultAssigneeId?: string;
   boardColumns: string[];
-  startDate?: string;
-  targetEndDate?: string;
+  startDate: string;
+  targetEndDate: string;
   actualEndDate?: string;
   tags?: string[];
   metadata?: Record<string, unknown>;
@@ -1901,8 +1902,10 @@ export interface CreateProjectInput {
   projectType?: ProjectType;
   department?: string;
   defaultAssigneeId?: string;
-  startDate?: string;
-  targetEndDate?: string;
+  ownerId: string;
+  delegateId: string;
+  startDate: string;
+  targetEndDate: string;
   tags?: string[];
 }
 
@@ -1918,6 +1921,10 @@ export const mockProjects: Project[] = [
     department: 'Operations',
     boardColumns: ['open', 'in_progress', 'review', 'done'],
     tags: ['priority', 'seasonal'],
+    ownerId: mockUsers[0]?.id ?? 'user-admin',
+    delegateId: mockUsers[1]?.id,
+    startDate: new Date().toISOString(),
+    targetEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -1931,6 +1938,10 @@ export const mockProjects: Project[] = [
     department: 'Operations',
     boardColumns: ['open', 'in_progress', 'review', 'done'],
     tags: ['compliance', 'annual'],
+    ownerId: mockUsers[2]?.id ?? mockUsers[0]?.id ?? 'user-admin',
+    delegateId: mockUsers[3]?.id,
+    startDate: new Date().toISOString(),
+    targetEndDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },

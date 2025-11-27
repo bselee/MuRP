@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor, CompanyEmailSettings } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, LightBulbIcon, SparklesIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, LightBulbIcon, SparklesIcon, BellIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import UserManagementPanel from '../components/UserManagementPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
@@ -32,6 +32,7 @@ import TermsOfServiceModal from '../components/TermsOfServiceModal';
 import ComponentSwapSettingsPanel from '../components/ComponentSwapSettingsPanel';
 import DelegationSettingsPanel from '../components/DelegationSettingsPanel';
 import BillingPanel from '../components/BillingPanel';
+import NotificationPreferencesPanel from '../components/NotificationPreferencesPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -88,6 +89,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isTwoFactorOpen, setIsTwoFactorOpen] = useState(false);
     const [isShopifyPanelOpen, setIsShopifyPanelOpen] = useState(false);
     const [isDelegationSettingsOpen, setIsDelegationSettingsOpen] = useState(false);
+    const [isNotificationPrefsOpen, setIsNotificationPrefsOpen] = useState(false);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const [isEmailPolicyOpen, setIsEmailPolicyOpen] = useState(false);
     
@@ -327,6 +329,18 @@ Thank you!`
               onToggle={() => setIsDelegationSettingsOpen(!isDelegationSettingsOpen)}
             >
               <DelegationSettingsPanel addToast={addToast} />
+            </CollapsibleSection>
+          )}
+
+          {/* Notification Preferences (Admin/Ops only) */}
+          {isOpsAdmin && (
+            <CollapsibleSection
+              title="Notification Preferences"
+              icon={<BellIcon className="w-6 h-6 text-orange-400" />}
+              isOpen={isNotificationPrefsOpen}
+              onToggle={() => setIsNotificationPrefsOpen(!isNotificationPrefsOpen)}
+            >
+              <NotificationPreferencesPanel addToast={addToast} />
             </CollapsibleSection>
           )}
 
