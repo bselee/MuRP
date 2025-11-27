@@ -38,18 +38,36 @@ COMMENT ON COLUMN user_settings.calendar_name IS 'Display name of the selected c
 
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Users can view own settings"
-  ON user_settings
-  FOR SELECT
-  TO authenticated
-  USING (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'user_settings' 
+    AND policyname = 'Users can view own settings'
+  ) THEN
+    CREATE POLICY "Users can view own settings"
+      ON user_settings
+      FOR SELECT
+      TO authenticated
+      USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Users can upsert own settings"
-  ON user_settings
-  FOR ALL
-  TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'user_settings' 
+    AND policyname = 'Users can upsert own settings'
+  ) THEN
+    CREATE POLICY "Users can upsert own settings"
+      ON user_settings
+      FOR ALL
+      TO authenticated
+      USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- ============================================================================
 -- Updated-at trigger

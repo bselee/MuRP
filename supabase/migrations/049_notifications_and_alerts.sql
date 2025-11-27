@@ -148,7 +148,23 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read_at) WHERE read_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_notifications_related ON notifications(related_entity_type, related_entity_id);
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'notifications' 
+    AND column_name = 'related_entity_type'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'notifications' 
+    AND column_name = 'related_entity_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_notifications_related ON notifications(related_entity_type, related_entity_id);
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_user_prefs_user ON user_notification_prefs(user_id);
 
@@ -433,5 +449,4 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
-COMMIT;</content>
-<parameter name="filePath">/workspaces/TGF-MRP/supabase/migrations/049_notifications_and_alerts.sql
+COMMIT;

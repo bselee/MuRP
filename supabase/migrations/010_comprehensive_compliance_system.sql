@@ -43,8 +43,75 @@ CREATE TABLE IF NOT EXISTS app_settings (
   change_reason TEXT
 );
 
-CREATE INDEX idx_app_settings_category ON app_settings(setting_category);
-CREATE INDEX idx_app_settings_key ON app_settings(setting_key);
+-- Add missing columns to existing app_settings table if it exists
+DO $$
+BEGIN
+  -- Rename is_sensitive to is_secret if is_sensitive exists and is_secret doesn't
+  IF EXISTS (SELECT FROM information_schema.columns 
+             WHERE table_name = 'app_settings' AND column_name = 'is_sensitive') 
+     AND NOT EXISTS (SELECT FROM information_schema.columns 
+                     WHERE table_name = 'app_settings' AND column_name = 'is_secret') THEN
+    ALTER TABLE app_settings RENAME COLUMN is_sensitive TO is_secret;
+  END IF;
+  
+  -- Add is_secret column if it doesn't exist (and is_sensitive was already renamed)
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'app_settings' AND column_name = 'is_secret') THEN
+    ALTER TABLE app_settings ADD COLUMN is_secret BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  -- Add is_required column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'app_settings' AND column_name = 'is_required') THEN
+    ALTER TABLE app_settings ADD COLUMN is_required BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  -- Add validation_schema column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'app_settings' AND column_name = 'validation_schema') THEN
+    ALTER TABLE app_settings ADD COLUMN validation_schema JSONB;
+  END IF;
+  
+  -- Add editable_by column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'app_settings' AND column_name = 'editable_by') THEN
+    ALTER TABLE app_settings ADD COLUMN editable_by TEXT[] DEFAULT ARRAY['admin'];
+  END IF;
+  
+  -- Add visible_to column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'app_settings' AND column_name = 'visible_to') THEN
+    ALTER TABLE app_settings ADD COLUMN visible_to TEXT[] DEFAULT ARRAY['admin', 'user'];
+  END IF;
+  
+  -- Add created_by column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'app_settings' AND column_name = 'created_by') THEN
+    ALTER TABLE app_settings ADD COLUMN created_by TEXT;
+  END IF;
+  
+  -- Add updated_by column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'app_settings' AND column_name = 'updated_by') THEN
+    ALTER TABLE app_settings ADD COLUMN updated_by TEXT;
+  END IF;
+  
+  -- Add previous_value column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'app_settings' AND column_name = 'previous_value') THEN
+    ALTER TABLE app_settings ADD COLUMN previous_value JSONB;
+  END IF;
+  
+  -- Add change_reason column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'app_settings' AND column_name = 'change_reason') THEN
+    ALTER TABLE app_settings ADD COLUMN change_reason TEXT;
+  END IF;
+  
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_app_settings_category ON app_settings(setting_category);
+CREATE INDEX IF NOT EXISTS idx_app_settings_key ON app_settings(setting_key);
 
 -- ============================================================================
 -- PART 2: MCP SERVER MANAGEMENT
@@ -99,9 +166,151 @@ CREATE TABLE IF NOT EXISTS mcp_server_configs (
   updated_by TEXT
 );
 
-CREATE INDEX idx_mcp_configs_server_type ON mcp_server_configs(server_type);
-CREATE INDEX idx_mcp_configs_enabled ON mcp_server_configs(is_enabled);
-CREATE INDEX idx_mcp_configs_status ON mcp_server_configs(status);
+-- Add missing columns to existing mcp_server_configs table if it exists
+DO $$
+BEGIN
+  -- Add display_name column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'display_name') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN display_name TEXT;
+  END IF;
+  
+  -- Add description column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'description') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN description TEXT;
+  END IF;
+  
+  -- Add endpoint_url column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'endpoint_url') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN endpoint_url TEXT;
+  END IF;
+  
+  -- Add command column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'command') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN command TEXT;
+  END IF;
+  
+  -- Add working_directory column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'working_directory') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN working_directory TEXT;
+  END IF;
+  
+  -- Add environment_vars column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'environment_vars') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN environment_vars JSONB;
+  END IF;
+  
+  -- Add settings column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'settings') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN settings JSONB;
+  END IF;
+  
+  -- Add override_ai_provider column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'override_ai_provider') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN override_ai_provider BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  -- Add ai_provider_config column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'ai_provider_config') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN ai_provider_config JSONB;
+  END IF;
+  
+  -- Add status column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'status') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN status TEXT DEFAULT 'stopped';
+  END IF;
+  
+  -- Add last_health_check column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'last_health_check') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN last_health_check TIMESTAMP WITH TIME ZONE;
+  END IF;
+  
+  -- Add health_status column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'health_status') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN health_status TEXT;
+  END IF;
+  
+  -- Add error_message column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'error_message') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN error_message TEXT;
+  END IF;
+  
+  -- Add total_requests column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'total_requests') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN total_requests INTEGER DEFAULT 0;
+  END IF;
+  
+  -- Add successful_requests column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'successful_requests') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN successful_requests INTEGER DEFAULT 0;
+  END IF;
+  
+  -- Add failed_requests column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'failed_requests') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN failed_requests INTEGER DEFAULT 0;
+  END IF;
+  
+  -- Add average_response_time_ms column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'average_response_time_ms') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN average_response_time_ms FLOAT;
+  END IF;
+  
+  -- Add auto_start column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'auto_start') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN auto_start BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  -- Add restart_on_failure column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'restart_on_failure') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN restart_on_failure BOOLEAN DEFAULT TRUE;
+  END IF;
+  
+  -- Add max_restart_attempts column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'max_restart_attempts') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN max_restart_attempts INTEGER DEFAULT 3;
+  END IF;
+  
+  -- Add created_by column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'created_by') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN created_by TEXT;
+  END IF;
+  
+  -- Add updated_by column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_server_configs' AND column_name = 'updated_by') THEN
+    ALTER TABLE mcp_server_configs ADD COLUMN updated_by TEXT;
+  END IF;
+  
+  -- Update existing records to have display_name if it's missing
+  UPDATE mcp_server_configs 
+  SET display_name = server_name 
+  WHERE display_name IS NULL;
+  
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_mcp_configs_server_type ON mcp_server_configs(server_type);
+CREATE INDEX IF NOT EXISTS idx_mcp_configs_enabled ON mcp_server_configs(is_enabled);
+CREATE INDEX IF NOT EXISTS idx_mcp_configs_status ON mcp_server_configs(status);
 
 -- MCP Tool Calls (audit log)
 CREATE TABLE IF NOT EXISTS mcp_tool_calls (
@@ -137,11 +346,93 @@ CREATE TABLE IF NOT EXISTS mcp_tool_calls (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_mcp_tool_calls_server ON mcp_tool_calls(server_name);
-CREATE INDEX idx_mcp_tool_calls_tool ON mcp_tool_calls(tool_name);
-CREATE INDEX idx_mcp_tool_calls_status ON mcp_tool_calls(status);
-CREATE INDEX idx_mcp_tool_calls_created ON mcp_tool_calls(created_at DESC);
-CREATE INDEX idx_mcp_tool_calls_called_by ON mcp_tool_calls(called_by);
+-- Add missing columns to existing mcp_tool_calls table if it exists
+DO $$
+BEGIN
+  -- Add arguments column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'arguments') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN arguments JSONB;
+  END IF;
+  
+  -- Add called_by column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'called_by') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN called_by TEXT;
+  END IF;
+  
+  -- Add context column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'context') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN context TEXT;
+  END IF;
+  
+  -- Add started_at column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'started_at') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+  END IF;
+  
+  -- Add completed_at column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'completed_at') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN completed_at TIMESTAMP WITH TIME ZONE;
+  END IF;
+  
+  -- Add duration_ms column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'duration_ms') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN duration_ms INTEGER;
+  END IF;
+  
+  -- Add result column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'result') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN result JSONB;
+  END IF;
+  
+  -- Add error_stack column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'error_stack') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN error_stack TEXT;
+  END IF;
+  
+  -- Add ai_provider column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'ai_provider') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN ai_provider TEXT;
+  END IF;
+  
+  -- Add ai_model column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'ai_model') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN ai_model TEXT;
+  END IF;
+  
+  -- Add ai_tokens_used column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'ai_tokens_used') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN ai_tokens_used INTEGER DEFAULT 0;
+  END IF;
+  
+  -- Add ai_cost_usd column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'mcp_tool_calls' AND column_name = 'ai_cost_usd') THEN
+    ALTER TABLE mcp_tool_calls ADD COLUMN ai_cost_usd FLOAT DEFAULT 0;
+  END IF;
+  
+  -- Update existing records to populate called_by from user_id if needed
+  UPDATE mcp_tool_calls 
+  SET called_by = user_id::text 
+  WHERE called_by IS NULL AND user_id IS NOT NULL;
+  
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_mcp_tool_calls_server ON mcp_tool_calls(server_name);
+CREATE INDEX IF NOT EXISTS idx_mcp_tool_calls_tool ON mcp_tool_calls(tool_name);
+CREATE INDEX IF NOT EXISTS idx_mcp_tool_calls_status ON mcp_tool_calls(status);
+CREATE INDEX IF NOT EXISTS idx_mcp_tool_calls_created ON mcp_tool_calls(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_mcp_tool_calls_called_by ON mcp_tool_calls(called_by);
 
 -- ============================================================================
 -- PART 3: GENERIC WEB SCRAPING SYSTEM
@@ -201,9 +492,154 @@ CREATE TABLE IF NOT EXISTS scraping_configs (
   updated_by TEXT
 );
 
-CREATE INDEX idx_scraping_configs_active ON scraping_configs(is_active);
-CREATE INDEX idx_scraping_configs_domain ON scraping_configs(domain);
-CREATE INDEX idx_scraping_configs_next_run ON scraping_configs(next_run_at);
+-- Add missing columns to existing scraping_configs table if it exists
+DO $$
+BEGIN
+  -- Add description column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'description') THEN
+    ALTER TABLE scraping_configs ADD COLUMN description TEXT;
+  END IF;
+  
+  -- Add url_pattern column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'url_pattern') THEN
+    ALTER TABLE scraping_configs ADD COLUMN url_pattern TEXT;
+  END IF;
+  
+  -- Add domain column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'domain') THEN
+    ALTER TABLE scraping_configs ADD COLUMN domain TEXT;
+  END IF;
+  
+  -- Add pagination column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'pagination') THEN
+    ALTER TABLE scraping_configs ADD COLUMN pagination JSONB;
+  END IF;
+  
+  -- Add user_agent column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'user_agent') THEN
+    ALTER TABLE scraping_configs ADD COLUMN user_agent TEXT DEFAULT 'MuRP Compliance Bot/1.0';
+  END IF;
+  
+  -- Add data_transformations column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'data_transformations') THEN
+    ALTER TABLE scraping_configs ADD COLUMN data_transformations JSONB;
+  END IF;
+  
+  -- Add required_keywords column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'required_keywords') THEN
+    ALTER TABLE scraping_configs ADD COLUMN required_keywords TEXT[];
+  END IF;
+  
+  -- Add exclude_patterns column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'exclude_patterns') THEN
+    ALTER TABLE scraping_configs ADD COLUMN exclude_patterns TEXT[];
+  END IF;
+  
+  -- Add use_ai_extraction column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'use_ai_extraction') THEN
+    ALTER TABLE scraping_configs ADD COLUMN use_ai_extraction BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  -- Add ai_extraction_prompt column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'ai_extraction_prompt') THEN
+    ALTER TABLE scraping_configs ADD COLUMN ai_extraction_prompt TEXT;
+  END IF;
+  
+  -- Add min_content_length column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'min_content_length') THEN
+    ALTER TABLE scraping_configs ADD COLUMN min_content_length INTEGER DEFAULT 100;
+  END IF;
+  
+  -- Add validate_json_schema column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'validate_json_schema') THEN
+    ALTER TABLE scraping_configs ADD COLUMN validate_json_schema JSONB;
+  END IF;
+  
+  -- Add save_to_table column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'save_to_table') THEN
+    ALTER TABLE scraping_configs ADD COLUMN save_to_table TEXT;
+  END IF;
+  
+  -- Add field_mappings column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'field_mappings') THEN
+    ALTER TABLE scraping_configs ADD COLUMN field_mappings JSONB;
+  END IF;
+  
+  -- Rename is_enabled to is_active if is_enabled exists and is_active doesn't
+  IF EXISTS (SELECT FROM information_schema.columns 
+             WHERE table_name = 'scraping_configs' AND column_name = 'is_enabled') 
+     AND NOT EXISTS (SELECT FROM information_schema.columns 
+                     WHERE table_name = 'scraping_configs' AND column_name = 'is_active') THEN
+    ALTER TABLE scraping_configs RENAME COLUMN is_enabled TO is_active;
+  END IF;
+  
+  -- Add is_active column if it doesn't exist (and is_enabled was already renamed)
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'is_active') THEN
+    ALTER TABLE scraping_configs ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+  END IF;
+  
+  -- Add last_run_at column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'last_run_at') THEN
+    ALTER TABLE scraping_configs ADD COLUMN last_run_at TIMESTAMP WITH TIME ZONE;
+  END IF;
+  
+  -- Add last_success_at column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'last_success_at') THEN
+    ALTER TABLE scraping_configs ADD COLUMN last_success_at TIMESTAMP WITH TIME ZONE;
+  END IF;
+  
+  -- Add success_rate column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'success_rate') THEN
+    ALTER TABLE scraping_configs ADD COLUMN success_rate FLOAT;
+  END IF;
+  
+  -- Add schedule_cron column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'schedule_cron') THEN
+    ALTER TABLE scraping_configs ADD COLUMN schedule_cron TEXT;
+  END IF;
+  
+  -- Add next_run_at column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'next_run_at') THEN
+    ALTER TABLE scraping_configs ADD COLUMN next_run_at TIMESTAMP WITH TIME ZONE;
+  END IF;
+  
+  -- Add created_by column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'created_by') THEN
+    ALTER TABLE scraping_configs ADD COLUMN created_by TEXT;
+  END IF;
+  
+  -- Add updated_by column if it doesn't exist
+  IF NOT EXISTS (SELECT FROM information_schema.columns 
+                 WHERE table_name = 'scraping_configs' AND column_name = 'updated_by') THEN
+    ALTER TABLE scraping_configs ADD COLUMN updated_by TEXT;
+  END IF;
+  
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_scraping_configs_active ON scraping_configs(is_active);
+CREATE INDEX IF NOT EXISTS idx_scraping_configs_domain ON scraping_configs(domain);
+CREATE INDEX IF NOT EXISTS idx_scraping_configs_next_run ON scraping_configs(next_run_at);
 
 -- Scraping Jobs (execution tracking)
 CREATE TABLE IF NOT EXISTS scraping_jobs (
@@ -249,9 +685,9 @@ CREATE TABLE IF NOT EXISTS scraping_jobs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_scraping_jobs_config ON scraping_jobs(config_id);
-CREATE INDEX idx_scraping_jobs_status ON scraping_jobs(status);
-CREATE INDEX idx_scraping_jobs_created ON scraping_jobs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_scraping_jobs_config ON scraping_jobs(config_id);
+CREATE INDEX IF NOT EXISTS idx_scraping_jobs_status ON scraping_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_scraping_jobs_created ON scraping_jobs(created_at DESC);
 
 -- ============================================================================
 -- PART 4: STATE STRICTNESS RATINGS & COMPREHENSIVE COMPLIANCE
@@ -318,9 +754,9 @@ CREATE TABLE IF NOT EXISTS state_compliance_profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_state_profiles_strictness ON state_compliance_profiles(overall_strictness DESC);
-CREATE INDEX idx_state_profiles_region ON state_compliance_profiles(region);
-CREATE INDEX idx_state_profiles_code ON state_compliance_profiles(state_code);
+CREATE INDEX IF NOT EXISTS idx_state_profiles_strictness ON state_compliance_profiles(overall_strictness DESC);
+CREATE INDEX IF NOT EXISTS idx_state_profiles_region ON state_compliance_profiles(region);
+CREATE INDEX IF NOT EXISTS idx_state_profiles_code ON state_compliance_profiles(state_code);
 
 -- State Compliance Updates Table
 CREATE TABLE IF NOT EXISTS state_compliance_updates (
@@ -350,9 +786,9 @@ CREATE TABLE IF NOT EXISTS state_compliance_updates (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_state_updates_state ON state_compliance_updates(state_code);
-CREATE INDEX idx_state_updates_effective ON state_compliance_updates(effective_date);
-CREATE INDEX idx_state_updates_severity ON state_compliance_updates(severity);
+CREATE INDEX IF NOT EXISTS idx_state_updates_state ON state_compliance_updates(state_code);
+CREATE INDEX IF NOT EXISTS idx_state_updates_effective ON state_compliance_updates(effective_date);
+CREATE INDEX IF NOT EXISTS idx_state_updates_severity ON state_compliance_updates(severity);
 
 -- Multi-State Compliance Reports Table
 CREATE TABLE IF NOT EXISTS multi_state_compliance_reports (
@@ -396,9 +832,9 @@ CREATE TABLE IF NOT EXISTS multi_state_compliance_reports (
   expires_at TIMESTAMP WITH TIME ZONE -- Reports expire after regulations change
 );
 
-CREATE INDEX idx_multi_state_reports_user ON multi_state_compliance_reports(user_id);
-CREATE INDEX idx_multi_state_reports_status ON multi_state_compliance_reports(overall_compliance_status);
-CREATE INDEX idx_multi_state_reports_date ON multi_state_compliance_reports(generated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_multi_state_reports_user ON multi_state_compliance_reports(user_id);
+CREATE INDEX IF NOT EXISTS idx_multi_state_reports_status ON multi_state_compliance_reports(overall_compliance_status);
+CREATE INDEX IF NOT EXISTS idx_multi_state_reports_date ON multi_state_compliance_reports(generated_at DESC);
 
 -- ============================================================================
 -- SEED DATA
@@ -450,16 +886,24 @@ INSERT INTO app_settings (setting_key, setting_category, setting_value, display_
   'Default settings for web scraping operations',
   false,
   false
-);
+)
+ON CONFLICT (setting_key) DO UPDATE SET
+  setting_value = EXCLUDED.setting_value,
+  display_name = EXCLUDED.display_name,
+  description = EXCLUDED.description,
+  is_secret = EXCLUDED.is_secret,
+  is_required = EXCLUDED.is_required,
+  updated_at = NOW();
 
 -- Seed MCP Server Configuration
-INSERT INTO mcp_server_configs (server_name, server_type, display_name, description, is_local, command, working_directory, settings, auto_start) VALUES
+INSERT INTO mcp_server_configs (server_name, server_type, display_name, description, is_local, server_url, command, working_directory, settings, auto_start) VALUES
 (
   'compliance_scraper',
   'compliance',
   'Compliance Regulation Scraper',
   'Main MCP server for scraping and analyzing regulatory compliance data across all states',
   true,
+  'http://localhost:8000',
   'python src/server_python.py',
   '/workspaces/MuRP/mcp-server',
   jsonb_build_object(
@@ -469,7 +913,18 @@ INSERT INTO mcp_server_configs (server_name, server_type, display_name, descript
     'cacheExpiryHours', 24
   ),
   false
-);
+)
+ON CONFLICT (server_name) DO UPDATE SET
+  server_type = EXCLUDED.server_type,
+  display_name = EXCLUDED.display_name,
+  description = EXCLUDED.description,
+  is_local = EXCLUDED.is_local,
+  server_url = EXCLUDED.server_url,
+  command = EXCLUDED.command,
+  working_directory = EXCLUDED.working_directory,
+  settings = EXCLUDED.settings,
+  auto_start = EXCLUDED.auto_start,
+  updated_at = NOW();
 
 -- Seed Generic Scraping Configurations (works with ANY .gov site)
 INSERT INTO scraping_configs (config_name, description, base_url, url_pattern, domain, selectors, rate_limit_ms, required_keywords, use_ai_extraction, ai_extraction_prompt, save_to_table, is_active) VALUES
@@ -486,7 +941,7 @@ INSERT INTO scraping_configs (config_name, description, base_url, url_pattern, d
     'regulationCode', 'span.regulation-number, div.code-cite'
   ),
   1000,
-  ARRAY[],
+  '{}'::text[], -- Empty array of text
   true,
   'Extract regulatory information from this government webpage. Identify: regulation titles, requirement text, citation numbers, effective dates, and agency contact information. Return structured JSON matching state_regulations table schema.',
   'state_regulations',
@@ -527,7 +982,8 @@ INSERT INTO scraping_configs (config_name, description, base_url, url_pattern, d
   'Extract USDA National Organic Program (NOP) requirements. Focus on: prohibited substances, labeling requirements, certification rules, and allowed materials.',
   'state_regulations',
   true
-);
+)
+ON CONFLICT (config_name) DO NOTHING;
 
 -- Seed State Strictness Profiles (Top 20 states sorted by strictness)
 INSERT INTO state_compliance_profiles (

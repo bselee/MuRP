@@ -1,6 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.1';
-import pdfjsLib from 'npm:pdfjs-dist/legacy/build/pdf.js';
+import { createShipment, createTrackingEvent } from './shipmentTrackingService.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -146,8 +144,20 @@ serve(async (req) => {
     let vendorResponseStatus: VendorResponseStatus = invoiceSignal?.detected ? 'requires_clarification' : 'vendor_responded';
     let vendorResponseSummary: any = invoiceSignal?.detected ? invoiceSignal : null;
 
-    if (invoiceSignal?.detected && poRecord.invoice_gmail_message_id !== messageId) {
-      await recordInvoiceReceipt(poRecord, messageId, invoiceSignal);
+    // Check if AI detected invoice data
+    const hasInvoiceData = parsed?.invoiceData && parsed.status === 'invoice_received';
+
+    if (hasInvoiceData) {
+      vendorResponseStatus = 'requires_clarification';
+      vendorResponseSummary = {
+        ...vendorResponseSummary,
+        invoice_data: parsed.invoiceData,
+        extracted_by: 'ai'
+      };
+    }
+
+    if ((invoiceSignal?.detected || hasInvoiceData) && poRecord.invoice_gmail_message_id !== messageId) {
+      await recordInvoiceReceipt(poRecord, messageId, invoiceSignal, hasInvoiceData ? parsed?.invoiceData : undefined);
     }
 
     const correlationConfidence = threadId ? 0.95 : 0.7;
@@ -702,6 +712,7 @@ interface ParsedTrackingResult {
   notes?: string | null;
   action?: string;
   confidence?: number | null;
+  invoiceData?: any; // Full invoice data when detected
 }
 
 interface AIAnalysisResult {
@@ -728,7 +739,7 @@ async function analyzeEmailWithAI(
   }
 
   const prompt = `
-You are an assistant that extracts purchase order tracking updates from vendor emails.
+You are an assistant that extracts purchase order and invoice information from vendor emails.
 
 Subject: ${context.subject}
 From: ${context.from}
@@ -738,19 +749,68 @@ Body + Attachments:
 ${context.content.slice(0, 12000)}
 """
 
-Return ONLY JSON with this shape:
+First, determine if this email contains INVOICE data. Look for:
+- Invoice number, date, due date
+- Line items with SKUs, quantities, prices
+- Subtotal, tax, shipping, total amounts
+- Vendor and ship-to addresses
+
+If this is an INVOICE, return ONLY JSON with this shape:
 {
-  "trackingNumber": "1Z123" | null,
-  "carrier": "UPS" | null,
-  "status": "awaiting_confirmation" | "confirmed" | "processing" | "shipped" | "in_transit" | "out_for_delivery" | "delivered" | "exception" | "cancelled",
-  "expectedDelivery": "YYYY-MM-DD" | null,
-  "notes": "Any additional details",
-  "action": "confirmation" | "tracking_update" | "exception" | "other",
-  "confidence": 0.0-1.0
+  "is_invoice": true,
+  "invoice_data": {
+    "invoice_number": "INV-12345" | null,
+    "invoice_date": "2025-01-15" | null,
+    "due_date": "2025-02-14" | null,
+    "vendor_name": "Vendor Company Name" | null,
+    "vendor_address": "123 Vendor St, City, ST 12345" | null,
+    "vendor_contact": "billing@vendor.com" | null,
+    "ship_to_name": "Customer Company" | null,
+    "ship_to_address": "456 Customer Ave, City, ST 67890" | null,
+    "line_items": [
+      {
+        "sku": "VENDOR-SKU-123" | "INTERNAL-SKU-456",
+        "description": "Product description",
+        "quantity": 10,
+        "unit_price": 25.50,
+        "line_total": 255.00
+      }
+    ],
+    "subtotal": 255.00,
+    "tax_amount": 20.40,
+    "shipping_amount": 15.00,
+    "total_amount": 290.40,
+    "currency": "USD"
+  },
+  "tracking_data": null,
+  "confidence": 0.95
 }
 
-If the email simply confirms receipt without tracking, set status to "confirmed".
-`;
+If this is NOT an invoice but contains TRACKING information, return:
+{
+  "is_invoice": false,
+  "invoice_data": null,
+  "tracking_data": {
+    "trackingNumber": "1Z123" | null,
+    "carrier": "UPS" | null,
+    "status": "awaiting_confirmation" | "confirmed" | "processing" | "shipped" | "in_transit" | "out_for_delivery" | "delivered" | "exception" | "cancelled",
+    "expectedDelivery": "YYYY-MM-DD" | null,
+    "notes": "Any additional details",
+    "action": "confirmation" | "tracking_update" | "exception" | "other",
+    "confidence": 0.95
+  },
+  "confidence": 0.95
+}
+
+If neither invoice nor tracking data is found, return:
+{
+  "is_invoice": false,
+  "invoice_data": null,
+  "tracking_data": null,
+  "confidence": 0.0
+}
+
+Return ONLY valid JSON, no other text.`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -761,7 +821,7 @@ If the email simply confirms receipt without tracking, set status to "confirmed"
     },
     body: JSON.stringify({
       model: 'claude-3-5-haiku-20241022',
-      max_tokens: 800,
+      max_tokens: 2000,
       temperature: 0.2,
       messages: [
         {
@@ -787,8 +847,27 @@ If the email simply confirms receipt without tracking, set status to "confirmed"
     const outputTokens = Math.max(1, Math.round(raw.length / 4));
     const costUsd = ((inputTokens * AI_PRICING.input) + (outputTokens * AI_PRICING.output)) / 1_000_000;
 
+    // Normalize the response to match expected interface
+    let normalizedParsed: ParsedTrackingResult | null = null;
+
+    if (parsed.is_invoice && parsed.invoice_data) {
+      // For invoices, store the full invoice data and create a basic tracking result
+      normalizedParsed = {
+        trackingNumber: null,
+        carrier: null,
+        status: 'invoice_received',
+        expectedDelivery: null,
+        notes: `Invoice ${parsed.invoice_data.invoice_number || 'detected'} - Total: $${parsed.invoice_data.total_amount || 0}`,
+        action: 'invoice_received',
+        confidence: parsed.confidence || 0.8,
+        invoiceData: parsed.invoice_data // Store full invoice data
+      };
+    } else if (parsed.tracking_data) {
+      normalizedParsed = parsed.tracking_data;
+    }
+
     return {
-      parsed,
+      parsed: normalizedParsed,
       rawText: raw,
       inputTokens,
       outputTokens,
@@ -833,6 +912,69 @@ async function applyTrackingUpdate(poId: string, parsed: ParsedTrackingResult) {
   const status = normalizeStatus(parsed.status);
   const carrier = normalizeCarrier(parsed.carrier);
 
+  // Check if this is invoice data
+  if (parsed.invoiceData) {
+    // Handle invoice processing (existing logic)
+    await recordInvoiceReceipt(poRecord, messageId, null, parsed.invoiceData);
+    return;
+  }
+
+  // Check if this contains shipment/tracking data
+  if (parsed.trackingNumber || carrier || parsed.status) {
+    // Create shipment record
+    const shipmentData = {
+      poId,
+      trackingNumbers: parsed.trackingNumber ? [parsed.trackingNumber] : [],
+      carrier: carrier || undefined,
+      carrierConfidence: parsed.confidence || 0.5,
+      shipDate: parsed.expectedDelivery ? new Date().toISOString().split('T')[0] : undefined, // Assume ship date is today if we have delivery date
+      estimatedDeliveryDate: parsed.expectedDelivery || undefined,
+      aiConfidence: parsed.confidence || 0.5,
+      aiExtraction: parsed,
+      gmailMessageId: messageId,
+      gmailThreadId: threadId,
+      requiresReview: (parsed.confidence || 0) < 0.8, // Require review for low confidence
+      reviewReason: (parsed.confidence || 0) < 0.8 ? 'Low AI confidence in extracted data' : undefined
+    };
+
+    try {
+      const shipment = await createShipment(shipmentData);
+
+      // Create tracking event
+      await createTrackingEvent({
+        shipmentId: shipment.id,
+        eventType: 'status_update',
+        status: status,
+        description: parsed.notes || parsed.action || 'Shipment detected from vendor email',
+        carrier: carrier || undefined,
+        trackingNumber: parsed.trackingNumber || undefined,
+        source: 'email',
+        sourceId: messageId,
+        aiConfidence: parsed.confidence || 0.5,
+        rawData: parsed
+      });
+
+      // Update PO tracking columns for backward compatibility
+      await supabase
+        .from('purchase_orders')
+        .update({
+          tracking_status: status,
+          tracking_carrier: carrier,
+          tracking_number: parsed.trackingNumber,
+          tracking_estimated_delivery: parsed.expectedDelivery,
+          tracking_last_checked_at: new Date().toISOString()
+        })
+        .eq('id', poId);
+
+      console.log(`[gmail-webhook] Created shipment ${shipment.id} for PO ${poId}`);
+    } catch (error) {
+      console.error('[gmail-webhook] Failed to create shipment:', error);
+    }
+
+    return;
+  }
+
+  // Fallback to legacy tracking update
   const updates: Record<string, any> = {
     tracking_status: status,
     tracking_last_checked_at: new Date().toISOString(),
@@ -865,6 +1007,53 @@ async function applyTrackingUpdate(poId: string, parsed: ParsedTrackingResult) {
     description: parsed.notes ?? parsed.action ?? 'Vendor update',
     raw_payload: parsed,
   });
+}
+
+async function calculateAndStoreVariances(poId: string, invoiceDataId: string, invoiceData: any) {
+  try {
+    // Call the database function to calculate variances
+    const { data: variances, error } = await supabase
+      .rpc('calculate_invoice_variances', {
+        p_po_id: poId,
+        p_invoice_data: invoiceData
+      });
+
+    if (error) {
+      console.error('[gmail-webhook] Failed to calculate variances:', error);
+      return;
+    }
+
+    if (!variances || variances.length === 0) {
+      console.log('[gmail-webhook] No variances detected');
+      return;
+    }
+
+    // Store each variance
+    for (const variance of variances) {
+      const varianceRecord = {
+        po_id: poId,
+        invoice_data_id: invoiceDataId,
+        variance_type: variance.variance_type,
+        severity: variance.severity,
+        po_amount: variance.po_amount,
+        invoice_amount: variance.invoice_amount,
+        variance_amount: variance.variance_amount,
+        variance_percentage: variance.variance_percentage,
+        threshold_percentage: variance.threshold_percentage,
+        threshold_amount: variance.threshold_amount,
+        status: 'pending'
+      };
+
+      await supabase
+        .from('po_invoice_variances')
+        .insert(varianceRecord);
+    }
+
+    console.log(`[gmail-webhook] Stored ${variances.length} variances for PO ${poId}`);
+
+  } catch (error) {
+    console.error('[gmail-webhook] Error calculating/storing variances:', error);
+  }
 }
 
 interface InvoiceSignal {
@@ -910,34 +1099,51 @@ function detectInvoiceSignal(input: {
   };
 }
 
-async function recordInvoiceReceipt(poRecord: { id: string; vendor_name: string }, messageId: string, signal: InvoiceSignal) {
-  const detectedAt = new Date().toISOString();
-  const summary = {
-    vendor: poRecord.vendor_name,
-    subject: signal.subject,
-    amount: signal.amount ?? null,
-    dueDate: signal.dueDate ?? null,
-    attachment: signal.attachmentName ?? null,
-    reason: signal.reason,
-  };
+async function calculateAndStoreVariances(poId: string, invoiceDataId: string, invoiceData: any) {
+  try {
+    // Call the database function to calculate variances
+    const { data: variances, error } = await supabase
+      .rpc('calculate_invoice_variances', {
+        p_po_id: poId,
+        p_invoice_data: invoiceData
+      });
 
-  await supabase
-    .from('purchase_orders')
-    .update({
-      invoice_detected_at: detectedAt,
-      invoice_gmail_message_id: messageId,
-      invoice_summary: summary,
-    })
-    .eq('id', poRecord.id);
+    if (error) {
+      console.error('[gmail-webhook] Failed to calculate variances:', error);
+      return;
+    }
 
-  await supabase.from('po_tracking_events').insert({
-    po_id: poRecord.id,
-    status: 'invoice_received',
-    description: summary.attachment
-      ? `Invoice received (${summary.attachment})`
-      : 'Invoice received via vendor email',
-    raw_payload: summary,
-  });
+    if (!variances || variances.length === 0) {
+      console.log('[gmail-webhook] No variances detected');
+      return;
+    }
+
+    // Store each variance
+    for (const variance of variances) {
+      const varianceRecord = {
+        po_id: poId,
+        invoice_data_id: invoiceDataId,
+        variance_type: variance.variance_type,
+        severity: variance.severity,
+        po_amount: variance.po_amount,
+        invoice_amount: variance.invoice_amount,
+        variance_amount: variance.variance_amount,
+        variance_percentage: variance.variance_percentage,
+        threshold_percentage: variance.threshold_percentage,
+        threshold_amount: variance.threshold_amount,
+        status: 'pending'
+      };
+
+      await supabase
+        .from('po_invoice_variances')
+        .insert(varianceRecord);
+    }
+
+    console.log(`[gmail-webhook] Stored ${variances.length} variances for PO ${poId}`);
+
+  } catch (error) {
+    console.error('[gmail-webhook] Error calculating/storing variances:', error);
+  }
 }
 
 async function markFollowUpResponse(

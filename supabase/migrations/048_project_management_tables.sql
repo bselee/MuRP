@@ -274,8 +274,16 @@ CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_tickets_board ON tickets(board_column, board_position);
 
 -- Enforce reporter presence and unique ticket numbers
-ALTER TABLE tickets
-  ADD CONSTRAINT IF NOT EXISTS tickets_ticket_number_key UNIQUE (ticket_number);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'tickets_ticket_number_key'
+  ) THEN
+    ALTER TABLE tickets
+      ADD CONSTRAINT tickets_ticket_number_key UNIQUE (ticket_number);
+  END IF;
+END $$;
 
 ALTER TABLE tickets
   ALTER COLUMN ticket_number SET NOT NULL;

@@ -94,11 +94,8 @@ import { getDefaultAiSettings } from './services/tokenCounter';
 import { getGoogleAuthService } from './services/googleAuthService';
 import { getGoogleGmailService } from './services/googleGmailService';
 import { GOOGLE_SCOPES } from './lib/google/scopes';
-import LoadingOverlay from './components/LoadingOverlay';
-import { supabase } from './lib/supabase/client';
-import { useAuth } from './lib/auth/AuthContext';
-import { updatePurchaseOrderTrackingStatus } from './services/poTrackingService';
-import { enqueuePoDrafts } from './lib/poDraftBridge';
+import { ShipmentAlertBanner } from './components/ShipmentAlertBanner';
+import { ShipmentReviewModal } from './components/ShipmentReviewModal';
 import { usePermissions } from './hooks/usePermissions';
 import { isE2ETesting } from './lib/auth/guards';
 import {
@@ -173,6 +170,8 @@ const AppShell: React.FC = () => {
   const [quickRequestDefaults, setQuickRequestDefaults] = useState<QuickRequestDefaults | null>(null);
   const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(false);
   const [guidedLaunchState, setGuidedLaunchState] = useState<GuidedLaunchState | null>(null);
+  const [isShipmentReviewModalOpen, setIsShipmentReviewModalOpen] = useState(false);
+  const [shipmentReviewPoId, setShipmentReviewPoId] = useState<string | null>(null);
   const navigateToPage = useCallback((nextPage: Page) => {
     setNavigationHistory(prev => {
       if (prev[prev.length - 1] === nextPage) {
@@ -1842,6 +1841,12 @@ const AppShell: React.FC = () => {
           data-surface="workspace"
           className={`workspace-surface flex-1 overflow-x-hidden overflow-y-auto ${mainBackground} p-4 sm:p-6 lg:p-8 transition-colors duration-300`}
         >
+          <ShipmentAlertBanner
+            onReviewShipment={(poId) => {
+              setShipmentReviewPoId(poId);
+              setIsShipmentReviewModalOpen(true);
+            }}
+          />
           <ErrorBoundary
             key={currentPage}
             fallback={(
@@ -1899,6 +1904,16 @@ const AppShell: React.FC = () => {
         aiSettings={aiSettings}
         onUpdateAiSettings={handleUpdateAiSettings}
         userId={currentUser?.id || ''}
+      />
+
+      <ShipmentReviewModal
+        isOpen={isShipmentReviewModalOpen}
+        onClose={() => {
+          setIsShipmentReviewModalOpen(false);
+          setShipmentReviewPoId(null);
+        }}
+        poId={shipmentReviewPoId}
+        addToast={addToast}
       />
 
       {!hasInitialDataLoaded && <LoadingOverlay />}

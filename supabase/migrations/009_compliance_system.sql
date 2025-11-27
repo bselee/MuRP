@@ -421,7 +421,7 @@ CREATE POLICY "Allow authenticated write on extraction_prompts" ON extraction_pr
 -- Tracks user subscription tier and preferences
 CREATE TABLE IF NOT EXISTS user_compliance_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL UNIQUE, -- Links to your auth system
+  user_id UUID NOT NULL UNIQUE, -- Links to your auth system
   email TEXT NOT NULL,
   
   -- Subscription tier
@@ -455,9 +455,78 @@ CREATE TABLE IF NOT EXISTS user_compliance_profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Add missing columns if table exists from previous migration
+DO $$
+BEGIN
+  -- Add columns that might be missing from migration 006
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'compliance_tier') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN compliance_tier TEXT NOT NULL DEFAULT 'basic';
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'subscription_status') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN subscription_status TEXT DEFAULT 'active';
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'trial_checks_remaining') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN trial_checks_remaining INTEGER DEFAULT 5;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'industry') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN industry TEXT NOT NULL DEFAULT 'organic_agriculture';
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'target_states') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN target_states TEXT[] NOT NULL DEFAULT ARRAY['CA'];
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'product_types') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN product_types TEXT[];
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'certifications_held') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN certifications_held TEXT[];
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'checks_this_month') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN checks_this_month INTEGER DEFAULT 0;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'last_check_at') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN last_check_at TIMESTAMP WITH TIME ZONE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'total_checks_lifetime') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN total_checks_lifetime INTEGER DEFAULT 0;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'stripe_customer_id') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN stripe_customer_id TEXT;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'subscription_start_date') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN subscription_start_date TIMESTAMP WITH TIME ZONE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'subscription_renewal_date') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN subscription_renewal_date TIMESTAMP WITH TIME ZONE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'monthly_check_limit') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN monthly_check_limit INTEGER DEFAULT 50;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'onboarding_completed') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN onboarding_completed BOOLEAN DEFAULT FALSE;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_compliance_profiles' AND column_name = 'onboarding_step') THEN
+    ALTER TABLE user_compliance_profiles ADD COLUMN onboarding_step INTEGER DEFAULT 1;
+  END IF;
+END $$;
+
 -- Indexes for user_compliance_profiles
 CREATE INDEX idx_user_profiles_user_id ON user_compliance_profiles(user_id);
-CREATE INDEX idx_user_profiles_tier ON user_compliance_profiles(compliance_tier);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_tier ON user_compliance_profiles(compliance_tier);
 CREATE INDEX idx_user_profiles_industry ON user_compliance_profiles(industry);
 
 -- Industry Settings
@@ -523,7 +592,7 @@ INSERT INTO industry_settings (industry, display_name, default_product_types, co
 -- Allows users to manage their own regulation links
 CREATE TABLE IF NOT EXISTS user_regulatory_sources (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL REFERENCES user_compliance_profiles(user_id),
+  user_id UUID NOT NULL REFERENCES user_compliance_profiles(user_id),
   
   -- Source information
   state_code TEXT NOT NULL,
@@ -563,7 +632,7 @@ CREATE INDEX IF NOT EXISTS idx_compliance_checks_tier ON compliance_checks(check
 -- Track feature usage for conversion optimization
 CREATE TABLE IF NOT EXISTS usage_analytics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id TEXT NOT NULL REFERENCES user_compliance_profiles(user_id),
+  user_id UUID NOT NULL REFERENCES user_compliance_profiles(user_id),
   
   -- Event tracking
   event_type TEXT NOT NULL, -- 'check_run', 'source_added', 'upgrade_viewed', 'trial_check_used'

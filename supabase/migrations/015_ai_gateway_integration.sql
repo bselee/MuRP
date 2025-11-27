@@ -79,12 +79,12 @@ ON ai_usage_tracking(user_id, created_at DESC, feature_type);
 ALTER TABLE ai_usage_tracking ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can view their own usage data
-CREATE POLICY IF NOT EXISTS "Users can view own usage"
+CREATE POLICY "Users can view own usage"
 ON ai_usage_tracking FOR SELECT
 USING (user_id = current_setting('app.user_id', true)::TEXT);
 
 -- Policy: Service role can insert usage records
-CREATE POLICY IF NOT EXISTS "Service can insert usage"
+CREATE POLICY "Service can insert usage"
 ON ai_usage_tracking FOR INSERT
 WITH CHECK (true);
 
@@ -196,14 +196,14 @@ CREATE OR REPLACE FUNCTION check_and_reset_monthly_counters()
 RETURNS TRIGGER AS $$
 DECLARE
   last_reset DATE;
-  current_date DATE;
+  current_month DATE;
 BEGIN
   last_reset := DATE(OLD.last_chat_reset_date);
-  current_date := CURRENT_DATE;
+  current_month := CURRENT_DATE;
 
   -- If we're in a new month, reset counters
-  IF EXTRACT(MONTH FROM last_reset) != EXTRACT(MONTH FROM current_date)
-     OR EXTRACT(YEAR FROM last_reset) != EXTRACT(YEAR FROM current_date) THEN
+  IF EXTRACT(MONTH FROM last_reset) != EXTRACT(MONTH FROM current_month)
+     OR EXTRACT(YEAR FROM last_reset) != EXTRACT(YEAR FROM current_month) THEN
 
     NEW.chat_messages_this_month := 0;
     NEW.checks_this_month := 0;

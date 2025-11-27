@@ -83,10 +83,29 @@ END $$;
 
 ALTER TABLE labels ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY labels_select_policy ON labels FOR SELECT TO authenticated USING (true);
-CREATE POLICY labels_insert_policy ON labels FOR INSERT TO authenticated WITH CHECK (auth.uid() = uploaded_by OR uploaded_by IS NULL);
-CREATE POLICY labels_update_policy ON labels FOR UPDATE TO authenticated USING (auth.uid() = uploaded_by OR uploaded_by IS NULL);
-CREATE POLICY labels_delete_policy ON labels FOR DELETE TO authenticated USING (auth.uid() = uploaded_by);
+DO $$ BEGIN
+  CREATE POLICY labels_select_policy ON labels FOR SELECT TO authenticated USING (true);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY labels_insert_policy ON labels FOR INSERT TO authenticated WITH CHECK (auth.uid() = uploaded_by OR uploaded_by IS NULL);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY labels_update_policy ON labels FOR UPDATE TO authenticated USING (auth.uid() = uploaded_by OR uploaded_by IS NULL);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY labels_delete_policy ON labels FOR DELETE TO authenticated USING (auth.uid() = uploaded_by);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE OR REPLACE FUNCTION update_labels_updated_at()
 RETURNS TRIGGER AS $$
@@ -96,10 +115,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_labels_updated_at
-  BEFORE UPDATE ON labels
-  FOR EACH ROW
-  EXECUTE FUNCTION update_labels_updated_at();
+DO $$ BEGIN
+  CREATE TRIGGER trigger_labels_updated_at
+    BEFORE UPDATE ON labels
+    FOR EACH ROW
+    EXECUTE FUNCTION update_labels_updated_at();
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 COMMENT ON TABLE labels IS 'Stores all uploaded and scanned product labels with AI-extracted data';
 
@@ -138,31 +161,64 @@ CREATE TABLE IF NOT EXISTS product_data_sheets (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_pds_bom_id ON product_data_sheets(bom_id);
-CREATE INDEX idx_pds_label_id ON product_data_sheets(label_id) WHERE label_id IS NOT NULL;
-CREATE INDEX idx_pds_document_type ON product_data_sheets(document_type);
-CREATE INDEX idx_pds_status ON product_data_sheets(status);
-CREATE INDEX idx_pds_created_at ON product_data_sheets(created_at DESC);
-CREATE INDEX idx_pds_created_by ON product_data_sheets(created_by);
-CREATE INDEX idx_pds_version ON product_data_sheets(bom_id, version DESC);
-CREATE INDEX idx_pds_content ON product_data_sheets USING GIN (content);
-CREATE INDEX idx_pds_edit_history ON product_data_sheets USING GIN (edit_history);
-CREATE INDEX idx_pds_title_search ON product_data_sheets USING GIN (to_tsvector('english', title));
-CREATE INDEX idx_pds_tags ON product_data_sheets USING GIN (tags);
+CREATE INDEX IF NOT EXISTS idx_pds_bom_id ON product_data_sheets(bom_id);
+CREATE INDEX IF NOT EXISTS idx_pds_label_id ON product_data_sheets(label_id) WHERE label_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_pds_document_type ON product_data_sheets(document_type);
+CREATE INDEX IF NOT EXISTS idx_pds_status ON product_data_sheets(status);
+CREATE INDEX IF NOT EXISTS idx_pds_created_at ON product_data_sheets(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pds_created_by ON product_data_sheets(created_by);
+CREATE INDEX IF NOT EXISTS idx_pds_version ON product_data_sheets(bom_id, version DESC);
+CREATE INDEX IF NOT EXISTS idx_pds_content ON product_data_sheets USING GIN (content);
+CREATE INDEX IF NOT EXISTS idx_pds_edit_history ON product_data_sheets USING GIN (edit_history);
+CREATE INDEX IF NOT EXISTS idx_pds_title_search ON product_data_sheets USING GIN (to_tsvector('english', title));
+CREATE INDEX IF NOT EXISTS idx_pds_tags ON product_data_sheets USING GIN (tags);
 
-ALTER TABLE product_data_sheets ADD CONSTRAINT pds_document_type_check
-  CHECK (document_type IN ('sds', 'spec_sheet', 'product_info', 'compliance_doc', 'custom'));
-ALTER TABLE product_data_sheets ADD CONSTRAINT pds_status_check
-  CHECK (status IN ('draft', 'review', 'approved', 'published', 'archived'));
-ALTER TABLE product_data_sheets ADD CONSTRAINT pds_version_positive
-  CHECK (version > 0);
+DO $$ BEGIN
+  ALTER TABLE product_data_sheets ADD CONSTRAINT pds_document_type_check
+    CHECK (document_type IN ('sds', 'spec_sheet', 'product_info', 'compliance_doc', 'custom'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE product_data_sheets ADD CONSTRAINT pds_status_check
+    CHECK (status IN ('draft', 'review', 'approved', 'published', 'archived'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE product_data_sheets ADD CONSTRAINT pds_version_positive
+    CHECK (version > 0);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 ALTER TABLE product_data_sheets ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY pds_select_policy ON product_data_sheets FOR SELECT TO authenticated USING (true);
-CREATE POLICY pds_insert_policy ON product_data_sheets FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by OR created_by IS NULL);
-CREATE POLICY pds_update_policy ON product_data_sheets FOR UPDATE TO authenticated USING (auth.uid() = created_by OR auth.uid() = last_edited_by OR status = 'draft');
-CREATE POLICY pds_delete_policy ON product_data_sheets FOR DELETE TO authenticated USING (auth.uid() = created_by AND status = 'draft');
+DO $$ BEGIN
+  CREATE POLICY pds_select_policy ON product_data_sheets FOR SELECT TO authenticated USING (true);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY pds_insert_policy ON product_data_sheets FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by OR created_by IS NULL);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY pds_update_policy ON product_data_sheets FOR UPDATE TO authenticated USING (auth.uid() = created_by OR auth.uid() = last_edited_by OR status = 'draft');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY pds_delete_policy ON product_data_sheets FOR DELETE TO authenticated USING (auth.uid() = created_by AND status = 'draft');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE OR REPLACE FUNCTION update_pds_updated_at()
 RETURNS TRIGGER AS $$
@@ -173,10 +229,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_pds_updated_at
-  BEFORE UPDATE ON product_data_sheets
-  FOR EACH ROW
-  EXECUTE FUNCTION update_pds_updated_at();
+DO $$ BEGIN
+  CREATE TRIGGER trigger_pds_updated_at
+    BEFORE UPDATE ON product_data_sheets
+    FOR EACH ROW
+    EXECUTE FUNCTION update_pds_updated_at();
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 COMMENT ON TABLE product_data_sheets IS 'Stores AI-generated and editable product documentation (SDS, spec sheets, etc.)';
 
@@ -233,36 +293,74 @@ CREATE TABLE IF NOT EXISTS compliance_records (
   last_verified_by UUID
 );
 
-CREATE INDEX idx_compliance_bom_id ON compliance_records(bom_id);
-CREATE INDEX idx_compliance_label_id ON compliance_records(label_id) WHERE label_id IS NOT NULL;
-CREATE INDEX idx_compliance_type ON compliance_records(compliance_type);
-CREATE INDEX idx_compliance_status ON compliance_records(status);
-CREATE INDEX idx_compliance_state_code ON compliance_records(state_code) WHERE state_code IS NOT NULL;
-CREATE INDEX idx_compliance_expiration_date ON compliance_records(expiration_date) WHERE expiration_date IS NOT NULL;
-CREATE INDEX idx_compliance_renewal_date ON compliance_records(renewal_date) WHERE renewal_date IS NOT NULL;
-CREATE INDEX idx_compliance_registration_number ON compliance_records(registration_number);
-CREATE INDEX idx_compliance_assigned_to ON compliance_records(assigned_to) WHERE assigned_to IS NOT NULL;
-CREATE INDEX idx_compliance_priority ON compliance_records(priority);
-CREATE INDEX idx_compliance_created_at ON compliance_records(created_at DESC);
-CREATE INDEX idx_compliance_conditions ON compliance_records USING GIN (conditions);
-CREATE INDEX idx_compliance_additional_docs ON compliance_records USING GIN (additional_documents);
-CREATE INDEX idx_compliance_expiring_soon ON compliance_records(status, expiration_date) WHERE status IN ('due_soon', 'urgent');
+CREATE INDEX IF NOT EXISTS idx_compliance_bom_id ON compliance_records(bom_id);
+CREATE INDEX IF NOT EXISTS idx_compliance_label_id ON compliance_records(label_id) WHERE label_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_compliance_type ON compliance_records(compliance_type);
+CREATE INDEX IF NOT EXISTS idx_compliance_status ON compliance_records(status);
+CREATE INDEX IF NOT EXISTS idx_compliance_state_code ON compliance_records(state_code) WHERE state_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_compliance_expiration_date ON compliance_records(expiration_date) WHERE expiration_date IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_compliance_renewal_date ON compliance_records(renewal_date) WHERE renewal_date IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_compliance_registration_number ON compliance_records(registration_number);
+CREATE INDEX IF NOT EXISTS idx_compliance_assigned_to ON compliance_records(assigned_to) WHERE assigned_to IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_compliance_priority ON compliance_records(priority);
+CREATE INDEX IF NOT EXISTS idx_compliance_created_at ON compliance_records(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_compliance_conditions ON compliance_records USING GIN (conditions);
+CREATE INDEX IF NOT EXISTS idx_compliance_additional_docs ON compliance_records USING GIN (additional_documents);
+CREATE INDEX IF NOT EXISTS idx_compliance_expiring_soon ON compliance_records(status, expiration_date) WHERE status IN ('due_soon', 'urgent');
 
-ALTER TABLE compliance_records ADD CONSTRAINT compliance_type_check
-  CHECK (compliance_type IN ('state_registration', 'organic_cert', 'omri', 'epa', 'wsda', 'cdfa', 'custom'));
-ALTER TABLE compliance_records ADD CONSTRAINT compliance_status_check
-  CHECK (status IN ('current', 'due_soon', 'urgent', 'expired', 'pending', 'suspended', 'cancelled', 'renewed'));
-ALTER TABLE compliance_records ADD CONSTRAINT compliance_priority_check
-  CHECK (priority IN ('low', 'normal', 'high', 'critical'));
-ALTER TABLE compliance_records ADD CONSTRAINT compliance_payment_status_check
-  CHECK (payment_status IS NULL OR payment_status IN ('paid', 'pending', 'overdue'));
+DO $$ BEGIN
+  ALTER TABLE compliance_records ADD CONSTRAINT compliance_type_check
+    CHECK (compliance_type IN ('state_registration', 'organic_cert', 'omri', 'epa', 'wsda', 'cdfa', 'custom'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE compliance_records ADD CONSTRAINT compliance_status_check
+    CHECK (status IN ('current', 'due_soon', 'urgent', 'expired', 'pending', 'suspended', 'cancelled', 'renewed'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE compliance_records ADD CONSTRAINT compliance_priority_check
+    CHECK (priority IN ('low', 'normal', 'high', 'critical'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE compliance_records ADD CONSTRAINT compliance_payment_status_check
+    CHECK (payment_status IS NULL OR payment_status IN ('paid', 'pending', 'overdue'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 ALTER TABLE compliance_records ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY compliance_select_policy ON compliance_records FOR SELECT TO authenticated USING (true);
-CREATE POLICY compliance_insert_policy ON compliance_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by OR created_by IS NULL);
-CREATE POLICY compliance_update_policy ON compliance_records FOR UPDATE TO authenticated USING (true);
-CREATE POLICY compliance_delete_policy ON compliance_records FOR DELETE TO authenticated USING (auth.uid() = created_by);
+DO $$ BEGIN
+  CREATE POLICY compliance_select_policy ON compliance_records FOR SELECT TO authenticated USING (true);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY compliance_insert_policy ON compliance_records FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by OR created_by IS NULL);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY compliance_update_policy ON compliance_records FOR UPDATE TO authenticated USING (true);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY compliance_delete_policy ON compliance_records FOR DELETE TO authenticated USING (auth.uid() = created_by);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE OR REPLACE FUNCTION update_compliance_updated_at()
 RETURNS TRIGGER AS $$
@@ -284,15 +382,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_compliance_updated_at
-  BEFORE UPDATE ON compliance_records
-  FOR EACH ROW
-  EXECUTE FUNCTION update_compliance_updated_at();
+DO $$ BEGIN
+  CREATE TRIGGER trigger_compliance_updated_at
+    BEFORE UPDATE ON compliance_records
+    FOR EACH ROW
+    EXECUTE FUNCTION update_compliance_updated_at();
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TRIGGER trigger_compliance_insert
-  BEFORE INSERT ON compliance_records
-  FOR EACH ROW
-  EXECUTE FUNCTION update_compliance_updated_at();
+DO $$ BEGIN
+  CREATE TRIGGER trigger_compliance_insert
+    BEFORE INSERT ON compliance_records
+    FOR EACH ROW
+    EXECUTE FUNCTION update_compliance_updated_at();
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 COMMENT ON TABLE compliance_records IS 'Comprehensive tracking of state registrations, certifications, and compliance records';
 
@@ -308,30 +414,101 @@ ALTER TABLE boms ADD COLUMN IF NOT EXISTS expiring_registrations_count INTEGER D
 ALTER TABLE boms ADD COLUMN IF NOT EXISTS compliance_last_checked TIMESTAMPTZ;
 
 -- Add foreign key constraints
-ALTER TABLE labels ADD CONSTRAINT fk_labels_bom_id FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE SET NULL;
-ALTER TABLE labels ADD CONSTRAINT fk_labels_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL;
-ALTER TABLE labels ADD CONSTRAINT fk_labels_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL;
-ALTER TABLE labels ADD CONSTRAINT fk_labels_approved_by FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL;
+DO $$ BEGIN
+  ALTER TABLE labels ADD CONSTRAINT fk_labels_bom_id FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_bom_id FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE CASCADE;
-ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_label_id FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE SET NULL;
-ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
-ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_last_edited_by FOREIGN KEY (last_edited_by) REFERENCES users(id) ON DELETE SET NULL;
-ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_approved_by FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL;
+DO $$ BEGIN
+  ALTER TABLE labels ADD CONSTRAINT fk_labels_uploaded_by FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_bom_id FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE CASCADE;
-ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_label_id FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE SET NULL;
-ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
-ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL;
-ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_last_verified_by FOREIGN KEY (last_verified_by) REFERENCES users(id) ON DELETE SET NULL;
+DO $$ BEGIN
+  ALTER TABLE labels ADD CONSTRAINT fk_labels_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE INDEX idx_boms_primary_label_id ON boms(primary_label_id) WHERE primary_label_id IS NOT NULL;
-CREATE INDEX idx_boms_primary_data_sheet_id ON boms(primary_data_sheet_id) WHERE primary_data_sheet_id IS NOT NULL;
-CREATE INDEX idx_boms_compliance_status ON boms(compliance_status);
-CREATE INDEX idx_boms_expiring_registrations ON boms(expiring_registrations_count) WHERE expiring_registrations_count > 0;
+DO $$ BEGIN
+  ALTER TABLE labels ADD CONSTRAINT fk_labels_approved_by FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE boms ADD CONSTRAINT boms_compliance_status_check
-  CHECK (compliance_status IN ('compliant', 'due_soon', 'urgent', 'non_compliant', 'unknown'));
+DO $$ BEGIN
+  ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_bom_id FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_label_id FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_last_edited_by FOREIGN KEY (last_edited_by) REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE product_data_sheets ADD CONSTRAINT fk_pds_approved_by FOREIGN KEY (approved_by) REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_bom_id FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_label_id FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE compliance_records ADD CONSTRAINT fk_compliance_last_verified_by FOREIGN KEY (last_verified_by) REFERENCES users(id) ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_boms_primary_label_id ON boms(primary_label_id) WHERE primary_label_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_boms_primary_data_sheet_id ON boms(primary_data_sheet_id) WHERE primary_data_sheet_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_boms_compliance_status ON boms(compliance_status);
+CREATE INDEX IF NOT EXISTS idx_boms_expiring_registrations ON boms(expiring_registrations_count) WHERE expiring_registrations_count > 0;
+
+DO $$ BEGIN
+  ALTER TABLE boms ADD CONSTRAINT boms_compliance_status_check
+    CHECK (compliance_status IN ('compliant', 'due_soon', 'urgent', 'non_compliant', 'unknown'));
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 COMMENT ON COLUMN boms.primary_label_id IS 'Primary/current label file for this BOM';
 COMMENT ON COLUMN boms.compliance_status IS 'Overall compliance status: compliant, due_soon, urgent, non_compliant, unknown';

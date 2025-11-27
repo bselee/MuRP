@@ -47,7 +47,7 @@ INSERT INTO app_settings (
   setting_value,
   display_name,
   description,
-  is_sensitive
+  is_secret
 )
 VALUES (
   'aftership_config',

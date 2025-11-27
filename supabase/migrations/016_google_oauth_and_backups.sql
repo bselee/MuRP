@@ -28,9 +28,18 @@ CREATE INDEX IF NOT EXISTS idx_oauth_tokens_expires ON user_oauth_tokens(expires
 ALTER TABLE user_oauth_tokens ENABLE ROW LEVEL SECURITY;
 
 -- Users can only access their own tokens
-CREATE POLICY "Users access own OAuth tokens"
-  ON user_oauth_tokens FOR ALL
-  USING (user_id = auth.uid()::uuid);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'user_oauth_tokens' 
+    AND policyname = 'Users access own OAuth tokens'
+  ) THEN
+    CREATE POLICY "Users access own OAuth tokens"
+      ON user_oauth_tokens FOR ALL
+      USING (user_id = auth.uid()::uuid);
+  END IF;
+END $$;
 
 -- =============================================================================
 -- 2. DATA BACKUP LOGS TABLE
@@ -151,6 +160,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 5. LIST AVAILABLE BACKUPS FUNCTION
 -- =============================================================================
 -- Returns list of backup tables for a given source table
+DROP FUNCTION IF EXISTS list_backups(TEXT);
 CREATE OR REPLACE FUNCTION list_backups(
   p_source_table TEXT
 )
@@ -177,6 +187,7 @@ $$ LANGUAGE plpgsql;
 -- 6. CLEANUP OLD BACKUPS FUNCTION
 -- =============================================================================
 -- Removes backup tables older than specified days
+DROP FUNCTION IF EXISTS cleanup_old_backups(TEXT, INTEGER);
 CREATE OR REPLACE FUNCTION cleanup_old_backups(
   p_days_to_keep INTEGER DEFAULT 30
 )
@@ -220,5 +231,5 @@ COMMENT ON TABLE user_oauth_tokens IS 'Encrypted OAuth tokens for third-party in
 COMMENT ON TABLE data_backup_logs IS 'Audit log of database backup operations';
 COMMENT ON FUNCTION backup_table IS 'Creates timestamped backup of specified table';
 COMMENT ON FUNCTION rollback_from_backup IS 'Restores data from backup table to target table';
-COMMENT ON FUNCTION list_backups IS 'Lists all available backups for a source table';
-COMMENT ON FUNCTION cleanup_old_backups IS 'Removes backup tables older than specified days';
+COMMENT ON FUNCTION list_backups(TEXT) IS 'Lists all available backups for a source table';
+COMMENT ON FUNCTION cleanup_old_backups(INTEGER) IS 'Removes backup tables older than specified days';
