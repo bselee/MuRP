@@ -122,7 +122,7 @@ Comprehensive guide covering:
 
 ```bash
 # Navigate to project root
-cd /path/to/TGF-MRP
+cd /path/to/MuRP
 
 # Run migration
 supabase migration up
@@ -474,5 +474,5 @@ This implementation gives you production-ready, cost-effective AI purchasing int
 
 ---
 
-**Built with ❤️ for TGF-MRP**
+**Built with ❤️ for MuRP**
 *Smart purchasing, tiny costs, massive ROI* 💰

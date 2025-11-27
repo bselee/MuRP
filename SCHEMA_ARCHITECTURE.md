@@ -1,4 +1,4 @@
-# TGF-MRP Schema Architecture
+# MuRP Schema Architecture
 
 **Version:** 1.0
 **Date:** November 4, 2025
@@ -8,7 +8,7 @@
 
 ## Overview
 
-The TGF-MRP system now uses a comprehensive schema architecture that provides:
+The MuRP system now uses a comprehensive schema architecture that provides:
 
 - **Single Source of Truth**: All data structures defined in one place
 - **Type Safety**: Full TypeScript validation with Zod schemas

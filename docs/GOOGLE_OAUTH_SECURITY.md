@@ -2,7 +2,7 @@
 
 ## Overview
 
-TGF-MRP implements OAuth 2.0 best practices for secure Google API integration across Drive, Sheets, Docs, Calendar, and Gmail.
+MuRP implements OAuth 2.0 best practices for secure Google API integration across Drive, Sheets, Docs, Calendar, and Gmail.
 
 ## Recent Security Enhancements (Nov 2025)
 

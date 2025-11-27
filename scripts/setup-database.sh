@@ -4,7 +4,7 @@
 
 set -e
 
-echo "🗄️  TGF MRP - Database Setup"
+echo "🗄️  MuRP - Database Setup"
 echo "============================"
 echo ""
 

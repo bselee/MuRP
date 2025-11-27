@@ -149,13 +149,24 @@ async function processCampaign(campaign: any, rules: any[]) {
           gmail_message_id: gmail.id,
           gmail_thread_id: gmail.threadId,
           metadata: {
-            followUpStage: rule.stage,
-            campaignId: campaign.id,
-            auto: true,
-            template: 'follow_up',
-          },
-          sent_at: sentAt,
-        });
+          followUpStage: rule.stage,
+          campaignId: campaign.id,
+          auto: true,
+          template: 'follow_up',
+        },
+        sent_at: sentAt,
+      });
+
+      await recordOutboundCommunication({
+        poId: po.id,
+        vendorEmail: contactEmail,
+        gmailMessageId: gmail.id,
+        gmailThreadId: gmail.threadId,
+        subject,
+        body,
+        campaignId: campaign.id,
+        stage: rule.stage,
+      });
 
       await supabase
         .from('vendor_followup_events')
@@ -177,19 +188,19 @@ async function processCampaign(campaign: any, rules: any[]) {
           campaign_id: campaign.id,
           last_stage: rule.stage,
           last_sent_at: sentAt,
-          status: campaign.trigger_type === 'invoice_missing' ? 'awaiting_invoice' : 'awaiting_vendor',
+          status: 'pending_response',
         });
 
-      if (campaign.trigger_type === 'tracking_missing') {
-        await supabase
-          .from('purchase_orders')
-          .update({
-            last_follow_up_stage: rule.stage,
-            last_follow_up_sent_at: sentAt,
-            follow_up_status: 'awaiting_vendor',
-          })
-          .eq('id', po.id);
-      }
+      await supabase
+        .from('purchase_orders')
+        .update({
+          last_follow_up_stage: rule.stage,
+          last_follow_up_sent_at: sentAt,
+          follow_up_status: 'pending_response',
+          vendor_response_status: 'pending_response',
+          next_follow_up_due_at: null,
+        })
+        .eq('id', po.id);
 
       sentCount++;
     } catch (error) {
@@ -211,8 +222,42 @@ async function fetchCandidates(campaign: any) {
       .is('invoice_detected_at', null);
     if (error) {
       console.error('[po-followup-runner] invoice candidate query failed', error);
-      return [];
-    }
+  return [];
+}
+
+async function recordOutboundCommunication(entry: {
+  poId: string;
+  vendorEmail: string;
+  gmailMessageId: string;
+  gmailThreadId: string;
+  subject: string;
+  body: string;
+  campaignId: string;
+  stage: number;
+}) {
+  try {
+    await supabase.from('po_vendor_communications').upsert(
+      {
+        po_id: entry.poId,
+        communication_type: 'follow_up',
+        direction: 'outbound',
+        gmail_message_id: entry.gmailMessageId,
+        gmail_thread_id: entry.gmailThreadId,
+        subject: entry.subject,
+        body_preview: entry.body.slice(0, 800),
+        recipient_email: entry.vendorEmail,
+        sent_at: new Date().toISOString(),
+        metadata: {
+          campaignId: entry.campaignId,
+        },
+        stage: entry.stage,
+      },
+      { onConflict: 'gmail_message_id' },
+    );
+  } catch (error) {
+    console.error('[po-followup-runner] failed to log vendor communication', error);
+  }
+}
     return (data || []).filter((po) => !!po.sent_at);
   }
 

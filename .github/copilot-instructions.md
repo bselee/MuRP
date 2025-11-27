@@ -1,15 +1,378 @@
-# AI Coding Agent Instructions - Universal Codespace Workflows
+# MuRP - AI Coding Agent Instructions
 
-> **Scope**: These instructions apply to ALL codespace instances and development workflows, not just this specific project.
+Manufacturing Resource Planning system with AI-powered compliance, tier-based AI Gateway, and secure API integrations.
+
+## 🚀 Quick Start for New Contributors
+
+**First-time setup:**
+```bash
+npm install                    # Install dependencies
+npm run dev                    # Start dev server (localhost:5173)
+```
+
+**Before making any changes:**
+1. Read `SCHEMA_ARCHITECTURE.md` - understand the 4-layer data flow
+2. Check `docs/MIGRATION_CONVENTIONS.md` - Supabase migration numbering rules
+3. Run `npm test` - ensure everything works
+4. Use `?e2e=1` in URLs for testing without auth
+
+**Key principle:** Never query databases or call AI providers directly - always use service layers and hooks.
+
+---
+
+## 🏗️ Architecture Overview
+
+### 4-Layer Schema System
+**Critical pattern used across all data types.** All data transformations follow: `Raw → Parsed → Database → Display`
+
+- **Raw**: External sources (CSV columns, API responses) - see `lib/schema/index.ts`
+- **Parsed**: Validated/normalized with Zod schemas - proper TypeScript types
+- **Database**: Supabase table format (snake_case) - use transformers in `lib/schema/transformers.ts`
+- **Display**: UI-optimized with computed fields - includes formatters
+
+Example workflow:
+```typescript
+// Transform Finale API data
+const result = transformFinaleData(rawApiResponse); // Raw → Parsed
+const dbData = transformVendorParsedToDatabase(result.data); // Parsed → Database
+await supabase.from('vendors').insert(dbData);
+```
+
+**Read `SCHEMA_ARCHITECTURE.md` before modifying any data transformations.**
+
+### AI Gateway Service Architecture
+Tier-based routing with automatic fallbacks (`services/aiGatewayService.ts`):
+
+- **Basic Tier**: Free Gemini (100 msg/month) - `generateAIResponse(messages, featureType, 'basic')`
+- **Full AI Tier**: Premium models via Vercel AI Gateway - GPT-4o, Claude, etc.
+- **Automatic Fallback**: Falls back to direct Gemini if Gateway fails
+
+**Never** call AI providers directly - always use `generateAIResponse()` from aiGatewayService.
+
+### Unified Data Service Layer
+Use `lib/dataService.ts` for all data access - automatically switches between sources:
+
+```typescript
+import { getInventoryData, getVendorData } from './lib/dataService';
+
+// Automatically uses: Mock data (dev) → Finale API (live) → Supabase (cached)
+const inventory = await getInventoryData();
+const vendors = await getVendorData();
+```
+
+### Secure API Integration Pattern
+All external API calls use this 3-layer security pattern:
+
+1. **Frontend**: `services/secureApiClient.ts` - never exposes API keys
+2. **Proxy**: `supabase/functions/api-proxy/index.ts` - authentication, rate limiting, audit logging
+3. **External API**: Finale Inventory, Google APIs, etc.
+
+Complete resilience stack in `services/finaleIngestion.ts`:
+```typescript
+import { retryWithBackoff } from './retryWithBackoff'; // Exponential backoff
+import { createCircuitBreaker } from './circuitBreaker'; // Failure detection
+import { createRateLimiter } from './rateLimiter'; // Request queuing
+```
+
+## 🔑 Critical Developer Workflows
+
+### Build & Test Commands
+```bash
+npm run dev                    # Vite dev server (port 5173)
+npm run build                  # TypeScript + Vite production build
+npm test                       # Schema transformers + inventory tests
+npm run e2e                    # Playwright E2E (14 tests, ?e2e=1 bypasses auth)
+npm run test:transformers:all  # Comprehensive schema validation
+```
+
+**Before any commit**: Tests MUST pass. Build MUST succeed. See TFR protocol in existing instructions.
+
+### Supabase Migration Workflow
+**Strict three-digit numbering** - never skip or reuse numbers:
+
+```bash
+# 1. Find highest migration number
+ls supabase/migrations | sort | tail -1  # e.g., 037_po_tracking.sql
+
+# 2. Create new migration (next number: 038)
+supabase migration new feature_name
+mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/038_feature_name.sql
+
+# 3. Test locally
+supabase db reset
+supabase db lint
+
+# 4. Apply remotely
+supabase db push
+```
+
+**Migration numbering example:**
+```
+✅ CORRECT:                    ❌ WRONG:
+035_add_vendors.sql           035_add_vendors.sql
+036_add_inventory.sql         037_add_inventory.sql  ← skipped 036!
+037_add_po_tracking.sql       035_fix_vendors.sql    ← reused 035!
+```
+
+**Read `docs/MIGRATION_CONVENTIONS.md`** for full rules. Reviewers will reject misnumbered migrations.
+
+### E2E Testing Pattern
+All E2E tests use `?e2e=1` query param to bypass authentication:
+
+```typescript
+// In e2e/*.spec.ts
+await page.goto('/vendors?e2e=1');
+
+// This triggers isE2ETesting() in lib/auth/guards.ts
+// Auto-logs in as DEV_DEFAULT_USER in E2E mode
+```
+
+Use `test.describe()` → `test.beforeEach()` → individual `test()` blocks. See `e2e/vendors.spec.ts` for patterns.
+
+## 🎨 Component & State Patterns
+
+### Modal Management
+**Always** use `useModalState()` hook for consistent behavior:
+
+```typescript
+import useModalState from './hooks/useModalState';
+
+const { isOpen, open, close, toggle } = useModalState();
+// Returns: { isOpen: boolean, open: fn, close: fn, toggle: fn }
+```
+
+### Data Fetching
+Use Supabase data hooks - **never** query Supabase directly in components:
+
+```typescript
+// Fetching
+import { useSupabaseInventory, useSupabaseVendors } from './hooks/useSupabaseData';
+const { data: inventory, loading, error } = useSupabaseInventory();
+
+// Mutations
+import { createPurchaseOrder, updateInventoryStock } from './hooks/useSupabaseMutations';
+await createPurchaseOrder({ vendorId, items, ... });
+```
+
+### Persistent State
+Use `usePersistentState()` for localStorage with type safety:
+
+```typescript
+import usePersistentState from './hooks/usePersistentState';
+const [settings, setSettings] = usePersistentState<UserSettings>('key', defaultValue);
+```
+
+### Error Boundaries
+**Wrap all page components** in ErrorBoundary:
+
+```typescript
+import ErrorBoundary from './components/ErrorBoundary';
+
+<ErrorBoundary>
+  <InventoryPage />
+</ErrorBoundary>
+```
+
+## 📦 Service Layer Conventions
+
+### Feature-Focused Services
+Services are organized by **feature**, not data type:
+
+- `complianceService.ts` - State regulatory compliance logic
+- `aiGatewayService.ts` - Unified AI provider access (tier-aware)
+- `usageTrackingService.ts` - AI usage analytics and cost tracking
+- `mcpService.ts` - Model Context Protocol server integration
+- `finaleIngestion.ts` - Complete Finale API integration pattern
+
+### Error Handling Pattern
+**All services** use this consistent pattern:
+
+```typescript
+try {
+  const result = await apiCall();
+  return { success: true, data: result };
+} catch (error) {
+  console.error('Operation failed:', error);
+  return { success: false, error: error.message };
+}
+```
+
+Never throw errors from services - return `{ success: false, error }` objects.
+
+## 🔧 Key Integration Points
+
+### Finale Inventory API
+- Authentication: Basic auth via secure proxy
+- Data sync: CSV reports + REST API
+- **Always transform** with `transformFinaleData()` before use
+- Complete example: `services/finaleIngestion.ts`
+
+### MCP Server (`mcp-server/`)
+Python-based compliance tools with tier support:
+- OCR text extraction from label images
+- State regulation scraping from .gov sites
+- Compliance analysis and checklist generation
+- See `docs/MCP_SETUP_GUIDE.md` for admin configuration
+
+### Vercel AI Gateway
+Multi-provider AI access through single endpoint:
+- Configure in `aiGatewayService.ts` with `createGatewayProvider()`
+- Automatic provider selection based on feature type
+- Usage tracking for cost monitoring in `usageTrackingService.ts`
+
+### Google Sheets Integration
+Two-way sync for inventory and vendor data:
+- OAuth2 flow: `services/googleAuthService.ts`
+- Sheet operations: `services/googleSheetsService.ts`
+- Batch updates for performance - never single-row operations
+
+## 📁 Key Files to Reference
+
+### Architecture & Patterns
+- `App.tsx` - Main component structure, routing, global state
+- `lib/schema/transformers.ts` - Data transformation examples
+- `services/aiGatewayService.ts` - AI integration patterns (tier-aware)
+- `components/ErrorBoundary.tsx` - Error handling component
+
+### Database & API
+- `supabase/migrations/` - Numbered schema evolution (strict conventions)
+- `supabase/functions/api-proxy/index.ts` - Secure backend proxy pattern
+- `services/secureApiClient.ts` - Frontend API client (never exposes keys)
+
+### Testing
+- `e2e/vendors.spec.ts` - E2E testing patterns (14 tests passing)
+- `tests/inventoryDisplay.test.ts` - Unit test patterns
+- `playwright.config.ts` - E2E configuration
+
+### Documentation
+- `SCHEMA_ARCHITECTURE.md` - Detailed 4-layer schema design
+- `docs/MIGRATION_CONVENTIONS.md` - Supabase migration rules
+- `SUPABASE_DEPLOYMENT_GUIDE.md` - Deployment procedures
+- `API_INGESTION_SETUP.md` - Complete API integration setup
+
+## 🚨 Common Pitfalls
+
+### ❌ Don't Do This
+```typescript
+// Direct AI provider calls
+import { GoogleGenerativeAI } from '@google/genai';
+const genAI = new GoogleGenerativeAI(apiKey); // WRONG - bypasses tier system
+
+// Direct Supabase queries in components
+const { data } = await supabase.from('vendors').select(); // WRONG - use hooks
+
+// Skipping schema transformation
+await supabase.from('vendors').insert(rawCsvData); // WRONG - data loss!
+
+// Hardcoding migration numbers
+// 032_feature.sql
+// 035_another.sql  // WRONG - skipped 033, 034!
+```
+
+### ✅ Do This Instead
+```typescript
+// Tier-aware AI calls
+import { generateAIResponse } from './services/aiGatewayService';
+const response = await generateAIResponse(messages, 'chat', userTier);
+
+// Use data hooks
+import { useSupabaseVendors } from './hooks/useSupabaseData';
+const { data: vendors } = useSupabaseVendors();
+
+// Transform data through all layers
+const parsed = transformVendorRawToParsed(csvRow);
+const dbData = transformVendorParsedToDatabase(parsed.data);
+
+// Sequential migration numbering
+ls supabase/migrations | sort | tail -1  # Check highest number first
+```
+
+## 🎯 Development Notes
+
+- **Absolute imports**: Use from project root (configured in `vite.config.ts`)
+- **TypeScript strict mode**: All types must be explicit - no `any`
+- **Zod runtime validation**: Prefer over manual type checking
+- **Async error handling**: All async operations need try/catch with `{ success, error }` pattern
+- **Accessibility**: Semantic HTML with ARIA labels for all interactive components
+- **State management**: React state only - no Redux/MobX/Zustand
+- **Finding patterns**: Search `hooks/` and `services/` directories before creating new utilities - likely already exists
+
+## 📚 Quick Command Reference
+
+```bash
+# Development
+npm run dev                    # Start dev server
+npm run build                  # Production build
+npm test                       # Run all tests
+
+# Supabase
+supabase status                # Check local instance
+supabase db reset              # Rebuild local schema
+supabase db push               # Apply migrations to remote
+supabase gen types typescript --local > types/supabase.ts
+
+# Testing
+npm run e2e                    # Run Playwright tests
+npm run e2e:ui                 # Playwright UI mode
+
+# Google Sheets Sync
+npm run gemini                 # CLI for AI testing
+```
+
+---
+
+**For detailed workflows** (TFR protocol, deployment automation, error recovery), see the Universal Codespace Workflows sections that follow below.
+
+**💡 Pro Tip:** When starting a session, simply say "resume" or "catch me up" to trigger automatic session context loading.
 
 ---
 
 ## 🤖 Universal Codespace Automation
 
-### 1. Automatic Session Documentation
+### 1. Automatic Session Resumption (STARTUP)
+
+**When to trigger:** First interaction in a new Copilot session or when user says "resume", "catch me up", "what was I working on?"
+
+**Automatic startup workflow:**
+```bash
+# 1. Find most recent session document
+ls -t docs/SESSION_SUMMARY_*_to_CURRENT.md 2>/dev/null | head -1
+
+# 2. Check recent commits
+git log --oneline -5
+
+# 3. Check uncommitted changes
+git status --short
+
+# 4. Check recent file modifications
+find . -type f -name "*.ts" -o -name "*.tsx" -mtime -1 | grep -v node_modules | head -10
+```
+
+**Present to user:**
+```markdown
+## 📋 Session Context
+
+**Resuming from:** [last session date/time from SESSION_SUMMARY]
+
+**Last session summary:**
+- Worked on: [feature/task from last session]
+- Files modified: [list from session doc]
+- Next steps: [checklist items from session doc]
+
+**Recent commits:**
+- [commit hash] [commit message]
+- [commit hash] [commit message]
+
+**Uncommitted changes:**
+- [file1] - [M/A/D status]
+- [file2] - [M/A/D status]
+
+**Ready to continue or start something new?**
+```
+
+### 2. Session Documentation During Work
 
 **Trigger Conditions:**
-- **Codespace startup** - First interaction after codespace/Copilot starts (read last session, prepare context)
 - **60-minute idle** - No user input for 60 minutes, assume session ending (auto-document before hibernation)
 - End of development session (user indicates wrapping up, "done for now", "closing")
 - Significant milestone reached (feature complete, major refactor, deployment)
@@ -801,143 +1164,3 @@ Never run destructive commands without user confirmation
    git checkout -b recovery-branch
    # Debug in isolation
 ```
-
----
-
-## 📦 TGF-MRP Project-Specific Instructions
-
-A production-ready Manufacturing Resource Planning system with AI-powered compliance, tier-based AI Gateway integration, and secure API ingestion.
-
-## Architecture Overview
-
-### Core Data Flow: 4-Layer Schema System
-All data follows **Raw → Parsed → Database → Display** transformation pattern:
-- Raw schemas match external sources (CSV columns, API responses)
-- Parsed schemas are validated/normalized with proper types
-- Database schemas optimize for storage/queries
-- Display schemas format for UI presentation
-
-Example: `lib/schema/` contains Zod schemas. Use `transformFinaleData()` for Finale API responses.
-
-### AI Gateway Service (`services/aiGatewayService.ts`)
-Tier-based routing to multiple AI providers:
-- **Basic Tier**: Free Gemini access (100 messages/month)
-- **Full AI Tier**: Premium models via Vercel AI Gateway (GPT-4o, Claude, etc.)
-- **Automatic Fallback**: Falls back to direct Gemini if Gateway fails
-
-Key function: `generateAIResponse(messages, featureType, userTier)` handles all AI interactions.
-
-### Data Service Layer (`lib/dataService.ts`)
-Unified data access with automatic source switching:
-- Mock data (development)
-- Finale Inventory API (live data via secure proxy)
-- Supabase (cached/persisted data)
-
-Use `getInventoryData()`, `getVendorData()`, `getPurchaseOrderData()` for consistent data access.
-
-## Critical Developer Workflows
-
-### Build & Test Commands
-```bash
-npm run dev                    # Start development server
-npm run build                  # Production build
-npm test                      # Run schema transformers tests
-npm run e2e                   # Playwright E2E tests (14/14 passing)
-npm run test:transformers:all # Test all data transformations
-```
-
-### API Integration Patterns
-All external API calls use:
-1. **Secure Proxy Pattern**: Frontend → `supabase/functions/api-proxy/index.ts` → External API
-2. **Rate Limiting**: `services/rateLimiter.ts` with request queuing
-3. **Circuit Breaker**: `services/circuitBreaker.ts` for failure detection
-4. **Retry Logic**: `services/retryWithBackoff.ts` with exponential backoff
-
-Example: `services/finaleIngestion.ts` shows complete integration pattern.
-
-### Component Patterns
-- **Modal Management**: Use `useModalState()` hook for consistent modal behavior
-- **Data Hooks**: `useSupabaseData.ts` for data fetching, `useSupabaseMutations.ts` for updates
-- **Error Boundaries**: Wrap all pages in `<ErrorBoundary>` component
-- **Persistent State**: Use `usePersistentState()` for localStorage persistence
-
-### Testing Patterns
-- E2E tests use `?e2e=1` query param to bypass authentication
-- Mock data in `types.ts` provides consistent test fixtures
-- Use `await page.waitForSelector()` for dynamic content
-- Test structure: `test.describe()` → `test.beforeEach()` → individual `test()` blocks
-
-## Project-Specific Conventions
-
-### Service Layer Organization
-Services are feature-focused, not data-focused:
-- `complianceService.ts` - State regulatory compliance logic
-- `aiProviderService.ts` - Direct AI provider access (non-Gateway)
-- `usageTrackingService.ts` - AI usage analytics and cost tracking
-- `mcpService.ts` - Model Context Protocol server integration
-
-### Supabase Integration
-- Database schema: `supabase/migrations/` for version-controlled changes
-- Edge Functions: `supabase/functions/` for serverless API endpoints
-- Real-time subscriptions: Use `useSupabaseData` hooks for live updates
-
-### State Management
-React state only - no external state management library:
-- Local component state for UI interactions
-- `usePersistentState()` for user preferences
-- Supabase real-time for shared application state
-
-### Error Handling
-Consistent error patterns across services:
-```typescript
-try {
-  const result = await apiCall();
-  return { success: true, data: result };
-} catch (error) {
-  console.error('Operation failed:', error);
-  return { success: false, error: error.message };
-}
-```
-
-## Integration Points
-
-### Finale Inventory API
-- Authentication: Basic auth via secure proxy
-- Data sync: CSV reports + REST API for real-time updates
-- Transform with `transformFinaleData()` before use
-
-### MCP Server (`mcp-server/`)
-Python-based compliance tools with Basic/Full AI tiers:
-- OCR text extraction from label images
-- State regulation scraping from .gov sites
-- Compliance analysis and checklist generation
-
-### Vercel AI Gateway
-Multi-provider AI access through single API:
-- Configure in `aiGatewayService.ts` with `createGatewayProvider()`
-- Automatic provider selection based on feature type
-- Usage tracking for cost monitoring
-
-### Google Sheets Integration
-Two-way sync for inventory and vendor data:
-- OAuth2 flow in `services/googleAuthService.ts`
-- Sheet operations in `services/googleSheetsService.ts`
-- Batch updates for performance
-
-## Key Files to Reference
-
-- `App.tsx` - Main component structure and routing
-- `lib/schema/transformers.ts` - Data transformation examples
-- `services/aiGatewayService.ts` - AI integration patterns
-- `components/ErrorBoundary.tsx` - Error handling component
-- `supabase/migrations/` - Database schema evolution
-- `e2e/vendors.spec.ts` - E2E testing patterns
-- `docs/SCHEMA_ARCHITECTURE.md` - Detailed schema documentation
-
-## Development Notes
-
-- Use absolute imports from project root
-- TypeScript strict mode enabled - all types must be explicit
-- Zod schemas provide runtime validation - prefer over manual type checking
-- All async operations should include proper error handling
-- UI components use semantic HTML with ARIA labels for accessibility

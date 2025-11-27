@@ -4,7 +4,7 @@
 
 set -e  # Exit on any error
 
-echo "🔍 TGF MRP - Pre-Deployment Verification"
+echo "🔍 MuRP - Pre-Deployment Verification"
 echo "========================================"
 echo ""
 

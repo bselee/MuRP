@@ -1,24 +1,15 @@
 import { supabase } from '../lib/supabase/client';
+import type { VendorCommunication } from '../types';
 
-export interface PoEmailTimelineEntry {
-  id: string;
-  poId: string;
-  vendorEmail?: string | null;
-  gmailMessageId?: string | null;
-  gmailThreadId?: string | null;
-  gmailHistoryId?: string | null;
-  metadata?: Record<string, any> | null;
-  sentAt?: string;
-  lastReplyAt?: string | null;
-  lastReplyMessageId?: string | null;
-}
+export type PoEmailTimelineEntry = VendorCommunication;
 
 export async function fetchPoEmailTimeline(poId: string): Promise<PoEmailTimelineEntry[]> {
   const { data, error } = await supabase
-    .from('po_email_tracking')
+    .from('po_vendor_communications')
     .select('*')
     .eq('po_id', poId)
-    .order('sent_at', { ascending: true });
+    .order('COALESCE(sent_at, received_at, created_at)', { ascending: false })
+    .limit(200);
 
   if (error) {
     console.error('[poEmailService] Failed to load timeline', error);
@@ -28,13 +19,24 @@ export async function fetchPoEmailTimeline(poId: string): Promise<PoEmailTimelin
   return (data || []).map(entry => ({
     id: entry.id,
     poId: entry.po_id,
-    vendorEmail: entry.vendor_email,
+    communicationType: entry.communication_type,
+    direction: entry.direction,
+    stage: entry.stage,
     gmailMessageId: entry.gmail_message_id,
     gmailThreadId: entry.gmail_thread_id,
-    gmailHistoryId: entry.gmail_history_id,
-    metadata: entry.metadata,
+    subject: entry.subject,
+    bodyPreview: entry.body_preview,
+    senderEmail: entry.sender_email,
+    recipientEmail: entry.recipient_email,
     sentAt: entry.sent_at,
-    lastReplyAt: entry.last_reply_at,
-    lastReplyMessageId: entry.last_reply_message_id,
+    receivedAt: entry.received_at,
+    attachments: entry.attachments,
+    metadata: entry.metadata,
+    extractedData: entry.extracted_data,
+    aiConfidence: entry.ai_confidence,
+    aiCostUsd: entry.ai_cost_usd,
+    aiExtracted: entry.ai_extracted,
+    correlationConfidence: entry.correlation_confidence,
+    createdAt: entry.created_at,
   }));
 }

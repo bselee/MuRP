@@ -16,7 +16,7 @@ import Button from '@/components/ui/Button';
  * ✨ Beautiful, responsive design
  *
  * @module components/AIUsageDashboard
- * @author TGF-MRP Development Team
+ * @author MuRP Development Team
  * @version 2.0.0 - AI Gateway Edition
  */
 

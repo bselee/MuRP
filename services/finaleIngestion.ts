@@ -5,7 +5,7 @@
  * - OAuth token management
  * - Rate limiting and circuit breaker protection
  * - Automatic retry with exponential backoff
- * - Data transformation to TGF MRP format
+ * - Data transformation to MuRP format
  * - Audit logging
  */
 
@@ -167,7 +167,7 @@ export class FinaleIngestionService {
       '/inventory_items'
     );
 
-    // Transform to TGF MRP format
+    // Transform to MuRP format
     const items: InventoryItem[] = finaleItems.data.map(item => ({
       sku: item.sku,
       name: item.name,
@@ -193,7 +193,7 @@ export class FinaleIngestionService {
       '/vendors'
     );
 
-    // Transform to TGF MRP format
+    // Transform to MuRP format
     const vendors: Vendor[] = finaleVendors.data.map(vendor => ({
       id: vendor.id,
       name: vendor.name,
@@ -218,7 +218,7 @@ export class FinaleIngestionService {
       '/purchase_orders'
     );
 
-    // Transform to TGF MRP format
+    // Transform to MuRP format
     const orders: PurchaseOrder[] = finalePOs.data.map(po => ({
       id: po.id,
       vendorId: po.vendor_id,
@@ -239,7 +239,7 @@ export class FinaleIngestionService {
   }
 
   /**
-   * Map Finale PO status to TGF MRP status
+   * Map Finale PO status to MuRP status
    */
   private mapPOStatus(finaleStatus: string): 'Pending' | 'Submitted' | 'Fulfilled' {
     const statusMap: Record<string, 'Pending' | 'Submitted' | 'Fulfilled'> = {

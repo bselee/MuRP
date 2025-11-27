@@ -21,7 +21,7 @@
  * ✨ Cost tracking and budget monitoring
  *
  * @module services/aiPurchasingService
- * @author TGF-MRP Development Team
+ * @author MuRP Development Team
  * @version 1.0.0
  */
 

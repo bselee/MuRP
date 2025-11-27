@@ -1,4 +1,4 @@
-# TGF-MRP UI Standards
+# MuRP UI Standards
 
 ## Table Row Height Standard
 

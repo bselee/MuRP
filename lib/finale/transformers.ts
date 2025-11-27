@@ -1,7 +1,7 @@
 /**
  * Finale API Data Transformers
  * 
- * Utilities to transform Finale Inventory API responses into TGF MRP data structures.
+ * Utilities to transform Finale Inventory API responses into MuRP data structures.
  * Handles field mapping, data validation, and default values for seamless integration.
  * 
  * Transformation flow:
@@ -167,7 +167,7 @@ export interface FinalePurchaseOrder {
 // ============================================================================
 
 /**
- * Transform Finale product to TGF InventoryItem
+ * Transform Finale product to MuRP InventoryItem
  */
 export function transformFinaleProductToInventoryItem(
   product: FinaleProduct
@@ -215,7 +215,7 @@ export function transformFinaleProductToInventoryItem(
 }
 
 /**
- * Transform Finale supplier to TGF Vendor
+ * Transform Finale supplier to MuRP Vendor
  */
 export function transformFinaleSupplierToVendor(
   supplier: FinaleSupplier
@@ -271,7 +271,7 @@ export function transformFinaleSupplierToVendor(
 }
 
 /**
- * Transform Finale purchase order to TGF PurchaseOrder
+ * Transform Finale purchase order to MuRP PurchaseOrder
  */
 export function transformFinalePOToPurchaseOrder(
   po: FinalePurchaseOrder

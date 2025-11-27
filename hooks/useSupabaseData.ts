@@ -10,9 +10,9 @@
  * const { data: vendors, loading, error } = useSupabaseVendors();
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase/client';
-import type { RealtimeChannel, PostgrestError } from '@supabase/supabase-js';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import type {
   InventoryItem,
   Vendor,
@@ -26,9 +26,6 @@ import type {
   RequisitionPriority,
   RequisitionRequestType,
   MaterialRequirement,
-  ArtworkAsset,
-  BomRevision,
-  BomRevisionStatus,
 } from '../types';
 
 // ============================================================================
@@ -463,156 +460,43 @@ export function useSupabaseVendor(id: string): UseSupabaseSingleResult<Vendor> {
  * Fetch and subscribe to BOMs (Bill of Materials)
  * Real-time updates when BOMs change in database
  */
-const transformArtworkAssetRow = (row: any): ArtworkAsset => ({
-  id: row.id,
-  legacyId: row.legacy_id ?? undefined,
-  fileName: row.file_name,
-  fileType: row.file_type,
-  status: row.status,
-  revision: row.revision,
-  downloadUrl: row.download_url ?? undefined,
-  notes: row.notes ?? undefined,
-  barcode: row.barcode ?? undefined,
-  metadata: row.metadata ?? undefined,
-  uploadedBy: row.uploaded_by ?? undefined,
-  uploadedAt: row.uploaded_at ?? undefined,
-  updatedAt: row.updated_at ?? undefined,
-  approvedBy: row.approved_by ?? undefined,
-  approvedAt: row.approved_at ?? undefined,
-  approvalNotes: row.approval_notes ?? undefined,
-  isArchived: row.is_archived ?? undefined,
-});
-
-const transformBomRow = (bom: any): BillOfMaterials => ({
-  id: bom.id,
-  finishedSku: bom.finished_sku,
-  name: bom.name,
-  description: bom.description || '',
-  category: bom.category || 'Uncategorized',
-  yieldQuantity: bom.yield_quantity || 1,
-  potentialBuildQty: bom.potential_build_qty || 0,
-  averageCost: bom.average_cost || 0,
-  components: (bom.components as any) || [],
-  artwork: (bom.artwork as any) || [],
-  packaging: (bom.packaging as any) || {},
-  barcode: bom.barcode || '',
-  notes: bom.notes || '',
-  dataSource: bom.data_source || 'manual',
-  lastSyncAt: bom.last_sync_at || undefined,
-  syncStatus: bom.sync_status || 'pending',
-  primaryLabelId: bom.primary_label_id || undefined,
-  primaryDataSheetId: bom.primary_data_sheet_id || undefined,
-  complianceStatus: bom.compliance_status || undefined,
-  totalStateRegistrations: bom.total_state_registrations || 0,
-  expiringRegistrationsCount: bom.expiring_registrations_count || 0,
-  complianceLastChecked: bom.compliance_last_checked || undefined,
-  buildTimeMinutes: bom.build_time_minutes || undefined,
-  laborCostPerHour: bom.labor_cost_per_hour || undefined,
-  registrations: (bom.registrations as any) || [],
-  revisionNumber: bom.revision_number ?? 1,
-  revisionStatus: (bom.revision_status ?? 'approved') as BomRevisionStatus,
-  revisionSummary: bom.revision_summary ?? null,
-  revisionRequestedBy: bom.revision_requested_by ?? null,
-  revisionRequestedAt: bom.revision_requested_at ?? null,
-  revisionReviewerId: bom.revision_reviewer_id ?? null,
-  revisionApprovedBy: bom.revision_approved_by ?? null,
-  revisionApprovedAt: bom.revision_approved_at ?? null,
-  lastApprovedAt: bom.last_approved_at ?? null,
-  lastApprovedBy: bom.last_approved_by ?? null,
-  artworkAssets: Array.isArray(bom.bom_artwork_assets)
-    ? (bom.bom_artwork_assets as any[])
-        .map((link) => {
-          if (!link?.asset) return null;
-          return {
-            usageType: link.usage_type ?? undefined,
-            workflowState: link.workflow_state ?? undefined,
-            isPrimary: link.is_primary ?? undefined,
-            asset: transformArtworkAssetRow(link.asset),
-          };
-        })
-        .filter(Boolean)
-    : [],
-});
-
-const transformBomRevisionRow = (row: any): BomRevision => {
-  const snapshotRow = row.snapshot || {};
-  return {
-    id: row.id,
-    bomId: row.bom_id,
-    revisionNumber: row.revision_number,
-    status: (row.status ?? 'pending') as BomRevisionStatus,
-    summary: row.summary ?? null,
-    changeSummary: row.change_summary ?? null,
-    changeDiff: row.change_diff ?? null,
-    snapshot: transformBomRow({
-      ...snapshotRow,
-      bom_artwork_assets: snapshotRow.bom_artwork_assets ?? [],
-    }),
-    createdBy: row.created_by ?? null,
-    createdAt: row.created_at,
-    reviewerId: row.reviewer_id ?? null,
-    approvedBy: row.approved_by ?? null,
-    approvedAt: row.approved_at ?? null,
-    revertedFromRevisionId: row.reverted_from_revision_id ?? null,
-    approvalNotes: row.approval_notes ?? null,
-  };
-};
-
-const shouldFallbackToLegacyBomFetch = (error: PostgrestError | null | undefined): boolean => {
-  if (!error) return false;
-  const fallbackCodes = new Set(['PGRST201', 'PGRST200', 'PGRST203', 'PGRST204', '42P01', '42703']);
-  if (error.code && fallbackCodes.has(error.code)) {
-    return true;
-  }
-  const message = (error.message || '').toLowerCase();
-  return message.includes('bom_artwork_assets') || message.includes('artwork_assets');
-};
-
 export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
   const [data, setData] = useState<BillOfMaterials[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
-  const artworkJoinSupportedRef = useRef(true);
 
   const fetchBOMs = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const selectFields = artworkJoinSupportedRef.current
-        ? `
-          *,
-          bom_artwork_assets:bom_artwork_assets (
-            usage_type,
-            workflow_state,
-            is_primary,
-            asset:artwork_assets (*)
-          )
-        `
-        : '*';
-
       const { data: boms, error: fetchError } = await supabase
         .from('boms')
-        .select(selectFields)
+        .select('*')
         .order('name');
 
-      if (fetchError) {
-        if (artworkJoinSupportedRef.current && shouldFallbackToLegacyBomFetch(fetchError)) {
-          artworkJoinSupportedRef.current = false;
-          console.warn('[useSupabaseBOMs] Artwork join unavailable, retrying without attachments');
-          const { data: fallbackBoms, error: fallbackError } = await supabase
-            .from('boms')
-            .select('*')
-            .order('name');
-          if (fallbackError) throw fallbackError;
-          setData((fallbackBoms || []).map(transformBomRow));
-          return;
-        }
-        throw fetchError;
-      }
+      if (fetchError) throw fetchError;
 
-      setData((boms || []).map(transformBomRow));
+      // Transform from snake_case to camelCase
+      const transformed: BillOfMaterials[] = (boms || []).map((bom: any) => ({
+        id: bom.id,
+        finishedSku: bom.finished_sku,
+        name: bom.name,
+        description: bom.description || '',
+        category: bom.category || 'Uncategorized',
+        yieldQuantity: bom.yield_quantity || 1,
+        potentialBuildQty: bom.potential_build_qty || 0,
+        averageCost: bom.average_cost || 0,
+        components: bom.components as any || [], // JSONB field
+        artwork: bom.artwork as any || [], // JSONB field
+        registrations: bom.registrations as any || [],
+        packaging: bom.packaging as any || {}, // JSONB field
+        barcode: bom.barcode || '',
+        notes: bom.notes || '',
+      }));
+
+      setData(transformed);
     } catch (err) {
       console.error('[useSupabaseBOMs] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch BOMs'));
@@ -655,39 +539,55 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
   return { data, loading, error, refetch: fetchBOMs };
 }
 
-export function useBomRevisions(bomId: string | null): UseSupabaseDataResult<BomRevision> {
-  const [data, setData] = useState<BomRevision[]>([]);
-  const [loading, setLoading] = useState(true);
+/**
+ * Fetch BOM revision history
+ */
+export function useBomRevisions(bomId: string | null): UseSupabaseDataResult<any> {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchRevisions = useCallback(async () => {
     if (!bomId) {
       setData([]);
-      setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
-      const { data: rows, error: fetchError } = await supabase
+      const { data: revisions, error } = await supabase
         .from('bom_revisions')
         .select('*')
         .eq('bom_id', bomId)
         .order('revision_number', { ascending: false });
 
-      if (fetchError) throw fetchError;
-      setData((rows ?? []).map(transformBomRevisionRow));
+      if (error) throw error;
+
+      setData(revisions.map(rev => ({
+        id: rev.id,
+        bomId: rev.bom_id,
+        revisionNumber: rev.revision_number,
+        status: rev.status || 'approved',
+        summary: rev.summary,
+        changeSummary: rev.change_summary,
+        snapshot: rev.snapshot,
+        createdAt: rev.created_at,
+        createdBy: rev.created_by,
+        approvedBy: rev.approved_by,
+        approvedAt: rev.approved_at,
+        revertedFromRevisionId: rev.reverted_from_revision_id,
+        approvalNotes: rev.approval_notes,
+      })));
     } catch (err) {
       console.error('[useBomRevisions] Error:', err);
-      setError(err instanceof Error ? err : new Error('Failed to fetch BOM revisions'));
+      setError(err instanceof Error ? err : new Error('Failed to fetch revisions'));
     } finally {
       setLoading(false);
     }
   }, [bomId]);
 
   useEffect(() => {
-    void fetchRevisions();
+    fetchRevisions();
   }, [fetchRevisions]);
 
   return { data, loading, error, refetch: fetchRevisions };
@@ -833,6 +733,17 @@ const transformPurchaseOrderRecord = (po: any): PurchaseOrder => {
     lastFollowUpStage: po.last_follow_up_stage ?? 0,
     lastFollowUpSentAt: po.last_follow_up_sent_at ?? undefined,
     followUpStatus: po.follow_up_status ?? null,
+    vendorResponseStatus: po.vendor_response_status ?? po.follow_up_status ?? null,
+    vendorResponseReceivedAt: po.vendor_response_received_at ?? null,
+    vendorResponseEmailId: po.vendor_response_email_id ?? null,
+    vendorResponseThreadId: po.vendor_response_thread_id ?? null,
+    vendorResponseSummary: po.vendor_response_summary ?? null,
+    verificationRequired: po.verification_required ?? undefined,
+    verifiedBy: po.verified_by ?? null,
+    verifiedAt: po.verified_at ?? null,
+    verificationNotes: po.verification_notes ?? null,
+    escalationLevel: po.escalation_level ?? 0,
+    nextFollowUpDueAt: po.next_follow_up_due_at ?? null,
     followUpCount,
     invoiceDetectedAt: po.invoice_detected_at ?? undefined,
     invoiceGmailMessageId: po.invoice_gmail_message_id ?? null,
@@ -1233,8 +1144,6 @@ const transformProfileRow = (row: any): User => ({
   onboardingComplete: row.onboarding_complete,
   agreements: row.agreements ?? {},
   regulatoryAgreement: row.agreements?.regulatory,
-  metadata: row.metadata ?? null,
-  guidedLaunchState: row.metadata?.guided_launch ?? null,
 });
 
 export function useSupabaseUserProfiles(): UseSupabaseDataResult<User> {

@@ -30,7 +30,7 @@ class GenericScraper:
         rate_limit_ms: int = 1000,
         max_retries: int = 3,
         timeout: int = 30,
-        user_agent: str = "TGF-MRP Compliance Bot/1.0"
+        user_agent: str = "MuRP Compliance Bot/1.0"
     ):
         self.selectors = selectors or self._default_selectors()
         self.rate_limit_ms = rate_limit_ms

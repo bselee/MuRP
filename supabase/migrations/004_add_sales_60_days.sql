@@ -15,7 +15,7 @@ COMMENT ON COLUMN inventory_items.sales_last_60_days IS 'Sales units in last 60 
 
 -- Migration: Create Labels Table
 -- Description: Dedicated table for storing scanned labels with AI-extracted data
--- Author: TGF MRP Team
+-- Author: MuRP Team
 -- Date: 2025-11-06
 -- Phase: 1.2 - Core Infrastructure
 

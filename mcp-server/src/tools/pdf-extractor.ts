@@ -40,7 +40,7 @@ async function extractFromPdfUrl(
   const response = await axios.get(url, {
     responseType: 'arraybuffer',
     headers: {
-      'User-Agent': 'TGF-Compliance-Bot/1.0',
+      'User-Agent': 'MuRP-Compliance-Bot/1.0',
     },
     timeout: 30000,
   });
@@ -76,7 +76,7 @@ async function extractFromHtmlUrl(
 
   const response = await axios.get(url, {
     headers: {
-      'User-Agent': 'TGF-Compliance-Bot/1.0',
+      'User-Agent': 'MuRP-Compliance-Bot/1.0',
     },
     timeout: 10000,
   });

@@ -10,7 +10,7 @@
 --   - compliance_records
 --   - Enhanced boms table
 --
--- Author: TGF MRP Team
+-- Author: MuRP Team
 -- Date: 2025-11-06
 -- ============================================================================
 

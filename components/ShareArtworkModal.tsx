@@ -23,13 +23,13 @@ interface ShareLogResult {
 
 interface ShareArtworkModalProps {
   isOpen: boolean;
-  artwork: (Artwork & { productName?: string; productSku?: string }) | null;
+  artworks: (Artwork & { productName?: string; productSku?: string })[];
   onClose: () => void;
   gmailConnection: GmailConnection;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   currentUser?: { id: string; email: string };
   suggestedContacts?: ContactSuggestion[];
-  onShareLogged?: (artwork: Artwork & { productName?: string; productSku?: string }, payload: ShareLogResult) => void;
+  onShareLogged?: (artworks: (Artwork & { productName?: string; productSku?: string })[], payload: ShareLogResult) => void;
 }
 
 type Nullable<T> = T | null;
@@ -48,7 +48,7 @@ const addEmailToField = (current: string, email: string) => {
 
 const ShareArtworkModal: React.FC<ShareArtworkModalProps> = ({
   isOpen,
-  artwork,
+  artworks,
   onClose,
   gmailConnection,
   addToast,
@@ -65,11 +65,23 @@ const ShareArtworkModal: React.FC<ShareArtworkModalProps> = ({
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
-    if (isOpen && artwork) {
-      const defaultSubject = `Artwork Update: ${artwork.fileName || artwork.productName || 'Label'} (${artwork.productSku ?? 'no SKU'})`;
+    if (isOpen && artworks.length > 0) {
+      const isSingle = artworks.length === 1;
+      const firstArt = artworks[0];
+      
+      const defaultSubject = isSingle
+        ? `Artwork Update: ${firstArt.fileName || firstArt.productName || 'Label'} (${firstArt.productSku ?? 'no SKU'})`
+        : `Artwork Update: ${artworks.length} Files Shared`;
+
+      const fileList = artworks.map(a => `- ${a.fileName} (${a.productSku || 'No SKU'})`).join('\n');
+      
       const intro = `Hi Packaging Team,
 
-Here is the latest approved artwork for ${artwork.productName ?? 'this product'}. Please confirm receipt and let us know once it has been queued for print.`;
+Here is the latest approved artwork. Please confirm receipt and let us know once it has been queued for print.
+
+Files included:
+${fileList}`;
+
       const closing = `
 Thank you,
 ${currentUser?.email ?? 'RegVault Ops'}
@@ -86,7 +98,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
       setSubject('');
       setMessage('');
     }
-  }, [isOpen, artwork, currentUser?.email, suggestedContacts]);
+  }, [isOpen, artworks, currentUser?.email, suggestedContacts]);
 
   const handleSuggestionClick = (email: string, target: 'to' | 'cc') => {
     if (target === 'to') {
@@ -97,32 +109,33 @@ ${currentUser?.email ?? 'RegVault Ops'}
   };
 
   const complianceSummary = useMemo(() => {
-    if (!artwork) return 'No compliance metadata available.';
+    if (artworks.length === 0) return 'No compliance metadata available.';
 
-    const lines: string[] = [];
-    if (artwork.scanStatus) {
-      lines.push(`AI Scan: ${artwork.scanStatus === 'completed' ? 'Completed' : artwork.scanStatus}`);
-    }
-    if (artwork.scanCompletedAt) {
-      lines.push(`Last Scan: ${new Date(artwork.scanCompletedAt).toLocaleString()}`);
-    }
-    if (artwork.verified) {
-      lines.push(`Verified${artwork.verifiedBy ? ` by ${artwork.verifiedBy}` : ''}`);
-    } else {
-      lines.push('Verification: Pending');
-    }
-    if (artwork.regulatoryDocLink) {
-      lines.push(`Regulatory Doc: ${artwork.regulatoryDocLink}`);
-    }
-    if (artwork.notes) {
-      lines.push(`Notes: ${artwork.notes}`);
-    }
-
-    return lines.join('\n');
-  }, [artwork]);
+    return artworks.map(art => {
+      const lines: string[] = [`File: ${art.fileName}`];
+      if (art.scanStatus) {
+        lines.push(`  AI Scan: ${art.scanStatus === 'completed' ? 'Completed' : art.scanStatus}`);
+      }
+      if (art.scanCompletedAt) {
+        lines.push(`  Last Scan: ${new Date(art.scanCompletedAt).toLocaleString()}`);
+      }
+      if (art.verified) {
+        lines.push(`  Verified${art.verifiedBy ? ` by ${art.verifiedBy}` : ''}`);
+      } else {
+        lines.push('  Verification: Pending');
+      }
+      if (art.regulatoryDocLink) {
+        lines.push(`  Regulatory Doc: ${art.regulatoryDocLink}`);
+      }
+      if (art.notes) {
+        lines.push(`  Notes: ${art.notes}`);
+      }
+      return lines.join('\n');
+    }).join('\n\n');
+  }, [artworks]);
 
   const handleSend = async () => {
-    if (!artwork) return;
+    if (artworks.length === 0) return;
     const toList = parseEmails(to);
     if (toList.length === 0) {
       addToast('Please enter at least one recipient email.', 'error');
@@ -131,15 +144,25 @@ ${currentUser?.email ?? 'RegVault Ops'}
     const ccList = parseEmails(cc);
     setIsSending(true);
     try {
-      let attachments: GmailAttachment[] | undefined;
-      let attachmentHash: string | null = null;
+      let attachments: GmailAttachment[] = [];
+      let attachmentHash: string | null = null; // Hash of first attachment for logging simplicity, or composite?
+      
       if (attachFile) {
-        const result = await buildAttachmentFromArtwork(artwork);
-        if (result) {
-          attachments = [result.attachment];
-          attachmentHash = result.hash ?? null;
-        } else {
-          addToast('Unable to attach artwork file. Sending link only.', 'info');
+        for (const art of artworks) {
+          try {
+            const result = await buildAttachmentFromArtwork(art);
+            if (result) {
+              attachments.push(result.attachment);
+              if (!attachmentHash) attachmentHash = result.hash ?? null;
+            }
+          } catch (err) {
+            console.error(`Failed to attach ${art.fileName}`, err);
+            addToast(`Skipped attachment ${art.fileName}: ${(err as Error).message}`, 'error');
+          }
+        }
+        
+        if (attachments.length === 0 && artworks.length > 0) {
+           addToast('Unable to attach artwork files. Sending links only.', 'info');
         }
       }
 
@@ -147,8 +170,10 @@ ${currentUser?.email ?? 'RegVault Ops'}
       if (includeCompliance && complianceSummary.trim().length > 0) {
         sections.push(`---\nCompliance Snapshot:\n${complianceSummary}`);
       }
-      if (artwork.url) {
-        sections.push(`Preview/Download: ${artwork.url}`);
+      
+      const links = artworks.map(a => a.url ? `- ${a.fileName}: ${a.url}` : null).filter(Boolean);
+      if (links.length > 0) {
+        sections.push(`Preview/Download Links:\n${links.join('\n')}`);
       }
 
       const finalBody = sections.filter(Boolean).join('\n\n');
@@ -161,14 +186,14 @@ ${currentUser?.email ?? 'RegVault Ops'}
           subject,
           body: finalBody,
           from: gmailConnection.email ?? currentUser?.email,
-          attachments: attachments && attachments.length ? attachments : undefined,
+          attachments: attachments.length ? attachments : undefined,
         });
         addToast('Artwork emailed via Google Workspace Gmail.', 'success');
       } else {
         addToast('Workspace Gmail not connected. Simulating email send.', 'info');
       }
 
-      onShareLogged?.(artwork, {
+      onShareLogged?.(artworks, {
         to: toList,
         cc: ccList,
         subject,
@@ -190,17 +215,21 @@ ${currentUser?.email ?? 'RegVault Ops'}
     }
   };
 
-  const disableSend = !artwork || !to.trim() || !subject.trim() || !message.trim();
+  const disableSend = artworks.length === 0 || !to.trim() || !subject.trim() || !message.trim();
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Email Artwork Package">
-      {artwork ? (
+      {artworks.length > 0 ? (
         <div className="space-y-5">
-          <section className="bg-gray-900/40 rounded-lg border border-gray-800 p-4">
-            <p className="text-sm font-semibold text-white">{artwork.fileName}</p>
-            <p className="text-xs text-gray-400 mt-1">
-              {artwork.productName} • Rev {artwork.revision}
-            </p>
+          <section className="bg-gray-900/40 rounded-lg border border-gray-800 p-4 max-h-32 overflow-y-auto">
+            {artworks.map(art => (
+              <div key={art.id} className="mb-2 last:mb-0 border-b border-gray-700 last:border-0 pb-2 last:pb-0">
+                <p className="text-sm font-semibold text-white">{art.fileName}</p>
+                <p className="text-xs text-gray-400">
+                  {art.productName} • Rev {art.revision}
+                </p>
+              </div>
+            ))}
           </section>
 
           <div className="space-y-3">

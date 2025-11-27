@@ -2,7 +2,7 @@
 
 # Phase 2 Setup Verification Script
 echo "=========================================="
-echo " TGF-MRP Phase 2 Setup Verification"
+echo " MuRP Phase 2 Setup Verification"
 echo "=========================================="
 echo ""
 

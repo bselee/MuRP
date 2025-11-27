@@ -5,7 +5,7 @@ import Modal from './Modal';
 import { fetchPoEmailTimeline, type PoEmailTimelineEntry } from '../services/poEmailService';
 import { getGoogleGmailService } from '../services/googleGmailService';
 import { logPoEmailTracking } from '../hooks/useSupabaseMutations';
-import { ArrowDownTrayIcon, MailIcon, RefreshCcwIcon } from './icons';
+import { ArrowDownTrayIcon, BotIcon, MailIcon, RefreshCcwIcon } from './icons';
 import { useGoogleAuthPrompt } from '../hooks/useGoogleAuthPrompt';
 
 interface PoCommunicationModalProps {
@@ -101,6 +101,13 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
           bodyPreview: replyBody.slice(0, 280),
           via: 'reply_modal',
         },
+        subject: replySubject,
+        bodyPreview: replyBody.slice(0, 500),
+        direction: 'outbound',
+        communicationType: 'manual_reply',
+        senderEmail: gmailConnection.email ?? undefined,
+        recipientEmail: to,
+        sentAt: new Date().toISOString(),
       });
 
       setReplyBody('');
@@ -116,17 +123,30 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
 
   const renderEntry = (entry: PoEmailTimelineEntry) => {
     const metadata = entry.metadata || {};
-    const subject = metadata.subject || 'Purchase Order Update';
-    const preview = metadata.bodyPreview || metadata.notes || 'No preview available.';
+    const subject = entry.subject || metadata.subject || 'Purchase Order Update';
+    const preview = entry.bodyPreview || metadata.bodyPreview || metadata.notes || 'No preview available.';
     const labelIds: string[] = metadata.labelIds || [];
-    const sentAt = entry.sentAt ? new Date(entry.sentAt).toLocaleString() : null;
-    const repliedAt = entry.lastReplyAt ? new Date(entry.lastReplyAt).toLocaleString() : null;
+    const timestamp = entry.sentAt || entry.receivedAt || entry.createdAt || null;
+    const directionBadge =
+      entry.direction === 'inbound'
+        ? { label: 'Inbound', color: 'text-emerald-300 border-emerald-400/70 bg-emerald-400/10' }
+        : { label: 'Outbound', color: 'text-sky-300 border-sky-400/70 bg-sky-400/10' };
 
     return (
       <div key={entry.id} className="p-4 bg-gray-800/60 border border-gray-700 rounded-lg space-y-2">
-        <div className="flex items-center justify-between text-sm text-gray-400">
-          <span className="font-semibold text-white">{subject}</span>
-          {sentAt && <span>{sentAt}</span>}
+        <div className="flex items-center justify-between text-sm text-gray-400 gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap text-sm">
+            <span className="font-semibold text-white">{subject}</span>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${directionBadge.color}`}>
+              {directionBadge.label}
+            </span>
+            {entry.stage ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-purple-500/70 bg-purple-500/10 text-purple-200 text-xs">
+                Stage {entry.stage}
+              </span>
+            ) : null}
+          </div>
+          {timestamp && <span>{new Date(timestamp).toLocaleString()}</span>}
         </div>
         <p className="text-sm text-gray-300 whitespace-pre-line">{preview}</p>
         <div className="flex flex-wrap gap-2 text-xs text-gray-400">
@@ -135,7 +155,8 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
               Labels: {labelIds.join(', ')}
             </span>
           )}
-          {entry.vendorEmail && <span>To: {entry.vendorEmail}</span>}
+          {entry.direction === 'outbound' && entry.recipientEmail && <span>To: {entry.recipientEmail}</span>}
+          {entry.direction === 'inbound' && entry.senderEmail && <span>From: {entry.senderEmail}</span>}
           {entry.gmailMessageId && (
             <a
               href={`https://mail.google.com/mail/u/0/#inbox/${entry.gmailMessageId}`}
@@ -146,12 +167,40 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
               <MailIcon className="w-4 h-4" /> Open in Gmail
             </a>
           )}
-          {repliedAt && (
+          {entry.direction === 'inbound' && timestamp && (
             <span className="inline-flex items-center gap-1 text-emerald-300">
-              <ArrowDownTrayIcon className="w-4 h-4" /> Reply received {repliedAt}
+              <ArrowDownTrayIcon className="w-4 h-4" /> Received {new Date(timestamp).toLocaleString()}
+            </span>
+          )}
+          {entry.aiExtracted && (
+            <span className="inline-flex items-center gap-1 text-amber-300">
+              <BotIcon className="w-4 h-4" /> AI parsed
+              {typeof entry.aiConfidence === 'number' ? ` (${Math.round(entry.aiConfidence * 100)}% conf.)` : ''}
             </span>
           )}
         </div>
+        {entry.extractedData && (
+          <div className="mt-2 rounded-md bg-gray-900/40 border border-gray-700 p-3 text-xs text-gray-200 space-y-1">
+            {'trackingNumber' in entry.extractedData && entry.extractedData.trackingNumber && (
+              <p>
+                <span className="text-gray-400">Tracking:</span> {entry.extractedData.trackingNumber as string}
+              </p>
+            )}
+            {'carrier' in entry.extractedData && entry.extractedData.carrier && (
+              <p>
+                <span className="text-gray-400">Carrier:</span> {entry.extractedData.carrier as string}
+              </p>
+            )}
+            {'expectedDelivery' in entry.extractedData && entry.extractedData.expectedDelivery && (
+              <p>
+                <span className="text-gray-400">ETA:</span> {entry.extractedData.expectedDelivery as string}
+              </p>
+            )}
+            {'notes' in entry.extractedData && entry.extractedData.notes && (
+              <p className="whitespace-pre-line">{entry.extractedData.notes as string}</p>
+            )}
+          </div>
+        )}
       </div>
     );
   };

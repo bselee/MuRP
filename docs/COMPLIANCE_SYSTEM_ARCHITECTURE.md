@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-The TGF MRP Compliance System provides AI-powered regulatory compliance checking across all 50 US states, with a focus on agriculture, fertilizer, and organic products. The system is fully configurable through the Settings page and uses a tiered approach (Basic/Full AI).
+The MuRP Compliance System provides AI-powered regulatory compliance checking across all 50 US states, with a focus on agriculture, fertilizer, and organic products. The system is fully configurable through the Settings page and uses a tiered approach (Basic/Full AI).
 
 ---
 

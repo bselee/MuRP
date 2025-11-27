@@ -1,4 +1,4 @@
-# TGF Compliance MCP Server - Python
+# MuRP Compliance MCP Server - Python
 
 ## Overview
 
@@ -399,4 +399,4 @@ For issues:
 
 ## License
 
-Proprietary - TGF Internal Use Only
+Proprietary - MuRP Internal Use Only

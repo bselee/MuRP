@@ -257,7 +257,7 @@ function generateEmailHTML(items: StockoutItem[]): string {
         <!-- Footer -->
         <div style="padding: 16px 24px; background-color: #F3F4F6; border-top: 1px solid #E5E7EB; text-align: center; font-size: 12px; color: #6B7280;">
           <p style="margin: 0;">
-            This is an automated notification from your TGF-MRP system.<br>
+            This is an automated notification from your MuRP system.<br>
             Generated at ${new Date().toLocaleString('en-US', { 
               timeZone: 'UTC',
               dateStyle: 'full',

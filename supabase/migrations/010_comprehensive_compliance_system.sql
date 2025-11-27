@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS scraping_configs (
   pagination JSONB, -- Pagination rules
   
   rate_limit_ms INTEGER DEFAULT 1000, -- Delay between requests
-  user_agent TEXT DEFAULT 'TGF-MRP Compliance Bot/1.0',
+  user_agent TEXT DEFAULT 'MuRP Compliance Bot/1.0',
   
   -- Data processing
   data_transformations JSONB, -- Post-processing rules
@@ -444,7 +444,7 @@ INSERT INTO app_settings (setting_key, setting_category, setting_value, display_
     'maxRetries', 3,
     'timeout', 30000,
     'respectRobotsTxt', true,
-    'userAgent', 'TGF-MRP Compliance Bot/1.0'
+    'userAgent', 'MuRP Compliance Bot/1.0'
   ),
   'Scraping Defaults',
   'Default settings for web scraping operations',
@@ -461,7 +461,7 @@ INSERT INTO mcp_server_configs (server_name, server_type, display_name, descript
   'Main MCP server for scraping and analyzing regulatory compliance data across all states',
   true,
   'python src/server_python.py',
-  '/workspaces/TGF-MRP/mcp-server',
+  '/workspaces/MuRP/mcp-server',
   jsonb_build_object(
     'maxConcurrentJobs', 5,
     'logLevel', 'info',

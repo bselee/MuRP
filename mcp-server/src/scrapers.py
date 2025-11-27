@@ -14,7 +14,7 @@ class StateRegulationScraper:
     
     def __init__(self):
         self.headers = {
-            'User-Agent': 'TGF-Compliance-Bot/1.0 (Regulatory Monitoring)'
+            'User-Agent': 'MuRP-Compliance-Bot/1.0 (Regulatory Monitoring)'
         }
     
     def fetch_page(self, url: str) -> Optional[BeautifulSoup]:

@@ -1,6 +1,6 @@
 -- Migration: Enhance BOMs Table
 -- Description: Add foreign key references to labels, product_data_sheets, and compliance_records
--- Author: TGF MRP Team
+-- Author: MuRP Team
 -- Date: 2025-11-06
 -- Phase: 1.5 - Core Infrastructure
 

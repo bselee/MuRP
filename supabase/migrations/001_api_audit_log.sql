@@ -1,6 +1,6 @@
 -- Migration: API Audit Log
 -- Description: Creates tables for tracking API usage, costs, and security events
--- Author: TGF MRP Team
+-- Author: MuRP Team
 -- Date: 2025-10-31
 
 -- ============================================================================

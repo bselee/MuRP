@@ -1,6 +1,6 @@
 # Shopify Sales Injection Integration
 
-> **Executive Summary**: Shopify integration for TGF-MRP treats Shopify as the **source of truth for sales data** and performs inventory verification against internal systems. This is an **admin/ops/purchasing only** feature with autonomous setup workflow.
+> **Executive Summary**: Shopify integration for MuRP treats Shopify as the **source of truth for sales data** and performs inventory verification against internal systems. This is an **admin/ops/purchasing only** feature with autonomous setup workflow.
 
 ---
 

@@ -404,7 +404,7 @@ export class FinaleSyncService {
         message: 'Transforming and saving vendors...',
       });
 
-      // Transform to TGF MRP format
+      // Transform to MuRP format
       // Check what format the data is in
       let vendors: any[];
       const first = Array.isArray(rawVendors) && rawVendors.length > 0 ? rawVendors[0] : null;
@@ -712,7 +712,7 @@ export class FinaleSyncService {
         message: 'Transforming and saving products...',
       });
 
-      // Transform to TGF MRP format
+      // Transform to MuRP format
       const inventory = transformFinaleProductsToInventory(allRawProducts as FinaleProduct[]);
       console.log(`[FinaleSyncService] Transformed ${inventory.length} inventory items`);
 
@@ -804,7 +804,7 @@ export class FinaleSyncService {
         message: 'Transforming and saving purchase orders...',
       });
 
-      // Transform to TGF MRP format
+      // Transform to MuRP format
       const pos = transformFinalePOsToPurchaseOrders(allRawPOs as FinalePOType[]);
       console.log(`[FinaleSyncService] Transformed ${pos.length} purchase orders`);
 

@@ -1,6 +1,6 @@
 -- Migration: Create Product Data Sheets Table
 -- Description: Stores AI-generated and editable product documentation (SDS, spec sheets, etc.)
--- Author: TGF MRP Team
+-- Author: MuRP Team
 -- Date: 2025-11-06
 -- Phase: 1.3 - Core Infrastructure
 
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS product_data_sheets (
         "productName": "Organic Fertilizer 10-5-8",
         "sku": "FERT-1058-50LB",
         "barcode": "123456789012",
-        "manufacturer": "TGF Manufacturing",
+        "manufacturer": "MuRP Manufacturing",
         "manufacturerAddress": "123 Farm Road, Portland, OR 97201",
         "emergencyPhone": "(800) 555-1234",
         "productUse": "Agricultural fertilizer for organic farming"

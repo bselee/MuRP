@@ -9,7 +9,7 @@
  *
  * Architecture:
  * ┌─────────────────────────────────────────────────────────────────────────┐
- * │                        TGF-MRP Application                              │
+ * │                        MuRP Application                              │
  * ├─────────────────────────────────────────────────────────────────────────┤
  * │  Chat Assistant │ Compliance Scanner │ Label OCR │ Semantic Search      │
  * └────────┬────────┴────────┬───────────┴─────┬─────┴──────────┬───────────┘
@@ -52,7 +52,7 @@
  * ✨ Smart rate limiting per tier
  *
  * @module services/aiGatewayService
- * @author TGF-MRP Development Team
+ * @author MuRP Development Team
  * @version 2.0.0 - AI Gateway Edition
  */
 

@@ -2,6 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Button from '@/components/ui/Button';
 import type { Artwork, ArtworkEditorTool } from '../types';
 
+// Add jsPDF type definition since we're using the UMD global
+declare const jspdf: {
+  jsPDF: new (options?: { orientation?: 'p' | 'l'; unit?: string; format?: string | number[] }) => any;
+};
+
 interface ArtworkEditorProps {
   isOpen: boolean;
   artwork: (Artwork & { productName?: string; productSku?: string }) | null;
@@ -294,6 +299,34 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadPdf = () => {
+    if (!canvasRef.current || typeof jspdf === 'undefined') {
+      setError('PDF generator not loaded.');
+      return;
+    }
+    
+    try {
+      const canvas = canvasRef.current;
+      // Create PDF matching canvas aspect ratio
+      const orientation = canvas.width > canvas.height ? 'l' : 'p';
+      const doc = new jspdf.jsPDF({
+        orientation,
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      });
+
+      // If we have vector data, we could try to add it, but jsPDF's SVG support is limited without plugins.
+      // For "Print Ready", we'll ensure we use the high-res canvas data.
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      doc.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      
+      doc.save(`${safeFileStem}-print-ready.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed', err);
+      setError('Failed to generate PDF.');
+    }
+  };
+
   const handleDownloadBundle = async () => {
     if (!canvasRef.current || !window.JSZip) return handleDownloadRaster();
     const zip = new window.JSZip();
@@ -418,6 +451,12 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
                 className="w-full py-2 rounded-md border border-gray-700 text-gray-200 hover:bg-gray-800 disabled:opacity-40 text-sm"
               >
                 Download SVG
+              </Button>
+              <Button
+                onClick={handleDownloadPdf}
+                className="w-full py-2 rounded-md border border-gray-700 text-gray-200 hover:bg-gray-800 text-sm"
+              >
+                PDF (Print)
               </Button>
               <Button
                 onClick={handleDownloadBundle}

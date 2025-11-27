@@ -7,7 +7,7 @@
 
 ## Overview
 
-TGF MRP now includes **full Google Sheets integration** for:
+MuRP now includes **full Google Sheets integration** for:
 
 - ✅ **Import** inventory data from collaborative Google Sheets
 - ✅ **Export** inventory to Google Sheets for sharing
@@ -65,7 +65,7 @@ This integration provides a **dual-source architecture** (Finale + Google Sheets
 ### Step 1: Create Google Cloud Project
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project: "TGF MRP Integration"
+2. Create a new project: "MuRP Integration"
 3. Enable APIs:
    - Google Sheets API
    - Google Drive API
@@ -76,7 +76,7 @@ This integration provides a **dual-source architecture** (Finale + Google Sheets
 2. Click **Create Credentials > OAuth 2.0 Client ID**
 3. Configure OAuth consent screen:
    - User Type: External
-   - App Name: TGF MRP
+   - App Name: MuRP
    - Scopes: `spreadsheets`, `drive.file`
 4. Create OAuth Client ID:
    - Application Type: Web application
@@ -133,14 +133,14 @@ vercel --prod
 
 1. Navigate to **Settings > Google Sheets Integration**
 2. Click **Connect Google Account**
-3. Authorize TGF MRP to access your Google Sheets
+3. Authorize MuRP to access your Google Sheets
 4. You'll be redirected back to the app
 
 ### Importing Inventory
 
 1. Create a Google Sheet with inventory data
 2. Ensure first row has headers: `SKU`, `Name`, `Quantity`, etc.
-3. In TGF MRP:
+3. In MuRP:
    - Click **Import from Google Sheets**
    - Paste spreadsheet URL
    - Enter sheet name (e.g., "Sheet1")

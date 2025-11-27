@@ -157,7 +157,7 @@ function TestPage() {
 ## File Structure
 
 ```
-/workspaces/TGF-MRP/
+/workspaces/MuRP/
 ├── .mcp.json                        # MCP server configuration
 ├── services/context7Service.ts      # Service layer with caching
 ├── hooks/useContext7.ts             # React hook for Context7
@@ -252,4 +252,4 @@ The service, hook, and component files can be used independently for documentati
 
 - [MCP Protocol Specification](https://modelcontextprotocol.io/)
 - [Context7 Documentation](https://context7.com/)
-- TGF Compliance MCP Server: `mcp-server/README_PYTHON.md`
+- MuRP Compliance MCP Server: `mcp-server/README_PYTHON.md`

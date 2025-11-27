@@ -1,6 +1,6 @@
 # API Ingestion Setup Guide
 
-This guide walks you through setting up the secure API ingestion architecture for TGF MRP.
+This guide walks you through setting up the secure API ingestion architecture for MuRP.
 
 ## 🔐 Security-First Architecture
 

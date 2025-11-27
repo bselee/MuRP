@@ -22,7 +22,7 @@ export const GOOGLE_SCOPES = {
 } as const;
 
 /**
- * Default scopes for TGF MRP application
+ * Default scopes for MuRP application
  */
 export const DEFAULT_SCOPES = [
   GOOGLE_SCOPES.SHEETS_READWRITE, // Read/write access to Sheets

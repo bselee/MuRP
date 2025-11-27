@@ -1,7 +1,7 @@
 # MCP (Model Context Protocol) System - Setup Guide
 
 ## Overview
-The MCP system integrates AI-powered compliance tools into the TGF-MRP application. This document provides a comprehensive guide for Admins to configure and use the MCP server.
+The MCP system integrates AI-powered compliance tools into the MuRP application. This document provides a comprehensive guide for Admins to configure and use the MCP server.
 
 ---
 
@@ -98,7 +98,7 @@ The MCP system integrates AI-powered compliance tools into the TGF-MRP applicati
 
 ### Step 1: Start the Python MCP Server
 ```bash
-cd /workspaces/TGF-MRP/mcp-server
+cd /workspaces/MuRP/mcp-server
 python main.py
 ```
 
@@ -357,4 +357,4 @@ Coming soon: The AI assistant will automatically:
 
 **Last Updated**: 2025-11-13  
 **Version**: 1.0.0  
-**Author**: TGF-MRP Development Team
+**Author**: MuRP Development Team

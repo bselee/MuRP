@@ -264,7 +264,7 @@ export class GoogleSheetsSyncService {
       if (!spreadsheetId) {
         // Create new spreadsheet
         const timestamp = new Date().toISOString().split('T')[0];
-        const title = `TGF MRP Inventory Export - ${timestamp}`;
+        const title = `MuRP Inventory Export - ${timestamp}`;
         const result = await this.sheetsService.createSpreadsheet(title, ['Inventory']);
         spreadsheetId = result.spreadsheetId;
         spreadsheetUrl = result.spreadsheetUrl;
@@ -342,7 +342,7 @@ export class GoogleSheetsSyncService {
    */
   async createAutoBackup(): Promise<ExportResult> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T').join('_');
-    const title = `TGF MRP Backup - ${timestamp}`;
+    const title = `MuRP Backup - ${timestamp}`;
 
     const result = await this.sheetsService.createSpreadsheet(title, ['Inventory', 'Vendors']);
 
@@ -424,7 +424,7 @@ export class GoogleSheetsSyncService {
 
       if (!spreadsheetId) {
         const timestamp = new Date().toISOString().split('T')[0];
-        const result = await this.sheetsService.createSpreadsheet(`TGF MRP Vendors - ${timestamp}`, ['Vendors']);
+        const result = await this.sheetsService.createSpreadsheet(`MuRP Vendors - ${timestamp}`, ['Vendors']);
         spreadsheetId = result.spreadsheetId;
         spreadsheetUrl = result.spreadsheetUrl;
       }

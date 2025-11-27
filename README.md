@@ -2,7 +2,7 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# TGF MRP - Manufacturing Resource Planning
+# MuRP - Manufacturing Resource Planning
 
 A production-ready MRP system with secure API integrations, AI-powered insights, and comprehensive inventory management.
 

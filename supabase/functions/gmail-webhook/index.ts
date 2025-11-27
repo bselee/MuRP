@@ -20,6 +20,37 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 (pdfjsLib as any).GlobalWorkerOptions.workerSrc =
   'https://esm.sh/pdfjs-dist@4.3.136/legacy/build/pdf.worker.js';
 
+type VendorResponseStatus =
+  | 'pending_response'
+  | 'vendor_responded'
+  | 'verified_confirmed'
+  | 'verified_with_issues'
+  | 'requires_clarification'
+  | 'vendor_non_responsive'
+  | 'cancelled';
+
+interface VendorEmailAIConfig {
+  enabled: boolean;
+  maxEmailsPerHour: number;
+  maxDailyCostUsd: number;
+  minConfidence: number;
+  keywordFilters: string[];
+  maxBodyCharacters: number;
+}
+
+const DEFAULT_VENDOR_EMAIL_AI_CONFIG: VendorEmailAIConfig = {
+  enabled: true,
+  maxEmailsPerHour: 60,
+  maxDailyCostUsd: 1.5,
+  minConfidence: 0.65,
+  keywordFilters: ['tracking', 'shipped', 'delivery', 'invoice', 'confirm'],
+  maxBodyCharacters: 16000,
+};
+
+const AI_PRICING = { input: 0.8, output: 4.0 }; // $ per million tokens (Anthropic Haiku)
+const AI_COST_SERVICE = 'vendor_email_parsing';
+let cachedVendorAIConfig: { config: VendorEmailAIConfig; expiresAt: number } | null = null;
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -98,44 +129,174 @@ serve(async (req) => {
       labelIds: gmailMessage.labelIds ?? [],
     });
 
+    const subjectHeader = getHeader(gmailMessage, 'Subject') ?? '';
+    const fromHeader = getHeader(gmailMessage, 'From') ?? '';
+    const toHeader = getHeader(gmailMessage, 'To') ?? '';
+    const receivedAt = new Date().toISOString();
     const { bodyText, attachmentsText, attachments } = await extractMessageContent(gmailMessage, accessToken);
     const combinedText = `${bodyText}\n\n${attachmentsText}`.trim();
-
     const invoiceSignal = detectInvoiceSignal({
-      subject: gmailMessage.payload?.headers?.find((h: any) => h.name === 'Subject')?.value ?? '',
-      from: gmailMessage.payload?.headers?.find((h: any) => h.name === 'From')?.value ?? '',
+      subject: subjectHeader,
+      from: fromHeader,
       bodyText,
       attachmentsText,
       attachments,
     });
 
+    let vendorResponseStatus: VendorResponseStatus = invoiceSignal?.detected ? 'requires_clarification' : 'vendor_responded';
+    let vendorResponseSummary: any = invoiceSignal?.detected ? invoiceSignal : null;
+
     if (invoiceSignal?.detected && poRecord.invoice_gmail_message_id !== messageId) {
       await recordInvoiceReceipt(poRecord, messageId, invoiceSignal);
-      await markFollowUpResponse(poRecord.id);
     }
 
+    const correlationConfidence = threadId ? 0.95 : 0.7;
+    const communicationMetadata: Record<string, any> = {
+      labelIds: gmailMessage.labelIds ?? [],
+      invoiceSignal,
+    };
+
+    await recordVendorCommunication({
+      poId: poRecord.id,
+      communicationType: invoiceSignal?.detected ? 'vendor_invoice' : 'vendor_reply',
+      direction: 'inbound',
+      gmailMessageId: messageId,
+      gmailThreadId: threadId,
+      subject: subjectHeader || 'Purchase Order Update',
+      bodyPreview: combinedText.slice(0, 800),
+      senderEmail: fromHeader || null,
+      recipientEmail: toHeader || null,
+      receivedAt,
+      attachments,
+      metadata: communicationMetadata,
+      correlationConfidence,
+    });
+
     if (!combinedText) {
+      communicationMetadata.aiDecision = 'no-text';
+      await annotateVendorCommunication(messageId, { metadata: communicationMetadata });
+      await markFollowUpResponse(poRecord.id, {
+        vendorStatus: vendorResponseStatus,
+        summary: vendorResponseSummary,
+        messageId,
+        threadId,
+        receivedAt,
+      });
       console.log('[gmail-webhook] No textual content found for message', messageId);
       return new Response(JSON.stringify({ success: true, updated: false }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const parseResult = await analyzeEmailWithAI({
-      subject: gmailMessage.payload?.headers?.find((h: any) => h.name === 'Subject')?.value ?? '',
-      vendor: poRecord.vendor_name,
-      to: gmailMessage.payload?.headers?.find((h: any) => h.name === 'To')?.value ?? '',
-      from: gmailMessage.payload?.headers?.find((h: any) => h.name === 'From')?.value ?? '',
-      content: combinedText,
+    const aiConfig = await getVendorEmailAIConfig();
+    const aiEligibility = await shouldProcessEmailWithAI(aiConfig, {
+      subject: subjectHeader,
+      body: combinedText,
     });
 
-    if (!parseResult) {
+    if (!aiEligibility.allowed) {
+      communicationMetadata.aiDecision = aiEligibility.reason ?? 'skipped';
+      await annotateVendorCommunication(messageId, { metadata: communicationMetadata });
+      await markFollowUpResponse(poRecord.id, {
+        vendorStatus: vendorResponseStatus,
+        summary: vendorResponseSummary,
+        messageId,
+        threadId,
+        receivedAt,
+      });
+      return new Response(JSON.stringify({ success: true, updated: false, reason: aiEligibility.reason ?? 'skipped' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const aiInput = combinedText.slice(0, aiConfig.maxBodyCharacters);
+    const aiAnalysis = await analyzeEmailWithAI(
+      {
+        subject: subjectHeader,
+        vendor: poRecord.vendor_name,
+        to: toHeader,
+        from: fromHeader,
+        content: aiInput,
+      },
+      aiConfig,
+    );
+
+    if (!aiAnalysis) {
+      communicationMetadata.aiDecision = 'no-parse';
+      await annotateVendorCommunication(messageId, { metadata: communicationMetadata });
+      await markFollowUpResponse(poRecord.id, {
+        vendorStatus: vendorResponseStatus,
+        summary: vendorResponseSummary,
+        messageId,
+        threadId,
+        receivedAt,
+      });
       return new Response(JSON.stringify({ success: true, updated: false, reason: 'no-parse' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    await applyTrackingUpdate(poRecord.id, parseResult);
+    await recordAICost({
+      costUsd: aiAnalysis.costUsd,
+      inputTokens: aiAnalysis.inputTokens,
+      outputTokens: aiAnalysis.outputTokens,
+    });
+
+    const parsed = aiAnalysis.parsed;
+    if (!parsed) {
+      communicationMetadata.aiDecision = 'empty-response';
+      await annotateVendorCommunication(messageId, { metadata: communicationMetadata });
+      await markFollowUpResponse(poRecord.id, {
+        vendorStatus: vendorResponseStatus,
+        summary: vendorResponseSummary,
+        messageId,
+        threadId,
+        receivedAt,
+      });
+      return new Response(JSON.stringify({ success: true, updated: false, reason: 'empty-response' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (typeof parsed.confidence === 'number' && parsed.confidence < aiConfig.minConfidence) {
+      communicationMetadata.aiDecision = 'low-confidence';
+      communicationMetadata.aiConfidence = parsed.confidence;
+      await annotateVendorCommunication(messageId, { metadata: communicationMetadata });
+      await markFollowUpResponse(poRecord.id, {
+        vendorStatus: vendorResponseStatus,
+        summary: vendorResponseSummary,
+        messageId,
+        threadId,
+        receivedAt,
+      });
+      return new Response(JSON.stringify({ success: true, updated: false, reason: 'low-confidence' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    vendorResponseStatus = deriveVendorResponseStatus(parsed);
+    vendorResponseSummary = parsed;
+
+    communicationMetadata.aiDecision = 'parsed';
+    communicationMetadata.aiConfidence = parsed.confidence ?? null;
+    communicationMetadata.aiCostUsd = aiAnalysis.costUsd;
+
+    await annotateVendorCommunication(messageId, {
+      metadata: communicationMetadata,
+      extracted_data: parsed,
+      ai_confidence: parsed.confidence ?? null,
+      ai_cost_usd: aiAnalysis.costUsd,
+      ai_extracted: true,
+    });
+
+    await applyTrackingUpdate(poRecord.id, parsed);
+    await markFollowUpResponse(poRecord.id, {
+      vendorStatus: vendorResponseStatus,
+      summary: vendorResponseSummary,
+      messageId,
+      threadId,
+      receivedAt,
+    });
 
     return new Response(JSON.stringify({ success: true, updated: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -331,6 +492,15 @@ async function fetchAttachment(messageId: string, attachmentId: string, accessTo
   return base64ToUint8Array(data.data);
 }
 
+function getHeader(message: any, name: string): string | null {
+  const target = name.toLowerCase();
+  return (
+    message?.payload?.headers?.find(
+      (header: any) => typeof header?.name === 'string' && header.name.toLowerCase() === target,
+    )?.value ?? null
+  );
+}
+
 async function extractTextFromPdf(pdfBytes: Uint8Array): Promise<string> {
   try {
     const loadingTask = (pdfjsLib as any).getDocument({ data: pdfBytes });
@@ -358,6 +528,163 @@ async function extractTextFromPdf(pdfBytes: Uint8Array): Promise<string> {
   }
 }
 
+async function getVendorEmailAIConfig(): Promise<VendorEmailAIConfig> {
+  if (cachedVendorAIConfig && cachedVendorAIConfig.expiresAt > Date.now()) {
+    return cachedVendorAIConfig.config;
+  }
+
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('setting_value')
+    .eq('setting_key', 'vendor_email_ai_config')
+    .maybeSingle();
+
+  const config = {
+    ...DEFAULT_VENDOR_EMAIL_AI_CONFIG,
+    ...(error ? {} : (data?.setting_value as VendorEmailAIConfig | null) ?? {}),
+  };
+
+  cachedVendorAIConfig = {
+    config,
+    expiresAt: Date.now() + 60_000,
+  };
+
+  return config;
+}
+
+async function ensureAiBudget(config: VendorEmailAIConfig): Promise<{ ok: boolean; reason?: string }> {
+  try {
+    if (config.maxEmailsPerHour > 0) {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count, error } = await supabase
+        .from('po_vendor_communications')
+        .select('id', { head: true, count: 'exact' })
+        .eq('ai_extracted', true)
+        .gte('created_at', oneHourAgo);
+      if (!error && (count ?? 0) >= config.maxEmailsPerHour) {
+        return { ok: false, reason: 'rate_limited' };
+      }
+    }
+
+    if (config.maxDailyCostUsd > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('ai_purchasing_costs')
+        .select('cost_usd')
+        .eq('service_name', AI_COST_SERVICE)
+        .eq('date', today);
+      if (!error) {
+        const spent = (data || []).reduce((sum, row) => sum + Number(row.cost_usd ?? 0), 0);
+        if (spent >= config.maxDailyCostUsd) {
+          return { ok: false, reason: 'budget_exceeded' };
+        }
+      }
+    }
+
+    return { ok: true };
+  } catch (error) {
+    console.error('[gmail-webhook] Budget check failed', error);
+    return { ok: true };
+  }
+}
+
+async function shouldProcessEmailWithAI(
+  config: VendorEmailAIConfig,
+  payload: { subject: string; body: string },
+): Promise<{ allowed: boolean; reason?: string }> {
+  if (!config.enabled) return { allowed: false, reason: 'disabled' };
+  if (!payload.body.trim()) return { allowed: false, reason: 'empty' };
+
+  const haystack = `${payload.subject}\n${payload.body}`.toLowerCase();
+  const keywordMatched = config.keywordFilters.some((keyword) => haystack.includes(keyword.toLowerCase()));
+  if (!keywordMatched) {
+    return { allowed: false, reason: 'keyword_filter' };
+  }
+
+  const budget = await ensureAiBudget(config);
+  if (!budget.ok) {
+    return { allowed: false, reason: budget.reason };
+  }
+
+  return { allowed: true };
+}
+
+async function recordVendorCommunication(entry: {
+  poId: string;
+  communicationType: string;
+  direction: 'inbound' | 'outbound';
+  gmailMessageId?: string | null;
+  gmailThreadId?: string | null;
+  subject?: string | null;
+  bodyPreview?: string | null;
+  senderEmail?: string | null;
+  recipientEmail?: string | null;
+  sentAt?: string | null;
+  receivedAt?: string | null;
+  attachments?: AttachmentMeta[] | null;
+  metadata?: Record<string, any> | null;
+  correlationConfidence?: number | null;
+}) {
+  const payload = {
+    po_id: entry.poId,
+    communication_type: entry.communicationType,
+    direction: entry.direction,
+    gmail_message_id: entry.gmailMessageId ?? null,
+    gmail_thread_id: entry.gmailThreadId ?? null,
+    subject: entry.subject ?? null,
+    body_preview: entry.bodyPreview ?? null,
+    sender_email: entry.senderEmail ?? null,
+    recipient_email: entry.recipientEmail ?? null,
+    sent_at: entry.sentAt ?? null,
+    received_at: entry.receivedAt ?? null,
+    attachments: entry.attachments ?? null,
+    metadata: entry.metadata ?? null,
+    correlation_confidence: entry.correlationConfidence ?? null,
+  };
+
+  if (entry.gmailMessageId) {
+    await supabase.from('po_vendor_communications').upsert(payload, { onConflict: 'gmail_message_id' });
+  } else {
+    await supabase.from('po_vendor_communications').insert(payload);
+  }
+}
+
+async function annotateVendorCommunication(gmailMessageId: string | null, updates: Record<string, any>) {
+  if (!gmailMessageId) return;
+  await supabase
+    .from('po_vendor_communications')
+    .update(updates)
+    .eq('gmail_message_id', gmailMessageId);
+}
+
+function deriveVendorResponseStatus(parsed: ParsedTrackingResult | null): VendorResponseStatus {
+  if (!parsed?.status) return 'vendor_responded';
+  const normalized = parsed.status.toLowerCase();
+  if (normalized === 'delivered') return 'verified_confirmed';
+  if (normalized === 'exception' || normalized === 'cancelled') return 'verified_with_issues';
+  return 'vendor_responded';
+}
+
+async function recordAICost(details: { costUsd: number; inputTokens: number; outputTokens: number }) {
+  try {
+    await supabase.from('ai_purchasing_costs').insert({
+      date: new Date().toISOString().split('T')[0],
+      service_name: AI_COST_SERVICE,
+      model_name: 'claude-3-5-haiku-20241022',
+      provider: 'anthropic',
+      input_tokens: details.inputTokens,
+      output_tokens: details.outputTokens,
+      total_tokens: details.inputTokens + details.outputTokens,
+      cost_usd: details.costUsd,
+      calls_count: 1,
+      execution_time_ms: 0,
+      success: true,
+    });
+  } catch (error) {
+    console.error('[gmail-webhook] Failed to record AI cost', error);
+  }
+}
+
 function base64ToUint8Array(base64: string): Uint8Array {
   const decoded = decodeBase64(base64);
   const bytes = new Uint8Array(decoded.length);
@@ -374,15 +701,27 @@ interface ParsedTrackingResult {
   expectedDelivery?: string | null;
   notes?: string | null;
   action?: string;
+  confidence?: number | null;
 }
 
-async function analyzeEmailWithAI(context: {
-  subject: string;
-  vendor: string;
-  to: string;
-  from: string;
-  content: string;
-}): Promise<ParsedTrackingResult | null> {
+interface AIAnalysisResult {
+  parsed: ParsedTrackingResult | null;
+  rawText: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+}
+
+async function analyzeEmailWithAI(
+  context: {
+    subject: string;
+    vendor: string;
+    to: string;
+    from: string;
+    content: string;
+  },
+  aiConfig: VendorEmailAIConfig,
+): Promise<AIAnalysisResult | null> {
   if (!ANTHROPIC_API_KEY) {
     console.warn('[gmail-webhook] ANTHROPIC_API_KEY not configured, skipping AI parsing');
     return null;
@@ -406,7 +745,8 @@ Return ONLY JSON with this shape:
   "status": "awaiting_confirmation" | "confirmed" | "processing" | "shipped" | "in_transit" | "out_for_delivery" | "delivered" | "exception" | "cancelled",
   "expectedDelivery": "YYYY-MM-DD" | null,
   "notes": "Any additional details",
-  "action": "confirmation" | "tracking_update" | "exception" | "other"
+  "action": "confirmation" | "tracking_update" | "exception" | "other",
+  "confidence": 0.0-1.0
 }
 
 If the email simply confirms receipt without tracking, set status to "confirmed".
@@ -442,7 +782,18 @@ If the email simply confirms receipt without tracking, set status to "confirmed"
   const json = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
   try {
-    return JSON.parse(json);
+    const parsed = JSON.parse(json);
+    const inputTokens = Math.round((context.content.length + 400) / 4);
+    const outputTokens = Math.max(1, Math.round(raw.length / 4));
+    const costUsd = ((inputTokens * AI_PRICING.input) + (outputTokens * AI_PRICING.output)) / 1_000_000;
+
+    return {
+      parsed,
+      rawText: raw,
+      inputTokens,
+      outputTokens,
+      costUsd,
+    };
   } catch (error) {
     console.error('[gmail-webhook] Failed to parse AI response', error, json);
     return null;
@@ -514,8 +865,6 @@ async function applyTrackingUpdate(poId: string, parsed: ParsedTrackingResult) {
     description: parsed.notes ?? parsed.action ?? 'Vendor update',
     raw_payload: parsed,
   });
-
-  await markFollowUpResponse(poId);
 }
 
 interface InvoiceSignal {
@@ -591,7 +940,16 @@ async function recordInvoiceReceipt(poRecord: { id: string; vendor_name: string 
   });
 }
 
-async function markFollowUpResponse(poId: string) {
+async function markFollowUpResponse(
+  poId: string,
+  options?: {
+    vendorStatus?: VendorResponseStatus;
+    summary?: any;
+    messageId?: string | null;
+    threadId?: string | null;
+    receivedAt?: string | null;
+  },
+) {
   const { data: event } = await supabase
     .from('vendor_followup_events')
     .select('id, sent_at')
@@ -620,7 +978,14 @@ async function markFollowUpResponse(poId: string) {
   await supabase
     .from('purchase_orders')
     .update({
-      follow_up_status: 'response_received',
+      follow_up_status: options?.vendorStatus ?? 'vendor_responded',
+      vendor_response_status: options?.vendorStatus ?? 'vendor_responded',
+      vendor_response_received_at: options?.receivedAt ?? respondedAt,
+      vendor_response_email_id: options?.messageId ?? null,
+      vendor_response_thread_id: options?.threadId ?? null,
+      vendor_response_summary: options?.summary ?? null,
+      verification_required: (options?.vendorStatus ?? 'vendor_responded') !== 'verified_confirmed',
+      next_follow_up_due_at: null,
     })
     .eq('id', poId);
 }

@@ -1,6 +1,6 @@
 # AI Purchasing Intelligence System
 
-**Cost-Effective AI Integration for TGF-MRP**
+**Cost-Effective AI Integration for MuRP**
 
 > Maximum value, minimum cost: $5-15/month for comprehensive purchasing intelligence
 
@@ -21,7 +21,7 @@
 
 ## Overview
 
-This system integrates cost-effective AI purchasing intelligence into your existing TGF-MRP platform, leveraging your current AI Gateway infrastructure to provide:
+This system integrates cost-effective AI purchasing intelligence into your existing MuRP platform, leveraging your current AI Gateway infrastructure to provide:
 
 - **Smart Anomaly Detection** - Catch inventory issues before they cost money
 - **Vendor Email Intelligence** - Automatic tracking number extraction
@@ -109,7 +109,7 @@ Monthly cost: $0.02 × 6 = $0.12
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     TGF-MRP Application                         │
+│                     MuRP Application                         │
 ├─────────────────────────────────────────────────────────────────┤
 │  Dashboard  │  Inventory  │  PO Management  │  Vendor Portal    │
 └──────┬──────┴──────┬──────┴───────┬─────────┴──────┬───────────┘
@@ -164,7 +164,7 @@ Plus 3 views for reporting:
 
 ### Prerequisites
 
-- ✅ Existing TGF-MRP installation
+- ✅ Existing MuRP installation
 - ✅ Supabase project configured
 - ✅ Anthropic API key
 - ✅ Node.js 18+ and npm
@@ -211,7 +211,7 @@ Deploy the nightly AI jobs function:
 
 ```bash
 # Navigate to project root
-cd /path/to/TGF-MRP
+cd /path/to/MuRP
 
 # Deploy function
 supabase functions deploy nightly-ai-purchasing
@@ -622,8 +622,8 @@ Check Supabase Dashboard:
 - [Database Schema](../supabase/migrations/011_purchasing_ai_features.sql)
 
 ### Community
-- File issues: https://github.com/your-org/TGF-MRP/issues
-- Discussions: https://github.com/your-org/TGF-MRP/discussions
+- File issues: https://github.com/your-org/MuRP/issues
+- Discussions: https://github.com/your-org/MuRP/discussions
 
 ### External Resources
 - Anthropic API Docs: https://docs.anthropic.com/
@@ -634,10 +634,10 @@ Check Supabase Dashboard:
 
 ## License
 
-Same as TGF-MRP main project.
+Same as MuRP main project.
 
 ---
 
-**Built with ❤️ by the TGF-MRP team**
+**Built with ❤️ by the MuRP team**
 
 *Saving you money, one API call at a time* 💰

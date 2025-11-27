@@ -293,7 +293,7 @@ function getTermLabel(key: string): string {
     consultAttorneyRecommended: 'I understand consulting an attorney is recommended',
     noWarranties: 'I understand there are no warranties on accuracy or completeness',
     useAtOwnRisk: 'I use these features at my own risk',
-    liabilityRelease: 'I release TGF-MRP from liability as stated above',
+    liabilityRelease: 'I release MuRP from liability as stated above',
     aiLimitations: 'I understand AI systems can make mistakes',
     regulatoryChanges: 'I understand regulations change and information may be outdated',
   };

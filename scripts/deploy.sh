@@ -6,7 +6,7 @@ set -e
 
 DEPLOY_TYPE="${1:-preview}"
 
-echo "🚀 TGF MRP - Automated Deployment"
+echo "🚀 MuRP - Automated Deployment"
 echo "=================================="
 echo ""
 

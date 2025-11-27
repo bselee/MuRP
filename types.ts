@@ -1,5 +1,3 @@
-
-
 export interface BOMComponent {
   sku: string;
   quantity: number;
@@ -57,6 +55,13 @@ export interface Artwork {
   mimeType?: string; // 'application/pdf', 'application/postscript' (.ai files)
   uploadedAt?: string;
   uploadedBy?: string;
+  
+  // DAM Features
+  printReady?: boolean; // rtp_flag
+  vectorSvg?: string; // SVG content for vector editing
+  vectorGeneratedAt?: string;
+  lastEditedAt?: string;
+  lastEditedBy?: string;
 
   // AI Label Scanning
   scanStatus?: 'pending' | 'scanning' | 'completed' | 'failed';
@@ -109,7 +114,8 @@ export interface Artwork {
   verifiedBy?: string;
   verifiedAt?: string;
 
-  // Inline editing + vectorization
+  // DAM Features
+  printReady?: boolean; // rtp_flag
   vectorSvg?: string | null;
   vectorGeneratedAt?: string;
   lastEditedAt?: string;
@@ -755,6 +761,48 @@ export interface PurchaseOrderItem {
   price?: number;
 }
 
+export type VendorResponseStatus =
+  | 'pending_response'
+  | 'vendor_responded'
+  | 'verified_confirmed'
+  | 'verified_with_issues'
+  | 'requires_clarification'
+  | 'vendor_non_responsive'
+  | 'cancelled';
+
+export interface VendorCommunication {
+  id: string;
+  poId: string;
+  communicationType: string;
+  direction: 'inbound' | 'outbound';
+  stage?: number | null;
+  gmailMessageId?: string | null;
+  gmailThreadId?: string | null;
+  subject?: string | null;
+  bodyPreview?: string | null;
+  senderEmail?: string | null;
+  recipientEmail?: string | null;
+  sentAt?: string | null;
+  receivedAt?: string | null;
+  attachments?: Record<string, unknown>[] | null;
+  metadata?: Record<string, unknown> | null;
+  extractedData?: Record<string, unknown> | null;
+  aiConfidence?: number | null;
+  aiCostUsd?: number | null;
+  aiExtracted?: boolean;
+  correlationConfidence?: number | null;
+  createdAt?: string;
+}
+
+export interface VendorEmailAIConfig {
+  enabled: boolean;
+  maxEmailsPerHour: number;
+  maxDailyCostUsd: number;
+  minConfidence: number;
+  keywordFilters: string[];
+  maxBodyCharacters: number;
+}
+
 export interface PurchaseOrder {
   id: string;
   orderId: string;
@@ -800,8 +848,19 @@ export interface PurchaseOrder {
   followUpRequired?: boolean;
   lastFollowUpStage?: number;
   lastFollowUpSentAt?: string;
-  followUpStatus?: string | null;
+  followUpStatus?: VendorResponseStatus | null;
   followUpCount?: number;
+  vendorResponseStatus?: VendorResponseStatus | null;
+  vendorResponseReceivedAt?: string | null;
+  vendorResponseEmailId?: string | null;
+  vendorResponseThreadId?: string | null;
+  vendorResponseSummary?: Record<string, any> | null;
+  verificationRequired?: boolean;
+  verifiedBy?: string | null;
+  verifiedAt?: string | null;
+  verificationNotes?: string | null;
+  escalationLevel?: number;
+  nextFollowUpDueAt?: string | null;
   invoiceDetectedAt?: string;
   invoiceGmailMessageId?: string | null;
   invoiceSummary?: Record<string, any> | null;
@@ -1618,4 +1677,24 @@ Generate the draft letter now.`
 *   Contrast: [Your analysis]`
         }
     ]
+};
+
+export interface UserPreferences {
+  theme?: 'light' | 'dark' | 'system';
+  dashboardLayout?: string[]; // Section IDs in order
+  collapsedSections?: string[]; // IDs of collapsed sections
+  
+  // DAM Settings
+  damSettings?: {
+    defaultPrintSize?: string;
+    showPrintReadyWarning?: boolean;
+  };
+}
+
+export type DAMTier = 'basic' | 'mid' | 'full';
+
+export const DAM_TIER_LIMITS: Record<DAMTier, { storage: number; compliance: boolean; editing: boolean }> = {
+  basic: { storage: 100 * 1024 * 1024, compliance: false, editing: false }, // 100MB
+  mid: { storage: 10 * 1024 * 1024 * 1024, compliance: false, editing: true }, // 10GB
+  full: { storage: 100 * 1024 * 1024 * 1024, compliance: true, editing: true }, // 100GB
 };

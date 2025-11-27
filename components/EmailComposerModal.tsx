@@ -113,6 +113,13 @@ Procurement Team`);
                             to,
                             labelIds: sendResult.labelIds ?? [],
                         },
+                        subject,
+                        bodyPreview: body.slice(0, 500),
+                        direction: 'outbound',
+                        communicationType: 'initial_send',
+                        senderEmail: gmailConnection.email ?? from,
+                        recipientEmail: vendor.contactEmails?.[0] || to,
+                        sentAt: new Date().toISOString(),
                     });
                 }
 
@@ -126,6 +133,13 @@ Procurement Team`);
                         to,
                         simulated: true,
                     },
+                    subject,
+                    bodyPreview: body.slice(0, 500),
+                    direction: 'outbound',
+                    communicationType: 'initial_send',
+                    senderEmail: from,
+                    recipientEmail: vendor.contactEmails?.[0] || to,
+                    sentAt: new Date().toISOString(),
                 });
                 addToast('Workspace Gmail not connected. Simulating email send.', 'info');
                 onSend(false);

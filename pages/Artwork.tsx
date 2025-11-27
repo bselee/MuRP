@@ -1,8 +1,6 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import Button from '@/components/ui/Button';
-import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder, GmailConnection, InventoryItem, Vendor, ArtworkShareEvent } from '../types';
+import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder, GmailConnection, InventoryItem, Vendor, ArtworkShareEvent, DAMTier } from '../types';
 import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon, QrCodeIcon, CheckCircleIcon, CloudUploadIcon, SendIcon } from '../components/icons';
 import RegulatoryScanModal from '../components/RegulatoryScanModal';
 import BatchArtworkVerificationModal from '../components/BatchArtworkVerificationModal';
@@ -10,6 +8,8 @@ import ManualLabelScanner from '../components/ManualLabelScanner';
 import ArtworkEditor from '../components/ArtworkEditor';
 import UploadArtworkModal from '../components/UploadArtworkModal';
 import ShareArtworkModal from '../components/ShareArtworkModal';
+import { DAMSettingsPanel } from '../components/DAMSettingsPanel';
+import { DAM_TIER_LIMITS } from '../types';
 
 type ArtworkWithProduct = Artwork & {
     productName: string;
@@ -69,8 +69,24 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
     const [metadataDraft, setMetadataDraft] = useState({ fileName: '', notes: '' });
     const [isSavingMetadata, setIsSavingMetadata] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-    const [selectedShareArtwork, setSelectedShareArtwork] = useState<ArtworkWithProduct | null>(null);
+    const [selectedShareArtworks, setSelectedShareArtworks] = useState<ArtworkWithProduct[]>([]);
     
+    // DAM Settings State
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [damTier, setDamTier] = useState<DAMTier>('basic');
+    const [damSettings, setDamSettings] = useState({
+        defaultPrintSize: '4x6',
+        showPrintReadyWarning: true,
+        requireApproval: false,
+        allowedDomains: 'gmail.com, company.com',
+        autoArchive: false,
+        emailNotifications: true,
+        defaultShareCc: '',
+    });
+
+    // Download Warning State
+    const [pendingDownload, setPendingDownload] = useState<{ artwork: ArtworkWithProduct; url: string } | null>(null);
+
     useEffect(() => {
         return () => {
             if (initialFilter) onClearFilter();
@@ -184,12 +200,12 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
     const handleSaveEditedArtwork = (dataUrl: string, vectorSvg?: string | null) => {
         if (!artworkBeingEdited) return;
         const currentRevision = typeof artworkBeingEdited.revision === 'number' ? artworkBeingEdited.revision : 1;
-        const nextRevision = parseFloat((currentRevision + 0.01).toFixed(2));
+        // Use integer revisions to match BOMs and database schema
+        const nextRevision = Math.floor(currentRevision) + 1;
         const editedAt = new Date().toISOString();
         onUpdateArtwork(artworkBeingEdited.id, artworkBeingEdited.bomId, {
             url: dataUrl,
-            revision: Number.isFinite(nextRevision) ? nextRevision : currentRevision,
-            updatedAt: editedAt,
+            revision: nextRevision,
             vectorSvg: typeof vectorSvg === 'string' ? vectorSvg : artworkBeingEdited.vectorSvg ?? null,
             vectorGeneratedAt: typeof vectorSvg === 'string' ? editedAt : artworkBeingEdited.vectorGeneratedAt,
             lastEditedAt: editedAt,
@@ -219,7 +235,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
         const updates: Partial<Artwork> = {
             fileName: metadataDraft.fileName.trim() || selectedArtworkForDetails.fileName,
             notes: metadataDraft.notes.trim() ? metadataDraft.notes : undefined,
-            updatedAt: new Date().toISOString(),
+            lastEditedAt: new Date().toISOString(),
         };
 
         await awaitMaybePromise(onUpdateArtwork(selectedArtworkForDetails.id, selectedArtworkForDetails.bomId, updates));
@@ -227,8 +243,41 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
         setIsSavingMetadata(false);
     };
 
+    const handleApproveArtwork = (artwork: ArtworkWithProduct) => {
+        const updates: Partial<Artwork> = {
+            status: 'approved',
+            approvedBy: currentUser?.id || 'admin',
+            approvedDate: new Date().toISOString(),
+        };
+        onUpdateArtwork(artwork.id, artwork.bomId, updates);
+        addToast(`Artwork ${artwork.fileName} approved.`, 'success');
+        
+        if (selectedArtworkForDetails?.id === artwork.id) {
+            setSelectedArtworkForDetails(prev => prev ? { ...prev, ...updates } : null);
+        }
+    };
+
     const handleShareClick = (artwork: ArtworkWithProduct) => {
-        setSelectedShareArtwork(artwork);
+        if (damSettings.requireApproval && artwork.status !== 'approved') {
+            addToast('Approval required before sharing.', 'error');
+            return;
+        }
+        setSelectedShareArtworks([artwork]);
+        setIsShareModalOpen(true);
+    };
+
+    const handleBulkShare = () => {
+        const artworksToShare = allArtwork.filter(art => selectedArtworkIds.includes(art.id));
+        
+        if (damSettings.requireApproval) {
+            const unapproved = artworksToShare.filter(art => art.status !== 'approved');
+            if (unapproved.length > 0) {
+                addToast(`Cannot share ${unapproved.length} unapproved artwork(s). Approval is required.`, 'error');
+                return;
+            }
+        }
+
+        setSelectedShareArtworks(artworksToShare);
         setIsShareModalOpen(true);
     };
 
@@ -250,24 +299,26 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
         }
     };
 
-    const handleShareLogged = (artwork: ArtworkWithProduct, payload: ShareLogPayload) => {
-        const event: ArtworkShareEvent = {
-            id: `share-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            artworkId: artwork.id,
-            bomId: artwork.bomId,
-            productSku: artwork.productSku,
-            productName: artwork.productName,
-            to: payload.to,
-            cc: payload.cc,
-            subject: payload.subject,
-            includeCompliance: payload.includeCompliance,
-            attachFile: payload.attachFile,
-            attachmentHash: payload.attachmentHash ?? null,
-            sentViaGmail: payload.sentViaGmail,
-            senderEmail: currentUser?.email ?? gmailConnection.email,
-            timestamp: new Date().toISOString(),
-        };
-        onRecordArtworkShare(event);
+    const handleShareLogged = (artworks: ArtworkWithProduct[], payload: ShareLogPayload) => {
+        artworks.forEach(artwork => {
+            const event: ArtworkShareEvent = {
+                id: `share-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                artworkId: artwork.id,
+                bomId: artwork.bomId,
+                productSku: artwork.productSku,
+                productName: artwork.productName,
+                to: payload.to,
+                cc: payload.cc,
+                subject: payload.subject,
+                includeCompliance: payload.includeCompliance,
+                attachFile: payload.attachFile,
+                attachmentHash: payload.attachmentHash ?? null,
+                sentViaGmail: payload.sentViaGmail,
+                senderEmail: currentUser?.email ?? gmailConnection.email,
+                timestamp: new Date().toISOString(),
+            };
+            onRecordArtworkShare(event);
+        });
     };
     
     const awaitMaybePromise = async (maybePromise: void | Promise<void>) => {
@@ -288,9 +339,17 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
           ))
         : [];
 
-    const selectedShareSuggestions = selectedShareArtwork
-        ? packagingContactsByArtworkId.get(selectedShareArtwork.id) ?? []
-        : [];
+    const selectedShareSuggestions = useMemo(() => {
+        if (selectedShareArtworks.length === 0) return [];
+        // Aggregate suggestions from all selected artworks
+        const allSuggestions = selectedShareArtworks.flatMap(art => 
+            packagingContactsByArtworkId.get(art.id) ?? []
+        );
+        // Deduplicate by email
+        const unique = new Map<string, PackagingContactSuggestion>();
+        allSuggestions.forEach(s => unique.set(s.email, s));
+        return Array.from(unique.values());
+    }, [selectedShareArtworks, packagingContactsByArtworkId]);
 
     const complianceHighlights = selectedArtworkForDetails ? [
         {
@@ -312,6 +371,69 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
             accent: selectedArtworkForDetails.regulatoryDocLink ? 'text-emerald-300' : 'text-red-300',
         },
     ] : [];
+
+    const handleDownload = (artwork: ArtworkWithProduct) => {
+        const isPrintReady = artwork.printReady;
+        const dateStr = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }).replace(/\//g, '');
+        const size = damSettings.defaultPrintSize;
+        const prFlag = isPrintReady ? '_PR' : '';
+        const sku = artwork.productSku || 'SKU';
+        
+        // Schema: SKU_SIZE_DATE_PR
+        const filename = `${sku}_${size}_${dateStr}${prFlag}`;
+        
+        // If not print ready and warning enabled, show warning
+        if (!isPrintReady && damSettings.showPrintReadyWarning) {
+            setPendingDownload({ artwork, url: artwork.url });
+            return;
+        }
+
+        triggerDownload(artwork.url, filename);
+    };
+
+    const triggerDownload = (url: string, filename: string) => {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setPendingDownload(null);
+    };
+
+    const confirmDownload = () => {
+        if (!pendingDownload) return;
+        const dateStr = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }).replace(/\//g, '');
+        const size = damSettings.defaultPrintSize;
+        const sku = pendingDownload.artwork.productSku || 'SKU';
+        const filename = `${sku}_${size}_${dateStr}`; // No PR flag
+        triggerDownload(pendingDownload.url, filename);
+    };
+
+    const handleEditClick = (artwork: ArtworkWithProduct) => {
+        if (!DAM_TIER_LIMITS[damTier].editing) {
+            addToast(`Editing requires 'Mid' or 'Full' DAM tier. Current: ${damTier}`, 'error');
+            return;
+        }
+        setArtworkBeingEdited(artwork);
+    };
+
+    const handleMoveArtwork = (artwork: ArtworkWithProduct, folderId: string | null) => {
+        onUpdateArtwork(artwork.id, artwork.bomId, { folderId });
+    };
+
+    const handleBulkMove = (folderId: string | null) => {
+        const updates = selectedArtworkIds.map(artworkId => {
+            const artwork = allArtwork.find(art => art.id === artworkId);
+            return artwork ? { id: artwork.id, bomId: artwork.bomId, folderId } : null;
+        }).filter((artwork): artwork is { id: string; bomId: string; folderId: string | null } => artwork !== null);
+
+        updates.forEach(artwork => {
+            onUpdateArtwork(artwork.id, artwork.bomId, { folderId });
+        });
+
+        setSelectedArtworkIds([]);
+    };
 
     return (
         <>
@@ -359,7 +481,17 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                             </div>
                             <div className="flex gap-2">
                                 <Button 
-                                    onClick={() => setIsUploadModalOpen(true)}
+                                    onClick={() => {
+                                        const totalSize = allArtwork.reduce((acc, art) => acc + (art.fileSize || 0), 0);
+                                        const limitGB = DAM_TIER_LIMITS[damTier].storage;
+                                        const limitBytes = limitGB * 1024 * 1024 * 1024;
+                                        
+                                        if (totalSize >= limitBytes) {
+                                            addToast(`Storage limit reached for ${damTier} tier (${limitGB}GB). Please upgrade to upload more.`, 'error');
+                                            return;
+                                        }
+                                        setIsUploadModalOpen(true);
+                                    }}
                                     className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2"
                                 >
                                     <CloudUploadIcon className="w-5 h-5" />
@@ -380,10 +512,26 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                     Batch Verify
                                 </Button>
                                 {selectedArtworkIds.length > 0 && (
-                                    <Button onClick={handleCreatePo} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-colors">
-                                        Create PO for Packaging ({selectedArtworkIds.length})
-                                    </Button>
+                                    <>
+                                        <Button onClick={handleBulkShare} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2">
+                                            <SendIcon className="w-4 h-4" />
+                                            Share ({selectedArtworkIds.length})
+                                        </Button>
+                                        <Button onClick={handleCreatePo} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-colors">
+                                            Create PO for Packaging ({selectedArtworkIds.length})
+                                        </Button>
+                                    </>
                                 )}
+                                <Button
+                                    onClick={() => setIsSettingsOpen(true)}
+                                    className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md transition-colors"
+                                    title="DAM Settings"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </Button>
                             </div>
                         </div>
                         <div className="relative">
@@ -567,14 +715,22 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
 
                         {/* Actions */}
                         <div className="mt-6 pt-6 border-t border-gray-700 space-y-2">
-                            <a 
-                                href={selectedArtworkForDetails.url} 
-                                download 
+                            <Button 
+                                onClick={() => handleDownload(selectedArtworkForDetails)}
                                 className="flex items-center justify-center gap-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
                             >
                                 <ArrowDownTrayIcon className="w-5 h-5" />
                                 Download
-                            </a>
+                            </Button>
+                            {selectedArtworkForDetails.status !== 'approved' && (
+                                <Button
+                                    onClick={() => handleApproveArtwork(selectedArtworkForDetails)}
+                                    className="flex items-center justify-center gap-2 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                                >
+                                    <CheckCircleIcon className="w-5 h-5" />
+                                    Approve Artwork
+                                </Button>
+                            )}
                             <Button 
                                 onClick={() => handleScanClick(selectedArtworkForDetails)}
                                 className="flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
@@ -583,7 +739,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                 AI Scan
                             </Button>
                             <Button
-                                onClick={() => setArtworkBeingEdited(selectedArtworkForDetails)}
+                                onClick={() => handleEditClick(selectedArtworkForDetails)}
                                 className="flex items-center justify-center gap-2 w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
                             >
                                 <DocumentDuplicateIcon className="w-5 h-5" />
@@ -699,18 +855,52 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                 currentUser={currentUser}
             />
 
+            <DAMSettingsPanel
+                isOpen={isSettingsOpen}
+                onClose={() => setIsSettingsOpen(false)}
+                currentTier={damTier}
+                onUpgrade={setDamTier}
+                settings={damSettings}
+                onUpdateSettings={setDamSettings}
+            />
+
+            {/* Download Warning Modal */}
+            {pendingDownload && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 rounded-lg p-6 max-w-md border border-yellow-600/50">
+                        <div className="flex items-center gap-3 mb-4 text-yellow-400">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <h3 className="text-lg font-bold">Not Print Ready</h3>
+                        </div>
+                        <p className="text-gray-300 mb-6">
+                            This file is not marked as <strong>Print Ready (PR)</strong>. It may not meet production standards for resolution or bleed.
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <Button onClick={() => setPendingDownload(null)} className="bg-gray-700 hover:bg-gray-600 text-white">
+                                Cancel
+                            </Button>
+                            <Button onClick={confirmDownload} className="bg-yellow-600 hover:bg-yellow-700 text-white">
+                                Download Anyway
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             <ShareArtworkModal
                 isOpen={isShareModalOpen}
                 onClose={() => {
                     setIsShareModalOpen(false);
-                    setSelectedShareArtwork(null);
+                    setSelectedShareArtworks([]);
                 }}
-                artwork={selectedShareArtwork}
+                artworks={selectedShareArtworks}
                 gmailConnection={gmailConnection}
                 addToast={addToast}
                 currentUser={currentUser}
                 suggestedContacts={selectedShareSuggestions}
-                onShareLogged={(artwork, payload) => handleShareLogged(artwork as ArtworkWithProduct, payload)}
+                onShareLogged={(artworks, payload) => handleShareLogged(artworks as ArtworkWithProduct[], payload)}
             />
         </>
     );

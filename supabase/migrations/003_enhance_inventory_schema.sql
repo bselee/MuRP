@@ -1,6 +1,6 @@
 -- Migration 003: Enhance Inventory Schema for Finale Integration
 -- Description: Adds comprehensive inventory fields from Finale CSV reports
--- Author: TGF MRP Team
+-- Author: MuRP Team
 -- Date: 2025-11-04
 -- Dependencies: 001_api_audit_log.sql, 002_enhance_vendor_schema.sql
 

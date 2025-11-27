@@ -386,7 +386,7 @@ ORDER BY total_cost DESC;
 **Documentation:** See `docs/AI_GATEWAY_INTEGRATION.md`  
 **Database Schema:** See migration `015_ai_gateway_integration.sql`  
 **Production URL:** https://murp.app  
-**Repository:** https://github.com/bselee/TGF-MRP
+**Repository:** https://github.com/bselee/MuRP
 
 ---
 

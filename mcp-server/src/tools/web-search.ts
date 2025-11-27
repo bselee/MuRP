@@ -53,7 +53,7 @@ export async function searchWebForRegulations(
       console.error(`Fetching: ${url}`);
       const response = await axios.get(url, {
         headers: {
-          'User-Agent': 'TGF-Compliance-Bot/1.0',
+          'User-Agent': 'MuRP-Compliance-Bot/1.0',
         },
         timeout: 10000,
       });

@@ -247,7 +247,7 @@ COMMENT ON TABLE scraping_jobs IS 'Individual scraping job execution tracking';
 
 -- Migration: Create Compliance Records Table
 -- Description: Comprehensive tracking of state registrations, certifications, and compliance
--- Author: TGF MRP Team
+-- Author: MuRP Team
 -- Date: 2025-11-06
 -- Phase: 1.4 - Core Infrastructure
 

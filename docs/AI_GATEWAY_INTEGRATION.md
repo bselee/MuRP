@@ -22,7 +22,7 @@
 
 ## 🌟 Overview
 
-The TGF-MRP application now features a **beautiful, production-ready integration** with [Vercel AI Gateway](https://vercel.com/ai-gateway), providing tier-based access to multiple AI providers with comprehensive usage tracking, automatic fallbacks, and cost optimization.
+The MuRP application now features a **beautiful, production-ready integration** with [Vercel AI Gateway](https://vercel.com/ai-gateway), providing tier-based access to multiple AI providers with comprehensive usage tracking, automatic fallbacks, and cost optimization.
 
 ### What is Vercel AI Gateway?
 
@@ -40,7 +40,7 @@ Vercel AI Gateway is a unified API that provides access to 100+ AI models from p
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      TGF-MRP Application                        │
+│                      MuRP Application                        │
 ├─────────────────────────────────────────────────────────────────┤
 │  AI Chat  │ Compliance │ Label OCR │ Semantic Search           │
 └─────┬─────┴──────┬─────┴─────┬─────┴────────┬──────────────────┘
@@ -428,5 +428,5 @@ WHERE user_id = 'test_user_id';
 
 ---
 
-**Built with ❤️ by the TGF-MRP Development Team**
+**Built with ❤️ by the MuRP Development Team**
 *Making AI accessible, affordable, and beautiful*

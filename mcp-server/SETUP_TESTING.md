@@ -5,7 +5,7 @@
 ### 1. Configure Environment
 
 ```bash
-cd /workspaces/TGF-MRP/mcp-server
+cd /workspaces/MuRP/mcp-server
 
 # Copy environment template
 cp .env.example .env
@@ -59,7 +59,7 @@ Should show 15 tables:
 ### 3. Test Python MCP Server
 
 ```bash
-cd /workspaces/TGF-MRP/mcp-server
+cd /workspaces/MuRP/mcp-server
 
 # Test Tesseract OCR
 tesseract --version
@@ -261,7 +261,7 @@ const handleUpgrade = async () => {
 ### "ModuleNotFoundError: No module named 'mcp'"
 
 ```bash
-cd /workspaces/TGF-MRP/mcp-server
+cd /workspaces/MuRP/mcp-server
 pip install -r requirements.txt
 ```
 

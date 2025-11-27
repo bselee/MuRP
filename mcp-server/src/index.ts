@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * TGF Compliance MCP Server
+ * MuRP Compliance MCP Server
  * 
  * Provides tools for:
  * - Searching state regulations
@@ -331,7 +331,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('TGF Compliance MCP Server running on stdio');
+  console.error('MuRP Compliance MCP Server running on stdio');
 }
 
 main().catch((error) => {

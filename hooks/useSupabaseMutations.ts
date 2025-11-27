@@ -87,27 +87,75 @@ export async function createPurchaseOrder(po: CreatePurchaseOrderInput): Promise
   }
 }
 
-export async function logPoEmailTracking(poId: string, data: {
-  gmailMessageId?: string | null;
-  gmailThreadId?: string | null;
-  vendorEmail?: string | null;
-  metadata?: Record<string, any>;
-}): Promise<{ success: boolean; error?: string }> {
+export async function logPoEmailTracking(
+  poId: string,
+  data: {
+    gmailMessageId?: string | null;
+    gmailThreadId?: string | null;
+    vendorEmail?: string | null;
+    metadata?: Record<string, any>;
+    subject?: string | null;
+    bodyPreview?: string | null;
+    direction?: 'outbound' | 'inbound';
+    communicationType?: string;
+    senderEmail?: string | null;
+    recipientEmail?: string | null;
+    sentAt?: string | null;
+    receivedAt?: string | null;
+    stage?: number | null;
+  },
+): Promise<{ success: boolean; error?: string }> {
   try {
     const { error } = await supabase
       .from('po_email_tracking')
-      .upsert({
-        po_id: poId,
-        vendor_email: data.vendorEmail ?? null,
-        gmail_message_id: data.gmailMessageId ?? null,
-        gmail_thread_id: data.gmailThreadId ?? null,
-        metadata: data.metadata ?? null,
-        sent_at: new Date().toISOString(),
-      }, {
-        onConflict: 'gmail_message_id',
-      });
+      .upsert(
+        {
+          po_id: poId,
+          vendor_email: data.vendorEmail ?? null,
+          gmail_message_id: data.gmailMessageId ?? null,
+          gmail_thread_id: data.gmailThreadId ?? null,
+          metadata: data.metadata ?? null,
+          sent_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'gmail_message_id',
+        },
+      );
 
     if (error) throw error;
+
+    const communicationPayload = {
+      po_id: poId,
+      communication_type: data.communicationType ?? 'manual',
+      direction: data.direction ?? 'outbound',
+      stage: data.stage ?? null,
+      gmail_message_id: data.gmailMessageId ?? null,
+      gmail_thread_id: data.gmailThreadId ?? null,
+      subject: data.subject ?? data.metadata?.subject ?? null,
+      body_preview: data.bodyPreview ?? data.metadata?.bodyPreview ?? null,
+      sender_email: data.senderEmail ?? data.metadata?.from ?? null,
+      recipient_email: data.recipientEmail ?? data.vendorEmail ?? data.metadata?.to ?? null,
+      sent_at:
+        data.sentAt ??
+        (data.direction === 'outbound' || !data.direction ? new Date().toISOString() : null),
+      received_at:
+        data.receivedAt ??
+        (data.direction === 'inbound' ? new Date().toISOString() : null),
+      metadata: data.metadata ?? null,
+    };
+
+    if (data.gmailMessageId) {
+      const { error: commError } = await supabase
+        .from('po_vendor_communications')
+        .upsert(communicationPayload, { onConflict: 'gmail_message_id' });
+      if (commError) throw commError;
+    } else {
+      const { error: commInsertError } = await supabase
+        .from('po_vendor_communications')
+        .insert(communicationPayload);
+      if (commInsertError) throw commInsertError;
+    }
+
     return { success: true };
   } catch (error) {
     console.error('[logPoEmailTracking] Error:', error);

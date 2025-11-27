@@ -1,5 +1,5 @@
 """
-TGF Compliance MCP Server (Python)
+MuRP Compliance MCP Server (Python)
 Provides tools for state regulation management and compliance checking
 """
 
@@ -281,7 +281,7 @@ async def scrape_state_regulation(
     try:
         # Fetch the page
         headers = {
-            'User-Agent': 'TGF-Compliance-Bot/1.0 (Regulatory Monitoring)'
+            'User-Agent': 'MuRP-Compliance-Bot/1.0 (Regulatory Monitoring)'
         }
         response = requests.get(source_url, headers=headers, timeout=15)
         response.raise_for_status()

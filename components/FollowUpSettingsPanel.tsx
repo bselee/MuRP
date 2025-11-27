@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase/client';
 import Button from '@/components/ui/Button';
-import type { FollowUpCampaign, FollowUpRule } from '../types';
+import type { FollowUpCampaign, FollowUpRule, VendorEmailAIConfig } from '../types';
 import { BotIcon, SaveIcon, TrashIcon, PlusCircleIcon, MailIcon } from './icons';
 
 interface FollowUpSettingsPanelProps {
@@ -50,6 +50,15 @@ const stageDefaults = {
   },
 };
 
+const DEFAULT_VENDOR_AI_CONFIG: VendorEmailAIConfig = {
+  enabled: true,
+  maxEmailsPerHour: 60,
+  maxDailyCostUsd: 1.5,
+  minConfidence: 0.65,
+  keywordFilters: ['tracking', 'shipped', 'delivery', 'invoice', 'confirm'],
+  maxBodyCharacters: 16000,
+};
+
 const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast }) => {
   const [campaigns, setCampaigns] = useState<FollowUpCampaign[]>([]);
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
@@ -65,6 +74,9 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
     description: '',
     triggerType: 'tracking_missing' as FollowUpCampaign['triggerType'],
   });
+  const [aiConfig, setAiConfig] = useState<VendorEmailAIConfig>(DEFAULT_VENDOR_AI_CONFIG);
+  const [loadingAiConfig, setLoadingAiConfig] = useState(true);
+  const [savingAiConfig, setSavingAiConfig] = useState(false);
 
   const activeCampaign = campaigns.find((campaign) => campaign.id === activeCampaignId) ?? null;
   const sortedRules = useMemo(
@@ -74,6 +86,7 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
 
   useEffect(() => {
     void loadCampaigns();
+    void loadAiConfig();
   }, []);
 
   useEffect(() => {
@@ -111,6 +124,28 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
       addToast?.('Failed to load follow-up campaigns', 'error');
     } finally {
       setLoadingCampaigns(false);
+    }
+  };
+
+  const loadAiConfig = async () => {
+    try {
+      setLoadingAiConfig(true);
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('setting_value')
+        .eq('setting_key', 'vendor_email_ai_config')
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') throw error;
+      const raw = (data?.setting_value as VendorEmailAIConfig | null) ?? null;
+      setAiConfig({
+        ...DEFAULT_VENDOR_AI_CONFIG,
+        ...(raw ?? {}),
+      });
+    } catch (error) {
+      console.error('[FollowUpSettingsPanel] failed to load email AI config', error);
+      addToast?.('Failed to load email AI automation settings', 'error');
+    } finally {
+      setLoadingAiConfig(false);
     }
   };
 
@@ -263,6 +298,32 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
       addToast?.('Failed to save stage', 'error');
     } finally {
       setSavingStageId(null);
+    }
+  };
+
+  const handleSaveAiConfig = async () => {
+    try {
+      setSavingAiConfig(true);
+      const sanitizedKeywords = aiConfig.keywordFilters.map(keyword => keyword.trim()).filter(Boolean);
+      const payload = {
+        ...aiConfig,
+        keywordFilters: sanitizedKeywords,
+      };
+      const { error } = await supabase
+        .from('app_settings')
+        .update({
+          setting_value: payload,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('setting_key', 'vendor_email_ai_config');
+      if (error) throw error;
+      setAiConfig(payload);
+      addToast?.('Vendor email automation updated', 'success');
+    } catch (error) {
+      console.error('[FollowUpSettingsPanel] failed to save AI config', error);
+      addToast?.('Failed to update vendor email automation settings', 'error');
+    } finally {
+      setSavingAiConfig(false);
     }
   };
 
@@ -591,6 +652,123 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
           )}
         </>
       )}
+
+      <section className="rounded-2xl border border-white/10 bg-gray-900/40 p-4 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-white">Vendor email intelligence</h3>
+            <p className="text-xs text-gray-400">
+              Controls when Gmail replies are parsed with AI so we capture tracking and invoices automatically.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-gray-200">
+            <input
+              type="checkbox"
+              checked={aiConfig.enabled}
+              onChange={(event) => setAiConfig((prev) => ({ ...prev, enabled: event.target.checked }))}
+              className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+            />
+            Autonomous parsing
+          </label>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="flex flex-col text-xs text-gray-400 gap-1">
+            Max emails per hour
+            <input
+              type="number"
+              min={0}
+              value={aiConfig.maxEmailsPerHour}
+              onChange={(event) =>
+                setAiConfig((prev) => ({ ...prev, maxEmailsPerHour: Math.max(0, Number(event.target.value) || 0) }))
+              }
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white"
+            />
+          </label>
+          <label className="flex flex-col text-xs text-gray-400 gap-1">
+            Daily AI budget (USD)
+            <input
+              type="number"
+              min={0}
+              step="0.1"
+              value={aiConfig.maxDailyCostUsd}
+              onChange={(event) =>
+                setAiConfig((prev) => ({
+                  ...prev,
+                  maxDailyCostUsd: Math.max(0, Number(event.target.value) || 0),
+                }))
+              }
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white"
+            />
+          </label>
+          <label className="flex flex-col text-xs text-gray-400 gap-1">
+            Minimum confidence
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step="0.05"
+              value={aiConfig.minConfidence}
+              onChange={(event) =>
+                setAiConfig((prev) => ({
+                  ...prev,
+                  minConfidence: Math.min(1, Math.max(0, Number(event.target.value) || 0)),
+                }))
+              }
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white"
+            />
+            <span className="text-[11px] text-gray-500">AI results below this confidence will be surfaced but not applied.</span>
+          </label>
+          <label className="flex flex-col text-xs text-gray-400 gap-1">
+            Max body characters
+            <input
+              type="number"
+              min={4000}
+              value={aiConfig.maxBodyCharacters}
+              onChange={(event) =>
+                setAiConfig((prev) => ({
+                  ...prev,
+                  maxBodyCharacters: Math.max(4000, Number(event.target.value) || 4000),
+                }))
+              }
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white"
+            />
+          </label>
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Keyword filters</label>
+          <input
+            type="text"
+            value={aiConfig.keywordFilters.join(', ')}
+            onChange={(event) =>
+              setAiConfig((prev) => ({
+                ...prev,
+                keywordFilters: event.target.value
+                  .split(',')
+                  .map((keyword) => keyword.trim())
+                  .filter(Boolean),
+              }))
+            }
+            placeholder="tracking, shipped, delivery, invoice"
+            className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white"
+          />
+          <p className="text-[11px] text-gray-500 mt-1">
+            AI only runs when these keywords appear in the subject or body. Keep this list short to avoid unnecessary
+            spend.
+          </p>
+        </div>
+
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSaveAiConfig}
+            disabled={savingAiConfig || loadingAiConfig}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-600"
+          >
+            {savingAiConfig ? 'Saving…' : 'Save automation guardrails'}
+          </Button>
+        </div>
+      </section>
 
       <div className="bg-gray-900/40 border border-dashed border-gray-700 rounded-lg p-4 text-sm text-gray-400 flex gap-3">
         <BotIcon className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
