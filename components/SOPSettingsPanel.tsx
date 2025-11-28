@@ -5,6 +5,8 @@ import { aiTemplateGenerator } from '../services/aiTemplateGenerator';
 import { externalDocumentService, DocumentItem } from '../services/externalDocumentService';
 import { SOPWorkflowPanel } from './SOPWorkflowPanel';
 import { SOPSubmissionForm } from './SOPSubmissionForm';
+import JobDescriptionPanel from './JobDescriptionPanel';
+import DelegationSettingsPanel from './DelegationSettingsPanel';
 import {
   BotIcon,
   SaveIcon,
@@ -29,6 +31,8 @@ import {
   InformationCircleIcon,
   CogIcon,
   ServerStackIcon,
+  DocumentTextIcon,
+  UsersIcon,
 } from './icons';
 import { getGoogleDocsService } from '../services/googleDocsService';
 import * as XLSX from 'xlsx';
@@ -179,7 +183,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
   const [googleDocs, setGoogleDocs] = useState<Array<{id: string, name: string, modifiedTime: string}>>([]);
 
   // Workflow state
-  const [activeTab, setActiveTab] = useState<'repository' | 'workflow'>('repository');
+  const [activeTab, setActiveTab] = useState<'repository' | 'jobs' | 'delegation' | 'workflow' | 'templates'>('repository');
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
 
@@ -795,32 +799,67 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex border-b border-gray-700">
+      {/* Unified Tab Navigation */}
+      <div className="flex border-b border-gray-700 overflow-x-auto">
         <button
           onClick={() => setActiveTab('repository')}
-          className={`px-4 py-2 text-sm font-medium ${
+          className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
             activeTab === 'repository'
               ? 'text-white border-b-2 border-indigo-400'
               : 'text-gray-400 hover:text-white'
           }`}
         >
-          Repository & Templates
+          <DocumentTextIcon className="w-4 h-4 inline mr-2" />
+          Repository
+        </button>
+        <button
+          onClick={() => setActiveTab('jobs')}
+          className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+            activeTab === 'jobs'
+              ? 'text-white border-b-2 border-indigo-400'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <DocumentTextIcon className="w-4 h-4 inline mr-2" />
+          Job Descriptions
+        </button>
+        <button
+          onClick={() => setActiveTab('delegation')}
+          className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+            activeTab === 'delegation'
+              ? 'text-white border-b-2 border-indigo-400'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <UsersIcon className="w-4 h-4 inline mr-2" />
+          Task Delegation
         </button>
         <button
           onClick={() => setActiveTab('workflow')}
-          className={`px-4 py-2 text-sm font-medium ${
+          className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
             activeTab === 'workflow'
               ? 'text-white border-b-2 border-indigo-400'
               : 'text-gray-400 hover:text-white'
           }`}
         >
-          Workflow & Approvals
+          <ClockIcon className="w-4 h-4 inline mr-2" />
+          Workflow
+        </button>
+        <button
+          onClick={() => setActiveTab('templates')}
+          className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+            activeTab === 'templates'
+              ? 'text-white border-b-2 border-indigo-400'
+              : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <CogIcon className="w-4 h-4 inline mr-2" />
+          Templates
         </button>
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'repository' ? (
+      {activeTab === 'repository' && (
         <>
           <div className="rounded-xl border border-blue-500/20 bg-blue-900/10 p-4">
             <div className="flex items-center gap-2 mb-3">
@@ -976,7 +1015,17 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
             ))}
           </div>
         </>
-      ) : (
+      )}
+
+      {activeTab === 'jobs' && (
+        <JobDescriptionPanel addToast={addToast} />
+      )}
+
+      {activeTab === 'delegation' && (
+        <DelegationSettingsPanel addToast={addToast} />
+      )}
+
+      {activeTab === 'workflow' && (
         <div className="space-y-6">
           {showSubmissionForm ? (
             <SOPSubmissionForm
@@ -998,6 +1047,73 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
               }}
             />
           )}
+        </div>
+      )}
+
+      {activeTab === 'templates' && (
+        <div className="space-y-6">
+          {/* Template Management Content */}
+          <div className="rounded-xl border border-gray-700 bg-gray-900/50 p-6">
+            <h4 className="text-lg font-semibold text-white mb-4">SOP Template Management</h4>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {templates.map(template => (
+                <div key={template.id} className="rounded-lg border border-gray-700 bg-gray-800/50 p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h5 className="text-sm font-semibold text-white">{template.name}</h5>
+                      <p className="text-xs text-gray-400 mt-1">{template.description}</p>
+                    </div>
+                    {template.isDefault && (
+                      <span className="px-2 py-1 bg-purple-900/50 text-purple-300 rounded text-xs">
+                        Default
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <span className="px-2 py-1 bg-blue-900/50 text-blue-300 rounded text-xs">
+                        {template.category}
+                      </span>
+                      <span className="px-2 py-1 bg-green-900/50 text-green-300 rounded text-xs">
+                        {template.department}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => setEditingTemplate(template)}
+                        size="sm"
+                        variant="ghost"
+                        className="flex-1"
+                      >
+                        <PencilIcon className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        onClick={() => {/* TODO: Delete template */}}
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6">
+              <Button
+                onClick={() => setIsTemplateModalOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <PlusCircleIcon className="w-4 h-4" />
+                Create New Template
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

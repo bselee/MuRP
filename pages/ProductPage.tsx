@@ -159,22 +159,73 @@ const ProductPage: React.FC<ProductPageProps> = ({
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Product Overview</h3>
-                  <Button
-                    onClick={() => setOverviewExpanded(!overviewExpanded)}
-                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-                  >
-                    {overviewExpanded ? (
-                      <>
-                        <ChevronUpIcon className="w-4 h-4" />
-                        Show Less
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDownIcon className="w-4 h-4" />
-                        Show More
-                      </>
+                  <div className="flex items-center gap-2">
+                    {/* Import/Export functionality */}
+                    <Button
+                      onClick={() => {
+                        // Export product data as JSON
+                        const exportData = {
+                          product,
+                          relatedBOMs,
+                          purchaseHistory,
+                          vendor: vendors.find(v => v.id === product.vendorId),
+                          exportDate: new Date().toISOString(),
+                        };
+                        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${product.sku}-product-data.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        addToast('Product data exported successfully', 'success');
+                      }}
+                      className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm"
+                      title="Export product data"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Export
+                    </Button>
+
+                    {/* Edit Inventory Parameters - only for full access users */}
+                    {userAccessLevel === 'full' && (
+                      <Button
+                        onClick={() => {
+                          // TODO: Open edit modal for inventory parameters
+                          addToast('Edit functionality coming soon', 'info');
+                        }}
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-3 py-1.5"
+                        title="Edit inventory parameters"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit
+                      </Button>
                     )}
-                  </Button>
+
+                    {/* Expand/Collapse button */}
+                    <Button
+                      onClick={() => setOverviewExpanded(!overviewExpanded)}
+                      className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                    >
+                      {overviewExpanded ? (
+                        <>
+                          <ChevronUpIcon className="w-4 h-4" />
+                          Show Less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDownIcon className="w-4 h-4" />
+                          Show More
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Basic Information - Always Visible */}
@@ -216,6 +267,51 @@ const ProductPage: React.FC<ProductPageProps> = ({
                       <div className="text-sm text-gray-600">
                         Unit Cost
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BOM Status Section */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${relatedBOMs.length > 0 ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900">
+                          {relatedBOMs.length > 0 ? 'Has Bill of Materials' : 'No Bill of Materials'}
+                        </h4>
+                        <p className="text-xs text-gray-600">
+                          {relatedBOMs.length > 0
+                            ? `${relatedBOMs.length} BOM${relatedBOMs.length > 1 ? 's' : ''} found`
+                            : 'This product does not have a bill of materials defined'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {relatedBOMs.length > 0 ? (
+                        relatedBOMs.map((bom) => (
+                          <Button
+                            key={bom.id}
+                            onClick={() => onNavigateToBom(bom.finishedSku)}
+                            className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1"
+                            title={`View BOM: ${bom.name}`}
+                          >
+                            View BOM
+                          </Button>
+                        ))
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            // TODO: Create new BOM for this product
+                            addToast('Create BOM functionality coming soon', 'info');
+                          }}
+                          className="text-xs bg-gray-600 hover:bg-gray-700 text-white px-3 py-1"
+                          title="Create a new BOM for this product"
+                        >
+                          Create BOM
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>

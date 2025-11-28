@@ -1235,36 +1235,69 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         const breakdown = insight?.demandBreakdown;
                                                         return (
                                                             <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
-                                                                        {runwayValue}
-                                                                    </span>
-                                                                    <span className="text-xs text-gray-400">vs {leadValue || '—'}d lead</span>
+                                                                <div className="relative group">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
+                                                                            {runwayValue}
+                                                                        </span>
+                                                                        <span className="text-xs text-gray-400">vs {leadValue || '—'}d lead</span>
+                                                                        <div className="w-8 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                                                            <div
+                                                                                className={`${insight?.needsOrder ? 'bg-red-500' : 'bg-emerald-500'} h-full`}
+                                                                                style={{ width: `${progressRatio}%` }}
+                                                                            ></div>
+                                                                        </div>
+                                                                    </div>
+                                                                    {/* Hover popup with detailed info */}
+                                                                    <div className="hidden group-hover:block absolute left-0 top-full mt-2 w-80 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 p-4 text-left">
+                                                                        <div className="text-sm font-semibold text-white mb-3">Runway Details</div>
+                                                                        <div className="space-y-2">
+                                                                            <div className="flex justify-between items-center">
+                                                                                <span className="text-xs text-gray-400">Runway:</span>
+                                                                                <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
+                                                                                    {runwayValue}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center">
+                                                                                <span className="text-xs text-gray-400">Lead Time:</span>
+                                                                                <span className="text-gray-300">{leadValue || '—'} days</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center">
+                                                                                <span className="text-xs text-gray-400">Source:</span>
+                                                                                <span className="text-gray-300">{insight ? demandSourceLabels[insight.demandSource] : 'N/A'}</span>
+                                                                            </div>
+                                                                            {insight && insight.dailyDemand > 0 && (
+                                                                                <div className="flex justify-between items-center">
+                                                                                    <span className="text-xs text-gray-400">Daily Demand:</span>
+                                                                                    <span className="text-gray-300">≈ {insight.dailyDemand.toFixed(1)} units/day</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {breakdown && (
+                                                                                <div className="mt-3 pt-3 border-t border-gray-700">
+                                                                                    <div className="text-xs text-gray-400 mb-2">Demand Breakdown:</div>
+                                                                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                                                                        <div className="flex justify-between">
+                                                                                            <span className="text-gray-500">30d avg:</span>
+                                                                                            <span className="text-gray-300">{formatDemandRate(breakdown.avg30)}</span>
+                                                                                        </div>
+                                                                                        <div className="flex justify-between">
+                                                                                            <span className="text-gray-500">60d avg:</span>
+                                                                                            <span className="text-gray-300">{formatDemandRate(breakdown.avg60)}</span>
+                                                                                        </div>
+                                                                                        <div className="flex justify-between">
+                                                                                            <span className="text-gray-500">90d avg:</span>
+                                                                                            <span className="text-gray-300">{formatDemandRate(breakdown.avg90)}</span>
+                                                                                        </div>
+                                                                                        <div className="flex justify-between">
+                                                                                            <span className="text-gray-500">Velocity:</span>
+                                                                                            <span className="text-gray-300">{formatDemandRate(breakdown.salesVelocity)}</span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                                {insight && (
-                                                                    <div className="text-[11px] text-gray-500 mt-0.5">
-                                                                        Source: {demandSourceLabels[insight.demandSource]}
-                                                                    </div>
-                                                                )}
-                                                                <div className="mt-1 w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                                                                    <div
-                                                                        className={`${insight?.needsOrder ? 'bg-red-500' : 'bg-emerald-500'} h-full`}
-                                                                        style={{ width: `${progressRatio}%` }}
-                                                                    ></div>
-                                                                </div>
-                                                                {insight && insight.dailyDemand > 0 && (
-                                                                    <div className="text-xs text-gray-500 mt-1">
-                                                                        ≈ {insight.dailyDemand.toFixed(1)} units/day
-                                                                    </div>
-                                                                )}
-                                                                {breakdown && (
-                                                                    <div className="text-[11px] text-gray-600 mt-0.5 space-x-2">
-                                                                        <span>30d {formatDemandRate(breakdown.avg30)}</span>
-                                                                        <span>60d {formatDemandRate(breakdown.avg60)}</span>
-                                                                        <span>90d {formatDemandRate(breakdown.avg90)}</span>
-                                                                        <span>Vel {formatDemandRate(breakdown.salesVelocity)}</span>
-                                                                    </div>
-                                                                )}
                                                             </td>
                                                         );
                                                     }
