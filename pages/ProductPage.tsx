@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { InventoryItem, BillOfMaterials, PurchaseOrder, Vendor } from '../types';
-import { PackageIcon, BeakerIcon, DocumentTextIcon, ChartBarIcon, BotIcon, ChevronDoubleLeftIcon } from '../components/icons';
+import { PackageIcon, BeakerIcon, DocumentTextIcon, ChartBarIcon, BotIcon, ChevronDoubleLeftIcon, ChevronDownIcon, ChevronUpIcon } from '../components/icons';
 import Button from '../components/ui/Button';
 
 interface ProductPageProps {
@@ -31,6 +31,7 @@ const ProductPage: React.FC<ProductPageProps> = ({
   onQuickRequest,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'bom' | 'purchases' | 'analytics' | 'ai'>('overview');
+  const [overviewExpanded, setOverviewExpanded] = useState(false);
 
   // Get the selected product SKU from localStorage
   const selectedSku = localStorage.getItem('selectedProductSku');
@@ -52,6 +53,17 @@ const ProductPage: React.FC<ProductPageProps> = ({
       po.items.some(item => item.sku === product.sku)
     );
   }, [product, purchaseOrders]);
+
+  // Determine user access level based on department
+  const getUserAccessLevel = () => {
+    if (!currentUser) return 'basic';
+    if (currentUser.role === 'Admin') return 'full';
+    if (currentUser.department === 'Purchasing') return 'full';
+    if (currentUser.role === 'Manager') return 'detailed';
+    return 'basic';
+  };
+
+  const userAccessLevel = getUserAccessLevel();
 
   if (!product) {
     return (
@@ -78,7 +90,16 @@ const ProductPage: React.FC<ProductPageProps> = ({
       <div className="mb-6">
         <div className="flex items-center gap-4 mb-4">
           <Button
-            onClick={() => window.history.back()}
+            onClick={() => {
+              // Try to go back in history, but if that doesn't work (e.g., direct navigation),
+              // fall back to navigating to the Inventory page
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                // If no history, navigate to inventory page
+                window.location.href = '/inventory';
+              }
+            }}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
           >
             <ChevronDoubleLeftIcon className="w-4 h-4" />
@@ -133,66 +154,166 @@ const ProductPage: React.FC<ProductPageProps> = ({
       {/* Tab Content */}
       <div className="min-h-[400px]">
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Stock Information</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Current Stock:</span>
-                  <span className="font-semibold">{product.stock}</span>
+          <div className="max-w-4xl">
+            <div className="bg-white border border-gray-200 rounded-lg">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Product Overview</h3>
+                  <Button
+                    onClick={() => setOverviewExpanded(!overviewExpanded)}
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                  >
+                    {overviewExpanded ? (
+                      <>
+                        <ChevronUpIcon className="w-4 h-4" />
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDownIcon className="w-4 h-4" />
+                        Show More
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">On Order:</span>
-                  <span className="font-semibold">{product.onOrder}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Reorder Point:</span>
-                  <span className="font-semibold">{product.reorderPoint}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Safety Stock:</span>
-                  <span className="font-semibold">{product.safetyStock || 0}</span>
-                </div>
-              </div>
-            </div>
 
-            <div className="bg-white p-6 rounded-lg border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Supplier Information</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Vendor:</span>
-                  <span className="font-semibold">
-                    {vendors.find(v => v.id === product.vendorId)?.name || 'N/A'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">MOQ:</span>
-                  <span className="font-semibold">{product.moq || 1}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Lead Time:</span>
-                  <span className="font-semibold">
-                    {vendors.find(v => v.id === product.vendorId)?.leadTimeDays || 'N/A'} days
-                  </span>
-                </div>
-              </div>
-            </div>
+                {/* Basic Information - Always Visible */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Stock Status</h4>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Current:</span>
+                        <span className={`font-semibold ${product.stock <= product.reorderPoint ? 'text-red-600' : 'text-green-600'}`}>
+                          {product.stock}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">On Order:</span>
+                        <span className="font-semibold text-blue-600">{product.onOrder}</span>
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="bg-white p-6 rounded-lg border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales Performance</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">30 Day Sales:</span>
-                  <span className="font-semibold">{product.sales30Days || 0}</span>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Supplier</h4>
+                    <div className="space-y-1">
+                      <div className="text-sm font-semibold text-gray-900">
+                        {vendors.find(v => v.id === product.vendorId)?.name || 'N/A'}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Lead Time: {vendors.find(v => v.id === product.vendorId)?.leadTimeDays || 'N/A'} days
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Pricing</h4>
+                    <div className="space-y-1">
+                      <div className="text-sm font-semibold text-gray-900">
+                        ${product.unitCost?.toFixed(2) || 'N/A'}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Unit Cost
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">90 Day Sales:</span>
-                  <span className="font-semibold">{product.sales90Days || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Velocity:</span>
-                  <span className="font-semibold">{product.salesVelocity?.toFixed(1) || 'N/A'}</span>
-                </div>
+
+                {/* Detailed Information - Expanded or for privileged users */}
+                {(overviewExpanded || userAccessLevel === 'full') && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500 mb-3">Inventory Details</h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Reorder Point:</span>
+                            <span className="font-semibold">{product.reorderPoint}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Safety Stock:</span>
+                            <span className="font-semibold">{product.safetyStock || 0}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">MOQ:</span>
+                            <span className="font-semibold">{product.moq || 1}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Status:</span>
+                            <span className={`font-semibold ${
+                              product.status === 'active' ? 'text-green-600' :
+                              product.status === 'inactive' ? 'text-yellow-600' : 'text-red-600'
+                            }`}>
+                              {product.status || 'active'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500 mb-3">Sales Performance</h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">30 Day Sales:</span>
+                            <span className="font-semibold">{product.sales30Days || 0}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">90 Day Sales:</span>
+                            <span className="font-semibold">{product.sales90Days || 0}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Velocity:</span>
+                            <span className="font-semibold">{product.salesVelocity?.toFixed(1) || 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Unit Price:</span>
+                            <span className="font-semibold">${product.unitPrice?.toFixed(2) || 'N/A'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {userAccessLevel === 'full' && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-500 mb-3">Purchasing Intelligence</h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Days of Stock:</span>
+                              <span className="font-semibold">
+                                {product.salesVelocity && product.salesVelocity > 0 
+                                  ? Math.round(product.stock / product.salesVelocity) 
+                                  : '∞'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Est. Out of Stock:</span>
+                              <span className="font-semibold text-red-600">
+                                {product.salesVelocity && product.salesVelocity > 0 
+                                  ? `${Math.round(product.stock / product.salesVelocity)} days`
+                                  : 'Never'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Suggested Order:</span>
+                              <span className="font-semibold text-blue-600">
+                                {Math.max(product.reorderPoint - product.stock, 0)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Show expand hint for non-privileged users */}
+                {!overviewExpanded && userAccessLevel !== 'full' && (
+                  <div className="text-center mt-4">
+                    <p className="text-sm text-gray-500">
+                      Click "Show More" for additional details
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -459,10 +459,13 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
                   <Button
-                    onClick={() => onNavigateToInventory?.(bom.finishedSku)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleExpand();
+                    }}
                     className={`font-extrabold font-mono transition-colors cursor-pointer ${isLightTheme ? 'text-indigo-700 hover:text-indigo-500' : 'text-white hover:text-indigo-400'}`}
                     style={{ fontSize: '1.3rem', letterSpacing: '0.02em' }}
-                    title="View this product in Inventory"
+                    title={isExpanded ? 'Hide recipe ingredients' : 'Show recipe ingredients'}
                   >
                     {bom.finishedSku}
                   </Button>
