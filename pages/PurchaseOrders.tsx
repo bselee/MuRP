@@ -30,6 +30,7 @@ import { subscribeToPoDrafts } from '../lib/poDraftBridge';
 import { generatePoPdf } from '../services/pdfService';
 import { usePermissions } from '../hooks/usePermissions';
 import { runFollowUpAutomation } from '../services/followUpService';
+import { getGoogleGmailService } from '../services/googleGmailService';
 
 interface PurchaseOrdersProps {
     purchaseOrders: PurchaseOrder[];
@@ -589,8 +590,27 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 />
 
                 <VendorResponseWorkbench
-                    onSendEmail={(commId) => {
-                        addToast(`Response sent for communication ${commId}`, 'success');
+                    onSendEmail={async (to: string, subject: string, body: string, threadId?: string) => {
+                        try {
+                            if (!gmailConnection?.accessToken) {
+                                addToast('Gmail not connected. Please connect your Gmail account first.', 'error');
+                                return { success: false, messageId: undefined };
+                            }
+
+                            const gmailService = getGoogleGmailService();
+                            const result = await gmailService.sendEmail({
+                                to,
+                                subject,
+                                body,
+                                threadId,
+                            });
+
+                            return { success: true, messageId: result.id };
+                        } catch (error) {
+                            console.error('Failed to send email:', error);
+                            addToast('Failed to send email', 'error');
+                            return { success: false, messageId: undefined };
+                        }
                     }}
                 />
 

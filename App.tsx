@@ -26,10 +26,12 @@ import FeatureSpotlightReminder from './components/FeatureSpotlightReminder';
 import OnboardingChecklist from './components/OnboardingChecklist';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
 import { UserPreferencesProvider } from './components/UserPreferencesProvider';
+import { useAuth } from './lib/auth/AuthContext';
 import AuthCallback from './pages/AuthCallback';
 import ResetPassword from './pages/ResetPassword';
 import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
+import { usePermissions } from './hooks/usePermissions';
 import {
   useSupabaseInventory,
   useSupabaseVendors,
