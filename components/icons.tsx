@@ -66,6 +66,43 @@ export const AiSwirlIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+// Cute Robot Icon for MuRPBot
+export const MuRPBotIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+  >
+    {/* Robot head */}
+    <rect x="6" y="6" width="12" height="10" rx="2" fill="currentColor" opacity={0.9} />
+    {/* Eyes */}
+    <circle cx="9.5" cy="9.5" r="1.5" fill="white" />
+    <circle cx="14.5" cy="9.5" r="1.5" fill="white" />
+    {/* Pupils */}
+    <circle cx="9.5" cy="9.5" r="0.8" fill="currentColor" />
+    <circle cx="14.5" cy="9.5" r="0.8" fill="currentColor" />
+    {/* Mouth */}
+    <rect x="10" y="12" width="4" height="1" rx="0.5" fill="white" />
+    {/* Antennas */}
+    <line x1="9" y1="6" x2="9" y2="4" stroke="currentColor" strokeWidth="1.5" />
+    <line x1="15" y1="6" x2="15" y2="4" stroke="currentColor" strokeWidth="1.5" />
+    {/* Antenna balls */}
+    <circle cx="9" cy="3.5" r="1" fill="currentColor" />
+    <circle cx="15" cy="3.5" r="1" fill="currentColor" />
+    {/* Body */}
+    <rect x="8" y="16" width="8" height="6" rx="1" fill="currentColor" opacity={0.7} />
+    {/* Arms */}
+    <rect x="4" y="17" width="4" height="2" rx="1" fill="currentColor" opacity={0.8} />
+    <rect x="16" y="17" width="4" height="2" rx="1" fill="currentColor" opacity={0.8} />
+    {/* Legs */}
+    <rect x="9" y="22" width="2" height="3" rx="1" fill="currentColor" opacity={0.8} />
+    <rect x="13" y="22" width="2" height="3" rx="1" fill="currentColor" opacity={0.8} />
+  </svg>
+);
+
 export const BoxIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-14L4 7v10l8 4m0-14V3" />

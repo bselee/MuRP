@@ -22,7 +22,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { sendChatMessage, type ChatRequest } from '../services/aiGatewayService';
 import { getUserProfile } from '../services/complianceService';
 import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, AiConfig, AiSettings } from '../types';
-import { CloseIcon, SendIcon, AiSwirlIcon } from './icons';
+import { CloseIcon, SendIcon, MuRPBotIcon } from './icons';
 
 interface AiAssistantProps {
   isOpen: boolean;
@@ -76,7 +76,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
       setMessages([
         {
           sender: 'bot',
-          text: "Hello! I'm your AI assistant powered by Vercel AI Gateway 🚀\n\nI can help with:\n\n• Inventory levels & reorder points\n• BOM buildability & shortages\n• Purchase order status\n• Compliance & regulatory questions\n• Production planning\n\nTry asking: 'What's blocking production?' or 'Which products have compliance issues?'",
+          text: "🤖 Hey there! I'm MB, your witty MuRPBot sidekick! 💡\n\nI'm here to help you make smart decisions within MuRP's inventory and compliance constraints. Let's keep things fun but focused on what matters:\n\n• Inventory optimization & reorder alerts\n• BOM buildability & production blockers\n• Purchase order workflows & vendor management\n• Compliance requirements & regulatory guidance\n• Production planning & forecasting\n\nTry asking: 'What's blocking our production?' or 'Which items need reordering?'\n\nRemember, I'm serious about MuRP topics only - let's crush those inventory challenges! 🚀",
         },
       ]);
     }
@@ -204,16 +204,16 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
         <header className="flex items-center justify-between p-4 bg-gray-900/50 border-b border-gray-700">
           <div className="flex items-center gap-3">
             <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 via-indigo-500 to-purple-600 shadow-[0_10px_25px_rgba(15,23,42,0.45)]">
-              <AiSwirlIcon className="w-6 h-6 text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" />
+              <MuRPBotIcon className="w-6 h-6 text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" />
               <div className="absolute inset-0 rounded-2xl border border-white/20" />
             </div>
             <div>
               <h2 className="text-xl font-black tracking-tight text-white">
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-indigo-200 to-purple-200 uppercase tracking-[0.35em]">
-                  Ai
+                  MB
                 </span>
                 <span className="ml-2 text-sm uppercase tracking-[0.35em] text-gray-300 font-semibold">
-                  Copilot
+                  MuRPBot
                 </span>
               </h2>
               {messagesRemaining !== null && (
@@ -260,7 +260,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
             >
               {msg.sender === 'bot' && (
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 via-indigo-500 to-purple-600 flex-shrink-0 flex items-center justify-center shadow-[0_6px_15px_rgba(79,70,229,0.45)]">
-                  <AiSwirlIcon className="w-4 h-4 text-white" />
+                  <MuRPBotIcon className="w-4 h-4 text-white" />
                 </div>
               )}
               <div className="flex flex-col gap-1 max-w-xs md:max-w-md">
@@ -285,7 +285,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
           {isLoading && (
             <div className="flex gap-3 justify-start">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 via-indigo-500 to-purple-600 flex-shrink-0 flex items-center justify-center shadow-[0_6px_15px_rgba(79,70,229,0.45)]">
-                <AiSwirlIcon className="w-4 h-4 text-white" />
+                <MuRPBotIcon className="w-4 h-4 text-white" />
               </div>
               <div className="max-w-xs md:max-w-md p-3 rounded-lg bg-gray-700 text-gray-200">
                 <div className="flex items-center space-x-1">
