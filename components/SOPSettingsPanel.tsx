@@ -7,6 +7,7 @@ import { SOPWorkflowPanel } from './SOPWorkflowPanel';
 import { SOPSubmissionForm } from './SOPSubmissionForm';
 import JobDescriptionPanel from './JobDescriptionPanel';
 import DelegationSettingsPanel from './DelegationSettingsPanel';
+import { useJobDescriptions } from '../hooks/useJobDescriptions';
 import {
   BotIcon,
   SaveIcon,
@@ -43,17 +44,18 @@ interface SOPSettingsPanelProps {
 
 type SOPRepositoryItem = {
   id: string;
+  type: 'sop' | 'job_description';
   title: string;
   description: string;
   category: string;
   tags: string[];
-  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'expert';
-  estimatedTimeMinutes: number;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  estimatedTimeMinutes?: number;
   content: string;
   googleDocId?: string;
   googleDocUrl?: string;
   lastSyncedAt?: string;
-  isAiGenerated: boolean;
+  isAiGenerated?: boolean;
   aiConfidence?: number;
   usageCount: number;
   lastUsedAt?: string;
@@ -71,6 +73,19 @@ type SOPRepositoryItem = {
     url: string;
     type: 'pdf' | 'image' | 'video' | 'document';
   }>;
+  // Job description specific fields
+  role?: string;
+  mission?: string;
+  successMetrics?: string[];
+  keyTools?: string[];
+  sopSections?: Array<{
+    title: string;
+    trigger: string;
+    owner: string;
+    steps: string[];
+  }>;
+  automationIdeas?: string[];
+  lastUpdatedBy?: string;
 };
 
 type SOPTemplate = {
@@ -114,12 +129,14 @@ const SOP_CATEGORIES = [
   'Troubleshooting',
   'Training',
   'Compliance',
+  'Job Description',
   'Other'
 ];
 
 const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
   // Repository state
   const [sops, setSops] = useState<SOPRepositoryItem[]>([]);
+  const { jobDescriptions } = useJobDescriptions();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -183,7 +200,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
   const [googleDocs, setGoogleDocs] = useState<Array<{id: string, name: string, modifiedTime: string}>>([]);
 
   // Workflow state
-  const [activeTab, setActiveTab] = useState<'repository' | 'jobs' | 'delegation' | 'workflow' | 'templates'>('repository');
+  const [activeTab, setActiveTab] = useState<'repository' | 'delegation' | 'workflow' | 'templates'>('repository');
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
 
@@ -199,16 +216,99 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
   const loadSOPRepository = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data: sopData, error } = await supabase
         .from('sop_repository')
         .select('*')
-        .order('updatedAt', { ascending: false });
+        .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      setSops(data || []);
+
+      // Convert SOPs to repository items
+      const sopItems: SOPRepositoryItem[] = (sopData || []).map(sop => ({
+        id: sop.id,
+        type: 'sop' as const,
+        title: sop.title,
+        description: sop.description,
+        category: sop.category,
+        tags: sop.tags || [],
+        difficulty: sop.difficulty,
+        estimatedTimeMinutes: sop.estimated_time_minutes,
+        content: sop.content,
+        googleDocId: sop.google_doc_id,
+        googleDocUrl: sop.google_doc_url,
+        lastSyncedAt: sop.last_synced_at,
+        isAiGenerated: sop.is_ai_generated,
+        aiConfidence: sop.ai_confidence,
+        usageCount: sop.usage_count || 0,
+        lastUsedAt: sop.last_used_at,
+        createdBy: sop.created_by,
+        createdAt: sop.created_at,
+        updatedAt: sop.updated_at,
+        status: sop.status,
+        department: sop.department,
+        applicableRoles: sop.applicable_roles || [],
+        templateId: sop.template_id,
+        templateData: sop.template_data,
+        attachments: sop.attachments || [],
+      }));
+
+      // Convert job descriptions to repository items
+      const jobItems: SOPRepositoryItem[] = jobDescriptions.map(job => ({
+        id: job.id,
+        type: 'job_description' as const,
+        title: `${job.role} - ${job.department}`,
+        description: job.overview,
+        category: 'Job Description',
+        tags: [job.role, job.department, 'job', 'description'],
+        content: `
+## Mission
+${job.mission}
+
+## Success Metrics
+${job.successMetrics.map(metric => `- ${metric}`).join('\n')}
+
+## Key Tools
+${job.keyTools.map(tool => `- ${tool}`).join('\n')}
+
+## SOP Sections
+${job.sopSections.map(section => `
+### ${section.title}
+**Trigger:** ${section.trigger}
+**Owner:** ${section.owner}
+**Steps:**
+${section.steps.map(step => `1. ${step}`).join('\n')}
+`).join('\n')}
+
+${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => `- ${idea}`).join('\n')}` : ''}
+        `,
+        usageCount: 0,
+        createdBy: job.lastUpdatedBy || 'System',
+        createdAt: job.updatedAt || new Date().toISOString(),
+        updatedAt: job.updatedAt || new Date().toISOString(),
+        status: job.status === 'approved' ? 'published' : 'draft',
+        department: job.department,
+        applicableRoles: [job.role],
+        attachments: [],
+        // Job description specific fields
+        role: job.role,
+        mission: job.mission,
+        successMetrics: job.successMetrics,
+        keyTools: job.keyTools,
+        sopSections: job.sopSections,
+        automationIdeas: job.automationIdeas,
+        lastUpdatedBy: job.lastUpdatedBy,
+        googleDocUrl: job.googleDocUrl,
+      }));
+
+      // Combine and sort by updated date
+      const allItems = [...sopItems, ...jobItems].sort((a, b) => 
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+
+      setSops(allItems);
     } catch (error) {
-      console.error('Failed to load SOP repository:', error);
-      addToast?.('Failed to load SOP repository', 'error');
+      console.error('Failed to load repository:', error);
+      addToast?.('Failed to load repository', 'error');
     } finally {
       setLoading(false);
     }
@@ -813,17 +913,6 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
           Repository
         </button>
         <button
-          onClick={() => setActiveTab('jobs')}
-          className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
-            activeTab === 'jobs'
-              ? 'text-white border-b-2 border-indigo-400'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          <DocumentTextIcon className="w-4 h-4 inline mr-2" />
-          Job Descriptions
-        </button>
-        <button
           onClick={() => setActiveTab('delegation')}
           className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
             activeTab === 'delegation'
@@ -893,7 +982,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
                 <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search SOPs..."
+                  placeholder="Search SOPs and Job Descriptions..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-indigo-400"
@@ -950,6 +1039,11 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
                   <div className="flex-1">
                     <h4 className="text-sm font-semibold text-white line-clamp-2">{sop.title}</h4>
                     <p className="text-xs text-gray-400 mt-1">{sop.category}</p>
+                    {sop.type === 'job_description' && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-900/50 text-green-300 mt-1">
+                        Job Description
+                      </span>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     {sop.googleDocId && (
@@ -958,15 +1052,28 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
                     {sop.isAiGenerated && (
                       <BotIcon className="w-4 h-4 text-purple-400" title="AI Generated" />
                     )}
+                    {sop.type === 'job_description' && (
+                      <UsersIcon className="w-4 h-4 text-green-400" title="Job Description" />
+                    )}
                   </div>
                 </div>
 
                 <p className="text-xs text-gray-300 line-clamp-3">{sop.description}</p>
 
                 <div className="flex items-center justify-between text-xs text-gray-400">
-                  <span>{sop.difficulty}</span>
-                  <span>{sop.estimatedTimeMinutes}min</span>
-                  <span>{sop.usageCount} uses</span>
+                  {sop.type === 'sop' ? (
+                    <>
+                      <span>{sop.difficulty || 'N/A'}</span>
+                      <span>{sop.estimatedTimeMinutes || 0}min</span>
+                      <span>{sop.usageCount} uses</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{sop.role}</span>
+                      <span>{sop.department}</span>
+                      <span>{sop.status}</span>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -1015,10 +1122,6 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
             ))}
           </div>
         </>
-      )}
-
-      {activeTab === 'jobs' && (
-        <JobDescriptionPanel addToast={addToast} />
       )}
 
       {activeTab === 'delegation' && (
