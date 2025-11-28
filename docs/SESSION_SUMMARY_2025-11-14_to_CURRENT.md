@@ -1498,6 +1498,7 @@ interface GmailSendResult {
 - Added: `components/VendorConfidenceDashboard.tsx` – dashboard component showing gauges, sparkline trends, factor breakdown, and recent interaction insights.
 - Updated: `types.ts` – Introduced vendor confidence interfaces and response strategy types for reuse across the app.
 - Updated: `pages/Vendors.tsx` – Surfaced the new dashboard at the top of the Vendors workspace.
+- Reference: `docs/VENDOR_CONFIDENCE_IMPLEMENTATION_GUIDE.md#phase-7-vendor-pricelist-management` for the upcoming pricelist extraction workflow to keep vendor confidence scoring aligned once Phase 7 lands.
 
 **Tests:**
 - `npm run build`

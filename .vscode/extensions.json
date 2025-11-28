@@ -1,5 +1,7 @@
 {
     "recommendations": [
-        "openai.chatgpt"
+        "openai.chatgpt",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg"
     ]
 }

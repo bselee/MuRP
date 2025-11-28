@@ -20,6 +20,7 @@
 
 import { supabase } from '../lib/supabase/client';
 import { sendChatMessage } from './aiGatewayService';
+import { getResponseStrategyForVendor, getVendorConfidenceProfile } from './vendorConfidenceService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 Type Definitions
@@ -314,27 +315,37 @@ export async function generateDraftReply(
 
   const { communication, poDetails } = details;
 
-  // Try to use a template first for common categories
-  const templateType = getTemplateTypeForCategory(communication.responseCategory);
-  
+  // Get vendor confidence profile for response strategy
+  const vendorProfile = await getVendorConfidenceProfile(communication.vendorEmail);
+  const responseStrategy = await getResponseStrategyForVendor(vendorProfile);
+
+  // Try to use a template first for common categories (adjusted by confidence)
+  const templateType = getTemplateTypeForCategory(communication.responseCategory, responseStrategy);
+
   if (templateType && options.templateType !== 'ai_only') {
     const templateDraft = await generateFromTemplate(
       communicationId,
       communication,
       poDetails,
-      templateType
+      templateType,
+      responseStrategy
     );
     if (templateDraft) return templateDraft;
   }
 
-  // Fall back to AI generation
-  return generateWithAI(communicationId, communication, poDetails, options);
+  // Fall back to AI generation with confidence-based parameters
+  return generateWithAI(communicationId, communication, poDetails, options, responseStrategy);
 }
 
 /**
- * Get appropriate template type for a response category
+ * Get appropriate template type for a response category, adjusted by vendor confidence
  */
-function getTemplateTypeForCategory(category?: VendorResponseCategory): string | null {
+function getTemplateTypeForCategory(
+  category?: VendorResponseCategory,
+  responseStrategy?: { strictness: string; tone: string; reminders: string[] }
+): string | null {
+  if (!category) return null;
+
   const categoryTemplateMap: Record<VendorResponseCategory, string> = {
     shipment_confirmation: 'response_shipment',
     delivery_update: 'response_shipment',
@@ -350,7 +361,20 @@ function getTemplateTypeForCategory(category?: VendorResponseCategory): string |
     other: 'response_clarification',
   };
 
-  return category ? categoryTemplateMap[category] : null;
+  const baseTemplate = categoryTemplateMap[category];
+  if (!baseTemplate) return null;
+
+  // Adjust template based on confidence level
+  if (responseStrategy?.strictness === 'maximum') {
+    // For low-confidence vendors, use maximum structure templates
+    return `${baseTemplate}_strict`;
+  } else if (responseStrategy?.strictness === 'relaxed') {
+    // For high-confidence vendors, use relaxed templates
+    return `${baseTemplate}_relaxed`;
+  }
+
+  // Standard template for normal confidence levels
+  return baseTemplate;
 }
 
 /**
@@ -360,7 +384,8 @@ async function generateFromTemplate(
   communicationId: string,
   communication: VendorCommunicationQueueItem,
   poDetails: any,
-  templateType: string
+  templateType: string,
+  responseStrategy?: { strictness: string; tone: string; reminders: string[] }
 ): Promise<VendorResponseDraft | null> {
   // Fetch template
   const { data: template } = await supabase
@@ -404,6 +429,11 @@ async function generateFromTemplate(
     if (extracted.expectedDelivery) variables.expected_delivery = extracted.expectedDelivery;
   }
 
+  // Add confidence-based reminders as variables
+  if (responseStrategy?.reminders?.length) {
+    variables.confidence_reminders = responseStrategy.reminders.join('\n• ');
+  }
+
   // Substitute variables in template
   let subject = template.subject_line;
   let body = template.body_template;
@@ -434,6 +464,10 @@ async function generateFromTemplate(
       template_id: template.id,
       template_type: templateType,
       status: 'draft',
+      generation_context: {
+        response_strategy: responseStrategy,
+        vendor_confidence_used: !!responseStrategy,
+      },
     })
     .select()
     .single();
@@ -467,9 +501,11 @@ async function generateWithAI(
   communicationId: string,
   communication: VendorCommunicationQueueItem,
   poDetails: any,
-  options: GenerateDraftOptions
+  options: GenerateDraftOptions,
+  responseStrategy?: { strictness: string; tone: string; reminders: string[] }
 ): Promise<VendorResponseDraft | null> {
-  const tone = options.tone || 'friendly';
+  // Use confidence-based tone if available, otherwise fallback to options
+  const tone = responseStrategy?.tone || options.tone || 'friendly';
   
   const prompt = `Generate a professional email response to this vendor communication.
 
@@ -479,6 +515,10 @@ CONTEXT:
 - Category: ${communication.responseCategory || 'general'}
 - Suggested Action: ${communication.suggestedAction || 'review_required'}
 - AI Reasoning: ${communication.actionReasoning || 'N/A'}
+
+VENDOR RELIABILITY: ${responseStrategy ? `This vendor has a ${responseStrategy.strictness} reliability profile. Use ${responseStrategy.tone} tone.` : 'Standard vendor interaction.'}
+
+${responseStrategy?.reminders?.length ? `IMPORTANT REMINDERS:\n${responseStrategy.reminders.map(r => `• ${r}`).join('\n')}` : ''}
 
 ORIGINAL EMAIL:
 Subject: ${communication.subject}
@@ -539,6 +579,8 @@ Return ONLY JSON in this format:
           category: communication.responseCategory,
           suggestedAction: communication.suggestedAction,
           tone: options.tone,
+          response_strategy: responseStrategy,
+          vendor_confidence_used: !!responseStrategy,
         },
         status: 'draft',
       })

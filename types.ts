@@ -729,6 +729,52 @@ export interface Vendor {
     automationNotes?: string;
 }
 
+export interface PricelistItem {
+    sku: string;
+    description?: string;
+    unit?: string;
+    price: number;
+    currency?: string;
+    moq?: number;
+    notes?: string;
+    confidence?: number;
+}
+
+export interface VendorPricelist {
+    id: string;
+    vendorId: string;
+    name: string;
+    effectiveDate?: string | null;
+    expirationDate?: string | null;
+    fileUrl?: string | null;
+    fileType?: string | null;
+    googleDocId?: string | null;
+    extractionStatus: 'pending' | 'extracted' | 'error';
+    extractionConfidence?: number | null;
+    extractionError?: string | null;
+    items: PricelistItem[];
+    version: number;
+    previousVersionId?: string | null;
+    isCurrent: boolean;
+    uploadedBy?: string | null;
+    uploadedAt: string;
+    notes?: string | null;
+}
+
+export interface PricelistDiffSummary {
+    added: PricelistItem[];
+    removed: PricelistItem[];
+    changed: Array<{
+        sku: string;
+        previousPrice?: number;
+        newPrice?: number;
+        variancePercent?: number;
+        previousMoq?: number;
+        newMoq?: number;
+    }>;
+    summaryText: string;
+}
+
 export type VendorConfidenceTrend = 'improving' | 'stable' | 'declining';
 export type VendorCommunicationStatus =
   | 'fully_automatic'

@@ -41,7 +41,7 @@ const DEFAULT_VENDOR_EMAIL_AI_CONFIG: VendorEmailAIConfig = {
   maxEmailsPerHour: 60,
   maxDailyCostUsd: 1.5,
   minConfidence: 0.65,
-  keywordFilters: ['tracking', 'shipped', 'delivery', 'invoice', 'confirm'],
+  keywordFilters: ['tracking', 'shipped', 'delivery', 'invoice', 'confirm', 'pricelist', 'pricing', 'price list', 'catalog', 'quote'],
   maxBodyCharacters: 16000,
 };
 
@@ -141,8 +141,16 @@ serve(async (req) => {
       attachments,
     });
 
-    let vendorResponseStatus: VendorResponseStatus = invoiceSignal?.detected ? 'requires_clarification' : 'vendor_responded';
-    let vendorResponseSummary: any = invoiceSignal?.detected ? invoiceSignal : null;
+    const pricelistSignal = detectPricelistSignal({
+      subject: subjectHeader,
+      from: fromHeader,
+      bodyText,
+      attachmentsText,
+      attachments,
+    });
+
+    let vendorResponseStatus: VendorResponseStatus = (invoiceSignal?.detected || pricelistSignal?.detected) ? 'requires_clarification' : 'vendor_responded';
+    let vendorResponseSummary: any = invoiceSignal?.detected ? invoiceSignal : (pricelistSignal?.detected ? pricelistSignal : null);
 
     // Check if AI detected invoice data
     const hasInvoiceData = parsed?.invoiceData && parsed.status === 'invoice_received';
@@ -156,19 +164,36 @@ serve(async (req) => {
       };
     }
 
+    // Check if AI detected pricelist data
+    const hasPricelistData = parsed?.pricelistData && parsed.responseCategory === 'pricelist_attached';
+
+    if (hasPricelistData) {
+      vendorResponseStatus = 'requires_clarification';
+      vendorResponseSummary = {
+        ...vendorResponseSummary,
+        pricelist_data: parsed.pricelistData,
+        extracted_by: 'ai'
+      };
+    }
+
     if ((invoiceSignal?.detected || hasInvoiceData) && poRecord.invoice_gmail_message_id !== messageId) {
       await recordInvoiceReceipt(poRecord, messageId, invoiceSignal, hasInvoiceData ? parsed?.invoiceData : undefined);
+    }
+
+    if ((pricelistSignal?.detected || hasPricelistData) && !poRecord.pricelist_gmail_message_id) {
+      await recordPricelistReceipt(poRecord, messageId, pricelistSignal, hasPricelistData ? parsed?.pricelistData : undefined);
     }
 
     const correlationConfidence = threadId ? 0.95 : 0.7;
     const communicationMetadata: Record<string, any> = {
       labelIds: gmailMessage.labelIds ?? [],
       invoiceSignal,
+      pricelistSignal,
     };
 
     await recordVendorCommunication({
       poId: poRecord.id,
-      communicationType: invoiceSignal?.detected ? 'vendor_invoice' : 'vendor_reply',
+      communicationType: invoiceSignal?.detected ? 'vendor_invoice' : (pricelistSignal?.detected ? 'vendor_pricelist' : 'vendor_reply'),
       direction: 'inbound',
       gmailMessageId: messageId,
       gmailThreadId: threadId,
@@ -719,6 +744,7 @@ type VendorResponseCategory =
   | 'out_of_stock'
   | 'substitution_offer'
   | 'invoice_attached'
+  | 'pricelist_attached'
   | 'order_confirmation'
   | 'lead_time_update'
   | 'general_inquiry'
@@ -748,6 +774,7 @@ interface ParsedTrackingResult {
   action?: string;
   confidence?: number | null;
   invoiceData?: any;
+  pricelistData?: any;
   // Enhanced fields for response workbench
   responseCategory?: VendorResponseCategory;
   suggestedAction?: VendorSuggestedAction;
@@ -790,7 +817,7 @@ async function analyzeEmailWithAI(
   const prompt = `
 You are an intelligent assistant that analyzes vendor emails for purchase order management. Your job is to:
 1. Classify the email into a response category
-2. Extract relevant data (tracking, pricing, stock status, etc.)
+2. Extract relevant data (tracking, pricing, stock status, invoices, pricelists, etc.)
 3. Recommend an action for the purchasing team
 4. Assess if this requires a human response
 
@@ -805,7 +832,7 @@ ${context.content.slice(0, 12000)}
 
 Analyze this email and return JSON with this structure:
 {
-  "response_category": "shipment_confirmation" | "delivery_update" | "delivery_exception" | "price_change" | "out_of_stock" | "substitution_offer" | "invoice_attached" | "order_confirmation" | "lead_time_update" | "general_inquiry" | "thank_you" | "other",
+  "response_category": "shipment_confirmation" | "delivery_update" | "delivery_exception" | "price_change" | "out_of_stock" | "substitution_offer" | "invoice_attached" | "pricelist_attached" | "order_confirmation" | "lead_time_update" | "general_inquiry" | "thank_you" | "other",
   
   "suggested_action": "acknowledge_receipt" | "confirm_acceptance" | "request_clarification" | "approve_pricing" | "reject_pricing" | "update_inventory" | "escalate_to_manager" | "forward_to_ap" | "update_po_tracking" | "create_backorder" | "no_action_required" | "review_required",
   
@@ -820,6 +847,23 @@ Analyze this email and return JSON with this structure:
     "due_date": "YYYY-MM-DD" | null,
     "total_amount": 290.40 | null,
     "line_items": [{"sku": "SKU", "description": "desc", "quantity": 10, "unit_price": 25.50}] | null
+  } | null,
+  
+  "is_pricelist": true | false,
+  "pricelist_data": {
+    "effective_date": "YYYY-MM-DD" | null,
+    "currency": "USD" | "EUR" | null,
+    "items": [
+      {
+        "sku": "SKU-123",
+        "description": "Product description",
+        "unit_price": 25.50,
+        "uom": "EA" | "LB" | "KG" | null,
+        "min_order_qty": 10 | null,
+        "lead_time_days": 7 | null
+      }
+    ] | null,
+    "notes": "Additional pricing notes" | null
   } | null,
   
   "tracking_data": {
@@ -854,10 +898,11 @@ Analyze this email and return JSON with this structure:
 }
 
 Guidelines:
-- requires_user_response should be TRUE for: price changes needing approval, stock issues requiring decisions, questions, exceptions, anything ambiguous
+- requires_user_response should be TRUE for: price changes needing approval, stock issues requiring decisions, questions, exceptions, anything ambiguous, new pricelists requiring review
 - requires_user_response should be FALSE for: simple confirmations, tracking updates, thank you messages
 - suggested_action should match the most appropriate next step
 - Extract ALL relevant structured data even if category is "other"
+- For pricelists, extract as much item detail as possible from the content
 
 Return ONLY valid JSON, no other text.`;
 
@@ -920,6 +965,22 @@ Return ONLY valid JSON, no other text.`;
         invoiceData: parsed.invoice_data,
         responseCategory: 'invoice_attached',
         suggestedAction: 'forward_to_ap',
+      };
+    }
+    
+    // Handle pricelist data
+    if (parsed.is_pricelist && parsed.pricelist_data) {
+      normalizedParsed = {
+        ...normalizedParsed,
+        trackingNumber: null,
+        carrier: null,
+        status: 'pricelist_received',
+        expectedDelivery: null,
+        notes: `Pricelist detected with ${parsed.pricelist_data.items?.length || 0} items`,
+        action: 'pricelist_received',
+        pricelistData: parsed.pricelist_data,
+        responseCategory: 'pricelist_attached',
+        suggestedAction: 'review_required',
       };
     }
     
@@ -994,6 +1055,13 @@ async function applyTrackingUpdate(poId: string, parsed: ParsedTrackingResult) {
   if (parsed.invoiceData) {
     // Handle invoice processing (existing logic)
     await recordInvoiceReceipt(poRecord, messageId, null, parsed.invoiceData);
+    return;
+  }
+
+  // Check if this is pricelist data
+  if (parsed.pricelistData) {
+    // Handle pricelist processing
+    await recordPricelistReceipt(poRecord, messageId, null, parsed.pricelistData);
     return;
   }
 
@@ -1134,47 +1202,126 @@ async function calculateAndStoreVariances(poId: string, invoiceDataId: string, i
   }
 }
 
-interface InvoiceSignal {
+interface PricelistSignal {
   detected: boolean;
   subject: string;
   reason: string;
   attachmentName?: string;
-  amount?: string;
-  dueDate?: string;
+  effectiveDate?: string;
+  itemCount?: number;
 }
 
-function detectInvoiceSignal(input: {
+function detectPricelistSignal(input: {
   subject: string;
   from: string;
   bodyText: string;
   attachmentsText: string;
   attachments: AttachmentMeta[];
-}): InvoiceSignal | null {
+}): PricelistSignal | null {
   const combinedLower = `${input.subject}\n${input.bodyText}\n${input.attachmentsText}`.toLowerCase();
   let score = 0;
-  if (combinedLower.includes('invoice')) score += 2;
-  if (combinedLower.includes('amount due') || combinedLower.includes('balance due')) score += 1;
-  if (combinedLower.includes('net 30') || combinedLower.includes('payment terms')) score += 0.5;
-
-  const invoiceAttachment = input.attachments.find(att => /invoice|inv|bill/i.test(att.filename));
-  if (invoiceAttachment) score += 2;
-  if (input.attachments.some(att => att.mimeType === 'application/pdf')) score += 0.5;
-
-  if (score < 2) {
+  
+  // Keywords that indicate pricelist content
+  if (combinedLower.includes('pricelist') || combinedLower.includes('price list')) score += 3;
+  if (combinedLower.includes('pricing') || combinedLower.includes('catalog')) score += 2;
+  if (combinedLower.includes('effective') && combinedLower.includes('price')) score += 2;
+  if (combinedLower.includes('new prices') || combinedLower.includes('updated prices')) score += 2;
+  if (combinedLower.includes('cost') && combinedLower.includes('sheet')) score += 2;
+  if (combinedLower.includes('quote') && combinedLower.includes('sheet')) score += 1;
+  
+  // Attachment filename patterns
+  const pricelistAttachment = input.attachments.find(att => 
+    /pricelist|price.?list|pricing|catalog|quote/i.test(att.filename) ||
+    /\.(xlsx?|csv|pdf)$/i.test(att.filename)
+  );
+  if (pricelistAttachment) score += 3;
+  
+  // Currency symbols or price patterns
+  if (/\$\d+|\d+\.\d{2}/.test(combinedLower)) score += 1;
+  
+  if (score < 3) {
     return null;
   }
 
-  const amountMatch = (input.subject + '\n' + input.bodyText).match(/\$?\s?\d{2,3}(?:[,\d]{3})*(?:\.\d{2})/);
-  const dueMatch = (input.bodyText + '\n' + input.attachmentsText).match(/(?:due|pay by)\s+(?:on\s+)?([A-Za-z]{3,9}\s+\d{1,2}(?:,\s*\d{4})?|\d{4}-\d{2}-\d{2})/i);
+  // Try to extract effective date
+  const dateMatch = combinedLower.match(/(?:effective|starting|as of)\s+([A-Za-z]{3,9}\s+\d{1,2}(?:,\s*\d{4})?|\d{4}-\d{2}-\d{2})/i);
+  
+  // Try to estimate item count from content
+  const itemCountMatch = combinedLower.match(/(\d+)\s+(?:items?|products?|skus?|parts?)/i);
+  const itemCount = itemCountMatch ? parseInt(itemCountMatch[1]) : undefined;
 
   return {
     detected: true,
     subject: input.subject,
-    reason: invoiceAttachment ? 'Attachment filename suggests invoice' : 'Invoice language detected',
-    attachmentName: invoiceAttachment?.filename,
-    amount: amountMatch ? amountMatch[0].trim() : undefined,
-    dueDate: dueMatch ? dueMatch[1] : undefined,
+    reason: pricelistAttachment ? 'Attachment filename suggests pricelist' : 'Pricelist language detected',
+    attachmentName: pricelistAttachment?.filename,
+    effectiveDate: dateMatch ? dateMatch[1] : undefined,
+    itemCount,
   };
+}
+
+async function recordPricelistReceipt(
+  poRecord: any,
+  messageId: string,
+  pricelistSignal: PricelistSignal | null,
+  aiExtractedData?: any
+) {
+  try {
+    console.log('[gmail-webhook] Processing pricelist receipt for PO', poRecord.id);
+
+    // Get vendor ID from PO record
+    const { data: vendor } = await supabase
+      .from('vendors')
+      .select('id')
+      .eq('name', poRecord.vendor_name)
+      .maybeSingle();
+
+    if (!vendor) {
+      console.warn('[gmail-webhook] Vendor not found for pricelist:', poRecord.vendor_name);
+      return;
+    }
+
+    // Prepare pricelist data
+    const pricelistData = aiExtractedData || {
+      effective_date: pricelistSignal?.effectiveDate || new Date().toISOString().split('T')[0],
+      currency: 'USD', // Default, can be updated by AI
+      items: [],
+      notes: `Received via email attachment`,
+      source: 'email',
+      source_message_id: messageId,
+    };
+
+    // Use the vendor pricelist service to process the pricelist
+    // Since we can't import the service directly in this edge function,
+    // we'll call it via RPC or direct database operations
+    
+    const { data: pricelist, error } = await supabase
+      .rpc('process_vendor_pricelist', {
+        p_vendor_id: vendor.id,
+        p_pricelist_data: pricelistData,
+        p_source: 'email',
+        p_source_message_id: messageId
+      });
+
+    if (error) {
+      console.error('[gmail-webhook] Failed to process pricelist:', error);
+      return;
+    }
+
+    // Update PO record with pricelist message ID to prevent duplicate processing
+    await supabase
+      .from('purchase_orders')
+      .update({
+        pricelist_gmail_message_id: messageId,
+        pricelist_received_at: new Date().toISOString(),
+      })
+      .eq('id', poRecord.id);
+
+    console.log('[gmail-webhook] Successfully processed pricelist for vendor', vendor.id, 'pricelist ID:', pricelist?.id);
+
+  } catch (error) {
+    console.error('[gmail-webhook] Error recording pricelist receipt:', error);
+  }
 }
 
 async function calculateAndStoreVariances(poId: string, invoiceDataId: string, invoiceData: any) {
