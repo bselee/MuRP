@@ -25,6 +25,7 @@ import QuickRequestDrawer from './components/QuickRequestDrawer';
 import FeatureSpotlightReminder from './components/FeatureSpotlightReminder';
 import OnboardingChecklist from './components/OnboardingChecklist';
 import LoadingOverlay from './components/LoadingOverlay';
+import ProductPage from './pages/ProductPage';
 import { supabase } from './lib/supabase/client';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
 import { UserPreferencesProvider } from './components/UserPreferencesProvider';
@@ -109,7 +110,7 @@ import {
 import type { SyncHealthRow } from './lib/sync/healthUtils';
 import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amazonTracking';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner' | 'Projects';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Label Scanner' | 'Projects' | 'Product Page';
 
 export type ToastInfo = {
   id: number;
@@ -446,6 +447,7 @@ const AppShell: React.FC = () => {
         '/label-scanner': 'Label Scanner',
         '/labels': 'Label Scanner',
         '/projects': 'Projects',
+        '/product': 'Product Page',
       };
       const nextPage = map[path] ?? 'Dashboard';
       setNavigationHistory([nextPage]);
@@ -1619,6 +1621,10 @@ const AppShell: React.FC = () => {
               localStorage.removeItem('selectedBomSku');
             }
           }}
+          onNavigateToProduct={(sku) => {
+            localStorage.setItem('selectedProductSku', sku);
+            navigateToPage('Product Page');
+          }}
         />;
       case 'Purchase Orders':
         return <PurchaseOrders 
@@ -1713,6 +1719,27 @@ const AppShell: React.FC = () => {
           currentUser={currentUser}
           users={users}
           addToast={addToast}
+        />;
+      case 'Product Page':
+        return <ProductPage
+          inventory={inventory}
+          boms={boms}
+          purchaseOrders={purchaseOrders}
+          vendors={vendors}
+          currentUser={currentUser}
+          onNavigateToBom={(bomSku) => {
+            navigateToPage('BOMs');
+            if (bomSku) {
+              localStorage.setItem('selectedBomSku', bomSku);
+            } else {
+              localStorage.removeItem('selectedBomSku');
+            }
+          }}
+          onNavigateToInventory={handleNavigateToInventory}
+          onCreateRequisition={(items, options) => handleCreateRequisition(items, 'Manual', options)}
+          onCreateBuildOrder={handleCreateBuildOrder}
+          addToast={addToast}
+          onQuickRequest={openQuickRequestDrawer}
         />;
       case 'Settings':
         return <Settings

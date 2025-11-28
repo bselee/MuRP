@@ -1364,8 +1364,22 @@ export const mockArtworkFolders: ArtworkFolder[] = [
     { id: 'folder-3', name: 'Archived Designs' },
 ];
 
+export const USER_ROLES = [
+  { id: 'Admin', name: 'Admin' },
+  { id: 'Manager', name: 'Manager' },
+  { id: 'Staff', name: 'Staff' }
+];
+
+export const USER_DEPARTMENTS = [
+  { id: 'Purchasing', name: 'Purchasing' },
+  { id: 'Operations', name: 'Operations' },
+  { id: 'MFG 1', name: 'MFG 1' },
+  { id: 'MFG 2', name: 'MFG 2' },
+  { id: 'Fulfillment', name: 'Fulfillment' },
+  { id: 'SHP/RCV', name: 'SHP/RCV' }
+];
+
 export const mockUsers: User[] = [
-    { id: 'user-admin', name: 'Alicia Admin', email: 'alicia.admin@goodestfungus.com', role: 'Admin', department: 'Purchasing', onboardingComplete: true },
     { id: 'user-manager-mfg1', name: 'Brenda Prod', email: 'brenda.prod@goodestfungus.com', role: 'Manager', department: 'MFG 1', onboardingComplete: true },
     { id: 'user-manager-mfg2', name: 'Charles Fab', email: 'charles.fab@goodestfungus.com', role: 'Manager', department: 'MFG 2', onboardingComplete: true },
     { id: 'user-staff-mfg1', name: 'Steve Worker', email: 'steve.worker@goodestfungus.com', role: 'Staff', department: 'MFG 1', onboardingComplete: true },
@@ -1826,11 +1840,166 @@ export interface UserPreferences {
 
 export type DAMTier = 'basic' | 'mid' | 'full';
 
-export const DAM_TIER_LIMITS: Record<DAMTier, { storage: number; compliance: boolean; editing: boolean }> = {
-  basic: { storage: 100 * 1024 * 1024, compliance: false, editing: false }, // 100MB
-  mid: { storage: 10 * 1024 * 1024 * 1024, compliance: false, editing: true }, // 10GB
-  full: { storage: 100 * 1024 * 1024 * 1024, compliance: true, editing: true }, // 100GB
+export const DAM_TIER_LIMITS: Record<DAMTier, {
+  storage: number; // bytes
+  editing: boolean;
+  compliance: boolean;
+}> = {
+  basic: {
+    storage: 100 * 1024 * 1024, // 100 MB
+    editing: false,
+    compliance: false,
+  },
+  mid: {
+    storage: 1024 * 1024 * 1024, // 1 GB
+    editing: true,
+    compliance: false,
+  },
+  full: {
+    storage: 10 * 1024 * 1024 * 1024, // 10 GB
+    editing: true,
+    compliance: true,
+  },
 };
+
+// ============================================================================
+// STANDARD OPERATING PROCEDURES (SOP) SYSTEM
+// ============================================================================
+
+export type SOPStatus = 'draft' | 'review' | 'approved' | 'published' | 'archived';
+export type SOPSectionType = 'introduction' | 'materials' | 'equipment' | 'safety' | 'procedure' | 'quality_control' | 'cleanup' | 'troubleshooting' | 'custom';
+
+export interface SOPSection {
+  id: string;
+  type: SOPSectionType;
+  title: string;
+  content: string;
+  order: number;
+  isAiGenerated: boolean;
+  aiPromptUsed?: string;
+  lastEditedBy?: string;
+  lastEditedAt?: string;
+}
+
+export interface SOPManagerInput {
+  id: string;
+  sopId: string;
+  managerId: string;
+  managerName: string;
+  sectionId: string;
+  inputType: 'approval' | 'revision' | 'addition' | 'comment';
+  content: string;
+  timestamp: string;
+  resolved: boolean;
+  resolvedBy?: string;
+  resolvedAt?: string;
+}
+
+export interface SOPAttachment {
+  id: string;
+  sopId: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: 'pdf' | 'image' | 'document' | 'video';
+  uploadedBy: string;
+  uploadedAt: string;
+  description?: string;
+}
+
+export interface StandardOperatingProcedure {
+  id: string;
+  bomId: string;
+  bomName: string;
+  bomSku: string;
+  title: string;
+  description: string;
+  version: number;
+  status: SOPStatus;
+  estimatedTimeMinutes: number;
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  requiredSkills: string[];
+  safetyLevel: 'low' | 'medium' | 'high' | 'critical';
+
+  // Content sections
+  sections: SOPSection[];
+
+  // Managerial oversight
+  managerInputs: SOPManagerInput[];
+  requiresManagerApproval: boolean;
+  approvedBy?: string;
+  approvedAt?: string;
+
+  // AI generation tracking
+  isAiGenerated: boolean;
+  aiModelUsed?: string;
+  generationPrompt?: string;
+  aiConfidence?: number;
+
+  // PDF and attachments
+  pdfUrl?: string;
+  pdfGeneratedAt?: string;
+  pdfFileSize?: number;
+  attachments: SOPAttachment[];
+
+  // Build integration
+  attachedToBuildOrders: string[]; // Build order IDs
+  lastUsedInBuild?: string; // Build order ID
+  usageCount: number;
+
+  // Quality metrics
+  averageCompletionTime?: number;
+  successRate?: number;
+  commonIssues?: string[];
+
+  // Audit trail
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  lastPublishedAt?: string;
+  publishedVersion?: number;
+}
+
+export interface SOPTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  difficulty: StandardOperatingProcedure['difficulty'];
+  estimatedTimeMinutes: number;
+  requiredSections: SOPSectionType[];
+  defaultPrompts: Record<SOPSectionType, string>;
+  isActive: boolean;
+  usageCount: number;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface SOPReview {
+  id: string;
+  sopId: string;
+  reviewerId: string;
+  reviewerName: string;
+  reviewType: 'content' | 'safety' | 'quality' | 'compliance';
+  rating: 1 | 2 | 3 | 4 | 5;
+  comments: string;
+  suggestions: string[];
+  approved: boolean;
+  timestamp: string;
+}
+
+export interface SOPUsageLog {
+  id: string;
+  sopId: string;
+  buildOrderId: string;
+  userId: string;
+  userName: string;
+  startedAt: string;
+  completedAt?: string;
+  timeSpentMinutes?: number;
+  successRating?: 1 | 2 | 3 | 4 | 5;
+  issuesEncountered?: string[];
+  notes?: string;
+}
 
 // ============================================================================
 // PROJECT MANAGEMENT & TICKETING SYSTEM

@@ -309,6 +309,251 @@ Generate the template now:`;
 
     return data.id;
   }
+
+  /**
+   * Generate SOP suggestions based on BOM data, processes, or user context
+   * Enhanced with learning capabilities from historical usage data
+   */
+  async generateSOPSuggestions(
+    context: {
+      bomData?: any;
+      processType?: string;
+      userRole?: string;
+      department?: string;
+      equipment?: string[];
+      materials?: string[];
+      customInstructions?: string;
+      sopId?: string; // For learning from specific SOP usage
+    }
+  ): Promise<{
+    suggestions: Array<{
+      title: string;
+      description: string;
+      priority: 'high' | 'medium' | 'low';
+      category: string;
+      estimatedTime: string;
+      prerequisites: string[];
+      steps: string[];
+      safetyNotes?: string[];
+      complianceRequirements?: string[];
+    }>;
+    explanation: string;
+    learningInsights?: {
+      basedOnHistoricalData: boolean;
+      similarProcesses: string[];
+      successPatterns: string[];
+      commonIssues: string[];
+      recommendedImprovements: string[];
+    };
+  }> {
+    const prompt = this.buildSOPPrompt(context);
+
+    // Get learning insights if SOP ID is provided
+    let learningContext = '';
+    if (context.sopId) {
+      try {
+        const insights = await this.getLearningInsights(context.sopId);
+        if (insights) {
+          learningContext = `
+
+LEARNING CONTEXT FROM HISTORICAL DATA:
+- Success Patterns: ${insights.successPatterns?.join(', ') || 'None identified'}
+- Common Issues: ${insights.commonIssues?.join(', ') || 'None identified'}
+- Recommended Improvements: ${insights.recommendedImprovements?.join(', ') || 'None identified'}
+- Similar Processes: ${insights.similarProcesses?.join(', ') || 'None identified'}
+
+Use this historical data to improve suggestions and avoid past issues.`;
+        }
+      } catch (error) {
+        console.warn('[AITemplateGenerator] Could not load learning insights:', error);
+      }
+    }
+
+    const fullPrompt = prompt + learningContext;
+
+    try {
+      const response = await this.callAIService(fullPrompt);
+      const result = this.parseSOPResponse(response);
+
+      // Add learning insights if available
+      if (context.sopId) {
+        try {
+          const insights = await this.getLearningInsights(context.sopId);
+          if (insights) {
+            result.learningInsights = insights;
+          }
+        } catch (error) {
+          console.warn('[AITemplateGenerator] Could not add learning insights:', error);
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error('[AITemplateGenerator] Error generating SOP suggestions:', error);
+      throw new Error('Failed to generate SOP suggestions');
+    }
+  }
+
+  /**
+   * Get learning insights from historical SOP usage data
+   */
+  private async getLearningInsights(sopId: string): Promise<{
+    basedOnHistoricalData: boolean;
+    similarProcesses: string[];
+    successPatterns: string[];
+    commonIssues: string[];
+    recommendedImprovements: string[];
+  } | null> {
+    try {
+      // Call the database function to get learning insights
+      const { data, error } = await supabase
+        .rpc('generate_sop_learning_insights', { sop_id_param: sopId });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const insights = data[0];
+        return {
+          basedOnHistoricalData: true,
+          similarProcesses: insights.similar_processes || [],
+          successPatterns: insights.success_patterns || [],
+          commonIssues: insights.common_issues || [],
+          recommendedImprovements: insights.recommended_improvements || [],
+        };
+      }
+
+      return {
+        basedOnHistoricalData: false,
+        similarProcesses: [],
+        successPatterns: [],
+        commonIssues: [],
+        recommendedImprovements: [],
+      };
+    } catch (error) {
+      console.error('[AITemplateGenerator] Error getting learning insights:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Build AI prompt for SOP suggestions
+   */
+  private buildSOPPrompt(context: any): string {
+    const {
+      bomData,
+      processType,
+      userRole,
+      department,
+      equipment,
+      materials,
+      customInstructions
+    } = context;
+
+    return `You are an expert manufacturing process engineer and safety compliance specialist. Generate SOP (Standard Operating Procedure) suggestions based on the provided context.
+
+CONTEXT:
+${processType ? `- Process Type: ${processType}` : ''}
+${userRole ? `- User Role: ${userRole}` : ''}
+${department ? `- Department: ${department}` : ''}
+${equipment?.length ? `- Equipment: ${equipment.join(', ')}` : ''}
+${materials?.length ? `- Materials: ${materials.join(', ')}` : ''}
+${bomData ? `- BOM Data: ${JSON.stringify(bomData, null, 2)}` : ''}
+${customInstructions ? `- Special instructions: ${customInstructions}` : ''}
+
+REQUIREMENTS:
+1. Generate 3-5 relevant SOP suggestions
+2. Each suggestion should include:
+   - Clear title and description
+   - Priority level (high/medium/low)
+   - Category (safety, quality, maintenance, production, etc.)
+   - Estimated time to complete
+   - Prerequisites needed
+   - Step-by-step procedure
+   - Safety notes (if applicable)
+   - Compliance requirements (if applicable)
+
+3. Consider manufacturing industry standards and best practices
+4. Include relevant safety protocols and PPE requirements
+5. Account for regulatory compliance (OSHA, EPA, FDA, etc.)
+6. Focus on practical, actionable procedures
+
+OUTPUT FORMAT (JSON):
+{
+  "suggestions": [
+    {
+      "title": "SOP Title",
+      "description": "Brief description of what this SOP covers",
+      "priority": "high|medium|low",
+      "category": "safety|quality|maintenance|production|compliance",
+      "estimatedTime": "X minutes/hours/days",
+      "prerequisites": ["Required training", "Equipment check", "PPE"],
+      "steps": ["Step 1", "Step 2", "Step 3"],
+      "safetyNotes": ["Wear safety glasses", "Ensure ventilation"],
+      "complianceRequirements": ["OSHA 1910.1200", "EPA guidelines"]
+    }
+  ],
+  "explanation": "Brief explanation of how these suggestions were generated and prioritized"
+}
+
+Generate the SOP suggestions now:`;
+  }
+
+  /**
+   * Parse AI response for SOP suggestions
+   */
+  private parseSOPResponse(response: string): {
+    suggestions: Array<{
+      title: string;
+      description: string;
+      priority: 'high' | 'medium' | 'low';
+      category: string;
+      estimatedTime: string;
+      prerequisites: string[];
+      steps: string[];
+      safetyNotes?: string[];
+      complianceRequirements?: string[];
+    }>;
+    explanation: string;
+  } {
+    try {
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('Invalid AI response format');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      return {
+        suggestions: parsed.suggestions || [],
+        explanation: parsed.explanation || 'SOP suggestions generated by AI',
+      };
+    } catch (error) {
+      console.error('[AITemplateGenerator] Error parsing SOP response:', error);
+
+      // Fallback with basic suggestions
+      return {
+        suggestions: [
+          {
+            title: 'Equipment Safety Check',
+            description: 'Daily safety inspection of manufacturing equipment',
+            priority: 'high',
+            category: 'safety',
+            estimatedTime: '15 minutes',
+            prerequisites: ['Safety training completed'],
+            steps: [
+              'Visual inspection of equipment',
+              'Check emergency stops',
+              'Verify guards are in place',
+              'Document findings'
+            ],
+            safetyNotes: ['Wear appropriate PPE', 'Do not operate faulty equipment'],
+            complianceRequirements: ['OSHA 1910.132']
+          }
+        ],
+        explanation: 'Basic safety SOP generated as fallback',
+      };
+    }
+  }
 }
 
 // Export singleton

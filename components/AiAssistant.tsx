@@ -20,6 +20,7 @@ import Button from '@/components/ui/Button';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { sendChatMessage, type ChatRequest } from '../services/aiGatewayService';
+import { generateSOPAwareResponse, type SOPAwareResponse } from '../services/sopAwareAiService';
 import { getUserProfile } from '../services/complianceService';
 import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, AiConfig, AiSettings } from '../types';
 import { CloseIcon, SendIcon, MuRPBotIcon } from './icons';
@@ -42,6 +43,10 @@ type Message = {
   text: string;
   cost?: number;
   tokens?: number;
+  sopReferences?: SOPAwareResponse['sopReferences'];
+  workflowActions?: SOPAwareResponse['workflowActions'];
+  complianceNotes?: string[];
+  suggestions?: string[];
 };
 
 const BASIC_CHAT_LIMIT = 100;
@@ -119,46 +124,48 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
     setIsLoading(true);
 
     try {
-      const promptTemplate = aiConfig?.prompts?.find((p) => p.id === 'askAboutInventory');
-      if (!promptTemplate) {
-        throw new Error('Inventory assistant prompt not configured.');
+      // Get current page context for SOP relevance
+      const currentPath = window.location.pathname;
+      let context: any = {};
+
+      if (currentPath.includes('/inventory')) {
+        context.action = 'inventory_management';
+        context.inventoryItems = inventory.map(i => i.sku);
+      } else if (currentPath.includes('/boms')) {
+        context.action = 'bom_management';
+        context.bomId = boms[0]?.id; // Could be enhanced to get current BOM
+      } else if (currentPath.includes('/vendors')) {
+        context.action = 'vendor_management';
+        context.vendors = vendors.map(v => v.id);
+      } else if (currentPath.includes('/settings')) {
+        context.action = 'sop_workflow';
       }
 
-      // Build context for the AI
-      const contextData = {
-        boms: (boms || []).slice(0, aiSettings.maxContextItems || 20),
-        inventory: (inventory || []).slice(0, aiSettings.maxContextItems || 20),
-        vendors: (vendors || []).slice(0, Math.floor((aiSettings.maxContextItems || 20) / 2)),
-        purchaseOrders: (purchaseOrders || []).slice(0, Math.floor((aiSettings.maxContextItems || 20) / 2)),
-      };
-
-      // Replace placeholders in system prompt
-      let systemPrompt = promptTemplate.prompt
-        .replace('{{inventory}}', JSON.stringify(contextData.inventory, null, 2))
-        .replace('{{boms}}', JSON.stringify(contextData.boms, null, 2))
-        .replace('{{vendors}}', JSON.stringify(contextData.vendors, null, 2))
-        .replace('{{purchaseOrders}}', JSON.stringify(contextData.purchaseOrders, null, 2))
-        .replace('{{buildability}}', 'See BOM data for component status')
-        .replace('{{question}}', question);
-
-      // Send message through AI Gateway
-      const response = await sendChatMessage({
+      // Use SOP-aware AI response
+      const sopResponse = await generateSOPAwareResponse(
         userId,
-        messages: [{ role: 'user', content: question }],
-        systemPrompt,
-        temperature: 0.3,
-      });
+        question,
+        context,
+        messages.slice(-5).map(m => ({ // Include recent conversation history
+          role: m.sender === 'user' ? 'user' : 'assistant',
+          content: m.text
+        }))
+      );
 
-      // Add bot response with cost tracking
+      // Add bot response with SOP context
       const botMessage: Message = {
         sender: 'bot',
-        text: response.content,
-        cost: response.usage.estimatedCost,
-        tokens: response.usage.totalTokens,
+        text: sopResponse.response,
+        cost: 0, // SOP-aware responses don't track individual costs
+        tokens: 0,
+        sopReferences: sopResponse.sopReferences,
+        workflowActions: sopResponse.workflowActions,
+        complianceNotes: sopResponse.complianceNotes,
+        suggestions: sopResponse.suggestions
       };
       setMessages((prev) => [...prev, botMessage]);
 
-      // Update messages remaining
+      // Update messages remaining (still applies for basic tier)
       if (userTier === 'basic' && messagesRemaining !== null) {
         const newRemaining = messagesRemaining - 1;
         setMessagesRemaining(newRemaining);
@@ -169,7 +176,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
         }
       }
     } catch (error: any) {
-      console.error('AI Gateway error:', error);
+      console.error('SOP-Aware AI error:', error);
 
       let errorText = 'Sorry, I encountered an error. Please try again in a moment.';
 
@@ -208,11 +215,11 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
               <div className="absolute inset-0 rounded-2xl border border-white/20" />
             </div>
             <div>
-              <h2 className="text-xl font-black tracking-tight text-white">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-indigo-200 to-purple-200 uppercase tracking-[0.35em]">
+              <h2 className="text-xl font-black tracking-tight text-white group">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-indigo-200 to-purple-200 uppercase tracking-[0.35em] cursor-help">
                   MB
                 </span>
-                <span className="ml-2 text-sm uppercase tracking-[0.35em] text-gray-300 font-semibold">
+                <span className="ml-2 text-sm uppercase tracking-[0.35em] text-gray-300 font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   MuRPBot
                 </span>
               </h2>
@@ -274,6 +281,75 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
                     dangerouslySetInnerHTML={{ __html: msg.text.replace(/\n/g, '<br />') }}
                   ></p>
                 </div>
+
+                {/* SOP References */}
+                {msg.sopReferences && msg.sopReferences.length > 0 && (
+                  <div className="mt-2 p-2 bg-blue-900/20 border border-blue-500/30 rounded-md">
+                    <p className="text-xs font-semibold text-blue-300 mb-1">📋 Referenced SOPs:</p>
+                    <div className="space-y-1">
+                      {msg.sopReferences.map((sop, idx) => (
+                        <div key={idx} className="text-xs text-blue-200">
+                          <span className="font-medium">{sop.title}</span>
+                          {sop.version && <span className="text-blue-400"> (v{sop.version})</span>}
+                          {sop.relevance && <span className="text-blue-400"> - {sop.relevance}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Workflow Actions */}
+                {msg.workflowActions && msg.workflowActions.length > 0 && (
+                  <div className="mt-2 p-2 bg-green-900/20 border border-green-500/30 rounded-md">
+                    <p className="text-xs font-semibold text-green-300 mb-2">⚡ Suggested Actions:</p>
+                    <div className="space-y-1">
+                      {msg.workflowActions.map((action, idx) => (
+                        <Button
+                          key={idx}
+                          onClick={() => {
+                            // Handle workflow action - could navigate to relevant page or open modal
+                            console.log('Execute workflow action:', action);
+                          }}
+                          className="w-full text-left py-1 px-2 bg-green-600/20 hover:bg-green-600/40 text-green-200 text-xs rounded border border-green-500/30 transition-colors"
+                        >
+                          {action.title}
+                          {action.description && <span className="block text-green-400 text-xs">{action.description}</span>}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Compliance Notes */}
+                {msg.complianceNotes && msg.complianceNotes.length > 0 && (
+                  <div className="mt-2 p-2 bg-yellow-900/20 border border-yellow-500/30 rounded-md">
+                    <p className="text-xs font-semibold text-yellow-300 mb-1">⚠️ Compliance Notes:</p>
+                    <ul className="space-y-1">
+                      {msg.complianceNotes.map((note, idx) => (
+                        <li key={idx} className="text-xs text-yellow-200 flex items-start gap-1">
+                          <span className="text-yellow-400 mt-0.5">•</span>
+                          <span>{note}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Suggestions */}
+                {msg.suggestions && msg.suggestions.length > 0 && (
+                  <div className="mt-2 p-2 bg-purple-900/20 border border-purple-500/30 rounded-md">
+                    <p className="text-xs font-semibold text-purple-300 mb-1">💡 Suggestions:</p>
+                    <ul className="space-y-1">
+                      {msg.suggestions.map((suggestion, idx) => (
+                        <li key={idx} className="text-xs text-purple-200 flex items-start gap-1">
+                          <span className="text-purple-400 mt-0.5">•</span>
+                          <span>{suggestion}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {msg.sender === 'bot' && msg.cost !== undefined && msg.cost > 0 && (
                   <p className="text-xs text-gray-500 px-2">
                     💰 ${msg.cost.toFixed(6)} • {msg.tokens?.toLocaleString()} tokens

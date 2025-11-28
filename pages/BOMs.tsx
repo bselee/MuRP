@@ -28,8 +28,10 @@ import BomDetailModal from '../components/BomDetailModal';
 import ComplianceDashboard from '../components/ComplianceDashboard';
 import ComplianceDetailModal from '../components/ComplianceDetailModal';
 import EnhancedBomCard from '../components/EnhancedBomCard';
+import SOPCreator from '../components/SOPCreator';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
 import ScheduleBuildModal from '../components/ScheduleBuildModal';
+import SOPCreator from '../components/SOPCreator';
 import { usePermissions } from '../hooks/usePermissions';
 import { useSupabaseLabels, useSupabaseComplianceRecords } from '../hooks/useSupabaseData';
 import { supabase } from '../lib/supabase/client';
@@ -119,6 +121,8 @@ const BOMs: React.FC<BOMsProps> = ({
   const bomRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [isRequisitionModalOpen, setIsRequisitionModalOpen] = useState(false);
   const [scheduleModalConfig, setScheduleModalConfig] = useState<{ bomId: string; defaultQuantity: number; start: Date } | null>(null);
+  const [isSOPCreatorOpen, setIsSOPCreatorOpen] = useState(false);
+  const [selectedSOPBom, setSelectedSOPBom] = useState<BillOfMaterials | null>(null);
   const [queueStatusBySku, setQueueStatusBySku] = useState<Record<string, { status: string; poId: string | null }>>({});
   const [componentSwaps, setComponentSwaps] = useState<ComponentSwapMap>({});
   const permissions = usePermissions();
@@ -445,10 +449,20 @@ const BOMs: React.FC<BOMsProps> = ({
     setIsComplianceDetailOpen(true);
   };
 
-  const handleCloseComplianceDetail = () => {
-    setIsComplianceDetailOpen(false);
-    setSelectedBom(null);
-    setSelectedComplianceStatus(null);
+  const handleCreateSOP = (bom: BillOfMaterials) => {
+    setSelectedSOPBom(bom);
+    setIsSOPCreatorOpen(true);
+  };
+
+  const handleSOPCreated = (sop: any) => {
+    addToast(`SOP created for ${sop.bomName}`, 'success');
+    setIsSOPCreatorOpen(false);
+    setSelectedSOPBom(null);
+  };
+
+  const handleCloseSOPCreator = () => {
+    setIsSOPCreatorOpen(false);
+    setSelectedSOPBom(null);
   };
 
   const handleEditClick = (bom: BillOfMaterials) => {
@@ -670,6 +684,7 @@ const BOMs: React.FC<BOMsProps> = ({
           onEdit={() => handleEditClick(bom)}
           onNavigateToInventory={onNavigateToInventory}
           onQuickBuild={() => openScheduleModal(bom)}
+          onCreateSOP={() => handleCreateSOP(bom)}
           queueStatus={queuedComponents}
         />
       </div>
@@ -1096,6 +1111,17 @@ const BOMs: React.FC<BOMsProps> = ({
         inventory={inventory}
         onCreate={(items, options) => onCreateRequisition(items, options)}
       />
+
+      {/* SOP Creator Modal */}
+      {isSOPCreatorOpen && selectedSOPBom && (
+        <SOPCreator
+          isOpen={isSOPCreatorOpen}
+          onClose={handleCloseSOPCreator}
+          bom={selectedSOPBom}
+          onSOPCreated={handleSOPCreated}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   );
 };

@@ -36,6 +36,7 @@ interface InventoryProps {
     boms: BillOfMaterials[];
     onNavigateToBom?: (bomSku?: string) => void;
     onQuickRequest?: (defaults?: QuickRequestDefaults) => void;
+    onNavigateToProduct?: (sku: string) => void;
 }
 
 type ColumnKey =
@@ -177,7 +178,7 @@ const SortableHeader: React.FC<{
     );
 };
 
-const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom, onQuickRequest }) => {
+const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom, onQuickRequest, onNavigateToProduct }) => {
     const { rowDensity, fontScale } = useUserPreferences();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
@@ -1134,7 +1135,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         return (
                                                             <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap font-mono ${widthClass}`}>
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-white font-bold">{item.sku}</span>
+                                                                    <Button
+                                                                        onClick={() => onNavigateToProduct?.(item.sku)}
+                                                                        className="text-white font-bold hover:text-indigo-400 transition-colors cursor-pointer"
+                                                                        title="Click to view product details"
+                                                                    >
+                                                                        {item.sku}
+                                                                    </Button>
                                                                     {bomCount > 0 && (
                                                                         <div className="relative group flex-shrink-0">
                                                                             <Button

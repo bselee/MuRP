@@ -298,3 +298,141 @@ export const generateInventoryPdf = (inventory: InventoryItem[], vendorMap: Map<
 
     doc.save(`inventory-report-${new Date().toISOString().split('T')[0]}.pdf`);
 };
+
+export const generateSkuProductPage = (
+  sku: string,
+  inventoryItem: InventoryItem | undefined,
+  bomUsages: Array<{ bomId: string; bomName: string; quantity: number; unit?: string }>,
+  recentPurchases: Array<{
+    orderId: string;
+    vendorName: string;
+    orderDate: string;
+    quantity: number;
+    unitCost: number;
+    status: string;
+  }>
+) => {
+  const { jsPDF } = jspdf;
+  const doc = new jsPDF();
+
+  // Title
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SKU Product Page', 105, 25, { align: 'center' });
+
+  // SKU Header
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`SKU: ${sku}`, 20, 45);
+
+  if (inventoryItem) {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Name: ${inventoryItem.name}`, 20, 55);
+    doc.text(`Category: ${inventoryItem.category}`, 20, 62);
+    doc.text(`Vendor: ${inventoryItem.vendorId}`, 20, 69);
+    doc.text(`Status: ${inventoryItem.status || 'Active'}`, 20, 76);
+
+    // Stock Information
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Stock Information', 20, 90);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Current Stock: ${inventoryItem.stock}`, 20, 100);
+    doc.text(`On Order: ${inventoryItem.onOrder}`, 20, 107);
+    doc.text(`Reorder Point: ${inventoryItem.reorderPoint}`, 20, 114);
+
+    // Pricing Information
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Pricing Information', 20, 130);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Unit Cost: $${inventoryItem.unitCost?.toFixed(2) || 'N/A'}`, 20, 140);
+    doc.text(`Unit Price: $${inventoryItem.unitPrice?.toFixed(2) || 'N/A'}`, 20, 147);
+    doc.text(`MOQ: ${inventoryItem.moq || 'N/A'}`, 20, 154);
+    doc.text(`Lead Time: ${inventoryItem.leadTimeDays ? `${inventoryItem.leadTimeDays} days` : 'N/A'}`, 20, 161);
+  }
+
+  // BOM Usage Section
+  if (bomUsages.length > 0) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BOM Usage', 20, 180);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+
+    bomUsages.forEach((usage, index) => {
+      const yPos = 190 + (index * 10);
+      if (yPos > 270) {
+        doc.addPage();
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+      }
+      doc.text(`${usage.bomName}: ${usage.quantity} ${usage.unit || 'units'}`, 20, yPos);
+    });
+  }
+
+  // Recent Purchases Section
+  if (recentPurchases.length > 0) {
+    let yPos = bomUsages.length > 0 ? 200 + (bomUsages.length * 10) : 180;
+
+    if (yPos > 250) {
+      doc.addPage();
+      yPos = 30;
+    }
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Recent Purchases', 20, yPos);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+
+    const tableColumn = ["Order ID", "Vendor", "Date", "Qty", "Unit Cost", "Status"];
+    const tableRows: (string | number)[][] = [];
+
+    recentPurchases.slice(0, 10).forEach(purchase => {
+      tableRows.push([
+        purchase.orderId,
+        purchase.vendorName,
+        new Date(purchase.orderDate).toLocaleDateString(),
+        purchase.quantity,
+        `$${purchase.unitCost.toFixed(2)}`,
+        purchase.status
+      ]);
+    });
+
+    doc.autoTable({
+      head: [tableColumn],
+      body: tableRows,
+      startY: yPos + 10,
+      theme: 'striped',
+      headStyles: { fillColor: [41, 128, 185] },
+      styles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 15 },
+        4: { cellWidth: 20 },
+        5: { cellWidth: 25 }
+      }
+    });
+  }
+
+  // Footer
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 20, 285);
+    doc.text(`Page ${i} of ${pageCount}`, 190, 285, { align: 'right' });
+  }
+
+  doc.save(`sku-${sku}-product-page-${new Date().toISOString().split('T')[0]}.pdf`);
+};

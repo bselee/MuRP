@@ -592,23 +592,23 @@ CREATE POLICY "Authenticated users can view pricing revisions"
 -- =====================================================
 
 -- Add pricing configuration settings
-INSERT INTO app_settings (key, value, description)
+INSERT INTO app_settings (setting_key, setting_category, setting_value, display_name, description)
 VALUES
-  ('pricing_config', '{
+  ('pricing_config', 'general', '{
     "auto_approve_under_percentage": 5,
     "require_manager_approval_over_percentage": 10,
     "default_markup_percentage": 30,
     "currency": "USD",
     "audit_retention_days": 365,
     "notification_channels": ["email", "dashboard"]
-  }', 'Product pricing system configuration'),
-  ('pricing_notifications', '{
+  }', 'Product Pricing Configuration', 'Product pricing system configuration'),
+  ('pricing_notifications', 'general', '{
     "notify_on_critical_changes": true,
     "notify_on_pending_proposals": true,
     "daily_summary_enabled": true,
     "weekly_report_enabled": true
-  }', 'Pricing change notification settings')
-ON CONFLICT (key) DO NOTHING;
+  }', 'Pricing Change Notifications', 'Pricing change notification settings')
+ON CONFLICT (setting_key) DO NOTHING;
 
 -- =====================================================
 -- VIEWS FOR UI
@@ -674,11 +674,34 @@ COMMENT ON VIEW pricing_management_view IS 'Comprehensive view for pricing manag
 -- Pricing proposals queue
 CREATE OR REPLACE VIEW pricing_proposals_queue AS
 SELECT
-  pcp.*,
+  pcp.id,
+  pcp.product_pricing_id,
+  pcp.vendor_pricelist_id,
+  pcp.proposed_unit_cost,
+  pcp.proposed_unit_price,
+  pcp.proposed_currency,
+  pcp.proposed_effective_date,
+  pcp.cost_change_amount,
+  pcp.cost_change_percentage,
+  pcp.price_change_amount,
+  pcp.price_change_percentage,
+  pcp.change_reason,
+  pcp.change_impact,
+  pcp.pricelist_item_data,
+  pcp.status,
+  pcp.reviewed_by,
+  pcp.reviewed_at,
+  pcp.review_notes,
+  pcp.implemented_at,
+  pcp.implemented_by,
+  pcp.created_at,
+  pcp.updated_at,
+  pcp.created_by,
   pp.internal_sku,
   ii.name as product_name,
   v.name as vendor_name,
-  vsm.vendor_sku,
+  pcp.vendor_sku as proposal_vendor_sku,
+  vsm.vendor_sku as mapping_vendor_sku,
   vsm.vendor_product_name,
   CASE
     WHEN pcp.change_impact = 'critical' THEN 4
@@ -703,6 +726,3 @@ COMMIT;
 -- =====================================================
 
 COMMENT ON SCHEMA public IS 'Migration 059: Product Pricing Inventory Structure - Complete';
-
-</content>
-<parameter name="filePath">/workspaces/TGF-MRP/supabase/migrations/059_product_pricing_inventory.sql

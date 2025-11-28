@@ -648,6 +648,7 @@ Root level:                     # Only essential configs
 ✅ Sensitive data not staged (.env, API keys, credentials)
 ✅ Large files excluded (check for >10MB files)
 ✅ Commit message follows conventions
+✅ Migration files follow sequential naming (01, 02, 03... no gaps, no timestamp names)
 ```
 
 ---

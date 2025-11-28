@@ -50,6 +50,7 @@ interface EnhancedBomCardProps {
   onNavigateToInventory?: (sku: string) => void;
   onQuickBuild?: () => void;
   onQuickOrder?: () => void;
+  onCreateSOP?: () => void; // New prop for SOP creation
   queueStatus?: Record<string, { status: string; poId: string | null }>;
 }
 
@@ -123,6 +124,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   onNavigateToInventory,
   onQuickBuild,
   onQuickOrder,
+  onCreateSOP, // New prop
   queueStatus = {}
 }) => {
   const { resolvedTheme } = useTheme();
@@ -697,32 +699,44 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 	          {isManager && <span>Details</span>}
 	        </Button>
 
-	        {onQuickBuild && (
-	          <Button
-	            onClick={(e) => {
-	              e.stopPropagation();
-	              onQuickBuild();
-	            }}
-	            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded transition-colors"
-	            title="Schedule this BOM on the production calendar"
-	          >
-	            <ClockIcon className="w-3.5 h-3.5" />
-	            <span>Schedule</span>
-	          </Button>
-	        )}
+        {onQuickBuild && (
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              onQuickBuild();
+            }}
+            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded transition-colors"
+            title="Schedule this BOM on the production calendar"
+          >
+            <ClockIcon className="w-3.5 h-3.5" />
+            <span>Schedule</span>
+          </Button>
+        )}
+
+        {onCreateSOP && (
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCreateSOP();
+            }}
+            className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded transition-colors"
+            title="Create Standard Operating Procedure for this BOM"
+          >
+            <ClipboardDocumentListIcon className="w-3.5 h-3.5" />
+            <span>SOP</span>
+          </Button>
+        )}
 
         {isAdmin && canEdit && (
           <Button
             onClick={onEdit}
-	            className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded transition-colors"
-	            title="Edit BOM configuration"
-	          >
-	            <PencilIcon className="w-3.5 h-3.5" />
-	            <span>Edit</span>
-	          </Button>
-	        )}
-
-          {/* Expand/Collapse Toggle */}
+            className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded transition-colors"
+            title="Edit BOM configuration"
+          >
+            <PencilIcon className="w-3.5 h-3.5" />
+            <span>Edit</span>
+          </Button>
+        )}          {/* Expand/Collapse Toggle */}
           <Button
             onClick={(e) => {
               e.stopPropagation();

@@ -34,6 +34,7 @@ import DelegationSettingsPanel from '../components/DelegationSettingsPanel';
 import BillingPanel from '../components/BillingPanel';
 import NotificationPreferencesPanel from '../components/NotificationPreferencesPanel';
 import RolePermissionMatrix from '../components/RolePermissionMatrix';
+import SOPSettingsPanel from '../components/SOPSettingsPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -94,6 +95,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isNotificationPrefsOpen, setIsNotificationPrefsOpen] = useState(false);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const [isEmailPolicyOpen, setIsEmailPolicyOpen] = useState(false);
+    const [isSopSettingsOpen, setIsSopSettingsOpen] = useState(false);
     
     // API key visibility state
     const [showApiKey, setShowApiKey] = useState(false);
@@ -244,6 +246,18 @@ Thank you!`
           >
             <JobDescriptionPanel currentUser={currentUser} addToast={addToast} />
           </CollapsibleSection>
+
+          {/* SOP Repository & Manuals (Admin only) */}
+          {isOpsAdmin && (
+            <CollapsibleSection
+              title="SOP Repository & Manuals"
+              icon={<DocumentTextIcon className="w-6 h-6 text-blue-400" />}
+              isOpen={isSopSettingsOpen}
+              onToggle={() => setIsSopSettingsOpen(!isSopSettingsOpen)}
+            >
+              <SOPSettingsPanel addToast={addToast} />
+            </CollapsibleSection>
+          )}
 
           <CollapsibleSection
             title="Two-Factor Authentication"

@@ -12,6 +12,31 @@ begin;
 CREATE TYPE pricelist_status AS ENUM ('pending', 'extracted', 'error');
 CREATE TYPE pricelist_source AS ENUM ('upload', 'email', 'google_docs', 'api');
 
+-- Create vendor_pricelists table
+CREATE TABLE vendor_pricelists (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  vendor_id UUID NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  items JSONB DEFAULT '[]'::jsonb,
+  is_current BOOLEAN DEFAULT TRUE,
+  archived_at TIMESTAMPTZ,
+  source_message_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by TEXT,
+  updated_by TEXT,
+
+  -- Ensure only one current pricelist per vendor
+  UNIQUE(vendor_id, is_current) DEFERRABLE INITIALLY DEFERRED
+);
+
+-- Create indexes for vendor_pricelists
+CREATE INDEX idx_vendor_pricelists_vendor ON vendor_pricelists(vendor_id);
+CREATE INDEX idx_vendor_pricelists_current ON vendor_pricelists(vendor_id, is_current) WHERE is_current = TRUE;
+CREATE INDEX idx_vendor_pricelists_version ON vendor_pricelists(vendor_id, version DESC);
+
 -- Enhance existing vendor_pricelists table
 ALTER TABLE vendor_pricelists
 ADD COLUMN IF NOT EXISTS description TEXT,
@@ -26,7 +51,7 @@ ADD COLUMN IF NOT EXISTS previous_version_id UUID REFERENCES vendor_pricelists(i
 -- Update existing records to use new enum
 UPDATE vendor_pricelists
 SET extraction_status = 'extracted'::pricelist_status
-WHERE extraction_status = 'completed';
+WHERE extraction_status IS NOT NULL AND extraction_status != 'pending' AND extraction_status != 'error';
 
 UPDATE vendor_pricelists
 SET extraction_status = 'pending'::pricelist_status
@@ -511,23 +536,23 @@ CREATE POLICY "Authenticated users can view pricelist changes"
 -- =====================================================
 
 -- Add pricelist settings to app_settings
-INSERT INTO app_settings (key, value, description)
+INSERT INTO app_settings (setting_key, setting_category, setting_value, display_name, description)
 VALUES
-  ('pricelist_config', '{
+  ('pricelist_config', 'general', '{
     "price_change_alert_threshold": 0.05,
     "significant_change_threshold": 0.10,
     "critical_change_threshold": 0.20,
     "auto_archive_days": 365,
     "max_file_size_mb": 50,
     "supported_formats": ["pdf", "xlsx", "csv", "google_doc"]
-  }', 'Pricelist processing configuration'),
-  ('pricelist_notifications', '{
+  }', 'Pricelist Processing Configuration', 'Pricelist processing configuration'),
+  ('pricelist_notifications', 'general', '{
     "notify_on_significant_changes": true,
     "notify_managers_only": true,
     "email_summary_frequency": "weekly",
     "alert_channels": ["email", "dashboard"]
-  }', 'Pricelist change notification settings')
-ON CONFLICT (key) DO NOTHING;
+  }', 'Pricelist Change Notifications', 'Pricelist change notification settings')
+ON CONFLICT (setting_key) DO NOTHING;
 
 -- =====================================================
 -- MIGRATION COMPLETE
