@@ -4,6 +4,7 @@ import type { Vendor } from '../types';
 import VendorAutomationModal from '../components/VendorAutomationModal';
 import VendorManagementModal, { type VendorConfig } from '../components/VendorManagementModal';
 import { SearchIcon, AdjustmentsHorizontalIcon } from '../components/icons';
+import VendorConfidenceDashboard from '../components/VendorConfidenceDashboard';
 
 interface VendorsProps {
     vendors: Vendor[];
@@ -95,6 +96,8 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                     Add New Vendor
                 </Button>
             </header>
+
+            <VendorConfidenceDashboard />
 
             {/* Filter Bar */}
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 p-4">

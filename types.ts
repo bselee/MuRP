@@ -729,6 +729,71 @@ export interface Vendor {
     automationNotes?: string;
 }
 
+export type VendorConfidenceTrend = 'improving' | 'stable' | 'declining';
+export type VendorCommunicationStatus =
+  | 'fully_automatic'
+  | 'automatic_with_review'
+  | 'needs_review'
+  | 'needs_full_review'
+  | 'suspended';
+
+export interface VendorConfidenceProfile {
+  id: string;
+  vendorId: string;
+  vendorName?: string;
+  confidenceScore: number;
+  responseLatencyScore: number;
+  threadingScore: number;
+  completenessScore: number;
+  invoiceAccuracyScore: number;
+  leadTimeScore: number;
+  trend: VendorConfidenceTrend;
+  score30DaysAgo?: number | null;
+  recommendedLeadTimeBufferDays: number;
+  templateStrictness: 'relaxed' | 'standard' | 'strict' | 'maximum';
+  communicationStatus: VendorCommunicationStatus;
+  interactionsCount: number;
+  lastRecalculatedAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface VendorConfidenceHistoryPoint {
+  id: string;
+  vendorId: string;
+  confidenceScore: number;
+  recordedAt: string;
+  responseLatencyScore?: number | null;
+  threadingScore?: number | null;
+  completenessScore?: number | null;
+  invoiceAccuracyScore?: number | null;
+  leadTimeScore?: number | null;
+  communicationStatus?: VendorCommunicationStatus | null;
+}
+
+export interface VendorInteractionEvent {
+  id: string;
+  vendorId: string;
+  poId?: string | null;
+  eventType: string;
+  responseLatencyMinutes?: number | null;
+  isThreaded?: boolean | null;
+  extractionConfidence?: number | null;
+  invoiceVariancePercent?: number | null;
+  deliveredOnTime?: boolean | null;
+  payload?: Record<string, unknown> | null;
+  triggerSource?: string | null;
+  occurredAt: string;
+}
+
+export type VendorResponseTemplateStrictness = 'relaxed' | 'standard' | 'strict' | 'maximum';
+
+export interface VendorResponseStrategy {
+  strictness: VendorResponseTemplateStrictness;
+  tone: 'friendly' | 'professional' | 'formal';
+  reminders: string[];
+  requiresManagerReview: boolean;
+}
+
 export type PurchaseOrderStatus =
   | 'draft'
   | 'committed'

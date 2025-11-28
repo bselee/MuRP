@@ -1487,3 +1487,17 @@ interface GmailSendResult {
 - `npm test`
 - `npm run build`
 - `npm run e2e`
+
+---
+
+### Session: November 28, 2025 (Vendor Confidence Foundations)
+
+**Changes Made:**
+- Added: `supabase/migrations/053_vendor_confidence_profiles.sql` – new schema for vendor confidence profiles, history snapshots, and interaction events plus calculation triggers and configuration seed.
+- Added: `services/vendorConfidenceService.ts` – data-access helpers for profiles, history, interaction logging, score recalculations, and response strategy hints.
+- Added: `components/VendorConfidenceDashboard.tsx` – dashboard component showing gauges, sparkline trends, factor breakdown, and recent interaction insights.
+- Updated: `types.ts` – Introduced vendor confidence interfaces and response strategy types for reuse across the app.
+- Updated: `pages/Vendors.tsx` – Surfaced the new dashboard at the top of the Vendors workspace.
+
+**Tests:**
+- `npm run build`
