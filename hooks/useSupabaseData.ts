@@ -27,7 +27,7 @@ import type {
   RequisitionRequestType,
   MaterialRequirement,
 } from '../types';
-import { mockBOMs } from '../types';
+import { mockBOMs, mockUsers } from '../types';
 import { isE2ETesting } from '../lib/auth/guards';
 
 // ============================================================================
@@ -1167,6 +1167,13 @@ export function useSupabaseUserProfiles(): UseSupabaseDataResult<User> {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchProfiles = useCallback(async () => {
+    if (isE2ETesting()) {
+      setData(mockUsers);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);

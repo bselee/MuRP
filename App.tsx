@@ -24,6 +24,8 @@ import ManualLabelScanner from './components/ManualLabelScanner';
 import QuickRequestDrawer from './components/QuickRequestDrawer';
 import FeatureSpotlightReminder from './components/FeatureSpotlightReminder';
 import OnboardingChecklist from './components/OnboardingChecklist';
+import LoadingOverlay from './components/LoadingOverlay';
+import { supabase } from './lib/supabase/client';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
 import { UserPreferencesProvider } from './components/UserPreferencesProvider';
 import { useAuth } from './lib/auth/AuthContext';

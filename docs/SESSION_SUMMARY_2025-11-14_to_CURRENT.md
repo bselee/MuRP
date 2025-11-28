@@ -1472,3 +1472,18 @@ interface GmailSendResult {
   - "Require Approval" setting blocks sharing of draft items
   - "Approve Artwork" button successfully updates status
 
+---
+
+### Session: November 28, 2025 (Loading Overlay & E2E Guardrails)
+
+**Changes Made:**
+- Modified: `App.tsx` – Imported `LoadingOverlay` and the Supabase client so the shell renders without ReferenceErrors and sync health polling can initialize during cold loads.
+- Modified: `hooks/useSupabaseData.ts` – Updated `useSupabaseUserProfiles()` to return `mockUsers` whenever `?e2e=1` is present, ensuring project-creation flows have selectable owners/delegates in automated tests.
+
+**Key Decisions:**
+- Decision: Handle the E2E bypass at the data-hook layer instead of sprinkling mocks through UI components; this keeps fixtures centralized and automatically benefits every consumer that relies on the shared hook.
+
+**Tests:**
+- `npm test`
+- `npm run build`
+- `npm run e2e`
