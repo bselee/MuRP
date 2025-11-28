@@ -8,6 +8,7 @@ import { SOPSubmissionForm } from './SOPSubmissionForm';
 import JobDescriptionPanel from './JobDescriptionPanel';
 import DelegationSettingsPanel from './DelegationSettingsPanel';
 import { useJobDescriptions } from '../hooks/useJobDescriptions';
+import { useAuth } from '../lib/auth/AuthContext';
 import {
   BotIcon,
   SaveIcon,
@@ -137,6 +138,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
   // Repository state
   const [sops, setSops] = useState<SOPRepositoryItem[]>([]);
   const { jobDescriptions } = useJobDescriptions();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -252,8 +254,11 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
         attachments: sop.attachments || [],
       }));
 
-      // Convert job descriptions to repository items
-      const jobItems: SOPRepositoryItem[] = jobDescriptions.map(job => ({
+      // Check if user has permission to view job descriptions (Admin or Operations department)
+      const canViewJobDescriptions = user?.role === 'Admin' || user?.department === 'Operations';
+
+      // Convert job descriptions to repository items (only if user has permission)
+      const jobItems: SOPRepositoryItem[] = canViewJobDescriptions ? jobDescriptions.map(job => ({
         id: job.id,
         type: 'job_description' as const,
         title: `${job.role} - ${job.department}`,
@@ -298,7 +303,7 @@ ${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => 
         automationIdeas: job.automationIdeas,
         lastUpdatedBy: job.lastUpdatedBy,
         googleDocUrl: job.googleDocUrl,
-      }));
+      })) : [];
 
       // Combine and sort by updated date
       const allItems = [...sopItems, ...jobItems].sort((a, b) => 
@@ -982,7 +987,11 @@ ${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => 
                 <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search SOPs and Job Descriptions..."
+                  placeholder={
+                    user?.role === 'Admin' || user?.department === 'Operations'
+                      ? "Search SOPs and Job Descriptions..."
+                      : "Search SOPs..."
+                  }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-indigo-400"
@@ -995,7 +1004,9 @@ ${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => 
               className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-indigo-400"
             >
               <option value="all">All Categories</option>
-              {SOP_CATEGORIES.map(cat => (
+              {SOP_CATEGORIES.filter(cat => 
+                cat !== 'Job Description' || (user?.role === 'Admin' || user?.department === 'Operations')
+              ).map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
