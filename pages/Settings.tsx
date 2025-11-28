@@ -33,6 +33,7 @@ import ComponentSwapSettingsPanel from '../components/ComponentSwapSettingsPanel
 import DelegationSettingsPanel from '../components/DelegationSettingsPanel';
 import BillingPanel from '../components/BillingPanel';
 import NotificationPreferencesPanel from '../components/NotificationPreferencesPanel';
+import RolePermissionMatrix from '../components/RolePermissionMatrix';
 
 interface SettingsProps {
     currentUser: User;
@@ -73,6 +74,7 @@ const Settings: React.FC<SettingsProps> = ({
     // Collapsible section states (reordered by usage frequency)
     const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
     const [isBillingOpen, setIsBillingOpen] = useState(true);
+    const [isRoleMatrixOpen, setIsRoleMatrixOpen] = useState(true);
     const [isAiConfigOpen, setIsAiConfigOpen] = useState(false);
     const [isDataIntegrationsOpen, setIsDataIntegrationsOpen] = useState(false);
     const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
@@ -194,6 +196,15 @@ Thank you!`
             onToggle={() => setIsBillingOpen(!isBillingOpen)}
           >
             <BillingPanel currentUser={currentUser} addToast={addToast} />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Role Permissions Overview"
+            icon={<ShieldCheckIcon className="w-6 h-6 text-indigo-300" />}
+            isOpen={isRoleMatrixOpen}
+            onToggle={() => setIsRoleMatrixOpen(!isRoleMatrixOpen)}
+          >
+            <RolePermissionMatrix />
           </CollapsibleSection>
 
           <CollapsibleSection
