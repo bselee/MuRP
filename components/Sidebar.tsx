@@ -4,7 +4,7 @@ import React from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MushroomLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, AiSwirlIcon, Squares2X2Icon, UsersIcon, ChartBarIcon, QrCodeIcon, EyeIcon, FileTextIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MuRPLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, UsersIcon, ChartBarIcon, EyeIcon, FileTextIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
 import UserSettingsDropdown from './UserSettingsDropdown';
@@ -114,8 +114,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
         { page: 'Inventory', icon: <PackageIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Vendors', icon: <UsersIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Stock Intelligence', icon: <ChartBarIcon className="w-6 h-6" />, managerAndUp: true },
-        { page: 'Label Scanner', icon: <QrCodeIcon className="w-6 h-6" />, managerAndUp: true },
-        { page: 'Product Page', icon: <EyeIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'API Documentation', icon: <FileTextIcon className="w-6 h-6" />, adminOnly: true },
         { page: 'Settings', icon: <CogIcon className="w-6 h-6" />, adminOnly: true },
     ];
@@ -160,7 +158,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
             <div className={`h-16 flex items-center border-b ${sectionBorder} relative ${isCollapsed ? 'justify-center' : 'px-4'}`}>
                 {!isCollapsed && (
                     <>
-                        <MushroomLogo className={`w-11 h-11 mr-3 ${isLight ? 'text-amber-700' : 'text-indigo-200'}`} />
+                        <MuRPLogo className={`w-16 h-8 mr-3 ${isLight ? 'text-amber-700' : 'text-indigo-200'}`} />
                         <div className={`text-2xl font-bold tracking-tight whitespace-nowrap ${isLight ? 'text-amber-900' : 'text-white'}`}>MuRP</div>
                     </>
                 )}
@@ -199,14 +197,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
                 <a
                     href="#"
                     onClick={(e) => { e.preventDefault(); onOpenAiAssistant(); }}
-                    className={`relative flex items-center p-2 text-base font-normal rounded-lg group ${aiLinkClass} ${isCollapsed ? 'justify-center' : ''}`}
+                    className={`relative flex items-center space-x-2 p-2 text-base font-normal rounded-lg group ${aiLinkClass} ${isCollapsed ? 'justify-center' : ''}`}
                 >
                     <div className="flex items-center justify-center">
                         <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 via-indigo-500 to-purple-600 shadow-lg">
-                            <AiSwirlIcon className="w-5 h-5 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.65)]" />
+                            <RobotIcon className="w-5 h-5 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.65)]" />
                         </div>
                     </div>
-                    <span className={`ml-3 whitespace-nowrap transition-opacity duration-200 font-semibold ${isCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>
+                    <span className={`whitespace-nowrap transition-opacity duration-200 font-semibold ${isCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-indigo-200 to-purple-200 uppercase tracking-widest">MB</span>
                         <span className="ml-1 text-sm text-inherit opacity-0 group-hover:opacity-100 transition-opacity duration-200">MuRPBot</span>
                     </span>

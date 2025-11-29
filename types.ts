@@ -1866,21 +1866,29 @@ export const DAM_TIER_LIMITS: Record<DAMTier, {
   storage: number; // bytes
   editing: boolean;
   compliance: boolean;
+  uploadLimit: number; // max number of uploads allowed
+  uploadOnly: boolean; // if true, only upload allowed, no AI features
 }> = {
   basic: {
     storage: 100 * 1024 * 1024, // 100 MB
     editing: false,
     compliance: false,
+    uploadLimit: 10, // Limited to 10 uploads for free tier
+    uploadOnly: true, // Upload-only, no AI features
   },
   mid: {
     storage: 1024 * 1024 * 1024, // 1 GB
     editing: true,
     compliance: false,
+    uploadLimit: -1, // Unlimited uploads
+    uploadOnly: false,
   },
   full: {
     storage: 10 * 1024 * 1024 * 1024, // 10 GB
     editing: true,
     compliance: true,
+    uploadLimit: -1, // Unlimited uploads
+    uploadOnly: false,
   },
 };
 

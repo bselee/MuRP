@@ -4,7 +4,8 @@
 - generic [ref=e3]:
   - complementary [ref=e4]:
     - generic [ref=e5]:
-      - img [ref=e6]
+      - img [ref=e6]:
+        - generic [ref=e7]: MuRP
       - generic [ref=e8]: MuRP
       - button [ref=e9] [cursor=pointer]:
         - img [ref=e10]
@@ -55,84 +56,77 @@
             - /url: "#"
             - img [ref=e56]
             - generic [ref=e58]: Stock Intelligence
-        - listitem [ref=e59]:
-          - link "Label Scanner" [ref=e60] [cursor=pointer]:
-            - /url: "#"
-            - img [ref=e61]
-            - generic [ref=e64]: Label Scanner
-        - listitem [ref=e65]:
-          - link "Product Page" [ref=e66] [cursor=pointer]:
-            - /url: "#"
-            - img [ref=e67]
-            - generic [ref=e70]: Product Page
-    - generic [ref=e71]:
-      - button "User Avatar Brenda Prod (E2E)" [ref=e73] [cursor=pointer]:
-        - img "User Avatar" [ref=e74]
-        - generic [ref=e75]: Brenda Prod (E2E)
-      - link "MBMuRPBot" [ref=e76] [cursor=pointer]:
+    - generic [ref=e59]:
+      - button "User Avatar Brenda Prod (E2E)" [ref=e61] [cursor=pointer]:
+        - img "User Avatar" [ref=e62]
+        - generic [ref=e63]: Brenda Prod (E2E)
+      - link "MBMuRPBot" [ref=e64] [cursor=pointer]:
         - /url: "#"
-        - img [ref=e79]
-        - generic [ref=e85]: MBMuRPBot
-  - generic [ref=e86]:
-    - banner [ref=e87]:
-      - generic [ref=e88]:
-        - generic [ref=e89]: Syncing · Nov 29, 12:51 PM
-        - button "Notifications" [ref=e91]:
-          - img [ref=e92]
-    - main [ref=e94]:
-      - generic [ref=e95]:
-        - complementary [ref=e96]:
-          - heading "Folders" [level=2] [ref=e97]
-          - navigation [ref=e98]:
-            - button "All Artwork" [ref=e99] [cursor=pointer]
-            - button "Unassigned" [ref=e100] [cursor=pointer]
-          - button "Create Folder" [ref=e102] [cursor=pointer]:
-            - img [ref=e103]
+        - img [ref=e67]
+        - generic [ref=e81]: MBMuRPBot
+  - generic [ref=e82]:
+    - banner [ref=e83]:
+      - generic [ref=e84]:
+        - generic [ref=e85]: Syncing · Nov 29, 1:38 PM
+        - button "Notifications" [ref=e87]:
+          - img [ref=e88]
+    - main [ref=e90]:
+      - generic [ref=e91]:
+        - complementary [ref=e92]:
+          - heading "Folders" [level=2] [ref=e93]
+          - navigation [ref=e94]:
+            - button "All Artwork" [ref=e95] [cursor=pointer]
+            - button "Unassigned" [ref=e96] [cursor=pointer]
+          - button "Create Folder" [ref=e98] [cursor=pointer]:
+            - img [ref=e99]
             - text: Create Folder
-        - main [ref=e105]:
-          - generic [ref=e106]:
-            - generic [ref=e107]:
-              - generic [ref=e108]:
-                - heading "Artwork Library" [level=1] [ref=e109]
-                - paragraph [ref=e110]: A central repository for all product artwork and design files.
-              - generic [ref=e111]:
-                - button "Upload Artwork" [ref=e112] [cursor=pointer]:
-                  - img [ref=e113]
+        - main [ref=e101]:
+          - generic [ref=e102]:
+            - generic [ref=e103]:
+              - generic [ref=e104]:
+                - heading "Artwork Library" [level=1] [ref=e105]
+                - paragraph [ref=e106]: A central repository for all product artwork and design files.
+              - generic [ref=e107]:
+                - button "Upload Artwork" [ref=e108] [cursor=pointer]:
+                  - img [ref=e109]
                   - text: Upload Artwork
-                - button "Scan Labels" [ref=e115] [cursor=pointer]:
-                  - img [ref=e116]
+                - button "World-Class Scanning" [ref=e111] [cursor=pointer]:
+                  - img [ref=e112]
+                  - text: World-Class Scanning
+                - button "Scan Labels" [ref=e114] [cursor=pointer]:
+                  - img [ref=e115]
                   - text: Scan Labels
-                - button "Batch Verify" [ref=e119] [cursor=pointer]:
-                  - img [ref=e120]
+                - button "Batch Verify" [ref=e118] [cursor=pointer]:
+                  - img [ref=e119]
                   - text: Batch Verify
-                - button "DAM Settings" [ref=e122] [cursor=pointer]:
-                  - img [ref=e123]
-            - generic [ref=e126]:
+                - button "DAM Settings" [ref=e121] [cursor=pointer]:
+                  - img [ref=e122]
+            - generic [ref=e125]:
               - generic:
                 - img
-              - textbox "Search by filename, product name, or SKU..." [ref=e127]
-          - generic [ref=e128]:
-            - generic [ref=e129] [cursor=pointer]:
-              - generic [ref=e130]:
-                - img [ref=e131]
-                - checkbox [ref=e133]
-              - generic [ref=e134]:
-                - paragraph [ref=e135]: premium-potting-mix-label-5x6.ai
-                - paragraph [ref=e136]: Rev 3
-                - paragraph [ref=e137]: Premium Potting Mix (1 cu ft)
-              - generic [ref=e138]:
-                - combobox [ref=e140]:
+              - textbox "Search by filename, product name, or SKU..." [ref=e126]
+          - generic [ref=e127]:
+            - generic [ref=e128] [cursor=pointer]:
+              - generic [ref=e129]:
+                - img [ref=e130]
+                - checkbox [ref=e132]
+              - generic [ref=e133]:
+                - paragraph [ref=e134]: premium-potting-mix-label-5x6.ai
+                - paragraph [ref=e135]: Rev 3
+                - paragraph [ref=e136]: Premium Potting Mix (1 cu ft)
+              - generic [ref=e137]:
+                - combobox [ref=e139]:
                   - option "Move to..." [selected]
-                - generic [ref=e141]:
-                  - link "Download" [ref=e142]:
+                - generic [ref=e140]:
+                  - link "Download" [ref=e141]:
                     - /url: /art/premium-label-v3.pdf
                     - img
-                    - generic [ref=e144]: Download
-                  - button "Scan" [ref=e145]:
+                    - generic [ref=e143]: Download
+                  - button "Scan" [ref=e144]:
                     - img
-                    - generic [ref=e147]: Scan
-                  - button "Edit" [ref=e148]:
-                    - img
+                    - generic [ref=e146]: Scan
+                  - button "Edit" [ref=e147]:
+                    - img [ref=e148]
                     - generic [ref=e150]: Edit
                   - button "Share" [ref=e151]:
                     - img
@@ -157,86 +151,86 @@
                     - img
                     - generic [ref=e172]: Scan
                   - button "Edit" [ref=e173]:
+                    - img [ref=e174]
+                    - generic [ref=e176]: Edit
+                  - button "Share" [ref=e177]:
                     - img
-                    - generic [ref=e175]: Edit
-                  - button "Share" [ref=e176]:
-                    - img
-                    - generic [ref=e178]: Share
-            - generic [ref=e179] [cursor=pointer]:
-              - generic [ref=e180]:
-                - img [ref=e181]
-                - checkbox [ref=e183]
-              - generic [ref=e184]:
-                - paragraph [ref=e185]: starter-kit-sticker.ai
-                - paragraph [ref=e186]: Rev 1
-                - paragraph [ref=e187]: Seed Starter Kit
-              - generic [ref=e188]:
-                - combobox [ref=e190]:
+                    - generic [ref=e179]: Share
+            - generic [ref=e180] [cursor=pointer]:
+              - generic [ref=e181]:
+                - img [ref=e182]
+                - checkbox [ref=e184]
+              - generic [ref=e185]:
+                - paragraph [ref=e186]: starter-kit-sticker.ai
+                - paragraph [ref=e187]: Rev 1
+                - paragraph [ref=e188]: Seed Starter Kit
+              - generic [ref=e189]:
+                - combobox [ref=e191]:
                   - option "Move to..." [selected]
-                - generic [ref=e191]:
-                  - link "Download" [ref=e192]:
+                - generic [ref=e192]:
+                  - link "Download" [ref=e193]:
                     - /url: /art/starter-kit-sticker-v1.pdf
                     - img
-                    - generic [ref=e194]: Download
-                  - button "Scan" [ref=e195]:
+                    - generic [ref=e195]: Download
+                  - button "Scan" [ref=e196]:
                     - img
-                    - generic [ref=e197]: Scan
-                  - button "Edit" [ref=e198]:
+                    - generic [ref=e198]: Scan
+                  - button "Edit" [ref=e199]:
+                    - img [ref=e200]
+                    - generic [ref=e202]: Edit
+                  - button "Share" [ref=e203]:
                     - img
-                    - generic [ref=e200]: Edit
-                  - button "Share" [ref=e201]:
-                    - img
-                    - generic [ref=e203]: Share
-            - generic [ref=e204] [cursor=pointer]:
-              - generic [ref=e205]:
-                - img [ref=e206]
-                - checkbox [ref=e208]
-              - generic [ref=e209]:
-                - paragraph [ref=e210]: super-soil-back-6x5.5.png
-                - paragraph [ref=e211]: Rev 2
-                - paragraph [ref=e212]: Organic Super Soil (2 cu ft)
-              - generic [ref=e213]:
-                - combobox [ref=e215]:
+                    - generic [ref=e205]: Share
+            - generic [ref=e206] [cursor=pointer]:
+              - generic [ref=e207]:
+                - img [ref=e208]
+                - checkbox [ref=e210]
+              - generic [ref=e211]:
+                - paragraph [ref=e212]: super-soil-back-6x5.5.png
+                - paragraph [ref=e213]: Rev 2
+                - paragraph [ref=e214]: Organic Super Soil (2 cu ft)
+              - generic [ref=e215]:
+                - combobox [ref=e217]:
                   - option "Move to..." [selected]
-                - generic [ref=e216]:
-                  - link "Download" [ref=e217]:
+                - generic [ref=e218]:
+                  - link "Download" [ref=e219]:
                     - /url: /art/super-soil-back-v2.pdf
                     - img
-                    - generic [ref=e219]: Download
-                  - button "Scan" [ref=e220]:
+                    - generic [ref=e221]: Download
+                  - button "Scan" [ref=e222]:
                     - img
-                    - generic [ref=e222]: Scan
-                  - button "Edit" [ref=e223]:
+                    - generic [ref=e224]: Scan
+                  - button "Edit" [ref=e225]:
+                    - img [ref=e226]
+                    - generic [ref=e228]: Edit
+                  - button "Share" [ref=e229]:
                     - img
-                    - generic [ref=e225]: Edit
-                  - button "Share" [ref=e226]:
-                    - img
-                    - generic [ref=e228]: Share
-            - generic [ref=e229] [cursor=pointer]:
-              - generic [ref=e230]:
-                - img [ref=e231]
-                - checkbox [ref=e233]
-              - generic [ref=e234]:
-                - paragraph [ref=e235]: super-soil-front-6x5.5.png
-                - paragraph [ref=e236]: Rev 1
-                - paragraph [ref=e237]: Organic Super Soil (2 cu ft)
-              - generic [ref=e238]:
-                - combobox [ref=e240]:
+                    - generic [ref=e231]: Share
+            - generic [ref=e232] [cursor=pointer]:
+              - generic [ref=e233]:
+                - img [ref=e234]
+                - checkbox [ref=e236]
+              - generic [ref=e237]:
+                - paragraph [ref=e238]: super-soil-front-6x5.5.png
+                - paragraph [ref=e239]: Rev 1
+                - paragraph [ref=e240]: Organic Super Soil (2 cu ft)
+              - generic [ref=e241]:
+                - combobox [ref=e243]:
                   - option "Move to..." [selected]
-                - generic [ref=e241]:
-                  - link "Download" [ref=e242]:
+                - generic [ref=e244]:
+                  - link "Download" [ref=e245]:
                     - /url: /art/super-soil-front-v1.pdf
                     - img
-                    - generic [ref=e244]: Download
-                  - button "Scan" [ref=e245]:
+                    - generic [ref=e247]: Download
+                  - button "Scan" [ref=e248]:
                     - img
-                    - generic [ref=e247]: Scan
-                  - button "Edit" [ref=e248]:
+                    - generic [ref=e250]: Scan
+                  - button "Edit" [ref=e251]:
+                    - img [ref=e252]
+                    - generic [ref=e254]: Edit
+                  - button "Share" [ref=e255]:
                     - img
-                    - generic [ref=e250]: Edit
-                  - button "Share" [ref=e251]:
-                    - img
-                    - generic [ref=e253]: Share
+                    - generic [ref=e257]: Share
   - generic:
     - complementary:
       - generic:
@@ -316,13 +310,13 @@
           - img
           - text: Submit Requisition
         - paragraph: Routes to purchasing with your department + priority so nothing slips through the cracks.
-  - generic [ref=e254]:
-    - generic [ref=e255]:
-      - img [ref=e256]
+  - generic [ref=e258]:
+    - generic [ref=e259]:
+      - img [ref=e260]
       - text: Spotlight
-    - heading "Two-factor in two clicks" [level=3] [ref=e258]
-    - paragraph [ref=e259]: Keep purchasing safe by pairing an authenticator app. Each user owns their own codes so OTPs stay compliant.
-    - generic [ref=e260]:
-      - button "Explore" [ref=e261] [cursor=pointer]
-      - button "Later" [ref=e262] [cursor=pointer]
+    - heading "Two-factor in two clicks" [level=3] [ref=e262]
+    - paragraph [ref=e263]: Keep purchasing safe by pairing an authenticator app. Each user owns their own codes so OTPs stay compliant.
+    - generic [ref=e264]:
+      - button "Explore" [ref=e265] [cursor=pointer]
+      - button "Later" [ref=e266] [cursor=pointer]
 ```

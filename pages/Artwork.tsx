@@ -3,7 +3,7 @@ import Button from '@/components/ui/Button';
 import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder, GmailConnection, InventoryItem, Vendor, ArtworkShareEvent, DAMTier, DamSettingsState, CompanyEmailSettings } from '../types';
 import { mockBOMs } from '../types';
 import { isE2ETesting } from '../lib/auth/guards';
-import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon, QrCodeIcon, CheckCircleIcon, CloudUploadIcon, SendIcon } from '../components/icons';
+import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon, QrCodeIcon, CheckCircleIcon, CloudUploadIcon, SendIcon, DocumentTextIcon } from '../components/icons';
 import RegulatoryScanModal from '../components/RegulatoryScanModal';
 import BatchArtworkVerificationModal from '../components/BatchArtworkVerificationModal';
 import ManualLabelScanner from '../components/ManualLabelScanner';
@@ -15,6 +15,7 @@ import { DAM_TIER_LIMITS } from '../types';
 import { loadState, saveState } from '../services/storageService';
 import { fileToBase64, scanLabelImage } from '../services/labelScanningService';
 import SupportTicketModal from '../components/SupportTicketModal';
+import ComplianceDashboard from '../components/ComplianceDashboard';
 
 type ArtworkWithProduct = Artwork & {
     productName: string;
@@ -131,6 +132,10 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
         loadState<DamSettingsState>(damSettingsStorageKey, DEFAULT_DAM_SETTINGS)
     );
 
+    // Integrated Scanning System State
+    const [activeScanTab, setActiveScanTab] = useState<'manual' | 'regulatory' | 'batch' | 'ai' | 'compliance'>('manual');
+    const [isScanningInterfaceOpen, setIsScanningInterfaceOpen] = useState(false);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         const storedTier = loadState<DAMTier>(damTierStorageKey, 'basic');
@@ -210,6 +215,10 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
     const storageLimitBytes = DAM_TIER_LIMITS[damTier].storage;
     const normalizedAssetCount = normalizedAssets.length;
     const legacyAssetCount = allArtwork.length;
+    const totalAssetCount = normalizedAssetCount + legacyAssetCount;
+    const uploadLimit = DAM_TIER_LIMITS[damTier].uploadLimit;
+    const isUploadOnly = DAM_TIER_LIMITS[damTier].uploadOnly;
+    const canUpload = uploadLimit === -1 || totalAssetCount < uploadLimit;
 
     const allowedDomainsList = useMemo(() => {
         return damSettings.allowedDomains
@@ -653,6 +662,142 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
 
     return (
         <>
+            {/* Integrated Scanning Interface */}
+            {isScanningInterfaceOpen && (
+                <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <SparklesIcon className="w-6 h-6 text-indigo-400" />
+                            <h2 className="text-2xl font-bold text-white">World-Class Scanning System</h2>
+                        </div>
+                        <Button
+                            onClick={() => setIsScanningInterfaceOpen(false)}
+                            className="text-gray-400 hover:text-white transition-colors"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </Button>
+                    </div>
+
+                    {/* Scan Mode Tabs */}
+                    <div className="flex gap-2 mb-6 overflow-x-auto">
+                        {[
+                            { id: 'manual' as const, label: 'Manual Label Scan', icon: QrCodeIcon, description: 'Upload & scan individual labels with AI extraction', requiresCompliance: false },
+                            { id: 'regulatory' as const, label: 'Regulatory Compliance', icon: SparklesIcon, description: 'State-specific regulatory scanning & compliance advice', requiresCompliance: false },
+                            { id: 'batch' as const, label: 'Batch Verification', icon: DocumentDuplicateIcon, description: 'Verify multiple artwork files simultaneously', requiresCompliance: false },
+                            { id: 'ai' as const, label: 'AI-Powered Analysis', icon: SparklesIcon, description: 'Advanced AI analysis for artwork quality & compliance', requiresCompliance: false },
+                            { id: 'compliance' as const, label: 'Compliance Dashboard', icon: DocumentTextIcon, description: 'Comprehensive compliance monitoring across all products', requiresCompliance: true }
+                        ].filter(tab => !tab.requiresCompliance || DAM_TIER_LIMITS[damTier].compliance).map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveScanTab(tab.id)}
+                                className={`flex-shrink-0 px-4 py-3 rounded-lg border transition-all duration-200 ${
+                                    activeScanTab === tab.id
+                                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                                        : 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-600/50 hover:border-gray-500'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2 mb-1">
+                                    <tab.icon className="w-4 h-4" />
+                                    <span className="font-semibold text-sm">{tab.label}</span>
+                                </div>
+                                <p className="text-xs opacity-80">{tab.description}</p>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Tab Content */}
+                    <div className="min-h-[600px]">
+                        {activeScanTab === 'manual' && (
+                            <div className="bg-gray-900/30 rounded-lg p-6">
+                                <div className="text-center mb-6">
+                                    <QrCodeIcon className="w-12 h-12 text-indigo-400 mx-auto mb-3" />
+                                    <h3 className="text-xl font-semibold text-white mb-2">Manual Label Scanner</h3>
+                                    <p className="text-gray-400">Upload and scan product labels with AI extraction. No BOM required.</p>
+                                </div>
+                                <ManualLabelScanner
+                                    boms={effectiveBoms}
+                                    currentUser={currentUser}
+                                    onScanComplete={(label) => {
+                                        addToast(`Label "${label.productName}" scanned and saved successfully!`, 'success');
+                                        // Optionally refresh artwork list if label was linked to a BOM
+                                    }}
+                                    onClose={() => {}}
+                                />
+                            </div>
+                        )}
+
+                        {activeScanTab === 'regulatory' && (
+                            <div className="bg-gray-900/30 rounded-lg p-6">
+                                <div className="text-center mb-6">
+                                    <SparklesIcon className="w-12 h-12 text-green-400 mx-auto mb-3" />
+                                    <h3 className="text-xl font-semibold text-white mb-2">Regulatory Compliance Scanner</h3>
+                                    <p className="text-gray-400">AI-powered regulatory scanning for state-specific compliance requirements.</p>
+                                </div>
+                                {selectedArtworkForScan ? (
+                                    <RegulatoryScanModal
+                                        isOpen={true}
+                                        onClose={() => setSelectedArtworkForScan(null)}
+                                        artwork={selectedArtworkForScan}
+                                        bom={effectiveBoms.find(b => b.id === selectedArtworkForScan.bomId)!}
+                                        onUpdateLink={(link) => onUpdateArtwork(selectedArtworkForScan.id, selectedArtworkForScan.bomId, { regulatoryDocLink: link })}
+                                        watchlist={watchlist}
+                                        aiConfig={aiConfig}
+                                    />
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <DocumentTextIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                                        <h4 className="text-lg font-semibold text-gray-400 mb-2">Select Artwork to Scan</h4>
+                                        <p className="text-gray-500 mb-4">Choose an artwork file from the library above to begin regulatory compliance scanning.</p>
+                                        <Button
+                                            onClick={() => setIsScanningInterfaceOpen(false)}
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg"
+                                        >
+                                            Browse Artwork Library
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeScanTab === 'batch' && (
+                            <div className="bg-gray-900/30 rounded-lg p-6">
+                                <div className="text-center mb-6">
+                                    <DocumentDuplicateIcon className="w-12 h-12 text-purple-400 mx-auto mb-3" />
+                                    <h3 className="text-xl font-semibold text-white mb-2">Batch Artwork Verification</h3>
+                                    <p className="text-gray-400">Upload and verify multiple artwork files simultaneously with AI analysis.</p>
+                                </div>
+                                <BatchArtworkVerificationModal
+                                    isOpen={true}
+                                    onClose={() => {}}
+                                    boms={effectiveBoms}
+                                    aiConfig={aiConfig}
+                                />
+                            </div>
+                        )}
+
+                        {activeScanTab === 'compliance' && DAM_TIER_LIMITS[damTier].compliance && (
+                            <div className="bg-gray-900/30 rounded-lg p-6">
+                                <div className="text-center mb-6">
+                                    <DocumentTextIcon className="w-12 h-12 text-green-400 mx-auto mb-3" />
+                                    <h3 className="text-xl font-semibold text-white mb-2">Compliance Dashboard</h3>
+                                    <p className="text-gray-400">Comprehensive regulatory compliance monitoring across all your products and artwork.</p>
+                                </div>
+                                <ComplianceDashboard
+                                    boms={effectiveBoms}
+                                    watchlist={watchlist}
+                                    onViewDetails={(bom, status) => {
+                                        // Handle viewing compliance details for a specific BOM
+                                        addToast(`Viewing compliance details for ${bom.name}`, 'info');
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             <div className="flex gap-6 h-full">
                 {/* Folder Sidebar */}
                 <aside className="w-64 bg-gray-800/50 p-4 rounded-lg border border-gray-700 flex-shrink-0 flex flex-col" style={{ minHeight: '600px' }}>
@@ -698,6 +843,10 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                             <div className="flex gap-2">
                                 <Button 
                                     onClick={() => {
+                                        if (!canUpload) {
+                                            addToast(`Upload limit reached (${uploadLimit} files) for ${damTier} tier. Please upgrade to upload more.`, 'error');
+                                            return;
+                                        }
                                         if (storageUsageBytes >= storageLimitBytes) {
                                             addToast(`Storage limit reached for ${damTier} tier (${formatStorageSize(storageLimitBytes)}). Please upgrade to upload more.`, 'error');
                                             return;
@@ -708,6 +857,19 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                 >
                                     <CloudUploadIcon className="w-5 h-5" />
                                     Upload Artwork
+                                </Button>
+                                <Button 
+                                    onClick={() => {
+                                        if (isUploadOnly) {
+                                            addToast('AI scanning features require a paid DAM tier. Upgrade to unlock regulatory compliance scanning and AI-powered analysis.', 'error');
+                                            return;
+                                        }
+                                        setIsScanningInterfaceOpen(true);
+                                    }}
+                                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-all duration-200 flex items-center gap-2 shadow-lg"
+                                >
+                                    <SparklesIcon className="w-5 h-5" />
+                                    World-Class Scanning
                                 </Button>
                                 <Button 
                                     onClick={() => setIsLabelScannerOpen(true)}
@@ -1084,6 +1246,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                 storageLimitBytes={storageLimitBytes}
                 normalizedAssetCount={normalizedAssetCount}
                 legacyAssetCount={legacyAssetCount}
+                totalAssetCount={totalAssetCount}
             />
 
             {/* Download Warning Modal */}

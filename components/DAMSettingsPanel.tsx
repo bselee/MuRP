@@ -13,6 +13,7 @@ interface DAMSettingsPanelProps {
   storageLimitBytes?: number;
   normalizedAssetCount?: number;
   legacyAssetCount?: number;
+  totalAssetCount?: number;
   mode?: 'user' | 'admin';
   onRequestUpgrade?: () => void;
 }
@@ -28,6 +29,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
   storageLimitBytes,
   normalizedAssetCount = 0,
   legacyAssetCount = 0,
+  totalAssetCount = 0,
   mode = 'user',
   onRequestUpgrade,
 }) => {
@@ -107,8 +109,10 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                         <h4 className="font-bold text-white capitalize">{tier} Tier</h4>
                         <ul className="mt-2 space-y-1 text-xs text-gray-400">
                           <li>Storage: {DAM_TIER_LIMITS[tier].storage / (1024 * 1024)} MB</li>
+                          <li>Uploads: {DAM_TIER_LIMITS[tier].uploadLimit === -1 ? 'Unlimited' : DAM_TIER_LIMITS[tier].uploadLimit}</li>
                           <li>Editing: {DAM_TIER_LIMITS[tier].editing ? '✅' : '❌'}</li>
                           <li>Compliance: {DAM_TIER_LIMITS[tier].compliance ? '✅' : '❌'}</li>
+                          <li>AI Features: {DAM_TIER_LIMITS[tier].uploadOnly ? '❌ (Upload Only)' : '✅'}</li>
                         </ul>
                         {currentTier !== tier && (
                           <Button
@@ -141,26 +145,49 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
               )}
 
               <section className="bg-gray-900/30 border border-gray-800 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Storage Usage</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs text-gray-400">
-                    <span>{(storageUsedBytes / (1024 * 1024)).toFixed(2)} MB used</span>
-                    <span>{(resolvedStorageLimit / (1024 * 1024)).toFixed(0)} MB limit</span>
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Storage & Upload Usage</h3>
+                <div className="space-y-4">
+                  {/* Storage Usage */}
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+                      <span>Storage: {(storageUsedBytes / (1024 * 1024)).toFixed(2)} MB used</span>
+                      <span>{(resolvedStorageLimit / (1024 * 1024)).toFixed(0)} MB limit</span>
+                    </div>
+                    <div className="h-3 rounded-full bg-gray-800 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${usagePercent > 90 ? 'bg-red-500' : usagePercent > 70 ? 'bg-yellow-500' : 'bg-indigo-500'}`}
+                        style={{ width: `${usagePercent}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-3 rounded-full bg-gray-800 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${usagePercent > 90 ? 'bg-red-500' : usagePercent > 70 ? 'bg-yellow-500' : 'bg-indigo-500'}`}
-                      style={{ width: `${usagePercent}%` }}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm text-gray-300">
+
+                  {/* Upload Count */}
+                  {DAM_TIER_LIMITS[currentTier].uploadLimit !== -1 && (
                     <div>
-                      <p className="text-xs uppercase text-gray-500">Normalized Assets</p>
-                      <p className="font-semibold text-white">{normalizedAssetCount}</p>
+                      <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+                        <span>Uploads: {totalAssetCount} used</span>
+                        <span>{DAM_TIER_LIMITS[currentTier].uploadLimit} limit</span>
+                      </div>
+                      <div className="h-3 rounded-full bg-gray-800 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${totalAssetCount >= DAM_TIER_LIMITS[currentTier].uploadLimit ? 'bg-red-500' : totalAssetCount > DAM_TIER_LIMITS[currentTier].uploadLimit * 0.8 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                          style={{ width: `${Math.min(100, (totalAssetCount / DAM_TIER_LIMITS[currentTier].uploadLimit) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Feature Status */}
+                  <div className="grid grid-cols-2 gap-4 text-sm text-gray-300 pt-2 border-t border-gray-700">
+                    <div>
+                      <p className="text-xs uppercase text-gray-500">Asset Count</p>
+                      <p className="font-semibold text-white">{normalizedAssetCount + legacyAssetCount}</p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase text-gray-500">Legacy JSON</p>
-                      <p className="font-semibold text-white">{legacyAssetCount}</p>
+                      <p className="text-xs uppercase text-gray-500">Tier Status</p>
+                      <p className={`font-semibold ${DAM_TIER_LIMITS[currentTier].uploadOnly ? 'text-yellow-400' : 'text-green-400'}`}>
+                        {DAM_TIER_LIMITS[currentTier].uploadOnly ? 'Upload Only' : 'Full Access'}
+                      </p>
                     </div>
                   </div>
                 </div>

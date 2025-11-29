@@ -1,10 +1,9 @@
 import React from 'react';
 
-// MuRP Logo - Secret Squirrel Icon
-export const MushroomLogo = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 356 356" fill="currentColor">
-    {/* Squirrel silhouette */}
-    <path d="M 80 50 C 65 55, 55 70, 58 90 L 60 120 C 62 140, 75 155, 90 158 C 95 160, 100 162, 105 165 C 110 168, 115 172, 118 178 C 120 182, 121 187, 120 192 L 115 220 C 112 235, 115 250, 125 260 C 135 270, 150 275, 165 273 L 200 270 C 215 268, 228 260, 235 248 C 242 236, 243 222, 240 208 L 235 180 C 233 170, 228 162, 220 156 C 212 150, 202 147, 192 146 L 180 145 C 175 145, 170 143, 166 140 C 162 137, 159 133, 157 128 C 155 123, 154 118, 155 113 L 158 95 C 160 85, 165 76, 173 70 C 181 64, 191 61, 201 62 L 230 65 C 245 67, 258 75, 266 87 C 274 99, 277 113, 275 128 L 270 160 C 268 175, 262 188, 252 198 C 242 208, 229 214, 215 215 L 185 216 C 170 217, 157 212, 148 202 C 139 192, 135 178, 137 164 L 140 145 C 141 140, 140 135, 137 131 C 134 127, 130 125, 125 125 C 120 125, 116 127, 113 131 C 110 135, 109 140, 110 145 L 107 164 C 105 178, 101 192, 93 202 C 85 212, 72 217, 58 215 L 30 212 C 15 210, 2 202, -6 190 C -14 178, -17 164, -15 149 L -10 117 C -8 102, -2 89, 8 79 C 18 69, 31 63, 45 62 L 75 60 C 77 60, 79 59, 80 57 C 81 55, 81 53, 80 51 Z M 280 100 C 285 95, 292 93, 299 95 C 306 97, 311 102, 313 109 C 315 116, 313 123, 308 128 C 303 133, 296 135, 289 133 C 282 131, 277 126, 275 119 C 273 112, 275 105, 280 100 Z" />
+// MuRP Logo - Simple Text-Based Logo
+export const MuRPLogo = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 80 32" fill="currentColor">
+    <text x="0" y="24" fontSize="20" fontWeight="bold" fontFamily="system-ui, -apple-system, sans-serif">MuRP</text>
   </svg>
 );
 
@@ -63,6 +62,43 @@ export const AiSwirlIcon = ({ className }: { className?: string }) => (
     />
     <circle cx="16.75" cy="6.25" r="1.15" fill="currentColor" />
     <circle cx="9.25" cy="18" r="0.85" fill="currentColor" opacity={0.8} />
+  </svg>
+);
+
+// Robot Icon for AI Assistant
+export const RobotIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.6}
+  >
+    {/* Robot head */}
+    <rect x="6" y="6" width="12" height="10" rx="2" fill="currentColor" opacity={0.9} />
+    {/* Eyes */}
+    <circle cx="9.5" cy="9.5" r="1.5" fill="white" />
+    <circle cx="14.5" cy="9.5" r="1.5" fill="white" />
+    {/* Pupils */}
+    <circle cx="9.5" cy="9.5" r="0.8" fill="currentColor" />
+    <circle cx="14.5" cy="9.5" r="0.8" fill="currentColor" />
+    {/* Mouth */}
+    <rect x="10" y="12" width="4" height="1" rx="0.5" fill="white" />
+    {/* Antennas */}
+    <line x1="9" y1="6" x2="9" y2="4" stroke="currentColor" strokeWidth="1.5" />
+    <line x1="15" y1="6" x2="15" y2="4" stroke="currentColor" strokeWidth="1.5" />
+    {/* Antenna balls */}
+    <circle cx="9" cy="3.5" r="1" fill="currentColor" />
+    <circle cx="15" cy="3.5" r="1" fill="currentColor" />
+    {/* Body */}
+    <rect x="8" y="16" width="8" height="6" rx="1" fill="currentColor" opacity={0.7} />
+    {/* Arms */}
+    <rect x="4" y="17" width="4" height="2" rx="1" fill="currentColor" opacity={0.8} />
+    <rect x="16" y="17" width="4" height="2" rx="1" fill="currentColor" opacity={0.8} />
+    {/* Legs */}
+    <rect x="9" y="22" width="2" height="3" rx="1" fill="currentColor" opacity={0.8} />
+    <rect x="13" y="22" width="2" height="3" rx="1" fill="currentColor" opacity={0.8} />
   </svg>
 );
 

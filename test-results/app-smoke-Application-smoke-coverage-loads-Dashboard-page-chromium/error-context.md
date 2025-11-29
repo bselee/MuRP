@@ -4,7 +4,8 @@
 - generic [ref=e3]:
   - complementary [ref=e4]:
     - generic [ref=e5]:
-      - img [ref=e6]
+      - img [ref=e6]:
+        - generic [ref=e7]: MuRP
       - generic [ref=e8]: MuRP
       - button [ref=e9] [cursor=pointer]:
         - img [ref=e10]
@@ -55,86 +56,76 @@
             - /url: "#"
             - img [ref=e56]
             - generic [ref=e58]: Stock Intelligence
-        - listitem [ref=e59]:
-          - link "Label Scanner" [ref=e60] [cursor=pointer]:
-            - /url: "#"
-            - img [ref=e61]
-            - generic [ref=e64]: Label Scanner
-        - listitem [ref=e65]:
-          - link "Product Page" [ref=e66] [cursor=pointer]:
-            - /url: "#"
-            - img [ref=e67]
-            - generic [ref=e70]: Product Page
-    - generic [ref=e71]:
-      - button "User Avatar Brenda Prod (E2E)" [ref=e73] [cursor=pointer]:
-        - img "User Avatar" [ref=e74]
-        - generic [ref=e75]: Brenda Prod (E2E)
-      - link "MBMuRPBot" [ref=e76] [cursor=pointer]:
+    - generic [ref=e59]:
+      - button "User Avatar Brenda Prod (E2E)" [ref=e61] [cursor=pointer]:
+        - img "User Avatar" [ref=e62]
+        - generic [ref=e63]: Brenda Prod (E2E)
+      - link "MBMuRPBot" [ref=e64] [cursor=pointer]:
         - /url: "#"
-        - img [ref=e79]
-        - generic [ref=e85]: MBMuRPBot
-  - generic [ref=e86]:
-    - banner [ref=e87]:
-      - generic [ref=e88]:
-        - generic [ref=e89]: Syncing · Nov 29, 12:50 PM
-        - button "Notifications" [ref=e91]:
-          - img [ref=e92]
-    - main [ref=e94]:
-      - generic [ref=e95]:
-        - generic [ref=e97]:
-          - generic [ref=e98]:
-            - heading "Dashboard" [level=1] [ref=e99]
-            - paragraph [ref=e100]: Welcome back, here's your company-wide operations snapshot. (Drag sections to reorder)
-          - button "View Reorder Queue" [ref=e101] [cursor=pointer]:
-            - img [ref=e102]
+        - img [ref=e67]
+        - generic [ref=e81]: MBMuRPBot
+  - generic [ref=e82]:
+    - banner [ref=e83]:
+      - generic [ref=e84]:
+        - generic [ref=e85]: Syncing · Nov 29, 1:37 PM
+        - button "Notifications" [ref=e87]:
+          - img [ref=e88]
+    - main [ref=e90]:
+      - generic [ref=e91]:
+        - generic [ref=e93]:
+          - generic [ref=e94]:
+            - heading "Dashboard" [level=1] [ref=e95]
+            - paragraph [ref=e96]: Welcome back, here's your company-wide operations snapshot. (Drag sections to reorder)
+          - button "View Reorder Queue" [ref=e97] [cursor=pointer]:
+            - img [ref=e98]
             - text: View Reorder Queue
-        - generic [ref=e105]:
-          - generic [ref=e107] [cursor=pointer]:
-            - img [ref=e109]
-            - generic [ref=e111]:
-              - paragraph [ref=e112]: Buildable & In Stock
-              - paragraph [ref=e113]: "4"
-          - generic [ref=e115] [cursor=pointer]:
-            - img [ref=e117]
-            - generic [ref=e119]:
-              - paragraph [ref=e120]: Buildable with Low Stock
-              - paragraph [ref=e121]: "1"
-          - generic [ref=e123] [cursor=pointer]:
-            - img [ref=e125]
-            - generic [ref=e127]:
-              - paragraph [ref=e128]: Unbuildable (Out of Stock)
-              - paragraph [ref=e129]: "0"
-        - generic [ref=e130]:
-          - button "Master Production & Planning" [ref=e133] [cursor=pointer]:
-            - heading "Master Production & Planning" [level=2] [ref=e134]:
-              - img [ref=e135]
+        - generic [ref=e101]:
+          - generic [ref=e103] [cursor=pointer]:
+            - img [ref=e105]
+            - generic [ref=e107]:
+              - paragraph [ref=e108]: Buildable & In Stock
+              - paragraph [ref=e109]: "4"
+          - generic [ref=e111] [cursor=pointer]:
+            - img [ref=e113]
+            - generic [ref=e115]:
+              - paragraph [ref=e116]: Buildable with Low Stock
+              - paragraph [ref=e117]: "1"
+          - generic [ref=e119] [cursor=pointer]:
+            - img [ref=e121]
+            - generic [ref=e123]:
+              - paragraph [ref=e124]: Unbuildable (Out of Stock)
+              - paragraph [ref=e125]: "0"
+        - generic [ref=e126]:
+          - button "Master Production & Planning" [ref=e129] [cursor=pointer]:
+            - heading "Master Production & Planning" [level=2] [ref=e130]:
+              - img [ref=e131]
               - text: Master Production & Planning
-            - img [ref=e137]
-          - button "Buildability Status" [ref=e141] [cursor=pointer]:
-            - heading "Buildability Status" [level=2] [ref=e142]:
-              - img [ref=e143]
+            - img [ref=e133]
+          - button "Buildability Status" [ref=e137] [cursor=pointer]:
+            - heading "Buildability Status" [level=2] [ref=e138]:
+              - img [ref=e139]
               - text: Buildability Status
-            - img [ref=e145]
-          - button "Critical Shortages" [ref=e149] [cursor=pointer]:
-            - heading "Critical Shortages" [level=2] [ref=e150]:
-              - img [ref=e151]
+            - img [ref=e141]
+          - button "Critical Shortages" [ref=e145] [cursor=pointer]:
+            - heading "Critical Shortages" [level=2] [ref=e146]:
+              - img [ref=e147]
               - text: Critical Shortages
-            - img [ref=e153]
-          - button "Registration Renewal Alerts" [ref=e157] [cursor=pointer]:
-            - heading "Registration Renewal Alerts" [level=2] [ref=e158]:
-              - img [ref=e159]
+            - img [ref=e149]
+          - button "Registration Renewal Alerts" [ref=e153] [cursor=pointer]:
+            - heading "Registration Renewal Alerts" [level=2] [ref=e154]:
+              - img [ref=e155]
               - text: Registration Renewal Alerts
-            - img [ref=e161]
-          - button "Pending Requisitions" [ref=e165] [cursor=pointer]:
-            - heading "Pending Requisitions" [level=2] [ref=e166]:
-              - img [ref=e167]
+            - img [ref=e157]
+          - button "Pending Requisitions" [ref=e161] [cursor=pointer]:
+            - heading "Pending Requisitions" [level=2] [ref=e162]:
+              - img [ref=e163]
               - text: Pending Requisitions
-            - img [ref=e169]
-          - button "Compliance & Artwork Todos" [ref=e173] [cursor=pointer]:
-            - heading "Compliance & Artwork Todos" [level=2] [ref=e174]:
-              - img [ref=e175]
+            - img [ref=e165]
+          - button "Compliance & Artwork Todos" [ref=e169] [cursor=pointer]:
+            - heading "Compliance & Artwork Todos" [level=2] [ref=e170]:
+              - img [ref=e171]
               - text: Compliance & Artwork Todos
-            - img [ref=e177]
+            - img [ref=e173]
   - generic:
     - complementary:
       - generic:
@@ -214,13 +205,13 @@
           - img
           - text: Submit Requisition
         - paragraph: Routes to purchasing with your department + priority so nothing slips through the cracks.
-  - generic [ref=e179]:
-    - generic [ref=e180]:
-      - img [ref=e181]
+  - generic [ref=e175]:
+    - generic [ref=e176]:
+      - img [ref=e177]
       - text: Spotlight
-    - heading "Two-factor in two clicks" [level=3] [ref=e183]
-    - paragraph [ref=e184]: Keep purchasing safe by pairing an authenticator app. Each user owns their own codes so OTPs stay compliant.
-    - generic [ref=e185]:
-      - button "Explore" [ref=e186] [cursor=pointer]
-      - button "Later" [ref=e187] [cursor=pointer]
+    - heading "Two-factor in two clicks" [level=3] [ref=e179]
+    - paragraph [ref=e180]: Keep purchasing safe by pairing an authenticator app. Each user owns their own codes so OTPs stay compliant.
+    - generic [ref=e181]:
+      - button "Explore" [ref=e182] [cursor=pointer]
+      - button "Later" [ref=e183] [cursor=pointer]
 ```
