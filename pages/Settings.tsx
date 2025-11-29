@@ -25,7 +25,6 @@ import { useAuth } from '../lib/auth/AuthContext';
 import { isDevelopment } from '../lib/auth/guards';
 import { useTheme, type ThemePreference } from '../components/ThemeProvider';
 import { useUserPreferences, type RowDensity, type FontScale } from '../components/UserPreferencesProvider';
-import JobDescriptionPanel from '../components/JobDescriptionPanel';
 import TwoFactorSettings from '../components/TwoFactorSettings';
 import { isFeatureEnabled } from '../lib/featureFlags';
 import TermsOfServiceModal from '../components/TermsOfServiceModal';
@@ -88,7 +87,6 @@ const Settings: React.FC<SettingsProps> = ({
     const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
     const [isTablePrefsOpen, setIsTablePrefsOpen] = useState(false);
     const [isComponentSwapOpen, setIsComponentSwapOpen] = useState(false);
-    const [isJobDocsOpen, setIsJobDocsOpen] = useState(false);
     const [isTwoFactorOpen, setIsTwoFactorOpen] = useState(false);
     const [isShopifyPanelOpen, setIsShopifyPanelOpen] = useState(false);
     const [isDelegationSettingsOpen, setIsDelegationSettingsOpen] = useState(false);
@@ -238,19 +236,10 @@ Thank you!`
             </div>
           </CollapsibleSection>
 
-          <CollapsibleSection
-            title="Job Descriptions & SOPs"
-            icon={<DocumentTextIcon className="w-6 h-6 text-indigo-300" />}
-            isOpen={isJobDocsOpen}
-            onToggle={() => setIsJobDocsOpen(!isJobDocsOpen)}
-          >
-            <JobDescriptionPanel currentUser={currentUser} addToast={addToast} />
-          </CollapsibleSection>
-
-          {/* SOP Repository & Manuals (Admin only) */}
+          {/* SOPs & Job Descriptions (Admin only) */}
           {isOpsAdmin && (
             <CollapsibleSection
-              title="SOP Repository & Manuals"
+              title="SOPs & Job Descriptions"
               icon={<DocumentTextIcon className="w-6 h-6 text-blue-400" />}
               isOpen={isSopSettingsOpen}
               onToggle={() => setIsSopSettingsOpen(!isSopSettingsOpen)}

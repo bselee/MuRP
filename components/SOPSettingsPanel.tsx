@@ -33,7 +33,6 @@ import {
   InformationCircleIcon,
   CogIcon,
   ServerStackIcon,
-  DocumentTextIcon,
   UsersIcon,
 } from './icons';
 import { getGoogleDocsService } from '../services/googleDocsService';
@@ -202,9 +201,11 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
   const [googleDocs, setGoogleDocs] = useState<Array<{id: string, name: string, modifiedTime: string}>>([]);
 
   // Workflow state
-  const [activeTab, setActiveTab] = useState<'repository' | 'delegation' | 'workflow' | 'templates'>('repository');
+  const [activeTab, setActiveTab] = useState<'repository' | 'delegation' | 'workflow' | 'templates' | 'job-descriptions'>('repository');
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const excelInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadSOPRepository();
@@ -254,63 +255,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
         attachments: sop.attachments || [],
       }));
 
-      // Check if user has permission to view job descriptions (Admin or Operations department)
-      const canViewJobDescriptions = user?.role === 'Admin' || user?.department === 'Operations';
-
-      // Convert job descriptions to repository items (only if user has permission)
-      const jobItems: SOPRepositoryItem[] = canViewJobDescriptions ? jobDescriptions.map(job => ({
-        id: job.id,
-        type: 'job_description' as const,
-        title: `${job.role} - ${job.department}`,
-        description: job.overview,
-        category: 'Job Description',
-        tags: [job.role, job.department, 'job', 'description'],
-        content: `
-## Mission
-${job.mission}
-
-## Success Metrics
-${job.successMetrics.map(metric => `- ${metric}`).join('\n')}
-
-## Key Tools
-${job.keyTools.map(tool => `- ${tool}`).join('\n')}
-
-## SOP Sections
-${job.sopSections.map(section => `
-### ${section.title}
-**Trigger:** ${section.trigger}
-**Owner:** ${section.owner}
-**Steps:**
-${section.steps.map(step => `1. ${step}`).join('\n')}
-`).join('\n')}
-
-${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => `- ${idea}`).join('\n')}` : ''}
-        `,
-        usageCount: 0,
-        createdBy: job.lastUpdatedBy || 'System',
-        createdAt: job.updatedAt || new Date().toISOString(),
-        updatedAt: job.updatedAt || new Date().toISOString(),
-        status: job.status === 'approved' ? 'published' : 'draft',
-        department: job.department,
-        applicableRoles: [job.role],
-        attachments: [],
-        // Job description specific fields
-        role: job.role,
-        mission: job.mission,
-        successMetrics: job.successMetrics,
-        keyTools: job.keyTools,
-        sopSections: job.sopSections,
-        automationIdeas: job.automationIdeas,
-        lastUpdatedBy: job.lastUpdatedBy,
-        googleDocUrl: job.googleDocUrl,
-      })) : [];
-
-      // Combine and sort by updated date
-      const allItems = [...sopItems, ...jobItems].sort((a, b) => 
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      );
-
-      setSops(allItems);
+      setSops(sopItems);
     } catch (error) {
       console.error('Failed to load repository:', error);
       addToast?.('Failed to load repository', 'error');
@@ -847,6 +792,14 @@ ${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => 
     }
   };
 
+  const applyRecommendation = (rec: SOPRecommendation) => {
+    // TODO: Implement applying recommendation
+    addToast?.('Applying recommendation...', 'info');
+  };
+
+  // Check if user has permission to view job descriptions (Admin or Operations department)
+  const canViewJobDescriptions = user?.role === 'Admin' || user?.department === 'Operations';
+
   if (loading) {
     return <div className="p-6 text-center text-gray-400">Loading SOP repository...</div>;
   }
@@ -917,6 +870,19 @@ ${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => 
           <DocumentTextIcon className="w-4 h-4 inline mr-2" />
           Repository
         </button>
+        {canViewJobDescriptions && (
+          <button
+            onClick={() => setActiveTab('job-descriptions')}
+            className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
+              activeTab === 'job-descriptions'
+                ? 'text-white border-b-2 border-indigo-400'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <UsersIcon className="w-4 h-4 inline mr-2" />
+            Job Descriptions
+          </button>
+        )}
         <button
           onClick={() => setActiveTab('delegation')}
           className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
@@ -987,11 +953,7 @@ ${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => 
                 <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder={
-                    user?.role === 'Admin' || user?.department === 'Operations'
-                      ? "Search SOPs and Job Descriptions..."
-                      : "Search SOPs..."
-                  }
+                  placeholder="Search SOPs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-indigo-400"
@@ -1004,9 +966,7 @@ ${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => 
               className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-indigo-400"
             >
               <option value="all">All Categories</option>
-              {SOP_CATEGORIES.filter(cat => 
-                cat !== 'Job Description' || (user?.role === 'Admin' || user?.department === 'Operations')
-              ).map(cat => (
+              {SOP_CATEGORIES.filter(cat => cat !== 'Job Description').map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
@@ -1050,11 +1010,6 @@ ${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => 
                   <div className="flex-1">
                     <h4 className="text-sm font-semibold text-white line-clamp-2">{sop.title}</h4>
                     <p className="text-xs text-gray-400 mt-1">{sop.category}</p>
-                    {sop.type === 'job_description' && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-900/50 text-green-300 mt-1">
-                        Job Description
-                      </span>
-                    )}
                   </div>
                   <div className="flex gap-1">
                     {sop.googleDocId && (
@@ -1063,28 +1018,15 @@ ${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => 
                     {sop.isAiGenerated && (
                       <BotIcon className="w-4 h-4 text-purple-400" title="AI Generated" />
                     )}
-                    {sop.type === 'job_description' && (
-                      <UsersIcon className="w-4 h-4 text-green-400" title="Job Description" />
-                    )}
                   </div>
                 </div>
 
                 <p className="text-xs text-gray-300 line-clamp-3">{sop.description}</p>
 
                 <div className="flex items-center justify-between text-xs text-gray-400">
-                  {sop.type === 'sop' ? (
-                    <>
-                      <span>{sop.difficulty || 'N/A'}</span>
-                      <span>{sop.estimatedTimeMinutes || 0}min</span>
-                      <span>{sop.usageCount} uses</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>{sop.role}</span>
-                      <span>{sop.department}</span>
-                      <span>{sop.status}</span>
-                    </>
-                  )}
+                  <span>{sop.difficulty || 'N/A'}</span>
+                  <span>{sop.estimatedTimeMinutes || 0}min</span>
+                  <span>{sop.usageCount} uses</span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -1133,6 +1075,10 @@ ${job.automationIdeas ? `## Automation Ideas\n${job.automationIdeas.map(idea => 
             ))}
           </div>
         </>
+      )}
+
+      {activeTab === 'job-descriptions' && user && (
+        <JobDescriptionPanel currentUser={user} addToast={addToast} />
       )}
 
       {activeTab === 'delegation' && (
