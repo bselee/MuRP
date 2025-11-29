@@ -6,7 +6,6 @@ import { isE2ETesting } from '../lib/auth/guards';
 import { PhotoIcon, ArrowDownTrayIcon, SearchIcon, SparklesIcon, DocumentDuplicateIcon, PlusCircleIcon, QrCodeIcon, CheckCircleIcon, CloudUploadIcon, SendIcon, DocumentTextIcon } from '../components/icons';
 import RegulatoryScanModal from '../components/RegulatoryScanModal';
 import BatchArtworkVerificationModal from '../components/BatchArtworkVerificationModal';
-import ManualLabelScanner from '../components/ManualLabelScanner';
 import ArtworkEditor from '../components/ArtworkEditor';
 import UploadArtworkModal from '../components/UploadArtworkModal';
 import ShareArtworkModal from '../components/ShareArtworkModal';
@@ -104,9 +103,7 @@ interface ArtworkPageProps {
 
 const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onAddArtwork, onCreatePoFromArtwork, onUpdateArtwork, initialFilter, onClearFilter, watchlist, aiConfig, artworkFolders, onCreateArtworkFolder, currentUser, gmailConnection, addToast, artworkShareHistory, onRecordArtworkShare, onConnectGoogle, companyEmailSettings }) => {
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
-    const [isBatchVerificationModalOpen, setIsBatchVerificationModalOpen] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-    const [isLabelScannerOpen, setIsLabelScannerOpen] = useState(false);
     const [selectedArtworkForScan, setSelectedArtworkForScan] = useState<ArtworkWithProduct | null>(null);
     const [selectedArtworkForDetails, setSelectedArtworkForDetails] = useState<ArtworkWithProduct | null>(null);
     const [searchTerm, setSearchTerm] = useState(initialFilter);
@@ -871,20 +868,6 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                     <SparklesIcon className="w-5 h-5" />
                                     World-Class Scanning
                                 </Button>
-                                <Button 
-                                    onClick={() => setIsLabelScannerOpen(true)}
-                                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2"
-                                >
-                                    <QrCodeIcon className="w-5 h-5" />
-                                    Scan Labels
-                                </Button>
-                                <Button 
-                                    onClick={() => setIsBatchVerificationModalOpen(true)}
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2"
-                                >
-                                    <SparklesIcon className="w-5 h-5" />
-                                    Batch Verify
-                                </Button>
                                 {selectedArtworkIds.length > 0 && (
                                     <>
                                         <Button onClick={handleBulkShare} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2">
@@ -1193,32 +1176,6 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                 boms={effectiveBoms}
                 aiConfig={aiConfig}
             />
-
-            {/* Label Scanner Modal */}
-            {isLabelScannerOpen && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-gray-800 rounded-lg shadow-2xl border border-gray-700 w-full max-w-6xl max-h-[90vh] overflow-auto">
-                        <div className="sticky top-0 bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center z-10">
-                            <h2 className="text-2xl font-bold text-white">Label Scanner</h2>
-                            <Button
-                                onClick={() => setIsLabelScannerOpen(false)}
-                                className="text-gray-400 hover:text-white transition-colors"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </Button>
-                        </div>
-                        <div className="p-6">
-                            <ManualLabelScanner
-                                boms={effectiveBoms}
-                                currentUser={currentUser}
-                                onClose={() => setIsLabelScannerOpen(false)}
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
             
             <ArtworkEditor
                 isOpen={Boolean(artworkBeingEdited)}

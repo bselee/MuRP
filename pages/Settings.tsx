@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor, CompanyEmailSettings } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, LightBulbIcon, SparklesIcon, BellIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, LightBulbIcon, SparklesIcon, BellIcon, ClipboardCopyIcon, TrashIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import UserManagementPanel from '../components/UserManagementPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
@@ -91,6 +91,8 @@ const Settings: React.FC<SettingsProps> = ({
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const [isEmailPolicyOpen, setIsEmailPolicyOpen] = useState(false);
     const [isUserPersonalizationOpen, setIsUserPersonalizationOpen] = useState(false);
+    const [isSopSettingsOpen, setIsSopSettingsOpen] = useState(false);
+    const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
     
     // API key visibility state
     const [showApiKey, setShowApiKey] = useState(false);
@@ -158,6 +160,36 @@ Thank you!`
       addToast('Company email policy updated.', 'success');
     };
 
+    const handleCopyApiKey = () => {
+      if (apiKey) {
+        navigator.clipboard.writeText(apiKey);
+        addToast('API Key copied to clipboard.', 'success');
+      }
+    };
+
+    const handleNewConnectionChange = (field: keyof typeof newConnection, value: string) => {
+      setNewConnection((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleAddNewConnection = () => {
+      if (!newConnection.name || !newConnection.apiUrl || !newConnection.apiKey) {
+        addToast('All fields are required to add a connection.', 'error');
+        return;
+      }
+      const newConnectionWithId: ExternalConnection = {
+        id: `conn-${Date.now()}`,
+        ...newConnection,
+      };
+      onSetExternalConnections([...externalConnections, newConnectionWithId]);
+      setNewConnection({ name: '', apiUrl: '', apiKey: '' }); // Reset form
+      addToast(`Connection "${newConnection.name}" added successfully.`, 'success');
+    };
+
+    const handleDeleteConnection = (id: string) => {
+      onSetExternalConnections(externalConnections.filter((c) => c.id !== id));
+      addToast('Connection removed.', 'info');
+    };
+
   return (
     <>
         <div className="space-y-8 max-w-4xl mx-auto">
@@ -201,17 +233,7 @@ Thank you!`
             />
           </CollapsibleSection>
 
-          {/* SOPs & Job Descriptions (Admin only) */}
-          {isOpsAdmin && (
-            <CollapsibleSection
-              title="SOPs & Job Descriptions"
-              icon={<DocumentTextIcon className="w-6 h-6 text-blue-400" />}
-              isOpen={isSopSettingsOpen}
-              onToggle={() => setIsSopSettingsOpen(!isSopSettingsOpen)}
-            >
-              <SOPSettingsPanel addToast={addToast} />
-            </CollapsibleSection>
-          )}
+
 
           
           {/* 1. User Management Section (Admin/Manager only) */}
@@ -315,6 +337,248 @@ Thank you!`
                   />
                 </div>
               )}
+            </div>
+          </CollapsibleSection>
+
+          <h2 className="text-2xl font-bold text-white mt-8 mb-4">API Integrations & Documentation</h2>
+
+          {/* API Integrations & Documentation */}
+          <CollapsibleSection
+            title="API Integrations & Documentation"
+            icon={<ServerStackIcon className="w-6 h-6 text-indigo-400" />}
+            isOpen={true}
+          >
+            <div className="space-y-8">
+              {/* Hero Section */}
+              <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 rounded-xl border border-indigo-500/30 p-8 text-center">
+                <ServerStackIcon className="w-16 h-16 text-indigo-400 mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-white mb-2">Connect Your Apps</h3>
+                <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
+                  Seamlessly integrate MuRP with your existing tools. Generate secure API keys, connect external services,
+                  and access comprehensive documentation to build powerful workflows.
+                </p>
+                <div className="flex flex-wrap justify-center gap-4">
+                  <div className="bg-gray-800/60 rounded-lg px-4 py-2">
+                    <span className="text-sm font-semibold text-indigo-300">🔐 Secure API Keys</span>
+                  </div>
+                  <div className="bg-gray-800/60 rounded-lg px-4 py-2">
+                    <span className="text-sm font-semibold text-purple-300">📚 Full Documentation</span>
+                  </div>
+                  <div className="bg-gray-800/60 rounded-lg px-4 py-2">
+                    <span className="text-sm font-semibold text-green-300">🔗 External Integrations</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* API Credentials Section */}
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                <div className="flex items-center gap-4 mb-6">
+                  <KeyIcon className="w-8 h-8 text-yellow-400" />
+                  <div>
+                    <h4 className="text-lg font-semibold text-white">API Credentials</h4>
+                    <p className="text-sm text-gray-400">Generate and manage secure API keys for external integrations</p>
+                  </div>
+                </div>
+
+                {apiKey ? (
+                  <div className="space-y-4">
+                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-600">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-semibold text-gray-300">Your API Key</span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={handleCopyApiKey}
+                            className="p-2 text-gray-400 hover:text-white transition-colors"
+                            title="Copy API Key"
+                          >
+                            <ClipboardCopyIcon className="w-4 h-4" />
+                          </Button>
+                          <label className="flex items-center text-xs text-gray-400 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={showApiKey}
+                              onChange={(e) => onToggleShowApiKey(e.target.checked)}
+                              className="mr-2"
+                            />
+                            Show
+                          </label>
+                        </div>
+                      </div>
+                      <div className="font-mono text-sm bg-gray-800/50 p-3 rounded border border-gray-700">
+                        {showApiKey ? apiKey : '••••••••••••••••••••••••••••••••'}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-500">
+                        Keep this key secure. Regenerate if compromised.
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={onGenerateApiKey}
+                          className="text-sm text-indigo-400 hover:text-indigo-300"
+                        >
+                          Regenerate
+                        </Button>
+                        <Button
+                          onClick={onRevokeApiKey}
+                          className="text-sm text-red-400 hover:text-red-300"
+                        >
+                          Revoke
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <KeyIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                    <h5 className="text-lg font-semibold text-gray-400 mb-2">No API Key Generated</h5>
+                    <p className="text-gray-500 mb-6">Generate a secure API key to allow external applications to connect to MuRP.</p>
+                    <Button
+                      onClick={onGenerateApiKey}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg"
+                    >
+                      Generate API Key
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* API Documentation Section */}
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                <div className="flex items-center gap-4 mb-6">
+                  <DocumentTextIcon className="w-8 h-8 text-blue-400" />
+                  <div>
+                    <h4 className="text-lg font-semibold text-white">API Documentation</h4>
+                    <p className="text-sm text-gray-400">Complete reference for integrating with MuRP's API</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-600 hover:border-blue-500/50 transition-colors">
+                    <h5 className="font-semibold text-white mb-2">Getting Started</h5>
+                    <p className="text-sm text-gray-400 mb-3">Quick start guide for API integration</p>
+                    <Button
+                      onClick={() => setCurrentPage('API Documentation')}
+                      className="text-sm text-blue-400 hover:text-blue-300"
+                    >
+                      View Guide →
+                    </Button>
+                  </div>
+
+                  <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-600 hover:border-blue-500/50 transition-colors">
+                    <h5 className="font-semibold text-white mb-2">Authentication</h5>
+                    <p className="text-sm text-gray-400 mb-3">API key setup and security best practices</p>
+                    <Button
+                      onClick={() => setCurrentPage('API Documentation')}
+                      className="text-sm text-blue-400 hover:text-blue-300"
+                    >
+                      Learn More →
+                    </Button>
+                  </div>
+
+                  <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-600 hover:border-blue-500/50 transition-colors">
+                    <h5 className="font-semibold text-white mb-2">Endpoints</h5>
+                    <p className="text-sm text-gray-400 mb-3">Complete API reference and examples</p>
+                    <Button
+                      onClick={() => setCurrentPage('API Documentation')}
+                      className="text-sm text-blue-400 hover:text-blue-300"
+                    >
+                      Browse API →
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* External Connections Section */}
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                <div className="flex items-center gap-4 mb-6">
+                  <LinkIcon className="w-8 h-8 text-green-400" />
+                  <div>
+                    <h4 className="text-lg font-semibold text-white">External Connections</h4>
+                    <p className="text-sm text-gray-400">Connect MuRP to your existing business tools and services</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {externalConnections.length > 0 ? (
+                    <div className="space-y-3">
+                      {externalConnections.map((conn) => (
+                        <div
+                          key={conn.id}
+                          className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-600"
+                        >
+                          <div className="flex items-center gap-3">
+                            <ServerStackIcon className="w-6 h-6 text-gray-400" />
+                            <div>
+                              <p className="font-semibold text-white">{conn.name}</p>
+                              <p className="text-xs text-gray-400">{conn.apiUrl}</p>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => handleDeleteConnection(conn.id)}
+                            className="p-2 text-red-500 hover:text-red-400"
+                            title="Remove connection"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-gray-900/30 rounded-lg border border-dashed border-gray-600">
+                      <LinkIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                      <h5 className="text-lg font-semibold text-gray-400 mb-2">No External Connections</h5>
+                      <p className="text-gray-500 mb-6">Add connections to integrate with supplier portals, shipping APIs, and other business tools.</p>
+                    </div>
+                  )}
+
+                  {/* Add New Connection Form */}
+                  <div className="pt-6 border-t border-gray-700">
+                    <h5 className="text-md font-semibold text-white mb-4">Add New Connection</h5>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Service Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g., Supplier Portal"
+                          value={newConnection.name}
+                          onChange={(e) => handleNewConnectionChange('name', e.target.value)}
+                          className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 text-sm text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">API URL</label>
+                        <input
+                          type="url"
+                          placeholder="https://api.example.com"
+                          value={newConnection.apiUrl}
+                          onChange={(e) => handleNewConnectionChange('apiUrl', e.target.value)}
+                          className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 text-sm text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">API Key</label>
+                        <input
+                          type="password"
+                          placeholder="Enter API key"
+                          value={newConnection.apiKey}
+                          onChange={(e) => handleNewConnectionChange('apiKey', e.target.value)}
+                          className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 text-sm text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end mt-4">
+                      <Button
+                        onClick={handleAddNewConnection}
+                        className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg"
+                      >
+                        Add Connection
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </CollapsibleSection>
 
