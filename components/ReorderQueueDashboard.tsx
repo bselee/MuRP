@@ -81,7 +81,6 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
           table: 'reorder_queue',
         },
         () => {
-          console.log('[ReorderQueueDashboard] Real-time update');
           fetchReorderQueue();
         }
       )

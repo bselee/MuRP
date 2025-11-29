@@ -57,8 +57,6 @@ export const SOPWorkflowPanel: React.FC<SOPWorkflowPanelProps> = ({ onSubmission
         comments: approvalComments
       });
 
-      console.log(`Submission ${status}`);
-
       setShowApprovalDialog(false);
       setApprovalComments('');
       loadData();
@@ -74,8 +72,6 @@ export const SOPWorkflowPanel: React.FC<SOPWorkflowPanelProps> = ({ onSubmission
         comments: reviewComments
       });
 
-      console.log('Review submitted');
-
       setShowReviewDialog(false);
       setReviewComments('');
       loadData();
@@ -90,8 +86,6 @@ export const SOPWorkflowPanel: React.FC<SOPWorkflowPanelProps> = ({ onSubmission
         response_status: response,
         response_comments: comments
       });
-
-      console.log('Response recorded');
 
       loadData();
     } catch (error) {

@@ -83,10 +83,6 @@ export const SOPSubmissionForm: React.FC<SOPSubmissionFormProps> = ({
         await sopWorkflowService.createSubmission(submissionData);
       }
 
-      console.log(submitForReview
-        ? 'SOP submission sent for review'
-        : 'SOP submission saved as draft');
-
       onSave?.();
     } catch (error) {
       console.error('Error saving submission:', error);

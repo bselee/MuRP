@@ -178,14 +178,7 @@ const BOMs: React.FC<BOMsProps> = ({
 
   // Debug inventory integration
   useEffect(() => {
-    console.log('=== BOMs COMPONENT MOUNTED/UPDATED ===');
-    console.log('[BOMs] Props received:');
-    console.log('  - boms:', boms?.length || 0, 'items');
-    console.log('  - inventory:', inventory?.length || 0, 'items');
-    if (inventory?.length > 0) {
-      console.log('  - Inventory items with stock > 0:', inventory.filter(i => i.stock > 0).length);
-    }
-    console.log('======================================');
+    // Component mounted/updated - no debug logging needed
   }, [boms, inventory]);
 
   // Load component swap settings so staff can see curated alternates
@@ -247,7 +240,6 @@ const BOMs: React.FC<BOMsProps> = ({
   const inventoryMap = useMemo(() => {
     const map = new Map<string, InventoryItem>();
     inventory.forEach(item => map.set(item.sku, item));
-    console.log('[BOMs] InventoryMap size:', map.size);
     return map;
   }, [inventory]);
 
@@ -371,20 +363,12 @@ const BOMs: React.FC<BOMsProps> = ({
   }, [boms]);
 
   const toggleBomExpanded = (bomId: string) => {
-    console.log('[BOMs] toggleBomExpanded CALLED!', {
-      bomId,
-      currentExpandedBoms: Array.from(expandedBoms),
-      wasExpanded: expandedBoms.has(bomId)
-    });
     const newExpanded = new Set(expandedBoms);
     if (newExpanded.has(bomId)) {
-      console.log('[BOMs] COLLAPSING BOM');
       newExpanded.delete(bomId);
     } else {
-      console.log('[BOMs] EXPANDING BOM');
       newExpanded.add(bomId);
     }
-    console.log('[BOMs] New expandedBoms:', Array.from(newExpanded));
     setExpandedBoms(newExpanded);
   };
 

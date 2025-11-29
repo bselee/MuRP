@@ -33,7 +33,7 @@ import DelegationSettingsPanel from '../components/DelegationSettingsPanel';
 import BillingPanel from '../components/BillingPanel';
 import NotificationPreferencesPanel from '../components/NotificationPreferencesPanel';
 import RolePermissionMatrix from '../components/RolePermissionMatrix';
-import SOPSettingsPanel from '../components/SOPSettingsPanel';
+import UserPersonalizationPanel from '../components/UserPersonalizationPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -84,16 +84,13 @@ const Settings: React.FC<SettingsProps> = ({
     const [isMcpServerOpen, setIsMcpServerOpen] = useState(false);
     const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
     const [isSupportComplianceOpen, setIsSupportComplianceOpen] = useState(false);
-    const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
-    const [isTablePrefsOpen, setIsTablePrefsOpen] = useState(false);
     const [isComponentSwapOpen, setIsComponentSwapOpen] = useState(false);
-    const [isTwoFactorOpen, setIsTwoFactorOpen] = useState(false);
     const [isShopifyPanelOpen, setIsShopifyPanelOpen] = useState(false);
     const [isDelegationSettingsOpen, setIsDelegationSettingsOpen] = useState(false);
     const [isNotificationPrefsOpen, setIsNotificationPrefsOpen] = useState(false);
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
     const [isEmailPolicyOpen, setIsEmailPolicyOpen] = useState(false);
-    const [isSopSettingsOpen, setIsSopSettingsOpen] = useState(false);
+    const [isUserPersonalizationOpen, setIsUserPersonalizationOpen] = useState(false);
     
     // API key visibility state
     const [showApiKey, setShowApiKey] = useState(false);
@@ -104,8 +101,6 @@ const Settings: React.FC<SettingsProps> = ({
     }, [companyEmailSettings]);
 
     const { godMode, setGodMode, session } = useAuth();
-    const { theme, resolvedTheme, setTheme } = useTheme();
-    const { rowDensity, fontScale, setRowDensity, setFontScale } = useUserPreferences();
 
     const helpTicketSubject = encodeURIComponent('MuRP Help Ticket');
     const helpTicketBody = encodeURIComponent(
@@ -163,31 +158,15 @@ Thank you!`
       addToast('Company email policy updated.', 'success');
     };
 
-    const themeOptions: { label: string; value: ThemePreference; description: string }[] = [
-      { label: 'System', value: 'system', description: 'Match your OS theme automatically' },
-      { label: 'Light', value: 'light', description: 'Bright panels with warm typography' },
-      { label: 'Dark', value: 'dark', description: 'Stealth glass surfaces (default)' },
-    ];
-
-    const rowDensityOptions: { label: string; value: RowDensity; description: string }[] = [
-      { label: 'Comfortable', value: 'comfortable', description: 'Most readable, taller rows' },
-      { label: 'Compact', value: 'compact', description: 'Balanced density' },
-      { label: 'Ultra', value: 'ultra', description: 'Tight rows to maximize visibility' },
-    ];
-
-    const fontScaleOptions: { label: string; value: FontScale; description: string }[] = [
-      { label: 'Small', value: 'small', description: 'Fits more data onscreen' },
-      { label: 'Medium', value: 'medium', description: 'Default size' },
-      { label: 'Large', value: 'large', description: 'Easier reading' },
-    ];
-
   return (
     <>
         <div className="space-y-8 max-w-4xl mx-auto">
           <header>
             <h1 className="text-3xl font-bold text-white tracking-tight">Settings</h1>
-            <p className="text-gray-400 mt-1">Manage users, integrations, API keys, and application preferences.</p>
+            <p className="text-gray-400 mt-1">Manage company settings, users, integrations, and administrative controls.</p>
           </header>
+
+          <h2 className="text-2xl font-bold text-white mt-8 mb-4">Compliance & Billing</h2>
 
           <CollapsibleSection
             title="Billing & Subscription"
@@ -197,6 +176,8 @@ Thank you!`
           >
             <BillingPanel currentUser={currentUser} addToast={addToast} />
           </CollapsibleSection>
+
+          <h2 className="text-2xl font-bold text-white mt-8 mb-4">Company Administration</h2>
 
           <CollapsibleSection
             title="Role Permissions Overview"
@@ -208,32 +189,16 @@ Thank you!`
           </CollapsibleSection>
 
           <CollapsibleSection
-            title="Appearance & Theme"
-            icon={<LightBulbIcon className="w-6 h-6 text-amber-300" />}
-            isOpen={isAppearanceOpen}
-            onToggle={() => setIsAppearanceOpen(!isAppearanceOpen)}
+            title="User Personalization"
+            icon={<UsersIcon className="w-6 h-6 text-green-400" />}
+            isOpen={isUserPersonalizationOpen}
+            onToggle={() => setIsUserPersonalizationOpen(!isUserPersonalizationOpen)}
           >
-            <div className="space-y-4">
-              <p className="text-sm text-gray-400">
-                Currently rendering in <span className="font-semibold text-gray-200">{resolvedTheme}</span> mode.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {themeOptions.map(option => (
-                  <Button
-                    key={option.value}
-                    variant={theme === option.value ? 'primary' : 'ghost'}
-                    className="h-full flex flex-col items-start gap-1"
-                    onClick={() => setTheme(option.value)}
-                  >
-                    <span className="text-sm font-semibold">
-                      {option.label}
-                      {theme === option.value && <span className="ml-2 text-xs text-emerald-300">Active</span>}
-                    </span>
-                    <span className="text-xs text-gray-400">{option.description}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
+            <UserPersonalizationPanel
+              currentUser={currentUser}
+              onUpdateUser={onUpdateUser}
+              addToast={addToast}
+            />
           </CollapsibleSection>
 
           {/* SOPs & Job Descriptions (Admin only) */}
@@ -248,73 +213,6 @@ Thank you!`
             </CollapsibleSection>
           )}
 
-          <CollapsibleSection
-            title="Two-Factor Authentication"
-            icon={<ShieldCheckIcon className="w-6 h-6 text-emerald-300" />}
-            isOpen={isTwoFactorOpen}
-            onToggle={() => setIsTwoFactorOpen(!isTwoFactorOpen)}
-          >
-            <TwoFactorSettings addToast={addToast} />
-          </CollapsibleSection>
-
-          <CollapsibleSection
-            title="Data Table Preferences"
-            icon={<DocumentTextIcon className="w-6 h-6 text-sky-300" />}
-            isOpen={isTablePrefsOpen}
-            onToggle={() => setIsTablePrefsOpen(!isTablePrefsOpen)}
-          >
-            <div className="overflow-hidden rounded-2xl border border-white/10">
-              <table className="table-density w-full text-sm">
-                <thead className="bg-white/5 text-gray-300">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-semibold">Setting</th>
-                    <th className="text-left px-4 py-3 font-semibold">Preference</th>
-                    <th className="text-left px-4 py-3 font-semibold hidden sm:table-cell">Description</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/10">
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-gray-200">Row Density</td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={rowDensity}
-                        onChange={e => setRowDensity(e.target.value as RowDensity)}
-                        className="w-full"
-                      >
-                        {rowDensityOptions.map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">
-                      {rowDensityOptions.find(o => o.value === rowDensity)?.description}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-gray-200">Font Size</td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={fontScale}
-                        onChange={e => setFontScale(e.target.value as FontScale)}
-                        className="w-full"
-                      >
-                        {fontScaleOptions.map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">
-                      {fontScaleOptions.find(o => o.value === fontScale)?.description}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </CollapsibleSection>
           
           {/* 1. User Management Section (Admin/Manager only) */}
           {(isOpsAdmin || currentUser.role === 'Manager') && (
@@ -358,6 +256,8 @@ Thank you!`
             </CollapsibleSection>
           )}
 
+          <h2 className="text-2xl font-bold text-white mt-8 mb-4">Developer Tools</h2>
+
           {isDevelopment() && isOpsAdmin && (
             <CollapsibleSection
               title="Developer Tools"
@@ -387,6 +287,8 @@ Thank you!`
             </CollapsibleSection>
           )}
 
+          <h2 className="text-2xl font-bold text-white mt-8 mb-4">Operations & Workflow</h2>
+
           {/* 2. AI Configuration (Consolidated) */}
           <CollapsibleSection
             title="AI Configuration"
@@ -415,6 +317,8 @@ Thank you!`
               )}
             </div>
           </CollapsibleSection>
+
+          <h2 className="text-2xl font-bold text-white mt-8 mb-4">Integrations & Data</h2>
 
           {/* 3. Data Inputs & Integrations */}
           <CollapsibleSection

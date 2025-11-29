@@ -308,7 +308,6 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
                           key={idx}
                           onClick={() => {
                             // Handle workflow action - could navigate to relevant page or open modal
-                            console.log('Execute workflow action:', action);
                           }}
                           className="w-full text-left py-1 px-2 bg-green-600/20 hover:bg-green-600/40 text-green-200 text-xs rounded border border-green-500/30 transition-colors"
                         >

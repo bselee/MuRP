@@ -83,7 +83,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
           return () => unsubscribe();
         }
       } catch (error) {
-        console.log('[FinaleSetupPanel] Backend not configured yet or no sync data');
+        // Backend not configured yet or no sync data
       }
     };
     

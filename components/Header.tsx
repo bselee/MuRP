@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import type { User } from '../types';
 import { LogoutIcon, MushroomLogo, ChevronDownIcon } from './icons';
@@ -14,7 +14,6 @@ interface HeaderProps {
     devModeActive?: boolean;
     systemAlerts: SystemAlert[];
     onDismissAlert: (idOrSource: string) => void;
-    onQuickRequest: () => void;
     canGoBack?: boolean;
     onGoBack?: () => void;
 }
@@ -27,12 +26,21 @@ const Header: React.FC<HeaderProps> = ({
     devModeActive,
     systemAlerts,
     onDismissAlert,
-    onQuickRequest,
     canGoBack = false,
     onGoBack,
 }) => {
     const { resolvedTheme } = useTheme();
     const isLight = resolvedTheme === 'light';
+
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const interval = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
+        return () => clearInterval(interval);
+    }, []);
+
+    const formattedTime = `${currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${currentTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+    const statusText = isGlobalLoading ? 'Loading data…' : `Syncing · ${formattedTime}`;
     const headerClasses = isLight
         ? 'bg-white/85 text-amber-900 border-amber-900/10 shadow-[0_12px_35px_rgba(15,23,42,0.08)]'
         : 'bg-gray-800/50 text-white border-gray-700';
@@ -40,14 +48,6 @@ const Header: React.FC<HeaderProps> = ({
     const devBadgeClass = isLight
         ? 'border-yellow-600/30 bg-yellow-200/40 text-yellow-900'
         : 'border-yellow-400/40 bg-yellow-400/10 text-yellow-200';
-    const userNameClass = isLight ? 'text-amber-900' : 'text-white';
-    const userDeptClass = isLight ? 'text-amber-900/70' : 'text-gray-400';
-    const avatarClass = isLight
-        ? 'bg-amber-200 text-amber-900'
-        : 'bg-gray-600 text-white';
-    const logoutButtonClass = isLight
-        ? 'text-amber-800 hover:bg-amber-100'
-        : 'text-gray-400 hover:bg-gray-700 hover:text-white';
     const backButtonClass = isLight
         ? 'text-amber-900 border border-amber-300 hover:bg-amber-100'
         : 'text-gray-100 border border-gray-600 hover:bg-gray-700';
@@ -71,33 +71,15 @@ const Header: React.FC<HeaderProps> = ({
             </div>
                 <div className="flex items-center space-x-4">
                     <span className={`text-xs hidden sm:block ${statusTextClass}`}>
-                        {isGlobalLoading ? 'Loading data…' : 'Live data syncing quietly'}
+                        {statusText}
                     </span>
                     {devModeActive && (
                         <span className={`hidden sm:inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${devBadgeClass}`}>
                             Dev Mode
                         </span>
                     )}
-                    <Button
-                        onClick={onQuickRequest}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
-                    >
-                        Ask About Product
-                    </Button>
                     <AlertBell alerts={systemAlerts} onDismiss={onDismissAlert} />
-                <div className="flex items-center space-x-3">
-                    <div className="text-right">
-                        <div className={`text-sm font-semibold ${userNameClass}`}>{currentUser.name}</div>
-                        <div className={`text-xs ${userDeptClass}`}>{currentUser.department}</div>
-                    </div>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${avatarClass}`}>
-                        {currentUser.name.charAt(0)}
-                    </div>
-                    <Button onClick={onLogout} title="Logout" className={`p-2 rounded-full transition-colors ${logoutButtonClass}`}>
-                        <LogoutIcon className="h-6 w-6" />
-                    </Button>
                 </div>
-            </div>
         </header>
     );
 };

@@ -82,7 +82,6 @@ const ProductionTimelineView: React.FC<ProductionTimelineViewProps> = ({ buildOr
           table: 'build_orders',
         },
         (payload) => {
-          console.log('[ProductionTimelineView] Real-time update:', payload);
           // Trigger re-render by updating state
           setRealtimeUpdates(prev => prev + 1);
         }

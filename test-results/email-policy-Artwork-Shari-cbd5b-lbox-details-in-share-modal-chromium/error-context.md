@@ -1,0 +1,328 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e6]
+      - generic [ref=e8]: MuRP
+      - button [ref=e9] [cursor=pointer]:
+        - img [ref=e10]
+    - navigation [ref=e12]:
+      - list [ref=e13]:
+        - listitem [ref=e14]:
+          - link "Dashboard" [ref=e15] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e16]
+            - generic [ref=e18]: Dashboard
+        - listitem [ref=e19]:
+          - link "Projects" [ref=e20] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e21]
+            - generic [ref=e23]: Projects
+        - listitem [ref=e24]:
+          - link "Purchase Orders" [ref=e25] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e26]
+            - generic [ref=e28]: Purchase Orders
+        - listitem [ref=e29]:
+          - link "Production" [ref=e30] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e31]
+            - generic [ref=e33]: Production
+        - listitem [ref=e34]:
+          - link "BOMs" [ref=e35] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e36]
+            - generic [ref=e38]: BOMs
+        - listitem [ref=e39]:
+          - link "Artwork" [ref=e40] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e41]
+            - generic [ref=e43]: Artwork
+        - listitem [ref=e44]:
+          - link "Inventory" [ref=e45] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e46]
+            - generic [ref=e48]: Inventory
+        - listitem [ref=e49]:
+          - link "Vendors" [ref=e50] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e51]
+            - generic [ref=e53]: Vendors
+        - listitem [ref=e54]:
+          - link "Stock Intelligence" [ref=e55] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e56]
+            - generic [ref=e58]: Stock Intelligence
+        - listitem [ref=e59]:
+          - link "Label Scanner" [ref=e60] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e61]
+            - generic [ref=e64]: Label Scanner
+        - listitem [ref=e65]:
+          - link "Product Page" [ref=e66] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e67]
+            - generic [ref=e70]: Product Page
+    - generic [ref=e71]:
+      - button "User Avatar Brenda Prod (E2E)" [ref=e73] [cursor=pointer]:
+        - img "User Avatar" [ref=e74]
+        - generic [ref=e75]: Brenda Prod (E2E)
+      - link "MBMuRPBot" [ref=e76] [cursor=pointer]:
+        - /url: "#"
+        - img [ref=e79]
+        - generic [ref=e85]: MBMuRPBot
+  - generic [ref=e86]:
+    - banner [ref=e87]:
+      - generic [ref=e88]:
+        - generic [ref=e89]: Syncing · Nov 29, 12:51 PM
+        - button "Notifications" [ref=e91]:
+          - img [ref=e92]
+    - main [ref=e94]:
+      - generic [ref=e95]:
+        - complementary [ref=e96]:
+          - heading "Folders" [level=2] [ref=e97]
+          - navigation [ref=e98]:
+            - button "All Artwork" [ref=e99] [cursor=pointer]
+            - button "Unassigned" [ref=e100] [cursor=pointer]
+          - button "Create Folder" [ref=e102] [cursor=pointer]:
+            - img [ref=e103]
+            - text: Create Folder
+        - main [ref=e105]:
+          - generic [ref=e106]:
+            - generic [ref=e107]:
+              - generic [ref=e108]:
+                - heading "Artwork Library" [level=1] [ref=e109]
+                - paragraph [ref=e110]: A central repository for all product artwork and design files.
+              - generic [ref=e111]:
+                - button "Upload Artwork" [ref=e112] [cursor=pointer]:
+                  - img [ref=e113]
+                  - text: Upload Artwork
+                - button "Scan Labels" [ref=e115] [cursor=pointer]:
+                  - img [ref=e116]
+                  - text: Scan Labels
+                - button "Batch Verify" [ref=e119] [cursor=pointer]:
+                  - img [ref=e120]
+                  - text: Batch Verify
+                - button "DAM Settings" [ref=e122] [cursor=pointer]:
+                  - img [ref=e123]
+            - generic [ref=e126]:
+              - generic:
+                - img
+              - textbox "Search by filename, product name, or SKU..." [ref=e127]
+          - generic [ref=e128]:
+            - generic [ref=e129] [cursor=pointer]:
+              - generic [ref=e130]:
+                - img [ref=e131]
+                - checkbox [ref=e133]
+              - generic [ref=e134]:
+                - paragraph [ref=e135]: premium-potting-mix-label-5x6.ai
+                - paragraph [ref=e136]: Rev 3
+                - paragraph [ref=e137]: Premium Potting Mix (1 cu ft)
+              - generic [ref=e138]:
+                - combobox [ref=e140]:
+                  - option "Move to..." [selected]
+                - generic [ref=e141]:
+                  - link "Download" [ref=e142]:
+                    - /url: /art/premium-label-v3.pdf
+                    - img
+                    - generic [ref=e144]: Download
+                  - button "Scan" [ref=e145]:
+                    - img
+                    - generic [ref=e147]: Scan
+                  - button "Edit" [ref=e148]:
+                    - img
+                    - generic [ref=e150]: Edit
+                  - button "Share" [ref=e151]:
+                    - img
+                    - generic [ref=e153]: Share
+            - generic [ref=e154] [cursor=pointer]:
+              - generic [ref=e155]:
+                - img [ref=e156]
+                - checkbox [ref=e158]
+              - generic [ref=e159]:
+                - paragraph [ref=e160]: seed-start-label-5x6.svg
+                - paragraph [ref=e161]: Rev 5
+                - paragraph [ref=e162]: Seed Starting Mix (1 cu ft)
+              - generic [ref=e163]:
+                - combobox [ref=e165]:
+                  - option "Move to..." [selected]
+                - generic [ref=e166]:
+                  - link "Download" [ref=e167]:
+                    - /url: /art/seed-start-v5.pdf
+                    - img
+                    - generic [ref=e169]: Download
+                  - button "Scan" [ref=e170]:
+                    - img
+                    - generic [ref=e172]: Scan
+                  - button "Edit" [ref=e173]:
+                    - img
+                    - generic [ref=e175]: Edit
+                  - button "Share" [ref=e176]:
+                    - img
+                    - generic [ref=e178]: Share
+            - generic [ref=e179] [cursor=pointer]:
+              - generic [ref=e180]:
+                - img [ref=e181]
+                - checkbox [ref=e183]
+              - generic [ref=e184]:
+                - paragraph [ref=e185]: starter-kit-sticker.ai
+                - paragraph [ref=e186]: Rev 1
+                - paragraph [ref=e187]: Seed Starter Kit
+              - generic [ref=e188]:
+                - combobox [ref=e190]:
+                  - option "Move to..." [selected]
+                - generic [ref=e191]:
+                  - link "Download" [ref=e192]:
+                    - /url: /art/starter-kit-sticker-v1.pdf
+                    - img
+                    - generic [ref=e194]: Download
+                  - button "Scan" [ref=e195]:
+                    - img
+                    - generic [ref=e197]: Scan
+                  - button "Edit" [ref=e198]:
+                    - img
+                    - generic [ref=e200]: Edit
+                  - button "Share" [ref=e201]:
+                    - img
+                    - generic [ref=e203]: Share
+            - generic [ref=e204] [cursor=pointer]:
+              - generic [ref=e205]:
+                - img [ref=e206]
+                - checkbox [ref=e208]
+              - generic [ref=e209]:
+                - paragraph [ref=e210]: super-soil-back-6x5.5.png
+                - paragraph [ref=e211]: Rev 2
+                - paragraph [ref=e212]: Organic Super Soil (2 cu ft)
+              - generic [ref=e213]:
+                - combobox [ref=e215]:
+                  - option "Move to..." [selected]
+                - generic [ref=e216]:
+                  - link "Download" [ref=e217]:
+                    - /url: /art/super-soil-back-v2.pdf
+                    - img
+                    - generic [ref=e219]: Download
+                  - button "Scan" [ref=e220]:
+                    - img
+                    - generic [ref=e222]: Scan
+                  - button "Edit" [ref=e223]:
+                    - img
+                    - generic [ref=e225]: Edit
+                  - button "Share" [ref=e226]:
+                    - img
+                    - generic [ref=e228]: Share
+            - generic [ref=e229] [cursor=pointer]:
+              - generic [ref=e230]:
+                - img [ref=e231]
+                - checkbox [ref=e233]
+              - generic [ref=e234]:
+                - paragraph [ref=e235]: super-soil-front-6x5.5.png
+                - paragraph [ref=e236]: Rev 1
+                - paragraph [ref=e237]: Organic Super Soil (2 cu ft)
+              - generic [ref=e238]:
+                - combobox [ref=e240]:
+                  - option "Move to..." [selected]
+                - generic [ref=e241]:
+                  - link "Download" [ref=e242]:
+                    - /url: /art/super-soil-front-v1.pdf
+                    - img
+                    - generic [ref=e244]: Download
+                  - button "Scan" [ref=e245]:
+                    - img
+                    - generic [ref=e247]: Scan
+                  - button "Edit" [ref=e248]:
+                    - img
+                    - generic [ref=e250]: Edit
+                  - button "Share" [ref=e251]:
+                    - img
+                    - generic [ref=e253]: Share
+  - generic:
+    - complementary:
+      - generic:
+        - generic:
+          - paragraph: Ask About Product
+          - heading "Where is it?" [level=2]
+          - paragraph: Enter a SKU to see live inventory, inbound PO status, and kick off a question or requisition.
+        - button "Close quick request drawer":
+          - img
+      - generic:
+        - generic:
+          - text: What do you want to do?
+          - generic:
+            - button "Ask a Question Send a heads-up / status ping without ordering.":
+              - paragraph: Ask a Question
+              - paragraph: Send a heads-up / status ping without ordering.
+            - button "Create Requisition Kick off an internal PO with quantities.":
+              - paragraph: Create Requisition
+              - paragraph: Kick off an internal PO with quantities.
+        - generic:
+          - text: Request Type
+          - generic:
+            - button "Consumable / Component Something we stock regularly (bags, labels, inputs)":
+              - paragraph: Consumable / Component
+              - paragraph: Something we stock regularly (bags, labels, inputs)
+            - button "Product Alert Heads up that we need finished goods or expect demand":
+              - paragraph: Product Alert
+              - paragraph: Heads up that we need finished goods or expect demand
+            - button "Finished Good Need packaged goods for sales/ops":
+              - paragraph: Finished Good
+              - paragraph: Need packaged goods for sales/ops
+            - button "Other Anything else (tools, services, misc.)":
+              - paragraph: Other
+              - paragraph: Anything else (tools, services, misc.)
+        - generic:
+          - text: Priority
+          - generic:
+            - button "Low"
+            - button "Medium"
+            - button "High"
+        - generic:
+          - text: Which item?
+          - combobox "Search SKU..."
+          - textbox "Item name / description"
+        - paragraph: Start by entering a SKU to pull live inventory and PO status.
+        - generic:
+          - generic:
+            - text: Quantity
+            - spinbutton: "1"
+          - generic:
+            - text: Need By
+            - textbox
+        - generic:
+          - text: Context
+          - textbox "Add details (where the need came from, urgency, customer, etc.)"
+        - generic:
+          - text: Amazon / External Link
+          - textbox "https://www.amazon.com/dp/ASIN..."
+          - paragraph: Paste an Amazon product link so we can tie this requisition to the eventual Amazon order.
+        - generic:
+          - text: Options
+          - generic:
+            - generic:
+              - checkbox "This is just an alert (no quantity to order yet)"
+              - text: This is just an alert (no quantity to order yet)
+            - generic:
+              - checkbox "Auto-generate PO draft when approved"
+              - text: Auto-generate PO draft when approved
+            - generic:
+              - checkbox "Notify me when someone acknowledges this" [checked]
+              - text: Notify me when someone acknowledges this
+            - generic:
+              - checkbox "Requires Operations approval (large/strategic buy)"
+              - text: Requires Operations approval (large/strategic buy)
+      - generic:
+        - button "Submit Requisition" [disabled]:
+          - img
+          - text: Submit Requisition
+        - paragraph: Routes to purchasing with your department + priority so nothing slips through the cracks.
+  - generic [ref=e254]:
+    - generic [ref=e255]:
+      - img [ref=e256]
+      - text: Spotlight
+    - heading "Two-factor in two clicks" [level=3] [ref=e258]
+    - paragraph [ref=e259]: Keep purchasing safe by pairing an authenticator app. Each user owns their own codes so OTPs stay compliant.
+    - generic [ref=e260]:
+      - button "Explore" [ref=e261] [cursor=pointer]
+      - button "Later" [ref=e262] [cursor=pointer]
+```

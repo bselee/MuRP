@@ -19,7 +19,7 @@ import LoginScreen from './pages/LoginScreen';
 import Toast from './components/Toast';
 import ApiDocs from './pages/ApiDocs';
 import ArtworkPage from './pages/Artwork';
-import NewUserSetup from './pages/NewUserSetup';
+import EnhancedNewUserSetup from './pages/EnhancedNewUserSetup';
 import ManualLabelScanner from './components/ManualLabelScanner';
 import QuickRequestDrawer from './components/QuickRequestDrawer';
 import FeatureSpotlightReminder from './components/FeatureSpotlightReminder';
@@ -1831,7 +1831,7 @@ const AppShell: React.FC = () => {
   }
 
   if (!currentUser.onboardingComplete) {
-      return <NewUserSetup user={currentUser} onSetupComplete={() => handleCompleteOnboarding(currentUser.id)} />;
+      return <EnhancedNewUserSetup user={currentUser} onSetupComplete={() => handleCompleteOnboarding(currentUser.id)} />;
   }
 
   const shellBackground = resolvedTheme === 'light'
@@ -1852,6 +1852,8 @@ const AppShell: React.FC = () => {
         currentUser={currentUser}
         pendingRequisitionCount={pendingRequisitionCount}
         onOpenAiAssistant={openAiAssistant}
+        onSignOut={handleLogout}
+        onOpenSettings={() => navigateToPage('Settings')}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -1863,7 +1865,6 @@ const AppShell: React.FC = () => {
           devModeActive={permissions.isGodMode}
           systemAlerts={systemAlerts}
           onDismissAlert={dismissAlert}
-          onQuickRequest={() => openQuickRequestDrawer()}
           canGoBack={canGoBack}
           onGoBack={canGoBack ? handleGoBack : undefined}
         />

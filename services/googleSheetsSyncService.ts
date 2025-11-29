@@ -372,6 +372,184 @@ export class GoogleSheetsSyncService {
     };
   }
 
+  /**
+   * Create comprehensive inventory template with sample data and instructions
+   */
+  async createInventoryTemplate(options: {
+    title: string;
+    includeInstructions?: boolean;
+    includeSampleData?: boolean;
+  }): Promise<{ spreadsheetId: string; spreadsheetUrl: string }> {
+    try {
+      console.log(`[GoogleSheetsSyncService] Creating comprehensive inventory template: ${options.title}`);
+
+      // Create spreadsheet with multiple sheets
+      const sheetTitles = ['Inventory', 'Instructions', 'Categories', 'Import Log'];
+      const result = await this.sheetsService.createSpreadsheet(options.title, sheetTitles);
+
+      // Sheet 1: Inventory Data
+      const inventoryData = [
+        // Instructions row
+        ['📋 INSTRUCTIONS: Fill out your inventory below. Required: SKU, Name, Category, Quantity. Optional: Description, Reorder Point, Cost/Price, Supplier, UPC, Location, Notes.'],
+        ['🔄 TIP: Delete this instruction row before importing to MuRP. Use the "Import from Google Sheets" feature in Settings.'],
+        [''],
+        // Main header with data validation hints
+        ['SKU *', 'Name *', 'Description', 'Category *', 'Quantity *', 'Reorder Point', 'Unit Cost', 'Unit Price', 'Supplier', 'UPC', 'Location', 'Notes'],
+        // Sample data across different categories
+        ['ELEC-001', 'Arduino Uno R3', 'Microcontroller board for prototyping', 'Electronics', '25', '5', '18.50', '29.99', 'Adafruit', '123456789012', 'Shelf A1', 'Popular for IoT projects'],
+        ['ELEC-002', 'Raspberry Pi 4', 'Single-board computer with WiFi', 'Electronics', '12', '3', '35.00', '59.99', 'Raspberry Pi Foundation', '123456789013', 'Shelf A2', 'Model B 4GB RAM'],
+        ['HW-001', 'M3 Machine Screws', 'Stainless steel M3x10mm screws, pack of 100', 'Hardware', '45', '10', '0.08', '0.25', 'McMaster-Carr', '123456789016', 'Bin H1', 'Phillips head'],
+        ['MAT-001', 'PLA Filament 1.75mm', 'White PLA filament for 3D printing, 1kg spool', 'Raw Materials', '18', '3', '22.99', '39.99', 'Prusa', '123456789020', 'Filament Rack', '2.85mm compatible'],
+        ['CONS-001', 'Isopropyl Alcohol 99%', 'Electronic cleaning alcohol, 16oz', 'Consumables', '14', '4', '7.99', '15.99', 'Amazon', '123456789024', 'Chemicals Cabinet', 'Pure grade'],
+        // Empty rows for user input
+        ['', '', '', '', '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', '', '', '', ''],
+      ];
+
+      await this.sheetsService.writeSheet(result.spreadsheetId, 'Inventory!A1', inventoryData, {
+        valueInputOption: 'USER_ENTERED',
+      });
+
+      // Sheet 2: Instructions
+      const instructionsData = [
+        ['📖 MuRP Inventory Import Instructions'],
+        [''],
+        ['🎯 QUICK START'],
+        ['1. Fill out the "Inventory" sheet with your products'],
+        ['2. Required fields are marked with * (SKU, Name, Category, Quantity)'],
+        ['3. Save your spreadsheet'],
+        ['4. In MuRP Settings → Google Sheets → Import Inventory'],
+        ['5. Select this spreadsheet and click Import'],
+        [''],
+        ['📋 FIELD DESCRIPTIONS'],
+        ['SKU: Unique product identifier (e.g., ELEC-001, HW-001)'],
+        ['Name: Product name (e.g., Arduino Uno R3)'],
+        ['Description: Detailed product description'],
+        ['Category: Product category (Electronics, Hardware, Raw Materials, etc.)'],
+        ['Quantity: Current stock level (numbers only)'],
+        ['Reorder Point: Minimum stock level before reorder (numbers only)'],
+        ['Unit Cost: Your purchase cost per unit (numbers only)'],
+        ['Unit Price: Your selling price per unit (numbers only)'],
+        ['Supplier: Vendor or supplier name'],
+        ['UPC: Universal Product Code (barcode number)'],
+        ['Location: Physical storage location (e.g., Shelf A1, Bin H2)'],
+        ['Notes: Additional product information'],
+        [''],
+        ['⚠️  IMPORTANT NOTES'],
+        ['• Delete the instruction rows (rows 1-2) before importing'],
+        ['• SKU must be unique for each product'],
+        ['• Category helps organize your inventory'],
+        ['• Quantity and prices should be numbers only (no currency symbols)'],
+        ['• Empty rows will be skipped during import'],
+        [''],
+        ['🔧 TROUBLESHOOTING'],
+        ['• "Import failed": Check required fields and data formats'],
+        ['• "Duplicate SKU": Each product needs a unique SKU'],
+        ['• "Invalid number": Remove currency symbols and text from numeric fields'],
+        ['• Need help? Visit Settings → Support in MuRP'],
+        [''],
+        ['🚀 PRO TIPS'],
+        ['• Use consistent SKU patterns (ELEC-001, HW-001, MAT-001)'],
+        ['• Include reorder points to get low-stock alerts'],
+        ['• Add locations for easy warehouse navigation'],
+        ['• Regular exports create automatic backups'],
+        [''],
+        ['📞 SUPPORT'],
+        ['Questions? support@murp.com | Settings → Help & Support'],
+      ];
+
+      await this.sheetsService.writeSheet(result.spreadsheetId, 'Instructions!A1', instructionsData, {
+        valueInputOption: 'USER_ENTERED',
+      });
+
+      // Sheet 3: Categories
+      const categoriesData = [
+        ['📂 Suggested Inventory Categories'],
+        [''],
+        ['Use these categories to organize your inventory:'],
+        [''],
+        ['Electronics', 'Circuit boards, microcontrollers, sensors'],
+        ['Hardware', 'Screws, bolts, fasteners, tools'],
+        ['Raw Materials', 'Plastic, metal, fabric, chemicals'],
+        ['Consumables', 'Glue, solder, cleaning supplies'],
+        ['Packaging', 'Boxes, labels, protective materials'],
+        ['Finished Goods', 'Completed products ready for sale'],
+        ['Work in Progress', 'Partially assembled products'],
+        ['Spare Parts', 'Replacement components'],
+        ['Safety Equipment', 'PPE, first aid, safety gear'],
+        ['Office Supplies', 'Paper, pens, miscellaneous'],
+        [''],
+        ['💡 CUSTOM CATEGORIES'],
+        ['Create your own categories that match your business:'],
+        ['• By product type (Widgets, Gadgets, Assemblies)'],
+        ['• By department (Electronics, Mechanical, Quality)'],
+        ['• By location (Warehouse A, Shelf B, Bin C)'],
+        ['• By supplier (Vendor A, Vendor B, Vendor C)'],
+      ];
+
+      await this.sheetsService.writeSheet(result.spreadsheetId, 'Categories!A1', categoriesData, {
+        valueInputOption: 'USER_ENTERED',
+      });
+
+      // Sheet 4: Import Log (empty for now)
+      const logData = [
+        ['📊 Import History Log'],
+        [''],
+        ['Date', 'Status', 'Items Imported', 'Items Skipped', 'Errors', 'Notes'],
+        // Will be populated by import operations
+      ];
+
+      await this.sheetsService.writeSheet(result.spreadsheetId, 'Import Log!A1', logData, {
+        valueInputOption: 'USER_ENTERED',
+      });
+
+      // Format all sheets
+      const info = await this.sheetsService.getSpreadsheetInfo(result.spreadsheetId);
+
+      for (const sheet of info.sheets) {
+        await this.sheetsService.formatHeaders(result.spreadsheetId, sheet.sheetId, {
+          bold: true,
+          backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
+          freeze: true,
+        });
+        await this.sheetsService.autoResizeColumns(result.spreadsheetId, sheet.sheetId);
+      }
+
+      // Add data validation for categories
+      const categorySheet = info.sheets.find(s => s.title === 'Categories');
+      const inventorySheet = info.sheets.find(s => s.title === 'Inventory');
+
+      if (categorySheet && inventorySheet) {
+        // Create dropdown for Category column (D column, starting from row 4)
+        await this.sheetsService.addDataValidation(result.spreadsheetId, inventorySheet.sheetId, {
+          range: 'D4:D1000', // Category column, starting from data rows
+          condition: {
+            type: 'ONE_OF_RANGE',
+            values: [`Categories!A5:A20`], // Range of suggested categories
+          },
+        });
+      }
+
+      console.log(`[GoogleSheetsSyncService] Created comprehensive template: ${result.spreadsheetUrl}`);
+
+      return {
+        spreadsheetId: result.spreadsheetId,
+        spreadsheetUrl: result.spreadsheetUrl,
+      };
+    } catch (error) {
+      console.error('[GoogleSheetsSyncService] Failed to create comprehensive template:', error);
+      throw error;
+    }
+  }
+
   // ============================================================================
   // VENDOR IMPORT/EXPORT
   // ============================================================================

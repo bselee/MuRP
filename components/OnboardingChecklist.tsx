@@ -26,6 +26,13 @@ interface OnboardingChecklistProps {
 
 const generalItems: ChecklistItem[] = [
   {
+    id: 'data-imported',
+    title: 'Inventory data imported',
+    description:
+      'Your sample inventory is loaded and ready. Explore the Dashboard to see your 7 products in action.',
+    ctaLabel: 'Dashboard',
+  },
+  {
     id: 'preferences',
     title: 'Dial in your tables',
     description:
@@ -102,6 +109,33 @@ const departmentSpecific: Partial<Record<User['department'], ChecklistItem[]>> =
   ],
 };
 
+const freeTierItems: ChecklistItem[] = [
+  {
+    id: 'google-sheets-connected',
+    title: 'Google Workspace connected',
+    description: 'Your Google account is linked for Sheets import/export and automatic backups.',
+    ctaLabel: 'Settings',
+  },
+  {
+    id: 'explore-inventory',
+    title: 'Explore your inventory',
+    description: 'Browse the 7 sample products, check stock levels, and see how the data flows through MuRP.',
+    ctaLabel: 'Inventory',
+  },
+  {
+    id: 'try-google-export',
+    title: 'Try exporting to Google Sheets',
+    description: 'Export your inventory to a new Google Sheet to see the export feature in action.',
+    ctaLabel: 'Settings',
+  },
+  {
+    id: 'auto-backups-enabled',
+    title: 'Enable automatic backups',
+    description: 'Turn on automatic Google Sheets backups to protect your data (free tier feature).',
+    ctaLabel: 'Settings',
+  },
+];
+
 const ChecklistItemRow: React.FC<{
   item: ChecklistItem;
   completed: boolean;
@@ -159,6 +193,7 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({
   const mergedItems = useMemo<ChecklistItem[]>(() => {
     const items: ChecklistItem[] = [];
     items.push(...generalItems);
+    items.push(...freeTierItems); // Add free tier data-focused items
     if (roleSpecific[user.role]) items.push(...roleSpecific[user.role]!);
     if (departmentSpecific[user.department]) items.push(...departmentSpecific[user.department]!);
     const filtered = items.filter((item) => (item.id === 'shopify-beta' ? shopifyEnabled : true));
@@ -173,6 +208,18 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({
         return {
           ...item,
           onAction: () => navigateTo('Settings'),
+        };
+      }
+      if (item.id === 'google-sheets-connected' || item.id === 'try-google-export' || item.id === 'auto-backups-enabled') {
+        return {
+          ...item,
+          onAction: () => navigateTo('Settings'),
+        };
+      }
+      if (item.id === 'explore-inventory') {
+        return {
+          ...item,
+          onAction: () => navigateTo('Inventory'),
         };
       }
       if (item.id === 'review-requisitions' || item.id === 'po-tracking') {
@@ -288,8 +335,7 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({
                   Hey {user.name.split(' ')[0]}, let’s unlock the good stuff
                 </h2>
                 <p className="mt-1 text-sm text-gray-400">
-                  These reminders open Settings in the background so you can keep vibing while MuRP handles the
-                  heavy lifting.
+                  You have working inventory data! These reminders help you explore MuRP's features and get the most out of your free tier.
                 </p>
               </div>
               <div className="flex flex-col items-end gap-2 text-right">

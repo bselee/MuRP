@@ -1070,6 +1070,28 @@ export interface User {
     metadata?: Record<string, unknown> | null;
     guidedLaunchState?: GuidedLaunchState | null;
 
+    // User personalization
+    avatar?: {
+        url?: string;
+        initials?: string;
+        color?: string;
+    };
+    preferences?: {
+        displayName?: string;
+        bio?: string;
+        timezone?: string;
+        language?: string;
+        notifications?: {
+            email?: boolean;
+            browser?: boolean;
+            mobile?: boolean;
+        };
+        dashboard?: {
+            layout?: string[];
+            widgets?: string[];
+        };
+    };
+
     // User agreements - stored for review in Settings
     agreements?: {
         regulatory?: {

@@ -75,12 +75,10 @@ const BomDetailModal: React.FC<BomDetailModalProps> = ({
   };
 
   const handleVerifyLabel = (artworkId: string) => {
-    console.log('Verify label:', artworkId);
     // TODO: Implement verification update
   };
 
   const handleRescan = (artworkId: string) => {
-    console.log('Rescan label:', artworkId);
     // TODO: Implement rescan functionality
   };
 

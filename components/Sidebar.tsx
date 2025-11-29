@@ -4,9 +4,10 @@ import React from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MushroomLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, AiSwirlIcon, Squares2X2Icon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MushroomLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, AiSwirlIcon, Squares2X2Icon, UsersIcon, ChartBarIcon, QrCodeIcon, EyeIcon, FileTextIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
+import UserSettingsDropdown from './UserSettingsDropdown';
 
 interface SidebarProps {
     currentPage: Page;
@@ -16,6 +17,8 @@ interface SidebarProps {
     currentUser: User;
     pendingRequisitionCount: number;
     onOpenAiAssistant: () => void;
+    onSignOut: () => void;
+    onOpenSettings: () => void;
 }
 
 const NavItem: React.FC<{
@@ -54,7 +57,7 @@ const NavItem: React.FC<{
     </li>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollapsed, onToggle, currentUser, pendingRequisitionCount, onOpenAiAssistant }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollapsed, onToggle, currentUser, pendingRequisitionCount, onOpenAiAssistant, onSignOut, onOpenSettings }) => {
     
     const permissions = usePermissions();
     const { resolvedTheme } = useTheme();
@@ -109,6 +112,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
         },
         { page: 'Artwork', icon: <PhotoIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Inventory', icon: <PackageIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Vendors', icon: <UsersIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Stock Intelligence', icon: <ChartBarIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Label Scanner', icon: <QrCodeIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Product Page', icon: <EyeIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'API Documentation', icon: <FileTextIcon className="w-6 h-6" />, adminOnly: true },
         { page: 'Settings', icon: <CogIcon className="w-6 h-6" />, adminOnly: true },
     ];
     
@@ -182,6 +190,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
                 </ul>
             </nav>
             <div className={`px-2 py-4 mt-auto border-t ${sectionBorder}`}>
+                <UserSettingsDropdown
+                    user={currentUser}
+                    onSignOut={onSignOut}
+                    onOpenSettings={onOpenSettings}
+                    isCollapsed={isCollapsed}
+                />
                 <a
                     href="#"
                     onClick={(e) => { e.preventDefault(); onOpenAiAssistant(); }}
