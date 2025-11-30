@@ -783,18 +783,16 @@ const BOMs: React.FC<BOMsProps> = ({
       {/* Compliance Dashboard - Coming Soon */}
       {/* TODO: Load all compliance records for dashboard view */}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(320px,1fr)] items-start">
-        <div className="space-y-6">
-          {/* Search, Filters, and Controls */}
-          <CollapsibleSection
-            title="Search & Filters"
-            icon={<AdjustmentsHorizontalIcon className="w-6 h-6 text-blue-400" />}
-            variant="card"
-            isOpen={isFiltersOpen}
-            onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
-          >
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4">
-              <div className="flex flex-col lg:flex-row gap-4">
+      {/* Search, Filters, and Controls */}
+      <CollapsibleSection
+        title="Search & Filters"
+        icon={<AdjustmentsHorizontalIcon className="w-6 h-6 text-blue-400" />}
+        variant="card"
+        isOpen={isFiltersOpen}
+        onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
+      >
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4">
+          <div className="flex flex-col lg:flex-row gap-4">
           {/* Search Bar */}
           <div className="flex-1">
             <div className="relative">
@@ -915,10 +913,10 @@ const BOMs: React.FC<BOMsProps> = ({
           {searchQuery && <span> matching "{searchQuery}"</span>}
         </div>
       </div>
-          </CollapsibleSection>
+      </CollapsibleSection>
 
-          {/* BOM Cards/Table */}
-          {processedBoms.length === 0 ? (
+      {/* BOM Cards/Table */}
+      {processedBoms.length === 0 ? (
             <div className="bg-gray-800/30 rounded-lg border-2 border-dashed border-gray-700 p-12 text-center">
               <h3 className="text-lg font-medium text-gray-400 mb-2">No BOMs found</h3>
               <p className="text-sm text-gray-500">
@@ -1051,8 +1049,6 @@ const BOMs: React.FC<BOMsProps> = ({
               </div>
             </div>
           )}
-        </div>
-      </div>
 
       {/* Edit Modal */}
       {isModalOpen && selectedBom && (
