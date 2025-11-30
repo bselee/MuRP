@@ -28,16 +28,13 @@ import BomDetailModal from '../components/BomDetailModal';
 import ComplianceDashboard from '../components/ComplianceDashboard';
 import ComplianceDetailModal from '../components/ComplianceDetailModal';
 import EnhancedBomCard from '../components/EnhancedBomCard';
-import StockIntelligencePanel from '@/components/StockIntelligencePanel';
 import SOPCreator from '../components/SOPCreator';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
 import ScheduleBuildModal from '../components/ScheduleBuildModal';
-import SOPCreator from '../components/SOPCreator';
 import { usePermissions } from '../hooks/usePermissions';
 import { useSupabaseLabels, useSupabaseComplianceRecords } from '../hooks/useSupabaseData';
 import { supabase } from '../lib/supabase/client';
 import { fetchComponentSwapRules, mapComponentSwaps } from '../services/componentSwapService';
-import { computeStockoutRisks } from '@/lib/inventory/stockIntelligence';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability' | 'category' | 'velocity' | 'runway';
@@ -244,12 +241,6 @@ const BOMs: React.FC<BOMsProps> = ({
     inventory.forEach(item => map.set(item.sku, item));
     return map;
   }, [inventory]);
-
-  const bomStockoutRisks = useMemo(() => {
-    const finishedSkuLookup = new Set(boms.map(bom => bom.finishedSku));
-    const finishedInventory = inventory.filter(item => finishedSkuLookup.has(item.sku));
-    return computeStockoutRisks(finishedInventory);
-  }, [boms, inventory]);
 
   // Calculate buildability for a BOM - CRITICAL MRP FUNCTION
   const calculateBuildability = (bom: BillOfMaterials) => {
@@ -1061,14 +1052,6 @@ const BOMs: React.FC<BOMsProps> = ({
             </div>
           )}
         </div>
-        <StockIntelligencePanel
-          risks={bomStockoutRisks}
-          className="w-full"
-          title="Production Intelligence"
-          description="Forecasted runway and build pressure on finished goods"
-          emptyLabel="No BOMs are trending toward stockouts."
-          maxRisks={6}
-        />
       </div>
 
       {/* Edit Modal */}
