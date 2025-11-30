@@ -22,6 +22,7 @@ import VendorManagementModal, { type VendorConfig } from '../components/VendorMa
 import FilterPresetManager, { type FilterPreset } from '../components/FilterPresetManager';
 import { exportToCsv, exportToJson, exportToXls } from '../services/exportService';
 import { generateInventoryPdf } from '../services/pdfService';
+import LoadingOverlay from '../components/LoadingOverlay';
 import {
     normalizeCategory,
     buildVendorNameMap,
@@ -41,6 +42,7 @@ interface InventoryProps {
     onQuickRequest?: (defaults?: QuickRequestDefaults) => void;
     onNavigateToProduct?: (sku: string) => void;
     purchaseOrders?: PurchaseOrder[];
+    loading?: boolean;
 }
 
 type ColumnKey =
@@ -194,7 +196,7 @@ const SortableHeader: React.FC<{
     );
 };
 
-const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom, onQuickRequest, onNavigateToProduct, purchaseOrders = [] }) => {
+const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom, onQuickRequest, onNavigateToProduct, purchaseOrders = [], loading = false }) => {
     const { rowDensity, fontScale } = useUserPreferences();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
@@ -796,6 +798,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
     return (
         <>
+            {loading && <LoadingOverlay />}
             <div className="space-y-6">
                 <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                     <h1 className="text-xl font-bold text-white tracking-tight">Inventory</h1>

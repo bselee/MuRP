@@ -1648,6 +1648,7 @@ const AppShell: React.FC = () => {
           inventory={inventory} 
           vendors={vendors} 
           boms={boms}
+          loading={inventoryLoading}
           onQuickRequest={openQuickRequestDrawer}
           onNavigateToBom={(bomSku) => {
             navigateToPage('BOMs');
