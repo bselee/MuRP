@@ -10,7 +10,7 @@ import BuildabilityTable from '../components/BuildabilityTable';
 import RenewalAlertsWidget from '../components/RenewalAlertsWidget';
 import InventoryIntelligencePanel from '../components/InventoryIntelligencePanel';
 import { calculateAllBuildability } from '../services/buildabilityService';
-import { LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, BellIcon, CheckCircleIcon, ChartBarIcon, ClipboardDocumentListIcon, AlertCircleIcon, TrendingUpIcon, DollarSignIcon, UsersIcon } from '../components/icons';
+import { LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, BellIcon, CheckCircleIcon, ChartBarIcon, ClipboardDocumentListIcon, AlertCircleIcon, TrendingUpIcon, DollarSignIcon, UsersIcon, HomeIcon } from '../components/icons';
 
 interface StockoutRisk {
   sku: string;

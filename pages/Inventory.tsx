@@ -18,7 +18,8 @@ import {
   TrendingUpIcon,
   CalendarIcon,
   DollarSignIcon,
-  UsersIcon
+  UsersIcon,
+  PackageIcon
 } from '../components/icons';
 import ImportExportModal from '../components/ImportExportModal';
 import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
