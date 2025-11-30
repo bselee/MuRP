@@ -832,12 +832,9 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                 </aside>
 
                 <main className="flex-1 space-y-6">
-                    <header className="space-y-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div>
-                                <h1 className="text-3xl font-bold text-white tracking-tight">Artwork Library</h1>
-                                <p className="text-gray-400 mt-1">A central repository for all product artwork and design files.</p>
-                            </div>
+                    <header className="mb-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <h1 className="text-xl font-bold text-white tracking-tight">Artwork Library</h1>
                             <div className="flex gap-2">
                                 <Button 
                                     onClick={() => {
@@ -851,9 +848,9 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                         }
                                         setIsUploadModalOpen(true);
                                     }}
-                                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2"
+                                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm"
                                 >
-                                    <CloudUploadIcon className="w-5 h-5" />
+                                    <CloudUploadIcon className="w-4 h-4" />
                                     Upload Artwork
                                 </Button>
                                 <Button 
@@ -864,18 +861,18 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                         }
                                         setIsScanningInterfaceOpen(true);
                                     }}
-                                    className="bg-gradient-to-r from-accent-500 to-purple-600 hover:from-accent-600 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-all duration-200 flex items-center gap-2 shadow-lg"
+                                    className="bg-gradient-to-r from-accent-500 to-purple-600 hover:from-accent-600 hover:to-purple-700 text-white font-semibold py-2 px-3 rounded-md transition-all duration-200 flex items-center gap-2 shadow-lg text-sm"
                                 >
-                                    <SparklesIcon className="w-5 h-5" />
+                                    <SparklesIcon className="w-4 h-4" />
                                     World-Class Scanning
                                 </Button>
                                 {selectedArtworkIds.length > 0 && (
                                     <>
-                                        <Button onClick={handleBulkShare} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors flex items-center gap-2">
+                                        <Button onClick={handleBulkShare} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm">
                                             <SendIcon className="w-4 h-4" />
                                             Share ({selectedArtworkIds.length})
                                         </Button>
-                                        <Button onClick={handleCreatePo} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-colors">
+                                        <Button onClick={handleCreatePo} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md transition-colors text-sm">
                                             Create PO for Packaging ({selectedArtworkIds.length})
                                         </Button>
                                     </>

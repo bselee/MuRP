@@ -187,6 +187,28 @@ const AppShell: React.FC = () => {
       return updated.length > 25 ? updated.slice(updated.length - 25) : updated;
     });
     setCurrentPage(nextPage);
+
+    // Update browser URL to match the page change, preserving query parameters
+    const pageToPath: Record<Page, string> = {
+      'Dashboard': '/',
+      'Inventory': '/inventory',
+      'Purchase Orders': '/purchase-orders',
+      'Vendors': '/vendors',
+      'Production': '/production',
+      'BOMs': '/boms',
+      'Stock Intelligence': '/stock-intelligence',
+      'Settings': '/settings',
+      'API Documentation': '/api',
+      'Artwork': '/artwork',
+      'Projects': '/projects',
+      'Product Page': '/product',
+    };
+
+    const path = pageToPath[nextPage] || '/';
+    const currentSearch = window.location.search; // Preserve existing query parameters
+    if (typeof window !== 'undefined' && window.history) {
+      window.history.pushState({ page: nextPage }, '', path + currentSearch);
+    }
   }, [setCurrentPage]);
 
   const handleRecordArtworkShare = useCallback(
@@ -425,14 +447,12 @@ const AppShell: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, refreshGmailConnection]);
 
-  // Lightweight URL-based routing for deep links
+  // Initialize URL state on app load
   useEffect(() => {
     try {
       const { pathname, search } = window.location;
-      // Basic path-to-page mapping so tests can hit deep links like /vendors
-      const params = new URLSearchParams(search);
       const path = pathname.replace(/\/$/, '');
-      const map: Record<string, Page> = {
+      const pathToPage: Record<string, Page> = {
         '': 'Dashboard',
         '/': 'Dashboard',
         '/dashboard': 'Dashboard',
@@ -450,15 +470,30 @@ const AppShell: React.FC = () => {
         '/projects': 'Projects',
         '/product': 'Product Page',
       };
-      const nextPage = map[path] ?? 'Dashboard';
-      setNavigationHistory([nextPage]);
-      setCurrentPage(nextPage);
+      const initialPage = pathToPage[path] ?? 'Dashboard';
+      setNavigationHistory([initialPage]);
+      setCurrentPage(initialPage);
 
-      // Auto-sync now handled exclusively by backend cron + Edge functions.
-      // Frontend simply consumes fresh Supabase data.
+      // Push initial state to history, preserving query parameters
+      const pageToPath: Record<Page, string> = {
+        'Dashboard': '/',
+        'Inventory': '/inventory',
+        'Purchase Orders': '/purchase-orders',
+        'Vendors': '/vendors',
+        'Production': '/production',
+        'BOMs': '/boms',
+        'Stock Intelligence': '/stock-intelligence',
+        'Settings': '/settings',
+        'API Documentation': '/api',
+        'Artwork': '/artwork',
+        'Projects': '/projects',
+        'Product Page': '/product',
+      };
+      const initialPath = pageToPath[initialPage] || '/';
+      window.history.replaceState({ page: initialPage }, '', initialPath + search);
     } catch (err) {
       // No-op: best-effort only for e2e/dev
-      console.warn('[App] URL routing init skipped:', err);
+      console.warn('[App] URL init skipped:', err);
     }
   }, [setCurrentPage, setNavigationHistory]);
 

@@ -87,12 +87,9 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
 
     return (
         <div className="space-y-6">
-            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight">Vendors</h1>
-                    <p className="text-gray-400 mt-1">Manage your supplier information.</p>
-                </div>
-                <Button className="w-full sm:w-auto bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                <h1 className="text-xl font-bold text-white tracking-tight">Vendors</h1>
+                <Button className="w-full sm:w-auto bg-accent-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-accent-600 transition-colors text-sm">
                     Add New Vendor
                 </Button>
             </header>

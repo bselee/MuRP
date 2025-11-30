@@ -49,7 +49,6 @@ interface EnhancedBomCardProps {
   onNavigateToInventory?: (sku: string) => void;
   onQuickBuild?: () => void;
   onQuickOrder?: () => void;
-  onCreateSOP?: () => void; // New prop for SOP creation
   queueStatus?: Record<string, { status: string; poId: string | null }>;
 }
 
@@ -123,7 +122,6 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   onNavigateToInventory,
   onQuickBuild,
   onQuickOrder,
-  onCreateSOP, // New prop
   queueStatus = {}
 }) => {
   const { resolvedTheme } = useTheme();
@@ -378,9 +376,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
     }
     return acc;
   }, null);
-  const metricGridClass = isExpanded
-    ? 'grid-cols-2 md:grid-cols-3' // Expanded: Max 3 columns for smooth 2-col card layout
-    : 'grid-cols-2'; // Compact: 2 key metrics when collapsed for 2-col card layout
+  const metricGridClass = 'grid-cols-3'; // Always 3 columns for compact buildability tabs
 
   const [activeTab, setActiveTab] = useState<'components' | 'financials'>('components');
   const getSwapRuleForSku = (sku: string) => {
@@ -423,322 +419,252 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
       {/* MAIN CARD HEADER */}
       <div className={headerClass}>
         <div className="flex items-center justify-between gap-4">
-          {/* LEFT: Product Identity & Primary Metrics */}
+      {/* LEFT: Product Identity */}
+      <div className="flex-1 min-w-0">
+        {/* SKU, Name, Description - All in one line */}
+        <div className="flex items-start gap-3 mb-3">
+          {/* Product Info */}
           <div className="flex-1 min-w-0">
-            {/* SKU, Name, Description - All in one line */}
-            <div className="flex items-start gap-3 mb-1">
-              {/* Artwork Placeholder */}
-              <div className={`flex-shrink-0 w-16 h-16 rounded-lg border-2 overflow-hidden ${
-                labels.length > 0 
-                  ? themeSwap('border-emerald-400/40', 'border-emerald-500/40')
-                  : themeSwap('border-gray-300', 'border-gray-700')
+            <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleExpand();
+                }}
+                className={`font-extrabold font-mono transition-colors cursor-pointer hover:opacity-80 ${isLightTheme ? 'text-accent-600 hover:text-accent-500' : 'text-white hover:text-accent-400'}`}
+                style={{ fontSize: '1.3rem', letterSpacing: '0.02em' }}
+                title={isExpanded ? 'Hide recipe ingredients' : 'Show recipe ingredients'}
+              >
+                {bom.finishedSku}
+              </button>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wide ${revisionBadgeClass}`}>
+                REV {bom.revisionNumber ?? 1}
+              </span>
+              {canApprove && !isRevisionApproved && onApproveRevision && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onApproveRevision();
+                  }}
+                  className="text-[10px] px-2 py-0.5 bg-emerald-700 text-white rounded-full hover:bg-emerald-600 transition-colors shadow-sm"
+                >
+                  Approve
+                </button>
+              )}
+              
+              <h4 className={`${bodyHeadingClass} !mb-0 whitespace-nowrap text-sm`}>{bom.name}</h4>
+
+              {bom.category && (
+                <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-700 text-gray-300 border border-gray-600 whitespace-nowrap">
+                  {bom.category}
+                </span>
+              )}
+              
+              {bom.description && (
+                <span className={`${passiveBodyText} text-xs flex-1 min-w-0 truncate border-l border-gray-700/30 pl-2 hidden md:block`}>
+                  {bom.description}
+                </span>
+              )}
+            </div>
+            {/* Artwork filename if available */}
+            {labels.length > 0 && labels[0].fileName && (
+              <div className={`text-[10px] mt-0.5 ${themeSwap('text-gray-600', 'text-gray-500')} truncate`}>
+                📄 {labels[0].fileName}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* KEY METRICS ROW with Artwork aligned */}
+        <div className="flex items-start gap-3">
+          {/* Artwork aligned with metrics */}
+          <div className={`flex-shrink-0 w-16 h-16 rounded-lg border-2 overflow-hidden ${
+            labels.length > 0 
+              ? themeSwap('border-emerald-400/40', 'border-emerald-500/40')
+              : themeSwap('border-gray-300', 'border-gray-700')
+          }`}>
+            {labels.length > 0 && labels[0].url ? (
+              <div className="relative w-full h-full group">
+                <img 
+                  src={labels[0].url} 
+                  alt={`${bom.finishedSku} label`}
+                  className="w-full h-full object-cover"
+                />
+                <div className={`absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center`}>
+                  <span className="text-white text-[8px] text-center px-1">{labels[0].fileName}</span>
+                </div>
+              </div>
+            ) : (
+              <div className={`w-full h-full flex flex-col items-center justify-center ${
+                themeSwap('bg-gray-100', 'bg-gray-800/50')
               }`}>
-                {labels.length > 0 && labels[0].url ? (
-                  <div className="relative w-full h-full group">
-                    <img 
-                      src={labels[0].url} 
-                      alt={`${bom.finishedSku} label`}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className={`absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center`}>
-                      <span className="text-white text-[8px] text-center px-1">{labels[0].fileName}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className={`w-full h-full flex flex-col items-center justify-center ${
-                    themeSwap('bg-gray-100', 'bg-gray-800/50')
-                  }`}>
-                    <DocumentTextIcon className={`w-6 h-6 ${themeSwap('text-gray-400', 'text-gray-600')}`} />
-                    <span className={`text-[8px] mt-1 ${themeSwap('text-gray-500', 'text-gray-600')}`}>No artwork</span>
+                <DocumentTextIcon className={`w-6 h-6 ${themeSwap('text-gray-400', 'text-gray-600')}`} />
+                <span className={`text-[8px] mt-1 ${themeSwap('text-gray-500', 'text-gray-600')}`}>No artwork</span>
+              </div>
+            )}
+          </div>
+
+          {/* Buildability metrics */}
+          <div className={`grid gap-2 text-xs ${metricGridClass} flex-1`}>
+            {/* Inventory Status with Progress Bar - Both roles */}
+            <div className={`${glassTile} ${isExpanded ? 'p-3' : 'p-2'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-gray-500">Inventory</div>
+                {inventoryMap.get(bom.finishedSku)?.reorderPoint && (
+                  <div className="text-xs text-gray-600">
+                    Reorder: {inventoryMap.get(bom.finishedSku)?.reorderPoint}
                   </div>
                 )}
               </div>
-
-              {/* Product Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleExpand();
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {finishedStock}
+                </span>
+                <span className="text-gray-400 text-xs">{isManager ? '' : 'units'}</span>
+              </div>
+              {/* Progress bar for inventory */}
+              {inventoryMap.get(bom.finishedSku)?.reorderPoint && (
+                <div className="w-full bg-gray-800 rounded-full h-1.5">
+                  <div
+                    className={`h-1.5 rounded-full transition-all ${
+                      finishedStock >= (inventoryMap.get(bom.finishedSku)?.reorderPoint || 0)
+                        ? 'bg-green-500'
+                        : 'bg-red-500'
+                    }`}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        (finishedStock / (inventoryMap.get(bom.finishedSku)?.reorderPoint || 1)) * 100
+                      )}%`
                     }}
-                    className={`font-extrabold font-mono transition-colors cursor-pointer hover:opacity-80 ${isLightTheme ? 'text-accent-600 hover:text-accent-500' : 'text-white hover:text-accent-400'}`}
-                    style={{ fontSize: '1.3rem', letterSpacing: '0.02em' }}
-                    title={isExpanded ? 'Hide recipe ingredients' : 'Show recipe ingredients'}
-                  >
-                    {bom.finishedSku}
-                  </button>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wide ${revisionBadgeClass}`}>
-                    REV {bom.revisionNumber ?? 1}
-                  </span>
-                  {canApprove && !isRevisionApproved && onApproveRevision && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onApproveRevision();
-                      }}
-                      className="text-[10px] px-2 py-0.5 bg-emerald-700 text-white rounded-full hover:bg-emerald-600 transition-colors shadow-sm"
-                    >
-                      Approve
-                    </button>
-                  )}
-                  
-                  <h4 className={`${bodyHeadingClass} !mb-0 whitespace-nowrap text-sm`}>{bom.name}</h4>
-
-                  {bom.category && (
-                    <span className="px-1.5 py-0.5 text-[10px] rounded bg-gray-700 text-gray-300 border border-gray-600 whitespace-nowrap">
-                      {bom.category}
-                    </span>
-                  )}
-                  
-                  {bom.description && (
-                    <span className={`${passiveBodyText} text-xs flex-1 min-w-0 truncate border-l border-gray-700/30 pl-2 hidden md:block`}>
-                      {bom.description}
-                    </span>
-                  )}
+                  />
                 </div>
-                {/* Artwork filename if available */}
-                {labels.length > 0 && labels[0].fileName && (
-                  <div className={`text-[10px] mt-0.5 ${themeSwap('text-gray-600', 'text-gray-500')} truncate`}>
-                    📄 {labels[0].fileName}
+              )}
+            </div>
+
+            {/* Buildability with Visual Indicator - Both roles */}
+            <div className={`${glassTile} p-3`}>
+              <div className="text-gray-500 mb-2">Can Build</div>
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {buildability.maxBuildable}
+                </span>
+                <span className="text-gray-400 text-xs">{isManager ? '' : 'units'}</span>
+              </div>
+              {/* Simple status indicator */}
+              <div className="flex items-center gap-1">
+                <div className={`h-1.5 flex-1 rounded-full ${buildability.maxBuildable > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
+                <span className="text-xs text-gray-600">
+                  {buildability.maxBuildable > 0 ? 'Ready' : 'Blocked'}
+                </span>
+              </div>
+            </div>
+
+            {/* Velocity & Trend - Show when collapsed */}
+            <div className={`${glassTile} ${isExpanded ? 'p-3' : 'p-2'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-gray-500">Velocity</span>
+                {sales30Days != null && (
+                  <span className="text-[10px] text-gray-600">
+                    {sales30Days.toFixed(0)} sold / 30d
+                  </span>
+                )}
+              </div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${currentVelocity && currentVelocity > 0 ? 'text-emerald-300' : 'text-gray-400'}`}>
+                  {currentVelocity != null ? currentVelocity.toFixed(1) : '--'}
+                </span>
+                <span className="text-gray-400 text-xs">per day</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <div className="text-gray-500">
+                  30d avg:{' '}
+                  <span className="font-semibold text-gray-300">
+                    {avg30PerDay != null ? `${avg30PerDay.toFixed(1)}/day` : '--'}
+                  </span>
+                </div>
+                {velocityTrendDirection && velocityTrendLabel && (
+                  <div className={`flex items-center gap-1 font-semibold ${velocityTrendDirection === 'up' ? 'text-emerald-300' : 'text-rose-300'}`}>
+                    {velocityTrendDirection === 'up' ? (
+                      <TrendingUpIcon className="w-3.5 h-3.5" />
+                    ) : (
+                      <TrendingDownIcon className="w-3.5 h-3.5" />
+                    )}
+                    <span>{velocityTrendLabel}</span>
+                    {baselineLabel && <span className="text-[10px] font-normal opacity-70">{baselineLabel}</span>}
                   </div>
                 )}
               </div>
             </div>
-
-            {/* KEY METRICS ROW - Compact when collapsed, full when expanded */}
-            <div className={`grid gap-2 text-xs ${metricGridClass}`}>
-              {/* Inventory Status with Progress Bar - Both roles */}
-              <div className={`${glassTile} ${isExpanded ? 'p-3' : 'p-2'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-gray-500">Inventory</div>
-                  {inventoryMap.get(bom.finishedSku)?.reorderPoint && (
-                    <div className="text-xs text-gray-600">
-                      Reorder: {inventoryMap.get(bom.finishedSku)?.reorderPoint}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {finishedStock}
-                  </span>
-                  <span className="text-gray-400 text-xs">{isManager ? '' : 'units'}</span>
-                </div>
-                {/* Progress bar for inventory */}
-                {inventoryMap.get(bom.finishedSku)?.reorderPoint && (
-                  <div className="w-full bg-gray-800 rounded-full h-1.5">
-                    <div
-                      className={`h-1.5 rounded-full transition-all ${
-                        finishedStock >= (inventoryMap.get(bom.finishedSku)?.reorderPoint || 0)
-                          ? 'bg-green-500'
-                          : 'bg-red-500'
-                      }`}
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          (finishedStock / (inventoryMap.get(bom.finishedSku)?.reorderPoint || 1)) * 100
-                        )}%`
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Buildability with Visual Indicator - Both roles */}
-              <div className={`${glassTile} p-3`}>
-                <div className="text-gray-500 mb-2">Can Build</div>
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {buildability.maxBuildable}
-                  </span>
-                  <span className="text-gray-400 text-xs">{isManager ? '' : 'units'}</span>
-                </div>
-                {/* Simple status indicator */}
-                <div className="flex items-center gap-1">
-                  <div className={`h-1.5 flex-1 rounded-full ${buildability.maxBuildable > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
-                  <span className="text-xs text-gray-600">
-                    {buildability.maxBuildable > 0 ? 'Ready' : 'Blocked'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Velocity & Trend - Show when collapsed */}
-              <div className={`${glassTile} ${isExpanded ? 'p-3' : 'p-2'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-500">Velocity</span>
-                  {sales30Days != null && (
-                    <span className="text-[10px] text-gray-600">
-                      {sales30Days.toFixed(0)} sold / 30d
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${currentVelocity && currentVelocity > 0 ? 'text-emerald-300' : 'text-gray-400'}`}>
-                    {currentVelocity != null ? currentVelocity.toFixed(1) : '--'}
-                  </span>
-                  <span className="text-gray-400 text-xs">per day</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <div className="text-gray-500">
-                    30d avg:{' '}
-                    <span className="font-semibold text-gray-300">
-                      {avg30PerDay != null ? `${avg30PerDay.toFixed(1)}/day` : '--'}
-                    </span>
-                  </div>
-                  {velocityTrendDirection && velocityTrendLabel && (
-                    <div className={`flex items-center gap-1 font-semibold ${velocityTrendDirection === 'up' ? 'text-emerald-300' : 'text-rose-300'}`}>
-                      {velocityTrendDirection === 'up' ? (
-                        <TrendingUpIcon className="w-3.5 h-3.5" />
-                      ) : (
-                        <TrendingDownIcon className="w-3.5 h-3.5" />
-                      )}
-                      <span>{velocityTrendLabel}</span>
-                      {baselineLabel && <span className="text-[10px] font-normal opacity-70">{baselineLabel}</span>}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Production Runway - Only when expanded */}
-              {isExpanded && <div className={`${glassTile} p-3`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-500">Runway</span>
-                  {safetyStock != null && (
-                    <span className="text-[10px] text-gray-600">
-                      Safety {safetyStock}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${runwayDays != null && runwayDays > 0 ? 'text-cyan-200' : 'text-rose-300'}`}>
-                    {runwayDays != null ? runwayDays.toFixed(1) : '--'}
-                  </span>
-                  <span className="text-gray-400 text-xs">days</span>
-                </div>
-                <div className="text-xs text-gray-500 mb-2">
-                  {runwayWithInbound != null
-                    ? `With inbound: ${runwayWithInbound.toFixed(1)}d`
-                    : 'No inbound POs'}
-                </div>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded ${runwayBadge}`}>
-                  <ClockIcon className="w-3 h-3" />
-                  {runwayLabel}
-                </span>
-              </div>}
-
-              {/* Critical Path - Only when expanded */}
-              {isExpanded && <div className={`${glassTile} p-3`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-500">Critical Path</span>
-                  {criticalPathComponent && (
-                    <span className="text-[10px] text-gray-600">Lead time</span>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold ${criticalPathComponent ? 'text-sky-300' : 'text-gray-500'}`}>
-                    {criticalPathComponent?.leadTime != null ? criticalPathComponent.leadTime : '--'}
-                  </span>
-                  {criticalPathComponent && <span className="text-gray-400 text-xs">days</span>}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {criticalPathComponent
-                    ? `${criticalPathComponent.name} (${criticalPathComponent.sku})`
-                    : 'Add lead times for components'}
-                </div>
-              </div>}
-
-              {/* Yield - Only when expanded */}
-              {isExpanded && (
-                <div className={`${glassTile} p-3`}>
-                  <div className="text-gray-500 mb-2">Yield</div>
-                  <div className="flex items-baseline gap-2">
-                    <span className={`${isManager ? 'text-2xl' : 'text-xl'} font-bold text-blue-400`}>{bom.yieldQuantity || 1}</span>
-                    <span className="text-gray-400 text-xs">{isManager ? '/batch' : 'per batch'}</span>
-                  </div>
-                </div>
-              )}
-
           </div>
         </div>
 
-	      {/* RIGHT: Status Indicators & Actions */}
-	      <div className="flex flex-col items-end gap-2">
-	        {isAdmin && npkRatio && (
-	          <div className="px-2 py-1 rounded text-xs font-mono bg-green-900/30 text-green-300 border border-green-700">
-	            <BeakerIcon className="w-3 h-3 inline mr-1" />
-	            {npkRatio}
-	          </div>
-	        )}
+        {/* Status Indicators & Actions - Moved below metrics */}
+        <div className="flex flex-wrap items-center gap-2 mt-4">
+          {isAdmin && npkRatio && (
+            <div className="px-2 py-1 rounded text-xs font-mono bg-green-900/30 text-green-300 border border-green-700">
+              <BeakerIcon className="w-3 h-3 inline mr-1" />
+              {npkRatio}
+            </div>
+          )}
 
-	        <div className={`px-2 py-1 rounded text-xs font-medium border ${
-	          artworkStatus.color === 'green' ? 'bg-green-900/30 text-green-300 border-green-700' :
-	          artworkStatus.color === 'yellow' ? 'bg-yellow-900/30 text-yellow-300 border-yellow-700' :
-	          artworkStatus.color === 'orange' ? 'bg-orange-900/30 text-orange-300 border-orange-700' :
-	          'bg-gray-700 text-gray-300 border-gray-600'
-	        }`}>
-	          <DocumentTextIcon className="w-3 h-3 inline mr-1" />
-	          {isManager ? artworkStatus.label : (labelCount > 0 ? `${verifiedLabels}/${labelCount} Labels` : artworkStatus.label)}
-	        </div>
+          <div className={`px-2 py-1 rounded text-xs font-medium border ${
+            artworkStatus.color === 'green' ? 'bg-green-900/30 text-green-300 border-green-700' :
+            artworkStatus.color === 'yellow' ? 'bg-yellow-900/30 text-yellow-300 border-yellow-700' :
+            artworkStatus.color === 'orange' ? 'bg-orange-900/30 text-orange-300 border-orange-700' :
+            'bg-gray-700 text-gray-300 border-gray-600'
+          }`}>
+            <DocumentTextIcon className="w-3 h-3 inline mr-1" />
+            {isManager ? artworkStatus.label : (labelCount > 0 ? `${verifiedLabels}/${labelCount} Labels` : artworkStatus.label)}
+          </div>
 
-	        <div className={`px-2 py-1 rounded text-xs font-medium border ${
-	          complianceStatus.color === 'green' ? 'bg-green-900/30 text-green-300 border-green-700' :
-	          complianceStatus.color === 'orange' ? 'bg-orange-900/30 text-orange-300 border-orange-700' :
-	          complianceStatus.color === 'red' ? 'bg-red-900/30 text-red-300 border-red-700' :
-	          'bg-gray-700 text-gray-300 border-gray-600'
-	        }`}>
-	          {complianceStatus.color === 'green' && <CheckCircleIcon className="w-3 h-3 inline mr-1" />}
-	          {complianceStatus.color === 'orange' && <ExclamationCircleIcon className="w-3 h-3 inline mr-1" />}
-	          {complianceStatus.color === 'red' && <XCircleIcon className="w-3 h-3 inline mr-1" />}
-	          {isManager ? complianceStatus.label : (hasRegistrations ? `${complianceRecords.length} Reg` : 'No Reg')}
-	        </div>
+          <div className={`px-2 py-1 rounded text-xs font-medium border ${
+            complianceStatus.color === 'green' ? 'bg-green-900/30 text-green-300 border-green-700' :
+            complianceStatus.color === 'orange' ? 'bg-orange-900/30 text-orange-300 border-orange-700' :
+            complianceStatus.color === 'red' ? 'bg-red-900/30 text-red-300 border-red-700' :
+            'bg-gray-700 text-gray-300 border-gray-600'
+          }`}>
+            {complianceStatus.color === 'green' && <CheckCircleIcon className="w-3 h-3 inline mr-1" />}
+            {complianceStatus.color === 'orange' && <ExclamationCircleIcon className="w-3 h-3 inline mr-1" />}
+            {complianceStatus.color === 'red' && <XCircleIcon className="w-3 h-3 inline mr-1" />}
+            {isManager ? complianceStatus.label : (hasRegistrations ? `${complianceRecords.length} Reg` : 'No Reg')}
+          </div>
 
-	        <button
-	          onClick={onViewDetails}
-	          className={`flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-md transition-colors shadow-sm ${isManager ? 'text-sm px-5' : ''}`}
-	          title="View all product details, labels, registrations, and data sheets"
-	        >
-	          <EyeIcon className={`${isManager ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} />
-	          {isManager && <span>Details</span>}
-	        </button>
-
-        {onQuickBuild && (
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onQuickBuild();
-            }}
-            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-md transition-colors shadow-sm"
-            title="Schedule this BOM on the production calendar"
+            onClick={onViewDetails}
+            className={`flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-md transition-colors shadow-sm ${isManager ? 'text-sm px-5' : ''}`}
+            title="View all product details, labels, registrations, and data sheets"
           >
-            <ClockIcon className="w-3.5 h-3.5" />
-            <span>Schedule</span>
+            <EyeIcon className={`${isManager ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} />
+            {isManager && <span>Details</span>}
           </button>
-        )}
 
-        {onCreateSOP && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onCreateSOP();
-            }}
-            className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-md transition-colors shadow-sm"
-            title="Create Standard Operating Procedure for this BOM"
-          >
-            <ClipboardDocumentListIcon className="w-3.5 h-3.5" />
-            <span>SOP</span>
-          </button>
-        )}
+          {onQuickBuild && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onQuickBuild();
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-md transition-colors shadow-sm"
+              title="Schedule this BOM on the production calendar"
+            >
+              <ClockIcon className="w-3.5 h-3.5" />
+              <span>Schedule</span>
+            </button>
+          )}
 
-        {isAdmin && canEdit && (
-          <button
-            onClick={onEdit}
-            className="flex items-center gap-1 px-3 py-1.5 bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold rounded-md transition-colors shadow-sm"
-            title="Edit BOM configuration"
-          >
-            <PencilIcon className="w-3.5 h-3.5" />
-            <span>Edit</span>
-          </button>
-        )}          {/* Expand/Collapse Toggle */}
+          {isAdmin && canEdit && (
+            <button
+              onClick={onEdit}
+              className="flex items-center gap-1 px-3 py-1.5 bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold rounded-md transition-colors shadow-sm"
+              title="Edit BOM configuration"
+            >
+              <PencilIcon className="w-3.5 h-3.5" />
+              <span>Edit</span>
+            </button>
+          )}
+
+          {/* Expand/Collapse Toggle */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -751,7 +677,8 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             {hasSwapHints && <SparklesIcon className="w-3 h-3" title="Swap suggestions available" />}
             <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           </button>
-	      </div>
+        </div>
+      </div>
 
       {queuedCount > 0 && (
         <div className={queueBannerClass}>

@@ -399,20 +399,13 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
 
   return (
     <div className="space-y-8">
-      <header>
+      <header className="mb-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
-            <p className="text-gray-400 mt-1">Live data syncing quietly behind the scenes so you can focus on action.</p>
-            <p className="text-gray-400">
-              Welcome back, here's your company-wide operations snapshot.
-              <span className="ml-2 text-xs text-gray-500">(Drag sections to reorder)</span>
-            </p>
-          </div>
+          <h1 className="text-xl font-bold text-white tracking-tight">Dashboard</h1>
           <Button
             onClick={() => setCurrentPage('Purchase Orders')}
-            size="lg"
-            leftIcon={<ClipboardDocumentListIcon className="w-5 h-5" aria-hidden="true" />}
+            size="sm"
+            leftIcon={<ClipboardDocumentListIcon className="w-4 h-4" aria-hidden="true" />}
           >
             View Reorder Queue
           </Button>

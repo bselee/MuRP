@@ -193,9 +193,8 @@ Thank you!`
   return (
     <>
         <div className="space-y-8 max-w-4xl mx-auto">
-          <header>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Settings</h1>
-            <p className="text-gray-400 mt-1">Manage company settings, users, integrations, and administrative controls.</p>
+          <header className="mb-4">
+            <h1 className="text-xl font-bold text-white tracking-tight">Settings</h1>
           </header>
 
           <h2 className="text-2xl font-bold text-white mt-8 mb-4">Compliance & Billing</h2>

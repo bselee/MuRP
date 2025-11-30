@@ -455,27 +455,24 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     return (
         <>
             <div className="space-y-6">
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white tracking-tight">Purchase Orders</h1>
-                        <p className="text-gray-400 mt-1">Manage internal requisitions and external purchase orders.</p>
-                    </div>
+                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <h1 className="text-xl font-bold text-white tracking-tight">Purchase Orders</h1>
                     {canManagePOs && (
                         <div className="flex w-full sm:w-auto gap-2">
                             {currentUser.role !== 'Staff' && approvedRequisitions.length > 0 && (
                                 <Button
                                     onClick={() => setIsGeneratePoModalOpen(true)}
-                                    className="relative flex-1 sm:flex-initial bg-green-600 hover:bg-green-500 focus-visible:ring-green-500"
+                                    className="relative flex-1 sm:flex-initial bg-green-600 hover:bg-green-500 focus-visible:ring-green-500 text-sm py-2 px-3"
                                 >
                                     Generate from Requisitions
-                                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs">
+                                    <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs">
                                         {approvedRequisitions.length}
                                     </span>
                                 </Button>
                             )}
                             <Button
                                 onClick={handleManualCreateClick}
-                                className="flex-1 sm:flex-initial"
+                                className="flex-1 sm:flex-initial text-sm py-2 px-3"
                                 variant="primary"
                             >
                                 Create New PO

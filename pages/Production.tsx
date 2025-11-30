@@ -52,19 +52,16 @@ const Production: React.FC<ProductionProps> = ({
 
     return (
         <div className="space-y-6">
-            <header>
+            <header className="mb-4">
                 <div className="flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white tracking-tight">Production</h1>
-                        <p className="text-gray-400 mt-1">Manage internal build orders for finished goods.</p>
-                    </div>
+                    <h1 className="text-xl font-bold text-white tracking-tight">Production</h1>
                     
                     <div className="flex items-center gap-3 flex-wrap justify-end">
                         <div className="flex gap-2 flex-wrap justify-end">
                             {onQuickRequest && (
                                 <Button
                                     onClick={() => onQuickRequest()}
-                                    className="px-4 py-2 bg-accent-500 hover:bg-accent-500 text-white text-sm font-semibold rounded-lg transition-colors"
+                                    className="px-3 py-2 bg-accent-500 hover:bg-accent-500 text-white text-sm font-semibold rounded-lg transition-colors"
                                 >
                                     Ask About Product
                                 </Button>
@@ -74,7 +71,7 @@ const Production: React.FC<ProductionProps> = ({
                                     setScheduleAnchor(new Date());
                                     setScheduleModalOpen(true);
                                 }}
-                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+                                className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
                             >
                                 Schedule Build
                             </Button>
@@ -84,7 +81,7 @@ const Production: React.FC<ProductionProps> = ({
                             <button
                                 type="button"
                                 onClick={() => setView('table')}
-                                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+                                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
                                     view === 'table' ? 'bg-accent-500 text-white' : 'text-gray-300 hover:text-white'
                                 }`}
                             >
@@ -94,7 +91,7 @@ const Production: React.FC<ProductionProps> = ({
                             <button
                                 type="button"
                                 onClick={() => setView('calendar')}
-                                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+                                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
                                     view === 'calendar' ? 'bg-accent-500 text-white' : 'text-gray-300 hover:text-white'
                                 }`}
                             >
@@ -104,7 +101,7 @@ const Production: React.FC<ProductionProps> = ({
                             <button
                                 type="button"
                                 onClick={() => setView('timeline')}
-                                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+                                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
                                     view === 'timeline' ? 'bg-accent-500 text-white' : 'text-gray-300 hover:text-white'
                                 }`}
                             >

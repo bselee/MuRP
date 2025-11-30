@@ -17,9 +17,6 @@ test.describe('Vendors Page', () => {
     // Check for the page title
     await expect(page.locator('h1')).toContainText('Vendors');
 
-    // Check for the subtitle
-    await expect(page.getByText('Manage your supplier information')).toBeVisible();
-
     // Check for the "Add New Vendor" button
     await expect(page.getByRole('button', { name: /add new vendor/i })).toBeVisible();
   });

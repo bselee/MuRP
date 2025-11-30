@@ -12,7 +12,7 @@ const routes: RouteCheck[] = [
     path: '/',
     assert: async (page) => {
       await expect(page.getByRole('heading', { name: /Dashboard/i })).toBeVisible();
-      await expect(page.getByText(/Live data syncing quietly/i)).toBeVisible();
+      await expect(page.getByRole('button', { name: /View Reorder Queue/i })).toBeVisible();
     },
   },
   {
@@ -53,7 +53,7 @@ const routes: RouteCheck[] = [
     path: '/boms',
     assert: async (page) => {
       await expect(page.getByRole('heading', { name: /Bills of Materials/i })).toBeVisible();
-      await expect(page.getByText(/Manage product recipes/i)).toBeVisible();
+      await expect(page.getByRole('button', { name: /Quick Request/i })).toBeVisible();
     },
   },
   {

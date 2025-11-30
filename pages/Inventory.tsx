@@ -797,22 +797,19 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     return (
         <>
             <div className="space-y-6">
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white tracking-tight">Inventory</h1>
-                        <p className="text-gray-400 mt-1">Search, filter, and manage all your stock items.</p>
-                    </div>
+                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <h1 className="text-xl font-bold text-white tracking-tight">Inventory</h1>
                     <div className="flex gap-2 flex-shrink-0 flex-wrap">
                         <Button
                             onClick={() => setIsPresetManagerOpen(true)}
-                            className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-md transition-colors ${
+                            className={`flex items-center gap-2 font-semibold py-2 px-3 rounded-md transition-colors text-sm ${
                                 activePresetId 
                                     ? 'bg-accent-500 text-white hover:bg-accent-600' 
                                     : 'bg-gray-700 text-white hover:bg-gray-600'
                             }`}
                             title="Manage filter presets"
                         >
-                            <BookmarkIcon className="w-5 h-5" />
+                            <BookmarkIcon className="w-4 h-4" />
                             <span className="hidden sm:inline">
                                 {activePresetId 
                                     ? filterPresets.find(p => p.id === activePresetId)?.name || 'Presets'
@@ -821,17 +818,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         </Button>
                         <Button
                             onClick={() => setIsColumnModalOpen(true)}
-                            className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
+                            className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-600 transition-colors text-sm"
                             title="Manage columns"
                         >
-                            <AdjustmentsHorizontalIcon className="w-5 h-5" />
+                            <AdjustmentsHorizontalIcon className="w-4 h-4" />
                             <span className="hidden sm:inline">Columns</span>
                         </Button>
                         <Button
                             onClick={() => setIsImportExportModalOpen(true)}
-                            className="flex items-center gap-2 bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors"
+                            className="flex items-center gap-2 bg-accent-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-accent-600 transition-colors text-sm"
                         >
-                            <ArrowsUpDownIcon className="w-5 h-5" />
+                            <ArrowsUpDownIcon className="w-4 h-4" />
                             <span className="hidden sm:inline">Import / Export</span>
                         </Button>
                     </div>
