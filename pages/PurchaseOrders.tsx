@@ -141,7 +141,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [isCommModalOpen, setIsCommModalOpen] = useState(false);
     const [isGeneratePoModalOpen, setIsGeneratePoModalOpen] = useState(false);
     const [isCreateReqModalOpen, setIsCreateReqModalOpen] = useState(false);
-    const [isRequisitionsOpen, setIsRequisitionsOpen] = useState(true);
+    const [isRequisitionsOpen, setIsRequisitionsOpen] = useState(false);
     const [selectedPoForEmail, setSelectedPoForEmail] = useState<PurchaseOrder | null>(null);
     const [selectedPoForTracking, setSelectedPoForTracking] = useState<PurchaseOrder | null>(null);
     const [selectedPoForComm, setSelectedPoForComm] = useState<PurchaseOrder | null>(null);

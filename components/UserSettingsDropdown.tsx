@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, Settings, Bell, Shield, LogOut } from 'lucide-react';
+import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 
 interface UserSettingsDropdownProps {
   user: {
@@ -9,6 +10,7 @@ interface UserSettingsDropdownProps {
   onSignOut: () => void;
   onOpenSettings: () => void;
   isCollapsed?: boolean;
+  systemAlerts?: SystemAlert[];
 }
 
 const UserSettingsDropdown: React.FC<UserSettingsDropdownProps> = ({
@@ -16,6 +18,7 @@ const UserSettingsDropdown: React.FC<UserSettingsDropdownProps> = ({
   onSignOut,
   onOpenSettings,
   isCollapsed = false,
+  systemAlerts = [],
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -43,17 +46,22 @@ const UserSettingsDropdown: React.FC<UserSettingsDropdownProps> = ({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
         aria-label={`User settings for ${user.name}`}
         aria-expanded={isOpen}
         aria-haspopup="true"
         title={isCollapsed ? user.name : undefined}
       >
-        <img
-          src={user.avatar}
-          alt={`${user.name}'s profile picture`}
-          className="w-8 h-8 rounded-full shadow-lg ring-2 ring-blue-500"
-        />
+        <div className="relative">
+          <img
+            src={user.avatar}
+            alt={`${user.name}'s profile picture`}
+            className="w-8 h-8 rounded-full shadow-lg ring-2 ring-blue-500"
+          />
+          {systemAlerts.length > 0 && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-900"></div>
+          )}
+        </div>
         {!isCollapsed && (
           <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
             {user.name}

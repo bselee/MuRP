@@ -8,6 +8,7 @@ import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MuRPLogo, ChevronDoub
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
 import UserSettingsDropdown from './UserSettingsDropdown';
+import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 
 interface SidebarProps {
     currentPage: Page;
@@ -19,6 +20,7 @@ interface SidebarProps {
     onOpenAiAssistant: () => void;
     onSignOut: () => void;
     onOpenSettings: () => void;
+    systemAlerts?: SystemAlert[];
 }
 
 const NavItem: React.FC<{
@@ -59,7 +61,7 @@ const NavItem: React.FC<{
     </li>
 );
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollapsed, onToggle, currentUser, pendingRequisitionCount, onOpenAiAssistant, onSignOut, onOpenSettings }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollapsed, onToggle, currentUser, pendingRequisitionCount, onOpenAiAssistant, onSignOut, onOpenSettings, systemAlerts = [] }) => {
     
     const permissions = usePermissions();
     const { resolvedTheme } = useTheme();
@@ -195,6 +197,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
                     onSignOut={onSignOut}
                     onOpenSettings={onOpenSettings}
                     isCollapsed={isCollapsed}
+                    systemAlerts={systemAlerts}
                 />
                 <a
                     href="#"

@@ -15,6 +15,7 @@ import {
     PlusCircleIcon
 } from '../components/icons';
 import StockIntelligencePanel from '@/components/StockIntelligencePanel';
+import CollapsibleSection from '../components/CollapsibleSection';
 import ImportExportModal from '../components/ImportExportModal';
 import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
 import VendorManagementModal, { type VendorConfig } from '../components/VendorManagementModal';
@@ -212,6 +213,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
     const [suggestions, setSuggestions] = useState<InventoryItem[]>([]);
     const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const [isImportExportModalOpen, setIsImportExportModalOpen] = useState(false);
     const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
@@ -836,8 +838,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 </header>
 
                 <div className="space-y-6">
-                    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
-                    <div className="p-6 space-y-6">
+                <CollapsibleSection
+                    title="Search & Filters"
+                    icon={<AdjustmentsHorizontalIcon className="w-6 h-6 text-blue-400" />}
+                    variant="card"
+                    isOpen={isFiltersOpen}
+                    onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
+                >
+                    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                         <div className="relative lg:col-span-1">
                             <label htmlFor="search-inventory" className="block text-sm font-medium text-gray-300 mb-1">Search by name or SKU</label>
@@ -1082,7 +1090,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         )}
                     </div>
                     </div>
-                    </div>
+                </CollapsibleSection>
                     <div className="relative z-0 bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
                     <div className="overflow-x-auto max-h-[calc(100vh-280px)]">
                     <table className="table-density w-full divide-y divide-gray-700 table-auto">
@@ -1140,7 +1148,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                         <div className="relative group flex-shrink-0">
                                                                             <Button
                                                                                 onClick={() => handleBomClick(item)}
-                                                                                className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full text-xs hover:bg-blue-500/30 transition-colors"
+                                                                                className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-md text-xs hover:bg-blue-500/30 transition-colors"
                                                                                 title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
                                                                             >
                                                                                 BOM {bomCount > 1 ? `(${bomCount})` : ''}

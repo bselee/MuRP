@@ -1855,6 +1855,7 @@ const AppShell: React.FC = () => {
         onOpenAiAssistant={openAiAssistant}
         onSignOut={handleLogout}
         onOpenSettings={() => navigateToPage('Settings')}
+        systemAlerts={systemAlerts}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -1864,10 +1865,6 @@ const AppShell: React.FC = () => {
           isGlobalLoading={isDataLoading}
           showLogo={isSidebarCollapsed}
           devModeActive={permissions.isGodMode}
-          systemAlerts={systemAlerts}
-          onDismissAlert={dismissAlert}
-          canGoBack={canGoBack}
-          onGoBack={canGoBack ? handleGoBack : undefined}
         />
         
         <main
