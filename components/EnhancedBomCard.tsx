@@ -1,4 +1,3 @@
-import Button from '@/components/ui/Button';
 /**
  * Enhanced BOM Card Component
  *
@@ -458,30 +457,30 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
               {/* Product Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
-                  <Button
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleExpand();
                     }}
-                    className={`font-extrabold font-mono transition-colors cursor-pointer ${isLightTheme ? 'text-accent-600 hover:text-accent-500' : 'text-white hover:text-accent-400'}`}
+                    className={`font-extrabold font-mono transition-colors cursor-pointer hover:opacity-80 ${isLightTheme ? 'text-accent-600 hover:text-accent-500' : 'text-white hover:text-accent-400'}`}
                     style={{ fontSize: '1.3rem', letterSpacing: '0.02em' }}
                     title={isExpanded ? 'Hide recipe ingredients' : 'Show recipe ingredients'}
                   >
                     {bom.finishedSku}
-                  </Button>
+                  </button>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wide ${revisionBadgeClass}`}>
                     REV {bom.revisionNumber ?? 1}
                   </span>
                   {canApprove && !isRevisionApproved && onApproveRevision && (
-                    <Button
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onApproveRevision();
                       }}
-                      className="text-[10px] px-2 py-0.5 bg-emerald-700 text-white rounded-full hover:bg-emerald-600"
+                      className="text-[10px] px-2 py-0.5 bg-emerald-700 text-white rounded-full hover:bg-emerald-600 transition-colors shadow-sm"
                     >
                       Approve
-                    </Button>
+                    </button>
                   )}
                   
                   <h4 className={`${bodyHeadingClass} !mb-0 whitespace-nowrap text-sm`}>{bom.name}</h4>
@@ -693,68 +692,65 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 	          {isManager ? complianceStatus.label : (hasRegistrations ? `${complianceRecords.length} Reg` : 'No Reg')}
 	        </div>
 
-	        <Button
+	        <button
 	          onClick={onViewDetails}
-	          className={`flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded transition-colors ${isManager ? 'text-sm px-5' : ''}`}
+	          className={`flex items-center gap-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-md transition-colors shadow-sm ${isManager ? 'text-sm px-5' : ''}`}
 	          title="View all product details, labels, registrations, and data sheets"
 	        >
 	          <EyeIcon className={`${isManager ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} />
 	          {isManager && <span>Details</span>}
-	        </Button>
+	        </button>
 
         {onQuickBuild && (
-          <Button
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onQuickBuild();
             }}
-            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-md transition-colors shadow-sm"
             title="Schedule this BOM on the production calendar"
           >
             <ClockIcon className="w-3.5 h-3.5" />
             <span>Schedule</span>
-          </Button>
+          </button>
         )}
 
         {onCreateSOP && (
-          <Button
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onCreateSOP();
             }}
-            className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-md transition-colors shadow-sm"
             title="Create Standard Operating Procedure for this BOM"
           >
             <ClipboardDocumentListIcon className="w-3.5 h-3.5" />
             <span>SOP</span>
-          </Button>
+          </button>
         )}
 
         {isAdmin && canEdit && (
-          <Button
+          <button
             onClick={onEdit}
-            className="flex items-center gap-1 px-3 py-1.5 bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold rounded transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold rounded-md transition-colors shadow-sm"
             title="Edit BOM configuration"
           >
             <PencilIcon className="w-3.5 h-3.5" />
             <span>Edit</span>
-          </Button>
+          </button>
         )}          {/* Expand/Collapse Toggle */}
-          <Button
+          <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleExpand();
             }}
-            className={themeSwap(
-              'flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded transition-colors',
-              'flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded transition-colors'
-            )}
+            className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-md transition-colors shadow-sm"
             title={isExpanded ? 'Hide recipe ingredients' : 'Show recipe ingredients'}
           >
             <BeakerIcon className="w-3.5 h-3.5" />
             {hasSwapHints && <SparklesIcon className="w-3 h-3" title="Swap suggestions available" />}
             <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-          </Button>
+          </button>
 	      </div>
 
       {queuedCount > 0 && (

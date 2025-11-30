@@ -835,7 +835,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     </div>
                 </header>
 
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(320px,1fr)] items-start">
+                <div className="space-y-6">
                     <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
                     <div className="p-6 space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
@@ -1343,6 +1343,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         </table>
                     </div>
                 </div>
+                
                 <StockIntelligencePanel
                     risks={stockoutRisks}
                     vendors={vendorPerformances}
@@ -1351,6 +1352,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 />
             </div>
         </div>
+
             {isColumnModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
