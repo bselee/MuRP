@@ -178,7 +178,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <ChartBarIcon className="w-8 h-8 text-indigo-400" />
+          <ChartBarIcon className="w-8 h-8 text-accent-400" />
           Stock Intelligence
         </h1>
         <p className="text-gray-400 mt-1">Advanced analytics and predictive insights for inventory management</p>
@@ -222,9 +222,9 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-400">Active Vendors</p>
-              <p className="text-2xl font-bold text-indigo-400">{vendorPerformances.length}</p>
+              <p className="text-2xl font-bold text-accent-400">{vendorPerformances.length}</p>
             </div>
-            <UsersIcon className="w-8 h-8 text-indigo-400/50" />
+            <UsersIcon className="w-8 h-8 text-accent-400/50" />
           </div>
         </div>
       </div>
@@ -246,7 +246,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`flex-1 px-4 py-1 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                   activeTab === tab.id
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-accent-500 text-white'
                     : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
                 }`}
               >
@@ -390,7 +390,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                           <p className="text-sm text-gray-400">Reliability Score</p>
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-indigo-400">{vp.reliabilityScore}</div>
+                          <div className="text-2xl font-bold text-accent-400">{vp.reliabilityScore}</div>
                           <div className="text-xs text-gray-400">/ 100</div>
                         </div>
                       </div>

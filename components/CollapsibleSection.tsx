@@ -25,7 +25,7 @@ interface CollapsibleSectionProps {
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   title,
   icon,
-  iconColor = 'text-indigo-400',
+  iconColor = 'text-accent-400',
   isOpen,
   onToggle,
   children,

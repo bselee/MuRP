@@ -432,7 +432,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
 
               <Button
                 onClick={handleStartSync}
-                className="w-full bg-indigo-600 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-accent-500 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-accent-600 transition-colors flex items-center justify-center gap-2"
               >
                 <RefreshIcon className="w-5 h-5" />
                 Start Initial Sync
@@ -520,7 +520,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                   </div>
                   <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300"
+                      className="h-full bg-gradient-to-r from-blue-500 to-accent-500 transition-all duration-300"
                       style={{ width: `${syncStatus.progress.percentage}%` }}
                     />
                   </div>
@@ -534,7 +534,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                   <div className="flex gap-2">
                     <Button
                       onClick={selectAllSyncSources}
-                      className="text-xs text-indigo-400 hover:text-indigo-300"
+                      className="text-xs text-accent-400 hover:text-accent-300"
                     >
                       Select All
                     </Button>
@@ -554,10 +554,10 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                       type="checkbox"
                       checked={selectedSyncSources.has('vendors')}
                       onChange={() => toggleSyncSource('vendors')}
-                      className="w-4 h-4 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                      className="w-4 h-4 rounded border-gray-600 text-accent-500 focus:ring-accent-500 focus:ring-offset-gray-900"
                     />
                     <div className="flex-1">
-                      <span className="text-sm text-white group-hover:text-indigo-300">Vendors</span>
+                      <span className="text-sm text-white group-hover:text-accent-300">Vendors</span>
                       <p className="text-xs text-gray-500">Supplier information and contacts</p>
                     </div>
                   </label>
@@ -567,10 +567,10 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                       type="checkbox"
                       checked={selectedSyncSources.has('inventory')}
                       onChange={() => toggleSyncSource('inventory')}
-                      className="w-4 h-4 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                      className="w-4 h-4 rounded border-gray-600 text-accent-500 focus:ring-accent-500 focus:ring-offset-gray-900"
                     />
                     <div className="flex-1">
-                      <span className="text-sm text-white group-hover:text-indigo-300">Inventory</span>
+                      <span className="text-sm text-white group-hover:text-accent-300">Inventory</span>
                       <p className="text-xs text-gray-500">Stock levels, costs, and locations</p>
                     </div>
                   </label>
@@ -580,10 +580,10 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                       type="checkbox"
                       checked={selectedSyncSources.has('boms')}
                       onChange={() => toggleSyncSource('boms')}
-                      className="w-4 h-4 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                      className="w-4 h-4 rounded border-gray-600 text-accent-500 focus:ring-accent-500 focus:ring-offset-gray-900"
                     />
                     <div className="flex-1">
-                      <span className="text-sm text-white group-hover:text-indigo-300">Bills of Materials</span>
+                      <span className="text-sm text-white group-hover:text-accent-300">Bills of Materials</span>
                       <p className="text-xs text-gray-500">Product recipes and components</p>
                     </div>
                   </label>
@@ -595,7 +595,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 <Button
                   onClick={handleManualSync}
                   disabled={syncStatus?.isRunning || selectedSyncSources.size === 0}
-                  className="w-full bg-indigo-600 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-accent-500 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <RefreshIcon className={`w-5 h-5 ${syncStatus?.isRunning ? 'animate-spin' : ''}`} />
                   {syncStatus?.isRunning ? 'Syncing...' : `Sync Selected (${selectedSyncSources.size})`}

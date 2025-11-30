@@ -105,7 +105,7 @@ const SemanticSearchSettings: React.FC<SemanticSearchSettingsProps> = ({
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
       <div className="flex flex-wrap items-center gap-4 mb-6">
-        <SparklesIcon className="w-8 h-8 text-indigo-400" />
+        <SparklesIcon className="w-8 h-8 text-accent-400" />
         <div>
           <h3 className="text-lg font-semibold text-white">Semantic Search</h3>
           <p className="text-sm text-gray-400 mt-1">
@@ -165,18 +165,18 @@ const SemanticSearchSettings: React.FC<SemanticSearchSettingsProps> = ({
 
       {/* Generation Progress */}
       {generating && (
-        <div className="mb-6 p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
+        <div className="mb-6 p-4 bg-accent-500/10 border border-accent-500/30 rounded-lg">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-indigo-300 font-semibold">
+            <span className="text-sm text-accent-300 font-semibold">
               Generating {progress.type} embeddings...
             </span>
-            <span className="text-sm text-indigo-400 font-bold">
+            <span className="text-sm text-accent-400 font-bold">
               {progress.current} / {progress.total} ({getProgressPercentage()}%)
             </span>
           </div>
           <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
             <div
-              className="h-full bg-indigo-500 transition-all duration-300"
+              className="h-full bg-accent-500 transition-all duration-300"
               style={{ width: `${getProgressPercentage()}%` }}
             />
           </div>
@@ -187,7 +187,7 @@ const SemanticSearchSettings: React.FC<SemanticSearchSettingsProps> = ({
       <Button
         onClick={handleGenerateEmbeddings}
         disabled={generating}
-        className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-3 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-center gap-2 bg-accent-500 text-white px-4 py-3 rounded-md hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <RefreshIcon className={`w-5 h-5 ${generating ? 'animate-spin' : ''}`} />
         {generating

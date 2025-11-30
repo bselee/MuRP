@@ -92,7 +92,7 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                     <h1 className="text-3xl font-bold text-white tracking-tight">Vendors</h1>
                     <p className="text-gray-400 mt-1">Manage your supplier information.</p>
                 </div>
-                <Button className="w-full sm:w-auto bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
+                <Button className="w-full sm:w-auto bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors">
                     Add New Vendor
                 </Button>
             </header>
@@ -116,7 +116,7 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                 placeholder="Search by name, email, phone, city..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                                className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full"
                             />
                         </div>
                     </div>
@@ -153,7 +153,7 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                     <td className="px-6 py-1">
                                         <div className="text-sm font-medium text-white">{vendor.name}</div>
                                         {vendor.website && (
-                                            <a href={vendor.website} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:underline">{vendor.website}</a>
+                                            <a href={vendor.website} target="_blank" rel="noopener noreferrer" className="text-xs text-accent-400 hover:underline">{vendor.website}</a>
                                         )}
                                         {vendor.notes && (
                                             <div className="text-xs text-gray-500 mt-1 max-w-xs truncate" title={vendor.notes}>
@@ -169,7 +169,7 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                                     href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="block text-indigo-400 hover:underline hover:text-indigo-300"
+                                                    className="block text-accent-400 hover:underline hover:text-accent-300"
                                                     title={`Compose email to ${email} in Gmail`}
                                                 >
                                                     {email}
@@ -233,7 +233,7 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                             )}
                                             <Button
                                                 onClick={() => handleOpenAutomation(vendor)}
-                                                className="text-indigo-400 hover:text-indigo-300 transition-colors"
+                                                className="text-accent-400 hover:text-accent-300 transition-colors"
                                                 title="Configure auto-PO settings"
                                             >
                                                 ⚙️

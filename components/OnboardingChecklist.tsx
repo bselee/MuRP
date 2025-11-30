@@ -146,13 +146,13 @@ const ChecklistItemRow: React.FC<{
       type="checkbox"
       checked={completed}
       onChange={toggle}
-      className="mt-1.5 h-4 w-4 rounded border-gray-500 text-indigo-500 focus:ring-indigo-500"
+      className="mt-1.5 h-4 w-4 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
     />
     <div className="flex-1">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm font-semibold text-white">{item.title}</p>
         {item.ctaLabel && (
-          <span className="text-[11px] uppercase text-indigo-300 bg-indigo-500/10 border border-indigo-500/40 rounded-full px-2 py-0.5">
+          <span className="text-[11px] uppercase text-accent-300 bg-accent-500/10 border border-accent-500/40 rounded-full px-2 py-0.5">
             {item.ctaLabel}
           </span>
         )}
@@ -161,7 +161,7 @@ const ChecklistItemRow: React.FC<{
       {item.onAction && (
         <Button
           onClick={item.onAction}
-          className="mt-2 text-xs text-indigo-200 border border-indigo-500/40 rounded-md px-2 py-1 hover:bg-indigo-500/10"
+          className="mt-2 text-xs text-accent-200 border border-accent-500/40 rounded-md px-2 py-1 hover:bg-accent-500/10"
         >
           Go
         </Button>
@@ -328,7 +328,7 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-indigo-300/80">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent-300/80">
                   Guided launch
                 </p>
                 <h2 className="text-3xl font-bold text-white">

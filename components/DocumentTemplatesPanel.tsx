@@ -658,7 +658,7 @@ Sections: ${pdfSections
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <input
-                  className="flex-1 bg-transparent border-b border-gray-700 text-white text-sm font-semibold focus:border-indigo-400"
+                  className="flex-1 bg-transparent border-b border-gray-700 text-white text-sm font-semibold focus:border-accent-400"
                   value={block.label}
                   onChange={(event) =>
                     setEmailBlocks((prev) =>
@@ -687,7 +687,7 @@ Sections: ${pdfSections
                   title="Use AI to rewrite the entire email"
                   onClick={handleGenerateEmailWithAI}
                 >
-                  <MagicSparklesIcon className="w-4 h-4 text-indigo-300" />
+                  <MagicSparklesIcon className="w-4 h-4 text-accent-300" />
                 </Button>
                 {emailBlocks.length > 1 && (
                   <Button
@@ -728,7 +728,7 @@ Sections: ${pdfSections
           ])
         }
         variant="ghost"
-        className="inline-flex items-center gap-2 text-indigo-200"
+        className="inline-flex items-center gap-2 text-accent-200"
       >
         <PlusCircleIcon className="w-4 h-4" />
         Add block
@@ -767,7 +767,7 @@ Sections: ${pdfSections
                     prev.map((item) => (item.id === section.id ? { ...item, enabled: event.target.checked } : item)),
                   )
                 }
-                className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
               />
               Show
             </label>
@@ -783,7 +783,7 @@ Sections: ${pdfSections
         <Button
           onClick={handleExportToGoogleDoc}
           disabled={isExportingDoc}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-400 text-white rounded-md text-sm font-medium transition-colors"
+          className="px-4 py-2 bg-accent-500 hover:bg-accent-600 disabled:bg-gray-700 disabled:text-gray-400 text-white rounded-md text-sm font-medium transition-colors"
         >
           {isExportingDoc ? 'Exporting…' : 'Export Settings to Google Docs'}
         </Button>
@@ -972,7 +972,7 @@ Sections: ${pdfSections
           <Button
             onClick={saveCompanySettings}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500"
+            className="flex items-center gap-2 px-4 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-500"
           >
             <SaveIcon className="w-4 h-4" />
             {saving ? 'Saving…' : 'Save company info'}
@@ -1028,7 +1028,7 @@ Sections: ${pdfSections
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-gray-900/40 p-4">
               <div className="flex items-center gap-2 mb-3">
-                <InformationCircleIcon className="w-4 h-4 text-indigo-300" />
+                <InformationCircleIcon className="w-4 h-4 text-accent-300" />
                 <p className="text-sm font-semibold text-white">Available variables</p>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1036,7 +1036,7 @@ Sections: ${pdfSections
                   .filter((variable) => variable.applies_to?.includes('email'))
                   .map((variable) => (
                     <div key={variable.id} className="text-gray-400">
-                      <code className="text-indigo-300">{variable.variable_key}</code> — {variable.description}
+                      <code className="text-accent-300">{variable.variable_key}</code> — {variable.description}
                     </div>
                   ))}
               </div>
@@ -1054,7 +1054,7 @@ Sections: ${pdfSections
           <Button
             onClick={saveEmailTemplate}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500"
+            className="flex items-center gap-2 px-4 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-500"
           >
             <SaveIcon className="w-4 h-4" />
             {saving ? 'Saving…' : 'Save email template'}
@@ -1139,7 +1139,7 @@ Sections: ${pdfSections
                   type="checkbox"
                   checked={showLogo}
                   onChange={(event) => setShowLogo(event.target.checked)}
-                  className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                  className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                 />
                 <span>Show logo</span>
               </div>
@@ -1148,7 +1148,7 @@ Sections: ${pdfSections
                   type="checkbox"
                   checked={showCompanyInfo}
                   onChange={(event) => setShowCompanyInfo(event.target.checked)}
-                  className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                  className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                 />
                 <span>Show company info</span>
               </div>
@@ -1157,7 +1157,7 @@ Sections: ${pdfSections
                   type="checkbox"
                   checked={showTax}
                   onChange={(event) => setShowTax(event.target.checked)}
-                  className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                  className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                 />
                 <span>Show tax line</span>
               </div>
@@ -1169,7 +1169,7 @@ Sections: ${pdfSections
           <Button
             onClick={savePDFTemplate}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500"
+            className="flex items-center gap-2 px-4 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-500"
           >
             <SaveIcon className="w-4 h-4" />
             {saving ? 'Saving…' : 'Save PDF template'}

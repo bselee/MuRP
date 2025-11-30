@@ -74,15 +74,15 @@ const ProductPage: React.FC<ProductPageProps> = ({
                     <p className="text-white">{inventoryItem?.vendorId || 'Unknown'}</p>
                   </div>
                   {isFinishedGood && (
-                    <div className="mt-4 p-3 bg-indigo-900/30 border border-indigo-500/30 rounded-lg">
+                    <div className="mt-4 p-3 bg-accent-900/30 border border-accent-500/30 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div>
-                          <span className="text-indigo-300 text-sm font-medium">Finished Good</span>
-                          <p className="text-indigo-200 text-xs mt-1">This product has a BOM</p>
+                          <span className="text-accent-300 text-sm font-medium">Finished Good</span>
+                          <p className="text-accent-200 text-xs mt-1">This product has a BOM</p>
                         </div>
                         <Button
                           onClick={() => onNavigateToBom?.(sku)}
-                          className="flex items-center gap-2 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-md transition-colors"
+                          className="flex items-center gap-2 px-3 py-1.5 text-xs bg-accent-500 hover:bg-accent-500 text-white rounded-md transition-colors"
                         >
                           <PencilIcon className="w-3 h-3" />
                           Edit BOM

@@ -70,7 +70,7 @@ const ScheduleBuildModal: React.FC<ScheduleBuildModalProps> = ({
       <div className="bg-gray-900 rounded-2xl border border-gray-700 w-full max-w-lg shadow-2xl mx-4">
         <div className="flex items-start justify-between border-b border-gray-800 px-6 py-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-indigo-300">Schedule build</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-accent-300">Schedule build</p>
             <h3 className="text-xl font-semibold text-white mt-1">Send to production calendar</h3>
           </div>
           <Button onClick={onClose} className="text-gray-400 hover:text-white">
@@ -90,7 +90,7 @@ const ScheduleBuildModal: React.FC<ScheduleBuildModalProps> = ({
               <select
                 value={selectedBomId}
                 onChange={(e) => setSelectedBomId(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent-500"
               >
                 <option value="">Select a product…</option>
                 {boms.map((bom) => (
@@ -110,7 +110,7 @@ const ScheduleBuildModal: React.FC<ScheduleBuildModalProps> = ({
                 min={1}
                 value={quantity}
                 onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent-500"
               />
             </div>
             <div>
@@ -133,7 +133,7 @@ const ScheduleBuildModal: React.FC<ScheduleBuildModalProps> = ({
                 type="datetime-local"
                 value={toLocalInputValue(startDate)}
                 onChange={(e) => setStartDate(new Date(e.target.value))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent-500"
               />
             </div>
             <div>
@@ -142,7 +142,7 @@ const ScheduleBuildModal: React.FC<ScheduleBuildModalProps> = ({
                 type="datetime-local"
                 value={toLocalInputValue(endDate)}
                 onChange={(e) => setEndDate(new Date(e.target.value))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-accent-500"
               />
             </div>
           </div>
@@ -160,7 +160,7 @@ const ScheduleBuildModal: React.FC<ScheduleBuildModalProps> = ({
             disabled={!selectedBom}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               selectedBom
-                ? 'bg-indigo-600 text-white hover:bg-indigo-500'
+                ? 'bg-accent-500 text-white hover:bg-accent-500'
                 : 'bg-gray-700 text-gray-400 cursor-not-allowed'
             }`}
           >

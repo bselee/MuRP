@@ -56,7 +56,7 @@ const ApiDocs: React.FC = () => {
         <h2 className="text-2xl font-semibold text-gray-300 border-b border-gray-700 pb-2 mb-4">Authentication</h2>
         <p className="text-gray-400 mb-4">
           All API requests must be authenticated using an API key generated in the Admin Settings panel.
-          Include the API key in the <code className="bg-gray-700 px-1 py-0.5 rounded text-indigo-300">Authorization</code> header of your request.
+          Include the API key in the <code className="bg-gray-700 px-1 py-0.5 rounded text-accent-300">Authorization</code> header of your request.
         </p>
         <CodeBlock code={`Authorization: Bearer <YOUR_API_KEY>`} lang="bash" />
       </section>
@@ -191,7 +191,7 @@ const ApiDocs: React.FC = () => {
       </section>
 
       {/* Context7 Research Assistant */}
-      <section aria-label="Context7 Research Assistant" className="border border-blue-900/40 rounded-2xl bg-gradient-to-br from-blue-950/60 via-indigo-900/40 to-slate-900/30 p-6">
+      <section aria-label="Context7 Research Assistant" className="border border-blue-900/40 rounded-2xl bg-gradient-to-br from-blue-950/60 via-accent-800/40 to-slate-900/30 p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-white">Context7 Research Assistant</h2>

@@ -167,8 +167,8 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   const limitingSummaryText = themeSwap('text-gray-700', 'text-gray-300');
   const emphasizedBodyText = themeSwap('text-gray-900', 'text-gray-200');
   const componentSkuLinkClass = themeSwap(
-    'font-semibold font-mono text-sm text-indigo-700 hover:text-indigo-500 hover:underline transition-colors',
-    'font-semibold font-mono text-sm text-indigo-400 hover:text-indigo-300 hover:underline transition-colors'
+    'font-semibold font-mono text-sm text-accent-600 hover:text-accent-500 hover:underline transition-colors',
+    'font-semibold font-mono text-sm text-accent-400 hover:text-accent-300 hover:underline transition-colors'
   );
   const componentSkuTextClass = themeSwap('font-semibold font-mono text-sm text-slate-900', 'font-semibold font-mono text-sm text-white');
   const instructionsPanelClass = themeSwap(
@@ -188,7 +188,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
     'grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg bg-amber-50/80 px-2 py-1 text-[11px] text-amber-900',
     'grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg bg-slate-900/60 px-2 py-1 text-[11px] text-gray-100'
   );
-  const componentPreviewSkuClass = themeSwap('font-mono text-indigo-700', 'font-mono text-indigo-300');
+  const componentPreviewSkuClass = themeSwap('font-mono text-accent-600', 'font-mono text-accent-300');
   const componentPreviewQuantityClass = themeSwap('font-mono text-slate-900', 'font-mono text-gray-100');
   const swapPanelClass = themeSwap(
     'mt-3 rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 text-emerald-900 shadow-[0_15px_35px_rgba(16,185,129,0.15)]',
@@ -463,7 +463,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                       e.stopPropagation();
                       onToggleExpand();
                     }}
-                    className={`font-extrabold font-mono transition-colors cursor-pointer ${isLightTheme ? 'text-indigo-700 hover:text-indigo-500' : 'text-white hover:text-indigo-400'}`}
+                    className={`font-extrabold font-mono transition-colors cursor-pointer ${isLightTheme ? 'text-accent-600 hover:text-accent-500' : 'text-white hover:text-accent-400'}`}
                     style={{ fontSize: '1.3rem', letterSpacing: '0.02em' }}
                     title={isExpanded ? 'Hide recipe ingredients' : 'Show recipe ingredients'}
                   >
@@ -733,7 +733,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
         {isAdmin && canEdit && (
           <Button
             onClick={onEdit}
-            className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold rounded transition-colors"
             title="Edit BOM configuration"
           >
             <PencilIcon className="w-3.5 h-3.5" />
@@ -857,7 +857,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
               onClick={() => setActiveTab('components')}
               className={`pb-2 text-xs font-semibold uppercase transition-colors ${
                 activeTab === 'components'
-                  ? 'text-indigo-400 border-b-2 border-indigo-400'
+                  ? 'text-accent-400 border-b-2 border-accent-400'
                   : 'text-gray-500 hover:text-gray-300'
               }`}
             >

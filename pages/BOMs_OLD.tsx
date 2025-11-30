@@ -89,7 +89,7 @@ const BOMs: React.FC<BOMsProps> = ({
             <h3 className="font-semibold text-white">{bom.name}</h3>
             <p className="text-sm text-gray-400">{bom.finishedSku}</p>
             {labelCount > 0 && (
-              <p className="text-xs text-indigo-400 mt-1">
+              <p className="text-xs text-accent-400 mt-1">
                 {labelCount} label{labelCount !== 1 ? 's' : ''}
               </p>
             )}
@@ -105,7 +105,7 @@ const BOMs: React.FC<BOMsProps> = ({
             {canEdit && (
               <Button
                 onClick={() => handleEditClick(bom)}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
+                className="flex items-center gap-2 bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold py-1.5 px-3 rounded-md transition-colors"
               >
                 <PencilIcon className="w-4 h-4" />
                 Edit
@@ -131,7 +131,7 @@ const BOMs: React.FC<BOMsProps> = ({
             <ul className="space-y-1 text-sm">
               {bom.artwork.map(art => (
                 <li key={art.id} className="flex justify-between">
-                  <Button onClick={() => onNavigateToArtwork(art.fileName)} className="text-indigo-400 hover:underline text-left truncate">
+                  <Button onClick={() => onNavigateToArtwork(art.fileName)} className="text-accent-400 hover:underline text-left truncate">
                     {art.fileName}
                   </Button>
                   <span className="text-gray-400 font-mono ml-2">Rev {art.revision}</span>

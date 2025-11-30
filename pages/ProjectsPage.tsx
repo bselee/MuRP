@@ -316,7 +316,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
           {viewMode === 'projects' && (
             <Button
               onClick={() => setIsCreateProjectOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+              className="bg-accent-500 hover:bg-accent-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"
             >
               <PlusIcon className="w-4 h-4" />
               New Project
@@ -330,7 +330,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {loadingProjects ? (
             <div className="col-span-full flex justify-center py-12">
-              <ArrowPathIcon className="w-8 h-8 text-indigo-400 animate-spin" />
+              <ArrowPathIcon className="w-8 h-8 text-accent-400 animate-spin" />
             </div>
           ) : projects.length === 0 ? (
             <div className="col-span-full text-center py-12">
@@ -339,7 +339,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
               <p className="text-gray-400 mb-4">Create your first project to start organizing work.</p>
               <Button
                 onClick={() => setIsCreateProjectOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg"
+                className="bg-accent-500 hover:bg-accent-500 text-white px-4 py-2 rounded-lg"
               >
                 Create Project
               </Button>
@@ -352,11 +352,11 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
               return (
                 <div
                   key={project.id}
-                  className="bg-gray-800/50 border border-gray-700 rounded-xl p-5 hover:border-indigo-500/50 hover:bg-gray-800/70 transition-all group"
+                  className="bg-gray-800/50 border border-gray-700 rounded-xl p-5 hover:border-accent-500/50 hover:bg-gray-800/70 transition-all group"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="text-lg font-semibold text-white group-hover:text-indigo-300 transition-colors">
+                      <h3 className="text-lg font-semibold text-white group-hover:text-accent-300 transition-colors">
                         {project.name}
                       </h3>
                       {project.code && (
@@ -536,7 +536,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
           <div className="bg-gray-800/30 rounded-xl border border-gray-700 overflow-hidden">
             {loadingTickets ? (
               <div className="flex justify-center py-12">
-                <ArrowPathIcon className="w-8 h-8 text-indigo-400 animate-spin" />
+                <ArrowPathIcon className="w-8 h-8 text-accent-400 animate-spin" />
               </div>
             ) : tickets.length === 0 ? (
               <div className="text-center py-12">
@@ -566,10 +566,10 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                           key={idx}
                           className={`w-10 flex-shrink-0 px-1 py-3 text-xs text-center border-r border-gray-700 ${
                             date.getDay() === 0 || date.getDay() === 6 ? 'bg-gray-800/30' : ''
-                          } ${idx === 0 ? 'bg-indigo-500/10' : ''}`}
+                          } ${idx === 0 ? 'bg-accent-500/10' : ''}`}
                         >
                           <div className="text-gray-500">{date.toLocaleDateString('en-US', { weekday: 'narrow' })}</div>
-                          <div className={`font-medium ${idx === 0 ? 'text-indigo-400' : 'text-gray-400'}`}>
+                          <div className={`font-medium ${idx === 0 ? 'text-accent-400' : 'text-gray-400'}`}>
                             {date.getDate()}
                           </div>
                         </div>
@@ -647,7 +647,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                                   ticket.status === 'done' ? 'bg-emerald-500/40 border border-emerald-500/60' :
                                   isOverdue ? 'bg-red-500/40 border border-red-500/60' :
                                   ticket.status === 'in_progress' ? 'bg-amber-500/40 border border-amber-500/60' :
-                                  'bg-indigo-500/40 border border-indigo-500/60'
+                                  'bg-accent-500/40 border border-accent-500/60'
                                 }`}
                                 style={{
                                   left: `${barStart * 40}px`,
@@ -678,7 +678,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
         <div className="space-y-6">
           {loadingProjects ? (
             <div className="flex justify-center py-12">
-              <ArrowPathIcon className="w-8 h-8 text-indigo-400 animate-spin" />
+              <ArrowPathIcon className="w-8 h-8 text-accent-400 animate-spin" />
             </div>
           ) : (
             <>
@@ -729,8 +729,8 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                           return (
                             <div key={ownerId} className="p-4">
                               <div className="flex items-center gap-3 mb-3">
-                                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                                  <UserIcon className="w-4 h-4 text-indigo-400" />
+                                <div className="w-8 h-8 rounded-full bg-accent-500/20 flex items-center justify-center">
+                                  <UserIcon className="w-4 h-4 text-accent-400" />
                                 </div>
                                 <div>
                                   <span className="text-sm font-medium text-white">
@@ -862,7 +862,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
         <div className="space-y-4">
           {loadingMyTickets ? (
             <div className="flex justify-center py-12">
-              <ArrowPathIcon className="w-8 h-8 text-indigo-400 animate-spin" />
+              <ArrowPathIcon className="w-8 h-8 text-accent-400 animate-spin" />
             </div>
           ) : myTickets.length === 0 ? (
             <div className="text-center py-12 bg-gray-800/30 rounded-xl border border-gray-800">
@@ -948,7 +948,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
                   placeholder="e.g., Q4 Production Ramp"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
                   autoFocus
                 />
               </div>
@@ -962,7 +962,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   onChange={(e) => setNewProjectDescription(e.target.value)}
                   placeholder="What is this project about?"
                   rows={3}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -975,7 +975,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                     type="date"
                     value={newProjectStartDate}
                     onChange={(e) => setNewProjectStartDate(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
                     required
                   />
                 </div>
@@ -988,7 +988,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                     type="date"
                     value={newProjectEndDate}
                     onChange={(e) => setNewProjectEndDate(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
                     required
                   />
                 </div>
@@ -1001,7 +1001,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   id={projectFormIds.owner}
                   value={newProjectOwnerId}
                   onChange={(e) => setNewProjectOwnerId(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
                   required
                 >
                   <option value="">Select owner</option>
@@ -1020,7 +1020,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   id={projectFormIds.delegate}
                   value={newProjectDelegateId}
                   onChange={(e) => setNewProjectDelegateId(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
                   required
                 >
                   <option value="">Select delegate</option>
@@ -1051,7 +1051,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                     !newProjectStartDate ||
                     !newProjectEndDate
                   }
-                  className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white px-4 py-2 rounded-lg"
+                  className="bg-accent-500 hover:bg-accent-500 disabled:bg-gray-700 text-white px-4 py-2 rounded-lg"
                 >
                   Create Project
                 </Button>

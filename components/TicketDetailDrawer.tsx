@@ -189,7 +189,7 @@ const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-lg font-semibold focus:border-indigo-500"
+                  className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-lg font-semibold focus:border-accent-500"
                 />
               ) : (
                 <h2 className="text-lg font-semibold text-white pr-4">
@@ -219,7 +219,7 @@ const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                   </Button>
                   <Button
                     onClick={handleSaveEdit}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-md"
+                    className="bg-accent-500 hover:bg-accent-500 text-white px-3 py-1 rounded-md"
                   >
                     Save
                   </Button>
@@ -298,7 +298,7 @@ const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
                 rows={4}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-accent-500"
                 placeholder="Add a description..."
               />
             ) : (
@@ -349,7 +349,7 @@ const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                 onClick={() => setActiveTab('comments')}
                 className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                   activeTab === 'comments'
-                    ? 'text-indigo-400 border-b-2 border-indigo-400'
+                    ? 'text-accent-400 border-b-2 border-accent-400'
                     : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -359,7 +359,7 @@ const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                 onClick={() => setActiveTab('activity')}
                 className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
                   activeTab === 'activity'
-                    ? 'text-indigo-400 border-b-2 border-indigo-400'
+                    ? 'text-accent-400 border-b-2 border-accent-400'
                     : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -379,7 +379,7 @@ const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
                     const author = comment.author || getUserById(comment.authorId);
                     return (
                       <div key={comment.id} className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-medium text-white flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-accent-500 flex items-center justify-center text-xs font-medium text-white flex-shrink-0">
                           {author?.name?.split(' ').map(n => n[0]).join('').slice(0, 2) || '?'}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -432,12 +432,12 @@ const TicketDetailDrawer: React.FC<TicketDetailDrawerProps> = ({
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Add a comment..."
-              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
             />
             <Button
               type="submit"
               disabled={!newComment.trim() || isSubmittingComment}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white px-4 py-2 rounded-lg"
+              className="bg-accent-500 hover:bg-accent-500 disabled:bg-gray-700 text-white px-4 py-2 rounded-lg"
             >
               <PaperAirplaneIcon className="w-4 h-4" />
             </Button>

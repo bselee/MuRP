@@ -601,7 +601,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
                 onClick={() => setView(viewType)}
                 className={`px-3 py-1 text-sm capitalize rounded-lg transition-colors ${
                   view === viewType
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-accent-500 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-600'
                 }`}
               >
@@ -615,7 +615,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
       {/* Legend */}
       <div className="flex items-center gap-6 text-xs">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-indigo-600 rounded"></div>
+          <div className="w-3 h-3 bg-accent-500 rounded"></div>
           <span className="text-gray-300">Pending</span>
         </div>
         <div className="flex items-center gap-2">
@@ -656,7 +656,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
                   onClick={() => setDemandWindow(window as DemandWindow)}
                   className={`px-3 py-1 ${
                     demandWindow === window
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-accent-500 text-white'
                       : 'text-gray-300 hover:text-white'
                   }`}
                 >
@@ -793,7 +793,7 @@ const ProductionCalendarView: React.FC<ProductionCalendarViewProps> = ({
                           className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
                             event.severity === 'critical'
                               ? 'bg-rose-500/20 text-rose-200 border border-rose-500/40'
-                              : 'bg-indigo-500/20 text-indigo-200 border border-indigo-500/40'
+                              : 'bg-accent-500/20 text-accent-200 border border-accent-500/40'
                           }`}
                         >
                           {event.severity === 'critical' ? 'Critical' : 'Warning'}
@@ -1081,7 +1081,7 @@ const BuildDetailsModal: React.FC<BuildDetailsModalProps> = ({
                 disabled={!canSyncGoogle}
                 className={`px-4 py-2 rounded-md transition-colors ${
                   canSyncGoogle
-                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    ? 'bg-accent-500 hover:bg-accent-600 text-white'
                     : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                 }`}
               >
@@ -1234,7 +1234,7 @@ const ExternalEventDetailsModal: React.FC<ExternalEventDetailsModalProps> = ({
               disabled={!canCreateBuild}
               className={`px-4 py-2 rounded-md text-sm font-medium ${
                 canCreateBuild
-                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                  ? 'bg-accent-500 hover:bg-accent-600 text-white'
                   : 'bg-gray-700 text-gray-400 cursor-not-allowed'
               }`}
             >

@@ -29,7 +29,7 @@ const REQUEST_TYPES: { label: string; value: RequisitionRequestType; description
 
 const PRIORITY_OPTIONS: { label: string; value: RequisitionPriority; tone: string }[] = [
   { label: 'Low', value: 'low', tone: 'bg-emerald-500/10 text-emerald-200 border border-emerald-500/30' },
-  { label: 'Medium', value: 'medium', tone: 'bg-indigo-500/10 text-indigo-200 border border-indigo-500/30' },
+  { label: 'Medium', value: 'medium', tone: 'bg-accent-500/10 text-accent-200 border border-accent-500/30' },
   { label: 'High', value: 'high', tone: 'bg-rose-500/10 text-rose-200 border border-rose-500/30' },
 ];
 
@@ -258,7 +258,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
                   }}
                   className={`p-3 rounded-lg text-left border text-sm transition ${
                     requestType === option.value
-                      ? 'border-indigo-500/70 bg-indigo-500/10 text-white'
+                      ? 'border-accent-500/70 bg-accent-500/10 text-white'
                       : 'border-gray-700 hover:border-gray-600 text-gray-300'
                   }`}
                 >
@@ -293,7 +293,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
               value={sku}
               onChange={(e) => setSku(e.target.value)}
               placeholder="Search SKU..."
-              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
               list="quick-request-skus"
             />
             <datalist id="quick-request-skus">
@@ -307,7 +307,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
                 placeholder="Item name / description"
-                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
               />
             )}
           </div>
@@ -412,7 +412,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
               onChange={(e) => setReason(e.target.value)}
               rows={4}
               placeholder="Add details (where the need came from, urgency, customer, etc.)"
-              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
             />
           </div>
 
@@ -425,7 +425,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
               value={externalLink}
               onChange={(e) => setExternalLink(e.target.value)}
               placeholder="https://www.amazon.com/dp/ASIN..."
-              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
             />
             <p className="text-[11px] text-gray-400">
               {amazonMetadata
@@ -442,7 +442,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
                   type="checkbox"
                   checked={alertOnly}
                   onChange={(e) => setAlertOnly(e.target.checked)}
-                  className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                  className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                 />
                 This is just an alert (no quantity to order yet)
               </label>
@@ -451,7 +451,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
                   type="checkbox"
                   checked={autoPo}
                   onChange={(e) => setAutoPo(e.target.checked)}
-                  className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                  className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                 />
                 Auto-generate PO draft when approved
               </label>
@@ -460,7 +460,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
                   type="checkbox"
                   checked={notifyRequester}
                   onChange={(e) => setNotifyRequester(e.target.checked)}
-                  className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                  className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                 />
                 Notify me when someone acknowledges this
               </label>
@@ -469,7 +469,7 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
                   type="checkbox"
                   checked={needsOpsApproval}
                   onChange={(e) => setNeedsOpsApproval(e.target.checked)}
-                  className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                  className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                 />
                 Requires Operations approval (large/strategic buy)
               </label>

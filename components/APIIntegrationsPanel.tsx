@@ -68,7 +68,7 @@ interface StepBadge {
 
 const SYNC_STEPS: Array<{ type: SyncType; label: string; accent: string }> = [
   { type: 'vendors', label: 'Vendors', accent: 'text-pink-300' },
-  { type: 'inventory', label: 'Inventory', accent: 'text-indigo-300' },
+  { type: 'inventory', label: 'Inventory', accent: 'text-accent-300' },
   { type: 'boms', label: 'BOMs', accent: 'text-emerald-300' },
 ];
 
@@ -718,7 +718,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                 <div>
                   <Button
                     onClick={onGenerateApiKey}
-                    className="text-sm text-indigo-400 hover:underline mr-4"
+                    className="text-sm text-accent-400 hover:underline mr-4"
                   >
                     Regenerate
                   </Button>
@@ -733,7 +733,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
               <p className="text-gray-400 mb-3">No API key is currently active.</p>
               <Button
                 onClick={onGenerateApiKey}
-                className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+                className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors"
               >
                 Generate API Key
               </Button>
@@ -743,7 +743,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
         <div className="mt-4 pt-4 border-t border-gray-700/50 flex justify-end">
           <Button
             onClick={() => setCurrentPage('API Documentation')}
-            className="text-sm font-semibold text-indigo-400 hover:text-indigo-300"
+            className="text-sm font-semibold text-accent-400 hover:text-accent-300"
           >
             View API Documentation &rarr;
           </Button>
@@ -765,7 +765,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
         <label className="flex items-center gap-3 text-sm text-gray-300">
           <input
             type="checkbox"
-            className="rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-500"
+            className="rounded bg-gray-700 border-gray-600 text-accent-500 focus:ring-accent-500"
             checked={trackingAlerts.enabled}
             onChange={(e) => {
               setTrackingAlertsError(null);
@@ -848,13 +848,13 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                     key={option.value}
                     className={`flex items-start gap-2 rounded-md border p-3 text-sm transition-colors ${
                       checked
-                        ? 'border-indigo-500/40 bg-gray-700/40'
+                        ? 'border-accent-500/40 bg-gray-700/40'
                         : 'border-gray-700/60 bg-gray-900/30'
                     } ${!trackingAlerts.enabled ? 'opacity-60' : ''}`}
                   >
                     <input
                       type="checkbox"
-                      className="mt-1 rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-500"
+                      className="mt-1 rounded bg-gray-700 border-gray-600 text-accent-500 focus:ring-accent-500"
                       checked={checked}
                       onChange={() => handleTrackingStatusToggle(option.value)}
                       disabled={!trackingAlerts.enabled || trackingAlertsLoading}
@@ -938,7 +938,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
                 className={`inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
                   isManualSyncing
                     ? 'bg-gray-700 text-gray-300 cursor-not-allowed'
-                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    : 'bg-accent-500 text-white hover:bg-accent-600'
                 }`}
               >
                 {isManualSyncing ? (
@@ -1165,7 +1165,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
               <div className="flex justify-end">
                 <Button
                   onClick={handleAddNewConnection}
-                  className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+                  className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors"
                 >
                   Add Connection
                 </Button>
@@ -1181,7 +1181,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
       {/* AfterShip Integration */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700 space-y-4">
         <div className="flex items-center gap-4">
-          <TruckIcon className="w-8 h-8 text-indigo-300" />
+          <TruckIcon className="w-8 h-8 text-accent-300" />
           <div>
             <h3 className="text-lg font-semibold text-white">AfterShip Tracking</h3>
             <p className="text-sm text-gray-400 mt-1">
@@ -1194,7 +1194,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
           <label className="flex items-center gap-3 text-sm text-gray-300">
             <input
               type="checkbox"
-              className="rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-500"
+              className="rounded bg-gray-700 border-gray-600 text-accent-500 focus:ring-accent-500"
               checked={afterShipInputs.enabled}
               onChange={(e) => {
                 setAfterShipInputs((prev) => ({ ...prev, enabled: e.target.checked }));
@@ -1299,7 +1299,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
             type="button"
             onClick={handleSaveAfterShip}
             disabled={afterShipLoading}
-            className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-600"
+            className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-600"
           >
             {afterShipLoading ? 'Saving…' : 'Save AfterShip Settings'}
           </Button>
@@ -1339,7 +1339,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
           ) : (
             <Button
               onClick={onGmailConnect}
-              className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+              className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors"
             >
               Connect Workspace Gmail
             </Button>

@@ -230,7 +230,7 @@ const TwoFactorSettings: React.FC<TwoFactorSettingsProps> = ({ addToast }) => {
       </div>
 
       {pending ? (
-        <div className="bg-gray-900/40 border border-indigo-500/40 rounded-xl p-5 space-y-4">
+        <div className="bg-gray-900/40 border border-accent-500/40 rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-base font-semibold text-white">Finish enrolling your authenticator</p>
@@ -269,7 +269,7 @@ const TwoFactorSettings: React.FC<TwoFactorSettingsProps> = ({ addToast }) => {
                   href={pending.uri}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center text-sm font-semibold text-indigo-300 hover:text-indigo-100"
+                  className="inline-flex items-center text-sm font-semibold text-accent-300 hover:text-accent-100"
                 >
                   Open TOTP URI &rarr;
                 </a>
@@ -284,12 +284,12 @@ const TwoFactorSettings: React.FC<TwoFactorSettingsProps> = ({ addToast }) => {
               placeholder="Enter 6-digit code"
               value={verificationCode}
               onChange={(e) => setVerificationCode(e.target.value)}
-              className="flex-1 rounded-md border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 rounded-md border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white focus:ring-2 focus:ring-accent-500"
             />
             <Button
               onClick={handleVerifyEnrollment}
               disabled={verifying || verificationCode.trim().length < 6}
-              className="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-indigo-500 disabled:bg-gray-600"
+              className="bg-accent-500 text-white font-semibold px-4 py-2 rounded-md hover:bg-accent-500 disabled:bg-gray-600"
             >
               {verifying ? 'Verifying…' : 'Verify & Activate'}
             </Button>
@@ -303,7 +303,7 @@ const TwoFactorSettings: React.FC<TwoFactorSettingsProps> = ({ addToast }) => {
           <Button
             onClick={handleStartEnrollment}
             disabled={enrolling || Boolean(pending) || !mfaClient}
-            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-500 disabled:bg-gray-600"
+            className="inline-flex items-center gap-2 bg-accent-500 text-white px-4 py-2 rounded-md hover:bg-accent-500 disabled:bg-gray-600"
           >
             {enrolling ? 'Preparing…' : 'Enable Authenticator'}
           </Button>

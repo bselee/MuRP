@@ -47,7 +47,7 @@ const AiPromptEditModal: React.FC<AiPromptEditModalProps> = ({ prompt, isOpen, o
                 value={editedPrompt.prompt}
                 onChange={handlePromptTextChange}
                 rows={15}
-                className="w-full bg-gray-900/50 text-white font-mono text-sm rounded-md p-3 border border-gray-600 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full bg-gray-900/50 text-white font-mono text-sm rounded-md p-3 border border-gray-600 focus:ring-accent-500 focus:border-accent-500"
                 placeholder="Enter the AI prompt here..."
             />
              {/* FIX: Wrap the {{variable}} placeholder in a code tag and string expression to prevent JSX parsing errors. */}
@@ -56,7 +56,7 @@ const AiPromptEditModal: React.FC<AiPromptEditModalProps> = ({ prompt, isOpen, o
 
         <div className="flex justify-end pt-4 border-t border-gray-700">
             <Button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</Button>
-            <Button onClick={handleSave} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors">
+            <Button onClick={handleSave} className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors">
                 Save Prompt
             </Button>
         </div>

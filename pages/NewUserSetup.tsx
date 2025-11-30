@@ -177,7 +177,7 @@ const NewUserSetup: React.FC<NewUserSetupProps> = ({ user, onSetupComplete }) =>
                       key={option.value}
                       className={`rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${
                         rowDensity === option.value
-                          ? 'border-indigo-400 bg-indigo-500/10 text-white'
+                          ? 'border-accent-400 bg-accent-500/10 text-white'
                           : 'border-gray-700 bg-gray-900/40 text-gray-300 hover:border-gray-500'
                       }`}
                     >
@@ -283,7 +283,7 @@ const NewUserSetup: React.FC<NewUserSetupProps> = ({ user, onSetupComplete }) =>
             {error && <p className="text-sm text-red-400">{error}</p>}
             <Button
               type="submit"
-              className="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+              className="w-full bg-accent-500 text-white font-semibold py-3 px-4 rounded-md hover:bg-accent-600 transition-colors"
             >
               {loading ? 'Saving…' : 'Complete Setup'}
             </Button>
@@ -319,7 +319,7 @@ const NewUserSetup: React.FC<NewUserSetupProps> = ({ user, onSetupComplete }) =>
                 <span
                   key={index}
                   className={`h-1.5 w-10 rounded-full ${
-                    index <= step ? 'bg-indigo-400' : 'bg-gray-700'
+                    index <= step ? 'bg-accent-400' : 'bg-gray-700'
                   }`}
                 />
               ))}
@@ -337,7 +337,7 @@ const NewUserSetup: React.FC<NewUserSetupProps> = ({ user, onSetupComplete }) =>
             {step < totalSteps - 1 && (
               <Button
                 onClick={handleNext}
-                className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-500"
+                className="bg-accent-500 text-white px-6 py-2 rounded-md hover:bg-accent-500"
               >
                 Continue
               </Button>

@@ -373,7 +373,7 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
           </Button>
           <Button
             onClick={handleSave}
-            className="px-3 py-2 rounded-md bg-indigo-600 text-white font-semibold hover:bg-indigo-500"
+            className="px-3 py-2 rounded-md bg-accent-500 text-white font-semibold hover:bg-accent-500"
           >
             Save to Library
           </Button>
@@ -396,7 +396,7 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
                   key={t}
                   onClick={() => setTool(t)}
                   className={`py-2 text-sm rounded-md border ${
-                    tool === t ? 'border-indigo-400 text-white bg-indigo-500/20' : 'border-gray-700 text-gray-300 hover:border-gray-500'
+                    tool === t ? 'border-accent-400 text-white bg-accent-500/20' : 'border-gray-700 text-gray-300 hover:border-gray-500'
                   }`}
                 >
                   {t === 'brush' ? 'Brush' : t === 'text' ? 'Text' : 'Erase'}
@@ -425,7 +425,7 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
               max={tool === 'text' ? 120 : 60}
               value={tool === 'text' ? textSize : brushSize}
               onChange={(e) => tool === 'text' ? setTextSize(Number(e.target.value)) : setBrushSize(Number(e.target.value))}
-              className="w-full accent-indigo-500"
+              className="w-full accent-accent-500"
             />
           </section>
 
@@ -499,7 +499,7 @@ export const ArtworkEditor: React.FC<ArtworkEditorProps> = ({
                 if (e.key === 'Escape') setShowTextInput(false);
               }}
               style={{ top: textScreenPos.y, left: textScreenPos.x }}
-              className="absolute bg-white text-gray-900 px-2 py-1 rounded shadow-lg border border-indigo-500 focus:outline-none"
+              className="absolute bg-white text-gray-900 px-2 py-1 rounded shadow-lg border border-accent-500 focus:outline-none"
             />
           )}
 

@@ -53,7 +53,7 @@ const LOGIN_SPOTLIGHTS = [
     description: 'SOC2-ready controls, MFA reminders, and masked secrets keep purchasing workflows safe without killing the vibe.',
     icon: <ShieldCheckIcon className="h-5 w-5 text-sky-200" />,
     stat: 'SOC2 ready',
-    accent: 'from-sky-500/20 via-indigo-500/10 to-transparent',
+    accent: 'from-sky-500/20 via-accent-500/10 to-transparent',
   },
   {
     id: 'analytics',
@@ -198,7 +198,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
     >
       <div className="flex items-center justify-between mb-8">
         <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-indigo-400">Access Portal</p>
+          <p className="text-sm uppercase tracking-[0.3em] text-accent-400">Access Portal</p>
           <h2 className="text-2xl font-semibold text-white mt-1">
             {mode === 'login' ? 'Welcome back' : 'Create account'}
           </h2>
@@ -206,7 +206,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
         <div className="flex space-x-2 rounded-full bg-gray-800 p-1">
           <Button
             className={`px-4 py-1 text-sm rounded-full ${
-              mode === 'login' ? 'bg-indigo-600 text-white' : 'text-gray-400'
+              mode === 'login' ? 'bg-accent-500 text-white' : 'text-gray-400'
             }`}
             onClick={() => setMode('login')}
           >
@@ -214,7 +214,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
           </Button>
           <Button
             className={`px-4 py-1 text-sm rounded-full ${
-              mode === 'signup' ? 'bg-indigo-600 text-white' : 'text-gray-400'
+              mode === 'signup' ? 'bg-accent-500 text-white' : 'text-gray-400'
             }`}
             onClick={() => setMode('signup')}
           >
@@ -237,7 +237,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-indigo-500 focus:ring-indigo-500"
+              className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
               placeholder="Jamie Operations"
               required
             />
@@ -249,7 +249,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-indigo-500 focus:ring-indigo-500"
+            className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
             placeholder="you@company.com"
             required
           />
@@ -260,7 +260,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-indigo-500 focus:ring-indigo-500"
+            className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
             placeholder="••••••••••"
             required
           />
@@ -273,7 +273,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
                 placeholder="Repeat password"
                 required
               />
@@ -283,7 +283,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value as typeof department)}
-                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
               >
                 <option>Purchasing</option>
                 <option>Operations</option>
@@ -302,11 +302,11 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
                 type="checkbox"
                 checked={remember}
                 onChange={() => setRemember(!remember)}
-                className="rounded border-gray-600 bg-gray-800 text-indigo-600 focus:ring-indigo-500"
+                className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
               />
               Remember me
             </label>
-            <Button type="button" onClick={handleResetPassword} className="text-indigo-400 hover:text-indigo-300">
+            <Button type="button" onClick={handleResetPassword} className="text-accent-400 hover:text-accent-300">
               Forgot password?
             </Button>
           </div>
@@ -314,7 +314,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
         <Button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:bg-indigo-500 disabled:bg-gray-700"
+          className="w-full rounded-xl bg-accent-500 py-3 font-semibold text-white shadow-lg shadow-accent-500/30 transition-all hover:bg-accent-500 disabled:bg-gray-700"
         >
           {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : 'Create Account'}
         </Button>
@@ -325,7 +325,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
         <button
           type="button"
           onClick={() => setIsTermsModalOpen(true)}
-          className="text-indigo-300 hover:text-indigo-100 underline decoration-dotted"
+          className="text-accent-300 hover:text-accent-100 underline decoration-dotted"
         >
           Terms of Service
         </button>
@@ -341,7 +341,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
         <div className="mt-4 grid grid-cols-1 gap-3">
           <Button
             type="button"
-            className="flex items-center justify-between gap-4 rounded-xl border border-gray-700 bg-gray-800/60 p-4 text-white hover:border-indigo-500 hover:bg-gray-800 transition-colors text-left"
+            className="flex items-center justify-between gap-4 rounded-xl border border-gray-700 bg-gray-800/60 p-4 text-white hover:border-accent-500 hover:bg-gray-800 transition-colors text-left"
             onClick={handleGoogleSignIn}
           >
             <div className="flex items-center gap-3">
@@ -359,7 +359,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
           </Button>
           <Button
             type="button"
-            className="flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-800/60 p-3 text-white hover:border-indigo-500 transition-colors opacity-50 cursor-not-allowed"
+            className="flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-800/60 p-3 text-white hover:border-accent-500 transition-colors opacity-50 cursor-not-allowed"
             onClick={() => addToast('Microsoft OAuth coming soon.', 'info')}
             disabled
           >
@@ -383,10 +383,10 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
       <div
         key={plan.id}
         className={`rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_80px_rgba(3,9,30,0.4)]
-        ${plan.ribbon ? 'ring-2 ring-indigo-500' : ''}`}
+        ${plan.ribbon ? 'ring-2 ring-accent-500' : ''}`}
       >
         {plan.ribbon && (
-          <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-semibold text-indigo-200">
+          <div className="inline-flex items-center gap-2 rounded-full bg-accent-500/20 px-3 py-1 text-xs font-semibold text-accent-200">
             {plan.ribbon}
           </div>
         )}
@@ -427,7 +427,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
         <Button
           className={`mt-6 w-full rounded-2xl py-3 font-semibold ${
             plan.id === 'full_ai'
-              ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white'
+              ? 'bg-gradient-to-r from-accent-500 to-purple-500 text-white'
               : 'bg-white/10 text-white hover:bg-white/20'
           }`}
           onClick={() => void handlePlanCta(plan.id)}
@@ -573,13 +573,13 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
       </div>
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 relative z-10">
         <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/5 backdrop-blur-2xl p-8 shadow-[0_40px_140px_rgba(2,10,40,0.6)] space-y-8">
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-indigo-500/10 via-fuchsia-500/10 to-cyan-500/10" />
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-accent-500/10 via-fuchsia-500/10 to-cyan-500/10" />
           <div className="relative z-10 space-y-6">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.45em] text-indigo-200/80">Manufacturing Portal</p>
+              <p className="text-[11px] uppercase tracking-[0.45em] text-accent-200/80">Manufacturing Portal</p>
               <div className="mt-1 flex flex-wrap items-baseline gap-3">
                 <h1 className="text-5xl sm:text-6xl font-black text-white leading-none tracking-tight">MuRP</h1>
-                <span className="text-xs sm:text-sm font-semibold uppercase tracking-[0.5em] text-indigo-100/80">
+                <span className="text-xs sm:text-sm font-semibold uppercase tracking-[0.5em] text-accent-100/80">
                   Manufacturing Resource Portal
                 </span>
               </div>

@@ -84,8 +84,8 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
       <div className="space-y-4">
         {/* Create New Preset */}
         {isCreating ? (
-          <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-lg p-4 space-y-3">
-            <h4 className="text-sm font-semibold text-indigo-200">Save Current Filters</h4>
+          <div className="bg-accent-500/10 border border-accent-500/30 rounded-lg p-4 space-y-3">
+            <h4 className="text-sm font-semibold text-accent-200">Save Current Filters</h4>
             
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1">
@@ -96,7 +96,7 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
                 value={newPresetName}
                 onChange={(e) => setNewPresetName(e.target.value)}
                 placeholder="e.g., Production Materials"
-                className="w-full bg-gray-700 text-white rounded-md p-2 text-sm border border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full bg-gray-700 text-white rounded-md p-2 text-sm border border-gray-600 focus:ring-2 focus:ring-accent-500 focus:border-transparent"
                 autoFocus
               />
             </div>
@@ -110,7 +110,7 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
                 value={newPresetDescription}
                 onChange={(e) => setNewPresetDescription(e.target.value)}
                 placeholder="e.g., Shows only materials needed for production"
-                className="w-full bg-gray-700 text-white rounded-md p-2 text-sm border border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full bg-gray-700 text-white rounded-md p-2 text-sm border border-gray-600 focus:ring-2 focus:ring-accent-500 focus:border-transparent"
               />
             </div>
 
@@ -136,7 +136,7 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
               <Button
                 onClick={handleCreatePreset}
                 disabled={!newPresetName.trim()}
-                className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 bg-accent-500 text-white rounded text-sm hover:bg-accent-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <CheckIcon className="w-4 h-4 inline mr-1" />
                 Save Preset
@@ -146,7 +146,7 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
         ) : (
           <Button
             onClick={() => setIsCreating(true)}
-            className="w-full bg-indigo-600 text-white rounded-lg p-3 hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-accent-500 text-white rounded-lg p-3 hover:bg-accent-600 transition-colors flex items-center justify-center gap-2"
           >
             <PlusIcon className="w-5 h-5" />
             <span className="font-medium">Create New Preset from Current Filters</span>
@@ -173,7 +173,7 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
                       <h5 className="text-sm font-semibold text-white flex items-center gap-2">
-                        <BookmarkIcon className="w-4 h-4 text-indigo-400" />
+                        <BookmarkIcon className="w-4 h-4 text-accent-400" />
                         {preset.name}
                       </h5>
                       {preset.description && (
@@ -207,7 +207,7 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
 
                   <Button
                     onClick={() => handleApply(preset)}
-                    className="w-full bg-indigo-600/20 text-indigo-300 rounded py-2 text-sm font-medium hover:bg-indigo-600/30 transition-colors"
+                    className="w-full bg-accent-500/20 text-accent-300 rounded py-2 text-sm font-medium hover:bg-accent-500/30 transition-colors"
                   >
                     Apply Preset
                   </Button>

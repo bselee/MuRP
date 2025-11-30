@@ -55,7 +55,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
       <div className="bg-gray-800 rounded-lg shadow-2xl border border-gray-700 w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-6 border-b border-gray-700 flex-shrink-0">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -76,7 +76,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
               onClick={() => setActiveTab(tab)}
               className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors capitalize ${
                 activeTab === tab
-                  ? 'border-indigo-500 text-indigo-400'
+                  ? 'border-accent-500 text-accent-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
@@ -97,12 +97,12 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                         key={tier}
                         className={`border rounded-lg p-4 relative ${
                           currentTier === tier
-                            ? 'border-indigo-500 bg-indigo-500/10'
+                            ? 'border-accent-500 bg-accent-500/10'
                             : 'border-gray-700 bg-gray-800/50 opacity-75'
                         }`}
                       >
                         {currentTier === tier && (
-                          <div className="absolute -top-2 -right-2 bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full">
+                          <div className="absolute -top-2 -right-2 bg-accent-500 text-white text-xs px-2 py-0.5 rounded-full">
                             Current
                           </div>
                         )}
@@ -128,15 +128,15 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                 </section>
               )}
               {mode === 'user' && (
-                <section className="bg-indigo-900/20 border border-indigo-800/60 rounded-lg p-4 flex flex-col gap-3">
+                <section className="bg-accent-900/20 border border-accent-700/60 rounded-lg p-4 flex flex-col gap-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-indigo-100 uppercase tracking-wider mb-1">Creative Playground</h3>
-                    <p className="text-xs text-indigo-200">Drag in vector art, print-ready PDFs, or moodboards—MuRP will keep them tidy.</p>
+                    <h3 className="text-sm font-semibold text-accent-100 uppercase tracking-wider mb-1">Creative Playground</h3>
+                    <p className="text-xs text-accent-200">Drag in vector art, print-ready PDFs, or moodboards—MuRP will keep them tidy.</p>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="self-start text-indigo-200 hover:text-white"
+                    className="self-start text-accent-200 hover:text-white"
                     onClick={onRequestUpgrade}
                   >
                     Need more storage? Tap here to nudge Ops.
@@ -155,7 +155,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                     </div>
                     <div className="h-3 rounded-full bg-gray-800 overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${usagePercent > 90 ? 'bg-red-500' : usagePercent > 70 ? 'bg-yellow-500' : 'bg-indigo-500'}`}
+                        className={`h-full rounded-full ${usagePercent > 90 ? 'bg-red-500' : usagePercent > 70 ? 'bg-yellow-500' : 'bg-accent-500'}`}
                         style={{ width: `${usagePercent}%` }}
                       />
                     </div>
@@ -202,7 +202,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                     <select
                       value={localSettings.defaultPrintSize}
                       onChange={(e) => setLocalSettings({ ...localSettings, defaultPrintSize: e.target.value })}
-                      className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-accent-500 focus:border-accent-500"
                     >
                       <option value="4x6">4" x 6" (Standard Label)</option>
                       <option value="5x8">5" x 8" (Large Label)</option>
@@ -223,12 +223,12 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                         id="toggle"
                         checked={localSettings.showPrintReadyWarning}
                         onChange={(e) => setLocalSettings({ ...localSettings, showPrintReadyWarning: e.target.checked })}
-                        className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out checked:translate-x-6 checked:border-indigo-600"
+                        className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out checked:translate-x-6 checked:border-accent-500"
                       />
                       <label
                         htmlFor="toggle"
                         className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${
-                          localSettings.showPrintReadyWarning ? 'bg-indigo-600' : 'bg-gray-700'
+                          localSettings.showPrintReadyWarning ? 'bg-accent-500' : 'bg-gray-700'
                         }`}
                       ></label>
                     </div>
@@ -251,7 +251,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                   type="checkbox"
                   checked={localSettings.emailNotifications}
                   onChange={(e) => setLocalSettings({ ...localSettings, emailNotifications: e.target.checked })}
-                  className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500"
+                  className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-accent-500 focus:ring-accent-500"
                 />
               </div>
 
@@ -262,7 +262,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                   value={localSettings.defaultShareCc}
                   onChange={(e) => setLocalSettings({ ...localSettings, defaultShareCc: e.target.value })}
                   placeholder="manager@example.com"
-                  className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-accent-500 focus:border-accent-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">Automatically CC this email on all shares</p>
               </div>
@@ -282,7 +282,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                   type="checkbox"
                   checked={localSettings.requireApproval}
                   onChange={(e) => setLocalSettings({ ...localSettings, requireApproval: e.target.checked })}
-                  className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500"
+                  className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-accent-500 focus:ring-accent-500"
                 />
               </div>
 
@@ -292,7 +292,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                   value={localSettings.allowedDomains}
                   onChange={(e) => setLocalSettings({ ...localSettings, allowedDomains: e.target.value })}
                   rows={3}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-accent-500 focus:border-accent-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">Comma-separated list of allowed email domains</p>
               </div>
@@ -306,7 +306,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
                   type="checkbox"
                   checked={localSettings.autoArchive}
                   onChange={(e) => setLocalSettings({ ...localSettings, autoArchive: e.target.checked })}
-                  className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500"
+                  className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-accent-500 focus:ring-accent-500"
                 />
               </div>
             </section>
@@ -317,7 +317,7 @@ export const DAMSettingsPanel: React.FC<DAMSettingsPanelProps> = ({
           <Button onClick={onClose} className="bg-gray-700 hover:bg-gray-600 text-white">
             Cancel
           </Button>
-          <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+          <Button onClick={handleSave} className="bg-accent-500 hover:bg-accent-600 text-white">
             Save Settings
           </Button>
         </div>

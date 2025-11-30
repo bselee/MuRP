@@ -382,7 +382,7 @@ const StrategicBomMetrics: React.FC<StrategicBomMetricsProps> = ({
             footer={`Peak observed: ${demandPeak ? demandPeak.toFixed(1) : 'n/a'} / day`}
           />
           <MetricCard
-            icon={<PackageIcon className="h-4 w-4 text-indigo-300" />}
+            icon={<PackageIcon className="h-4 w-4 text-accent-300" />}
             label="Committed vs available"
             value={`${finishedStock} units`}
             sublabel={

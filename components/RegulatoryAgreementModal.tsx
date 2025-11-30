@@ -126,7 +126,7 @@ const RegulatoryAgreementModal: React.FC<RegulatoryAgreementModalProps> = ({
           ))}
 
           {/* Primary Acknowledgments */}
-          <div className="bg-indigo-900/20 rounded-lg p-5 border border-indigo-700">
+          <div className="bg-accent-900/20 rounded-lg p-5 border border-accent-600">
             <h3 className="text-lg font-bold text-white mb-4">Required Acknowledgments</h3>
             <div className="space-y-3">
               {Object.entries(acknowledgedTerms).map(([key, checked]) => (
@@ -135,7 +135,7 @@ const RegulatoryAgreementModal: React.FC<RegulatoryAgreementModalProps> = ({
                     type="checkbox"
                     checked={checked}
                     onChange={(e) => setAcknowledgedTerms(prev => ({ ...prev, [key]: e.target.checked }))}
-                    className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-800"
+                    className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-accent-500 focus:ring-accent-500 focus:ring-offset-gray-800"
                   />
                   <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
                     {getTermLabel(key)}
@@ -146,7 +146,7 @@ const RegulatoryAgreementModal: React.FC<RegulatoryAgreementModalProps> = ({
           </div>
 
           {/* Additional Acknowledgments */}
-          <div className="bg-indigo-900/20 rounded-lg p-5 border border-indigo-700">
+          <div className="bg-accent-900/20 rounded-lg p-5 border border-accent-600">
             <h3 className="text-lg font-bold text-white mb-4">Additional Acknowledgments</h3>
             <div className="space-y-3">
               {Object.entries(additionalAcknowledgments).map(([key, checked]) => (
@@ -155,7 +155,7 @@ const RegulatoryAgreementModal: React.FC<RegulatoryAgreementModalProps> = ({
                     type="checkbox"
                     checked={checked}
                     onChange={(e) => setAdditionalAcknowledgments(prev => ({ ...prev, [key]: e.target.checked }))}
-                    className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-800"
+                    className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-accent-500 focus:ring-accent-500 focus:ring-offset-gray-800"
                   />
                   <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
                     {getAdditionalTermLabel(key)}
@@ -184,7 +184,7 @@ const RegulatoryAgreementModal: React.FC<RegulatoryAgreementModalProps> = ({
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent"
                   placeholder="John Smith"
                 />
               </div>
@@ -197,7 +197,7 @@ const RegulatoryAgreementModal: React.FC<RegulatoryAgreementModalProps> = ({
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent"
                   placeholder="Operations Manager"
                 />
               </div>
@@ -210,7 +210,7 @@ const RegulatoryAgreementModal: React.FC<RegulatoryAgreementModalProps> = ({
                   type="text"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent"
                   placeholder="Acme Fertilizers Inc."
                 />
               </div>
@@ -223,7 +223,7 @@ const RegulatoryAgreementModal: React.FC<RegulatoryAgreementModalProps> = ({
                   type="text"
                   value={electronicSignature}
                   onChange={(e) => setElectronicSignature(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-['Brush_Script_MT',cursive] text-xl"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent font-['Brush_Script_MT',cursive] text-xl"
                   placeholder="Type your full name to sign"
                 />
                 <p className="text-xs text-gray-400 mt-1">
@@ -273,7 +273,7 @@ const RegulatoryAgreementModal: React.FC<RegulatoryAgreementModalProps> = ({
               <Button
                 onClick={handleAccept}
                 disabled={!canAccept}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 I Accept
               </Button>

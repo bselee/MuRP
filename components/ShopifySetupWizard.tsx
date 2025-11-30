@@ -413,7 +413,7 @@ const ShopifySetupWizard: React.FC<ShopifySetupWizardProps> = ({
 
           <aside className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-gray-300">
             <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-              <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-indigo-200">
+              <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-accent-200">
                 <SparklesIcon className="h-4 w-4 text-amber-200" />
                 Why the wizard?
               </div>

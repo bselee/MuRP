@@ -102,7 +102,7 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ boms, watchli
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <FlagIcon className="w-7 h-7 text-indigo-400" />
+            <FlagIcon className="w-7 h-7 text-accent-400" />
             Compliance Dashboard
           </h2>
           <p className="text-gray-400 mt-1">
@@ -112,7 +112,7 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ boms, watchli
         <Button
           onClick={handleScanAll}
           disabled={scanning}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 bg-accent-500 text-white px-4 py-2 rounded-md hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <RefreshIcon className={`w-5 h-5 ${scanning ? 'animate-spin' : ''}`} />
           {scanning ? `Scanning ${scanProgress.current}/${scanProgress.total}...` : 'Scan All BOMs'}
@@ -144,7 +144,7 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ boms, watchli
       {/* Risk Distribution */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
         <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <ChartBarIcon className="w-5 h-5 text-indigo-400" />
+          <ChartBarIcon className="w-5 h-5 text-accent-400" />
           Risk Distribution
         </h3>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">

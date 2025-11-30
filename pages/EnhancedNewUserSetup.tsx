@@ -361,7 +361,7 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
                       key={option.value}
                       className={`rounded-lg border px-3 py-2 text-sm cursor-pointer transition-colors ${
                         rowDensity === option.value
-                          ? 'border-indigo-400 bg-indigo-500/10 text-white'
+                          ? 'border-accent-400 bg-accent-500/10 text-white'
                           : 'border-gray-700 bg-gray-900/40 text-gray-300 hover:border-gray-500'
                       }`}
                     >
@@ -615,8 +615,8 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
 
             <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="rounded-full bg-indigo-500/20 p-2">
-                  <SparklesIcon className="w-5 h-5 text-indigo-400" />
+                <div className="rounded-full bg-accent-500/20 p-2">
+                  <SparklesIcon className="w-5 h-5 text-accent-400" />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white">Free Tier is Powerful Too</h3>
@@ -649,7 +649,7 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
               </p>
               <Button
                 onClick={() => setStep(4)}
-                className="bg-indigo-600 text-white px-8 py-3 rounded-md hover:bg-indigo-500 transition-colors"
+                className="bg-accent-500 text-white px-8 py-3 rounded-md hover:bg-accent-500 transition-colors"
               >
                 Continue to Import
               </Button>
@@ -800,7 +800,7 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
             {error && <p className="text-sm text-red-400">{error}</p>}
             <Button
               type="submit"
-              className="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+              className="w-full bg-accent-500 text-white font-semibold py-3 px-4 rounded-md hover:bg-accent-600 transition-colors"
             >
               {loading ? 'Saving…' : 'Complete Setup'}
             </Button>
@@ -819,7 +819,7 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
                 <span
                   key={index}
                   className={`h-1.5 w-10 rounded-full ${
-                    index <= step ? 'bg-indigo-400' : 'bg-gray-700'
+                    index <= step ? 'bg-accent-400' : 'bg-gray-700'
                   }`}
                 />
               ))}
@@ -838,7 +838,7 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
               <Button
                 onClick={handleNext}
                 disabled={!canProceedToNext()}
-                className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-accent-500 text-white px-6 py-2 rounded-md hover:bg-accent-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue
               </Button>

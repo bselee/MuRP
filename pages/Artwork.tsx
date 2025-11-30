@@ -104,6 +104,7 @@ interface ArtworkPageProps {
 const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onAddArtwork, onCreatePoFromArtwork, onUpdateArtwork, initialFilter, onClearFilter, watchlist, aiConfig, artworkFolders, onCreateArtworkFolder, currentUser, gmailConnection, addToast, artworkShareHistory, onRecordArtworkShare, onConnectGoogle, companyEmailSettings }) => {
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [isBatchVerificationModalOpen, setIsBatchVerificationModalOpen] = useState(false);
     const [selectedArtworkForScan, setSelectedArtworkForScan] = useState<ArtworkWithProduct | null>(null);
     const [selectedArtworkForDetails, setSelectedArtworkForDetails] = useState<ArtworkWithProduct | null>(null);
     const [searchTerm, setSearchTerm] = useState(initialFilter);
@@ -438,7 +439,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
     };
 
     const FolderButton: React.FC<{folderId: string | null, name: string}> = ({folderId, name}) => (
-        <Button onClick={() => setSelectedFolderId(folderId)} className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${selectedFolderId === folderId ? 'bg-indigo-600 text-white font-semibold' : 'text-gray-300 hover:bg-gray-700'}`}>
+        <Button onClick={() => setSelectedFolderId(folderId)} className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${selectedFolderId === folderId ? 'bg-accent-500 text-white font-semibold' : 'text-gray-300 hover:bg-gray-700'}`}>
             {name}
         </Button>
     );
@@ -664,7 +665,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                 <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
-                            <SparklesIcon className="w-6 h-6 text-indigo-400" />
+                            <SparklesIcon className="w-6 h-6 text-accent-400" />
                             <h2 className="text-2xl font-bold text-white">World-Class Scanning System</h2>
                         </div>
                         <Button
@@ -691,7 +692,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                 onClick={() => setActiveScanTab(tab.id)}
                                 className={`flex-shrink-0 px-4 py-3 rounded-lg border transition-all duration-200 ${
                                     activeScanTab === tab.id
-                                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg'
+                                        ? 'bg-accent-500 border-accent-500 text-white shadow-lg'
                                         : 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-600/50 hover:border-gray-500'
                                 }`}
                             >
@@ -709,7 +710,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                         {activeScanTab === 'manual' && (
                             <div className="bg-gray-900/30 rounded-lg p-6">
                                 <div className="text-center mb-6">
-                                    <QrCodeIcon className="w-12 h-12 text-indigo-400 mx-auto mb-3" />
+                                    <QrCodeIcon className="w-12 h-12 text-accent-400 mx-auto mb-3" />
                                     <h3 className="text-xl font-semibold text-white mb-2">Manual Label Scanner</h3>
                                     <p className="text-gray-400">Upload and scan product labels with AI extraction. No BOM required.</p>
                                 </div>
@@ -749,7 +750,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                         <p className="text-gray-500 mb-4">Choose an artwork file from the library above to begin regulatory compliance scanning.</p>
                                         <Button
                                             onClick={() => setIsScanningInterfaceOpen(false)}
-                                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg"
+                                            className="bg-accent-500 hover:bg-accent-600 text-white px-6 py-2 rounded-lg"
                                         >
                                             Browse Artwork Library
                                         </Button>
@@ -817,7 +818,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                     onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
                                 />
                                 <div className="flex gap-2">
-                                    <Button onClick={handleCreateFolder} className="flex-1 bg-indigo-600 text-white font-semibold py-1 px-2 text-sm rounded-md">Create</Button>
+                                    <Button onClick={handleCreateFolder} className="flex-1 bg-accent-500 text-white font-semibold py-1 px-2 text-sm rounded-md">Create</Button>
                                     <Button onClick={() => setIsCreatingFolder(false)} className="flex-1 bg-gray-600 text-white font-semibold py-1 px-2 text-sm rounded-md">Cancel</Button>
                                 </div>
                             </div>
@@ -863,7 +864,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                         }
                                         setIsScanningInterfaceOpen(true);
                                     }}
-                                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-all duration-200 flex items-center gap-2 shadow-lg"
+                                    className="bg-gradient-to-r from-accent-500 to-purple-600 hover:from-accent-600 hover:to-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-all duration-200 flex items-center gap-2 shadow-lg"
                                 >
                                     <SparklesIcon className="w-5 h-5" />
                                     World-Class Scanning
@@ -893,7 +894,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                         </div>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="h-5 w-5 text-gray-400" /></div>
-                            <input type="text" placeholder="Search by filename, product name, or SKU..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-gray-800/50 border border-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full" />
+                            <input type="text" placeholder="Search by filename, product name, or SKU..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-gray-800/50 border border-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full" />
                         </div>
                     </header>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -954,7 +955,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                             <div>
                                 <label className="text-xs text-gray-500 uppercase tracking-wide">Product</label>
                                 <p className="text-sm text-white mt-1">{selectedArtworkForDetails.productName}</p>
-                                <p className="text-xs text-indigo-400 mt-0.5">{selectedArtworkForDetails.productSku}</p>
+                                <p className="text-xs text-accent-400 mt-0.5">{selectedArtworkForDetails.productSku}</p>
                             </div>
 
                             <div>
@@ -1032,7 +1033,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                     type="text"
                                     value={metadataDraft.fileName}
                                     onChange={e => handleMetadataChange('fileName', e.target.value)}
-                                    className="mt-1 w-full bg-gray-900/60 text-white text-sm rounded-md p-2 border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                    className="mt-1 w-full bg-gray-900/60 text-white text-sm rounded-md p-2 border border-gray-700 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
                                 />
                             </div>
                             <div>
@@ -1041,13 +1042,13 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                     value={metadataDraft.notes}
                                     onChange={e => handleMetadataChange('notes', e.target.value)}
                                     rows={3}
-                                    className="mt-1 w-full bg-gray-900/60 text-white text-sm rounded-md p-2 border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                    className="mt-1 w-full bg-gray-900/60 text-white text-sm rounded-md p-2 border border-gray-700 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
                                 />
                             </div>
                             <Button
                                 onClick={handleMetadataSave}
                                 disabled={!metadataDirty || isSavingMetadata}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-400 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                                className="w-full bg-accent-500 hover:bg-accent-600 disabled:bg-gray-700 disabled:text-gray-400 text-white font-semibold py-2 px-4 rounded-md transition-colors"
                             >
                                 {isSavingMetadata ? 'Saving...' : 'Save Details'}
                             </Button>
@@ -1074,7 +1075,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                         <div className="mt-6 pt-6 border-t border-gray-700 space-y-2">
                             <Button 
                                 onClick={() => handleDownload(selectedArtworkForDetails)}
-                                className="flex items-center justify-center gap-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                                className="flex items-center justify-center gap-2 w-full bg-accent-500 hover:bg-accent-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
                             >
                                 <ArrowDownTrayIcon className="w-5 h-5" />
                                 Download
@@ -1276,7 +1277,7 @@ const ArtworkCard: React.FC<{
             onClick={onSelect}
             data-testid="artwork-card"
             className={`bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden group flex flex-col cursor-pointer transition-all hover:shadow-xl ${
-                isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/50' : 'border-gray-700 hover:border-gray-600'
+                isSelected ? 'border-accent-500 ring-2 ring-accent-500/50' : 'border-gray-700 hover:border-gray-600'
             }`}
         >
             <div className="relative aspect-square bg-gray-900 flex items-center justify-center">
@@ -1286,17 +1287,17 @@ const ArtworkCard: React.FC<{
                     checked={selectedArtworkIds.includes(art.id)} 
                     onChange={(e) => onCheckboxChange(art.id, e.target.checked)} 
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute top-2 left-2 h-5 w-5 rounded bg-gray-700 text-indigo-500 focus:ring-indigo-600 border-gray-600" 
+                    className="absolute top-2 left-2 h-5 w-5 rounded bg-gray-700 text-accent-500 focus:ring-accent-500 border-gray-600" 
                 />
             </div>
             <div className="p-3 flex-grow">
                 <p className="text-sm font-semibold text-white truncate" title={art.fileName}>{art.fileName}</p>
                 <p className="text-xs text-gray-400">Rev {art.revision}</p>
-                <p className="text-xs text-indigo-300 mt-1 truncate" title={art.productName}>{art.productName}</p>
+                <p className="text-xs text-accent-300 mt-1 truncate" title={art.productName}>{art.productName}</p>
             </div>
              <div className="p-2 bg-gray-800 border-t border-gray-700 space-y-2" onClick={(e) => e.stopPropagation()}>
                 <div>
-                     <select onChange={handleMove} value={art.folderId || 'unassigned'} className="w-full text-xs bg-gray-700 p-1.5 rounded-md focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                     <select onChange={handleMove} value={art.folderId || 'unassigned'} className="w-full text-xs bg-gray-700 p-1.5 rounded-md focus:ring-accent-500 focus:border-accent-500 border-gray-600">
                         <option value="unassigned">Move to...</option>
                         {artworkFolders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                      </select>
@@ -1305,7 +1306,7 @@ const ArtworkCard: React.FC<{
                     <a href={art.url} download className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
                         <ArrowDownTrayIcon className="w-4 h-4" /> <span>Download</span>
                     </a>
-                    <Button onClick={(e) => { e.stopPropagation(); onScanClick(art); }} className="flex items-center justify-center gap-1 w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
+                    <Button onClick={(e) => { e.stopPropagation(); onScanClick(art); }} className="flex items-center justify-center gap-1 w-full text-center bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
                         <SparklesIcon className="w-4 h-4" /> <span>Scan</span>
                     </Button>
                     <Button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">

@@ -32,7 +32,7 @@ const STATUS_LABELS: Record<POTrackingStatus, string> = {
 const STATUS_COLORS: Record<POTrackingStatus, string> = {
   awaiting_confirmation: 'bg-gray-600/20 text-gray-200 border-gray-500/30',
   confirmed: 'bg-blue-500/20 text-blue-200 border-blue-500/30',
-  processing: 'bg-indigo-500/20 text-indigo-200 border-indigo-500/30',
+  processing: 'bg-accent-500/20 text-accent-200 border-accent-500/30',
   shipped: 'bg-cyan-500/20 text-cyan-200 border-cyan-500/30',
   in_transit: 'bg-purple-500/20 text-purple-200 border-purple-500/30',
   out_for_delivery: 'bg-amber-500/20 text-amber-200 border-amber-500/30',
@@ -152,7 +152,7 @@ const POTrackingDashboard: React.FC = () => {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-            <TruckIcon className="w-5 h-5 text-indigo-400" />
+            <TruckIcon className="w-5 h-5 text-accent-400" />
             PO Tracking
           </h2>
           <p className="text-sm text-gray-400">Real-time shipment visibility</p>
@@ -170,7 +170,7 @@ const POTrackingDashboard: React.FC = () => {
           <Button
             onClick={refresh}
             disabled={loading}
-            className="inline-flex items-center gap-2 text-sm text-indigo-300 border border-indigo-500/40 rounded-md px-3 py-1.5 hover:bg-indigo-500/10 disabled:opacity-50"
+            className="inline-flex items-center gap-2 text-sm text-accent-300 border border-accent-500/40 rounded-md px-3 py-1.5 hover:bg-accent-500/10 disabled:opacity-50"
           >
             <RefreshCcwIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -211,7 +211,7 @@ const POTrackingDashboard: React.FC = () => {
           <tbody className="divide-y divide-gray-800">
             {trackedPos.slice(0, 10).map(po => (
               <tr key={po.id} className="text-gray-200">
-                <td className="px-4 py-2 font-semibold text-indigo-300">{po.order_id}</td>
+                <td className="px-4 py-2 font-semibold text-accent-300">{po.order_id}</td>
                 <td className="px-4 py-2">{po.vendor_name}</td>
                 <td className="px-4 py-2">
                   <div className="flex flex-col">
@@ -237,7 +237,7 @@ const POTrackingDashboard: React.FC = () => {
                 <td className="px-4 py-2">
                   <Button
                     onClick={() => openTimeline(po)}
-                    className="text-xs text-indigo-200 border border-indigo-500/40 rounded-md px-2 py-1 hover:bg-indigo-500/10"
+                    className="text-xs text-accent-200 border border-accent-500/40 rounded-md px-2 py-1 hover:bg-accent-500/10"
                   >
                     Timeline
                   </Button>
@@ -286,7 +286,7 @@ const POTrackingDashboard: React.FC = () => {
                   .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                   .map(event => (
                     <li key={event.id} className="pl-6 relative">
-                      <span className="absolute left-1 top-1.5 h-2 w-2 rounded-full bg-indigo-400" />
+                      <span className="absolute left-1 top-1.5 h-2 w-2 rounded-full bg-accent-400" />
                       <div className="text-xs uppercase text-gray-500">
                         {new Date(event.created_at).toLocaleString()}
                       </div>

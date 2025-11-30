@@ -224,7 +224,7 @@ const DraftPOReviewSection: React.FC<DraftPOReviewSectionProps> = ({ onApprove, 
                 <div className="flex-1 grid grid-cols-5 gap-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-indigo-400">{po.order_id}</span>
+                      <span className="text-sm font-semibold text-accent-400">{po.order_id}</span>
                       {po.auto_generated && (
                         <span
                           className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-yellow-600/20 text-yellow-400 border border-yellow-600/30 rounded"
@@ -249,7 +249,7 @@ const DraftPOReviewSection: React.FC<DraftPOReviewSectionProps> = ({ onApprove, 
                     <p className="text-sm font-semibold text-white">{po.item_count} items</p>
                     <Button
                       onClick={() => setExpandedPO(expandedPO === po.id ? null : po.id)}
-                      className="text-xs text-indigo-400 hover:text-indigo-300"
+                      className="text-xs text-accent-400 hover:text-accent-300"
                     >
                       {expandedPO === po.id ? 'Hide' : 'View'} details
                     </Button>

@@ -182,7 +182,7 @@ const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({ currentUser, 
             href={formState.googleDocUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-xs text-indigo-300 hover:text-indigo-100"
+            className="text-xs text-accent-300 hover:text-accent-100"
           >
             View Google Doc →
           </a>
@@ -258,7 +258,7 @@ const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({ currentUser, 
                   { title: 'New SOP', trigger: '', owner: `${formState.department} ${formState.role}`, steps: [] },
                 ])
               }
-              className="text-xs text-indigo-200 border border-indigo-500/40 rounded-md px-2 py-1 hover:bg-indigo-500/10"
+              className="text-xs text-accent-200 border border-accent-500/40 rounded-md px-2 py-1 hover:bg-accent-500/10"
             >
               Add Section
             </Button>
@@ -267,7 +267,7 @@ const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({ currentUser, 
         {formState.sopSections.map((section, index) => (
           <div key={index} className="border border-gray-700 rounded-lg p-4 space-y-3 bg-gray-900/50">
             <input
-              className="w-full bg-transparent border-b border-gray-700 text-white text-sm font-semibold pb-1 focus:border-indigo-500"
+              className="w-full bg-transparent border-b border-gray-700 text-white text-sm font-semibold pb-1 focus:border-accent-500"
               value={section.title}
               onChange={(e) => updateSopSection(index, { title: e.target.value })}
               disabled={!canEdit}
@@ -341,7 +341,7 @@ const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({ currentUser, 
           <Button
             onClick={handleAiGenerate}
             disabled={aiLoading}
-            className="text-xs text-indigo-200 border border-indigo-500/40 rounded-md px-3 py-1 hover:bg-indigo-500/10 disabled:opacity-50"
+            className="text-xs text-accent-200 border border-accent-500/40 rounded-md px-3 py-1 hover:bg-accent-500/10 disabled:opacity-50"
           >
             {aiLoading ? 'Generating…' : 'Generate outline with AI'}
           </Button>
@@ -366,7 +366,7 @@ const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({ currentUser, 
               </Button>
               <Button
                 onClick={() => handleSave('approved')}
-                className="text-sm bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-500"
+                className="text-sm bg-accent-500 text-white px-4 py-2 rounded-md hover:bg-accent-500"
               >
                 Publish
               </Button>
@@ -374,7 +374,7 @@ const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({ currentUser, 
           ) : (
             <Button
               onClick={() => submitDraftUpdate(formState, currentUser)}
-              className="text-sm bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-500"
+              className="text-sm bg-accent-500 text-white px-4 py-2 rounded-md hover:bg-accent-500"
             >
               Submit for Ops review
             </Button>

@@ -150,7 +150,7 @@ const ComponentSwapSettingsPanel: React.FC<ComponentSwapSettingsPanelProps> = ({
 
       <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
         <div className="inline-flex items-center gap-2 rounded-full border border-gray-700 px-3 py-1">
-          <ArrowsRightLeftIcon className="w-4 h-4 text-indigo-300" />
+          <ArrowsRightLeftIcon className="w-4 h-4 text-accent-300" />
           {loading ? 'Loading swaps…' : `${rules.filter(rule => rule.sku?.trim()).length} flagged components`}
         </div>
         <div className="inline-flex items-center gap-1 text-gray-500">
@@ -169,7 +169,7 @@ const ComponentSwapSettingsPanel: React.FC<ComponentSwapSettingsPanelProps> = ({
               <div className="flex-1">
                 <label className="text-xs uppercase tracking-wide text-gray-500">Flagged Component SKU</label>
                 <input
-                  className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 font-mono text-sm text-white focus:border-indigo-400 focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 font-mono text-sm text-white focus:border-accent-400 focus:outline-none"
                   placeholder="SGK119"
                   value={rule.sku}
                   onChange={(e) => updateRule(ruleIndex, { sku: e.target.value })}
@@ -186,7 +186,7 @@ const ComponentSwapSettingsPanel: React.FC<ComponentSwapSettingsPanelProps> = ({
             <div className="mt-3">
               <label className="text-xs uppercase tracking-wide text-gray-500">Why is this flagged?</label>
               <textarea
-                className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-gray-100 focus:border-indigo-400 focus:outline-none"
+                className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-gray-100 focus:border-accent-400 focus:outline-none"
                 placeholder="Pumice shipment delayed — use fine-grain sgf112 instead."
                 rows={2}
                 value={rule.reason ?? ''}
@@ -200,7 +200,7 @@ const ComponentSwapSettingsPanel: React.FC<ComponentSwapSettingsPanelProps> = ({
                 <Button
                   variant="ghost"
                   onClick={() => addSuggestion(ruleIndex)}
-                  className="text-xs text-indigo-300 hover:text-indigo-200"
+                  className="text-xs text-accent-300 hover:text-accent-200"
                 >
                   <PlusIcon className="w-4 h-4 mr-1" />
                   Add alternate
@@ -275,7 +275,7 @@ const ComponentSwapSettingsPanel: React.FC<ComponentSwapSettingsPanelProps> = ({
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 bg-accent-500 text-white hover:bg-accent-500 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {saving ? 'Saving…' : 'Save swap suggestions'}
         </Button>

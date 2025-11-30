@@ -101,7 +101,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
             <div
               key={num}
               className={`flex items-center justify-center w-10 h-10 rounded-full font-bold ${
-                step >= num ? 'bg-indigo-500 text-white' : 'bg-gray-700 text-gray-400'
+                step >= num ? 'bg-accent-500 text-white' : 'bg-gray-700 text-gray-400'
               }`}
             >
               {num}
@@ -110,7 +110,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
         </div>
         <div className="h-2 bg-gray-700 rounded-full">
           <div
-            className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+            className="h-full bg-accent-500 rounded-full transition-all duration-300"
             style={{ width: `${(step / 3) * 100}%` }}
           />
         </div>
@@ -131,14 +131,14 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
                 onClick={() => setSelectedIndustry(industry.industry)}
                 className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
                   selectedIndustry === industry.industry
-                    ? 'border-indigo-500 bg-indigo-900/50'
+                    ? 'border-accent-500 bg-accent-800/50'
                     : 'border-gray-700 bg-gray-800 hover:border-gray-600'
                 }`}
               >
                 <div className="font-bold text-white mb-1">{industry.display_name}</div>
                 <div className="text-sm text-gray-400">{industry.description}</div>
                 {selectedIndustry === industry.industry && (
-                  <div className="mt-3 text-xs text-indigo-300">
+                  <div className="mt-3 text-xs text-accent-300">
                     Focus areas: {industry.focus_areas.slice(0, 3).join(', ')}
                   </div>
                 )}
@@ -149,7 +149,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
           <Button
             onClick={() => setStep(2)}
             disabled={!selectedIndustry}
-            className="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-3 rounded-lg transition-all"
+            className="w-full bg-accent-500 hover:bg-accent-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-3 rounded-lg transition-all"
           >
             Continue
           </Button>
@@ -171,7 +171,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
                 onClick={() => toggleState(state.code)}
                 className={`p-3 rounded-lg border-2 font-medium transition-all ${
                   selectedStates.includes(state.code)
-                    ? 'border-indigo-500 bg-indigo-900/50 text-white'
+                    ? 'border-accent-500 bg-accent-800/50 text-white'
                     : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-600'
                 }`}
               >
@@ -190,7 +190,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
                       type="checkbox"
                       checked={selectedCertifications.includes(cert)}
                       onChange={() => toggleCertification(cert)}
-                      className="w-5 h-5 rounded border-gray-600 text-indigo-500 focus:ring-indigo-500"
+                      className="w-5 h-5 rounded border-gray-600 text-accent-500 focus:ring-accent-500"
                     />
                     <span className="text-white">{cert.replace(/_/g, ' ')}</span>
                   </label>
@@ -209,7 +209,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
             <Button
               onClick={() => setStep(3)}
               disabled={selectedStates.length === 0}
-              className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-3 rounded-lg transition-all"
+              className="flex-1 bg-accent-500 hover:bg-accent-500 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-3 rounded-lg transition-all"
             >
               Continue
             </Button>
@@ -231,7 +231,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
               onClick={() => setComplianceTier('basic')}
               className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
                 complianceTier === 'basic'
-                  ? 'border-indigo-500 bg-indigo-900/50'
+                  ? 'border-accent-500 bg-accent-800/50'
                   : 'border-gray-700 bg-gray-800 hover:border-gray-600'
               }`}
             >
@@ -242,7 +242,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
               <p className="text-gray-400 text-sm mb-2">
                 Organize regulatory links, manual checklists, compliance tracking
               </p>
-              <p className="text-indigo-300 text-xs">
+              <p className="text-accent-300 text-xs">
                 ✨ Includes 5 free AI checks to try Full AI Mode
               </p>
             </Button>
@@ -252,13 +252,13 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
               onClick={() => setComplianceTier('full_ai')}
               className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
                 complianceTier === 'full_ai'
-                  ? 'border-indigo-500 bg-indigo-900/50'
+                  ? 'border-accent-500 bg-accent-800/50'
                   : 'border-gray-700 bg-gray-800 hover:border-gray-600'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="font-bold text-white text-xl">Full AI Mode</span>
-                <span className="text-2xl font-bold text-indigo-400">$49/mo</span>
+                <span className="text-2xl font-bold text-accent-400">$49/mo</span>
               </div>
               <p className="text-gray-400 text-sm mb-2">
                 AI-powered analysis, OCR extraction, automated recommendations, 50 checks/month
@@ -278,7 +278,7 @@ export const IndustryOnboarding: React.FC<IndustryOnboardingProps> = ({ userId, 
             </Button>
             <Button
               onClick={handleSubmit}
-              className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-medium py-3 rounded-lg transition-all"
+              className="flex-1 bg-accent-500 hover:bg-accent-500 text-white font-medium py-3 rounded-lg transition-all"
             >
               Get Started
             </Button>

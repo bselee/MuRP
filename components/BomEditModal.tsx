@@ -271,7 +271,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                 type="text"
                 value={editedBom.name}
                 onChange={e => handleFieldChange('name', e.target.value)}
-                className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500"
               />
             </div>
             <div>
@@ -280,7 +280,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                 type="number"
                 value={editedBom.yieldQuantity || 1}
                 onChange={e => handleFieldChange('yieldQuantity', parseInt(e.target.value) || 1)}
-                className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500"
                 min="1"
               />
             </div>
@@ -291,7 +291,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
               value={editedBom.description || ''}
               onChange={e => handleFieldChange('description', e.target.value)}
               rows={3}
-              className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500"
               placeholder="Product description..."
             />
           </div>
@@ -312,7 +312,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                   const hours = parseFloat(value);
                   handleFieldChange('buildTimeMinutes', Number.isNaN(hours) ? undefined : Math.round(hours * 60));
                 }}
-                className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500"
                 placeholder="e.g. 1.5"
               />
               <p className="text-xs text-gray-500 mt-1">Used to pre-fill scheduling windows.</p>
@@ -328,7 +328,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                   const value = e.target.value;
                   handleFieldChange('laborCostPerHour', value === '' ? undefined : parseFloat(value));
                 }}
-                className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-700 p-2.5 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500"
                 placeholder="e.g. 32.00"
               />
               <p className="text-xs text-gray-500 mt-1">Captures blended labor rate for costing.</p>
@@ -395,7 +395,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                   placeholder="Search inventory by SKU or name..."
                   value={componentSearchQuery}
                   onChange={(e) => setComponentSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-500"
                   autoFocus
                 />
               </div>
@@ -412,12 +412,12 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                       key={item.sku}
                       onClick={() => setSelectedInventoryItem(item)}
                       className={`w-full text-left p-3 border-b border-gray-700 hover:bg-gray-700/50 transition-colors ${
-                        selectedInventoryItem?.sku === item.sku ? 'bg-indigo-900/30 border-l-4 border-l-indigo-500' : ''
+                        selectedInventoryItem?.sku === item.sku ? 'bg-accent-900/30 border-l-4 border-l-accent-500' : ''
                       }`}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <div className="font-mono text-sm font-semibold text-indigo-400">{item.sku}</div>
+                          <div className="font-mono text-sm font-semibold text-accent-400">{item.sku}</div>
                           <div className="text-sm text-gray-300 mt-0.5">{item.name}</div>
                           {item.category && (
                             <div className="text-xs text-gray-500 mt-1">{item.category}</div>
@@ -444,7 +444,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                       type="number"
                       value={newComponentQuantity}
                       onChange={(e) => setNewComponentQuantity(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-gray-700 p-2 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full bg-gray-700 p-2 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500"
                       min="0"
                       step="0.01"
                     />
@@ -454,7 +454,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                     <select
                       value={newComponentUnit}
                       onChange={(e) => setNewComponentUnit(e.target.value)}
-                      className="w-full bg-gray-700 p-2 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full bg-gray-700 p-2 rounded-md text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500"
                     >
                       <option value="lbs">lbs</option>
                       <option value="kg">kg</option>
@@ -484,7 +484,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                 <Button
                   onClick={addComponent}
                   disabled={!selectedInventoryItem || newComponentQuantity <= 0}
-                  className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-md transition-colors"
+                  className="flex-1 px-4 py-2 bg-accent-500 hover:bg-accent-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-md transition-colors"
                 >
                   Add to BOM
                 </Button>
@@ -535,7 +535,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                   {editedBom.components.map((component, index) => (
                     <tr key={component.id || index} className="hover:bg-gray-800/30 transition-colors">
                       <td className="px-4 py-1 whitespace-nowrap">
-                        <span className="text-sm font-mono text-indigo-400 font-semibold">{component.sku}</span>
+                        <span className="text-sm font-mono text-accent-400 font-semibold">{component.sku}</span>
                       </td>
                       <td className="px-4 py-1">
                         <span className="text-sm text-gray-300">{component.name}</span>
@@ -545,7 +545,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                           type="number"
                           value={component.quantity}
                           onChange={e => handleComponentChange(index, 'quantity', parseFloat(e.target.value) || 0)}
-                          className="w-24 bg-gray-700 px-2 py-1 rounded text-sm text-white text-right border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-24 bg-gray-700 px-2 py-1 rounded text-sm text-white text-right border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500"
                           min="0"
                           step="0.01"
                         />
@@ -554,7 +554,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                         <select
                           value={component.unit}
                           onChange={e => handleComponentChange(index, 'unit', e.target.value)}
-                          className="bg-gray-700 px-2 py-1 rounded text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="bg-gray-700 px-2 py-1 rounded text-sm text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500"
                         >
                           <option value="lbs">lbs</option>
                           <option value="kg">kg</option>
@@ -587,7 +587,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
         <div className="bg-gray-900/30 rounded-lg p-4 border border-gray-700">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-200">Artwork Files</h3>
-            <Button onClick={addArtwork} className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300">
+            <Button onClick={addArtwork} className="flex items-center gap-1 text-sm text-accent-400 hover:text-accent-300">
                 <PlusCircleIcon className="w-5 h-5" /> Add Artwork
             </Button>
           </div>
@@ -619,16 +619,16 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                     <label className="text-sm text-gray-400 block mb-2">Bag Type</label>
-                    <input type="text" value={editedBom.packaging.bagType} onChange={e => handlePackagingChange('bagType', e.target.value)} className="w-full bg-gray-700 p-2.5 rounded-md text-sm border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <input type="text" value={editedBom.packaging.bagType} onChange={e => handlePackagingChange('bagType', e.target.value)} className="w-full bg-gray-700 p-2.5 rounded-md text-sm border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500" />
                 </div>
                 <div>
                     <label className="text-sm text-gray-400 block mb-2">Label Type</label>
-                    <input type="text" value={editedBom.packaging.labelType} onChange={e => handlePackagingChange('labelType', e.target.value)} className="w-full bg-gray-700 p-2.5 rounded-md text-sm border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    <input type="text" value={editedBom.packaging.labelType} onChange={e => handlePackagingChange('labelType', e.target.value)} className="w-full bg-gray-700 p-2.5 rounded-md text-sm border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500" />
                 </div>
             </div>
             <div>
                  <label className="text-sm text-gray-400 block mb-2">Special Instructions</label>
-                 <textarea value={editedBom.packaging.specialInstructions} onChange={e => handlePackagingChange('specialInstructions', e.target.value)} rows={3} className="w-full bg-gray-700 p-2.5 rounded-md text-sm border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                 <textarea value={editedBom.packaging.specialInstructions} onChange={e => handlePackagingChange('specialInstructions', e.target.value)} rows={3} className="w-full bg-gray-700 p-2.5 rounded-md text-sm border border-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500"></textarea>
             </div>
           </div>
         </div>
@@ -643,7 +643,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                 value={changeSummary}
                 onChange={(e) => setChangeSummary(e.target.value)}
                 rows={3}
-                className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
                 placeholder="e.g., updated peat ratio + bag spec"
               />
               <p className="text-xs text-gray-500 mt-1">Ops uses this note when reviewing the new revision.</p>
@@ -653,7 +653,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
               <select
                 value={selectedReviewerId ?? ''}
                 onChange={(e) => setSelectedReviewerId(e.target.value || null)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
               >
                 <option value="">Unassigned (Ops triage)</option>
                 {opsReviewers.map(user => (
@@ -672,7 +672,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
             <Button onClick={onClose} className="px-6 py-2.5 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-500 transition-colors">Cancel</Button>
             <Button
               onClick={() => handleSaveChanges(false)}
-              className="px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition-colors"
+              className="px-6 py-2.5 bg-accent-500 text-white font-semibold rounded-md hover:bg-accent-600 transition-colors"
             >
               Save & Request Ops Approval
             </Button>

@@ -288,8 +288,8 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
     <>
       <div className="space-y-6">
       {/* AI Insight */}
-      <div className="bg-gray-800/50 rounded-lg p-4 border border-indigo-500/30 flex items-start gap-3">
-        <LightBulbIcon className="w-6 h-6 text-indigo-400 flex-shrink-0 mt-1" />
+      <div className="bg-gray-800/50 rounded-lg p-4 border border-accent-500/30 flex items-start gap-3">
+        <LightBulbIcon className="w-6 h-6 text-accent-400 flex-shrink-0 mt-1" />
         <div className="flex-1">
           <h3 className="text-sm font-semibold text-white mb-1">AI Production Insight</h3>
           {isLoadingInsight ? (
@@ -364,7 +364,7 @@ export const InventoryIntelligencePanel: React.FC<InventoryIntelligencePanelProp
                 </div>
                 <Button
                   onClick={() => handleRequestComponent(shortage)}
-                  className="ml-3 px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors whitespace-nowrap"
+                  className="ml-3 px-3 py-1 text-xs bg-accent-500 hover:bg-accent-600 text-white rounded-md transition-colors whitespace-nowrap"
                 >
                   Request Now
                 </Button>
@@ -549,7 +549,7 @@ const ProductDetailView: React.FC<{
             return (
               <div
                 key={i}
-                className="flex-1 bg-indigo-500 rounded-t-sm"
+                className="flex-1 bg-accent-500 rounded-t-sm"
                 style={{ height: `${height}%` }}
                 title={`${f.date}: ${f.quantity} units`}
               />

@@ -344,7 +344,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
                     <span>Push logistics events</span>
                     <input
                       type="checkbox"
-                      className="w-5 h-5 text-indigo-600 rounded border-gray-600 bg-gray-800"
+                      className="w-5 h-5 text-accent-500 rounded border-gray-600 bg-gray-800"
                       checked={source.pushEnabled && settings.calendar_push_enabled}
                       disabled={!settings.calendar_push_enabled}
                       onChange={(e) => handleTogglePush(source.id, e.target.checked)}
@@ -386,7 +386,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
                         className={`px-3 py-1 rounded text-xs font-semibold ${
                           isLinked
                             ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                            : 'bg-accent-500 hover:bg-accent-600 text-white'
                         }`}
                       >
                         {isLinked ? 'Connected' : 'Add'}
@@ -423,7 +423,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({ us
             }
             className="sr-only peer"
           />
-          <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+          <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-500"></div>
         </label>
       </div>
 

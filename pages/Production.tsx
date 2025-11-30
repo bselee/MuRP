@@ -64,7 +64,7 @@ const Production: React.FC<ProductionProps> = ({
                             {onQuickRequest && (
                                 <Button
                                     onClick={() => onQuickRequest()}
-                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
+                                    className="px-4 py-2 bg-accent-500 hover:bg-accent-500 text-white text-sm font-semibold rounded-lg transition-colors"
                                 >
                                     Ask About Product
                                 </Button>
@@ -85,7 +85,7 @@ const Production: React.FC<ProductionProps> = ({
                                 type="button"
                                 onClick={() => setView('table')}
                                 className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
-                                    view === 'table' ? 'bg-indigo-500 text-white' : 'text-gray-300 hover:text-white'
+                                    view === 'table' ? 'bg-accent-500 text-white' : 'text-gray-300 hover:text-white'
                                 }`}
                             >
                                 <TableCellsIcon className="w-4 h-4" />
@@ -95,7 +95,7 @@ const Production: React.FC<ProductionProps> = ({
                                 type="button"
                                 onClick={() => setView('calendar')}
                                 className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
-                                    view === 'calendar' ? 'bg-indigo-500 text-white' : 'text-gray-300 hover:text-white'
+                                    view === 'calendar' ? 'bg-accent-500 text-white' : 'text-gray-300 hover:text-white'
                                 }`}
                             >
                                 <CalendarIcon className="w-4 h-4" />
@@ -105,7 +105,7 @@ const Production: React.FC<ProductionProps> = ({
                                 type="button"
                                 onClick={() => setView('timeline')}
                                 className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
-                                    view === 'timeline' ? 'bg-indigo-500 text-white' : 'text-gray-300 hover:text-white'
+                                    view === 'timeline' ? 'bg-accent-500 text-white' : 'text-gray-300 hover:text-white'
                                 }`}
                             >
                                 <TimelineIcon className="w-4 h-4" />

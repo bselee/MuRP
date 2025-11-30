@@ -61,7 +61,7 @@ const BomExplosionView: React.FC<BomExplosionViewProps> = ({ startSku, boms, inv
   const renderNode = (node: TreeNode) => (
     <div key={`${node.sku}-${node.level}`} style={{ marginLeft: `${node.level * 20}px` }} className="py-1">
       <div className={`flex items-center p-2 rounded-md ${node.isRawMaterial ? 'bg-gray-700/50' : 'bg-gray-800'}`}>
-        <span className="font-mono text-xs text-indigo-400 w-8 text-center">{node.quantity}x</span>
+        <span className="font-mono text-xs text-accent-400 w-8 text-center">{node.quantity}x</span>
         <span className={`ml-2 text-sm ${node.isRawMaterial ? 'text-gray-300' : 'text-white font-semibold'}`}>{node.name}</span>
         <span className="ml-2 text-xs text-gray-500">({node.sku})</span>
       </div>

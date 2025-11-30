@@ -363,7 +363,7 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
               onDrop={handleDrop}
               className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
                 isDragging
-                  ? 'border-indigo-500 bg-indigo-900/20'
+                  ? 'border-accent-500 bg-accent-900/20'
                   : 'border-gray-600 hover:border-gray-500'
               }`}
             >
@@ -376,7 +376,7 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
               </p>
               <Button
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                className="bg-accent-500 hover:bg-accent-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
               >
                 Select File
               </Button>
@@ -406,7 +406,7 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
         {/* Scanning Step */}
         {currentStep === 'scanning' && (
           <div className="text-center space-y-6">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-400 mx-auto"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-accent-400 mx-auto"></div>
             <div>
               <h3 className="text-xl font-semibold text-white mb-2">Scanning Label...</h3>
               <p className="text-gray-400">{scanProgress}</p>
@@ -429,7 +429,7 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
                 {!isEditing ? (
                   <Button
                     onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-accent-500 hover:bg-accent-600 text-white rounded-lg transition-colors"
                   >
                     <PencilSquareIcon className="w-4 h-4" />
                     Edit
@@ -464,7 +464,7 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
                     type="text"
                     value={editedData.productName || ''}
                     onChange={(e) => setEditedData({ ...editedData, productName: e.target.value })}
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
                   />
                 ) : (
                   <p className="text-white font-semibold">{editedData.productName || '-'}</p>
@@ -479,7 +479,7 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
                       type="text"
                       value={editedData.netWeight || ''}
                       onChange={(e) => setEditedData({ ...editedData, netWeight: e.target.value })}
-                      className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
                     />
                   ) : (
                     <p className="text-white">{editedData.netWeight || '-'}</p>
@@ -493,7 +493,7 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
                       type="text"
                       value={editedData.barcode || ''}
                       onChange={(e) => setEditedData({ ...editedData, barcode: e.target.value })}
-                      className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
                     />
                   ) : (
                     <p className="text-white font-mono">{editedData.barcode || '-'}</p>
@@ -520,7 +520,7 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
                   {isEditing && (
                     <Button
                       onClick={handleAddIngredient}
-                      className="flex items-center gap-1 text-sm text-indigo-400 hover:text-indigo-300"
+                      className="flex items-center gap-1 text-sm text-accent-400 hover:text-accent-300"
                     >
                       <PlusCircleIcon className="w-4 h-4" />
                       Add Ingredient
@@ -600,7 +600,7 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
                 <select
                   value={selectedBomId}
                   onChange={(e) => setSelectedBomId(e.target.value)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
                 >
                   <option value="">Select a product...</option>
                   {boms.map((bom) => (
@@ -652,7 +652,7 @@ const ManualLabelScanner: React.FC<ManualLabelScannerProps> = ({
             </div>
             <Button
               onClick={handleReset}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+              className="px-6 py-3 bg-accent-500 hover:bg-accent-600 text-white rounded-lg transition-colors"
             >
               Scan Another Label
             </Button>
@@ -675,7 +675,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({ step, label, active, comp
   <div className="flex flex-col items-center">
     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
       completed ? 'bg-green-600 text-white' :
-      active ? 'bg-indigo-600 text-white' :
+      active ? 'bg-accent-500 text-white' :
       'bg-gray-700 text-gray-400'
     }`}>
       {completed ? '✓' : step}

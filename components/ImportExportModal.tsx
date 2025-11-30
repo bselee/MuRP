@@ -45,7 +45,7 @@ const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, onClose, 
                 {/* Import Section */}
                 <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <ArrowUpTrayIcon className="w-6 h-6 text-indigo-400" />
+                        <ArrowUpTrayIcon className="w-6 h-6 text-accent-400" />
                         Import from CSV
                     </h3>
                     <p className="text-sm text-gray-400">
@@ -74,7 +74,7 @@ const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, onClose, 
                 {/* Export Section */}
                 <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <ArrowDownTrayIcon className="w-6 h-6 text-indigo-400" />
+                        <ArrowDownTrayIcon className="w-6 h-6 text-accent-400" />
                         Export Data
                     </h3>
                      <p className="text-sm text-gray-400">
@@ -84,25 +84,25 @@ const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, onClose, 
                          <div className="grid grid-cols-2 gap-3">
                             <Button 
                                 onClick={onExportCsv}
-                                className="w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
+                                className="w-full text-center bg-accent-500 hover:bg-accent-600 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
                             >
                                 Export as CSV
                             </Button>
                              <Button 
                                 onClick={onExportJson}
-                                className="w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
+                                className="w-full text-center bg-accent-500 hover:bg-accent-600 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
                             >
                                 Export as JSON
                             </Button>
                              <Button 
                                 onClick={onExportXls}
-                                className="w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
+                                className="w-full text-center bg-accent-500 hover:bg-accent-600 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
                             >
                                 Export as Excel
                             </Button>
                             <Button 
                                 onClick={onExportPdf}
-                                className="w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
+                                className="w-full text-center bg-accent-500 hover:bg-accent-600 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm"
                             >
                                 Export as PDF
                             </Button>

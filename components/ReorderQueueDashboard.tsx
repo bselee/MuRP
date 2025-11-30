@@ -257,7 +257,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
             )}
             {/* Action Bar */}
             {allowPoCreation && selectedItems.size > 0 && (
-              <div className="bg-indigo-900/30 border-b border-gray-700 p-4 flex justify-between items-center">
+              <div className="bg-accent-900/30 border-b border-gray-700 p-4 flex justify-between items-center">
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-gray-300">
                     <span className="font-semibold text-white">{selectedItems.size}</span> item(s) selected
@@ -277,7 +277,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
                   )}
                     <Button
                       onClick={handleDraftPOs}
-                    className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+                    className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors"
                   >
                     Create Purchase Orders
                   </Button>
@@ -302,7 +302,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
                 </Button>
                 <Button
                   onClick={() => handleSelectAll()}
-                  className="text-xs px-3 py-1.5 bg-indigo-600/20 text-indigo-400 rounded-md hover:bg-indigo-600/30 transition-colors"
+                  className="text-xs px-3 py-1.5 bg-accent-500/20 text-accent-400 rounded-md hover:bg-accent-500/30 transition-colors"
                 >
                   Select All ({items.length})
                 </Button>
@@ -326,7 +326,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
                               handleClearSelection();
                             }
                           }}
-                          className="w-4 h-4 rounded bg-gray-700 border-gray-600 text-indigo-600"
+                          className="w-4 h-4 rounded bg-gray-700 border-gray-600 text-accent-500"
                         />
                       </th>
                     )}
@@ -345,7 +345,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
                     <tr
                       key={item.id}
                       className={`hover:bg-gray-700/50 transition-colors ${
-                        selectedItems.has(item.id) ? 'bg-indigo-900/20' : ''
+                        selectedItems.has(item.id) ? 'bg-accent-900/20' : ''
                       }`}
                     >
                       {allowPoCreation && (
@@ -354,7 +354,7 @@ const ReorderQueueDashboard: React.FC<ReorderQueueDashboardProps> = ({ onDraftPO
                             type="checkbox"
                             checked={selectedItems.has(item.id)}
                             onChange={() => handleToggleItem(item.id)}
-                            className="rounded border-gray-600 text-indigo-600 focus:ring-indigo-500"
+                            className="rounded border-gray-600 text-accent-500 focus:ring-accent-500"
                           />
                         </td>
                       )}

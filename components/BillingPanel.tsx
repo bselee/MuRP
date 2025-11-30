@@ -108,14 +108,14 @@ const BillingPanel: React.FC<BillingPanelProps> = ({ currentUser, addToast }) =>
       </div>
 
       {nextPlan ? (
-        <div className="rounded-2xl border border-indigo-500/40 bg-indigo-900/20 p-6">
-          <p className="text-xs uppercase tracking-[0.4em] text-indigo-200">Next Upgrade</p>
+        <div className="rounded-2xl border border-accent-500/40 bg-accent-900/20 p-6">
+          <p className="text-xs uppercase tracking-[0.4em] text-accent-200">Next Upgrade</p>
           <h4 className="text-xl font-semibold text-white mt-2">
             {PRICING_PLAN_MAP[nextPlan].marketingName}
           </h4>
           <p className="text-sm text-gray-300">{PRICING_PLAN_MAP[nextPlan].description}</p>
           <Button
-            className="mt-4 rounded-xl bg-indigo-500 px-6 py-2 font-semibold text-white hover:bg-indigo-400 disabled:bg-gray-600"
+            className="mt-4 rounded-xl bg-accent-500 px-6 py-2 font-semibold text-white hover:bg-accent-400 disabled:bg-gray-600"
             disabled={isMutating}
             onClick={() => void handleUpgrade(nextPlan)}
           >

@@ -337,7 +337,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
         <Modal isOpen={isOpen} onClose={onClose} title="Create New Purchase Order">
             <div className="space-y-6">
                 {sourceLabel && (
-                    <div className="flex items-center gap-2 text-sm text-indigo-200 bg-indigo-900/40 border border-indigo-700/40 rounded-md px-3 py-2">
+                    <div className="flex items-center gap-2 text-sm text-accent-200 bg-accent-800/40 border border-accent-600/40 rounded-md px-3 py-2">
                         <BotIcon className="w-4 h-4" />
                         <span>{sourceLabel}</span>
                     </div>
@@ -350,7 +350,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                             value={selectedVendorId}
                             onChange={(e) => setSelectedVendorId(e.target.value)}
                             disabled={vendorLocked}
-                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             <option value="" disabled>Select a vendor</option>
                             {vendors.map(vendor => (
@@ -365,7 +365,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                             id="expected-date"
                             value={expectedDate}
                             onChange={e => setExpectedDate(e.target.value)}
-                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
                         />
                     </div>
                 </div>
@@ -379,7 +379,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                             value={trackingNumber}
                             onChange={e => setTrackingNumber(e.target.value)}
                             placeholder="1Z999AA10123456784"
-                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
                         />
                     </div>
                     <div>
@@ -388,7 +388,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                             id="tracking-carrier"
                             value={trackingCarrier}
                             onChange={e => setTrackingCarrier(e.target.value)}
-                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
                         >
                             <option value="">Select carrier...</option>
                             <option value="ups">UPS</option>
@@ -409,10 +409,10 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                                     <p className="text-sm font-medium text-white">{item.name}</p>
                                     <p className="text-xs text-gray-400">{item.sku} • Unit Cost: ${item.unitCost.toFixed(2)}</p>
                                     {suggestedMeta[item.sku] && (
-                                        <p className="text-xs text-indigo-300 flex items-center gap-1 mt-1">
+                                        <p className="text-xs text-accent-300 flex items-center gap-1 mt-1">
                                             <BotIcon className="w-3.5 h-3.5" />
                                             <span className="font-semibold">{suggestedMeta[item.sku].label}</span>
-                                            <span className="text-indigo-200/80">· {suggestedMeta[item.sku].detail}</span>
+                                            <span className="text-accent-200/80">· {suggestedMeta[item.sku].detail}</span>
                                         </p>
                                     )}
                                 </div>
@@ -434,7 +434,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                             <select 
                                 value={itemToAdd} 
                                 onChange={e => setItemToAdd(e.target.value)}
-                                className="flex-1 bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                className="flex-1 bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
                             >
                                 <option value="">Add another item...</option>
                                 {vendorInventory
@@ -442,7 +442,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                                     .map(item => <option key={item.sku} value={item.sku}>{item.name}</option>
                                 )}
                             </select>
-                            <Button onClick={handleAddItem} className="p-2 text-indigo-400 hover:text-indigo-300 disabled:text-gray-600 disabled:cursor-not-allowed" disabled={!itemToAdd}>
+                            <Button onClick={handleAddItem} className="p-2 text-accent-400 hover:text-accent-300 disabled:text-gray-600 disabled:cursor-not-allowed" disabled={!itemToAdd}>
                                 <PlusCircleIcon className="w-7 h-7" />
                             </Button>
                         </div>
@@ -456,7 +456,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                         rows={3}
                         value={notes}
                         onChange={e => setNotes(e.target.value)}
-                        className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
                         placeholder="Add any special instructions for this order..."
                     />
                 </div>
@@ -466,7 +466,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                     <Button
                         onClick={handleSubmit}
                         disabled={!selectedVendorId || poItems.length === 0 || isSubmitting}
-                        className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+                        className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
                     >
                         Create Purchase Order
                     </Button>

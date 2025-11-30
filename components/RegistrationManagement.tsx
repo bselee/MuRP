@@ -130,7 +130,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
           <div className="flex items-center gap-2 ml-4">
             <Button
               onClick={() => onEditRegistration(registration)}
-              className="p-2 text-indigo-400 hover:bg-indigo-900/20 rounded-lg transition-colors"
+              className="p-2 text-accent-400 hover:bg-accent-900/20 rounded-lg transition-colors"
               title="Edit"
             >
               <PencilSquareIcon className="w-5 h-5" />
@@ -157,7 +157,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
                 setSelectedState(registration.stateCode);
                 setShowGuidelines(true);
               }}
-              className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+              className="text-xs text-accent-400 hover:text-accent-300 flex items-center gap-1"
             >
               <InformationCircleIcon className="w-4 h-4" />
               View {registration.stateName} Registration Requirements
@@ -188,7 +188,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
         </div>
         <Button
           onClick={onAddRegistration}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+          className="flex items-center gap-2 bg-accent-500 hover:bg-accent-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
         >
           <PlusCircleIcon className="w-5 h-5" />
           Add Registration
@@ -227,7 +227,7 @@ const RegistrationManagement: React.FC<RegistrationManagementProps> = ({
           </p>
           <Button
             onClick={onAddRegistration}
-            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 bg-accent-500 hover:bg-accent-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
           >
             <PlusCircleIcon className="w-5 h-5" />
             Add Your First Registration

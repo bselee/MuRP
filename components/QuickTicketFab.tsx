@@ -124,7 +124,7 @@ const QuickTicketFab: React.FC<QuickTicketFabProps> = ({
       {isOpen && (
         <div className="absolute bottom-16 right-0 w-80 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl shadow-black/50 overflow-hidden animate-in slide-in-from-bottom-2 duration-200">
           {/* Header */}
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
+          <div className="bg-gradient-to-r from-accent-500 to-purple-600 p-4">
             <div className="flex items-center justify-between">
               <h3 className="text-white font-semibold">Quick Ticket</h3>
               <button
@@ -150,7 +150,7 @@ const QuickTicketFab: React.FC<QuickTicketFabProps> = ({
                   onClick={() => setTicketType(type.value)}
                   className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-lg border transition-all ${
                     ticketType === type.value
-                      ? 'border-indigo-500 bg-indigo-500/10'
+                      ? 'border-accent-500 bg-accent-500/10'
                       : 'border-gray-700 hover:border-gray-600'
                   }`}
                   title={type.label}
@@ -168,7 +168,7 @@ const QuickTicketFab: React.FC<QuickTicketFabProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={ticketType === 'question' ? "What's your question?" : "What needs to be done?"}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
                 autoFocus
               />
             </div>
@@ -180,7 +180,7 @@ const QuickTicketFab: React.FC<QuickTicketFabProps> = ({
                 <select
                   value={projectId}
                   onChange={(e) => setProjectId(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-accent-500"
                 >
                   <option value="">No Project</option>
                   {projects.map(p => (
@@ -217,7 +217,7 @@ const QuickTicketFab: React.FC<QuickTicketFabProps> = ({
                 <select
                   value={assigneeId}
                   onChange={(e) => setAssigneeId(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-accent-500"
                 >
                   <option value="">Unassigned</option>
                   {assignableUsers.map(user => (
@@ -255,7 +255,7 @@ const QuickTicketFab: React.FC<QuickTicketFabProps> = ({
             <Button
               type="submit"
               disabled={!title.trim() || isSubmitting}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 text-white py-2.5 rounded-lg font-medium transition-colors"
+              className="w-full bg-accent-500 hover:bg-accent-500 disabled:bg-gray-700 disabled:text-gray-500 text-white py-2.5 rounded-lg font-medium transition-colors"
             >
               {isSubmitting ? 'Creating...' : ticketType === 'question' ? 'Ask Question' : 'Create Ticket'}
             </Button>
@@ -267,11 +267,11 @@ const QuickTicketFab: React.FC<QuickTicketFabProps> = ({
       <button
         onClick={handleToggle}
         className={`
-          w-14 h-14 rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center
+          w-14 h-14 rounded-full shadow-lg shadow-accent-500/30 flex items-center justify-center
           transition-all duration-200 hover:scale-105
           ${isOpen 
             ? 'bg-gray-700 rotate-45' 
-            : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500'
+            : 'bg-gradient-to-r from-accent-500 to-purple-600 hover:from-accent-500 hover:to-purple-500'
           }
         `}
         aria-label={isOpen ? 'Close quick ticket' : 'Create ticket'}

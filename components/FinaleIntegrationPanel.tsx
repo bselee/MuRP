@@ -188,7 +188,7 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <ServerStackIcon className="w-8 h-8 text-indigo-400" />
+          <ServerStackIcon className="w-8 h-8 text-accent-400" />
           <div>
             <h3 className="text-lg font-semibold text-white">Finale Inventory Integration</h3>
             <p className="text-sm text-gray-400 mt-1">
@@ -258,7 +258,7 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
               placeholder="e.g., buildasoilorganics"
               value={accountPath}
               onChange={(e) => setAccountPath(e.target.value)}
-              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 text-sm border border-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 text-sm border border-gray-600 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
             />
           </div>
           <p className="text-xs text-gray-500 mt-1">
@@ -278,7 +278,7 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
               placeholder="Enter your Finale API Key"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 text-sm border border-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono"
+              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 text-sm border border-gray-600 focus:border-accent-500 focus:ring-1 focus:ring-accent-500 font-mono"
             />
           </div>
         </div>
@@ -295,7 +295,7 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
               placeholder="Enter your Finale API Secret"
               value={apiSecret}
               onChange={(e) => setApiSecret(e.target.value)}
-              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 pr-10 text-sm border border-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono"
+              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 pr-10 text-sm border border-gray-600 focus:border-accent-500 focus:ring-1 focus:ring-accent-500 font-mono"
             />
             <Button
               onClick={() => setShowApiSecret(!showApiSecret)}
@@ -320,7 +320,7 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
               placeholder="https://app.finaleinventory.com"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
-              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 text-sm border border-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 text-sm border border-gray-600 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
             />
           </div>
           <p className="text-xs text-gray-500 mt-1">
@@ -354,7 +354,7 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
         <Button
           onClick={handleTestConnection}
           disabled={!hasCredentials || isTesting}
-          className="flex-1 min-w-[150px] bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 min-w-[150px] bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isTesting ? (
             <>
@@ -406,7 +406,7 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
               href={`https://app.finaleinventory.com/${accountPath || 'YOUR_ACCOUNT'}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-indigo-400 hover:underline"
+              className="text-accent-400 hover:underline"
             >
               Finale Inventory
             </a>
@@ -422,7 +422,7 @@ For more information, see: https://support.finaleinventory.com/hc/en-us/articles
             href="https://support.finaleinventory.com/hc/en-us/articles/4408832394647"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-indigo-400 hover:underline"
+            className="text-accent-400 hover:underline"
           >
             API documentation
           </a>

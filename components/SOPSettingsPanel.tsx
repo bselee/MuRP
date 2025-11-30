@@ -863,7 +863,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
           onClick={() => setActiveTab('repository')}
           className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
             activeTab === 'repository'
-              ? 'text-white border-b-2 border-indigo-400'
+              ? 'text-white border-b-2 border-accent-400'
               : 'text-gray-400 hover:text-white'
           }`}
         >
@@ -875,7 +875,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
             onClick={() => setActiveTab('job-descriptions')}
             className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
               activeTab === 'job-descriptions'
-                ? 'text-white border-b-2 border-indigo-400'
+                ? 'text-white border-b-2 border-accent-400'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -887,7 +887,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
           onClick={() => setActiveTab('delegation')}
           className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
             activeTab === 'delegation'
-              ? 'text-white border-b-2 border-indigo-400'
+              ? 'text-white border-b-2 border-accent-400'
               : 'text-gray-400 hover:text-white'
           }`}
         >
@@ -898,7 +898,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
           onClick={() => setActiveTab('workflow')}
           className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
             activeTab === 'workflow'
-              ? 'text-white border-b-2 border-indigo-400'
+              ? 'text-white border-b-2 border-accent-400'
               : 'text-gray-400 hover:text-white'
           }`}
         >
@@ -909,7 +909,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
           onClick={() => setActiveTab('templates')}
           className={`px-4 py-2 text-sm font-medium whitespace-nowrap ${
             activeTab === 'templates'
-              ? 'text-white border-b-2 border-indigo-400'
+              ? 'text-white border-b-2 border-accent-400'
               : 'text-gray-400 hover:text-white'
           }`}
         >
@@ -956,14 +956,14 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
                   placeholder="Search SOPs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-indigo-400"
+                  className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-accent-400"
                 />
               </div>
             </div>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-indigo-400"
+              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-accent-400"
             >
               <option value="all">All Categories</option>
               {SOP_CATEGORIES.filter(cat => cat !== 'Job Description').map(cat => (
@@ -973,7 +973,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
             <select
               value={selectedDepartment}
               onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-indigo-400"
+              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-accent-400"
             >
               <option value="all">All Departments</option>
               {departments.map(dept => (
@@ -983,7 +983,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
             <select
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value)}
-              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-indigo-400"
+              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-accent-400"
             >
               <option value="all">All Roles</option>
               {roles.map(role => (
@@ -993,7 +993,7 @@ const SOPSettingsPanel: React.FC<SOPSettingsPanelProps> = ({ addToast }) => {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-indigo-400"
+              className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-accent-400"
             >
               <option value="all">All Status</option>
               <option value="draft">Draft</option>

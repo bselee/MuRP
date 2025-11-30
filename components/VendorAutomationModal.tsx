@@ -124,7 +124,7 @@ const VendorAutomationModal: React.FC<VendorAutomationModalProps> = ({
                 type="checkbox"
                 checked={autoPoEnabled}
                 onChange={(e) => setAutoPoEnabled(e.target.checked)}
-                className="w-6 h-6 rounded text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-900"
+                className="w-6 h-6 rounded text-accent-500 focus:ring-accent-500 focus:ring-offset-gray-900"
               />
             </label>
           </div>
@@ -147,7 +147,7 @@ const VendorAutomationModal: React.FC<VendorAutomationModalProps> = ({
                       onClick={() => setAutoPoThreshold(level)}
                       className={`p-3 rounded-lg border-2 transition-all ${
                         autoPoThreshold === level
-                          ? 'border-indigo-500 bg-indigo-500/20 text-white'
+                          ? 'border-accent-500 bg-accent-500/20 text-white'
                           : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600'
                       }`}
                     >
@@ -177,7 +177,7 @@ const VendorAutomationModal: React.FC<VendorAutomationModalProps> = ({
                     checked={autoSendEmail}
                     onChange={(e) => setAutoSendEmail(e.target.checked)}
                     disabled
-                    className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"
+                    className="w-5 h-5 rounded text-accent-500 focus:ring-accent-500"
                     title="Coming soon - requires email integration"
                   />
                 </label>
@@ -193,7 +193,7 @@ const VendorAutomationModal: React.FC<VendorAutomationModalProps> = ({
                     type="checkbox"
                     checked={isRecurringVendor}
                     onChange={(e) => setIsRecurringVendor(e.target.checked)}
-                    className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500"
+                    className="w-5 h-5 rounded text-accent-500 focus:ring-accent-500"
                   />
                 </label>
               </div>
@@ -208,7 +208,7 @@ const VendorAutomationModal: React.FC<VendorAutomationModalProps> = ({
                   onChange={(e) => setAutomationNotes(e.target.value)}
                   rows={3}
                   placeholder="e.g., 'Contact John before sending large orders' or 'Only auto-order during growing season'"
-                  className="w-full bg-gray-700 border-gray-600 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 p-3 text-sm"
+                  className="w-full bg-gray-700 border-gray-600 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-accent-500 focus:border-accent-500 p-3 text-sm"
                 />
               </div>
             </>
@@ -236,7 +236,7 @@ const VendorAutomationModal: React.FC<VendorAutomationModalProps> = ({
             <Button
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save Settings'}
             </Button>

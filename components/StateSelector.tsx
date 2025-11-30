@@ -130,7 +130,7 @@ export default function StateSelector({
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-500"></div>
       </div>
     );
   }
@@ -170,7 +170,7 @@ export default function StateSelector({
         placeholder="Search states..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-500"
       />
 
       {/* Strictness Legend */}
@@ -216,7 +216,7 @@ export default function StateSelector({
                       </span>
                     </h4>
                     {selectedInGroup > 0 && (
-                      <p className="text-sm text-indigo-400 mt-0.5">
+                      <p className="text-sm text-accent-400 mt-0.5">
                         {selectedInGroup} selected
                       </p>
                     )}
@@ -281,7 +281,7 @@ export default function StateSelector({
                           p-3 rounded-lg border-2 cursor-pointer transition-all
                           ${
                             isSelected
-                              ? 'bg-indigo-900 border-indigo-500'
+                              ? 'bg-accent-800 border-accent-500'
                               : 'bg-gray-750 border-gray-700 hover:border-gray-600'
                           }
                         `}
@@ -321,7 +321,7 @@ export default function StateSelector({
                               w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0
                               ${
                                 isSelected
-                                  ? 'bg-indigo-600 border-indigo-500'
+                                  ? 'bg-accent-500 border-accent-500'
                                   : 'bg-gray-700 border-gray-600'
                               }
                             `}
@@ -355,11 +355,11 @@ export default function StateSelector({
 
       {/* Pro Tip */}
       {groupByStrictness && selectedStates.length > 0 && (
-        <div className="p-4 bg-indigo-900 bg-opacity-20 border border-indigo-700 rounded-lg">
+        <div className="p-4 bg-accent-800 bg-opacity-20 border border-accent-600 rounded-lg">
           <div className="flex gap-3">
             <span className="text-2xl">💡</span>
             <div>
-              <h4 className="font-medium text-indigo-300 mb-1">Pro Tip</h4>
+              <h4 className="font-medium text-accent-300 mb-1">Pro Tip</h4>
               <p className="text-sm text-gray-300">
                 Focus on meeting the strictest state's requirements first. Compliance with states
                 like California, Oregon, or Washington typically satisfies requirements for less

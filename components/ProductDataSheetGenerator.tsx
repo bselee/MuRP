@@ -344,11 +344,11 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
                 onClick={() => handleDocumentTypeChange('sds')}
                 className={`p-4 rounded-lg border-2 transition-colors ${
                   documentType === 'sds'
-                    ? 'border-indigo-500 bg-indigo-900/20'
+                    ? 'border-accent-500 bg-accent-900/20'
                     : 'border-gray-600 hover:border-gray-500'
                 }`}
               >
-                <DocumentTextIcon className="w-6 h-6 text-indigo-400 mx-auto mb-2" />
+                <DocumentTextIcon className="w-6 h-6 text-accent-400 mx-auto mb-2" />
                 <p className="text-white font-medium text-sm">Safety Data Sheet (SDS)</p>
                 <p className="text-gray-400 text-xs mt-1">Complete safety information</p>
               </Button>
@@ -357,7 +357,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
                 onClick={() => handleDocumentTypeChange('spec_sheet')}
                 className={`p-4 rounded-lg border-2 transition-colors ${
                   documentType === 'spec_sheet'
-                    ? 'border-indigo-500 bg-indigo-900/20'
+                    ? 'border-accent-500 bg-accent-900/20'
                     : 'border-gray-600 hover:border-gray-500'
                 }`}
               >
@@ -370,7 +370,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
                 onClick={() => handleDocumentTypeChange('product_info')}
                 className={`p-4 rounded-lg border-2 transition-colors ${
                   documentType === 'product_info'
-                    ? 'border-indigo-500 bg-indigo-900/20'
+                    ? 'border-accent-500 bg-accent-900/20'
                     : 'border-gray-600 hover:border-gray-500'
                 }`}
               >
@@ -383,7 +383,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
                 onClick={() => handleDocumentTypeChange('compliance_doc')}
                 className={`p-4 rounded-lg border-2 transition-colors ${
                   documentType === 'compliance_doc'
-                    ? 'border-indigo-500 bg-indigo-900/20'
+                    ? 'border-accent-500 bg-accent-900/20'
                     : 'border-gray-600 hover:border-gray-500'
                 }`}
               >
@@ -403,7 +403,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
               placeholder="Enter document title..."
             />
           </div>
@@ -417,7 +417,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
               <select
                 value={selectedLabelId}
                 onChange={(e) => setSelectedLabelId(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
               >
                 <option value="">None (use BOM data only)</option>
                 {labels.map(label => (
@@ -473,7 +473,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
             )}
             <Button
               onClick={handleGenerate}
-              className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+              className="flex items-center gap-2 px-6 py-3 bg-accent-500 hover:bg-accent-600 text-white rounded-lg transition-colors"
             >
               <SparklesIcon className="w-5 h-5" />
               Generate with AI
@@ -485,7 +485,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
       {/* Generating Step */}
       {currentStep === 'generating' && (
         <div className="text-center space-y-6 py-12">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-400 mx-auto"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-accent-400 mx-auto"></div>
           <div>
             <h3 className="text-xl font-semibold text-white mb-2">Generating Document...</h3>
             <p className="text-gray-400">{progress}</p>
@@ -504,8 +504,8 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
             <span className="font-semibold">Document Generated Successfully!</span>
           </div>
 
-          <div className="bg-indigo-900/20 border border-indigo-700 rounded-lg p-4">
-            <p className="text-sm text-indigo-300">
+          <div className="bg-accent-900/20 border border-accent-600 rounded-lg p-4">
+            <p className="text-sm text-accent-300">
               <strong>Preview:</strong> Review the generated content below. You can edit it after saving.
             </p>
           </div>
@@ -558,15 +558,15 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
           </div>
 
           {/* PDF Generation Section */}
-          <div className="bg-indigo-900/20 border border-indigo-700 rounded-lg p-6">
-            <h4 className="text-sm font-semibold text-indigo-300 mb-4">Generate PDF Document</h4>
+          <div className="bg-accent-900/20 border border-accent-600 rounded-lg p-6">
+            <h4 className="text-sm font-semibold text-accent-300 mb-4">Generate PDF Document</h4>
             <p className="text-sm text-gray-400 mb-4">
               Create a professional PDF version of your data sheet with proper formatting and branding.
             </p>
 
             {isGeneratingPDF ? (
               <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-400 mx-auto mb-2"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-400 mx-auto mb-2"></div>
                 <p className="text-sm text-gray-400">{progress}</p>
               </div>
             ) : (
@@ -574,7 +574,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
                 <Button
                   onClick={handleDownloadPDF}
                   disabled={!savedDataSheet}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-accent-500 hover:bg-accent-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
                 >
                   <ArrowDownTrayIcon className="w-5 h-5" />
                   Download PDF
@@ -623,7 +623,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
             {onClose && (
               <Button
                 onClick={onClose}
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+                className="px-6 py-3 bg-accent-500 hover:bg-accent-600 text-white rounded-lg transition-colors"
               >
                 Close
               </Button>
@@ -651,7 +651,7 @@ const ProductDataSheetGenerator: React.FC<ProductDataSheetGeneratorProps> = ({
                 setCurrentStep('config');
                 setError('');
               }}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+              className="px-6 py-3 bg-accent-500 hover:bg-accent-600 text-white rounded-lg transition-colors"
             >
               Try Again
             </Button>

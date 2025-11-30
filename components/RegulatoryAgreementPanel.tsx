@@ -159,23 +159,23 @@ const RegulatoryAgreementPanel: React.FC<RegulatoryAgreementPanelProps> = ({
           </h4>
           <ul className="space-y-2 text-xs text-gray-400">
             <li className="flex items-start gap-2">
-              <span className="text-indigo-400 mt-1">•</span>
+              <span className="text-accent-400 mt-1">•</span>
               <span>AI-powered state regulatory research (all 50 states)</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-indigo-400 mt-1">•</span>
+              <span className="text-accent-400 mt-1">•</span>
               <span>Proactive BOM compliance scanning</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-indigo-400 mt-1">•</span>
+              <span className="text-accent-400 mt-1">•</span>
               <span>State agency contact database and research</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-indigo-400 mt-1">•</span>
+              <span className="text-accent-400 mt-1">•</span>
               <span>Letter upload and AI analysis</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-indigo-400 mt-1">•</span>
+              <span className="text-accent-400 mt-1">•</span>
               <span>AI-assisted draft letter generation</span>
             </li>
           </ul>
@@ -204,7 +204,7 @@ const RegulatoryAgreementPanel: React.FC<RegulatoryAgreementPanelProps> = ({
               checked={agreement?.accepted || false}
               onChange={(e) => handleToggleAgreement(e.target.checked)}
               disabled={isAcknowledging}
-              className="mt-1 w-5 h-5 rounded border-gray-600 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-gray-800 disabled:opacity-50"
+              className="mt-1 w-5 h-5 rounded border-gray-600 text-accent-500 focus:ring-accent-500 focus:ring-offset-gray-800 disabled:opacity-50"
             />
             <span className="text-sm text-gray-300 group-hover:text-white transition-colors font-medium">
               I have read and acknowledge the terms above. I agree to use compliance features responsibly 

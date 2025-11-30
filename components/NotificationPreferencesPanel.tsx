@@ -135,7 +135,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
   if (loading) {
     return (
       <div className="flex justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-500"></div>
       </div>
     );
   }
@@ -144,7 +144,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <BellIcon className="w-6 h-6 text-indigo-500" />
+        <BellIcon className="w-6 h-6 text-accent-500" />
         <div>
           <h3 className="text-lg font-semibold text-white">Notification Preferences</h3>
           <p className="text-sm text-gray-400">
@@ -163,7 +163,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
             <div className="flex items-center gap-3">
-              <BellIcon className="w-5 h-5 text-indigo-400" />
+              <BellIcon className="w-5 h-5 text-accent-400" />
               <div>
                 <span className="text-sm font-medium text-white">In-App Notifications</span>
                 <p className="text-xs text-gray-400">Bell icon alerts in the application</p>
@@ -176,7 +176,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
                 onChange={(e) => updatePreference('in_app_enabled', e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-500"></div>
             </label>
           </div>
 
@@ -244,7 +244,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
                   onChange={(e) => updatePreference(key as keyof NotificationPreferences, e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-500"></div>
               </label>
             </div>
           ))}
@@ -267,7 +267,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
             <select
               value={preferences.timezone}
               onChange={(e) => updatePreference('timezone', e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
             >
               {TIMEZONES.map(tz => (
                 <option key={tz} value={tz}>{tz}</option>
@@ -282,7 +282,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
             <select
               value={preferences.email_digest_frequency}
               onChange={(e) => updatePreference('email_digest_frequency', e.target.value as any)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
             >
               <option value="immediate">Immediate (send right away)</option>
               <option value="hourly">Hourly digest</option>
@@ -299,7 +299,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
               type="time"
               value={preferences.quiet_hours_start || ''}
               onChange={(e) => updatePreference('quiet_hours_start', e.target.value || undefined)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
               placeholder="e.g., 22:00"
             />
           </div>
@@ -312,7 +312,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
               type="time"
               value={preferences.quiet_hours_end || ''}
               onChange={(e) => updatePreference('quiet_hours_end', e.target.value || undefined)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
               placeholder="e.g., 08:00"
             />
           </div>
@@ -324,7 +324,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
               type="checkbox"
               checked={preferences.email_include_comments}
               onChange={(e) => updatePreference('email_include_comments', e.target.checked)}
-              className="rounded border-gray-700 text-indigo-600 focus:ring-indigo-500"
+              className="rounded border-gray-700 text-accent-500 focus:ring-accent-500"
             />
             <span className="text-sm text-gray-300">Include ticket comments in email notifications</span>
           </label>
@@ -350,7 +350,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
                 value={preferences.slack_channel_override || ''}
                 onChange={(e) => updatePreference('slack_channel_override', e.target.value || undefined)}
                 placeholder="#your-channel or @username"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Leave empty to use system default channels
@@ -366,7 +366,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
                 value={preferences.slack_webhook_url || ''}
                 onChange={(e) => updatePreference('slack_webhook_url', e.target.value || undefined)}
                 placeholder="https://hooks.slack.com/services/..."
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-indigo-500"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Use your own webhook for personal notifications
@@ -396,7 +396,7 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
         <Button
           onClick={savePreferences}
           disabled={saving}
-          className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white px-6 py-2 rounded-lg flex items-center gap-2"
+          className="bg-accent-500 hover:bg-accent-500 disabled:bg-gray-700 text-white px-6 py-2 rounded-lg flex items-center gap-2"
         >
           <SaveIcon className="w-4 h-4" />
           {saving ? 'Saving...' : 'Save Preferences'}

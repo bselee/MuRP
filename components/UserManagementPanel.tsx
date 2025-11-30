@@ -113,7 +113,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ currentUser, 
                                     </td>
                                     {isOpsAdmin && (
                                         <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
-                                            <Button className="p-2 text-gray-400 hover:text-indigo-400 transition-colors" title="Edit User">
+                                            <Button className="p-2 text-gray-400 hover:text-accent-400 transition-colors" title="Edit User">
                                                 <PencilSquareIcon className="w-5 h-5"/>
                                             </Button>
                                             <Button onClick={() => onDeleteUser(user.id)} className="p-2 text-gray-400 hover:text-red-400 transition-colors" title="Remove User" disabled={user.id === currentUser.id}>

@@ -97,7 +97,7 @@ const RolePermissionMatrix: React.FC = () => {
     <div className="space-y-6">
       <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4">
         <div className="flex items-start gap-3">
-          <ShieldCheckIcon className="h-5 w-5 text-indigo-400" />
+          <ShieldCheckIcon className="h-5 w-5 text-accent-400" />
           <div>
             <p className="text-sm text-gray-300">
               Every workspace starts with Admin, Manager, and Staff roles. Use this grid to confirm what each role can currently
@@ -106,7 +106,7 @@ const RolePermissionMatrix: React.FC = () => {
             <label className="mt-3 inline-flex cursor-pointer select-none items-center gap-2 text-xs text-gray-400">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-400"
+                className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-400"
                 checked={acknowledged}
                 onChange={toggleAcknowledged}
               />
@@ -120,14 +120,14 @@ const RolePermissionMatrix: React.FC = () => {
         {(['Admin', 'Manager', 'Staff'] as RoleKey[]).map(role => (
           <div key={role} className="rounded-xl border border-gray-800 bg-gray-900/70 p-4">
             <div className="flex items-center gap-2">
-              <UsersIcon className="h-5 w-5 text-indigo-400" />
-              <p className="text-xs uppercase text-indigo-300">{role}</p>
+              <UsersIcon className="h-5 w-5 text-accent-400" />
+              <p className="text-xs uppercase text-accent-300">{role}</p>
             </div>
             <p className="mt-2 text-base font-semibold text-white">{ROLE_SUMMARY[role].tagline}</p>
             <p className="mt-1 text-sm text-gray-400">{ROLE_SUMMARY[role].description}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {ROLE_SUMMARY[role].focus.map(item => (
-                <span key={item} className="rounded-full border border-indigo-500/30 px-3 py-0.5 text-xs text-indigo-200">
+                <span key={item} className="rounded-full border border-accent-500/30 px-3 py-0.5 text-xs text-accent-200">
                   {item}
                 </span>
               ))}
@@ -173,7 +173,7 @@ const RolePermissionMatrix: React.FC = () => {
 
       <div className="rounded-xl border border-gray-800 bg-gray-900/70 p-4 text-sm text-gray-400">
         <div className="flex items-start gap-3">
-          <ClipboardDocumentListIcon className="h-5 w-5 text-indigo-400" />
+          <ClipboardDocumentListIcon className="h-5 w-5 text-accent-400" />
           <div>
             <p className="font-medium text-white">Change Control Reminder</p>
             <p className="mt-1">
@@ -181,7 +181,7 @@ const RolePermissionMatrix: React.FC = () => {
               which role adjustments were approved, and when they take effect). This keeps audits clean and prevents accidental privilege drift.
             </p>
             <p className="mt-2 flex items-center gap-2 text-xs">
-              <CogIcon className="h-4 w-4 text-indigo-300" />
+              <CogIcon className="h-4 w-4 text-accent-300" />
               Need custom roles? Contact support to enable advanced role templating.
             </p>
           </div>

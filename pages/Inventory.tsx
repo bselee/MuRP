@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import Button from '@/components/ui/Button';
-import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults } from '../types';
+import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults, PurchaseOrder } from '../types';
 import { useUserPreferences, type RowDensity, type FontScale } from '../components/UserPreferencesProvider';
 import { 
   SearchIcon, 
@@ -12,15 +12,9 @@ import {
   EyeSlashIcon,
   BookmarkIcon,
   BellIcon,
-  PlusCircleIcon,
-  ChartBarIcon,
-  AlertCircleIcon,
-  TrendingUpIcon,
-  CalendarIcon,
-  DollarSignIcon,
-  UsersIcon,
-  PackageIcon
+    PlusCircleIcon
 } from '../components/icons';
+import StockIntelligencePanel from '@/components/StockIntelligencePanel';
 import ImportExportModal from '../components/ImportExportModal';
 import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
 import VendorManagementModal, { type VendorConfig } from '../components/VendorManagementModal';
@@ -36,6 +30,7 @@ import {
     buildBomAssociations,
     getBomDetailsForComponent,
 } from '../lib/inventory/utils';
+import { computeStockoutRisks, computeVendorPerformance } from '@/lib/inventory/stockIntelligence';
 
 interface InventoryProps {
     inventory: InventoryItem[];
@@ -44,7 +39,7 @@ interface InventoryProps {
     onNavigateToBom?: (bomSku?: string) => void;
     onQuickRequest?: (defaults?: QuickRequestDefaults) => void;
     onNavigateToProduct?: (sku: string) => void;
-    purchaseOrders?: any[]; // Add purchase orders for vendor performance
+    purchaseOrders?: PurchaseOrder[];
 }
 
 type ColumnKey =
@@ -140,26 +135,6 @@ interface DemandInsight {
 }
 type DemandSource = 'salesVelocity' | 'recencyAverage' | 'avg30' | 'avg60' | 'avg90' | 'none';
 
-interface StockoutRisk {
-  sku: string;
-  name: string;
-  daysUntilStockout: number;
-  riskLevel: 'critical' | 'high' | 'medium' | 'low';
-  forecastAccuracy?: number;
-  trendDirection: 'up' | 'down' | 'stable';
-  seasonalFactor?: number;
-}
-
-interface VendorPerformance {
-  vendorId: string;
-  vendorName: string;
-  onTimeDeliveryRate: number;
-  averageLeadTimeActual: number;
-  averageLeadTimeEstimated: number;
-  costStability: number;
-  reliabilityScore: number;
-}
-
 const MAX_CATEGORY_WORDS = 3;
 
 const formatCategoryLabel = (value?: string | null): string => {
@@ -190,11 +165,23 @@ const SortableHeader: React.FC<{
     const isSorted = sortConfig?.key === sortKey;
     const direction = isSorted ? sortConfig?.direction : undefined;
 
+    // Map direction to ARIA sort value
+    const ariaSortValue = isSorted 
+        ? (direction === 'ascending' ? 'ascending' : 'descending')
+        : undefined;
+
     return (
-        <th className={`px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${className || ''}`}>
-            <Button className="flex items-center gap-2 group" onClick={() => requestSort(sortKey)}>
+        <th 
+            className={`px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${className || ''}`}
+            aria-sort={ariaSortValue}
+        >
+            <Button 
+                className="flex items-center gap-2 group" 
+                onClick={() => requestSort(sortKey)}
+                aria-label={`Sort by ${title}${isSorted ? `, currently sorted ${direction}` : ''}`}
+            >
                 {title}
-                <span className={`transition-opacity ${isSorted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                <span className={`transition-opacity ${isSorted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} aria-hidden="true">
                     {isSorted ? (
                         direction === 'ascending' ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />
                     ) : (
@@ -208,8 +195,6 @@ const SortableHeader: React.FC<{
 
 const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom, onQuickRequest, onNavigateToProduct, purchaseOrders = [] }) => {
     const { rowDensity, fontScale } = useUserPreferences();
-    const [activeTab, setActiveTab] = useState<'inventory' | 'intelligence'>('inventory');
-// const [activeSubTab, setActiveSubTab] = useState<'risks' | 'forecasts' | 'trends' | 'vendors' | 'budget'>('risks');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
         const saved = localStorage.getItem('inventory-selected-categories');
@@ -283,9 +268,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 const element = inventoryRowRefs.current.get(selectedSku);
                 if (element) {
                     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    element.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-900/20');
+                    element.classList.add('ring-2', 'ring-accent-500', 'bg-accent-900/20');
                     setTimeout(() => {
-                        element.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-900/20');
+                        element.classList.remove('ring-2', 'ring-accent-500', 'bg-accent-900/20');
                     }, 3000);
                 }
             }, 100);
@@ -444,96 +429,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     }, [demandInsights]);
 
     // Stock Intelligence calculations
-    const stockoutRisks = useMemo(() => {
-        const risks: StockoutRisk[] = [];
-
-        inventory.forEach(item => {
-            const consumptionDaily = (item.salesLast30Days || 0) / 30;
-            
-            if (consumptionDaily === 0) return;
-
-            const availableStock = item.stock + (item.onOrder || 0);
-            const daysUntilStockout = Math.floor(availableStock / consumptionDaily);
-
-            // Calculate trend (comparing 30-day vs 90-day)
-            const trend30 = (item.salesLast30Days || 0) / 30;
-            const trend90 = (item.salesLast90Days || 0) / 90;
-            const trendChange = trend30 - trend90;
-            
-            let trendDirection: 'up' | 'down' | 'stable' = 'stable';
-            if (trendChange > trend90 * 0.15) trendDirection = 'up';
-            else if (trendChange < -trend90 * 0.15) trendDirection = 'down';
-
-            // Determine risk level
-            const leadTime = item.leadTimeDays || 14;
-            let riskLevel: 'critical' | 'high' | 'medium' | 'low';
-            
-            if (daysUntilStockout <= 0) riskLevel = 'critical';
-            else if (daysUntilStockout < leadTime * 0.5) riskLevel = 'critical';
-            else if (daysUntilStockout < leadTime) riskLevel = 'high';
-            else if (daysUntilStockout < leadTime * 1.5) riskLevel = 'medium';
-            else riskLevel = 'low';
-
-            risks.push({
-                sku: item.sku,
-                name: item.name,
-                daysUntilStockout,
-                riskLevel,
-                trendDirection,
-            });
-        });
-
-        return risks.sort((a, b) => a.daysUntilStockout - b.daysUntilStockout);
-    }, [inventory]);
-
-    const vendorPerformances = useMemo(() => {
-        const performances: VendorPerformance[] = [];
-
-        vendors.forEach(vendor => {
-            const vendorPOs = purchaseOrders.filter((po: any) => po.vendorId === vendor.id);
-            
-            if (vendorPOs.length === 0) return;
-
-            // On-time delivery rate
-            const completedPOs = vendorPOs.filter((po: any) => po.status === 'received' || po.status === 'Fulfilled');
-            const onTimePOs = completedPOs.filter((po: any) => {
-                if (!po.expectedDate || !po.actualReceiveDate) return false;
-                return new Date(po.actualReceiveDate) <= new Date(po.expectedDate);
-            });
-            const onTimeRate = completedPOs.length > 0 ? (onTimePOs.length / completedPOs.length) * 100 : 0;
-
-            // Lead time accuracy
-            const leadTimes = completedPOs
-                .filter((po: any) => po.orderDate && po.actualReceiveDate)
-                .map((po: any) => {
-                    const ordered = new Date(po.orderDate);
-                    const received = new Date(po.actualReceiveDate!);
-                    return Math.floor((received.getTime() - ordered.getTime()) / (1000 * 60 * 60 * 24));
-                });
-            
-            const avgActualLeadTime = leadTimes.length > 0
-                ? leadTimes.reduce((sum, lt) => sum + lt, 0) / leadTimes.length
-                : 0;
-
-            // Reliability score (composite)
-            const reliabilityScore = Math.round(
-                onTimeRate * 0.6 + // 60% weight on on-time delivery
-                (avgActualLeadTime > 0 && vendor.leadTimeDays ? Math.min(100, (vendor.leadTimeDays / avgActualLeadTime) * 100) * 0.4 : 0)
-            );
-
-            performances.push({
-                vendorId: vendor.id,
-                vendorName: vendor.name,
-                onTimeDeliveryRate: onTimeRate,
-                averageLeadTimeActual: avgActualLeadTime,
-                averageLeadTimeEstimated: vendor.leadTimeDays || 0,
-                costStability: 0,
-                reliabilityScore,
-            });
-        });
-
-        return performances.sort((a, b) => b.reliabilityScore - a.reliabilityScore);
-    }, [vendors, purchaseOrders]);
+    const stockoutRisks = useMemo(() => computeStockoutRisks(inventory), [inventory]);
+    const vendorPerformances = useMemo(
+        () => computeVendorPerformance(vendors, purchaseOrders || []),
+        [vendors, purchaseOrders],
+    );
 
     const getCategoryConfig = useCallback(
         (category: string): CategoryConfig => {
@@ -581,35 +481,31 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 .map(item => item.vendorId?.trim())
                 .filter(id => id && id !== 'N/A')
         )].sort((a, b) => getVendorName(a).localeCompare(getVendorName(b)));
-        
-        // Filter categories based on visibility config
-        const categories = allCategories.filter(cat => {
-            const config = getCategoryConfig(cat);
-            return config.visible !== false; // Show by default if not configured
+
+        const categories = allCategories.filter(category => {
+            const config = getCategoryConfig(category);
+            return config.visible !== false;
         });
-        
-        // Filter vendors based on visibility config
+
         const vendors = allVendorIds.filter(vendorId => {
             const vendorName = getVendorName(vendorId);
             const config = getVendorConfig(vendorName);
-            return config.visible !== false; // Show by default if not configured
+            return config.visible !== false;
         });
-        
+
         const statuses = ['In Stock', 'Low Stock', 'Out of Stock'];
         return { categories, vendors, statuses };
-    }, [inventory, getVendorName, categoryConfig, vendorConfig]);
+    }, [inventory, getVendorName, categoryConfig, vendorConfig, getCategoryConfig, getVendorConfig]);
 
-    // Filter categories based on search term
     const filteredCategories = useMemo(() => {
         if (!categorySearchTerm) return filterOptions.categories;
         const term = categorySearchTerm.toLowerCase();
-        return filterOptions.categories.filter(cat => {
-            const label = categoryLabelMap.get(cat) || formatCategoryLabel(cat);
-            return label.toLowerCase().includes(term) || cat.toLowerCase().includes(term);
+        return filterOptions.categories.filter(category => {
+            const label = categoryLabelMap.get(category) || formatCategoryLabel(category);
+            return label.toLowerCase().includes(term) || category.toLowerCase().includes(term);
         });
     }, [filterOptions.categories, categorySearchTerm, categoryLabelMap]);
 
-    // Filter vendors based on search term
     const filteredVendors = useMemo(() => {
         if (!vendorSearchTerm) return filterOptions.vendors;
         const term = vendorSearchTerm.toLowerCase();
@@ -622,13 +518,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setSearchTerm(value);
+
         if (value.length > 1) {
-            const newSuggestions = inventory.filter(item =>
-                item.name.toLowerCase().includes(value.toLowerCase()) ||
-                item.sku.toLowerCase().includes(value.toLowerCase())
-            ).slice(0, 5);
+            const term = value.toLowerCase();
+            const newSuggestions = inventory
+                .filter(item => item.name.toLowerCase().includes(term) || item.sku.toLowerCase().includes(term))
+                .slice(0, 5);
             setSuggestions(newSuggestions);
-            setIsSuggestionsVisible(true);
+            setIsSuggestionsVisible(newSuggestions.length > 0);
         } else {
             setSuggestions([]);
             setIsSuggestionsVisible(false);
@@ -638,33 +535,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const handleSuggestionClick = (item: InventoryItem) => {
         setSearchTerm(item.name);
         setIsSuggestionsVisible(false);
-    };
-
-    const handleBomClick = (component: InventoryItem) => {
-        const componentSku = component.sku;
-        const bomDetails = getBomDetailsForComponent(componentSku, bomUsageMap);
-        const bomSkus = bomDetails.map(detail => detail.finishedSku);
-        if (bomSkus.length === 0) return;
-        try {
-            localStorage.setItem(
-                'bomComponentFilter',
-                JSON.stringify({
-                    componentSku,
-                    componentName: component.name,
-                    timestamp: Date.now(),
-                })
-            );
-        } catch (error) {
-            console.warn('[Inventory] Failed to persist BOM component filter', error);
-        }
-        
-        if (onNavigateToBom) {
-            if (bomSkus.length === 1) {
-                onNavigateToBom(bomSkus[0]);
-            } else {
-                onNavigateToBom(undefined);
-            }
-        }
     };
 
     const toggleCategory = (category: string) => {
@@ -907,7 +777,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const visibleColumns = columns.filter(col => col.visible);
 
     const itemTypeStyles: Record<ItemType, { label: string; className: string }> = {
-        retail: { label: 'Retail', className: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' },
+        retail: { label: 'Retail', className: 'bg-accent-500/20 text-accent-300 border border-accent-500/30' },
         component: { label: 'BOM Component', className: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
         hybrid: { label: 'Hybrid', className: 'bg-pink-500/20 text-pink-200 border border-pink-500/30' },
         standalone: { label: 'Standalone', className: 'bg-gray-600/40 text-gray-200 border border-gray-500/40' },
@@ -923,7 +793,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const formatDemandRate = (value?: number) => (value !== undefined ? value.toFixed(1) : '—');
 
     return (
-        <div>
+        <>
             <div className="space-y-6">
                 <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
@@ -935,7 +805,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             onClick={() => setIsPresetManagerOpen(true)}
                             className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-md transition-colors ${
                                 activePresetId 
-                                    ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                                    ? 'bg-accent-500 text-white hover:bg-accent-600' 
                                     : 'bg-gray-700 text-white hover:bg-gray-600'
                             }`}
                             title="Manage filter presets"
@@ -957,7 +827,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         </Button>
                         <Button
                             onClick={() => setIsImportExportModalOpen(true)}
-                            className="flex items-center gap-2 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+                            className="flex items-center gap-2 bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors"
                         >
                             <ArrowsUpDownIcon className="w-5 h-5" />
                             <span className="hidden sm:inline">Import / Export</span>
@@ -965,33 +835,10 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     </div>
                 </header>
 
-                {/* Tabs */}
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
-                    <div className="flex border-b border-gray-700">
-                        {[
-                            { id: 'inventory', label: 'Inventory', icon: PackageIcon },
-                            { id: 'intelligence', label: 'Stock Intelligence', icon: ChartBarIcon },
-                        ].map(tab => {
-                            const Icon = tab.icon;
-                            return (
-                                <Button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                    className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                                        activeTab === tab.id
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
-                                    }`}
-                                >
-                                    <Icon className="w-4 h-4" />
-                                    {tab.label}
-                                </Button>
-                            );
-                        })}
-                    </div>
-
-                        {/* Inventory Tab */}
-                        <div hidden={activeTab !== 'inventory'} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(320px,1fr)] items-start">
+                    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
+                    <div className="p-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                         <div className="relative lg:col-span-1">
                             <label htmlFor="search-inventory" className="block text-sm font-medium text-gray-300 mb-1">Search by name or SKU</label>
                             <div className="relative">
@@ -1007,12 +854,12 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 200)}
                                     onFocus={handleSearchChange}
                                     autoComplete="off"
-                                    className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                                    className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full"
                                 />
                                 {isSuggestionsVisible && suggestions.length > 0 && (
                                     <ul className="absolute z-50 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-auto shadow-lg">
                                         {suggestions.map(item => (
-                                            <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className="p-2 text-sm text-white hover:bg-indigo-600 cursor-pointer">
+                                            <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className="p-2 text-sm text-white hover:bg-accent-500 cursor-pointer">
                                                 {item.name} <span className="text-gray-400">({item.sku})</span>
                                             </li>
                                         ))}
@@ -1024,14 +871,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         {/* Multi-select Category Filter */}
                         <div ref={categoryDropdownRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-20'}`}>
                             <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-1">
-                                Categories {selectedCategories.size > 0 && <span className="text-indigo-400">({selectedCategories.size})</span>}
+                                Categories {selectedCategories.size > 0 && <span className="text-accent-400">({selectedCategories.size})</span>}
                             </label>
                             <Button
                                 onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-indigo-500/50' : ''}`}
+                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
                             >
                                 {selectedCategories.size > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-500 rounded-full"></span>
+                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent-500 rounded-full"></span>
                                 )}
                                 <span className="truncate">
                                     {selectedCategories.size === 0 
@@ -1047,7 +894,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2 bg-gray-900">
                                         <Button
                                             onClick={selectAllCategories}
-                                            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
+                                            className="text-xs text-accent-400 hover:text-accent-300 px-2 py-1 bg-gray-600 rounded"
                                         >
                                             Select All
                                         </Button>
@@ -1074,7 +921,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             value={categorySearchTerm}
                                             onChange={(e) => setCategorySearchTerm(e.target.value)}
                                             placeholder="Search categories..."
-                                            className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none border border-gray-600"
+                                            className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border border-gray-600"
                                             onClick={(e) => e.stopPropagation()}
                                         />
                                     </div>
@@ -1093,7 +940,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                             type="checkbox"
                                                             checked={selectedCategories.has(category)}
                                                             onChange={() => toggleCategory(category)}
-                                                            className="w-4 h-4 mr-2 rounded border-gray-500 text-indigo-600 focus:ring-indigo-500"
+                                                            className="w-4 h-4 mr-2 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
                                                         />
                                                         <span className="text-sm text-white" title={category}>{label}</span>
                                                     </label>
@@ -1108,14 +955,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         {/* Multi-select Vendor Filter */}
                         <div ref={vendorDropdownRef} className={`relative ${isVendorDropdownOpen ? 'z-40' : 'z-20'}`}>
                             <label htmlFor="filter-vendor" className="block text-sm font-medium text-gray-300 mb-1">
-                                Vendors {selectedVendors.size > 0 && <span className="text-indigo-400">({selectedVendors.size})</span>}
+                                Vendors {selectedVendors.size > 0 && <span className="text-accent-400">({selectedVendors.size})</span>}
                             </label>
                             <Button
                                 onClick={() => setIsVendorDropdownOpen(!isVendorDropdownOpen)}
-                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 text-left flex justify-between items-center relative ${selectedVendors.size > 0 ? 'ring-2 ring-indigo-500/50' : ''}`}
+                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative ${selectedVendors.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
                             >
                                 {selectedVendors.size > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-500 rounded-full"></span>
+                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent-500 rounded-full"></span>
                                 )}
                                 <span className="truncate">
                                     {selectedVendors.size === 0 
@@ -1131,7 +978,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2">
                                         <Button
                                             onClick={selectAllVendors}
-                                            className="text-xs text-indigo-400 hover:text-indigo-300 px-2 py-1 bg-gray-600 rounded"
+                                            className="text-xs text-accent-400 hover:text-accent-300 px-2 py-1 bg-gray-600 rounded"
                                         >
                                             Select All
                                         </Button>
@@ -1158,7 +1005,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             value={vendorSearchTerm}
                                             onChange={(e) => setVendorSearchTerm(e.target.value)}
                                             placeholder="Search vendors..."
-                                            className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none border border-gray-600"
+                                            className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border border-gray-600"
                                             onClick={(e) => e.stopPropagation()}
                                         />
                                     </div>
@@ -1175,7 +1022,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         type="checkbox"
                                                         checked={selectedVendors.has(vendorId)}
                                                         onChange={() => toggleVendor(vendorId)}
-                                                        className="w-4 h-4 mr-2 rounded border-gray-500 text-indigo-600 focus:ring-indigo-500"
+                                                        className="w-4 h-4 mr-2 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
                                                     />
                                                     <span className="text-sm text-white">{getVendorName(vendorId)}</span>
                                                 </label>
@@ -1188,7 +1035,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
                         <div>
                             <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-1">Stock Status</label>
-                            <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                            <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600">
                                 <option value="">All Statuses</option>
                                 {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
@@ -1196,13 +1043,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         
                         <div className="relative">
                             <label htmlFor="filter-bom" className="block text-sm font-medium text-gray-300 mb-1">BOM Status</label>
-                            <select id="filter-bom" value={bomFilter} onChange={(e) => setBomFilter(e.target.value)} className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600 ${bomFilter !== 'all' ? 'ring-2 ring-indigo-500/50' : ''}`}>
+                            <select id="filter-bom" value={bomFilter} onChange={(e) => setBomFilter(e.target.value)} className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 ${bomFilter !== 'all' ? 'ring-2 ring-accent-500/50' : ''}`}>
                                 <option value="all">All Items</option>
                                 <option value="with-bom">Has Constituents (BOM)</option>
                                 <option value="without-bom">No BOM</option>
                             </select>
                             {bomFilter !== 'all' && (
-                                <span className="absolute top-6 right-2 w-3 h-3 bg-indigo-500 rounded-full pointer-events-none"></span>
+                                <span className="absolute top-6 right-2 w-3 h-3 bg-accent-500 rounded-full pointer-events-none"></span>
                             )}
                         </div>
                     </div>
@@ -1228,16 +1075,18 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         {onQuickRequest && (
                             <Button
                                 onClick={() => onQuickRequest?.()}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500/80 hover:bg-accent-500 text-white text-sm font-semibold transition-colors"
                             >
                                 Ask About Product
                             </Button>
                         )}
                     </div>
+                    </div>
+                    </div>
                     <div className="relative z-0 bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto max-h-[calc(100vh-280px)]">
                     <table className="table-density w-full divide-y divide-gray-700 table-auto">
-                            <thead className="bg-gray-900/50">
+                            <thead className="bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
                                 <tr>
                                     {visibleColumns.map(col => {
                                         const widthClass = COLUMN_WIDTH_CLASSES[col.key] || '';
@@ -1282,7 +1131,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                 <div className="flex items-center gap-2">
                                                                     <Button
                                                                         onClick={() => onNavigateToProduct?.(item.sku)}
-                                                                        className="text-white font-bold hover:text-indigo-400 transition-colors cursor-pointer"
+                                                                        className="text-white font-bold hover:text-accent-400 transition-colors cursor-pointer"
                                                                         title="Click to view product details"
                                                                     >
                                                                         {item.sku}
@@ -1471,7 +1320,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                     </Button>
                                                     <Button
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'consumable' })}
-                                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white transition disabled:opacity-40"
+                                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-accent-500/80 hover:bg-accent-500 text-white transition disabled:opacity-40"
                                                         disabled={!onQuickRequest}
                                                     >
                                                         <PlusCircleIcon className="w-4 h-4" />
@@ -1494,281 +1343,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         </table>
                     </div>
                 </div>
-            {/* Stock Intelligence Tab */}
-            <div hidden={activeTab !== 'intelligence'} className="space-y-6">
-                    {/* Header */}
-                    <div>
-                        <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                            <ChartBarIcon className="w-6 h-6 text-indigo-400" />
-                            Stock Intelligence
-                        </h2>
-                        <p className="text-gray-400 mt-1">Advanced analytics and predictive insights for inventory management</p>
-                    </div>
-
-                    {/* Key Metrics Summary */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Critical Risks</p>
-                                    <p className="text-2xl font-bold text-red-400">{stockoutRisks.filter(r => r.riskLevel === 'critical').length}</p>
-                                </div>
-                                <AlertCircleIcon className="w-8 h-8 text-red-400/50" />
-                            </div>
-                        </div>
-
-                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">High Priority</p>
-                                    <p className="text-2xl font-bold text-orange-400">{stockoutRisks.filter(r => r.riskLevel === 'high').length}</p>
-                                </div>
-                                <AlertCircleIcon className="w-8 h-8 text-orange-400/50" />
-                            </div>
-                        </div>
-
-                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Trending Up</p>
-                                    <p className="text-2xl font-bold text-green-400">
-                                        {stockoutRisks.filter(r => r.trendDirection === 'up').length}
-                                    </p>
-                                </div>
-                                <TrendingUpIcon className="w-8 h-8 text-green-400/50" />
-                            </div>
-                        </div>
-
-                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm text-gray-400">Active Vendors</p>
-                                    <p className="text-2xl font-bold text-indigo-400">{vendorPerformances.length}</p>
-                                </div>
-                                <UsersIcon className="w-8 h-8 text-indigo-400/50" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Intelligence Tabs */}
-                    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
-                        <div className="flex border-b border-gray-700">
-                            {[
-                                { id: 'risks', label: 'Stockout Risks', icon: AlertCircleIcon },
-                                { id: 'forecasts', label: 'Forecast Accuracy', icon: ChartBarIcon },
-                                { id: 'trends', label: 'Trends & Patterns', icon: TrendingUpIcon },
-                                { id: 'vendors', label: 'Vendor Performance', icon: UsersIcon },
-                                { id: 'budget', label: 'Budget Analysis', icon: DollarSignIcon },
-                            ].map(tab => {
-                                const Icon = tab.icon;
-                                return (
-                                    <Button
-                                        key={tab.id}
-                                        onClick={() => {}}
-                                        className={`flex-1 px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                                            'risks' === tab.id
-                                                ? 'bg-indigo-600 text-white'
-                                                : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
-                                        }`}
-                                    >
-                                        <Icon className="w-4 h-4" />
-                                        {tab.label}
-                                    </Button>
-                                );
-                            })}
-                        </div>
-
-                        <div className="p-6">
-                            {/* Stockout Risks Tab */}
-                            {'risks' === 'risks' && (
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-semibold text-white">Stockout Risk Analysis</h3>
-                                    
-                                    {stockoutRisks.length === 0 ? (
-                                        <p className="text-gray-400 text-center py-8">No stockout risks detected</p>
-                                    ) : (
-                                        <div className="overflow-x-auto">
-                                            <table className="table-density min-w-full divide-y divide-gray-700">
-                                                <thead className="bg-gray-800/50">
-                                                    <tr>
-                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">SKU</th>
-                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Item</th>
-                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Days Left</th>
-                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Risk Level</th>
-                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Trend</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="bg-gray-800 divide-y divide-gray-700">
-                                                    {stockoutRisks.slice(0, 50).map(risk => (
-                                                        <tr key={risk.sku} className="hover:bg-gray-700/50">
-                                                            <td className="px-4 py-1 text-sm text-gray-300">{risk.sku}</td>
-                                                            <td className="px-4 py-1 text-sm text-white font-medium">{risk.name}</td>
-                                                            <td className="px-4 py-1 text-sm">
-                                                                <span className={`font-semibold ${
-                                                                    risk.daysUntilStockout <= 0 ? 'text-red-400' :
-                                                                    risk.daysUntilStockout < 7 ? 'text-orange-400' :
-                                                                    'text-gray-300'
-                                                                }`}>
-                                                                    {risk.daysUntilStockout <= 0 ? 'OUT OF STOCK' : `${risk.daysUntilStockout} days`}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-4 py-1">
-                                                                <RiskBadge level={risk.riskLevel} />
-                                                            </td>
-                                                            <td className="px-4 py-1">
-                                                                <TrendIndicator direction={risk.trendDirection} />
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Forecast Accuracy Tab */}
-                            {'risks' === 'forecasts' && (
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-semibold text-white">Forecast Accuracy Tracking</h3>
-                                    <p className="text-gray-400 text-sm">
-                                        Historical forecast performance to improve future predictions
-                                    </p>
-                                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                                        <p className="text-yellow-400 text-sm">
-                                            📊 Forecast accuracy tracking requires historical data. This feature will populate over time as forecasts are validated against actual sales.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Trends & Patterns Tab */}
-                            {'risks' === 'trends' && (
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-semibold text-white">Consumption Trends & Seasonal Patterns</h3>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                        <div className="bg-gray-800/30 rounded-lg p-4">
-                                            <h4 className="text-sm font-semibold text-gray-300 mb-3">Growing Demand (30d vs 90d)</h4>
-                                            <div className="space-y-2">
-                                                {inventory
-                                                    .filter(item => {
-                                                        const trend30 = (item.salesLast30Days || 0) / 30;
-                                                        const trend90 = (item.salesLast90Days || 0) / 90;
-                                                        return trend30 > trend90 * 1.15;
-                                                    })
-                                                    .slice(0, 10)
-                                                    .map(item => {
-                                                        const growth = ((((item.salesLast30Days || 0) / 30) / ((item.salesLast90Days || 0) / 90)) - 1) * 100;
-                                                        return (
-                                                            <div key={item.sku} className="flex justify-between items-center">
-                                                                <span className="text-sm text-gray-300">{item.name}</span>
-                                                                <span className="text-sm font-semibold text-green-400">+{growth.toFixed(0)}%</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-gray-800/30 rounded-lg p-4">
-                                            <h4 className="text-sm font-semibold text-gray-300 mb-3">Declining Demand (30d vs 90d)</h4>
-                                            <div className="space-y-2">
-                                                {inventory
-                                                    .filter(item => {
-                                                        const trend30 = (item.salesLast30Days || 0) / 30;
-                                                        const trend90 = (item.salesLast90Days || 0) / 90;
-                                                        return trend30 < trend90 * 0.85 && trend90 > 0;
-                                                    })
-                                                    .slice(0, 10)
-                                                    .map(item => {
-                                                        const decline = ((((item.salesLast30Days || 0) / 30) / ((item.salesLast90Days || 0) / 90)) - 1) * 100;
-                                                        return (
-                                                            <div key={item.sku} className="flex justify-between items-center">
-                                                                <span className="text-sm text-gray-300">{item.name}</span>
-                                                                <span className="text-sm font-semibold text-red-400">{decline.toFixed(0)}%</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Vendor Performance Tab */}
-                            {'risks' === 'vendors' && (
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-semibold text-white">Vendor Performance Scoring</h3>
-                                    
-                                    {vendorPerformances.length === 0 ? (
-                                        <p className="text-gray-400 text-center py-8">No vendor performance data available yet</p>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            {vendorPerformances.map(vp => (
-                                                <div key={vp.vendorId} className="bg-gray-800/30 rounded-lg p-4">
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        <div>
-                                                            <h4 className="text-lg font-semibold text-white">{vp.vendorName}</h4>
-                                                            <p className="text-sm text-gray-400">Reliability Score</p>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <div className="text-2xl font-bold text-indigo-400">{vp.reliabilityScore}</div>
-                                                            <div className="text-xs text-gray-400">/ 100</div>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div>
-                                                            <p className="text-xs text-gray-400">On-Time Delivery</p>
-                                                            <p className="text-lg font-semibold text-white">{vp.onTimeDeliveryRate.toFixed(0)}%</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-xs text-gray-400">Avg Lead Time</p>
-                                                            <p className="text-lg font-semibold text-white">
-                                                                {vp.averageLeadTimeActual.toFixed(0)} days
-                                                                {vp.averageLeadTimeEstimated > 0 && (
-                                                                    <span className="text-sm text-gray-400 ml-1">
-                                                                        (est: {vp.averageLeadTimeEstimated})
-                                                                    </span>
-                                                                )}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Reliability bar */}
-                                                    <div className="mt-3 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                                        <div
-                                                            className={`h-full rounded-full ${
-                                                                vp.reliabilityScore >= 80 ? 'bg-green-500' :
-                                                                vp.reliabilityScore >= 60 ? 'bg-yellow-500' :
-                                                                'bg-red-500'
-                                                            }`}
-                                                            style={{ width: `${vp.reliabilityScore}%` }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Budget Analysis Tab */}
-                            {'risks' === 'budget' && (
-                                <div className="space-y-4">
-                                    <h3 className="text-lg font-semibold text-white">Budget & Cost Analysis</h3>
-                                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                                        <p className="text-yellow-400 text-sm">
-                                            📊 Budget analysis feature coming soon. Will track spending trends, forecast future costs, and identify optimization opportunities.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <StockIntelligencePanel
+                    risks={stockoutRisks}
+                    vendors={vendorPerformances}
+                    className="w-full"
+                    description="Real-time runway and vendor health snapshot"
+                />
             </div>
         </div>
-    );
             {isColumnModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
@@ -1814,7 +1396,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         <div className="p-6 border-t border-gray-700">
                             <Button
                                 onClick={() => setIsColumnModalOpen(false)}
-                                className="w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+                                className="w-full bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors"
                             >
                                 Done
                             </Button>
@@ -1866,33 +1448,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 onDeletePreset={handleDeletePreset}
                 onApplyPreset={handleApplyPreset}
             />
-        </div>
+        </>
     );
 };
 
 export default Inventory;
-
-// Helper Components
-const RiskBadge: React.FC<{ level: 'critical' | 'high' | 'medium' | 'low' }> = ({ level }) => {
-    const config = {
-        critical: 'bg-red-500/20 text-red-400 border-red-500/30',
-        high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-        medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-        low: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    };
-
-    return (
-        <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${config[level]}`}>
-            {level.toUpperCase()}
-        </span>
-    );
-};
-
-const TrendIndicator: React.FC<{ direction: 'up' | 'down' | 'stable' }> = ({ direction }) => {
-    if (direction === 'up') {
-        return <span className="text-green-400 font-semibold">↗ Growing</span>;
-    } else if (direction === 'down') {
-        return <span className="text-red-400 font-semibold">↘ Declining</span>;
-    }
-    return <span className="text-gray-400">→ Stable</span>;
-};

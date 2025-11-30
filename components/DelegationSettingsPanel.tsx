@@ -149,7 +149,7 @@ const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <ArrowPathIcon className="w-6 h-6 text-indigo-400 animate-spin" />
+        <ArrowPathIcon className="w-6 h-6 text-accent-400 animate-spin" />
       </div>
     );
   }
@@ -158,7 +158,7 @@ const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
     <div className="space-y-4">
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-          <ShieldCheckIcon className="w-5 h-5 text-indigo-400" />
+          <ShieldCheckIcon className="w-5 h-5 text-accent-400" />
           Task Delegation Rules
         </h3>
         <p className="text-sm text-gray-400 mt-1">
@@ -221,7 +221,7 @@ const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
                             type="checkbox"
                             checked={(setting.canCreateRoles as User['role'][])?.includes(role) || false}
                             onChange={() => handleRoleToggle(taskType, 'canCreateRoles', role)}
-                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500"
+                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-accent-500 focus:ring-accent-500"
                           />
                           <span className="text-sm text-gray-300">{role}</span>
                         </label>
@@ -242,7 +242,7 @@ const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
                             type="checkbox"
                             checked={(setting.canAssignRoles as User['role'][])?.includes(role) || false}
                             onChange={() => handleRoleToggle(taskType, 'canAssignRoles', role)}
-                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500"
+                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-accent-500 focus:ring-accent-500"
                           />
                           <span className="text-sm text-gray-300">{role}</span>
                         </label>
@@ -263,7 +263,7 @@ const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
                             type="checkbox"
                             checked={(setting.assignableToRoles as User['role'][])?.includes(role) || false}
                             onChange={() => handleRoleToggle(taskType, 'assignableToRoles', role)}
-                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500"
+                            className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-accent-500 focus:ring-accent-500"
                           />
                           <span className="text-sm text-gray-300">{role}</span>
                         </label>
@@ -288,7 +288,7 @@ const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
                       type="checkbox"
                       checked={setting.notifyOnCreate || false}
                       onChange={() => handleToggle(taskType, 'notifyOnCreate')}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-accent-500 focus:ring-accent-500"
                     />
                     <span className="text-sm text-gray-300">Notify on Create</span>
                   </label>
@@ -297,7 +297,7 @@ const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
                       type="checkbox"
                       checked={setting.notifyOnAssign || false}
                       onChange={() => handleToggle(taskType, 'notifyOnAssign')}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-accent-500 focus:ring-accent-500"
                     />
                     <span className="text-sm text-gray-300">Notify on Assign</span>
                   </label>
@@ -306,7 +306,7 @@ const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
                       type="checkbox"
                       checked={setting.notifyOnComplete || false}
                       onChange={() => handleToggle(taskType, 'notifyOnComplete')}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-indigo-500 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-accent-500 focus:ring-accent-500"
                     />
                     <span className="text-sm text-gray-300">Notify on Complete</span>
                   </label>
@@ -317,7 +317,7 @@ const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
                   <Button
                     onClick={() => handleSave(taskType)}
                     disabled={isSaving}
-                    className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 text-white px-4 py-2 rounded-lg"
+                    className="bg-accent-500 hover:bg-accent-500 disabled:bg-gray-700 text-white px-4 py-2 rounded-lg"
                   >
                     {isSaving ? 'Saving...' : 'Save Changes'}
                   </Button>

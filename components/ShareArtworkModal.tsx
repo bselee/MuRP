@@ -345,10 +345,10 @@ ${currentUser?.email ?? 'RegVault Ops'}
     <Modal isOpen={isOpen} onClose={onClose} title="Email Artwork Package">
       {artworks.length > 0 ? (
         <div className="space-y-6">
-          <section className="rounded-2xl border border-white/5 bg-gradient-to-br from-gray-900/80 via-gray-900/60 to-slate-900/80 p-5 shadow-xl shadow-indigo-900/20">
+          <section className="rounded-2xl border border-white/5 bg-gradient-to-br from-gray-900/80 via-gray-900/60 to-slate-900/80 p-5 shadow-xl shadow-accent-800/20">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-indigo-300">Artwork Delivery</p>
+                <p className="text-[11px] uppercase tracking-[0.3em] text-accent-300">Artwork Delivery</p>
                 <h3 className="text-xl font-semibold text-white mt-1">Share {artworks.length} asset{artworks.length > 1 ? 's' : ''}</h3>
                 <p className="text-sm text-gray-400 mt-1">
                   {companySenderActive
@@ -360,7 +360,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
                 <span className={`px-3 py-1 rounded-full border ${companySenderActive ? 'border-emerald-400 text-emerald-300' : 'border-gray-600 text-gray-300'}`}>
                   {companySenderActive ? 'Managed Mailbox' : 'Personal Sender'}
                 </span>
-                <span className="px-3 py-1 rounded-full border border-indigo-400 text-indigo-200">
+                <span className="px-3 py-1 rounded-full border border-accent-400 text-accent-200">
                   {includeCompliance ? 'Compliance Attached' : 'Metadata Only'}
                 </span>
               </div>
@@ -400,7 +400,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
                 value={to}
                 onChange={e => setTo(e.target.value)}
                 aria-label="Artwork recipient emails"
-                className="w-full bg-gray-900/50 text-white rounded-md p-2 mt-1 text-sm border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full bg-gray-900/50 text-white rounded-md p-2 mt-1 text-sm border border-gray-700 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
                 placeholder="packaging@example.com"
               />
               {suggestedContacts && suggestedContacts.length > 0 && (
@@ -418,7 +418,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
                           <button
                             type="button"
                             onClick={() => handleSuggestionClick(contact.email, 'to')}
-                            className="rounded-full bg-indigo-600/80 px-2 py-0.5 text-[10px] text-white hover:bg-indigo-500"
+                            className="rounded-full bg-accent-500/80 px-2 py-0.5 text-[10px] text-white hover:bg-accent-500"
                           >
                             To
                           </button>
@@ -448,7 +448,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
                 value={cc}
                 onChange={e => setCc(e.target.value)}
                 aria-label="Artwork cc emails"
-                className="w-full bg-gray-900/50 text-white rounded-md p-2 mt-1 text-sm border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full bg-gray-900/50 text-white rounded-md p-2 mt-1 text-sm border border-gray-700 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
                 placeholder="optional"
               />
             </div>
@@ -459,7 +459,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
                 aria-label="Artwork email subject"
-                className="w-full bg-gray-900/50 text-white rounded-md p-2 mt-1 text-sm border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full bg-gray-900/50 text-white rounded-md p-2 mt-1 text-sm border border-gray-700 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
               />
             </div>
             <div>
@@ -469,7 +469,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
                 onChange={e => setMessage(e.target.value)}
                 rows={6}
                 aria-label="Artwork email body"
-                className="w-full bg-gray-900/50 text-white rounded-md p-3 mt-1 text-sm border border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full bg-gray-900/50 text-white rounded-md p-3 mt-1 text-sm border border-gray-700 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
               />
             </div>
           </div>
@@ -481,7 +481,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
                 type="checkbox"
                 checked={attachFile}
                 onChange={e => setAttachFile(e.target.checked)}
-                className="h-4 w-4 text-indigo-500 bg-gray-800 border-gray-700 rounded"
+                className="h-4 w-4 text-accent-500 bg-gray-800 border-gray-700 rounded"
               />
               <label htmlFor="attach-file" className="text-sm text-gray-300 flex items-center gap-2 cursor-pointer">
                 <DocumentTextIcon className="w-4 h-4 text-gray-400" />
@@ -494,7 +494,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
                 type="checkbox"
                 checked={includeCompliance}
                 onChange={e => setIncludeCompliance(e.target.checked)}
-                className="h-4 w-4 text-indigo-500 bg-gray-800 border-gray-700 rounded"
+                className="h-4 w-4 text-accent-500 bg-gray-800 border-gray-700 rounded"
               />
               <label htmlFor="include-compliance" className="text-sm text-gray-300 cursor-pointer">
                 Include compliance snapshot
@@ -547,7 +547,7 @@ ${currentUser?.email ?? 'RegVault Ops'}
               <Button
                 onClick={handleSend}
                 disabled={disableSend || isSending}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-md"
+                className="flex items-center gap-2 bg-accent-500 hover:bg-accent-600 disabled:bg-gray-600 text-white px-4 py-2 rounded-md"
               >
                 <SendIcon className="w-4 h-4" />
                 {isSending ? 'Sending...' : 'Send Email'}

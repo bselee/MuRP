@@ -99,7 +99,7 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
 
   if (status === 'processing') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-accent-900 to-slate-900">
         <div className="text-center">
           <LoadingOverlay />
           <p className="mt-4 text-gray-300">Completing authentication...</p>
@@ -110,7 +110,7 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-slate-900 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-accent-900 to-slate-900 p-4">
         <div className="max-w-md w-full rounded-3xl border border-red-500/30 bg-red-500/10 backdrop-blur-xl p-8 shadow-2xl">
           <div className="text-center">
             <div className="mx-auto w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
@@ -122,7 +122,7 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
             <p className="text-red-200 mb-6">{errorMessage}</p>
             <a
               href="/"
-              className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 transition-colors"
+              className="inline-block px-6 py-3 bg-accent-500 text-white rounded-xl hover:bg-accent-500 transition-colors"
             >
               Return to Login
             </a>
@@ -133,7 +133,7 @@ const AuthCallback: React.FC<AuthCallbackProps> = ({ addToast }) => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-slate-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-accent-900 to-slate-900 p-4">
       <div className="max-w-md w-full rounded-3xl border border-green-500/30 bg-green-500/10 backdrop-blur-xl p-8 shadow-2xl">
         <div className="text-center">
           <div className="mx-auto w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">

@@ -286,7 +286,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
         </ul>
         <Button
           onClick={() => setCurrentPage('Purchase Orders')}
-          className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 w-full text-right mt-2"
+          className="text-sm font-semibold text-accent-400 hover:text-accent-300 w-full text-right mt-2"
         >
           {requisitionCtaLabel}
         </Button>
@@ -339,8 +339,8 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
               ) : <p className="text-sm text-gray-500 mt-1">All artwork has documentation links.</p>}
           </div>
           <div className="flex justify-end gap-4 pt-2">
-              <Button onClick={() => setCurrentPage('BOMs')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">Manage BOMs &rarr;</Button>
-              <Button onClick={() => setCurrentPage('Artwork')} className="text-sm font-semibold text-indigo-400 hover:text-indigo-300">Manage Artwork &rarr;</Button>
+              <Button onClick={() => setCurrentPage('BOMs')} className="text-sm font-semibold text-accent-400 hover:text-accent-300">Manage BOMs &rarr;</Button>
+              <Button onClick={() => setCurrentPage('Artwork')} className="text-sm font-semibold text-accent-400 hover:text-accent-300">Manage Artwork &rarr;</Button>
           </div>
       </div>
   );
@@ -403,7 +403,11 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
-            <p className="text-gray-400 mt-1">Welcome back, here's your company-wide operations snapshot. <span className="text-xs text-gray-500">(Drag sections to reorder)</span></p>
+            <p className="text-gray-400 mt-1">Live data syncing quietly behind the scenes so you can focus on action.</p>
+            <p className="text-gray-400">
+              Welcome back, here's your company-wide operations snapshot.
+              <span className="ml-2 text-xs text-gray-500">(Drag sections to reorder)</span>
+            </p>
           </div>
           <Button
             onClick={() => setCurrentPage('Purchase Orders')}
@@ -429,7 +433,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                   activeTab === tab.id
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-accent-500 text-white'
                     : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
                 }`}
               >
@@ -486,7 +490,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
               {/* Header */}
               <div>
                 <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                  <ChartBarIcon className="w-6 h-6 text-indigo-400" />
+                  <ChartBarIcon className="w-6 h-6 text-accent-400" />
                   Stock Intelligence
                 </h2>
                 <p className="text-gray-400 mt-1">Advanced analytics and predictive insights for inventory management</p>
@@ -530,9 +534,9 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-400">Active Vendors</p>
-                      <p className="text-2xl font-bold text-indigo-400">{vendorPerformances.length}</p>
+                      <p className="text-2xl font-bold text-accent-400">{vendorPerformances.length}</p>
                     </div>
-                    <UsersIcon className="w-8 h-8 text-indigo-400/50" />
+                    <UsersIcon className="w-8 h-8 text-accent-400/50" />
                   </div>
                 </div>
               </div>
@@ -554,7 +558,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                         onClick={() => setActiveSubTab(tab.id as any)}
                         className={`flex-1 px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                           activeSubTab === tab.id
-                            ? 'bg-indigo-600 text-white'
+                            ? 'bg-accent-500 text-white'
                             : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
                         }`}
                       >
@@ -698,7 +702,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                                   <p className="text-sm text-gray-400">Reliability Score</p>
                                 </div>
                                 <div className="text-right">
-                                  <div className="text-2xl font-bold text-indigo-400">{vp.reliabilityScore}</div>
+                                  <div className="text-2xl font-bold text-accent-400">{vp.reliabilityScore}</div>
                                   <div className="text-xs text-gray-400">/ 100</div>
                                 </div>
                               </div>

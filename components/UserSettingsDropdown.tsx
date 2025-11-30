@@ -44,11 +44,14 @@ const UserSettingsDropdown: React.FC<UserSettingsDropdownProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        aria-label={`User settings for ${user.name}`}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
         title={isCollapsed ? user.name : undefined}
       >
         <img
           src={user.avatar}
-          alt="User Avatar"
+          alt={`${user.name}'s profile picture`}
           className="w-8 h-8 rounded-full shadow-lg ring-2 ring-blue-500"
         />
         {!isCollapsed && (

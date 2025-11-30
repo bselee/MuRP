@@ -66,7 +66,7 @@ const Header: React.FC<HeaderProps> = ({
                     </Button>
                 )}
                 {showLogo && (
-                    <h1 className={`text-4xl font-extrabold tracking-wide ${isLight ? 'text-amber-900' : 'text-indigo-200'}`}>MuRP</h1>
+                    <h1 className={`text-4xl font-extrabold tracking-wide ${isLight ? 'text-amber-900' : 'text-accent-200'}`}>MuRP</h1>
                 )}
             </div>
                 <div className="flex items-center space-x-4">

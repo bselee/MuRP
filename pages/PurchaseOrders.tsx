@@ -72,7 +72,7 @@ const PO_STATUS_STYLES: Record<string, { label: string; className: string }> = {
   draft: { label: 'Draft', className: 'bg-gray-600/20 text-gray-200 border-gray-500/40' },
   pending: { label: 'Pending', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
   committed: { label: 'Committed', className: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-  sent: { label: 'Sent', className: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
+  sent: { label: 'Sent', className: 'bg-accent-500/20 text-accent-300 border-accent-500/30' },
   confirmed: { label: 'Confirmed', className: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
   partial: { label: 'Partial', className: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
   received: { label: 'Received', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
@@ -94,7 +94,7 @@ const PoStatusBadge: React.FC<{ status: PurchaseOrder['status'] }> = ({ status }
 const TRACKING_STATUS_STYLES: Record<POTrackingStatus, { label: string; className: string }> = {
   awaiting_confirmation: { label: 'Awaiting Reply', className: 'bg-gray-600/20 text-gray-200 border-gray-500/30' },
   confirmed: { label: 'Confirmed', className: 'bg-blue-500/20 text-blue-200 border-blue-500/30' },
-  processing: { label: 'Processing', className: 'bg-indigo-500/20 text-indigo-200 border-indigo-500/30' },
+  processing: { label: 'Processing', className: 'bg-accent-500/20 text-accent-200 border-accent-500/30' },
   shipped: { label: 'Shipped', className: 'bg-cyan-500/20 text-cyan-200 border-cyan-500/30' },
   in_transit: { label: 'In Transit', className: 'bg-purple-500/20 text-purple-200 border-purple-500/30' },
   out_for_delivery: { label: 'Out for Delivery', className: 'bg-amber-500/20 text-amber-200 border-amber-500/30' },
@@ -552,10 +552,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 />
 
                 {canManagePOs && (
-                    <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-lg px-4 py-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between shadow-inner shadow-indigo-900/30">
+                    <div className="bg-accent-900/20 border border-accent-500/30 rounded-lg px-4 py-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between shadow-inner shadow-accent-800/30">
                         <div>
-                            <p className="text-sm font-semibold text-indigo-100">Follow-up Automation</p>
-                            <p className="text-xs text-indigo-100/80">
+                            <p className="text-sm font-semibold text-accent-100">Follow-up Automation</p>
+                            <p className="text-xs text-accent-100/80">
                                 Gmail nudges reuse the original thread so vendors reply with tracking only. Backlog:{' '}
                                 <span className="font-semibold">{followUpBacklog}</span> PO{followUpBacklog === 1 ? '' : 's'} waiting on details.
                             </p>
@@ -564,11 +564,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             <Button
                                 onClick={handleRunFollowUps}
                                 disabled={isRunningFollowUps}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 disabled:opacity-60"
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500 text-white text-sm font-semibold hover:bg-accent-500 disabled:opacity-60"
                             >
                                 {isRunningFollowUps ? 'Sending…' : 'Nudge Vendors'}
                             </Button>
-                            <span className="text-[11px] text-indigo-100/70">
+                            <span className="text-[11px] text-accent-100/70">
                                 Configure templates in Settings → Follow-up Rules.
                             </span>
                         </div>
@@ -618,9 +618,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="p-4 bg-gray-800">
                         <h2 className="text-xl font-semibold text-gray-300">External Purchase Orders</h2>
                     </div>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto max-h-[calc(100vh-320px)]">
                         <table className="table-density min-w-full divide-y divide-gray-700">
-                            <thead className="bg-gray-800">
+                            <thead className="bg-gray-800 sticky top-0 z-10">
                                 <tr>
                                     <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">PO Number</th>
                                     <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor</th>
@@ -635,7 +635,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             <tbody className="bg-gray-800 divide-y divide-gray-700">
                                 {sortedPurchaseOrders.map((po) => (
                                     <tr key={po.id} className="hover:bg-gray-700/50 transition-colors duration-200">
-                                        <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-indigo-400">{po.orderId || po.id}</td>
+                                        <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-accent-400">{po.orderId || po.id}</td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
                                             <div className="flex items-center gap-2">
                                                 <span>{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</span>
@@ -679,7 +679,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             {canManagePOs && (
                                                 <Button
                                                     onClick={() => handleEditTracking(po)}
-                                                    className="p-2 text-indigo-300 hover:text-indigo-100 transition-colors"
+                                                    className="p-2 text-accent-300 hover:text-accent-100 transition-colors"
                                                     title="Update Tracking"
                                                 >
                                                     <TruckIcon className="w-5 h-5" />
@@ -694,8 +694,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     Track
                                                 </Button>
                                             )}
-                                            <Button onClick={() => handleDownloadPdf(po)} title="Download PDF" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><FileTextIcon className="w-5 h-5"/></Button>
-                                            <Button onClick={() => handleSendEmailClick(po)} title="Send Email" className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"><MailIcon className="w-5 h-5"/></Button>
+                                            <Button onClick={() => handleDownloadPdf(po)} title="Download PDF" className="p-2 text-gray-400 hover:text-accent-400 transition-colors"><FileTextIcon className="w-5 h-5"/></Button>
+                                            <Button onClick={() => handleSendEmailClick(po)} title="Send Email" className="p-2 text-gray-400 hover:text-accent-400 transition-colors"><MailIcon className="w-5 h-5"/></Button>
                                             <Button
                                                 onClick={() => handleOpenComm(po)}
                                                 title="View Thread"
@@ -817,7 +817,7 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
             </div>
             <div className="text-xs text-gray-400">
                 Follow-up backlog:{' '}
-                <span className="font-semibold text-indigo-200">{followUpBacklog}</span>
+                <span className="font-semibold text-accent-200">{followUpBacklog}</span>
             </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -839,7 +839,7 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
                 <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-gray-200">Requests in Review</p>
                     <Button
-                        className="text-xs text-indigo-300 hover:text-indigo-100"
+                        className="text-xs text-accent-300 hover:text-accent-100"
                         onClick={onFocusRequisitions}
                     >
                         Open queue →
@@ -886,7 +886,7 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
                 <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-gray-200">Logistics Watchlist</p>
                     <Button
-                        className="text-xs text-indigo-300 hover:text-indigo-100"
+                        className="text-xs text-accent-300 hover:text-accent-100"
                         onClick={onFocusTracking}
                     >
                         Update tracking →
@@ -1001,7 +1001,7 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
             </div>
             <div className="overflow-x-auto">
                 <table className="table-density min-w-full divide-y divide-gray-700">
-                    <thead className="bg-gray-800/50">
+                    <thead className="bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10">
                         <tr>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Req ID</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Requester</th>
@@ -1018,12 +1018,12 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                     <tbody className="bg-gray-800 divide-y divide-gray-700">
                         {displayedRequisitions.map(req => (
                             <tr key={req.id}>
-                                <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-indigo-400">{req.id}</td>
+                                <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-accent-400">{req.id}</td>
                                 <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">
                                     {req.source === 'System' ? (
                                         <div className="flex items-center gap-2" title="Auto-generated by AI Planning Insights based on demand forecast">
-                                            <BotIcon className="w-4 h-4 text-indigo-400"/> 
-                                            <span className="text-indigo-300 font-semibold">AI Generated</span>
+                                            <BotIcon className="w-4 h-4 text-accent-400"/> 
+                                            <span className="text-accent-300 font-semibold">AI Generated</span>
                                         </div>
                                     ) : (req.requesterId ? (userMap.get(req.requesterId) || 'Unknown User') : 'Unassigned')}
                                 </td>
@@ -1056,7 +1056,7 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                                                 </span>
                                             )}
                                             {req.autoPo && (
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-indigo-500/20 text-indigo-200 border border-indigo-500/30">
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-accent-500/20 text-accent-200 border border-accent-500/30">
                                                     Auto PO
                                                 </span>
                                             )}
@@ -1102,7 +1102,7 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                                                             href={item.externalUrl}
                                                             target="_blank"
                                                             rel="noreferrer"
-                                                            className="text-xs text-indigo-300 hover:text-indigo-200 underline decoration-dotted"
+                                                            className="text-xs text-accent-300 hover:text-accent-200 underline decoration-dotted"
                                                         >
                                                             {item.externalSource === 'amazon' ? 'Amazon link' : 'External link'}
                                                         </a>

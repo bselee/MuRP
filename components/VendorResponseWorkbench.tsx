@@ -303,7 +303,7 @@ const VendorResponseWorkbench: React.FC<VendorResponseWorkbenchProps> = ({
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center h-32">
-              <ArrowPathIcon className="w-6 h-6 text-indigo-400 animate-spin" />
+              <ArrowPathIcon className="w-6 h-6 text-accent-400 animate-spin" />
             </div>
           ) : queue.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-gray-400">
@@ -316,7 +316,7 @@ const VendorResponseWorkbench: React.FC<VendorResponseWorkbenchProps> = ({
                 key={item.id}
                 onClick={() => handleSelectItem(item)}
                 className={`w-full text-left p-4 border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${
-                  selectedId === item.id ? 'bg-indigo-500/10 border-l-2 border-l-indigo-500' : ''
+                  selectedId === item.id ? 'bg-accent-500/10 border-l-2 border-l-accent-500' : ''
                 }`}
               >
                 <div className="flex items-start justify-between mb-1">
@@ -351,7 +351,7 @@ const VendorResponseWorkbench: React.FC<VendorResponseWorkbenchProps> = ({
           </div>
         ) : loadingDetails ? (
           <div className="flex-1 flex items-center justify-center">
-            <ArrowPathIcon className="w-8 h-8 text-indigo-400 animate-spin" />
+            <ArrowPathIcon className="w-8 h-8 text-accent-400 animate-spin" />
           </div>
         ) : selectedDetails ? (
           <>
@@ -368,7 +368,7 @@ const VendorResponseWorkbench: React.FC<VendorResponseWorkbenchProps> = ({
                   {renderCategoryBadge(selectedDetails.communication.responseCategory)}
                   <a
                     href={`/purchase-orders?po=${selectedDetails.communication.poId}`}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                    className="text-xs text-accent-400 hover:text-accent-300 flex items-center gap-1"
                   >
                     {selectedDetails.communication.poNumber}
                     <ArrowTopRightOnSquareIcon className="w-3 h-3" />
@@ -507,7 +507,7 @@ const VendorResponseWorkbench: React.FC<VendorResponseWorkbenchProps> = ({
                 <>
                   <Button
                     onClick={handleSaveEdits}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-lg"
+                    className="flex-1 bg-accent-500 hover:bg-accent-500 text-white py-2 rounded-lg"
                   >
                     Save Changes
                   </Button>

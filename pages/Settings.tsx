@@ -202,7 +202,7 @@ Thank you!`
 
           <CollapsibleSection
             title="Billing & Subscription"
-            icon={<SparklesIcon className="w-6 h-6 text-indigo-300" />}
+            icon={<SparklesIcon className="w-6 h-6 text-accent-300" />}
             isOpen={isBillingOpen}
             onToggle={() => setIsBillingOpen(!isBillingOpen)}
           >
@@ -213,7 +213,7 @@ Thank you!`
 
           <CollapsibleSection
             title="Role Permissions Overview"
-            icon={<ShieldCheckIcon className="w-6 h-6 text-indigo-300" />}
+            icon={<ShieldCheckIcon className="w-6 h-6 text-accent-300" />}
             isOpen={isRoleMatrixOpen}
             onToggle={() => setIsRoleMatrixOpen(!isRoleMatrixOpen)}
           >
@@ -240,7 +240,7 @@ Thank you!`
           {(isOpsAdmin || currentUser.role === 'Manager') && (
             <CollapsibleSection
               title="User Management"
-              icon={<UsersIcon className="w-6 h-6 text-indigo-400" />}
+              icon={<UsersIcon className="w-6 h-6 text-accent-400" />}
               isOpen={isUserManagementOpen}
               onToggle={() => setIsUserManagementOpen(!isUserManagementOpen)}
             >
@@ -345,13 +345,13 @@ Thank you!`
           {/* API Integrations & Documentation */}
           <CollapsibleSection
             title="API Integrations & Documentation"
-            icon={<ServerStackIcon className="w-6 h-6 text-indigo-400" />}
+            icon={<ServerStackIcon className="w-6 h-6 text-accent-400" />}
             isOpen={true}
           >
             <div className="space-y-8">
               {/* Hero Section */}
-              <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 rounded-xl border border-indigo-500/30 p-8 text-center">
-                <ServerStackIcon className="w-16 h-16 text-indigo-400 mx-auto mb-4" />
+              <div className="bg-gradient-to-r from-accent-500/20 to-purple-600/20 rounded-xl border border-accent-500/30 p-8 text-center">
+                <ServerStackIcon className="w-16 h-16 text-accent-400 mx-auto mb-4" />
                 <h3 className="text-2xl font-bold text-white mb-2">Connect Your Apps</h3>
                 <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
                   Seamlessly integrate MuRP with your existing tools. Generate secure API keys, connect external services,
@@ -359,7 +359,7 @@ Thank you!`
                 </p>
                 <div className="flex flex-wrap justify-center gap-4">
                   <div className="bg-gray-800/60 rounded-lg px-4 py-2">
-                    <span className="text-sm font-semibold text-indigo-300">🔐 Secure API Keys</span>
+                    <span className="text-sm font-semibold text-accent-300">🔐 Secure API Keys</span>
                   </div>
                   <div className="bg-gray-800/60 rounded-lg px-4 py-2">
                     <span className="text-sm font-semibold text-purple-300">📚 Full Documentation</span>
@@ -416,7 +416,7 @@ Thank you!`
                       <div className="flex gap-2">
                         <Button
                           onClick={onGenerateApiKey}
-                          className="text-sm text-indigo-400 hover:text-indigo-300"
+                          className="text-sm text-accent-400 hover:text-accent-300"
                         >
                           Regenerate
                         </Button>
@@ -436,7 +436,7 @@ Thank you!`
                     <p className="text-gray-500 mb-6">Generate a secure API key to allow external applications to connect to MuRP.</p>
                     <Button
                       onClick={onGenerateApiKey}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg"
+                      className="bg-accent-500 hover:bg-accent-600 text-white font-semibold py-3 px-6 rounded-lg"
                     >
                       Generate API Key
                     </Button>
@@ -544,7 +544,7 @@ Thank you!`
                           placeholder="e.g., Supplier Portal"
                           value={newConnection.name}
                           onChange={(e) => handleNewConnectionChange('name', e.target.value)}
-                          className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 text-sm text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 text-sm text-white focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
                         />
                       </div>
                       <div>
@@ -554,7 +554,7 @@ Thank you!`
                           placeholder="https://api.example.com"
                           value={newConnection.apiUrl}
                           onChange={(e) => handleNewConnectionChange('apiUrl', e.target.value)}
-                          className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 text-sm text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 text-sm text-white focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
                         />
                       </div>
                       <div>
@@ -564,7 +564,7 @@ Thank you!`
                           placeholder="Enter API key"
                           value={newConnection.apiKey}
                           onChange={(e) => handleNewConnectionChange('apiKey', e.target.value)}
-                          className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 text-sm text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          className="w-full bg-gray-700 border border-gray-600 rounded-md p-3 text-sm text-white focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
                         />
                       </div>
                     </div>
@@ -849,7 +849,7 @@ Thank you!`
                 <div className="flex flex-wrap gap-3">
                   <Button
                     onClick={() => setCurrentPage('Vendors')}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 text-white font-semibold hover:bg-indigo-500 transition-colors"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500 text-white font-semibold hover:bg-accent-500 transition-colors"
                   >
                     Manage Vendors
                   </Button>
@@ -894,7 +894,7 @@ Thank you!`
                   <button
                     type="button"
                     onClick={() => setIsTermsModalOpen(true)}
-                    className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-indigo-300 hover:text-indigo-100 underline decoration-dotted"
+                    className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-accent-300 hover:text-accent-100 underline decoration-dotted"
                   >
                     View Terms of Service &rarr;
                   </button>
@@ -904,7 +904,7 @@ Thank you!`
                     <h3 className="text-lg font-semibold text-white">Help Desk Workflow</h3>
                     <p className="text-sm text-gray-400 mt-1">
                       Send everything to{' '}
-                      <a href="mailto:support@murp.app" className="text-indigo-300 hover:text-indigo-100 underline decoration-dotted">
+                      <a href="mailto:support@murp.app" className="text-accent-300 hover:text-accent-100 underline decoration-dotted">
                         support@murp.app
                       </a>{' '}
                       with logs, impact, and stakeholders copied. We turn this into a tracked ticket internally.
@@ -915,7 +915,7 @@ Thank you!`
                   </div>
                   <Button
                     type="button"
-                    className="mt-4 inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                    className="mt-4 inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-600"
                     onClick={() => {
                       if (typeof window !== 'undefined') {
                         window.open(helpTicketMailto, '_blank');

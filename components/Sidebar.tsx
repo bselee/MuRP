@@ -36,6 +36,8 @@ const NavItem: React.FC<{
         <a
             href="#"
             onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}
+            aria-label={`Navigate to ${page}${notificationCount ? `, ${notificationCount} pending items` : ''}`}
+            aria-current={currentPage === page ? 'page' : undefined}
             className={`relative flex items-center p-2 text-base font-normal rounded-lg transition-colors duration-150 group border border-transparent ${
                 currentPage === page ? activeClass : inactiveClass
             } ${isCollapsed ? 'justify-center' : ''}`}
@@ -79,7 +81,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
         : 'text-gray-400 hover:bg-gray-700 hover:text-white';
     const toggleButtonClass = isLight
         ? 'bg-amber-200 hover:bg-amber-300 text-amber-900 border-amber-300'
-        : 'bg-gray-600 hover:bg-indigo-600 text-white border-gray-800';
+        : 'bg-gray-600 hover:bg-accent-500 text-white border-gray-800';
     const tooltipClass = isLight
         ? 'bg-amber-900 text-amber-50 border border-amber-200 shadow-lg shadow-amber-900/20'
         : 'bg-gray-900 text-white border border-gray-600 shadow-xl shadow-black/40';
@@ -156,19 +158,21 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
             <div className={`h-16 flex items-center border-b ${sectionBorder} relative ${isCollapsed ? 'justify-center' : 'px-4'}`}>
                 {!isCollapsed && (
                     <>
-                        <MuRPLogo className={`w-16 h-8 mr-3 ${isLight ? 'text-amber-700' : 'text-indigo-200'}`} />
+                        <MuRPLogo className={`w-16 h-8 mr-3 ${isLight ? 'text-amber-700' : 'text-accent-200'}`} />
                         <div className={`text-2xl font-bold tracking-tight whitespace-nowrap ${isLight ? 'text-amber-900' : 'text-white'}`}>MuRP</div>
                     </>
                 )}
                 <Button 
-                    onClick={onToggle} 
+                    onClick={onToggle}
+                    aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    aria-expanded={!isCollapsed}
                     className={`absolute -right-3 top-1/2 -translate-y-1/2 rounded-full p-1 border-2 transition-transform z-10 ${toggleButtonClass}`}
                 >
                     <ChevronDoubleLeftIcon className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : 'rotate-0'}`} />
                 </Button>
             </div>
-            <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
-                <ul>
+            <nav aria-label="Main navigation" className="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
+                <ul role="list">
                     {visibleNavItems.map(item => (
                         <NavItem
                             key={item.page}
@@ -195,10 +199,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
                 <a
                     href="#"
                     onClick={(e) => { e.preventDefault(); onOpenAiAssistant(); }}
+                    aria-label="Open MuRPBot AI Assistant"
                     className={`relative flex items-center space-x-2 p-2 text-base font-normal rounded-lg group ${aiLinkClass} ${isCollapsed ? 'justify-center' : ''}`}
                 >
                     <div className="flex items-center justify-center">
-                        <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 via-indigo-500 to-purple-600 shadow-lg">
+                        <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 via-accent-500 to-purple-600 shadow-lg">
                             <RobotIcon className="w-5 h-5 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.65)]" />
                         </div>
                     </div>

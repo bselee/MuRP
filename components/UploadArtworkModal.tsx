@@ -210,7 +210,7 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                         id="bom-select"
                         value={selectedBomId}
                         onChange={(e) => setSelectedBomId(e.target.value)}
-                        className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
                         disabled={uploading}
                     >
                         <option value="">Select a product...</option>
@@ -234,7 +234,7 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                             value={version}
                             onChange={e => setVersion(e.target.value)}
                             placeholder="1.0"
-                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
                             disabled={uploading}
                         />
                     </div>
@@ -248,7 +248,7 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                             value={notes}
                             onChange={e => setNotes(e.target.value)}
                             placeholder="e.g., Updated ingredients"
-                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
                             disabled={uploading}
                         />
                     </div>
@@ -262,7 +262,7 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                     <div
                         className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-colors cursor-pointer ${
                             isDragging
-                                ? 'border-indigo-500 bg-indigo-900/20'
+                                ? 'border-accent-500 bg-accent-900/20'
                                 : 'border-gray-600 hover:border-gray-500'
                         } ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         onDragOver={handleDragOver}
@@ -275,7 +275,7 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                                 <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                             <div className="text-sm text-gray-400">
-                                <p className="font-semibold text-indigo-400">Click to upload or drag and drop</p>
+                                <p className="font-semibold text-accent-400">Click to upload or drag and drop</p>
                                 <p className="text-xs mt-1">PDF or Adobe Illustrator (.ai) files</p>
                                 <p className="text-xs">Maximum file size: 50MB per file</p>
                                 <p className="text-xs font-semibold text-green-400 mt-2">✨ Supports multiple files!</p>
@@ -315,7 +315,7 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                         ) : fileStatus.status === 'uploading' || fileStatus.status === 'scanning' ? (
-                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-400 flex-shrink-0"></div>
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-accent-400 flex-shrink-0"></div>
                                         ) : (
                                             <svg className="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -360,7 +360,7 @@ const UploadArtworkModal: React.FC<UploadArtworkModalProps> = ({
                     <Button
                         onClick={handleSubmit}
                         disabled={!selectedBomId || files.length === 0 || uploading}
-                        className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+                        className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
                     >
                         {uploading ? 'Processing...' : 'Upload & Scan'}
                     </Button>

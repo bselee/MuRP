@@ -182,7 +182,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
               <select
                 value={formData.stateCode}
                 onChange={(e) => handleStateChange(e.target.value)}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
                 disabled={isEditing}
               >
                 <option value="">Select a state...</option>
@@ -204,7 +204,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                 value={formData.registrationNumber}
                 onChange={(e) => setFormData(prev => ({ ...prev, registrationNumber: e.target.value }))}
                 placeholder="e.g., CA-12345-2025"
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
               />
             </div>
 
@@ -217,7 +217,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                 type="date"
                 value={formData.registeredDate}
                 onChange={(e) => setFormData(prev => ({ ...prev, registeredDate: e.target.value }))}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
               />
             </div>
 
@@ -230,7 +230,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                 type="date"
                 value={formData.expirationDate}
                 onChange={(e) => setFormData(prev => ({ ...prev, expirationDate: e.target.value }))}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
               />
               {selectedGuidelines?.renewalMonth && (
                 <p className="text-xs text-gray-400 mt-1">
@@ -255,7 +255,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                     value={formData.registrationFee || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, registrationFee: parseFloat(e.target.value) || undefined }))}
                     placeholder="0.00"
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-8 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-8 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
                   />
                 </div>
               </div>
@@ -271,7 +271,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                     value={formData.renewalFee || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, renewalFee: parseFloat(e.target.value) || undefined }))}
                     placeholder="0.00"
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-8 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-8 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
                   />
                 </div>
               </div>
@@ -286,7 +286,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                 <Button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-600 rounded-lg hover:border-indigo-500 hover:bg-gray-700/30 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-600 rounded-lg hover:border-accent-500 hover:bg-gray-700/30 transition-colors"
                 >
                   <CloudUploadIcon className="w-5 h-5 text-gray-400" />
                   <span className="text-sm text-gray-400">
@@ -313,7 +313,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                 onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                 placeholder="Additional information about this registration..."
                 rows={4}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
               />
             </div>
           </div>
@@ -321,9 +321,9 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
 
         {/* State Guidelines (if state selected) */}
         {showGuidelines && selectedGuidelines && (
-          <div className="bg-indigo-900/20 border border-indigo-700 rounded-lg p-6">
+          <div className="bg-accent-900/20 border border-accent-600 rounded-lg p-6">
             <div className="flex items-start gap-3 mb-4">
-              <InformationCircleIcon className="w-6 h-6 text-indigo-400 flex-shrink-0 mt-0.5" />
+              <InformationCircleIcon className="w-6 h-6 text-accent-400 flex-shrink-0 mt-0.5" />
               <div>
                 <h4 className="text-lg font-semibold text-white mb-2">
                   {selectedGuidelines.stateName} Registration Requirements
@@ -336,7 +336,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                 </p>
 
                 <div className="mt-4">
-                  <p className="text-sm font-medium text-indigo-300 mb-2">Required Documents:</p>
+                  <p className="text-sm font-medium text-accent-300 mb-2">Required Documents:</p>
                   <ul className="list-disc list-inside space-y-1 text-sm text-gray-400">
                     {selectedGuidelines.requirements.map((req, idx) => (
                       <li key={idx}>{req}</li>
@@ -345,7 +345,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                 </div>
 
                 {selectedGuidelines.notes && (
-                  <div className="mt-4 pt-4 border-t border-indigo-800">
+                  <div className="mt-4 pt-4 border-t border-accent-700">
                     <p className="text-xs text-gray-400">{selectedGuidelines.notes}</p>
                   </div>
                 )}
@@ -355,7 +355,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
                     href={selectedGuidelines.agencyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-indigo-400 hover:text-indigo-300 underline"
+                    className="text-sm text-accent-400 hover:text-accent-300 underline"
                   >
                     Visit {selectedGuidelines.agency} Website →
                   </a>
@@ -375,7 +375,7 @@ const AddRegistrationModal: React.FC<AddRegistrationModalProps> = ({
           </Button>
           <Button
             onClick={handleSubmit}
-            className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+            className="px-6 py-2 bg-accent-500 hover:bg-accent-600 text-white font-semibold rounded-lg transition-colors"
           >
             {isEditing ? 'Update Registration' : 'Add Registration'}
           </Button>

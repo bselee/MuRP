@@ -210,7 +210,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
         {/* Header */}
         <header className="flex items-center justify-between p-4 bg-gray-900/50 border-b border-gray-700">
           <div className="flex items-center gap-3">
-            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 via-indigo-500 to-purple-600 shadow-[0_10px_25px_rgba(15,23,42,0.45)]">
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 via-accent-500 to-purple-600 shadow-[0_10px_25px_rgba(15,23,42,0.45)]">
               <MuRPBotIcon className="w-6 h-6 text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" />
               <div className="absolute inset-0 rounded-2xl border border-white/20" />
             </div>
@@ -229,7 +229,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
                 </p>
               )}
               {messagesRemaining === null && (
-                <p className="text-xs text-indigo-400">Unlimited messages</p>
+                <p className="text-xs text-accent-400">Unlimited messages</p>
               )}
             </div>
           </div>
@@ -243,7 +243,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
 
         {/* Upgrade Banner */}
         {showUpgradePrompt && userTier === 'basic' && (
-          <div className="bg-gradient-to-r from-indigo-900 to-purple-900 p-3 border-b border-indigo-500">
+          <div className="bg-gradient-to-r from-accent-800 to-purple-900 p-3 border-b border-accent-500">
             <p className="text-sm text-white font-medium">
               ✨ Running low on messages? Upgrade to Full AI for unlimited chat!
             </p>
@@ -251,7 +251,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
               onClick={() => {
                 /* Navigate to upgrade page */
               }}
-              className="mt-2 w-full py-1 px-3 bg-indigo-500 hover:bg-indigo-600 rounded text-white text-xs font-bold transition-colors"
+              className="mt-2 w-full py-1 px-3 bg-accent-500 hover:bg-accent-500 rounded text-white text-xs font-bold transition-colors"
             >
               Upgrade Now - $49/mo
             </Button>
@@ -266,7 +266,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
               className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.sender === 'bot' && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 via-indigo-500 to-purple-600 flex-shrink-0 flex items-center justify-center shadow-[0_6px_15px_rgba(79,70,229,0.45)]">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 via-accent-500 to-purple-600 flex-shrink-0 flex items-center justify-center shadow-[0_6px_15px_rgba(79,70,229,0.45)]">
                   <MuRPBotIcon className="w-4 h-4 text-white" />
                 </div>
               )}
@@ -359,7 +359,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
           ))}
           {isLoading && (
             <div className="flex gap-3 justify-start">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 via-indigo-500 to-purple-600 flex-shrink-0 flex items-center justify-center shadow-[0_6px_15px_rgba(79,70,229,0.45)]">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 via-accent-500 to-purple-600 flex-shrink-0 flex items-center justify-center shadow-[0_6px_15px_rgba(79,70,229,0.45)]">
                 <MuRPBotIcon className="w-4 h-4 text-white" />
               </div>
               <div className="max-w-xs md:max-w-md p-3 rounded-lg bg-gray-700 text-gray-200">
@@ -389,7 +389,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
             <Button
               onClick={handleSend}
               disabled={isLoading || !input.trim()}
-              className="p-3 text-gray-400 disabled:text-gray-600 enabled:hover:text-indigo-400 transition-colors"
+              className="p-3 text-gray-400 disabled:text-gray-600 enabled:hover:text-accent-400 transition-colors"
             >
               <SendIcon className="w-6 h-6" />
             </Button>
@@ -400,7 +400,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
             </p>
           )}
           {userTier === 'full_ai' && (
-            <p className="text-xs text-indigo-400 mt-2 text-center">
+            <p className="text-xs text-accent-400 mt-2 text-center">
               Powered by GPT-4o via Vercel AI Gateway 🚀
             </p>
           )}

@@ -191,7 +191,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     <div className="flex-shrink-0">
                         <Button
                             onClick={() => setIsImportExportModalOpen(true)}
-                            className="flex items-center gap-2 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors"
+                            className="flex items-center gap-2 bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors"
                         >
                             <ArrowsUpDownIcon className="w-5 h-5" />
                             <span>Import / Export</span>
@@ -216,12 +216,12 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 200)}
                                     onFocus={handleSearchChange}
                                     autoComplete="off"
-                                    className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+                                    className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full"
                                 />
                                 {isSuggestionsVisible && suggestions.length > 0 && (
                                     <ul className="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-auto shadow-lg">
                                         {suggestions.map(item => (
-                                            <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className="p-2 text-sm text-white hover:bg-indigo-600 cursor-pointer">
+                                            <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className="p-2 text-sm text-white hover:bg-accent-500 cursor-pointer">
                                                 {item.name} <span className="text-gray-400">({item.sku})</span>
                                             </li>
                                         ))}
@@ -231,21 +231,21 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         </div>
                         <div>
                             <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-1">Category</label>
-                            <select id="filter-category" value={filters.category} onChange={(e) => handleFilterChange('category', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                            <select id="filter-category" value={filters.category} onChange={(e) => handleFilterChange('category', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600">
                                 <option value="">All Categories</option>
                                 {filterOptions.categories.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
                         <div>
                             <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-1">Stock Status</label>
-                            <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                            <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600">
                                 <option value="">All Statuses</option>
                                 {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
                         <div>
                             <label htmlFor="filter-vendor" className="block text-sm font-medium text-gray-300 mb-1">Vendor</label>
-                            <select id="filter-vendor" value={filters.vendor} onChange={(e) => handleFilterChange('vendor', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 border-gray-600">
+                            <select id="filter-vendor" value={filters.vendor} onChange={(e) => handleFilterChange('vendor', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600">
                                 <option value="">All Vendors</option>
                                 {filterOptions.vendors.map(vId => <option key={vId} value={vId}>{vendorMap.get(vId) || vId}</option>)}
                             </select>
@@ -343,7 +343,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                 href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(primaryEmail)}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="text-xs text-indigo-400 hover:underline hover:text-indigo-300"
+                                                                className="text-xs text-accent-400 hover:underline hover:text-accent-300"
                                                                 title={`Compose email to ${primaryEmail} in Gmail`}
                                                             >
                                                                 {primaryEmail}

@@ -85,7 +85,7 @@ const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, appr
                 <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                     {posToGenerate.map(poData => (
                         <div key={poData.vendorId} className="bg-gray-900/50 p-4 rounded-lg">
-                            <h3 className="font-semibold text-lg text-indigo-300">{vendorMap.get(poData.vendorId) || 'Unknown Vendor'}</h3>
+                            <h3 className="font-semibold text-lg text-accent-300">{vendorMap.get(poData.vendorId) || 'Unknown Vendor'}</h3>
                             <p className="text-xs text-gray-400 mb-2">Sourced from {poData.requisitionIds.length} requisition(s)</p>
                             <ul className="divide-y divide-gray-700/50">
                                 {poData.items.map(item => (
@@ -101,7 +101,7 @@ const GeneratePoModal: React.FC<GeneratePoModalProps> = ({ isOpen, onClose, appr
 
                 <div className="flex justify-end pt-6 border-t border-gray-700">
                     <Button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</Button>
-                    <Button onClick={handleGenerate} disabled={posToGenerate.length === 0} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                    <Button onClick={handleGenerate} disabled={posToGenerate.length === 0} className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
                         Generate {posToGenerate.length} PO(s)
                     </Button>
                 </div>

@@ -363,7 +363,7 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
           <Button
             onClick={handleCreateCampaign}
             disabled={creatingCampaign || !newCampaign.name.trim()}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md bg-accent-500/80 hover:bg-accent-500 text-white disabled:opacity-60"
           >
             <PlusCircleIcon className="w-4 h-4" />
             New campaign
@@ -413,12 +413,12 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
               onClick={() => setActiveCampaignId(campaign.id)}
               className={`text-left rounded-2xl border ${
                 campaign.id === activeCampaignId
-                  ? 'border-indigo-500/60 bg-indigo-500/10'
+                  ? 'border-accent-500/60 bg-accent-500/10'
                   : 'border-white/5 bg-gray-900/40 hover:border-white/20'
               } p-4 transition-colors`}
             >
               <div className="flex items-center gap-2">
-                <MailIcon className="w-4 h-4 text-indigo-300" />
+                <MailIcon className="w-4 h-4 text-accent-300" />
                 <p className="text-sm font-semibold text-white">{campaign.name}</p>
               </div>
               <p className="mt-1 text-xs text-gray-400">
@@ -444,7 +444,7 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
                   type="checkbox"
                   checked={activeCampaign.active}
                   onChange={(event) => updateActiveCampaignField('active', event.target.checked)}
-                  className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                  className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                 />
                 Active
               </label>
@@ -478,7 +478,7 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
                 <Button
                   onClick={handleSaveCampaign}
                   disabled={savingCampaign}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-500"
                 >
                   <SaveIcon className="w-4 h-4" />
                   {savingCampaign ? 'Saving…' : 'Save campaign'}
@@ -494,7 +494,7 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
             <Button
               onClick={handleCreateRule}
               disabled={creatingStage}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600/80 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-60"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-accent-500/80 hover:bg-accent-500 text-white text-sm font-semibold disabled:opacity-60"
             >
               <PlusCircleIcon className="w-4 h-4" />
               Add stage
@@ -557,7 +557,7 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
                             ),
                           )
                         }
-                        className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                        className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                       />
                       Active
                     </label>
@@ -632,12 +632,12 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
                       className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Merge fields: <code className="text-indigo-300">{"{{po_number}}"}</code>,{' '}
-                      <code className="text-indigo-300">{"{{vendor_name}}"}</code>,{' '}
-                      <code className="text-indigo-300">{"{{order_date}}"}</code>,{' '}
-                      <code className="text-indigo-300">{"{{total_amount}}"}</code>,{' '}
-                      <code className="text-indigo-300">{"{{item_count}}"}</code>,{' '}
-                      <code className="text-indigo-300">{"{{order_age_days}}"}</code>
+                      Merge fields: <code className="text-accent-300">{"{{po_number}}"}</code>,{' '}
+                      <code className="text-accent-300">{"{{vendor_name}}"}</code>,{' '}
+                      <code className="text-accent-300">{"{{order_date}}"}</code>,{' '}
+                      <code className="text-accent-300">{"{{total_amount}}"}</code>,{' '}
+                      <code className="text-accent-300">{"{{item_count}}"}</code>,{' '}
+                      <code className="text-accent-300">{"{{order_age_days}}"}</code>
                     </p>
                   </div>
 
@@ -666,7 +666,7 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
               type="checkbox"
               checked={aiConfig.enabled}
               onChange={(event) => setAiConfig((prev) => ({ ...prev, enabled: event.target.checked }))}
-              className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+              className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
             />
             Autonomous parsing
           </label>
@@ -763,7 +763,7 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
           <Button
             onClick={handleSaveAiConfig}
             disabled={savingAiConfig || loadingAiConfig}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-600"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-600"
           >
             {savingAiConfig ? 'Saving…' : 'Save automation guardrails'}
           </Button>
@@ -771,7 +771,7 @@ const FollowUpSettingsPanel: React.FC<FollowUpSettingsPanelProps> = ({ addToast 
       </section>
 
       <div className="bg-gray-900/40 border border-dashed border-gray-700 rounded-lg p-4 text-sm text-gray-400 flex gap-3">
-        <BotIcon className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
+        <BotIcon className="w-5 h-5 text-accent-400 flex-shrink-0 mt-0.5" />
         <p>
           Follow-up emails include the PO summary and instructions so vendors keep everything inside a single Gmail
           thread. Use different campaigns for different business scenarios (tracking, invoices, receiving confirmations).

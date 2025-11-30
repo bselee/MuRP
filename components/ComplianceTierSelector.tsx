@@ -119,9 +119,9 @@ export const ComplianceTierSelector: React.FC<ComplianceTierSelectorProps> = ({ 
         </div>
 
         {/* Full AI Mode - $49/mo */}
-        <div className="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-lg border-2 border-indigo-500 p-6 hover:border-indigo-400 transition-all relative">
+        <div className="bg-gradient-to-br from-accent-800 to-purple-900 rounded-lg border-2 border-accent-500 p-6 hover:border-accent-400 transition-all relative">
           <div className="absolute top-4 right-4">
-            <span className="bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+            <span className="bg-accent-500 text-white text-xs font-bold px-3 py-1 rounded-full">
               RECOMMENDED
             </span>
           </div>
@@ -162,7 +162,7 @@ export const ComplianceTierSelector: React.FC<ComplianceTierSelectorProps> = ({ 
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all ${
               profile?.compliance_tier === 'full_ai'
                 ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                : 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg hover:shadow-xl'
+                : 'bg-accent-500 hover:bg-accent-500 text-white shadow-lg hover:shadow-xl'
             }`}
           >
             {profile?.compliance_tier === 'full_ai' ? 'Current Plan ✓' : 'Upgrade to Full AI'}

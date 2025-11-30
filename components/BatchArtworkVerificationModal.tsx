@@ -156,7 +156,7 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
               onDrop={handleDrop}
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                 isDragging
-                  ? 'border-indigo-400 bg-indigo-500/10'
+                  ? 'border-accent-400 bg-accent-500/10'
                   : 'border-gray-600 hover:border-gray-500'
               }`}
             >
@@ -177,7 +177,7 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
               />
               <Button
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-md transition-colors"
+                className="bg-accent-500 hover:bg-accent-600 text-white px-6 py-2 rounded-md transition-colors"
               >
                 Select Files
               </Button>
@@ -217,7 +217,7 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
                 </div>
                 <Button
                   onClick={handleVerifyBatch}
-                  className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-md transition-colors flex items-center justify-center gap-2"
+                  className="mt-4 w-full bg-accent-500 hover:bg-accent-600 text-white font-semibold py-3 px-6 rounded-md transition-colors flex items-center justify-center gap-2"
                 >
                   <SparklesIcon className="w-5 h-5" />
                   Verify All Artwork
@@ -230,7 +230,7 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
         {/* Processing Section */}
         {isProcessing && (
           <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-400 mx-auto mb-4"></div>
             <p className="text-white font-semibold mb-2">
               Verifying artwork...
             </p>
@@ -239,7 +239,7 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
             </p>
             <div className="w-full bg-gray-700 rounded-full h-2 mt-4 max-w-md mx-auto">
               <div
-                className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
+                className="bg-accent-500 h-2 rounded-full transition-all duration-300"
                 style={{
                   width: `${(progress.completed / progress.total) * 100}%`,
                 }}
@@ -264,7 +264,7 @@ const BatchArtworkVerificationModal: React.FC<BatchArtworkVerificationModalProps
                 </Button>
                 <Button
                   onClick={handleReset}
-                  className="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md transition-colors"
+                  className="text-sm bg-accent-500 hover:bg-accent-600 text-white px-4 py-2 rounded-md transition-colors"
                 >
                   New Batch
                 </Button>

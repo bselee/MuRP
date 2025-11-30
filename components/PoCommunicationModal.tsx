@@ -162,7 +162,7 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
               href={`https://mail.google.com/mail/u/0/#inbox/${entry.gmailMessageId}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-indigo-300 hover:text-indigo-100"
+              className="inline-flex items-center gap-1 text-accent-300 hover:text-accent-100"
             >
               <MailIcon className="w-4 h-4" /> Open in Gmail
             </a>
@@ -246,20 +246,20 @@ const PoCommunicationModal: React.FC<PoCommunicationModalProps> = ({
               type="text"
               value={replySubject}
               onChange={(e) => setReplySubject(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:ring-2 focus:ring-accent-500"
               placeholder="Subject"
             />
             <textarea
               value={replyBody}
               onChange={(e) => setReplyBody(e.target.value)}
               rows={5}
-              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:ring-2 focus:ring-indigo-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:ring-2 focus:ring-accent-500"
               placeholder="Type your reply…"
             />
             <Button
               onClick={handleSendReply}
               disabled={sending || !replyBody.trim()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition disabled:bg-gray-600 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500 hover:bg-accent-500 text-white font-semibold transition disabled:bg-gray-600 disabled:cursor-not-allowed"
             >
               <MailIcon className="w-5 h-5" />
               {sending ? 'Sending…' : 'Send Reply'}

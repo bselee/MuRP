@@ -121,7 +121,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
       {/* AI Provider Configuration */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
         <div className="flex items-center gap-4 mb-4">
-          <BotIcon className="w-8 h-8 text-indigo-400" />
+          <BotIcon className="w-8 h-8 text-accent-400" />
           <div>
             <h3 className="text-lg font-semibold text-white">AI Provider Configuration</h3>
             <p className="text-sm text-gray-400 mt-1">
@@ -144,7 +144,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
                     onClick={() => handleProviderChange(provider)}
                     className={`p-3 rounded-md border-2 transition-all ${
                       providerConfig.provider === provider
-                        ? 'border-indigo-600 bg-indigo-900/30'
+                        ? 'border-accent-500 bg-accent-900/30'
                         : 'border-gray-700 hover:border-gray-600'
                     }`}
                   >
@@ -163,7 +163,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
               <select
                 value={providerConfig.model}
                 onChange={(e) => setProviderConfig({ ...providerConfig, model: e.target.value })}
-                className="w-full md:w-1/2 bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                className="w-full md:w-1/2 bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 text-sm"
               >
                 {getAvailableModels(providerConfig.provider).map((model) => (
                   <option key={model} value={model}>
@@ -189,7 +189,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
                   setProviderConfig({ ...providerConfig, apiKey: e.target.value })
                 }
                 placeholder={`Enter your ${providerConfig.provider} API key`}
-                className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 text-sm"
               />
             </div>
 
@@ -206,7 +206,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
                     setProviderConfig({ ...providerConfig, endpoint: e.target.value })
                   }
                   placeholder="https://your-resource.openai.azure.com"
-                  className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                  className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 text-sm"
                 />
               </div>
             )}
@@ -233,7 +233,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
                       console.error('Auto-save temperature failed:', error);
                     }
                   }}
-                  className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                  className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 text-sm"
                 />
               </div>
               <div>
@@ -256,7 +256,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
                       console.error('Auto-save maxTokens failed:', error);
                     }
                   }}
-                  className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                  className="w-full bg-gray-700 border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 text-sm"
                 />
               </div>
             </div>
@@ -274,7 +274,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
                 <Button
                   onClick={handleSaveProvider}
                   disabled={!providerConfig.apiKey}
-                  className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
+                  className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:opacity-50 text-sm"
                 >
                   Save Provider & API Key
                 </Button>
@@ -304,7 +304,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
       {/* Legacy Gemini Model Configuration */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
         <div className="flex items-center gap-4">
-          <BotIcon className="w-8 h-8 text-indigo-400" />
+          <BotIcon className="w-8 h-8 text-accent-400" />
           <div>
             <h3 className="text-lg font-semibold text-white">
               Legacy: Gemini Model Selection
@@ -322,7 +322,7 @@ const AIProviderPanel: React.FC<AIProviderPanelProps> = ({
             id="ai-model-select"
             value={aiConfig.model}
             onChange={handleModelChange}
-            className="mt-1 block w-full md:w-1/2 bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full md:w-1/2 bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
           >
             <option value="gemini-2.5-flash">Gemini 2.5 Flash (Fast & Cost-Effective)</option>
             <option value="gemini-2.5-pro">Gemini 2.5 Pro (Advanced Reasoning)</option>

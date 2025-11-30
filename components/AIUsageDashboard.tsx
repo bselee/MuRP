@@ -177,7 +177,7 @@ export const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ userId, onUp
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-500"></div>
       </div>
     );
   }
@@ -222,8 +222,8 @@ export const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ userId, onUp
             Monitor your AI operations and costs
           </p>
         </div>
-        <div className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg">
-          <p className="text-xs text-indigo-200">Current Tier</p>
+        <div className="px-4 py-2 bg-gradient-to-r from-accent-500 to-purple-600 rounded-lg">
+          <p className="text-xs text-accent-200">Current Tier</p>
           <p className="text-white font-bold">
             {isBasicTier ? 'Basic (Free)' : 'Full AI ($49/mo)'}
           </p>
@@ -302,16 +302,16 @@ export const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ userId, onUp
 
       {/* Upgrade CTA for Basic Tier */}
       {isBasicTier && (
-        <div className="bg-gradient-to-r from-indigo-900 to-purple-900 border-2 border-indigo-500 rounded-lg p-6">
+        <div className="bg-gradient-to-r from-accent-800 to-purple-900 border-2 border-accent-500 rounded-lg p-6">
           <div className="flex items-start justify-between">
             <div>
               <h3 className="text-xl font-bold text-white mb-2">
                 ✨ Unlock Full AI Power
               </h3>
-              <p className="text-indigo-200 mb-4">
+              <p className="text-accent-200 mb-4">
                 Get unlimited chat, 50 compliance scans/month, vision OCR, and semantic search
               </p>
-              <ul className="space-y-2 text-sm text-indigo-100">
+              <ul className="space-y-2 text-sm text-accent-100">
                 <li>• Unlimited AI chat messages</li>
                 <li>• 50 compliance scans per month</li>
                 <li>• Advanced label vision OCR</li>
@@ -322,13 +322,13 @@ export const AIUsageDashboard: React.FC<AIUsageDashboardProps> = ({ userId, onUp
             </div>
             <div className="text-right">
               <p className="text-3xl font-bold text-white">$49</p>
-              <p className="text-indigo-200 text-sm">/month</p>
+              <p className="text-accent-200 text-sm">/month</p>
             </div>
           </div>
           {onUpgradeClick && (
             <Button
               onClick={onUpgradeClick}
-              className="mt-6 w-full py-3 px-6 bg-indigo-500 hover:bg-indigo-600 rounded-lg font-bold text-white transition-all shadow-lg hover:shadow-xl"
+              className="mt-6 w-full py-3 px-6 bg-accent-500 hover:bg-accent-500 rounded-lg font-bold text-white transition-all shadow-lg hover:shadow-xl"
             >
               Upgrade to Full AI →
             </Button>

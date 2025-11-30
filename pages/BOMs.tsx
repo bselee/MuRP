@@ -28,6 +28,7 @@ import BomDetailModal from '../components/BomDetailModal';
 import ComplianceDashboard from '../components/ComplianceDashboard';
 import ComplianceDetailModal from '../components/ComplianceDetailModal';
 import EnhancedBomCard from '../components/EnhancedBomCard';
+import StockIntelligencePanel from '@/components/StockIntelligencePanel';
 import SOPCreator from '../components/SOPCreator';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
 import ScheduleBuildModal from '../components/ScheduleBuildModal';
@@ -36,6 +37,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useSupabaseLabels, useSupabaseComplianceRecords } from '../hooks/useSupabaseData';
 import { supabase } from '../lib/supabase/client';
 import { fetchComponentSwapRules, mapComponentSwaps } from '../services/componentSwapService';
+import { computeStockoutRisks } from '@/lib/inventory/stockIntelligence';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability' | 'category' | 'velocity' | 'runway';
@@ -243,6 +245,12 @@ const BOMs: React.FC<BOMsProps> = ({
     return map;
   }, [inventory]);
 
+  const bomStockoutRisks = useMemo(() => {
+    const finishedSkuLookup = new Set(boms.map(bom => bom.finishedSku));
+    const finishedInventory = inventory.filter(item => finishedSkuLookup.has(item.sku));
+    return computeStockoutRisks(finishedInventory);
+  }, [boms, inventory]);
+
   // Calculate buildability for a BOM - CRITICAL MRP FUNCTION
   const calculateBuildability = (bom: BillOfMaterials) => {
     if (!bom.components || bom.components.length === 0) {
@@ -420,8 +428,8 @@ const BOMs: React.FC<BOMsProps> = ({
         const element = bomRefs.current.get(matchingBom.id);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          element.classList.add('ring-2', 'ring-indigo-500');
-          setTimeout(() => element.classList.remove('ring-2', 'ring-indigo-500'), 2000);
+          element.classList.add('ring-2', 'ring-accent-500');
+          setTimeout(() => element.classList.remove('ring-2', 'ring-accent-500'), 2000);
         }
       }, 150);
     }
@@ -697,7 +705,7 @@ const BOMs: React.FC<BOMsProps> = ({
         {canSubmitRequisitions && onQuickRequest && (
           <Button
             onClick={() => onQuickRequest()}
-            className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white shadow hover:bg-indigo-500 transition-colors"
+            className="inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 font-semibold text-white shadow hover:bg-accent-500 transition-colors"
           >
             Ask About Product
           </Button>
@@ -705,12 +713,12 @@ const BOMs: React.FC<BOMsProps> = ({
       </header>
 
       {componentFilter && (
-        <div className="bg-indigo-900/30 border border-indigo-700 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="bg-accent-900/30 border border-accent-600 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <p className="text-sm text-indigo-100 font-semibold">
+            <p className="text-sm text-accent-100 font-semibold">
               Filtering to BOMs using component {componentFilter.sku}
             </p>
-            <p className="text-xs text-indigo-200 mt-0.5">
+            <p className="text-xs text-accent-200 mt-0.5">
               {componentFilter.componentName ? `Only BOMs that consume ${componentFilter.componentName} are displayed.` : 'Only BOMs that consume this component are displayed.'}
             </p>
           </div>
@@ -723,7 +731,7 @@ const BOMs: React.FC<BOMsProps> = ({
                 console.warn('[BOMs] Unable to clear stored component filter', error);
               }
             }}
-            className="px-4 py-2 rounded-md bg-indigo-700/60 hover:bg-indigo-600 text-sm font-semibold text-white border border-indigo-500"
+            className="px-4 py-2 rounded-md bg-accent-600/60 hover:bg-accent-500 text-sm font-semibold text-white border border-accent-500"
           >
             Clear Filter
           </Button>
@@ -784,16 +792,18 @@ const BOMs: React.FC<BOMsProps> = ({
       {/* Compliance Dashboard - Coming Soon */}
       {/* TODO: Load all compliance records for dashboard view */}
 
-      {/* Search, Filters, and Controls */}
-      <CollapsibleSection
-        title="Search & Filters"
-        icon={<AdjustmentsHorizontalIcon className="w-6 h-6 text-blue-400" />}
-        variant="card"
-        isOpen={isFiltersOpen}
-        onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
-      >
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4">
-        <div className="flex flex-col lg:flex-row gap-4">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(320px,1fr)] items-start">
+        <div className="space-y-6">
+          {/* Search, Filters, and Controls */}
+          <CollapsibleSection
+            title="Search & Filters"
+            icon={<AdjustmentsHorizontalIcon className="w-6 h-6 text-blue-400" />}
+            variant="card"
+            isOpen={isFiltersOpen}
+            onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
+          >
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4">
+              <div className="flex flex-col lg:flex-row gap-4">
           {/* Search Bar */}
           <div className="flex-1">
             <div className="relative">
@@ -803,7 +813,7 @@ const BOMs: React.FC<BOMsProps> = ({
                 placeholder="Search by SKU, name, category, or component..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
               />
               {searchQuery && (
                 <Button
@@ -832,7 +842,7 @@ const BOMs: React.FC<BOMsProps> = ({
                   console.warn('[BOMs] Unable to store status filter', error);
                 }
               }}
-              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
             >
               <option value="all">All Status</option>
               <option value="buildable">✓ Buildable</option>
@@ -845,7 +855,7 @@ const BOMs: React.FC<BOMsProps> = ({
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
             >
               <option value="all">All Categories</option>
               {categories.map(cat => (
@@ -857,7 +867,7 @@ const BOMs: React.FC<BOMsProps> = ({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
             >
               <option value="name">Sort: Name</option>
               <option value="sku">Sort: SKU</option>
@@ -872,7 +882,7 @@ const BOMs: React.FC<BOMsProps> = ({
             <select
               value={groupBy}
               onChange={(e) => setGroupBy(e.target.value as GroupByOption)}
-              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
             >
               <option value="none">Group: None</option>
               <option value="category">Group: Category</option>
@@ -886,7 +896,7 @@ const BOMs: React.FC<BOMsProps> = ({
                 onClick={() => setViewMode('card')}
                 className={`px-3 py-2.5 transition-colors ${
                   viewMode === 'card'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-accent-500 text-white'
                     : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800'
                 }`}
                 title="Card view"
@@ -897,7 +907,7 @@ const BOMs: React.FC<BOMsProps> = ({
                 onClick={() => setViewMode('table')}
                 className={`px-3 py-2.5 transition-colors border-l border-gray-700 ${
                   viewMode === 'table'
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-accent-500 text-white'
                     : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800'
                 }`}
                 title="Table view"
@@ -906,7 +916,7 @@ const BOMs: React.FC<BOMsProps> = ({
               </Button>
             </div>
           </div>
-        </div>
+          </div>
 
         {/* Results Count */}
         <div className="mt-3 text-sm text-gray-400">
@@ -914,142 +924,152 @@ const BOMs: React.FC<BOMsProps> = ({
           {searchQuery && <span> matching "{searchQuery}"</span>}
         </div>
       </div>
-      </CollapsibleSection>
+          </CollapsibleSection>
 
-      {/* BOM Cards/Table */}
-      {processedBoms.length === 0 ? (
-        <div className="bg-gray-800/30 rounded-lg border-2 border-dashed border-gray-700 p-12 text-center">
-          <h3 className="text-lg font-medium text-gray-400 mb-2">No BOMs found</h3>
-          <p className="text-sm text-gray-500">
-            Try adjusting your search or filters
-          </p>
-        </div>
-      ) : viewMode === 'card' ? (
-        <div className="space-y-6">
-          {Object.entries(groupedBoms).map(([groupName, boms]) => (
-            <div key={groupName}>
-              {groupBy !== 'none' && (
-                <h3 className="text-lg font-semibold text-white mb-3 px-2 flex items-center gap-2">
-                  {groupName}
-                  <span className="text-sm font-normal text-gray-400">({boms.length})</span>
-                </h3>
-              )}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {boms.map(bom => (
-                  <BomCard key={bom.id} bom={bom} />
-                ))}
+          {/* BOM Cards/Table */}
+          {processedBoms.length === 0 ? (
+            <div className="bg-gray-800/30 rounded-lg border-2 border-dashed border-gray-700 p-12 text-center">
+              <h3 className="text-lg font-medium text-gray-400 mb-2">No BOMs found</h3>
+              <p className="text-sm text-gray-500">
+                Try adjusting your search or filters
+              </p>
+            </div>
+          ) : viewMode === 'card' ? (
+            <div className="space-y-6">
+              {Object.entries(groupedBoms).map(([groupName, boms]) => (
+                <div key={groupName}>
+                  {groupBy !== 'none' && (
+                    <h3 className="text-lg font-semibold text-white mb-3 px-2 flex items-center gap-2">
+                      {groupName}
+                      <span className="text-sm font-normal text-gray-400">({boms.length})</span>
+                    </h3>
+                  )}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {boms.map(bom => (
+                      <BomCard key={bom.id} bom={bom} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="table-density min-w-full divide-y divide-gray-700">
+                  <thead className="bg-gray-900">
+                    <tr>
+                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        SKU
+                      </th>
+                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Product Name
+                      </th>
+                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Category
+                      </th>
+                      <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Inventory
+                      </th>
+                      <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Can Build
+                      </th>
+                      <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Components
+                      </th>
+                      <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {processedBoms.map(bom => {
+                      const finishedStock = inventoryMap.get(bom.finishedSku)?.stock || 0;
+                      const buildability = calculateBuildability(bom);
+
+                      return (
+                        <tr
+                          key={bom.id}
+                          ref={(el) => {
+                            if (el) bomRefs.current.set(bom.id, el);
+                          }}
+                          className="hover:bg-gray-800/50 transition-colors"
+                        >
+                          <td className="px-6 py-1 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                onClick={() => onNavigateToInventory?.(bom.finishedSku)}
+                                className="text-sm font-bold font-mono text-white hover:text-accent-400 transition-colors underline decoration-dotted decoration-gray-600 hover:decoration-accent-400"
+                              >
+                                {bom.finishedSku}
+                              </Button>
+                              {renderRevisionPill(bom)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-1">
+                            <div className="text-sm text-white">{bom.name}</div>
+                          </td>
+                          <td className="px-6 py-1 whitespace-nowrap">
+                            <span className="px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 border border-gray-600">
+                              {bom.category || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-1 whitespace-nowrap text-right">
+                            <span className={`text-sm font-bold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {finishedStock}
+                            </span>
+                          </td>
+                          <td className="px-6 py-1 whitespace-nowrap text-right">
+                            <span className={`text-sm font-bold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {buildability.maxBuildable}
+                            </span>
+                          </td>
+                          <td className="px-6 py-1 whitespace-nowrap text-right">
+                            <span className="text-sm text-gray-300">{bom.components.length}</span>
+                          </td>
+                          <td className="px-6 py-1 whitespace-nowrap text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {isOpsApprover && bom.revisionStatus !== 'approved' && (
+                                <Button
+                                  onClick={() => onApproveRevision(bom)}
+                                  className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded transition-colors"
+                                >
+                                  Approve REV {bom.revisionNumber}
+                                </Button>
+                              )}
+                              <Button
+                                onClick={() => handleViewDetails(bom)}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                              >
+                                View
+                              </Button>
+                              {canEdit && (
+                                <Button
+                                  onClick={() => handleEditClick(bom)}
+                                  className="px-3 py-1.5 bg-accent-500 hover:bg-accent-600 text-white text-xs font-medium rounded transition-colors"
+                                >
+                                  Edit
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
-          ))}
+          )}
         </div>
-      ) : (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="table-density min-w-full divide-y divide-gray-700">
-              <thead className="bg-gray-900">
-                <tr>
-                  <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    SKU
-                  </th>
-                  <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Product Name
-                  </th>
-                  <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Inventory
-                  </th>
-                  <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Can Build
-                  </th>
-                  <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Components
-                  </th>
-                  <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {processedBoms.map(bom => {
-                  const finishedStock = inventoryMap.get(bom.finishedSku)?.stock || 0;
-                  const buildability = calculateBuildability(bom);
-
-                  return (
-                    <tr
-                      key={bom.id}
-                      ref={(el) => {
-                        if (el) bomRefs.current.set(bom.id, el);
-                      }}
-                      className="hover:bg-gray-800/50 transition-colors"
-                    >
-                      <td className="px-6 py-1 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            onClick={() => onNavigateToInventory?.(bom.finishedSku)}
-                            className="text-sm font-bold font-mono text-white hover:text-indigo-400 transition-colors underline decoration-dotted decoration-gray-600 hover:decoration-indigo-400"
-                          >
-                            {bom.finishedSku}
-                          </Button>
-                          {renderRevisionPill(bom)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-1">
-                        <div className="text-sm text-white">{bom.name}</div>
-                      </td>
-                      <td className="px-6 py-1 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 border border-gray-600">
-                          {bom.category || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-1 whitespace-nowrap text-right">
-                        <span className={`text-sm font-bold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {finishedStock}
-                        </span>
-                      </td>
-                      <td className="px-6 py-1 whitespace-nowrap text-right">
-                        <span className={`text-sm font-bold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {buildability.maxBuildable}
-                        </span>
-                      </td>
-                      <td className="px-6 py-1 whitespace-nowrap text-right">
-                        <span className="text-sm text-gray-300">{bom.components.length}</span>
-                      </td>
-                      <td className="px-6 py-1 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {isOpsApprover && bom.revisionStatus !== 'approved' && (
-                            <Button
-                              onClick={() => onApproveRevision(bom)}
-                              className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded transition-colors"
-                            >
-                              Approve REV {bom.revisionNumber}
-                            </Button>
-                          )}
-                          <Button
-                            onClick={() => handleViewDetails(bom)}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
-                          >
-                            View
-                          </Button>
-                          {canEdit && (
-                            <Button
-                              onClick={() => handleEditClick(bom)}
-                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition-colors"
-                            >
-                              Edit
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        <StockIntelligencePanel
+          risks={bomStockoutRisks}
+          className="w-full"
+          title="Production Intelligence"
+          description="Forecasted runway and build pressure on finished goods"
+          emptyLabel="No BOMs are trending toward stockouts."
+          maxRisks={6}
+        />
+      </div>
 
       {/* Edit Modal */}
       {isModalOpen && selectedBom && (

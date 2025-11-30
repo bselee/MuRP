@@ -53,7 +53,7 @@ const ScannedSources: React.FC<{ text: string }> = ({ text }) => {
             <h4 className="font-semibold text-gray-200 mb-2">Scanned Sources</h4>
             {websiteMatch && (
                 <p className="text-sm text-gray-400">
-                    Website: <a href={websiteMatch[1]} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">{websiteMatch[1]}</a>
+                    Website: <a href={websiteMatch[1]} target="_blank" rel="noopener noreferrer" className="text-accent-400 hover:underline">{websiteMatch[1]}</a>
                 </p>
             )}
             {contactMatch && (
@@ -162,7 +162,7 @@ const RegulatoryScanModal: React.FC<RegulatoryScanModalProps> = ({ isOpen, onClo
                             {Object.entries(statesByRegion).map(([region, states]) => (
                                 <CollapsibleRegion key={region} title={region}>
                                     {states.map(state => (
-                                        <Button key={state} onClick={() => handleScan(state)} className="text-left p-2 bg-indigo-600/80 hover:bg-indigo-700 rounded-md text-white font-semibold text-xs transition-colors">
+                                        <Button key={state} onClick={() => handleScan(state)} className="text-left p-2 bg-accent-500/80 hover:bg-accent-600 rounded-md text-white font-semibold text-xs transition-colors">
                                             {state}
                                         </Button>
                                     ))}
@@ -205,13 +205,13 @@ const RegulatoryScanModal: React.FC<RegulatoryScanModalProps> = ({ isOpen, onClo
                 {/* Right Panel: AI Response */}
                 <div className="md:col-span-2 bg-gray-900/50 p-4 rounded-lg border border-gray-700 min-h-[400px] flex flex-col">
                     <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                        <SparklesIcon className="w-5 h-5 text-indigo-400"/>
+                        <SparklesIcon className="w-5 h-5 text-accent-400"/>
                         AI Regulatory Co-Pilot
                     </h3>
                     
                     {isLoading && (
                         <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-400"></div>
+                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-400"></div>
                              <p className="mt-4">Scanning {scannedState} regulations...</p>
                         </div>
                     )}
@@ -256,7 +256,7 @@ const RegulatoryScanModal: React.FC<RegulatoryScanModalProps> = ({ isOpen, onClo
 
                            {isDrafting && (
                                 <div className="flex items-center justify-center text-gray-400 pt-4">
-                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-400"></div>
+                                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent-400"></div>
                                     <p className="ml-3">Generating draft...</p>
                                 </div>
                            )}

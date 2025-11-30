@@ -159,7 +159,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                     <select 
                         value={itemToAdd} 
                         onChange={e => setItemToAdd(e.target.value)}
-                        className="flex-1 bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="flex-1 bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
                     >
                         <option value="">Select an item to add...</option>
                         {inventory
@@ -167,7 +167,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                             .map(item => <option key={item.sku} value={item.sku}>{item.name}</option>
                         )}
                     </select>
-                    <Button onClick={handleAddItem} className="p-2 text-indigo-400 hover:text-indigo-300 disabled:text-gray-600 disabled:cursor-not-allowed" disabled={!itemToAdd}>
+                    <Button onClick={handleAddItem} className="p-2 text-accent-400 hover:text-accent-300 disabled:text-gray-600 disabled:cursor-not-allowed" disabled={!itemToAdd}>
                         <PlusCircleIcon className="w-7 h-7" />
                     </Button>
                 </div>
@@ -178,7 +178,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                         <select
                             value={requestType}
                             onChange={e => setRequestType(e.target.value as RequisitionRequestType)}
-                            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-indigo-500"
+                            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-accent-500"
                         >
                             <option value="consumable">Consumable / Component</option>
                             <option value="product_alert">Product Alert</option>
@@ -191,7 +191,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                         <select
                             value={priority}
                             onChange={e => setPriority(e.target.value as RequisitionPriority)}
-                            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-indigo-500"
+                            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-accent-500"
                         >
                             <option value="low">Low</option>
                             <option value="medium">Medium</option>
@@ -204,7 +204,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                             type="date"
                             value={needByDate}
                             onChange={e => setNeedByDate(e.target.value)}
-                            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-indigo-500"
+                            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-accent-500"
                         />
                     </div>
                 </div>
@@ -215,7 +215,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         rows={3}
-                        className="w-full bg-gray-700/80 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-indigo-500"
+                        className="w-full bg-gray-700/80 border border-gray-600 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-accent-500"
                         placeholder="Customer, job, urgency, or anything else we should know…"
                     />
                 </div>
@@ -226,7 +226,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                             type="checkbox"
                             checked={alertOnly}
                             onChange={(e) => setAlertOnly(e.target.checked)}
-                            className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                            className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                         />
                         Alert only (no PO yet)
                     </label>
@@ -235,7 +235,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                             type="checkbox"
                             checked={autoPo}
                             onChange={(e) => setAutoPo(e.target.checked)}
-                            className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                            className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                         />
                         Auto-create PO draft after approval
                     </label>
@@ -244,7 +244,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
                             type="checkbox"
                             checked={notifyRequester}
                             onChange={(e) => setNotifyRequester(e.target.checked)}
-                            className="rounded border-gray-600 bg-gray-800 text-indigo-500 focus:ring-indigo-500"
+                            className="rounded border-gray-600 bg-gray-800 text-accent-500 focus:ring-accent-500"
                         />
                         Notify me when someone picks this up
                     </label>
@@ -252,7 +252,7 @@ const CreateRequisitionModal: React.FC<CreateRequisitionModalProps> = ({ isOpen,
 
                 <div className="flex justify-end pt-6 border-t border-gray-700">
                     <Button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</Button>
-                    <Button onClick={handleSubmit} disabled={reqItems.length === 0} className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                    <Button onClick={handleSubmit} disabled={reqItems.length === 0} className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
                         Submit Requisition
                     </Button>
                 </div>

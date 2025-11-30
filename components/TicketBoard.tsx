@@ -65,7 +65,7 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
   feature: <PlusIcon className="w-3.5 h-3.5 text-emerald-400" />,
   maintenance: <ArrowPathIcon className="w-3.5 h-3.5 text-amber-400" />,
   follow_up: <ClockIcon className="w-3.5 h-3.5 text-cyan-400" />,
-  approval_request: <FlagIcon className="w-3.5 h-3.5 text-indigo-400" />,
+  approval_request: <FlagIcon className="w-3.5 h-3.5 text-accent-400" />,
   escalation: <ExclamationTriangleIcon className="w-3.5 h-3.5 text-orange-400" />,
 };
 
@@ -168,7 +168,7 @@ const TicketBoard: React.FC<TicketBoardProps> = ({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <ArrowPathIcon className="w-8 h-8 text-indigo-400 animate-spin" />
+        <ArrowPathIcon className="w-8 h-8 text-accent-400 animate-spin" />
       </div>
     );
   }
@@ -180,7 +180,7 @@ const TicketBoard: React.FC<TicketBoardProps> = ({
           key={column.id}
           className={`flex-shrink-0 w-80 rounded-xl border transition-all ${
             dragOverColumn === column.id
-              ? 'border-indigo-500 bg-indigo-500/5'
+              ? 'border-accent-500 bg-accent-500/5'
               : 'border-gray-700 bg-gray-900/30'
           }`}
           onDragOver={(e) => handleDragOver(e, column.id)}
@@ -228,7 +228,7 @@ const TicketBoard: React.FC<TicketBoardProps> = ({
                 <p>No tickets</p>
                 <button
                   onClick={() => onCreateTicket(column.id)}
-                  className="mt-2 text-indigo-400 hover:text-indigo-300 text-xs"
+                  className="mt-2 text-accent-400 hover:text-accent-300 text-xs"
                 >
                   + Add a ticket
                 </button>
@@ -347,7 +347,7 @@ const TicketCard: React.FC<TicketCardProps> = ({
           {/* Assignee Avatar */}
           {(assignee || directedTo) && (
             <div
-              className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-medium text-white"
+              className="w-6 h-6 rounded-full bg-accent-500 flex items-center justify-center text-[10px] font-medium text-white"
               title={assignee?.name || directedTo?.name || 'Assigned'}
             >
               {getUserInitials(assignee || directedTo)}

@@ -100,7 +100,7 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
           {onRescan && (
             <Button
               onClick={() => onRescan(artwork.id)}
-              className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+              className="mt-4 bg-accent-500 text-white px-4 py-2 rounded-md hover:bg-accent-600 transition-colors"
             >
               Retry Scan
             </Button>
@@ -117,7 +117,7 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Card */}
-      <div className="bg-gradient-to-r from-indigo-900/30 to-purple-900/30 rounded-lg p-6 border border-indigo-700">
+      <div className="bg-gradient-to-r from-accent-800/30 to-purple-800/30 rounded-lg p-6 border border-accent-600">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
@@ -127,7 +127,7 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
               </h2>
             </div>
             <p className="text-gray-300">
-              AI-extracted data from <span className="font-semibold text-indigo-300">{artwork.fileName}</span>
+              AI-extracted data from <span className="font-semibold text-accent-300">{artwork.fileName}</span>
             </p>
             {artwork.scanCompletedAt && (
               <p className="text-sm text-gray-400 mt-1">
@@ -163,7 +163,7 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
                   onVerify && (
                     <Button
                       onClick={() => onVerify(artwork.id)}
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors font-semibold"
+                      className="bg-accent-500 text-white px-4 py-2 rounded-md hover:bg-accent-600 transition-colors font-semibold"
                     >
                       Mark as Verified
                     </Button>
@@ -196,7 +196,7 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
                   type="text"
                   value={editedData?.productName || ''}
                   onChange={(e) => setEditedData({ ...editedData, productName: e.target.value })}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
                   placeholder="Product name..."
                 />
               ) : (
@@ -210,7 +210,7 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
                   type="text"
                   value={editedData?.netWeight || ''}
                   onChange={(e) => setEditedData({ ...editedData, netWeight: e.target.value })}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
                   placeholder="e.g., 50 lbs"
                 />
               ) : (
@@ -224,7 +224,7 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
                   type="text"
                   value={editedData?.barcode || ''}
                   onChange={(e) => setEditedData({ ...editedData, barcode: e.target.value })}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white font-mono focus:outline-none focus:ring-2 focus:ring-accent-500"
                   placeholder="e.g., 012345678901"
                 />
               ) : (
@@ -261,7 +261,7 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
               {isEditing && (
                 <Button
                   onClick={handleAddIngredient}
-                  className="flex items-center gap-2 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded transition-colors"
+                  className="flex items-center gap-2 px-3 py-1 bg-accent-500 hover:bg-accent-600 text-white text-sm rounded transition-colors"
                 >
                   <PlusCircleIcon className="w-4 h-4" />
                   Add Ingredient
@@ -270,7 +270,7 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
               {bom && !isEditing && (
                 <Button
                   onClick={() => setShowComparison(!showComparison)}
-                  className="text-sm text-indigo-400 hover:text-indigo-300"
+                  className="text-sm text-accent-400 hover:text-accent-300"
                 >
                   {showComparison ? 'Hide' : 'Show'} BOM Comparison
                 </Button>
@@ -290,21 +290,21 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
                       type="number"
                       value={ing.order}
                       onChange={(e) => handleIngredientChange(idx, 'order', parseInt(e.target.value) || 1)}
-                      className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent-500"
                       min="1"
                     />
                     <input
                       type="text"
                       value={ing.name}
                       onChange={(e) => handleIngredientChange(idx, 'name', e.target.value)}
-                      className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-1 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-1 text-white focus:outline-none focus:ring-2 focus:ring-accent-500"
                       placeholder="Ingredient name..."
                     />
                     <input
                       type="text"
                       value={ing.percentage || ''}
                       onChange={(e) => handleIngredientChange(idx, 'percentage', e.target.value)}
-                      className="w-24 bg-gray-700 border border-gray-600 rounded px-3 py-1 text-indigo-400 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-24 bg-gray-700 border border-gray-600 rounded px-3 py-1 text-accent-400 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-accent-500"
                       placeholder="%"
                     />
                     <Button
@@ -320,7 +320,7 @@ const LabelScanResults: React.FC<LabelScanResultsProps> = ({
                     <span className="text-gray-400 font-mono text-sm w-8">{ing.order}.</span>
                     <span className="text-white font-medium flex-1">{ing.name}</span>
                     {ing.percentage && (
-                      <span className="text-indigo-400 text-sm font-semibold w-24 text-right">{ing.percentage}</span>
+                      <span className="text-accent-400 text-sm font-semibold w-24 text-right">{ing.percentage}</span>
                     )}
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">

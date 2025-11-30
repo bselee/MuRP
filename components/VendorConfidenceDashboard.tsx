@@ -179,8 +179,8 @@ const VendorConfidenceDashboard: React.FC<VendorConfidenceDashboardProps> = ({ v
     <div className="space-y-6 rounded-xl border border-slate-800 bg-slate-950/30 p-6 shadow-xl shadow-black/30">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-sm uppercase tracking-wide text-indigo-200">
-            <ShieldCheckIcon className="h-4 w-4 text-indigo-300" />
+          <div className="flex items-center gap-2 text-sm uppercase tracking-wide text-accent-200">
+            <ShieldCheckIcon className="h-4 w-4 text-accent-300" />
             Vendor Confidence
           </div>
           <p className="text-2xl font-semibold text-white">Signal-driven vendor automation guardrails</p>
@@ -205,7 +205,7 @@ const VendorConfidenceDashboard: React.FC<VendorConfidenceDashboardProps> = ({ v
               onClick={() => setSelectedVendorId(profile.vendorId)}
               className={`flex flex-1 min-w-[220px] items-center justify-between rounded-xl border p-4 transition ${
                 profile.vendorId === selectedVendorId
-                  ? 'border-indigo-400 bg-indigo-500/10 text-white'
+                  ? 'border-accent-400 bg-accent-500/10 text-white'
                   : 'border-slate-800/70 bg-slate-900/60 text-slate-300 hover:border-slate-700'
               }`}
             >
@@ -297,7 +297,7 @@ const VendorConfidenceDashboard: React.FC<VendorConfidenceDashboardProps> = ({ v
                 <ul className="mt-3 space-y-2 text-sm text-slate-400">
                   {strategy.reminders.map(reminder => (
                     <li key={reminder} className="flex items-center gap-2">
-                      <CheckCircleIcon className="h-4 w-4 text-indigo-300" />
+                      <CheckCircleIcon className="h-4 w-4 text-accent-300" />
                       {reminder}
                     </li>
                   ))}
@@ -327,7 +327,7 @@ const VendorConfidenceDashboard: React.FC<VendorConfidenceDashboardProps> = ({ v
                   variant="ghost"
                   size="sm"
                   onClick={() => setSelectedVendorId(selectedVendorId)}
-                  className="text-xs text-indigo-300"
+                  className="text-xs text-accent-300"
                 >
                   Refresh
                 </Button>
@@ -357,7 +357,7 @@ const VendorConfidenceDashboard: React.FC<VendorConfidenceDashboardProps> = ({ v
             </div>
             <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/40 p-4 lg:col-span-2">
               <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                <InformationCircleIcon className="h-4 w-4 text-indigo-300" />
+                <InformationCircleIcon className="h-4 w-4 text-accent-300" />
                 Recommendations
               </div>
               <ul className="space-y-3 text-sm text-slate-200">
@@ -450,7 +450,7 @@ const FactorCard: React.FC<{ label: string; value: number; weight: number }> = (
       <p className="text-xl font-semibold text-white">{normalized.toFixed(1)}</p>
       <div className="mt-2 h-2 rounded-full bg-slate-800">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-emerald-400"
+          className="h-full rounded-full bg-gradient-to-r from-accent-400 to-emerald-400"
           style={{ width: `${(normalized / 10) * 100}%` }}
         />
       </div>

@@ -4,6 +4,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import AiAssistant from './components/AiAssistant';
 import Sidebar from './components/Sidebar';
+import MobileNav from './components/MobileNav';
 import Header from './components/Header';
 import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
@@ -1871,7 +1872,7 @@ const AppShell: React.FC = () => {
         
         <main
           data-surface="workspace"
-          className={`workspace-surface flex-1 overflow-x-hidden overflow-y-auto ${mainBackground} p-4 sm:p-6 lg:p-8 transition-colors duration-300`}
+          className={`workspace-surface flex-1 overflow-x-hidden overflow-y-auto ${mainBackground} p-4 sm:p-6 lg:p-8 pb-20 md:pb-8 transition-colors duration-300`}
         >
           <ShipmentAlertBanner
             onReviewShipment={(poId) => {
@@ -1892,6 +1893,12 @@ const AppShell: React.FC = () => {
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Mobile bottom navigation - hidden on md+ screens */}
+      <MobileNav
+        currentPage={currentPage}
+        setCurrentPage={navigateToPage}
+      />
 
       <div className="fixed top-20 right-4 z-[60] w-full max-w-sm">
         {toasts.map(toast => (

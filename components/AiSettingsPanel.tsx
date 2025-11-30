@@ -66,7 +66,7 @@ const AiSettingsPanel: React.FC<AiSettingsPanelProps> = ({ aiSettings, onUpdateS
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
       <div className="flex items-center gap-4 mb-6">
-        <BotIcon className="w-8 h-8 text-indigo-400" />
+        <BotIcon className="w-8 h-8 text-accent-400" />
         <div>
           <h3 className="text-lg font-semibold text-white">AI Assistant Settings</h3>
           <p className="text-sm text-gray-400 mt-1">
@@ -91,7 +91,7 @@ const AiSettingsPanel: React.FC<AiSettingsPanelProps> = ({ aiSettings, onUpdateS
       {/* Usage Dashboard */}
       <div className="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
         <div className="flex items-center gap-2 mb-3">
-          <ChartBarIcon className="w-5 h-5 text-indigo-400" />
+          <ChartBarIcon className="w-5 h-5 text-accent-400" />
           <h4 className="text-md font-semibold text-gray-200">Monthly Usage</h4>
         </div>
 
@@ -139,7 +139,7 @@ const AiSettingsPanel: React.FC<AiSettingsPanelProps> = ({ aiSettings, onUpdateS
       {/* Model Configuration */}
       <div className="mb-6 pt-4 border-t border-gray-700/50">
         <div className="flex items-center gap-2 mb-3">
-          <CogIcon className="w-5 h-5 text-indigo-400" />
+          <CogIcon className="w-5 h-5 text-accent-400" />
           <h4 className="text-md font-semibold text-gray-200">Model Configuration</h4>
         </div>
 
@@ -150,7 +150,7 @@ const AiSettingsPanel: React.FC<AiSettingsPanelProps> = ({ aiSettings, onUpdateS
           id="ai-settings-model"
           value={aiSettings.model}
           onChange={handleModelChange}
-          className="w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+          className="w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 text-sm"
         >
           <option value="gemini-2.5-flash">Gemini 2.5 Flash (Fast, Cost-Effective)</option>
           <option value="gemini-1.5-flash">Gemini 1.5 Flash (Legacy, Fast)</option>
@@ -172,7 +172,7 @@ const AiSettingsPanel: React.FC<AiSettingsPanelProps> = ({ aiSettings, onUpdateS
             <label htmlFor="max-context-items" className="text-sm font-medium text-gray-300">
               Max Context Items
             </label>
-            <span className="text-sm font-bold text-indigo-400">{aiSettings.maxContextItems}</span>
+            <span className="text-sm font-bold text-accent-400">{aiSettings.maxContextItems}</span>
           </div>
           <input
             type="range"
@@ -182,7 +182,7 @@ const AiSettingsPanel: React.FC<AiSettingsPanelProps> = ({ aiSettings, onUpdateS
             step="10"
             value={aiSettings.maxContextItems}
             onChange={handleMaxItemsChange}
-            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-accent-500"
           />
           <p className="text-xs text-gray-500 mt-1">
             Limits the number of inventory items, BOMs, etc. sent to AI per query. Lower values reduce token usage.
@@ -227,7 +227,7 @@ const AiSettingsPanel: React.FC<AiSettingsPanelProps> = ({ aiSettings, onUpdateS
               onChange={handleSmartFilteringToggle}
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-500"></div>
           </label>
         </div>
       </div>
@@ -238,7 +238,7 @@ const AiSettingsPanel: React.FC<AiSettingsPanelProps> = ({ aiSettings, onUpdateS
           href="https://ai.google.dev/pricing"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+          className="text-sm text-accent-400 hover:text-accent-300 flex items-center gap-1"
         >
           View Google AI Pricing →
         </a>
@@ -246,7 +246,7 @@ const AiSettingsPanel: React.FC<AiSettingsPanelProps> = ({ aiSettings, onUpdateS
           href="https://aistudio.google.com/app/apikey"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+          className="text-sm text-accent-400 hover:text-accent-300 flex items-center gap-1"
         >
           Manage API Keys (Google AI Studio) →
         </a>

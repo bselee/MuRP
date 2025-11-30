@@ -190,7 +190,7 @@ const ProductionTimelineView: React.FC<ProductionTimelineViewProps> = ({ buildOr
                   order.status === 'Completed'
                     ? 'bg-emerald-500/30 border-emerald-400/50'
                     : order.status === 'In Progress'
-                      ? 'bg-indigo-500/30 border-indigo-400/50'
+                      ? 'bg-accent-500/30 border-accent-400/50'
                       : 'bg-amber-500/25 border-amber-400/40'
                 }`}
                 style={{ left: `${order.offset}%`, width: `${order.width}%`, minWidth: '150px' }}

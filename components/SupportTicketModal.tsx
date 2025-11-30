@@ -78,7 +78,7 @@ export const SupportTicketModal: React.FC<SupportTicketModalProps> = ({
           <select
             value={form.category}
             onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))}
-            className="mt-1 w-full bg-gray-900/60 border border-gray-700 rounded-md p-2 text-sm text-white focus:ring-1 focus:ring-indigo-400"
+            className="mt-1 w-full bg-gray-900/60 border border-gray-700 rounded-md p-2 text-sm text-white focus:ring-1 focus:ring-accent-400"
           >
             <option value="access_request">Folder / DAM Access</option>
             <option value="tier_upgrade">Need DAM Upgrade</option>
@@ -93,7 +93,7 @@ export const SupportTicketModal: React.FC<SupportTicketModalProps> = ({
               type="button"
               onClick={() => setForm(prev => ({ ...prev, urgency: level }))}
               className={`flex-1 rounded-md border px-3 py-2 text-sm ${
-                form.urgency === level ? 'bg-indigo-600 text-white border-indigo-500' : 'border-gray-700 text-gray-300'
+                form.urgency === level ? 'bg-accent-500 text-white border-accent-500' : 'border-gray-700 text-gray-300'
               }`}
             >
               {level === 'high' ? 'Urgent' : level === 'normal' ? 'Standard' : 'Chill'}
@@ -107,7 +107,7 @@ export const SupportTicketModal: React.FC<SupportTicketModalProps> = ({
             onChange={e => setForm(prev => ({ ...prev, message: e.target.value }))}
             rows={4}
             placeholder="Example: Need access to the Compost folder & BOM edits before Friday."
-            className="mt-1 w-full bg-gray-900/60 border border-gray-700 rounded-md p-2 text-sm text-white focus:ring-1 focus:ring-indigo-400"
+            className="mt-1 w-full bg-gray-900/60 border border-gray-700 rounded-md p-2 text-sm text-white focus:ring-1 focus:ring-accent-400"
           />
         </div>
         <div className="flex justify-end gap-3">

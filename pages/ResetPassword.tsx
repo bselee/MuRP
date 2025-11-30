@@ -59,7 +59,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ addToast }) => {
 
   if (isValidSession === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-accent-900 to-slate-900">
         <p className="text-gray-300">Checking session...</p>
       </div>
     );
@@ -67,7 +67,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ addToast }) => {
 
   if (isValidSession === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-slate-900 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-accent-900 to-slate-900 p-4">
         <div className="max-w-md w-full rounded-3xl border border-red-500/30 bg-red-500/10 backdrop-blur-xl p-8 shadow-2xl">
           <div className="text-center">
             <div className="mx-auto w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
@@ -81,7 +81,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ addToast }) => {
             </p>
             <a
               href="/"
-              className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 transition-colors"
+              className="inline-block px-6 py-3 bg-accent-500 text-white rounded-xl hover:bg-accent-500 transition-colors"
             >
               Return to Login
             </a>
@@ -92,11 +92,11 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ addToast }) => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-indigo-950 to-slate-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-accent-900 to-slate-900 p-4">
       <div className="w-full max-w-md">
         <div className="rounded-3xl border border-white/10 bg-gray-900/70 backdrop-blur-xl p-8 shadow-xl">
           <div className="mb-8">
-            <p className="text-sm uppercase tracking-[0.3em] text-indigo-400">Password Reset</p>
+            <p className="text-sm uppercase tracking-[0.3em] text-accent-400">Password Reset</p>
             <h2 className="text-2xl font-semibold text-white mt-1">Set New Password</h2>
             <p className="text-gray-400 text-sm mt-2">
               Enter your new password below. Make it strong and memorable.
@@ -110,7 +110,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ addToast }) => {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
                 placeholder="••••••••••"
                 required
                 minLength={6}
@@ -123,7 +123,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ addToast }) => {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-indigo-500 focus:ring-indigo-500"
+                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
                 placeholder="••••••••••"
                 required
                 minLength={6}
@@ -133,14 +133,14 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ addToast }) => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:bg-indigo-500 disabled:bg-gray-700"
+              className="w-full rounded-xl bg-accent-500 py-3 font-semibold text-white shadow-lg shadow-accent-500/30 transition-all hover:bg-accent-500 disabled:bg-gray-700"
             >
               {loading ? 'Resetting Password...' : 'Reset Password'}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
-            <a href="/" className="text-sm text-indigo-400 hover:text-indigo-300">
+            <a href="/" className="text-sm text-accent-400 hover:text-accent-300">
               Back to Login
             </a>
           </div>

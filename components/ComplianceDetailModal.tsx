@@ -153,8 +153,8 @@ const ComplianceDetailModal: React.FC<ComplianceDetailModalProps> = ({
 
                         {/* Recommendation */}
                         <div className="ml-8 space-y-2">
-                          <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-md p-3">
-                            <p className="text-xs text-indigo-300 font-semibold mb-1">RECOMMENDED ACTION</p>
+                          <div className="bg-accent-500/10 border border-accent-500/30 rounded-md p-3">
+                            <p className="text-xs text-accent-300 font-semibold mb-1">RECOMMENDED ACTION</p>
                             <p className="text-sm text-gray-300">{issue.recommendation}</p>
                           </div>
 
@@ -164,7 +164,7 @@ const ComplianceDetailModal: React.FC<ComplianceDetailModalProps> = ({
                               href={issue.regulationUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300"
+                              className="flex items-center gap-2 text-sm text-accent-400 hover:text-accent-300"
                             >
                               <LinkIcon className="w-4 h-4" />
                               View Regulation

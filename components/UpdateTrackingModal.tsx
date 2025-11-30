@@ -83,7 +83,7 @@ const UpdateTrackingModal: React.FC<UpdateTrackingModalProps> = ({
             type="text"
             value={trackingNumber}
             onChange={(e) => setTrackingNumber(e.target.value)}
-            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
             placeholder="e.g. 1Z999AA10123456784"
           />
         </div>
@@ -97,7 +97,7 @@ const UpdateTrackingModal: React.FC<UpdateTrackingModalProps> = ({
               id="tracking-carrier-input"
               value={trackingCarrier}
               onChange={(e) => setTrackingCarrier(e.target.value)}
-              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
             >
               <option value="">Select carrier...</option>
               <option value="ups">UPS</option>
@@ -115,7 +115,7 @@ const UpdateTrackingModal: React.FC<UpdateTrackingModalProps> = ({
               id="tracking-status-input"
               value={trackingStatus}
               onChange={(e) => setTrackingStatus(e.target.value as POTrackingStatus)}
-              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
             >
               {TRACKING_STATUS_OPTIONS.map(option => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -134,7 +134,7 @@ const UpdateTrackingModal: React.FC<UpdateTrackingModalProps> = ({
               type="date"
               value={estimatedDelivery}
               onChange={(e) => setEstimatedDelivery(e.target.value)}
-              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
             />
           </div>
           <div>
@@ -147,7 +147,7 @@ const UpdateTrackingModal: React.FC<UpdateTrackingModalProps> = ({
               value={lastException}
               onChange={(e) => setLastException(e.target.value)}
               placeholder="e.g. Weather delay"
-              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm"
             />
           </div>
         </div>
@@ -162,7 +162,7 @@ const UpdateTrackingModal: React.FC<UpdateTrackingModalProps> = ({
           </Button>
           <Button
             onClick={handleSubmit}
-            className="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-500 transition-colors disabled:opacity-50"
+            className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-500 transition-colors disabled:opacity-50"
             disabled={isSaving}
           >
             {isSaving ? 'Saving...' : 'Save'}
