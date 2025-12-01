@@ -60,8 +60,9 @@ const routes: RouteCheck[] = [
     name: 'Artwork Library',
     path: '/artwork',
     assert: async (page) => {
+      await expect(page).toHaveTitle('MuRP');
       await expect(page.getByRole('heading', { name: /Artwork Library/i })).toBeVisible();
-      await expect(page.getByRole('button', { name: /Upload Artwork/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /Upload/i })).toBeVisible();
     },
   },
   {

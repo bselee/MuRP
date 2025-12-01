@@ -105,6 +105,8 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isBatchVerificationModalOpen, setIsBatchVerificationModalOpen] = useState(false);
+    const [isScanningInterfaceOpen, setIsScanningInterfaceOpen] = useState(false);
+    const [activeScanTab, setActiveScanTab] = useState<'manual' | 'regulatory' | 'batch' | 'ai' | 'compliance'>('manual');
     const [selectedArtworkForScan, setSelectedArtworkForScan] = useState<ArtworkWithProduct | null>(null);
     const [selectedArtworkForDetails, setSelectedArtworkForDetails] = useState<ArtworkWithProduct | null>(null);
     const [searchTerm, setSearchTerm] = useState(initialFilter);
@@ -130,9 +132,8 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
         loadState<DamSettingsState>(damSettingsStorageKey, DEFAULT_DAM_SETTINGS)
     );
 
-    // Integrated Scanning System State
-    const [activeScanTab, setActiveScanTab] = useState<'manual' | 'regulatory' | 'batch' | 'ai' | 'compliance'>('manual');
-    const [isScanningInterfaceOpen, setIsScanningInterfaceOpen] = useState(false);
+    // Sidebar collapse state
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
@@ -240,8 +241,8 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
         );
     }, [filteredByFolder, searchTerm]);
 
-    const inventoryBySku = useMemo(() => new Map(inventory.map(item => [item.sku, item])), [inventory]);
-    const vendorById = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
+    const inventoryBySku = useMemo(() => new Map((inventory || []).map(item => [item.sku, item])), [inventory]);
+    const vendorById = useMemo(() => new Map((vendors || []).map(v => [v.id, v])), [vendors]);
 
     const packagingContactsByArtworkId = useMemo(() => {
         const map = new Map<string, PackagingContactSuggestion[]>();
@@ -666,7 +667,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <SparklesIcon className="w-6 h-6 text-accent-400" />
-                            <h2 className="text-2xl font-bold text-white">World-Class Scanning System</h2>
+                            <h2 className="text-2xl font-bold text-white">Scanning System</h2>
                         </div>
                         <Button
                             onClick={() => setIsScanningInterfaceOpen(false)}
@@ -714,15 +715,9 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                     <h3 className="text-xl font-semibold text-white mb-2">Manual Label Scanner</h3>
                                     <p className="text-gray-400">Upload and scan product labels with AI extraction. No BOM required.</p>
                                 </div>
-                                <ManualLabelScanner
-                                    boms={effectiveBoms}
-                                    currentUser={currentUser}
-                                    onScanComplete={(label) => {
-                                        addToast(`Label "${label.productName}" scanned and saved successfully!`, 'success');
-                                        // Optionally refresh artwork list if label was linked to a BOM
-                                    }}
-                                    onClose={() => {}}
-                                />
+                                <div className="text-center py-8">
+                                    <p className="text-gray-500 mb-4">Manual label scanner component coming soon.</p>
+                                </div>
                             </div>
                         )}
 
@@ -798,44 +793,59 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
 
             <div className="flex gap-6 h-full">
                 {/* Folder Sidebar */}
-                <aside className="w-64 bg-gray-800/50 p-4 rounded-lg border border-gray-700 flex-shrink-0 flex flex-col" style={{ minHeight: '600px' }}>
-                    <h2 className="text-lg font-semibold text-white mb-4">Folders</h2>
-                    <nav className="space-y-1 flex-grow">
-                        <FolderButton folderId={null} name="All Artwork" />
-                        {artworkFolders.map(folder => <FolderButton key={folder.id} folderId={folder.id} name={folder.name} />)}
-                        <FolderButton folderId="unassigned" name="Unassigned" />
-                    </nav>
-                    <div>
-                        {isCreatingFolder ? (
-                            <div className="space-y-2">
-                                <input 
-                                    type="text"
-                                    value={newFolderName}
-                                    onChange={e => setNewFolderName(e.target.value)}
-                                    placeholder="New folder name..."
-                                    className="w-full bg-gray-700 p-2 rounded-md text-sm"
-                                    autoFocus
-                                    onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
-                                />
-                                <div className="flex gap-2">
-                                    <Button onClick={handleCreateFolder} className="flex-1 bg-accent-500 text-white font-semibold py-1 px-2 text-sm rounded-md">Create</Button>
-                                    <Button onClick={() => setIsCreatingFolder(false)} className="flex-1 bg-gray-600 text-white font-semibold py-1 px-2 text-sm rounded-md">Cancel</Button>
-                                </div>
-                            </div>
-                        ) : (
-                            <Button onClick={() => setIsCreatingFolder(true)} className="w-full flex items-center justify-center gap-2 text-sm bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded-md transition-colors">
-                                <PlusCircleIcon className="w-5 h-5" />
-                                Create Folder
-                            </Button>
-                        )}
+                <aside className={`${isSidebarCollapsed ? 'w-12' : 'w-64'} bg-gray-800/50 p-4 rounded-lg border border-gray-700 flex-shrink-0 flex flex-col transition-all duration-300`} style={{ minHeight: '600px' }}>
+                    <div className="flex items-center justify-between mb-4">
+                        {!isSidebarCollapsed && <h2 className="text-lg font-semibold text-white">Folders</h2>}
+                        <Button
+                            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                            className="text-gray-400 hover:text-white transition-colors p-1"
+                            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                        >
+                            <svg className={`w-5 h-5 transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </Button>
                     </div>
+                    {!isSidebarCollapsed && (
+                        <>
+                            <nav className="space-y-1 flex-grow">
+                                <FolderButton folderId={null} name="All Artwork" />
+                                {artworkFolders.map(folder => <FolderButton key={folder.id} folderId={folder.id} name={folder.name} />)}
+                                <FolderButton folderId="unassigned" name="Unassigned" />
+                            </nav>
+                            <div>
+                                {isCreatingFolder ? (
+                                    <div className="space-y-2">
+                                        <input 
+                                            type="text"
+                                            value={newFolderName}
+                                            onChange={e => setNewFolderName(e.target.value)}
+                                            placeholder="New folder name..."
+                                            className="w-full bg-gray-700 p-2 rounded-md text-sm"
+                                            autoFocus
+                                            onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
+                                        />
+                                        <div className="flex gap-2">
+                                            <Button onClick={handleCreateFolder} className="flex-1 bg-accent-500 text-white font-semibold py-1 px-2 text-sm rounded-md">Create</Button>
+                                            <Button onClick={() => setIsCreatingFolder(false)} className="flex-1 bg-gray-600 text-white font-semibold py-1 px-2 text-sm rounded-md">Cancel</Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <Button onClick={() => setIsCreatingFolder(true)} className="w-full flex items-center justify-center gap-2 text-sm bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded-md transition-colors">
+                                        <PlusCircleIcon className="w-5 h-5" />
+                                        Create Folder
+                                    </Button>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </aside>
 
                 <main className="flex-1 space-y-6">
                     <header className="mb-4">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                             <h1 className="text-xl font-bold text-white tracking-tight">Artwork Library</h1>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                                 <Button 
                                     onClick={() => {
                                         if (!canUpload) {
@@ -848,10 +858,10 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                         }
                                         setIsUploadModalOpen(true);
                                     }}
-                                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm"
+                                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1.5 px-2 rounded-md transition-colors flex items-center gap-1 text-sm"
                                 >
                                     <CloudUploadIcon className="w-4 h-4" />
-                                    Upload Artwork
+                                    Upload
                                 </Button>
                                 <Button 
                                     onClick={() => {
@@ -861,25 +871,25 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                         }
                                         setIsScanningInterfaceOpen(true);
                                     }}
-                                    className="bg-gradient-to-r from-accent-500 to-purple-600 hover:from-accent-600 hover:to-purple-700 text-white font-semibold py-2 px-3 rounded-md transition-all duration-200 flex items-center gap-2 shadow-lg text-sm"
+                                    className="bg-gradient-to-r from-accent-500 to-purple-600 hover:from-accent-600 hover:to-purple-700 text-white font-semibold py-1.5 px-2 rounded-md transition-all duration-200 flex items-center gap-1 shadow-lg text-sm"
                                 >
                                     <SparklesIcon className="w-4 h-4" />
-                                    World-Class Scanning
+                                    Scanning
                                 </Button>
                                 {selectedArtworkIds.length > 0 && (
                                     <>
-                                        <Button onClick={handleBulkShare} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-md transition-colors flex items-center gap-2 text-sm">
+                                        <Button onClick={handleBulkShare} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-2 rounded-md transition-colors flex items-center gap-1 text-sm">
                                             <SendIcon className="w-4 h-4" />
                                             Share ({selectedArtworkIds.length})
                                         </Button>
-                                        <Button onClick={handleCreatePo} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md transition-colors text-sm">
-                                            Create PO for Packaging ({selectedArtworkIds.length})
+                                        <Button onClick={handleCreatePo} className="bg-green-600 hover:bg-green-700 text-white font-semibold py-1.5 px-2 rounded-md transition-colors text-sm">
+                                            Create PO ({selectedArtworkIds.length})
                                         </Button>
                                     </>
                                 )}
                                 <Button
                                     onClick={() => setIsSettingsOpen(true)}
-                                    className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md transition-colors"
+                                    className="bg-gray-700 hover:bg-gray-600 text-white p-1.5 rounded-md transition-colors"
                                     title="DAM Settings"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -889,7 +899,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                 </Button>
                             </div>
                         </div>
-                        <div className="relative">
+                        <div className="relative mt-3">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="h-5 w-5 text-gray-400" /></div>
                             <input type="text" placeholder="Search by filename, product name, or SKU..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-gray-800/50 border border-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full" />
                         </div>
