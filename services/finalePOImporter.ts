@@ -20,6 +20,8 @@
 
 import { supabase } from '../lib/supabase/client';
 import type { PurchaseOrder, PurchaseOrderItem } from '../types';
+import { getFinaleClient } from '../lib/finale/client';
+import type { FinalePurchaseOrder } from '../lib/finale/types';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -64,6 +66,107 @@ export interface ImportResult {
 
 export class FinalePOImporter {
   /**
+   * Import purchase orders from Finale API
+   */
+  async importFromFinaleAPI(): Promise<ImportResult> {
+    const result: ImportResult = {
+      imported: 0,
+      updated: 0,
+      skipped: 0,
+      errors: []
+    };
+
+    console.log('📥 Importing POs from Finale API...');
+
+    // Get Finale client
+    const finaleClient = getFinaleClient();
+    if (!finaleClient) {
+      throw new Error('Finale client not configured');
+    }
+
+    // Test connection first
+    const connectionTest = await finaleClient.testConnection();
+    if (!connectionTest.success) {
+      throw new Error(`Connection failed: ${connectionTest.message}`);
+    }
+
+    // Fetch all POs from Finale (paginated)
+    const allPOs: FinalePurchaseOrder[] = [];
+    let offset = 0;
+    const limit = 100;
+    let hasMore = true;
+
+    while (hasMore) {
+      try {
+        const batch = await finaleClient.fetchPurchaseOrders({ limit, offset });
+        allPOs.push(...batch);
+        offset += limit;
+        hasMore = batch.length === limit;
+      } catch (fetchError) {
+        const errorMsg = `Failed to fetch POs at offset ${offset}: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`;
+        result.errors.push({ row: offset, error: errorMsg });
+        break;
+      }
+    }
+
+    if (allPOs.length === 0) {
+      console.log('✅ No purchase orders found in Finale');
+      return result;
+    }
+
+    console.log(`📥 Processing ${allPOs.length} POs from Finale API...`);
+
+    // Process each PO
+    for (let i = 0; i < allPOs.length; i++) {
+      const finalePO = allPOs[i];
+
+      try {
+        // Transform Finale PO to MuRP format
+        const poData = this.transformFinaleApiPOToMuRP(finalePO);
+
+        // Check if PO already exists
+        const { data: existing } = await supabase
+          .from('purchase_orders')
+          .select('id, record_last_updated')
+          .eq('order_id', finalePO.orderNumber)
+          .single();
+
+        if (existing) {
+          // Update existing PO if Finale version is newer
+          const finaleDate = new Date(finalePO.lastModified);
+          const existingDate = existing.record_last_updated
+            ? new Date(existing.record_last_updated)
+            : new Date(0);
+
+          if (finaleDate > existingDate) {
+            await this.updatePO(existing.id, poData);
+            result.updated++;
+          } else {
+            result.skipped++;
+          }
+        } else {
+          // Insert new PO
+          await this.insertPO(poData);
+          result.imported++;
+        }
+      } catch (error: any) {
+        console.error(`Error importing PO ${finalePO.orderNumber}:`, error);
+        result.errors.push({
+          row: i + 1,
+          error: `PO ${finalePO.orderNumber}: ${error.message}`
+        });
+      }
+    }
+
+    // Log import to sync log
+    await this.logImport(result);
+
+    console.log(`✅ API import complete: ${result.imported} new, ${result.updated} updated, ${result.skipped} skipped, ${result.errors.length} errors`);
+
+    return result;
+  }
+
+  /**
    * Import purchase orders from Finale CSV data
    */
   async importFromCSV(csvData: FinalePOCSVRow[]): Promise<ImportResult> {
@@ -74,14 +177,14 @@ export class FinalePOImporter {
       errors: []
     };
 
-    console.log(`📥 Importing ${csvData.length} POs from Finale...`);
+    console.log(`📥 Importing ${csvData.length} POs from Finale CSV...`);
 
     for (let i = 0; i < csvData.length; i++) {
       const row = csvData[i];
 
       try {
         // 1. Transform Finale row to MuRP format
-        const po = this.transformFinalePOtoMuRP(row);
+        const po = this.transformFinaleCsvRowToMuRP(row);
 
         // 2. Check if PO already exists
         const { data: existing } = await supabase
@@ -119,15 +222,59 @@ export class FinalePOImporter {
     // Log import to sync log
     await this.logImport(result);
 
-    console.log(`✅ Import complete: ${result.imported} new, ${result.updated} updated, ${result.skipped} skipped, ${result.errors.length} errors`);
+    console.log(`✅ CSV import complete: ${result.imported} new, ${result.updated} updated, ${result.skipped} skipped, ${result.errors.length} errors`);
 
     return result;
   }
 
   /**
+   * Transform Finale API PO to MuRP purchase order format
+   */
+  private transformFinaleApiPOToMuRP(finalePO: FinalePurchaseOrder): any {
+    // Map Finale status to MuRP status
+    const status = this.mapFinaleStatus(finalePO.status);
+
+    return {
+      // Order identification
+      order_id: finalePO.orderNumber,
+      order_date: this.parseDate(finalePO.orderDate),
+
+      // Vendor information (will be resolved by supplier URI)
+      supplier_name: typeof finalePO.supplier === 'string'
+        ? finalePO.supplier.split('/').pop() || 'Unknown'
+        : 'Unknown',
+
+      // Order details
+      status,
+      finale_status: finalePO.status,
+
+      // Fulfillment tracking
+      expected_date: finalePO.expectedDate ? this.parseDate(finalePO.expectedDate) : null,
+      received_date: finalePO.receivedDate ? this.parseDate(finalePO.receivedDate) : null,
+
+      // Financial
+      subtotal: finalePO.subtotal,
+      tax_amount: finalePO.tax || 0,
+      shipping_cost: finalePO.shipping || 0,
+      total_amount: finalePO.total,
+
+      // Notes
+      internal_notes: finalePO.internalNotes || null,
+      vendor_notes: finalePO.notes || null,
+
+      // Finale sync metadata
+      finale_po_id: String(finalePO.id),
+      last_finale_sync: new Date().toISOString(),
+      source: 'finale_api_import',
+
+      // Line items (will be inserted separately)
+      _line_items: finalePO.lineItems || []
+    };
+  }
+  /**
    * Transform Finale PO CSV row to MuRP purchase order format
    */
-  private transformFinalePOtoMuRP(row: FinalePOCSVRow): any {
+  private transformFinaleCsvRowToMuRP(row: FinalePOCSVRow): any {
     // Parse internal notes (may contain MuRP-specific data)
     const internalNotes = this.parseInternalNotes(row['Internal Notes']);
 
@@ -179,18 +326,21 @@ export class FinalePOImporter {
    * Map Finale PO status to MuRP status
    */
   private mapFinaleStatus(finaleStatus: string): string {
+    const normalizedStatus = finaleStatus?.toUpperCase?.() ?? finaleStatus;
     const statusMap: Record<string, string> = {
-      'Draft': 'draft',
-      'Pending': 'pending',
-      'Ordered': 'sent',
-      'Confirmed': 'confirmed',
-      'Partial': 'partial',
-      'Received': 'received',
-      'Cancelled': 'cancelled',
-      'Closed': 'received'
+      'DRAFT': 'draft',
+      'PENDING': 'pending',
+      'ORDERED': 'sent',
+      'SUBMITTED': 'sent',
+      'CONFIRMED': 'confirmed',
+      'PARTIAL': 'partial',
+      'PARTIALLY_RECEIVED': 'partial',
+      'RECEIVED': 'received',
+      'CANCELLED': 'cancelled',
+      'CLOSED': 'received'
     };
 
-    return statusMap[finaleStatus] || 'pending';
+    return statusMap[normalizedStatus] || 'pending';
   }
 
   /**
@@ -242,16 +392,31 @@ export class FinalePOImporter {
     const lineItems = po._line_items || [];
     delete po._line_items;
 
-    // 1. Look up vendor by supplier code or name
-    const { data: vendor } = await supabase
-      .from('vendors')
-      .select('id')
-      .or(`id.eq.${po.supplier_code},name.eq.${po.supplier_name}`)
-      .limit(1)
-      .single();
+    // 1. Look up vendor by supplier code first (CSV imports)
+    if (po.supplier_code) {
+      const { data: vendorByCode } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('id', po.supplier_code)
+        .maybeSingle();
 
-    if (vendor) {
-      po.vendor_id = vendor.id;
+      if (vendorByCode) {
+        po.vendor_id = vendorByCode.id;
+      }
+    }
+
+    // Fallback to fuzzy name match
+    if (!po.vendor_id && po.supplier_name && po.supplier_name !== 'Unknown') {
+      const { data: vendorByName } = await supabase
+        .from('vendors')
+        .select('id')
+        .ilike('name', `%${po.supplier_name}%`)
+        .limit(1)
+        .maybeSingle();
+
+      if (vendorByName) {
+        po.vendor_id = vendorByName.id;
+      }
     }
 
     // 2. Insert PO
@@ -265,23 +430,50 @@ export class FinalePOImporter {
 
     // 3. Insert line items
     if (newPO && lineItems.length > 0) {
-      const poItems = lineItems.map((item: FinaleLineItem, idx: number) => ({
-        po_id: newPO.id,
-        inventory_sku: item.sku,
-        item_name: item.description,
-        quantity_ordered: item.quantity,
-        quantity_received: item.received,
-        unit_cost: item.unitCost,
-        line_number: idx + 1,
-        line_status: item.received >= item.quantity ? 'received' : 'pending'
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('purchase_order_items')
-        .insert(poItems);
-
-      if (itemsError) throw itemsError;
+      await this.insertLineItems(newPO.id, lineItems);
     }
+  }
+
+  /**
+   * Insert line items for a PO (handles both CSV and API formats)
+   */
+  private async insertLineItems(poId: string, lineItems: any[]): Promise<void> {
+    if (!lineItems || lineItems.length === 0) return;
+
+    const poItems = lineItems.map((item: any, idx: number) => {
+      // Handle Finale API format (FinalePOLineItem)
+      if (item.sku && item.name !== undefined) {
+        return {
+          po_id: poId,
+          inventory_sku: item.sku,
+          item_name: item.name,
+          quantity_ordered: item.quantity || 0,
+          quantity_received: item.received || 0,
+          unit_cost: item.unitPrice || 0,
+          line_number: idx + 1,
+          line_status: (item.received || 0) >= (item.quantity || 0) ? 'received' : 'pending'
+        };
+      }
+      // Handle CSV format (FinaleLineItem)
+      else {
+        return {
+          po_id: poId,
+          inventory_sku: item.sku,
+          item_name: item.description,
+          quantity_ordered: item.quantity,
+          quantity_received: item.received,
+          unit_cost: item.unitCost,
+          line_number: idx + 1,
+          line_status: item.received >= item.quantity ? 'received' : 'pending'
+        };
+      }
+    });
+
+    const { error: itemsError } = await supabase
+      .from('purchase_order_items')
+      .insert(poItems);
+
+    if (itemsError) throw itemsError;
   }
 
   /**
@@ -311,20 +503,7 @@ export class FinalePOImporter {
         .eq('po_id', poId);
 
       // Insert updated items
-      const poItems = lineItems.map((item: FinaleLineItem, idx: number) => ({
-        po_id: poId,
-        inventory_sku: item.sku,
-        item_name: item.description,
-        quantity_ordered: item.quantity,
-        quantity_received: item.received,
-        unit_cost: item.unitCost,
-        line_number: idx + 1,
-        line_status: item.received >= item.quantity ? 'received' : 'pending'
-      }));
-
-      await supabase
-        .from('purchase_order_items')
-        .insert(poItems);
+      await this.insertLineItems(poId, lineItems);
     }
   }
 

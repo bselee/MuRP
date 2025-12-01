@@ -22,8 +22,13 @@ import {
   KeyIcon,
   LinkIcon,
   ChartBarIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  CloudUploadIcon,
+  DocumentTextIcon,
 } from './icons';
+import { finalePOImporter, type FinalePOCSVRow, type ImportResult } from '../services/finalePOImporter';
+import { getFinaleClient, updateFinaleClient } from '../lib/finale/client';
+import type { FinaleConnectionConfig, FinalePurchaseOrder } from '../lib/finale/types';
 
 interface FinaleSetupPanelProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -57,6 +62,17 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   
   // Multi-select sync
   const [selectedSyncSources, setSelectedSyncSources] = useState<Set<string>>(new Set(['vendors', 'inventory', 'boms']));
+  
+  // PO Import state
+  const [isImportingCSV, setIsImportingCSV] = useState(false);
+  const [isPullingFinale, setIsPullingFinale] = useState(false);
+  const [importStats, setImportStats] = useState<{
+    imported: number;
+    updated: number;
+    skipped: number;
+    errors: number;
+  } | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
   // Check if backend is configured on mount
   useEffect(() => {
@@ -124,14 +140,13 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
         localStorage.setItem('finale_api_secret', credentials.apiSecret);
         localStorage.setItem('finale_account_path', credentials.accountPath);
         
-        // Configure sync service with credentials
-        const syncService = getFinaleSyncService();
-        syncService.setCredentials(
-          credentials.apiKey,
-          credentials.apiSecret,
-          credentials.accountPath,
-          'https://app.finaleinventory.com'
-        );
+        // Configure the global Finale client
+        updateFinaleClient({
+          apiKey: credentials.apiKey,
+          apiSecret: credentials.apiSecret,
+          accountPath: credentials.accountPath,
+          baseUrl: 'https://app.finaleinventory.com',
+        });
         
         setIsConfigured(true);
       } else {
@@ -267,6 +282,150 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
     const hours = Math.floor(minutes / 60);
     return `${hours}h ago`;
   };
+
+  /**
+   * Parse CSV text into rows
+   */
+  const parseCSV = (text: string): FinalePOCSVRow[] => {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    const rows: FinalePOCSVRow[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+      if (values.length === headers.length) {
+        const row: any = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index];
+        });
+        rows.push(row as FinalePOCSVRow);
+      }
+    }
+    return rows;
+  };
+
+  /**
+   * Handle CSV file upload
+   */
+  const handleCSVUpload = async (file: File) => {
+    setIsImportingCSV(true);
+    setImportStats(null);
+
+    try {
+      const text = await file.text();
+      const rows = parseCSV(text);
+
+      if (rows.length === 0) {
+        addToast('No valid data found in CSV file', 'error');
+        return;
+      }
+
+      addToast(`Processing ${rows.length} rows from CSV...`, 'info');
+
+      const result = await finalePOImporter.importFromCSV(rows);
+      setImportStats(result.stats);
+
+      if (result.success) {
+        addToast(`✅ CSV import complete: ${result.stats.imported} imported, ${result.stats.updated} updated, ${result.stats.skipped} skipped`, 'success');
+      } else {
+        addToast(`❌ CSV import failed: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      addToast(`❌ CSV import failed: ${message}`, 'error');
+    } finally {
+      setIsImportingCSV(false);
+    }
+  };
+
+  /**
+   * Handle drag and drop
+   */
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const csvFile = files.find(file => file.name.toLowerCase().endsWith('.csv'));
+
+    if (csvFile) {
+      handleCSVUpload(csvFile);
+    } else {
+      addToast('Please drop a CSV file', 'error');
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleCSVUpload(file);
+    }
+  };
+
+  /**
+   * Handle Finale API pull
+   */
+  const handlePullFromFinale = async () => {
+    // Get the configured Finale client
+    const finaleClient = getFinaleClient();
+    if (!finaleClient) {
+      addToast('Finale is not configured. Please set up credentials first.', 'error');
+      return;
+    }
+
+    setIsPullingFinale(true);
+    setImportStats(null);
+
+    try {
+      // Test connection first
+      addToast('🔍 Testing Finale connection...', 'info');
+      const testResult = await finaleClient.testConnection();
+      
+      if (!testResult.success) {
+        addToast(`❌ Connection failed: ${testResult.message}`, 'error');
+        return;
+      }
+
+      addToast('✅ Connection successful, pulling POs...', 'info');
+
+      // Pull POs from Finale API using the importer service
+      const result = await finalePOImporter.importFromFinaleAPI();
+      setImportStats({
+        imported: result.imported,
+        updated: result.updated,
+        skipped: result.skipped,
+        errors: result.errors.length,
+      });
+
+      if (result.success || result.imported > 0 || result.updated > 0) {
+        addToast(`✅ Finale pull complete: ${result.imported} imported, ${result.updated} updated, ${result.skipped} skipped`, 'success');
+      } else {
+        addToast(`❌ Finale pull failed: ${result.errors.length > 0 ? result.errors[0].error : 'No POs found'}`, 'error');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      addToast(`❌ Finale pull failed: ${message}`, 'error');
+    } finally {
+      setIsPullingFinale(false);
+    }
+  };
+
+  // Check if Finale is configured
+  const finaleClient = getFinaleClient();
+  const isFinaleConfigured = !!finaleClient;
 
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
@@ -631,6 +790,124 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                         {error.phase}: {error.message}
                       </p>
                     ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* PO Import Section */}
+        {isConfigured && (
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 font-semibold text-sm">
+                PO
+              </div>
+              <h4 className="text-md font-semibold text-white">Import Purchase Orders</h4>
+            </div>
+
+            <div className="ml-11 space-y-4">
+              <p className="text-sm text-gray-400">
+                Import purchase orders from CSV files or directly from Finale API.
+                Imported POs will appear in your Purchase Orders list.
+              </p>
+
+              {/* CSV Upload */}
+              <div className="space-y-3">
+                <div
+                  className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                    dragActive
+                      ? 'border-accent-400 bg-accent-400/10'
+                      : 'border-gray-600 hover:border-gray-500'
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    disabled={isImportingCSV}
+                  />
+                  
+                  <div className="flex flex-col items-center gap-3">
+                    <CloudUploadIcon className={`w-8 h-8 ${dragActive ? 'text-accent-400' : 'text-gray-400'}`} />
+                    <div>
+                      <p className="text-sm font-medium text-white">
+                        {isImportingCSV ? 'Importing CSV...' : 'Drop CSV file here or click to browse'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Finale PO export format (.csv)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {isImportingCSV && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-accent-400">
+                    <RefreshIcon className="w-4 h-4 animate-spin" />
+                    Processing CSV file...
+                  </div>
+                )}
+              </div>
+
+              {/* Finale API Pull */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-gray-700"></div>
+                <span className="text-xs text-gray-500 uppercase tracking-wide">or</span>
+                <div className="flex-1 h-px bg-gray-700"></div>
+              </div>
+
+              <Button
+                onClick={handlePullFromFinale}
+                disabled={isPullingFinale || !getFinaleClient()}
+                className="w-full bg-purple-600 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isPullingFinale ? (
+                  <>
+                    <RefreshIcon className="w-5 h-5 animate-spin" />
+                    Pulling from Finale...
+                  </>
+                ) : (
+                  <>
+                    <ServerStackIcon className="w-5 h-5" />
+                    Pull POs from Finale API
+                  </>
+                )}
+              </Button>
+
+              {!getFinaleClient() && (
+                <p className="text-xs text-amber-400 text-center">
+                  Configure Finale credentials above to enable API pulls
+                </p>
+              )}
+
+              {/* Import Results */}
+              {importStats && (
+                <div className="p-4 bg-gray-900/50 rounded-lg space-y-3">
+                  <h5 className="text-sm font-medium text-white">Import Results</h5>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center p-2 bg-green-500/10 rounded">
+                      <div className="text-lg font-bold text-green-400">{importStats.imported}</div>
+                      <div className="text-xs text-gray-400">Imported</div>
+                    </div>
+                    <div className="text-center p-2 bg-blue-500/10 rounded">
+                      <div className="text-lg font-bold text-blue-400">{importStats.updated}</div>
+                      <div className="text-xs text-gray-400">Updated</div>
+                    </div>
+                    <div className="text-center p-2 bg-yellow-500/10 rounded">
+                      <div className="text-lg font-bold text-yellow-400">{importStats.skipped}</div>
+                      <div className="text-xs text-gray-400">Skipped</div>
+                    </div>
+                    <div className="text-center p-2 bg-red-500/10 rounded">
+                      <div className="text-lg font-bold text-red-400">{importStats.errors}</div>
+                      <div className="text-xs text-gray-400">Errors</div>
+                    </div>
                   </div>
                 </div>
               )}
