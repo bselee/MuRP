@@ -302,9 +302,62 @@ export async function createInventoryItem(item: InventoryItem): Promise<{ succes
   }
 }
 
+export async function upsertInventoryItems(items: InventoryItem[]): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('inventory_items')
+      .upsert(
+        items.map(item => ({
+          sku: item.sku,
+          name: item.name,
+          category: item.category,
+          stock: item.stock,
+          on_order: item.onOrder,
+          reorder_point: item.reorderPoint,
+          vendor_id: item.vendorId,
+          moq: item.moq,
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: 'sku' }
+      );
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('[upsertInventoryItems] Error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to upsert inventory items' };
+  }
+}
+
 // ============================================================================
-// BUILD ORDERS
+// VENDORS
 // ============================================================================
+
+export async function upsertVendors(vendors: Vendor[]): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('vendors')
+      .upsert(
+        vendors.map(vendor => ({
+          id: vendor.id,
+          name: vendor.name,
+          contact_emails: vendor.contactEmails,
+          phone: vendor.phone,
+          address: vendor.address,
+          website: vendor.website,
+          lead_time_days: vendor.leadTimeDays,
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: 'id' }
+      );
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('[upsertVendors] Error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to upsert vendors' };
+  }
+}
 
 export async function createBuildOrder(order: BuildOrder): Promise<{ success: boolean; error?: string }> {
   try {

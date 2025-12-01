@@ -11,8 +11,8 @@ import Button from '@/components/ui/Button';
  */
 
 import React, { useState, useEffect } from 'react';
-import { FinaleClient, updateFinaleClient, getFinaleClient } from '../lib/finale/client';
-import type { FinaleConnectionConfig, FinaleConnectionStatus } from '../lib/finale/types';
+import { getDataService } from '../lib/dataService';
+import { upsertInventoryItems, upsertVendors } from '../hooks/useSupabaseMutations';
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -124,24 +124,26 @@ const FinaleIntegrationPanel: React.FC<FinaleIntegrationPanelProps> = ({ addToas
 
     setIsSyncing(true);
     try {
-      const result = await finaleClient.syncAll({
-        syncProducts: true,
-        syncVendors: true,
-        syncPurchaseOrders: true,
-      });
+      // Use data service to sync and transform data
+      const dataService = getDataService();
+      const transformedData = await dataService.syncAllFromFinale();
 
-      if (result.success) {
-        addToast(
-          `Sync complete! Products: ${result.itemsSynced.products}, Vendors: ${result.itemsSynced.vendors}, POs: ${result.itemsSynced.purchaseOrders}`,
-          'success'
-        );
-      } else {
-        addToast(
-          `Sync completed with ${result.errors?.length || 0} errors. Check console for details.`,
-          'error'
-        );
-        console.error('Sync errors:', result.errors);
+      // Save inventory to Supabase
+      const inventoryResult = await upsertInventoryItems(transformedData.inventory);
+      if (!inventoryResult.success) {
+        throw new Error(`Failed to save inventory: ${inventoryResult.error}`);
       }
+
+      // Save vendors to Supabase
+      const vendorResult = await upsertVendors(transformedData.vendors);
+      if (!vendorResult.success) {
+        throw new Error(`Failed to save vendors: ${vendorResult.error}`);
+      }
+
+      addToast(
+        `Sync complete! Saved ${transformedData.inventory.length} products and ${transformedData.vendors.length} vendors to database`,
+        'success'
+      );
 
       // Reload status
       await loadConnectionStatus();

@@ -76,6 +76,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       leftIcon,
       rightIcon,
       children,
+      type = 'button',
       ...props
     },
     ref,
@@ -102,6 +103,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         data-variant={variant}
         data-murp-button="true"
+        type={type}
         {...props}
       >
         {loading ? (
