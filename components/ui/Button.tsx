@@ -2,7 +2,7 @@ import React, { forwardRef, ButtonHTMLAttributes } from 'react';
 import { useTheme } from '@/components/ThemeProvider';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-type ButtonSize = 'sm' | 'md' | 'lg';
+type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -35,6 +35,7 @@ const variantStyles: Record<ButtonVariant, Record<ThemeVariant, string>> = {
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
+  xs: 'px-3 py-1.5 text-xs min-h-[30px]',
   sm: 'px-4 py-2 text-sm min-h-[36px]',
   md: 'px-5 py-2.5 text-sm min-h-[44px]',
   lg: 'px-6 py-3 text-base min-h-[48px]',

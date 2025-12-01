@@ -270,214 +270,265 @@ const GoogleDataPanel: React.FC<GoogleDataPanelProps> = ({ userId, gmailConnecti
     }
   };
 
+  type BadgeTone = 'success' | 'warning' | 'neutral';
+  type CardAction = { label: string; onClick: () => void };
+  type StatusCard = {
+    id: string;
+    icon: React.ReactNode;
+    label: string;
+    headline: string;
+    description?: string;
+    details?: string[];
+    meta?: string | null;
+    note?: string;
+    badgeLabel?: string;
+    badgeTone?: BadgeTone;
+    actions?: CardAction[];
+  };
+
+  const badgeToneClasses: Record<BadgeTone, string> = {
+    success: 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
+    warning: 'border border-amber-500/30 bg-amber-500/10 text-amber-200',
+    neutral: 'border border-white/10 bg-white/5 text-gray-300',
+  };
+
+  const statusCards: StatusCard[] = [
+    {
+      id: 'workspace',
+      icon: (
+        <div className="flex items-center gap-1 text-white">
+          <GmailIcon className="h-5 w-5 text-[#EA4335]" />
+          <GoogleCalendarIcon className="h-5 w-5 text-[#4285F4]" />
+          <GoogleSheetsIcon className="h-5 w-5 text-[#34A853]" />
+        </div>
+      ),
+      label: 'Workspace OAuth',
+      headline: workspaceStatus.isConnected ? 'Token active' : 'Not connected',
+      description: `Scopes: ${scopeSummary}`,
+      meta: workspaceStatus.expiresAt ? `Renews ${formatRelativeTime(workspaceStatus.expiresAt)}` : 'Stored via Supabase tokens',
+      note:
+        !workspaceStatus.isConnected && !statusLoading
+          ? 'No OAuth token detected. Use the panels below to link Google Workspace.'
+          : undefined,
+      badgeLabel: workspaceStatus.isConnected ? 'Connected' : 'Required',
+      badgeTone: workspaceStatus.isConnected ? 'success' : 'warning',
+    },
+    {
+      id: 'calendar',
+      icon: <GoogleCalendarIcon className="h-6 w-6 text-[#4285F4]" />,
+      label: 'Production calendar',
+      headline: calendarStatus.syncEnabled ? 'Sync enabled' : 'Sync paused',
+      details: [
+        `Primary ingest: ${calendarStatus.ingestName ?? 'Not selected'}`,
+        `Push enabled on ${calendarStatus.pushEnabledCount} calendars`,
+        `Timezone: ${calendarStatus.timezone}`,
+      ],
+      meta: calendarStatus.updatedAt ? `Updated ${formatRelativeTime(calendarStatus.updatedAt)}` : 'Never updated',
+      note: !calendarStatus.connectedSources ? 'No Supabase calendar sources configured yet.' : undefined,
+      badgeLabel: `${calendarStatus.connectedSources} source${calendarStatus.connectedSources === 1 ? '' : 's'}`,
+      badgeTone: 'neutral',
+      actions: [
+        {
+          label: 'Manage calendar',
+          onClick: () => scrollToElement('calendar-settings-panel'),
+        },
+      ],
+    },
+    {
+      id: 'sheets',
+      icon: <GoogleSheetsIcon className="h-6 w-6 text-[#34A853]" />,
+      label: 'Sheets & backups',
+      headline: sheetsStatus.spreadsheetId ? 'Configured' : 'Setup pending',
+      details: [
+        `Last import: ${formatRelativeTime(sheetsStatus.lastImportAt)}`,
+        `Last export: ${formatRelativeTime(sheetsStatus.lastExportAt)}`,
+        `Last backup: ${formatRelativeTime(sheetsStatus.lastBackupAt)}`,
+      ],
+      meta: sheetsStatus.spreadsheetId ? `Sheet ${sheetsStatus.spreadsheetId.slice(0, 6)}…` : null,
+      note: !sheetsStatus.spreadsheetId ? 'No default spreadsheet on file yet.' : undefined,
+      badgeLabel: sheetsStatus.autoBackupEnabled ? 'Auto-backup on' : 'Backups off',
+      badgeTone: sheetsStatus.autoBackupEnabled ? 'success' : 'warning',
+      actions: [
+        {
+          label: 'Sheets settings',
+          onClick: () => scrollToElement('sheets-settings-panel'),
+        },
+      ],
+    },
+    {
+      id: 'docs',
+      icon: <GoogleDocsIcon className="h-6 w-6 text-[#1A73E8]" />,
+      label: 'Docs & Gmail',
+      headline: gmailConnection.isConnected ? 'Workspace mail linked' : 'Mail not linked',
+      details: [
+        docsStatus.hasCompanyProfile ? 'Doc templates ready' : 'Doc templates not configured',
+        `Last doc export: ${formatRelativeTime(docsStatus.lastDocUpdate)}`,
+        gmailConnection.isConnected ? `Routing via ${gmailConnection.email}` : 'Connect Gmail for PO replies',
+      ],
+      badgeLabel: gmailConnection.isConnected ? 'Gmail linked' : 'Mail required',
+      badgeTone: gmailConnection.isConnected ? 'success' : 'warning',
+      actions: [
+        {
+          label: 'Gmail settings',
+          onClick: () => scrollToElement('gmail-integration-card'),
+        },
+        {
+          label: 'Doc templates',
+          onClick: () => scrollToElement('document-templates-panel'),
+        },
+      ],
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <header>
-          <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">Step 1</p>
-          <h3 className="text-xl font-semibold text-white mt-2">Connect Google services</h3>
-          <p className="text-sm text-gray-400 mt-1">
-            Authenticate once and reuse shared scopes for Calendar, Sheets, Docs, and Gmail automations.
-          </p>
-        </header>
+    <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-[#050505] via-[#050505] to-[#0C0F13] p-6 text-white shadow-[0_20px_80px_-40px_rgba(0,0,0,0.9)] md:p-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-4">
+          <div className="h-14 w-14 rounded-2xl bg-[#1D9BF0]/10 text-[#1D9BF0] flex items-center justify-center">
+            <GoogleSheetsIcon className="h-7 w-7" />
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-gray-500">Google workspace</p>
+            <h3 className="text-2xl font-semibold leading-tight">Unified settings console</h3>
+            <p className="mt-1 text-sm text-gray-400">
+              Authenticate once, then orchestrate Calendar, Sheets, Docs, and Gmail automations from one surface.
+            </p>
+          </div>
+        </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={hydrateStatus}
           loading={statusLoading}
-          className="self-start lg:self-auto"
+          className="self-start rounded-full border border-white/10 px-5 py-2 text-sm text-white hover:bg-white/5 lg:self-auto"
         >
           Refresh status
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                <GmailIcon className="h-6 w-6 text-[#EA4335]" />
-                <GoogleCalendarIcon className="h-6 w-6" />
-                <GoogleSheetsIcon className="h-6 w-6" />
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {statusCards.map(card => (
+          <div key={card.id} className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="rounded-2xl bg-black/30 p-2 text-white">{card.icon}</div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-400">{card.label}</p>
+                  <p className="text-lg font-semibold">{card.headline}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-gray-400">Workspace OAuth</p>
-                <p className="text-base font-semibold text-white">
-                  {workspaceStatus.isConnected ? 'Token active' : 'Not connected'}
-                </p>
-              </div>
+              {card.badgeLabel && card.badgeTone && (
+                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs ${badgeToneClasses[card.badgeTone]}`}>
+                  {card.badgeLabel}
+                </span>
+              )}
             </div>
-            {workspaceStatus.isConnected ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-xs text-emerald-200">
-                <CheckCircleIcon className="h-3.5 w-3.5" />
-                Connected
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-3 py-1 text-xs text-rose-200">
-                <XCircleIcon className="h-3.5 w-3.5" />
-                Required
-              </span>
+            {card.description && <p className="mt-3 text-sm text-gray-400">{card.description}</p>}
+            {card.details && (
+              <ul className="mt-3 space-y-1 text-sm text-gray-400">
+                {card.details.map((detail, index) => (
+                  <li key={`${card.id}-detail-${index}`}>{detail}</li>
+                ))}
+              </ul>
+            )}
+            {card.meta && <p className="mt-2 text-xs text-gray-500">{card.meta}</p>}
+            {card.note && <p className="mt-3 text-xs text-amber-200">{card.note}</p>}
+            {card.actions && card.actions.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {card.actions.map(action => (
+                  <Button
+                    key={`${card.id}-${action.label}`}
+                    variant="ghost"
+                    size="xs"
+                    className="rounded-full border border-white/10 px-3 py-1 text-xs text-white hover:bg-white/5"
+                    onClick={action.onClick}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
             )}
           </div>
-          <p className="mt-3 text-sm text-gray-400">Scopes: {scopeSummary}</p>
-          <p className="text-xs text-gray-500">
-            {workspaceStatus.expiresAt ? `Renews ${formatRelativeTime(workspaceStatus.expiresAt)}` : 'Stored via Supabase tokens'}
-          </p>
-          {!workspaceStatus.isConnected && !statusLoading && (
-            <p className="mt-2 text-xs text-amber-200">
-              No OAuth token detected. Use the Connect buttons below to link Google Workspace.
+        ))}
+      </div>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <section id="calendar-settings-panel" className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="mb-4 space-y-1">
+            <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Calendar sync</p>
+            <h4 className="text-xl font-semibold">Production calendar</h4>
+            <p className="text-sm text-gray-400">
+              Pick an ingest calendar, timezone, and enable push so schedules flow both directions.
             </p>
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <GoogleCalendarIcon className="h-8 w-8" />
-              <div>
-                <p className="text-xs uppercase tracking-wide text-gray-400">Production calendar</p>
-                <p className="text-base font-semibold text-white">
-                  {calendarStatus.syncEnabled ? 'Sync enabled' : 'Sync paused'}
-                </p>
-              </div>
-            </div>
-            <span className="text-xs text-gray-400">{calendarStatus.connectedSources} source(s)</span>
           </div>
-          <ul className="mt-3 text-sm text-gray-400 space-y-1">
-            <li>Primary ingest: {calendarStatus.ingestName ?? 'Not selected'}</li>
-            <li>Push enabled on {calendarStatus.pushEnabledCount} calendars</li>
-            <li>Timezone: {calendarStatus.timezone}</li>
-          </ul>
-          {!calendarStatus.connectedSources && (
-            <p className="mt-3 text-xs text-amber-200">No Supabase calendar sources configured yet.</p>
-          )}
-          <div className="mt-3 flex items-center justify-between">
-            <p className="text-xs text-gray-500">
-              Updated {calendarStatus.updatedAt ? formatRelativeTime(calendarStatus.updatedAt) : 'never'}
+          <CalendarSettingsPanel userId={userId} addToast={addToast} />
+        </section>
+
+        <section id="sheets-settings-panel" className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="mb-4 space-y-1">
+            <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Sheets + backups</p>
+            <h4 className="text-xl font-semibold">Imports, exports & archival</h4>
+            <p className="text-sm text-gray-400">
+              Import curated datasets, export the live warehouse, or schedule automatic backups.
             </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs"
-              onClick={() => scrollToElement('calendar-settings-panel')}
-            >
-              Manage
-            </Button>
           </div>
-        </div>
+          <GoogleSheetsPanel addToast={addToast} />
+        </section>
+      </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <GoogleSheetsIcon className="h-8 w-8" />
-              <div>
-                <p className="text-xs uppercase tracking-wide text-gray-400">Sheets & backups</p>
-                <p className="text-base font-semibold text-white">
-                  {sheetsStatus.spreadsheetId ? 'Configured' : 'Setup pending'}
-                </p>
-              </div>
+      <section id="gmail-integration-card" className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="rounded-2xl bg-black/30 p-3 text-white">
+              <GmailIcon className="h-6 w-6 text-[#EA4335]" />
             </div>
-            {sheetsStatus.autoBackupEnabled ? (
-              <span className="text-xs text-emerald-200">Auto-backup on</span>
-            ) : (
-              <span className="text-xs text-yellow-300">Backups off</span>
-            )}
-          </div>
-          <ul className="mt-3 text-sm text-gray-400 space-y-1">
-            <li>Last import: {formatRelativeTime(sheetsStatus.lastImportAt)}</li>
-            <li>Last export: {formatRelativeTime(sheetsStatus.lastExportAt)}</li>
-            <li>Last backup: {formatRelativeTime(sheetsStatus.lastBackupAt)}</li>
-          </ul>
-          {!sheetsStatus.spreadsheetId && (
-            <p className="mt-3 text-xs text-amber-200">No default spreadsheet on file yet.</p>
-          )}
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-xs text-gray-500">
-              {sheetsStatus.spreadsheetId ? `Sheet ${sheetsStatus.spreadsheetId.slice(0, 6)}…` : 'No sheet linked'}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs"
-              onClick={() => scrollToElement('sheets-settings-panel')}
-            >
-              Manage
-            </Button>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <GoogleDocsIcon className="h-8 w-8" />
-              <div>
-                <p className="text-xs uppercase tracking-wide text-gray-400">Docs & Gmail</p>
-                <p className="text-base font-semibold text-white">
-                  {gmailConnection.isConnected ? 'Workspace mail linked' : 'Mail not linked'}
-                </p>
-              </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Docs & Gmail</p>
+              <h4 className="text-xl font-semibold">
+                {gmailConnection.isConnected ? 'Workspace mail linked' : 'Mail not linked'}
+              </h4>
+              <p className="mt-1 text-sm text-gray-400">
+                {docsStatus.hasCompanyProfile
+                  ? 'Company profile synced with Docs templates and branded exports.'
+                  : 'Complete your company profile to unlock branded Docs templates.'}
+              </p>
             </div>
-            {gmailConnection.isConnected ? (
-              <span className="text-xs text-emerald-200">{gmailConnection.email}</span>
-            ) : (
-              <span className="text-xs text-yellow-300">Connect below</span>
-            )}
           </div>
-          <ul className="mt-3 text-sm text-gray-400 space-y-1">
-            <li>Doc templates {docsStatus.hasCompanyProfile ? 'ready' : 'not configured'}</li>
-            <li>Last doc export: {formatRelativeTime(docsStatus.lastDocUpdate)}</li>
-            <li>Replies route through Gmail threads automatically.</li>
-          </ul>
-          {!docsStatus.hasCompanyProfile && (
-            <p className="mt-3 text-xs text-amber-200">Complete your company profile to unlock Docs & templates.</p>
-          )}
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs"
-              onClick={() => scrollToElement('gmail-integration-card')}
-            >
-              Gmail settings
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs"
+              className="rounded-full border border-white/10 px-4 py-2 text-xs text-white hover:bg-white/5"
               onClick={() => scrollToElement('document-templates-panel')}
             >
               Doc templates
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full border border-white/10 px-4 py-2 text-xs text-white hover:bg-white/5"
+              onClick={() => scrollToElement('gmail-integration-card')}
+            >
+              Gmail preferences
+            </Button>
           </div>
         </div>
-      </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div
-          id="calendar-settings-panel"
-          className="rounded-2xl border border-gray-700/70 bg-gray-900/40 p-6"
-        >
-          <div className="mb-4 space-y-1">
-            <h4 className="text-lg font-semibold text-white">Production calendar sync</h4>
-            <p className="text-sm text-gray-400">
-              Pick a calendar, timezone, and enable automatic sync so builds flow both directions.
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-500">Connected inbox</p>
+            <p className="mt-1 text-lg font-semibold">
+              {gmailConnection.isConnected ? gmailConnection.email : 'Not connected'}
             </p>
+            <p className="text-xs text-gray-500">Replies route through Gmail threads automatically.</p>
           </div>
-          <CalendarSettingsPanel userId={userId} addToast={addToast} />
-        </div>
-        <div
-          id="sheets-settings-panel"
-          className="rounded-2xl border border-gray-700/70 bg-gray-900/40 p-6"
-        >
-          <div className="mb-4 space-y-1">
-            <h4 className="text-lg font-semibold text-white">Sheets import / backup</h4>
-            <p className="text-sm text-gray-400">
-              Import curated datasets, export the live warehouse, or generate automatic backups in one place.
-            </p>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-xs uppercase tracking-wide text-gray-500">Last doc export</p>
+            <p className="mt-1 text-lg font-semibold">{formatRelativeTime(docsStatus.lastDocUpdate)}</p>
+            <p className="text-xs text-gray-500">Templates stored in Supabase</p>
           </div>
-          <GoogleSheetsPanel addToast={addToast} />
         </div>
-      </div>
+      </section>
     </div>
   );
 };

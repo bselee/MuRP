@@ -311,3 +311,72 @@
 - [ ] Test bulk import in production with real Finale data
 - [ ] Monitor import performance with large CSV files
 - [ ] Consider adding progress indicator for large imports
+
+---
+
+### Session: 2025-12-01 (PO Import UI Relocation & Error Handling)
+
+**Changes Made:**
+- Created: `components/POImportModal.tsx` - New modal wrapper component for PO import functionality
+- Modified: `pages/PurchaseOrders.tsx` - Removed POImportPanel from page bottom, added "Import POs" button in header, added isImportModalOpen state and modal JSX
+- Modified: `components/POImportPanel.tsx` - Enhanced error handling for Finale API pull with detailed connection test feedback, batch fetch error details, and progress toasts
+
+**Key Decisions:**
+- Decision: Moved PO import functionality from page bottom to modal accessed via header button.
+- Rationale: User requested import be a "settings function" rather than cluttering the main PO page - modal provides clean access without page disruption.
+- Decision: Enhanced Finale pull error handling with connection testing and detailed progress feedback.
+- Rationale: User reported Finale pull failures - added specific error messages for connection issues, authentication problems, and batch fetch errors to help diagnose API integration issues.
+- Decision: Maintained all existing import functionality (CSV upload + Finale API pull) within the modal.
+- Rationale: Preserves complete feature set while improving UI placement and error visibility.
+
+**UI/UX Improvements:**
+- ✅ Modal-based import: Clean header button access without page clutter
+- ✅ Enhanced error feedback: Connection test results, batch fetch progress, specific error messages
+- ✅ Settings-style access: Import now feels like a configuration function rather than main workflow
+- ✅ Preserved functionality: All CSV and API import features maintained in new modal layout
+
+**Tests:**
+- Verified: `npm test` passed (9/9 unit tests + 3 inventory tests).
+- Verified: `npm run build` succeeded (TypeScript compilation clean).
+- Verified: `npm run e2e` passed (38/38 tests successful).
+- Verified: Import button appears in PO page header.
+- Verified: Modal opens/closes correctly with POImportPanel content.
+- Verified: Enhanced error handling provides detailed feedback for Finale pull failures.
+
+**Problems & Solutions:**
+- Problem: PO import panel at bottom of page cluttered the main PO view.
+- Solution: Moved to modal accessed via header "Import POs" button.
+- Problem: Finale pull failures had unclear error messages.
+- Solution: Added connection testing with specific feedback and batch fetch error details.
+- Problem: Import felt like main workflow rather than settings function.
+- Solution: Modal placement makes it feel like a configuration tool, not core functionality.
+
+**Next Steps:**
+- [ ] Test improved Finale error handling with real API credentials
+- [ ] Monitor user feedback on modal-based import access
+- [ ] Consider adding import history or recent imports display if requested
+
+---
+
+### Session: 2025-12-01 (Settings UI Refresh)
+
+**Changes Made:**
+- Modified: `components/FinaleSetupPanel.tsx` – Rebuilt Finale integration UI with Grok/X cards, compact header, interactive sync source pills, and modernized PO import controls while keeping service logic intact.
+- Modified: `components/GoogleDataPanel.tsx` – Introduced hero console plus Google-branded status cards, consolidated action buttons, refreshed calendar/sheets sections, and dedicated Gmail/Docs card.
+- Modified: `components/ui/Button.tsx` – Added `xs` button size for pill actions used throughout new settings surfaces.
+
+**Key Decisions:**
+- Decision: Use card grid instead of stacked sections for settings overview.
+	- Rationale: Matches ui_design.md principles (content-first, pill interactions) and references provided by user (SaaS Interface/Toptal examples).
+- Decision: Keep Finale automation + import flows in same component but reorganize into clearly labeled steps.
+	- Rationale: Prevent regression to workflow while ensuring easier scanning and reduced scrolling.
+- Decision: Add extra-small button size.
+	- Rationale: Needed reusable token for compact pill actions without bespoke styling in each panel.
+
+**Tests:**
+- ✅ `npm test`
+- ✅ `npm run build`
+
+**Next Steps:**
+- [ ] Visual QA both panels in light/dark themes and narrow breakpoints.
+- [ ] Collect feedback on condensed header sizing vs. dropdown behavior.

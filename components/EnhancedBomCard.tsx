@@ -429,11 +429,15 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onToggleExpand();
+                  if (canEdit) {
+                    onEdit();
+                  } else {
+                    onToggleExpand();
+                  }
                 }}
-                className={`font-extrabold font-mono transition-colors cursor-pointer hover:opacity-80 ${isLightTheme ? 'text-accent-600 hover:text-accent-500' : 'text-white hover:text-accent-400'}`}
+                className={`font-extrabold font-mono transition-colors cursor-pointer hover:opacity-80 ${isLightTheme ? 'text-black hover:text-black' : 'text-white hover:text-white'}`}
                 style={{ fontSize: '1.3rem', letterSpacing: '0.02em' }}
-                title={isExpanded ? 'Hide recipe ingredients' : 'Show recipe ingredients'}
+                title={canEdit ? 'Edit this BOM' : isExpanded ? 'Hide recipe ingredients' : 'Show recipe ingredients'}
               >
                 {bom.finishedSku}
               </button>

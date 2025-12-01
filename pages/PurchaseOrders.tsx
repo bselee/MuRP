@@ -17,7 +17,6 @@ import type {
 } from '../types';
 import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon } from '../components/icons';
 import CreatePoModal from '../components/CreatePoModal';
-import POImportPanel from '../components/POImportPanel';
 import EmailComposerModal from '../components/EmailComposerModal';
 import GeneratePoModal from '../components/GeneratePoModal';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
@@ -151,7 +150,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [modalSession, setModalSession] = useState(0);
     const [isRunningFollowUps, setIsRunningFollowUps] = useState(false);
     const [showAllPOs, setShowAllPOs] = useState(false);
-    const [importKey, setImportKey] = useState(0);
     
     const permissions = usePermissions();
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
@@ -636,19 +634,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         }
                     }}
                 />
-
-                {/* PO Import Panel - CSV and Finale API */}
-                {canManagePOs && (
-                    <POImportPanel
-                        key={importKey}
-                        addToast={addToast}
-                        onImportComplete={() => {
-                            setImportKey(prev => prev + 1);
-                            // Trigger a refresh of the PO list if needed
-                            addToast('Import complete. Refresh the page to see new POs.', 'info');
-                        }}
-                    />
-                )}
 
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
                     <div className="p-4 bg-gray-800 flex items-center justify-between">

@@ -170,17 +170,30 @@ const POImportPanel: React.FC<POImportPanelProps> = ({ addToast, onImportComplet
         throw new Error(`Connection failed: ${connectionTest.message}`);
       }
 
+      addToast('Connected to Finale successfully. Fetching purchase orders...', 'info');
+
       // Fetch POs from Finale (paginated)
       const allPOs: FinalePurchaseOrder[] = [];
       let offset = 0;
       const limit = 100;
       let hasMore = true;
 
+      addToast('Fetching purchase orders from Finale...', 'info');
+
       while (hasMore) {
-        const batch = await finaleClient.fetchPurchaseOrders({ limit, offset });
-        allPOs.push(...batch);
-        offset += limit;
-        hasMore = batch.length === limit;
+        try {
+          const batch = await finaleClient.fetchPurchaseOrders({ limit, offset });
+          allPOs.push(...batch);
+          offset += limit;
+          hasMore = batch.length === limit;
+
+          if (batch.length > 0) {
+            addToast(`Fetched ${allPOs.length} POs so far...`, 'info');
+          }
+        } catch (fetchError) {
+          console.error('Error fetching batch:', fetchError);
+          throw new Error(`Failed to fetch POs at offset ${offset}: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
+        }
       }
 
       if (allPOs.length === 0) {

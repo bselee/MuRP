@@ -62,14 +62,66 @@ interface FinalePurchaseOrder {
   vendor_id: string;
   status: string;
   created_at: string;
-  line_items: Array<{
+  order_date?: string;
+  expected_date?: string;
+  notes?: string;
+  internal_notes?: string;
+  line_items?: Array<{
     sku: string;
     name: string;
     quantity: number;
     unit_price: number;
   }>;
-  expected_date?: string;
-  notes?: string;
+}
+
+interface FinalePurchaseOrderFilters {
+  statuses?: string[];
+  includeCompleted?: boolean;
+  includeNeedsToOrder?: boolean;
+  startDate?: Date;
+  endDate?: Date;
+}
+
+const DEFAULT_PO_STATUS_FILTERS = ['DRAFT', 'SUBMITTED'];
+const NEEDS_TO_ORDER_STATUS = 'PLANNED';
+const EXCLUDED_COMPLETED_STATUSES = ['RECEIVED', 'COMPLETED', 'CANCELLED'];
+const DEFAULT_PO_LOOKBACK_DAYS = parseInt(import.meta.env.VITE_FINALE_PO_LOOKBACK_DAYS || '120', 10);
+
+const DEFAULT_PO_FILTERS: FinalePurchaseOrderFilters = {
+  statuses: DEFAULT_PO_STATUS_FILTERS,
+  includeCompleted: false,
+  includeNeedsToOrder: true,
+  startDate: new Date(Date.now() - DEFAULT_PO_LOOKBACK_DAYS * 24 * 60 * 60 * 1000),
+};
+
+function shouldIncludeFinalePO(po: FinalePurchaseOrder, filters: FinalePurchaseOrderFilters): boolean {
+  const status = (po.status || '').toUpperCase();
+  const allowedStatuses = (filters.statuses ?? DEFAULT_PO_STATUS_FILTERS).map(s => s.toUpperCase());
+
+  if (!filters.includeCompleted && EXCLUDED_COMPLETED_STATUSES.includes(status)) {
+    return false;
+  }
+
+  if (filters.includeNeedsToOrder && status === NEEDS_TO_ORDER_STATUS) {
+    // Always include "needs to order"
+  } else if (allowedStatuses.length > 0 && !allowedStatuses.includes(status)) {
+    return false;
+  }
+
+  const dateSource = po.order_date || po.created_at;
+  if (filters.startDate || filters.endDate) {
+    const poDate = dateSource ? new Date(dateSource) : null;
+    if (poDate) {
+      if (filters.startDate && poDate < filters.startDate) {
+        return false;
+      }
+      if (filters.endDate && poDate > filters.endDate) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 export class FinaleIngestionService {
@@ -213,26 +265,48 @@ export class FinaleIngestionService {
    */
   async pullPurchaseOrders(): Promise<PurchaseOrder[]> {
     console.log('Pulling purchase orders from Finale...');
-    
-    const finalePOs = await this.makeRequest<{ data: FinalePurchaseOrder[] }>(
-      '/purchase_orders'
-    );
+
+    const limit = 100;
+    let offset = 0;
+    const finalePOs: FinalePurchaseOrder[] = [];
+    let hasMore = true;
+
+    while (hasMore) {
+      const endpoint = `/purchase_orders?limit=${limit}&offset=${offset}&include=line_items`;
+      const response = await this.makeRequest<{ data: FinalePurchaseOrder[] }>(endpoint);
+      const batch = response.data ?? [];
+
+      console.log(`[Finale] Retrieved ${batch.length} purchase orders (offset ${offset})`);
+      finalePOs.push(...batch);
+
+      hasMore = batch.length === limit;
+      offset += limit;
+    }
+
+    if (finalePOs.length === 0) {
+      console.warn('[Finale] No purchase orders returned from API');
+      return [];
+    }
 
     // Transform to MuRP format
-    const orders: PurchaseOrder[] = finalePOs.data.map(po => ({
-      id: po.id,
-      vendorId: po.vendor_id,
-      status: this.mapPOStatus(po.status),
-      createdAt: po.created_at,
-      items: po.line_items.map(item => ({
-        sku: item.sku,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.unit_price,
-      })),
-      expectedDate: po.expected_date,
-      notes: po.notes,
-    }));
+    const orders: PurchaseOrder[] = finalePOs.map(po => {
+      const lineItems = po.line_items ?? (po as unknown as { lineItems?: FinalePurchaseOrder['line_items'] }).lineItems ?? [];
+
+      return {
+        id: po.id,
+        vendorId: po.vendor_id,
+        status: this.mapPOStatus(po.status),
+        createdAt: po.created_at,
+        items: lineItems.map(item => ({
+          sku: item.sku,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.unit_price,
+        })),
+        expectedDate: po.expected_date,
+        notes: po.notes,
+      };
+    });
 
     console.log(`Successfully pulled ${orders.length} purchase orders`);
     return orders;

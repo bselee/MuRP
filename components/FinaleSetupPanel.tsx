@@ -427,493 +427,507 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   const finaleClient = getFinaleClient();
   const isFinaleConfigured = !!finaleClient;
 
+  type StepIndicator = SetupStep | 'po';
+  type StepState = 'completed' | 'active' | 'upcoming';
+
+  const connectionSteps: Array<{ id: StepIndicator; label: string; badge: string }> = [
+    { id: 'credentials', label: 'Credentials', badge: '1' },
+    { id: 'sync', label: 'Initial Sync', badge: '2' },
+    { id: 'monitor', label: 'Monitoring', badge: '3' },
+    { id: 'po', label: 'PO Import', badge: 'PO' },
+  ];
+
+  const stepOrder: SetupStep[] = ['credentials', 'sync', 'monitor'];
+
+  const getStepState = (stepId: StepIndicator): StepState => {
+    if (stepId === 'po') {
+      return isConfigured ? 'active' : 'upcoming';
+    }
+
+    const currentIndex = stepOrder.indexOf(currentStep);
+    const stepIndex = stepOrder.indexOf(stepId);
+
+    if (stepIndex < currentIndex) return 'completed';
+    if (stepIndex === currentIndex) return 'active';
+    return 'upcoming';
+  };
+
+  const syncOptions = [
+    {
+      id: 'vendors',
+      label: 'Vendors',
+      description: 'Supplier records, contacts, preferred terms',
+    },
+    {
+      id: 'inventory',
+      label: 'Inventory',
+      description: 'Stock levels, valuation, locations',
+    },
+    {
+      id: 'boms',
+      label: 'BOMs',
+      description: 'Assemblies, components, and revisions',
+    },
+  ];
+
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <ServerStackIcon className="w-10 h-10 text-blue-400" />
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-white">Finale Inventory Integration</h3>
-          <p className="text-sm text-gray-400 mt-1">
-            Connect to Finale for real-time inventory, vendors, and purchase order sync
-          </p>
-        </div>
-        {isConfigured && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded-full">
-            <CheckCircleIcon className="w-5 h-5 text-green-400" />
-            <span className="text-sm font-medium text-green-400">Connected</span>
+    <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-[#050505] via-[#050505] to-[#0B0C0E] p-6 text-white shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)] md:p-7">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-xl bg-[#1D9BF0]/10 text-[#1D9BF0] flex items-center justify-center">
+            <ServerStackIcon className="h-6 w-6" />
           </div>
-        )}
+          <div>
+            <h3 className="text-lg font-semibold">Finale sync controls</h3>
+            <p className="text-xs text-gray-500">Credentials · Sync automation · PO imports</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {isConfigured && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200">
+              <CheckCircleIcon className="h-4 w-4" />
+              Connected
+            </span>
+          )}
+          {isConfigured && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentStep('credentials')}
+              className="rounded-full border border-white/10 px-4 py-1.5 text-xs text-[#1D9BF0] hover:bg-white/5"
+            >
+              Edit credentials
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="mt-6 pt-6 border-t border-gray-700/50 space-y-6">
-        {/* Configuration Status */}
-        {!isConfigured && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-            <p className="text-sm text-yellow-300 font-medium mb-2">⚙️ Configuration Required</p>
-            <p className="text-xs text-gray-400">
-              Finale CSV sync must be configured in Supabase Edge Functions by an administrator.
-              Contact your system administrator to set up <code className="text-blue-400">FINALE_INVENTORY_REPORT_URL</code>, 
-              <code className="text-blue-400"> FINALE_VENDORS_REPORT_URL</code>, and 
-              <code className="text-blue-400"> FINALE_BOM_REPORT_URL</code> environment variables.
-            </p>
-          </div>
-        )}
+      <div className="mt-6 flex flex-wrap gap-3">
+        {connectionSteps.map((step, index) => {
+          const state = getStepState(step.id);
+          const stateClasses =
+            state === 'completed'
+              ? 'border-[#1D9BF0]/50 bg-[#1D9BF0]/10 text-white'
+              : state === 'active'
+                ? 'border-white/20 bg-white/5 text-white'
+                : 'border-white/5 text-gray-500';
 
-        {/* Step 1: Sync Data */}
-        <div className={isConfigured ? '' : 'opacity-40 pointer-events-none'}>
-          {!isConfigured ? (
-            <>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-500/20 text-gray-400 font-semibold text-sm">
-                  1
-                </div>
-                <h4 className="text-md font-semibold text-gray-400">Waiting for Backend Configuration</h4>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 font-semibold text-sm">
-                  1
-                </div>
-                <h4 className="text-md font-semibold text-white">Sync Finale Data</h4>
-              </div>
-              
-              <div className="ml-11 space-y-4">
-            <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4">
-              <p className="text-sm text-blue-300 font-medium mb-2">📍 Where to find your credentials:</p>
-              <ol className="text-xs text-gray-400 space-y-1 ml-4 list-decimal">
-                <li>Log in to your Finale account at <span className="text-blue-400 font-mono">app.finaleinventory.com</span></li>
-                <li>Go to <span className="text-white font-semibold">Settings → Integrations → API Access</span></li>
-                <li>Click <span className="text-white font-semibold">"Generate API Key"</span> if you don't have one</li>
-                <li>Copy your <span className="text-white font-semibold">API Key</span> and <span className="text-white font-semibold">API Secret</span></li>
-              </ol>
+          return (
+            <div
+              key={step.id}
+              className={`flex items-center gap-3 rounded-full border px-4 py-2 text-sm transition-colors ${stateClasses}`}
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 text-xs font-semibold">
+                {step.badge === 'PO' ? step.badge : index + 1}
+              </span>
+              <span>{step.label}</span>
             </div>
+          );
+        })}
+      </div>
 
-            <div className="space-y-3">
-              <div className="relative">
-                <KeyIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="API Key (e.g., I9TVdRvblFod)"
-                  value={credentials.apiKey}
-                  onChange={(e) => handleCredentialChange('apiKey', e.target.value)}
-                  className="w-full bg-gray-700 rounded-md p-2.5 pl-10 text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  disabled={isConfigured && currentStep !== 'credentials'}
-                />
-              </div>
+      {!isConfigured && (
+        <div className="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-100">
+          <div className="flex items-start gap-3">
+            <InformationCircleIcon className="h-5 w-5 flex-shrink-0 text-amber-200" />
+            <div>
+              <p className="font-semibold">Backend configuration required</p>
+              <p className="mt-1 text-amber-100/80">
+                Supabase Edge Functions need the Finale CSV endpoints before sync can run. Ask an administrator to set
+                <code className="mx-1 rounded bg-black/30 px-1 py-0.5">FINALE_INVENTORY_REPORT_URL</code>
+                ,
+                <code className="mx-1 rounded bg-black/30 px-1 py-0.5">FINALE_VENDORS_REPORT_URL</code>
+                , and
+                <code className="mx-1 rounded bg-black/30 px-1 py-0.5">FINALE_BOM_REPORT_URL</code>.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
-              <div className="relative">
-                <KeyIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  placeholder="API Secret"
-                  value={credentials.apiSecret}
-                  onChange={(e) => handleCredentialChange('apiSecret', e.target.value)}
-                  className="w-full bg-gray-700 rounded-md p-2.5 pl-10 text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  disabled={isConfigured && currentStep !== 'credentials'}
-                />
-              </div>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase tracking-wide text-gray-400">Status</p>
+            <ServerStackIcon className="h-5 w-5 text-white/40" />
+          </div>
+          <p className="mt-2 text-lg font-semibold">
+            {isConfigured ? 'Connected to Finale' : 'Waiting on config'}
+          </p>
+          <p className="text-sm text-gray-500">
+            {isConfigured ? 'Supabase imports ready' : 'Authenticate + add CSV endpoints'}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase tracking-wide text-gray-400">Last sync</p>
+            <RefreshIcon className="h-5 w-5 text-white/40" />
+          </div>
+          <p className="mt-2 text-lg font-semibold">
+            {syncStatus ? formatRelativeTime(syncStatus.lastSyncTime) : 'Never'}
+          </p>
+          <p className="text-sm text-gray-500">{syncStatus ? formatDate(syncStatus.lastSyncTime) : 'Run initial sync'}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase tracking-wide text-gray-400">Records synced</p>
+            <ChartBarIcon className="h-5 w-5 text-white/40" />
+          </div>
+          <p className="mt-2 text-lg font-semibold">
+            {syncStatus ? syncStatus.totalItemsSynced.toLocaleString() : '0'}
+          </p>
+          <p className="text-sm text-gray-500">
+            Duration {syncStatus ? formatDuration(syncStatus.lastSyncDuration) : '—'}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase tracking-wide text-gray-400">Auto sync</p>
+            <InformationCircleIcon className="h-5 w-5 text-white/40" />
+          </div>
+          <p className="mt-2 text-lg font-semibold">{autoSyncEnabled ? 'Enabled' : 'Manual only'}</p>
+          <p className="text-sm text-gray-500">Inventory 5m · Vendors 1h · POs 15m</p>
+        </div>
+      </div>
 
-              <div className="relative">
-                <LinkIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Account Path (e.g., yourcompany)"
-                  value={credentials.accountPath}
-                  onChange={(e) => handleCredentialChange('accountPath', e.target.value)}
-                  className="w-full bg-gray-700 rounded-md p-2.5 pl-10 text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  disabled={isConfigured && currentStep !== 'credentials'}
-                />
-              </div>
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Step 1</p>
+              <h4 className="text-xl font-semibold">Finale credentials</h4>
+              <p className="mt-1 text-sm text-gray-400">Paste the key, secret, and account path issued by Finale.</p>
+            </div>
+            <DocumentTextIcon className="h-6 w-6 text-white/40" />
+          </div>
 
-              <Button
-                onClick={handleTestConnection}
-                disabled={isTesting || !credentials.apiKey || !credentials.apiSecret || !credentials.accountPath}
-                className="w-full bg-blue-600 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isTesting ? (
-                  <>
-                    <RefreshIcon className="w-5 h-5 animate-spin" />
-                    Testing Connection...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircleIcon className="w-5 h-5" />
-                    Test Connection
-                  </>
-                )}
-              </Button>
+          <div className="mt-4 rounded-2xl border border-white/10 bg-[#0A0C10]/60 p-4">
+            <p className="text-sm font-medium text-[#1D9BF0]">Where to find them</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-gray-400">
+              <li>Sign in at app.finaleinventory.com</li>
+              <li>Navigate to Settings → Integrations → API Access</li>
+              <li>Generate a key pair if none exists</li>
+              <li>Copy API key, secret, and your account path</li>
+            </ol>
+          </div>
 
-              {testResult && (
-                <div className={`flex items-start gap-3 p-3 rounded-lg border ${
+          <div className="mt-4 space-y-3">
+            <div className="relative">
+              <KeyIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="text"
+                placeholder="API Key (e.g., I9TVdRvblFod)"
+                value={credentials.apiKey}
+                onChange={(e) => handleCredentialChange('apiKey', e.target.value)}
+                className="w-full rounded-full border border-white/10 bg-black/30 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
+                disabled={isConfigured && currentStep !== 'credentials'}
+              />
+            </div>
+            <div className="relative">
+              <KeyIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="password"
+                placeholder="API Secret"
+                value={credentials.apiSecret}
+                onChange={(e) => handleCredentialChange('apiSecret', e.target.value)}
+                className="w-full rounded-full border border-white/10 bg-black/30 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
+                disabled={isConfigured && currentStep !== 'credentials'}
+              />
+            </div>
+            <div className="relative">
+              <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Account path (e.g., yourcompany)"
+                value={credentials.accountPath}
+                onChange={(e) => handleCredentialChange('accountPath', e.target.value)}
+                className="w-full rounded-full border border-white/10 bg-black/30 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
+                disabled={isConfigured && currentStep !== 'credentials'}
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            <Button
+              onClick={handleTestConnection}
+              disabled={isTesting || !credentials.apiKey || !credentials.apiSecret || !credentials.accountPath}
+              className="w-full rounded-full bg-[#1D9BF0] py-3 text-sm font-semibold text-white transition hover:bg-[#1a8cd8] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isTesting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <RefreshIcon className="h-5 w-5 animate-spin" /> Testing connection...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <CheckCircleIcon className="h-5 w-5" /> Test connection
+                </span>
+              )}
+            </Button>
+
+            {testResult && (
+              <div
+                className={`rounded-2xl border p-4 text-sm ${
                   testResult.success
-                    ? 'bg-green-500/10 border-green-500/30 text-green-300'
-                    : 'bg-red-500/10 border-red-500/30 text-red-300'
-                }`}>
+                    ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-100'
+                    : 'border-rose-500/40 bg-rose-500/10 text-rose-100'
+                }`}
+              >
+                <div className="flex items-start gap-2">
                   {testResult.success ? (
-                    <CheckCircleIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <CheckCircleIcon className="h-5 w-5 flex-shrink-0" />
                   ) : (
-                    <XCircleIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <XCircleIcon className="h-5 w-5 flex-shrink-0" />
                   )}
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{testResult.message}</p>
+                  <div>
+                    <p className="font-medium">{testResult.message}</p>
                     {testResult.facilities && testResult.facilities.length > 0 && (
-                      <p className="text-xs mt-1 opacity-80">
+                      <p className="mt-1 text-xs opacity-80">
                         Found {testResult.facilities.length} facility(ies)
                       </p>
                     )}
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-            </>
+        </section>
+
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Step 2</p>
+          <div className="mt-1 flex items-center justify-between">
+            <div>
+              <h4 className="text-xl font-semibold">Initial sync & readiness</h4>
+              <p className="mt-1 text-sm text-gray-400">Hydrate inventory, vendors, and BOMs from Finale.</p>
+            </div>
+            <RefreshIcon className="h-6 w-6 text-white/40" />
+          </div>
+
+          <div className="mt-4 space-y-3 text-sm text-gray-400">
+            <p>1. Validate credentials • 2. Ensure Supabase env vars exist • 3. Run the full import once.</p>
+            <p className="rounded-2xl border border-white/10 bg-black/20 px-4 py-2 text-xs text-gray-400">
+              Tip: keep an eye on the cards below — sync stats update in real time while automation runs.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleStartSync}
+            disabled={!isConfigured || currentStep === 'monitor'}
+            className="mt-6 w-full rounded-full bg-white/90 py-3 text-sm font-semibold text-black transition hover:bg-white"
+          >
+            {currentStep === 'monitor' ? 'Initial sync complete' : 'Start initial sync'}
+          </Button>
+          {currentStep === 'monitor' && (
+            <p className="mt-2 text-center text-xs text-emerald-200">All sync services active — use automation controls below.</p>
           )}
-        </div>
+        </section>
+      </div>
 
-        {/* Step 2: Initial Sync */}
-        {isConfigured && currentStep === 'sync' && (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 font-semibold text-sm">
-                2
-              </div>
-              <h4 className="text-md font-semibold text-white">Start Initial Data Sync</h4>
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <section
+          className={`rounded-3xl border border-white/10 bg-white/5 p-6 ${!isConfigured ? 'opacity-40 pointer-events-none' : ''}`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Step 3</p>
+              <h4 className="text-xl font-semibold">Automation & manual sync</h4>
+              <p className="mt-1 text-sm text-gray-400">Toggle background jobs or trigger selective syncs.</p>
             </div>
-
-            <div className="ml-11 space-y-4">
-              <p className="text-sm text-gray-400">
-                Sync your inventory, vendors, and purchase orders from Finale to this system.
-                This may take a few minutes depending on your data size.
-              </p>
-
-              <Button
-                onClick={handleStartSync}
-                className="w-full bg-accent-500 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-accent-600 transition-colors flex items-center justify-center gap-2"
-              >
-                <RefreshIcon className="w-5 h-5" />
-                Start Initial Sync
-              </Button>
-            </div>
+            <Button
+              onClick={handleToggleAutoSync}
+              className={`relative inline-flex h-8 w-16 items-center rounded-full border border-white/10 ${
+                autoSyncEnabled ? 'bg-emerald-500/80' : 'bg-black/40'
+              }`}
+            >
+              <span
+                className={`inline-block h-6 w-6 rounded-full bg-white transition ${
+                  autoSyncEnabled ? 'translate-x-8' : 'translate-x-1'
+                }`}
+              />
+            </Button>
           </div>
-        )}
 
-        {/* Step 3: Monitor */}
-        {isConfigured && currentStep === 'monitor' && (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-500/20 text-green-400 font-semibold text-sm">
-                ✓
+          {syncStatus && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">Last run</p>
+                <p className="mt-1 text-lg font-semibold">{formatRelativeTime(syncStatus.lastSyncTime)}</p>
+                <p className="text-xs text-gray-500">{formatDate(syncStatus.lastSyncTime)}</p>
               </div>
-              <h4 className="text-md font-semibold text-white flex-1">Sync Status & Controls</h4>
-              <Button
-                onClick={() => setCurrentStep('credentials')}
-                className="text-xs text-blue-400 hover:text-blue-300 font-medium"
-              >
-                Reconfigure Credentials
-              </Button>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">Phase</p>
+                <p className="mt-1 text-lg font-semibold">{syncStatus.progress.phase}</p>
+                <p className="text-xs text-gray-500">{syncStatus.isRunning ? 'Running' : 'Idle'}</p>
+              </div>
             </div>
+          )}
 
-            <div className="ml-11 space-y-4">
-              {/* Auto-sync toggle */}
-              <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-white">Automatic Sync</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Inventory: 5min | Vendors: 1hr | POs: 15min
-                  </p>
-                </div>
-                <Button
-                  onClick={handleToggleAutoSync}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    autoSyncEnabled ? 'bg-green-500' : 'bg-gray-600'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      autoSyncEnabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </Button>
+          {syncStatus && syncStatus.isRunning && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>{syncStatus.progress.message}</span>
+                <span className="text-white">{syncStatus.progress.percentage}%</span>
               </div>
-
-              {/* Sync stats */}
-              {syncStatus && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-gray-900/50 rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <RefreshIcon className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs text-gray-400">Last Sync</span>
-                    </div>
-                    <p className="text-sm font-semibold text-white">
-                      {formatRelativeTime(syncStatus.lastSyncTime)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {formatDate(syncStatus.lastSyncTime)}
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-gray-900/50 rounded-lg">
-                    <div className="flex items-center gap-2 mb-1">
-                      <ChartBarIcon className="w-4 h-4 text-gray-400" />
-                      <span className="text-xs text-gray-400">Items Synced</span>
-                    </div>
-                    <p className="text-sm font-semibold text-white">
-                      {syncStatus.totalItemsSynced.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Duration: {formatDuration(syncStatus.lastSyncDuration)}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Progress bar */}
-              {syncStatus && syncStatus.isRunning && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">{syncStatus.progress.message}</span>
-                    <span className="text-white font-medium">{syncStatus.progress.percentage}%</span>
-                  </div>
-                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-accent-500 transition-all duration-300"
-                      style={{ width: `${syncStatus.progress.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Multi-select sync sources */}
-              <div className="p-4 bg-gray-900/50 rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-white">Select Data Sources</p>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={selectAllSyncSources}
-                      className="text-xs text-accent-400 hover:text-accent-300"
-                    >
-                      Select All
-                    </Button>
-                    <span className="text-gray-600">|</span>
-                    <Button
-                      onClick={deselectAllSyncSources}
-                      className="text-xs text-gray-400 hover:text-white"
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={selectedSyncSources.has('vendors')}
-                      onChange={() => toggleSyncSource('vendors')}
-                      className="w-4 h-4 rounded border-gray-600 text-accent-500 focus:ring-accent-500 focus:ring-offset-gray-900"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm text-white group-hover:text-accent-300">Vendors</span>
-                      <p className="text-xs text-gray-500">Supplier information and contacts</p>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={selectedSyncSources.has('inventory')}
-                      onChange={() => toggleSyncSource('inventory')}
-                      className="w-4 h-4 rounded border-gray-600 text-accent-500 focus:ring-accent-500 focus:ring-offset-gray-900"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm text-white group-hover:text-accent-300">Inventory</span>
-                      <p className="text-xs text-gray-500">Stock levels, costs, and locations</p>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={selectedSyncSources.has('boms')}
-                      onChange={() => toggleSyncSource('boms')}
-                      className="w-4 h-4 rounded border-gray-600 text-accent-500 focus:ring-accent-500 focus:ring-offset-gray-900"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm text-white group-hover:text-accent-300">Bills of Materials</span>
-                      <p className="text-xs text-gray-500">Product recipes and components</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Manual sync button */}
-              <div className="space-y-2">
-                <Button
-                  onClick={handleManualSync}
-                  disabled={syncStatus?.isRunning || selectedSyncSources.size === 0}
-                  className="w-full bg-accent-500 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  <RefreshIcon className={`w-5 h-5 ${syncStatus?.isRunning ? 'animate-spin' : ''}`} />
-                  {syncStatus?.isRunning ? 'Syncing...' : `Sync Selected (${selectedSyncSources.size})`}
-                </Button>
-
-                {/* Reset button if stuck in running state */}
-                {syncStatus?.isRunning && (
-                  <Button
-                    onClick={handleResetSyncStatus}
-                    className="w-full bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
-                  >
-                    Reset Sync Status (if stuck)
-                  </Button>
-                )}
-
-                {/* Debug info */}
-                {syncStatus && (
-                  <div className="text-xs text-gray-500 text-center">
-                    Status: {syncStatus.isRunning ? 'Running' : 'Idle'} | 
-                    Sources: {selectedSyncSources.size} | 
-                    Phase: {syncStatus.progress.phase}
-                  </div>
-                )}
-              </div>
-
-              {/* Errors */}
-              {syncStatus && syncStatus.errors.length > 0 && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <p className="text-sm font-medium text-red-300 mb-2">Recent Errors:</p>
-                  <div className="space-y-1">
-                    {syncStatus.errors.slice(-3).map((error, i) => (
-                      <p key={i} className="text-xs text-red-400">
-                        {error.phase}: {error.message}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* PO Import Section */}
-        {isConfigured && (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 font-semibold text-sm">
-                PO
-              </div>
-              <h4 className="text-md font-semibold text-white">Import Purchase Orders</h4>
-            </div>
-
-            <div className="ml-11 space-y-4">
-              <p className="text-sm text-gray-400">
-                Import purchase orders from CSV files or directly from Finale API.
-                Imported POs will appear in your Purchase Orders list.
-              </p>
-
-              {/* CSV Upload */}
-              <div className="space-y-3">
+              <div className="mt-2 h-2 rounded-full bg-black/30">
                 <div
-                  className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                    dragActive
-                      ? 'border-accent-400 bg-accent-400/10'
-                      : 'border-gray-600 hover:border-gray-500'
-                  }`}
-                  onDragEnter={handleDrag}
-                  onDragLeave={handleDrag}
-                  onDragOver={handleDrag}
-                  onDrop={handleDrop}
-                >
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileSelect}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    disabled={isImportingCSV}
-                  />
-                  
-                  <div className="flex flex-col items-center gap-3">
-                    <CloudUploadIcon className={`w-8 h-8 ${dragActive ? 'text-accent-400' : 'text-gray-400'}`} />
-                    <div>
-                      <p className="text-sm font-medium text-white">
-                        {isImportingCSV ? 'Importing CSV...' : 'Drop CSV file here or click to browse'}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Finale PO export format (.csv)
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {isImportingCSV && (
-                  <div className="flex items-center justify-center gap-2 text-sm text-accent-400">
-                    <RefreshIcon className="w-4 h-4 animate-spin" />
-                    Processing CSV file...
-                  </div>
-                )}
+                  className="h-full rounded-full bg-gradient-to-r from-[#1D9BF0] to-[#00BA7C]"
+                  style={{ width: `${syncStatus.progress.percentage}%` }}
+                />
               </div>
-
-              {/* Finale API Pull */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-gray-700"></div>
-                <span className="text-xs text-gray-500 uppercase tracking-wide">or</span>
-                <div className="flex-1 h-px bg-gray-700"></div>
-              </div>
-
-              <Button
-                onClick={handlePullFromFinale}
-                disabled={isPullingFinale || !getFinaleClient()}
-                className="w-full bg-purple-600 text-white font-semibold py-2.5 px-4 rounded-md hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isPullingFinale ? (
-                  <>
-                    <RefreshIcon className="w-5 h-5 animate-spin" />
-                    Pulling from Finale...
-                  </>
-                ) : (
-                  <>
-                    <ServerStackIcon className="w-5 h-5" />
-                    Pull POs from Finale API
-                  </>
-                )}
-              </Button>
-
-              {!getFinaleClient() && (
-                <p className="text-xs text-amber-400 text-center">
-                  Configure Finale credentials above to enable API pulls
-                </p>
-              )}
-
-              {/* Import Results */}
-              {importStats && (
-                <div className="p-4 bg-gray-900/50 rounded-lg space-y-3">
-                  <h5 className="text-sm font-medium text-white">Import Results</h5>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="text-center p-2 bg-green-500/10 rounded">
-                      <div className="text-lg font-bold text-green-400">{importStats.imported}</div>
-                      <div className="text-xs text-gray-400">Imported</div>
-                    </div>
-                    <div className="text-center p-2 bg-blue-500/10 rounded">
-                      <div className="text-lg font-bold text-blue-400">{importStats.updated}</div>
-                      <div className="text-xs text-gray-400">Updated</div>
-                    </div>
-                    <div className="text-center p-2 bg-yellow-500/10 rounded">
-                      <div className="text-lg font-bold text-yellow-400">{importStats.skipped}</div>
-                      <div className="text-xs text-gray-400">Skipped</div>
-                    </div>
-                    <div className="text-center p-2 bg-red-500/10 rounded">
-                      <div className="text-lg font-bold text-red-400">{importStats.errors}</div>
-                      <div className="text-xs text-gray-400">Errors</div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
+          )}
+
+          <div className="mt-6 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={selectAllSyncSources}
+              className="rounded-full border border-white/10 px-3 py-1 text-xs text-white hover:bg-white/5"
+            >
+              Select all
+            </Button>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={deselectAllSyncSources}
+              className="rounded-full border border-white/10 px-3 py-1 text-xs text-gray-400 hover:bg-white/5"
+            >
+              Clear
+            </Button>
+            <span>• {selectedSyncSources.size} source(s) selected</span>
           </div>
-        )}
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {syncOptions.map(option => {
+              const isActive = selectedSyncSources.has(option.id);
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => toggleSyncSource(option.id)}
+                  className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
+                    isActive
+                      ? 'border-[#1D9BF0] bg-[#1D9BF0]/10 text-white'
+                      : 'border-white/10 bg-black/10 text-gray-400'
+                  }`}
+                >
+                  <p className="font-medium">{option.label}</p>
+                  <p className="mt-1 text-xs text-gray-500">{option.description}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 space-y-3">
+            <Button
+              onClick={handleManualSync}
+              disabled={selectedSyncSources.size === 0 || syncStatus?.isRunning}
+              className="w-full rounded-full bg-[#1D9BF0] py-3 text-sm font-semibold text-white transition hover:bg-[#1a8cd8] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {syncStatus?.isRunning ? 'Sync in progress…' : `Sync selected (${selectedSyncSources.size})`}
+            </Button>
+            {syncStatus?.isRunning && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetSyncStatus}
+                className="w-full rounded-full border border-white/10 py-3 text-xs text-gray-300 hover:bg-white/5"
+              >
+                Reset status (stuck run)
+              </Button>
+            )}
+            {syncStatus && (
+              <p className="text-center text-xs text-gray-500">
+                {syncStatus.errors.length} recent error(s) • phase {syncStatus.progress.phase}
+              </p>
+            )}
+          </div>
+
+          {syncStatus && syncStatus.errors.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs text-rose-100">
+              <p className="font-semibold">Recent errors</p>
+              <ul className="mt-2 space-y-1">
+                {syncStatus.errors.slice(-3).map((error, index) => (
+                  <li key={index}>
+                    {error.phase}: {error.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+
+        <section
+          className={`rounded-3xl border border-white/10 bg-white/5 p-6 ${!isConfigured ? 'opacity-40 pointer-events-none' : ''}`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Step 4</p>
+              <h4 className="text-xl font-semibold">Purchase order imports</h4>
+              <p className="mt-1 text-sm text-gray-400">Drag in Finale CSV exports or call the API importer.</p>
+            </div>
+            <CloudUploadIcon className="h-6 w-6 text-white/40" />
+          </div>
+
+          <div
+            className={`mt-5 rounded-3xl border-2 border-dashed px-6 py-10 text-center transition ${
+              dragActive ? 'border-[#1D9BF0] bg-[#1D9BF0]/5' : 'border-white/15 bg-black/10'
+            }`}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileSelect}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              disabled={isImportingCSV}
+            />
+            <p className="text-sm font-semibold">
+              {isImportingCSV ? 'Importing purchase orders…' : 'Drop CSV or click to browse'}
+            </p>
+            <p className="mt-2 text-xs text-gray-500">Finale → Purchase Orders → Export → CSV</p>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3 text-xs text-gray-500">
+            <div className="h-px flex-1 bg-white/10" />
+            <span>or</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+
+          <Button
+            onClick={handlePullFromFinale}
+            disabled={isPullingFinale || !isFinaleConfigured}
+            className="mt-4 w-full rounded-full bg-purple-500 py-3 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPullingFinale ? 'Pulling from Finale…' : 'Pull from Finale API'}
+          </Button>
+          {!isFinaleConfigured && (
+            <p className="mt-2 text-center text-xs text-amber-200">Add credentials first to enable API pulls.</p>
+          )}
+
+          {importStats && (
+            <div className="mt-6 grid grid-cols-2 gap-3 text-center text-xs">
+              <div className="rounded-2xl border border-emerald-400/40 bg-emerald-500/10 p-3">
+                <p className="text-lg font-semibold text-emerald-200">{importStats.imported}</p>
+                Imported
+              </div>
+              <div className="rounded-2xl border border-[#1D9BF0]/40 bg-[#1D9BF0]/10 p-3">
+                <p className="text-lg font-semibold text-[#1D9BF0]">{importStats.updated}</p>
+                Updated
+              </div>
+              <div className="rounded-2xl border border-amber-400/40 bg-amber-400/10 p-3">
+                <p className="text-lg font-semibold text-amber-200">{importStats.skipped}</p>
+                Skipped
+              </div>
+              <div className="rounded-2xl border border-rose-400/40 bg-rose-500/10 p-3">
+                <p className="text-lg font-semibold text-rose-200">{importStats.errors}</p>
+                Errors
+              </div>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

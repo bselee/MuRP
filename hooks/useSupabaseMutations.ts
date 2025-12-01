@@ -169,16 +169,23 @@ export async function updatePurchaseOrderStatus(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // Map UI status to database status
-    const statusMap: Record<'Pending' | 'Submitted' | 'Fulfilled', string> = {
+    const statusMap: Record<string, string> = {
       'Pending': 'draft',
       'Submitted': 'sent',
-      'Fulfilled': 'received'
+      'Fulfilled': 'received',
+      'Committed': 'committed',
+      'draft': 'draft',
+      'sent': 'sent',
+      'received': 'received',
+      'committed': 'committed',
     };
+
+    const normalizedStatus = statusMap[status] || 'draft';
 
     const { error } = await supabase
       .from('purchase_orders')
       .update({
-        status: statusMap[status] || 'draft',
+        status: normalizedStatus,
         record_last_updated: new Date().toISOString()
       } as any)
       .or(`order_id.eq.${id},id.eq.${id}`);
@@ -188,6 +195,49 @@ export async function updatePurchaseOrderStatus(
   } catch (error) {
     console.error('[updatePurchaseOrderStatus] Error:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Failed to update PO' };
+  }
+}
+
+export async function appendPurchaseOrderNote(
+  id: string,
+  note: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const trimmedNote = note?.trim();
+    if (!trimmedNote) {
+      return { success: true };
+    }
+
+    const { data, error } = await supabase
+      .from('purchase_orders')
+      .select('id, internal_notes')
+      .or(`order_id.eq.${id},id.eq.${id}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data?.id) {
+      throw new Error('Purchase order not found');
+    }
+
+    const mergedNotes = data.internal_notes
+      ? `${data.internal_notes}\n${trimmedNote}`
+      : trimmedNote;
+
+    const { error: updateError } = await supabase
+      .from('purchase_orders')
+      .update({
+        internal_notes: mergedNotes,
+        record_last_updated: new Date().toISOString(),
+      })
+      .eq('id', data.id);
+
+    if (updateError) throw updateError;
+
+    return { success: true };
+  } catch (error) {
+    console.error('[appendPurchaseOrderNote] Error:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to append purchase order note' };
   }
 }
 

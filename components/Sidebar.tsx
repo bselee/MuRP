@@ -119,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
         { page: 'Stock Intelligence', icon: <ChartBarIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Label Scanner', icon: <QrCodeIcon className="w-6 h-6" /> },
         { page: 'Vendors', icon: <UsersIcon className="w-6 h-6" />, managerAndUp: true },
-        { page: 'Product Page', icon: <EyeIcon className="w-6 h-6" /> },
+        { page: 'Product Page', icon: <EyeIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'API Documentation', icon: <FileTextIcon className="w-6 h-6" />, adminOnly: true },
         { page: 'Settings', icon: <CogIcon className="w-6 h-6" />, adminOnly: true },
     ];

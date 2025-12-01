@@ -60,6 +60,7 @@ import {
   updatePurchaseOrderStatus,
   approveBomRevision,
   revertBomToRevision,
+  appendPurchaseOrderNote,
 } from './hooks/useSupabaseMutations';
 import {
     mockHistoricalSales,
@@ -1447,13 +1448,56 @@ const AppShell: React.FC = () => {
     }
   };
 
+  const formatPoNote = useCallback((message: string) => {
+    return `[${new Date().toLocaleString()}] ${message}`;
+  }, []);
+
   const handleSendPoEmail = async (poId: string, sentViaGmail: boolean) => {
+    const senderName = currentUser?.name || currentUser?.email || 'MuRP User';
+    const deliveryChannel = sentViaGmail
+      ? `Gmail (${gmailConnection.email ?? 'workspace account'})`
+      : 'MuRP (manual send)';
+
     if (sentViaGmail) {
       addToast(`Email for ${poId} sent via ${gmailConnection.email ?? 'Google Workspace Gmail'}.`, 'success');
     } else {
       addToast(`Simulated email send for ${poId}.`, 'info');
     }
-    await updatePurchaseOrderStatus(poId, 'Submitted');
+
+    await appendPurchaseOrderNote(
+      poId,
+      formatPoNote(`${senderName} sent PO via ${deliveryChannel}. Awaiting vendor confirmation.`),
+    );
+
+    const submissionResult = await updatePurchaseOrderStatus(poId, 'Submitted');
+    if (!submissionResult.success) {
+      addToast(`Failed to update ${poId} status: ${submissionResult.error ?? 'unknown error'}`, 'error');
+      refetchPOs();
+      return;
+    }
+
+    let shouldMarkCommitted = false;
+    if (typeof window !== 'undefined') {
+      shouldMarkCommitted = window.confirm(
+        'Have you marked this PO as Committed inside Finale?\n\nSelect "OK" after you confirm the vendor has acknowledged and you have updated Finale. Select "Cancel" to leave it in Submitted status until the vendor confirms.',
+      );
+    }
+
+    if (shouldMarkCommitted) {
+      await appendPurchaseOrderNote(
+        poId,
+        formatPoNote(`${senderName} confirmed Finale commit and marked this PO as Committed.`),
+      );
+      const commitResult = await updatePurchaseOrderStatus(poId, 'Committed');
+      if (!commitResult.success) {
+        addToast(`Failed to mark ${poId} as committed: ${commitResult.error ?? 'unknown error'}`, 'error');
+      } else {
+        addToast(`PO ${poId} marked as Committed. Finale should now reflect the same status.`, 'success');
+      }
+    } else {
+      addToast(`PO ${poId} left in Submitted state until vendor confirmation.`, 'info');
+    }
+
     refetchPOs();
   };
 

@@ -247,13 +247,45 @@ async function handleFinaleRequest(
     }
 
     case 'pullPurchaseOrders': {
-      const response = await fetch(`${finaleApiUrl}/purchase_orders`, {
-        headers: {
-          'Authorization': `Bearer ${access_token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-      return response.json()
+      const limit = 100
+      let offset = 0
+      const allPurchaseOrders: any[] = []
+      let hasMore = true
+
+      while (hasMore) {
+        const url = `${finaleApiUrl}/purchase_orders?limit=${limit}&offset=${offset}&include=line_items`
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${access_token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+
+        if (!response.ok) {
+          const errorBody = await response.text()
+          throw new Error(`Failed to fetch purchase orders (${response.status}): ${errorBody}`)
+        }
+
+        const payload = await response.json()
+        const batch = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : []
+
+        allPurchaseOrders.push(...batch)
+
+        if (payload?.pagination?.totalPages && payload?.pagination?.page) {
+          const { page, totalPages } = payload.pagination
+          hasMore = page < totalPages
+          offset = page * limit
+        } else {
+          hasMore = batch.length === limit
+          offset += limit
+        }
+      }
+
+      return { data: allPurchaseOrders }
     }
 
     case 'syncAll': {
