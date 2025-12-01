@@ -102,7 +102,6 @@ import { getGoogleGmailService } from './services/googleGmailService';
 import { GOOGLE_SCOPES } from './lib/google/scopes';
 import { ShipmentAlertBanner } from './components/ShipmentAlertBanner';
 import { ShipmentReviewModal } from './components/ShipmentReviewModal';
-import { usePermissions } from './hooks/usePermissions';
 import { isE2ETesting } from './lib/auth/guards';
 import {
   SystemAlertProvider,
@@ -111,7 +110,7 @@ import {
 import type { SyncHealthRow } from './lib/sync/healthUtils';
 import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amazonTracking';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Product Page';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page';
 
 export type ToastInfo = {
   id: number;
@@ -163,7 +162,6 @@ const AppShell: React.FC = () => {
   } = useModalState();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = usePersistentState<boolean>('sidebarCollapsed', false);
   const [currentPage, setCurrentPage] = usePersistentState<Page>('currentPage', 'Dashboard');
-  const [navigationHistory, setNavigationHistory] = useState<Page[]>([currentPage]);
   const [toasts, setToasts] = useState<ToastInfo[]>([]);
   const [gmailConnection, setGmailConnection] = usePersistentState<GmailConnection>('gmailConnection', { isConnected: false, email: null });
   const [apiKey, setApiKey] = usePersistentState<string | null>('apiKey', null);
@@ -179,13 +177,6 @@ const AppShell: React.FC = () => {
   const [isShipmentReviewModalOpen, setIsShipmentReviewModalOpen] = useState(false);
   const [shipmentReviewPoId, setShipmentReviewPoId] = useState<string | null>(null);
   const navigateToPage = useCallback((nextPage: Page) => {
-    setNavigationHistory(prev => {
-      if (prev[prev.length - 1] === nextPage) {
-        return prev;
-      }
-      const updated = [...prev, nextPage];
-      return updated.length > 25 ? updated.slice(updated.length - 25) : updated;
-    });
     setCurrentPage(nextPage);
 
     // Update browser URL to match the page change, preserving query parameters
@@ -201,12 +192,13 @@ const AppShell: React.FC = () => {
       'API Documentation': '/api',
       'Artwork': '/artwork',
       'Projects': '/projects',
+      'Label Scanner': '/label-scanner',
       'Product Page': '/product',
     };
 
     const path = pageToPath[nextPage] || '/';
-    const currentSearch = window.location.search; // Preserve existing query parameters
     if (typeof window !== 'undefined' && window.history) {
+      const currentSearch = window.location.search;
       window.history.pushState({ page: nextPage }, '', path + currentSearch);
     }
   }, [setCurrentPage]);
@@ -221,21 +213,6 @@ const AppShell: React.FC = () => {
     [setArtworkShareHistory],
   );
 
-  const handleGoBack = useCallback(() => {
-    setNavigationHistory(prev => {
-      if (prev.length <= 1) {
-        return prev;
-      }
-      const nextHistory = prev.slice(0, -1);
-      const target = nextHistory[nextHistory.length - 1];
-      if (target) {
-        setCurrentPage(target);
-      }
-      return nextHistory;
-    });
-  }, [setCurrentPage]);
-
-  const canGoBack = navigationHistory.length > 1;
   const users = userProfiles;
   const googleAuthService = useMemo(() => getGoogleAuthService(), []);
   const gmailService = useMemo(() => getGoogleGmailService(), []);
@@ -462,6 +439,7 @@ const AppShell: React.FC = () => {
         '/vendors': 'Vendors',
         '/production': 'Production',
         '/boms': 'BOMs',
+        '/stock-intelligence': 'Stock Intelligence',
         '/settings': 'Settings',
         '/api': 'API Documentation',
         '/artwork': 'Artwork',
@@ -471,7 +449,6 @@ const AppShell: React.FC = () => {
         '/product': 'Product Page',
       };
       const initialPage = pathToPage[path] ?? 'Dashboard';
-      setNavigationHistory([initialPage]);
       setCurrentPage(initialPage);
 
       // Push initial state to history, preserving query parameters
@@ -487,6 +464,7 @@ const AppShell: React.FC = () => {
         'API Documentation': '/api',
         'Artwork': '/artwork',
         'Projects': '/projects',
+        'Label Scanner': '/label-scanner',
         'Product Page': '/product',
       };
       const initialPath = pageToPath[initialPage] || '/';
@@ -495,7 +473,7 @@ const AppShell: React.FC = () => {
       // No-op: best-effort only for e2e/dev
       console.warn('[App] URL init skipped:', err);
     }
-  }, [setCurrentPage, setNavigationHistory]);
+  }, [setCurrentPage]);
 
   // Auto-complete onboarding for users who confirmed email (preventing flash of setup screen)
   useEffect(() => {

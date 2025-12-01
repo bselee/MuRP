@@ -260,3 +260,54 @@
 - [ ] Test sidebar functionality in production environment
 - [ ] Monitor user feedback on condensed header design
 - [ ] Consider adding sidebar collapse state persistence if requested
+
+---
+
+### Session: 2025-12-01 (Bulk PO Import Feature)
+
+**Changes Made:**
+- Created: `components/POImportPanel.tsx` - New component for bulk PO import via CSV upload and Finale API pull
+- Modified: `pages/PurchaseOrders.tsx` - Added 2-week filter for POs, integrated POImportPanel, added toggle for showing all POs vs recent
+- Modified: `e2e/app-smoke.spec.ts` - Updated test assertions for renamed PO table heading
+- Modified: `components/Sidebar.tsx` - Minor updates for navigation consistency
+- Modified: `pages/Settings.tsx` - Minor updates
+
+**Key Decisions:**
+- Decision: Implemented 2-week default filter for purchase orders.
+- Rationale: Shows only recent POs by default for cleaner view, with toggle to see all history.
+- Decision: Created dedicated POImportPanel component for CSV and Finale imports.
+- Rationale: Centralizes bulk import functionality with clear UI for both CSV upload and API pull.
+- Decision: Import is read-only - pulls data into MuRP but NEVER syncs back to Finale.
+- Rationale: Prevents accidental data overwrites in the source system (Finale).
+- Decision: Smart deduplication - only updates existing POs if Finale version is newer.
+- Rationale: Compares timestamps to preserve newer MuRP edits over stale Finale data.
+
+**Features Implemented:**
+- ✅ CSV Upload: Drag-and-drop or click to upload Finale PO export format
+- ✅ Finale API Pull: Direct integration to fetch POs from Finale REST API
+- ✅ 2-Week Filter: Default view shows only POs from last 14 days
+- ✅ Toggle Button: Switch between "Last 2 Weeks" and "Show All POs"
+- ✅ Import Statistics: Shows imported/updated/skipped/errors counts
+- ✅ Audit Logging: Imports logged to finale_sync_log table
+- ✅ Vendor Resolution: Auto-links imported POs to vendors by name matching
+
+**Tests:**
+- Verified: `npm test` passed (9/9 unit tests + 3 inventory tests).
+- Verified: `npm run build` succeeded (TypeScript compilation clean).
+- Verified: `npm run e2e` passed (38/38 tests successful).
+- Verified: POImportPanel renders with CSV upload and Finale pull options.
+- Verified: 2-week filter correctly shows recent POs only.
+- Verified: Toggle button switches between filtered and all POs.
+
+**Problems & Solutions:**
+- Problem: Finale Integration Panel's sync only counted records but didn't persist to Supabase.
+- Solution: Created POImportPanel that actually persists imported POs to database.
+- Problem: PO list showed all historical POs, making it cluttered.
+- Solution: Added 2-week default filter with toggle to show all.
+- Problem: E2E test expected old "External Purchase Orders" heading.
+- Solution: Updated test to use locator for h1 and h2 headings separately.
+
+**Next Steps:**
+- [ ] Test bulk import in production with real Finale data
+- [ ] Monitor import performance with large CSV files
+- [ ] Consider adding progress indicator for large imports

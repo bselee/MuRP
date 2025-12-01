@@ -4,7 +4,7 @@ import React from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MuRPLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, UsersIcon, ChartBarIcon, EyeIcon, FileTextIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MuRPLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, UsersIcon, ChartBarIcon, EyeIcon, FileTextIcon, QrCodeIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
 import UserSettingsDropdown from './UserSettingsDropdown';
@@ -116,7 +116,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
         },
         { page: 'Artwork', icon: <PhotoIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Inventory', icon: <PackageIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Stock Intelligence', icon: <ChartBarIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Label Scanner', icon: <QrCodeIcon className="w-6 h-6" /> },
         { page: 'Vendors', icon: <UsersIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Product Page', icon: <EyeIcon className="w-6 h-6" /> },
+        { page: 'API Documentation', icon: <FileTextIcon className="w-6 h-6" />, adminOnly: true },
         { page: 'Settings', icon: <CogIcon className="w-6 h-6" />, adminOnly: true },
     ];
     

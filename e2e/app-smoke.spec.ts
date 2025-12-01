@@ -28,8 +28,9 @@ const routes: RouteCheck[] = [
     name: 'Purchase Orders',
     path: '/purchase-orders',
     assert: async (page) => {
-      await expect(page.getByRole('heading', { name: 'Purchase Orders', exact: true })).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'External Purchase Orders', exact: true })).toBeVisible();
+      // Check page title heading (h1) and PO table section (h2) both exist
+      await expect(page.locator('h1').filter({ hasText: 'Purchase Orders' })).toBeVisible();
+      await expect(page.locator('h2').filter({ hasText: 'Purchase Orders' })).toBeVisible();
     },
   },
   {

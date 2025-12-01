@@ -34,6 +34,7 @@ import BillingPanel from '../components/BillingPanel';
 import NotificationPreferencesPanel from '../components/NotificationPreferencesPanel';
 import RolePermissionMatrix from '../components/RolePermissionMatrix';
 import UserPersonalizationPanel from '../components/UserPersonalizationPanel';
+import SOPSettingsPanel from '../components/SOPSettingsPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -309,6 +310,17 @@ Thank you!`
           )}
 
           <h2 className="text-2xl font-bold text-white mt-8 mb-4">Operations & Workflow</h2>
+
+          {(isOpsAdmin || currentUser.role === 'Manager') && (
+            <CollapsibleSection
+              title="SOPs & Job Descriptions"
+              icon={<ClipboardCopyIcon className="w-6 h-6 text-sky-400" />}
+              isOpen={isSopSettingsOpen}
+              onToggle={() => setIsSopSettingsOpen(!isSopSettingsOpen)}
+            >
+              <SOPSettingsPanel addToast={addToast} />
+            </CollapsibleSection>
+          )}
 
           {/* 2. AI Configuration (Consolidated) */}
           <CollapsibleSection

@@ -15,8 +15,9 @@ import type {
     POTrackingStatus,
     RequisitionRequestOptions,
 } from '../types';
-import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon } from '../components/icons';
+import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon } from '../components/icons';
 import CreatePoModal from '../components/CreatePoModal';
+import POImportPanel from '../components/POImportPanel';
 import EmailComposerModal from '../components/EmailComposerModal';
 import GeneratePoModal from '../components/GeneratePoModal';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
@@ -149,6 +150,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [pendingPoDrafts, setPendingPoDrafts] = useState<PoDraftConfig[]>([]);
     const [modalSession, setModalSession] = useState(0);
     const [isRunningFollowUps, setIsRunningFollowUps] = useState(false);
+    const [showAllPOs, setShowAllPOs] = useState(false);
+    const [importKey, setImportKey] = useState(0);
     
     const permissions = usePermissions();
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
@@ -423,10 +426,33 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     setIsTrackingModalOpen(false);
   };
 
-    const sortedPurchaseOrders = useMemo(() =>
-        [...purchaseOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-        [purchaseOrders]
-    );
+    // Calculate 2 weeks ago for filtering
+    const twoWeeksAgo = useMemo(() => {
+        const date = new Date();
+        date.setDate(date.getDate() - 14);
+        return date;
+    }, []);
+
+    // Filter and sort purchase orders - show last 2 weeks by default
+    const sortedPurchaseOrders = useMemo(() => {
+        const sorted = [...purchaseOrders].sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        
+        if (showAllPOs) {
+            return sorted;
+        }
+        
+        // Filter to POs created in the last 2 weeks
+        return sorted.filter(po => {
+            const poDate = new Date(po.createdAt);
+            return poDate >= twoWeeksAgo;
+        });
+    }, [purchaseOrders, showAllPOs, twoWeeksAgo]);
+
+    // Count of all POs vs filtered
+    const totalPOCount = purchaseOrders.length;
+    const filteredPOCount = sortedPurchaseOrders.length;
 
     useEffect(() => {
         const unsubscribe = subscribeToPoDrafts(drafts => {
@@ -611,9 +637,37 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     }}
                 />
 
+                {/* PO Import Panel - CSV and Finale API */}
+                {canManagePOs && (
+                    <POImportPanel
+                        key={importKey}
+                        addToast={addToast}
+                        onImportComplete={() => {
+                            setImportKey(prev => prev + 1);
+                            // Trigger a refresh of the PO list if needed
+                            addToast('Import complete. Refresh the page to see new POs.', 'info');
+                        }}
+                    />
+                )}
+
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
-                    <div className="p-4 bg-gray-800">
-                        <h2 className="text-xl font-semibold text-gray-300">External Purchase Orders</h2>
+                    <div className="p-4 bg-gray-800 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <h2 className="text-xl font-semibold text-gray-300">Purchase Orders</h2>
+                            <span className="text-sm text-gray-400">
+                                {showAllPOs 
+                                    ? `${totalPOCount} total`
+                                    : `${filteredPOCount} of ${totalPOCount} (last 2 weeks)`
+                                }
+                            </span>
+                        </div>
+                        <Button
+                            onClick={() => setShowAllPOs(!showAllPOs)}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-gray-300 hover:text-white border border-gray-600 rounded-md hover:bg-gray-700 transition-colors"
+                        >
+                            <CalendarIcon className="w-4 h-4" />
+                            {showAllPOs ? 'Show Last 2 Weeks' : 'Show All POs'}
+                        </Button>
                     </div>
                     <div className="overflow-x-auto max-h-[calc(100vh-320px)]">
                         <table className="table-density min-w-full divide-y divide-gray-700">
