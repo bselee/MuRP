@@ -26,6 +26,7 @@ import {
   CircleHelp,
   ClipboardCopy,
   ClipboardList,
+  Clock,
   CloudUpload,
   Copy,
   DollarSign,
