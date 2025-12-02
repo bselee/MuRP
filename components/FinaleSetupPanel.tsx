@@ -41,11 +41,11 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   const [currentStep, setCurrentStep] = useState<SetupStep>('credentials');
   const [isConfigured, setIsConfigured] = useState(false);
   
-  // Credentials
+  // Credentials - auto-load from environment or localStorage
   const [credentials, setCredentials] = useState({
-    apiKey: '',
-    apiSecret: '',
-    accountPath: '',
+    apiKey: import.meta.env.VITE_FINALE_API_KEY || localStorage.getItem('finale_api_key') || '',
+    apiSecret: import.meta.env.VITE_FINALE_API_SECRET || localStorage.getItem('finale_api_secret') || '',
+    accountPath: import.meta.env.VITE_FINALE_ACCOUNT_PATH || localStorage.getItem('finale_account_path') || '',
   });
   
   // Connection test
@@ -74,35 +74,52 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   } | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
-  // Check if backend is configured on mount
+  // Check if backend is configured on mount and auto-configure if env vars exist
   useEffect(() => {
     // Check if Finale sync is configured by querying sync metadata
     const checkBackendConfig = async () => {
       try {
+        // Auto-configure from environment variables if available
+        const envApiKey = import.meta.env.VITE_FINALE_API_KEY;
+        const envApiSecret = import.meta.env.VITE_FINALE_API_SECRET;
+        const envAccountPath = import.meta.env.VITE_FINALE_ACCOUNT_PATH;
+
+        if (envApiKey && envApiSecret && envAccountPath) {
+          // Auto-configure the global Finale client from environment
+          updateFinaleClient({
+            apiKey: envApiKey,
+            apiSecret: envApiSecret,
+            accountPath: envAccountPath,
+            baseUrl: import.meta.env.VITE_FINALE_BASE_URL || 'https://app.finaleinventory.com',
+          });
+          console.log('[FinaleSetupPanel] Auto-configured from environment variables');
+        }
+
         // Check Supabase for sync metadata (proves backend is working)
         const { data: syncData, error } = await supabase
           .from('sync_metadata')
           .select('data_type, last_sync_time')
           .limit(1)
           .single();
-        
+
         if (!error && syncData) {
           // Backend is configured and has synced data before
           setIsConfigured(true);
           setCurrentStep('sync');
-          
+
           // Initialize sync service and subscribe to status
           const syncService = getFinaleSyncService();
           const unsubscribe = syncService.onStatusChange(setSyncStatus);
           setSyncStatus(syncService.getStatus());
-          
+
           return () => unsubscribe();
         }
       } catch (error) {
         // Backend not configured yet or no sync data
+        console.log('[FinaleSetupPanel] Backend not yet configured');
       }
     };
-    
+
     checkBackendConfig();
   }, []);
 
