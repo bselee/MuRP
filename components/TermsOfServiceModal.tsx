@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import MarkdownIt from 'markdown-it';
 import Modal from './Modal';
 import Button from '@/components/ui/Button';
 import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
@@ -39,12 +38,6 @@ const markdownComponents = {
   ),
   hr: () => <hr className="my-6 border-gray-700/50" />,
 };
-
-const markdownIt = new MarkdownIt({
-  html: false,
-  linkify: true,
-  typographer: true,
-});
 
 const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({ isOpen, onClose }) => {
   const [markdown, setMarkdown] = useState('');
@@ -90,7 +83,46 @@ const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({ isOpen, onClo
 
   const htmlVersion = useMemo(() => {
     if (!markdown) return '';
-    return markdownIt.render(markdown);
+    // Simple markdown to HTML conversion for PDF generation
+    return markdown
+      .split('\n\n')
+      .map(para => {
+        // Headers
+        if (para.startsWith('### ')) {
+          return `<h3>${para.substring(4)}</h3>`;
+        }
+        if (para.startsWith('## ')) {
+          return `<h2>${para.substring(3)}</h2>`;
+        }
+        if (para.startsWith('# ')) {
+          return `<h1>${para.substring(2)}</h1>`;
+        }
+        // Horizontal rule
+        if (para.trim() === '---' || para.trim() === '***') {
+          return '<hr>';
+        }
+        // Lists
+        if (para.match(/^[-*]\s/m)) {
+          const items = para.split('\n').filter(l => l.trim());
+          const listItems = items.map(item =>
+            `<li>${item.replace(/^[-*]\s/, '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</li>`
+          ).join('');
+          return `<ul>${listItems}</ul>`;
+        }
+        if (para.match(/^\d+\.\s/m)) {
+          const items = para.split('\n').filter(l => l.trim());
+          const listItems = items.map(item =>
+            `<li>${item.replace(/^\d+\.\s/, '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</li>`
+          ).join('');
+          return `<ol>${listItems}</ol>`;
+        }
+        // Paragraphs with bold text
+        if (para.trim()) {
+          return `<p>${para.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</p>`;
+        }
+        return '';
+      })
+      .join('');
   }, [markdown]);
 
   const effectiveDate = useMemo(() => {
