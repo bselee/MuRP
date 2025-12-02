@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor, CompanyEmailSettings } from '../types';
@@ -16,8 +16,6 @@ import DocumentTemplatesPanel from '../components/DocumentTemplatesPanel';
 import FollowUpSettingsPanel from '../components/FollowUpSettingsPanel';
 import DataPipelineGuide from '../components/DataPipelineGuide';
 import GoogleDataPanel from '../components/GoogleDataPanel';
-import GoogleWorkspaceStatusCard from '../components/GoogleWorkspaceStatusCard';
-import FinaleSyncStatusCard from '../components/FinaleSyncStatusCard';
 import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
 import googleOAuthDocUrl from '../docs/GOOGLE_OAUTH_SETUP.md?url';
 import googleSheetsDocUrl from '../GOOGLE_SHEETS_INTEGRATION.md?url';
@@ -125,13 +123,6 @@ Thank you!`
     const helpTicketMailto = `mailto:support@murp.app?subject=${helpTicketSubject}&body=${helpTicketBody}`;
 
     const isOpsAdmin = currentUser.role === 'Admin' || currentUser.department === 'Operations';
-    const scrollToGooglePanel = useCallback(() => {
-      if (typeof document === 'undefined') return;
-      const target = document.getElementById('google-data-panel-root');
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, []);
 
     const supportPlaybook = [
       {
@@ -364,12 +355,6 @@ Thank you!`
             onToggle={() => setIsDataIntegrationsOpen(!isDataIntegrationsOpen)}
           >
             <div className="space-y-8">
-              <GoogleWorkspaceStatusCard
-                userId={currentUser.id}
-                addToast={addToast}
-                onNavigateToPanel={scrollToGooglePanel}
-              />
-              <FinaleSyncStatusCard />
               <DataPipelineGuide
                 defaultCollapsed
                 items={[
