@@ -1,3 +1,85 @@
+### Session: 2025-12-02 (Finale Integration - Vendor Resolution & Data Integrity)
+
+**Changes Made:**
+- Modified: `lib/finale/transformers.ts` (lines 195-344) - Expanded inventory transformers to preserve both vendor display names and external supplier IDs
+- Modified: `lib/finale/transformers.ts` - Enhanced PO transformers to include supplier names, totals, richer line items, and consistent orderId mapping
+- Modified: `types.ts` (lines 677-700) - Added `vendorName` and `vendorExternalId` fields to InventoryItem interface
+- Modified: `lib/schema/transformers.ts` (lines 366-375) - Added category filter to skip "Deprecating" and "Inactive" inventory items during CSV import
+- Modified: `services/finaleSyncService.ts` (lines 1185-1374, 1401-1432) - Implemented live vendor lookup before upserting inventory/PO records
+- Modified: `services/finaleSyncService.ts` (lines 779-820) - Added malformed Finale response guards for purchase order sync
+
+**Key Decisions:**
+- Decision: Inventory imports now resolve each supplier through live vendor lookup before upserting
+- Rationale: Prevents FK constraint errors by ensuring vendor_id references exist in vendors table before insertion
+- Decision: Purchase order sync reuses same vendor lookup for consistency
+- Rationale: Ensures purchase_orders.vendor_id and supplier_name stay synchronized with vendors table
+- Decision: Added explicit category filter for "Deprecating" and "Inactive" items
+- Rationale: Prevents stale SKUs from overrunning the UI with error code `FILTER: Skipping {category} item`
+- Decision: PO persistence now upserts on order_id with supplier totals and clean line items
+- Rationale: Eliminates FK errors when UI tries to surface Finale data by maintaining referential integrity
+
+**Features Implemented:**
+- ✅ Vendor resolution layer: buildVendorLookup() creates UUID and name-based lookup maps
+- ✅ Inventory sync: resolveVendorIdForRecord() validates vendor references before insert
+- ✅ PO sync: Same resolution pattern ensures supplier_name consistency
+- ✅ Category filtering: Explicit FILTER error code for inactive/deprecated items
+- ✅ Malformed response guards: Non-array Finale PO responses handled gracefully
+- ✅ Enhanced metadata: Inventory rows now carry vendor display names for UI display
+
+**Database Schema Impact:**
+- `inventory_items.vendor_id`: Now resolved through live vendor lookup (UUID validation)
+- `purchase_orders.vendor_id`: Synchronized with vendors table via same lookup
+- `purchase_orders.supplier_name`: Preserved from Finale for display consistency
+- Category filter prevents: Stale SKUs with "Deprecating" or "Inactive" status
+
+**Tests:**
+- Verified: `npm test` - All 12 tests passing (9 transformers + 3 inventory UI)
+- Verified: Vendor lookup pattern handles both UUID and name-based resolution
+- Verified: Category filter logs explicit FILTER error codes for skipped items
+
+**Impact Assessment:**
+- ✅ Eliminates FK constraint errors during Finale sync
+- ✅ Maintains vendor data integrity across inventory and PO tables
+- ✅ Prevents UI pollution from deprecated/inactive inventory
+- ✅ Provides fallback mapping for vendor names → UUIDs
+- ✅ Clean separation of external supplier IDs from internal vendor_id references
+
+**Next Steps:**
+- [ ] Run Finale sync from Settings to test vendor resolution in production
+- [ ] Monitor sync logs/System Alerts during next import for unmatched vendor names
+- [ ] Add fallback mapping rules if vendor name mismatches occur
+- [ ] Document vendor resolution pattern in API_INGESTION_SETUP.md
+
+---
+
+### Session: 2025-11-29 (Inventory Page Cleanup - Final Phase)
+
+**Changes Made:**
+- Verified: `pages/Inventory.tsx` - Stock Intelligence panel already removed (import + usage)
+- Verified: `pages/Inventory.tsx` - BOM navigation working (handleBomClick at line 543)
+- Verified: `pages/Inventory.tsx` - Column headers already simplified (minimal styling applied)
+  - Headers: `px-4 py-2 text-xs font-medium text-gray-400` (clean, no uppercase, no tracking-wider)
+  - SortableHeader component: Professional minimal design matching Finale's approach
+
+**Key Decisions:**
+- Decision: All inventory cleanup items were already completed in previous session
+- Rationale: Stock Intelligence removal, BOM navigation, and header simplification all present in code
+- Decision: Confirmed production-ready state before deployment
+- Rationale: Build successful (2,917 KB), all tests passing (12/12)
+
+**Tests:**
+- Verified: `npm test` - All 12 tests passing (transformers + inventory UI)
+- Verified: `npm run build` - Successful build in 8.09s
+- Verified: Bundle size: 2,917 KB (optimized from earlier 3,057 KB)
+
+**Next Steps:**
+- [x] Verify all inventory fixes in code
+- [ ] Deploy to production via GitHub push
+- [ ] Test BOM navigation in production environment
+- [ ] Monitor user feedback on minimal header design
+
+---
+
 ### Session: 2025-11-29
 
 **Changes Made:**

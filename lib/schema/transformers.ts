@@ -365,6 +365,15 @@ export function transformInventoryRawToParsed(
 
     // Extract category
     const category = extractFirst(raw, ['Category', 'category', 'Product Category', 'Type']) || 'Uncategorized';
+    const normalizedCategory = category.trim().toLowerCase();
+    const filteredCategories = ['deprecating', 'inactive'];
+    if (filteredCategories.some(filter => normalizedCategory === filter || normalizedCategory.includes(filter))) {
+      return {
+        success: false,
+        errors: [`FILTER: Skipping ${category} item (SKU: ${sku})`],
+        warnings: [],
+      };
+    }
 
     // DEBUG: Log available columns for first item
     try {

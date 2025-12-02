@@ -14,7 +14,6 @@ import {
   BellIcon,
     PlusCircleIcon
 } from '../components/icons';
-import StockIntelligencePanel from '@/components/StockIntelligencePanel';
 import CollapsibleSection from '../components/CollapsibleSection';
 import ImportExportModal from '../components/ImportExportModal';
 import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
@@ -175,7 +174,7 @@ const SortableHeader: React.FC<{
 
     return (
         <th 
-            className={`px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${className || ''}`}
+            className={`px-4 py-2 text-left text-xs font-medium text-gray-400 ${className || ''}`}
             aria-sort={ariaSortValue}
         >
             <Button 
@@ -539,6 +538,12 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const handleSuggestionClick = (item: InventoryItem) => {
         setSearchTerm(item.name);
         setIsSuggestionsVisible(false);
+    };
+
+    const handleBomClick = (item: InventoryItem) => {
+        if (onNavigateToBom) {
+            onNavigateToBom(item.sku);
+        }
     };
 
     const toggleCategory = (category: string) => {
@@ -1100,7 +1105,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         const widthClass = COLUMN_WIDTH_CLASSES[col.key] || '';
                                         if (!col.sortable) {
                                             return (
-                                                <th key={col.key} className={`px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider ${widthClass}`}>
+                                                <th key={col.key} className={`px-4 py-2 text-left text-xs font-medium text-gray-400 ${widthClass}`}>
                                                     {col.label}
                                                 </th>
                                             );
@@ -1108,7 +1113,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         const sortKey = col.key === 'vendor' ? 'vendor' : col.key as SortKeys;
                                         return <SortableHeader key={col.key} title={col.label} sortKey={sortKey} sortConfig={sortConfig} requestSort={requestSort} className={widthClass} />;
                                     })}
-                                    <th className="px-6 py-2 text-right text-xs font-medium text-gray-300 uppercase tracking-wider w-36">
+                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-400 w-36">
                                         Actions
                                     </th>
                                 </tr>
@@ -1351,13 +1356,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         </table>
                     </div>
                 </div>
-                
-                <StockIntelligencePanel
-                    risks={stockoutRisks}
-                    vendors={vendorPerformances}
-                    className="w-full"
-                    description="Real-time runway and vendor health snapshot"
-                />
             </div>
         </div>
 

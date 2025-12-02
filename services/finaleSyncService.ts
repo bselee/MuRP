@@ -132,6 +132,13 @@ export interface FinalePurchaseOrder {
   lastUpdated: Date;
 }
 
+interface VendorLookup {
+  byId: Set<string>;
+  byName: Map<string, string>;
+}
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // ============================================================================
 // SYNC SERVICE CLASS
 // ============================================================================
@@ -805,6 +812,11 @@ export class FinaleSyncService {
           });
         }, 'finale-sync');
 
+        if (!Array.isArray(rawPOs)) {
+          console.error('[FinaleSyncService] getPurchaseOrders() returned non-array:', rawPOs);
+          throw new Error('Purchase order sync not supported - Finale response was invalid');
+        }
+
         allRawPOs.push(...rawPOs);
         offset += this.config.batchSize;
         hasMore = rawPOs.length === this.config.batchSize;
@@ -1170,6 +1182,8 @@ export class FinaleSyncService {
       const backupId = await this.createBackup('inventory_items', 'pre-inventory-sync');
       console.log(`[FinaleSyncService] Backup created with ID: ${backupId}`);
 
+      const vendorLookup = await this.buildVendorLookup();
+
     // Transform parsed items to database format
     const dbItems = parsedItems.map(parsed => ({
       sku: parsed.sku,
@@ -1180,7 +1194,10 @@ export class FinaleSyncService {
       stock: parsed.stock || 0,
       on_order: parsed.onOrder || 0,
       reorder_point: parsed.reorderPoint || 10,
-      vendor_id: parsed.vendorId || null,
+      vendor_id: this.resolveVendorIdForRecord(
+        { vendorId: parsed.vendorId, vendorName: parsed.vendorName },
+        vendorLookup
+      ),
       moq: parsed.moq || 1,
       // Enhanced fields from migration 003
       unit_cost: parsed.unitCost || 0,
@@ -1268,6 +1285,8 @@ export class FinaleSyncService {
 
     console.log(`[FinaleSyncService] Saving ${pos.length} purchase orders to Supabase...`);
 
+    const vendorLookup = await this.buildVendorLookup();
+
     // Validate POs
     const validPOs = pos.filter(po => {
       const validation = validatePurchaseOrder(po);
@@ -1285,13 +1304,19 @@ export class FinaleSyncService {
     for (const po of validPOs) {
       try {
         // Prepare PO header for new schema
+        const resolvedVendorId = this.resolveVendorIdForRecord(
+          { vendorId: po.vendorId, vendorName: po.supplier },
+          vendorLookup
+        );
+
         const poHeader = {
-          order_id: po.id,
-          vendor_id: po.vendorId,
-          supplier_name: po.vendorId || 'Unknown',
+          order_id: po.orderId || po.id,
+          vendor_id: resolvedVendorId,
+          supplier_name: po.supplier || 'Unknown Vendor',
           status: po.status || 'draft',
-          order_date: po.createdAt,
-          expected_date: po.expectedDate,
+          order_date: po.orderDate || po.createdAt,
+          expected_date: po.expectedDate || po.estimatedReceiveDate || null,
+          total_amount: po.total ?? null,
           internal_notes: po.notes,
           requisition_ids: po.requisitionIds || [],
           source: 'finale_import',
@@ -1371,6 +1396,39 @@ export class FinaleSyncService {
       website: '',
       leadTimeDays: 0,
     }));
+  }
+
+  private async buildVendorLookup(): Promise<VendorLookup> {
+    const vendors = await this.getVendorsFromSupabase();
+    const byId = new Set<string>();
+    const byName = new Map<string, string>();
+    vendors.forEach(v => {
+      if (v.id) {
+        byId.add(v.id);
+      }
+      if (v.name) {
+        byName.set(v.name.trim().toLowerCase(), v.id);
+      }
+    });
+    return { byId, byName };
+  }
+
+  private resolveVendorIdForRecord(
+    source: { vendorId?: string | null; vendorName?: string | null },
+    lookup: VendorLookup
+  ): string | null {
+    if (source.vendorId && UUID_REGEX.test(source.vendorId) && lookup.byId.has(source.vendorId)) {
+      return source.vendorId;
+    }
+
+    if (source.vendorName) {
+      const key = source.vendorName.trim().toLowerCase();
+      if (lookup.byName.has(key)) {
+        return lookup.byName.get(key)!;
+      }
+    }
+
+    return null;
   }
 
   /**

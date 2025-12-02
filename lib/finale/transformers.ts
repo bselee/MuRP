@@ -193,11 +193,17 @@ export function transformFinaleProductToInventoryItem(
   const reorderPoint = product.reorderPoint ?? product.reorderLevel ?? 10;
   
   // Extract vendor ID with fallback
-  const vendorId = 
+  const vendorExternalId = 
     product.supplierId || 
     product.supplier || 
     product.defaultSupplier || 
     'UNKNOWN_VENDOR';
+
+  const vendorName =
+    (product as any).supplierName ||
+    (product as any).vendorName ||
+    (product as any).defaultSupplierName ||
+    '';
   
   // Extract MOQ with fallback
   const moq = product.moq ?? product.minimumOrderQuantity ?? 1;
@@ -209,7 +215,9 @@ export function transformFinaleProductToInventoryItem(
     stock,
     onOrder: 0, // Finale doesn't provide this in product endpoint
     reorderPoint,
-    vendorId,
+    vendorId: vendorExternalId,
+    vendorName,
+    vendorExternalId,
     moq,
   };
 }
@@ -278,9 +286,11 @@ export function transformFinalePOToPurchaseOrder(
 ): PurchaseOrder {
   // Extract ID with fallback
   const id = po.purchaseOrderId || po.id || po.orderNumber || 'UNKNOWN';
+  const orderId = po.orderNumber || po.poNumber || id;
   
   // Extract vendor ID with fallback
   const vendorId = po.supplierId || po.vendorId || 'UNKNOWN_VENDOR';
+  const supplierName = po.vendorName || po.supplierName || 'Unknown Vendor';
   
   // Map status with defaults
   let status: 'Pending' | 'Submitted' | 'Fulfilled' = 'Pending';
@@ -300,9 +310,13 @@ export function transformFinalePOToPurchaseOrder(
   const items: PurchaseOrderItem[] = (po.items || []).map(item => ({
     sku: item.sku || item.productId || 'UNKNOWN',
     name: item.name || item.productName || 'Unnamed Item',
+    description: item.name || item.productName || 'Unnamed Item',
     quantity: item.quantity ?? item.quantityOrdered ?? 0,
+    unitCost: item.unitCost ?? item.price ?? 0,
     price: item.unitCost ?? item.price ?? 0,
+    lineTotal: (item.unitCost ?? item.price ?? 0) * (item.quantity ?? item.quantityOrdered ?? 0),
   }));
+  const totalFromItems = items.reduce((sum, item) => sum + (item.lineTotal ?? 0), 0);
   
   // Extract expected date with fallback
   const expectedDate = 
@@ -312,15 +326,20 @@ export function transformFinalePOToPurchaseOrder(
   
   // Extract notes with fallback
   const notes = po.notes || po.comments || po.internalNotes;
+  const total = po.totalAmount ?? po.total ?? po.subtotal ?? totalFromItems;
   
   return {
     id,
+    orderId,
     vendorId,
+    supplier: supplierName,
     status,
+    orderDate: createdAt,
     createdAt,
     items,
     expectedDate,
     notes,
+    total,
     requisitionIds: [], // Finale doesn't have this concept
   };
 }

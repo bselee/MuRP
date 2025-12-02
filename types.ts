@@ -682,6 +682,8 @@ export interface InventoryItem {
   onOrder: number;
   reorderPoint: number;
   vendorId: string;
+  vendorName?: string;
+  vendorExternalId?: string;
   moq?: number;
   safetyStock?: number;
   leadTimeDays?: number;
