@@ -1,3 +1,8 @@
+---
+agentMemory:
+  autoSyncToFile: true
+---
+
 # MuRP - AI Coding Agent Instructions
 
 Manufacturing Resource Planning system with AI-powered compliance, tier-based AI Gateway, and secure API integrations.
@@ -19,6 +24,13 @@ npm run dev                    # Start dev server (localhost:5173)
 **Key principle:** Never query databases or call AI providers directly - always use service layers and hooks.
 
 ---
+
+## 🧠 Shared Agent Memory
+
+- `agentMemory.autoSyncToFile` is enabled globally—log every notable change, test result, and follow-up in `docs/SESSION_SUMMARY_2025-11-29_to_CURRENT.md` before ending a session so the trail stays authoritative.
+- Treat the session summary file as the canonical shared brain: append concise entries under the correct date header rather than starting new docs.
+- When you fix critical incidents or unblock workflows, include root cause + remediation bullets in the session summary so future copilots inherit the knowledge without digging through git history.
+- If you introduce new recurring procedures (migrations, deployment tweaks, SOP flows), capture the distilled instructions there and reference them from other docs as needed.
 
 ## 🏗️ Architecture Overview
 

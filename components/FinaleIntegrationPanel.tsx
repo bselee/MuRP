@@ -10,9 +10,11 @@ import Button from '@/components/ui/Button';
  * - Health monitoring
  */
 
-import React, { useState, useEffect } from 'react';
-import { getDataService } from '../lib/dataService';
-import { upsertInventoryItems, upsertVendors } from '../hooks/useSupabaseMutations';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FinaleClient, getFinaleClient, updateFinaleClient } from '../lib/finale/client';
+import type { FinaleConnectionConfig, FinaleConnectionStatus } from '../lib/finale/types';
+import { getFinaleSyncService } from '../services/finaleSyncService';
+import { useAuth } from '../lib/auth/AuthContext';
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -29,16 +31,16 @@ interface FinaleIntegrationPanelProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
+const readStored = (key: string, fallback = '') =>
+  typeof window !== 'undefined' ? localStorage.getItem(key) ?? fallback : fallback;
+
 const FinaleIntegrationPanel: React.FC<FinaleIntegrationPanelProps> = ({ addToast }) => {
+  const { session } = useAuth();
   // State for form inputs
-  const [apiKey, setApiKey] = useState<string>(import.meta.env.VITE_FINALE_API_KEY || '');
-  const [apiSecret, setApiSecret] = useState<string>(import.meta.env.VITE_FINALE_API_SECRET || '');
-  const [accountPath, setAccountPath] = useState<string>(
-    import.meta.env.VITE_FINALE_ACCOUNT_PATH || ''
-  );
-  const [baseUrl, setBaseUrl] = useState<string>(
-    import.meta.env.VITE_FINALE_BASE_URL || 'https://app.finaleinventory.com'
-  );
+  const [apiKey, setApiKey] = useState<string>(() => readStored('finale_api_key', import.meta.env.VITE_FINALE_API_KEY || ''));
+  const [apiSecret, setApiSecret] = useState<string>(() => readStored('finale_api_secret', import.meta.env.VITE_FINALE_API_SECRET || ''));
+  const [accountPath, setAccountPath] = useState<string>(() => readStored('finale_account_path', import.meta.env.VITE_FINALE_ACCOUNT_PATH || ''));
+  const [baseUrl, setBaseUrl] = useState<string>(() => readStored('finale_base_url', import.meta.env.VITE_FINALE_BASE_URL || 'https://app.finaleinventory.com'));
 
   // UI state
   const [showApiSecret, setShowApiSecret] = useState<boolean>(false);
@@ -47,6 +49,31 @@ const FinaleIntegrationPanel: React.FC<FinaleIntegrationPanelProps> = ({ addToas
   const [connectionStatus, setConnectionStatus] = useState<FinaleConnectionStatus | null>(null);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [finaleClient, setFinaleClient] = useState<FinaleClient | null>(getFinaleClient());
+  const accessToken = session?.access_token;
+
+  const persistCredentials = useCallback(async () => {
+    if (!accessToken) {
+      return;
+    }
+    const response = await fetch('/functions/v1/store-finale-credentials', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ apiKey, apiSecret, accountPath, baseUrl }),
+    });
+    if (!response.ok) {
+      let message = 'Failed to store Finale credentials';
+      try {
+        const data = await response.json();
+        if (data?.error) message = data.error;
+      } catch {
+        // ignore
+      }
+      throw new Error(message);
+    }
+  }, [accessToken, apiKey, apiSecret, accountPath, baseUrl]);
 
   // Check if credentials are configured
   const hasCredentials = apiKey && apiSecret && accountPath && baseUrl;
@@ -101,6 +128,22 @@ const FinaleIntegrationPanel: React.FC<FinaleIntegrationPanelProps> = ({ addToas
       setTestResult(result);
 
       if (result.success) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('finale_api_key', apiKey);
+          localStorage.setItem('finale_api_secret', apiSecret);
+          localStorage.setItem('finale_account_path', accountPath);
+          localStorage.setItem('finale_base_url', baseUrl);
+        }
+        try {
+          await persistCredentials();
+        } catch (persistError) {
+          addToast(
+            persistError instanceof Error
+              ? persistError.message
+              : 'Stored locally, but failed to update secure vault.',
+            'warning',
+          );
+        }
         addToast('Successfully connected to Finale!', 'success');
         // Load status
         await loadConnectionStatus();
@@ -124,24 +167,29 @@ const FinaleIntegrationPanel: React.FC<FinaleIntegrationPanelProps> = ({ addToas
 
     setIsSyncing(true);
     try {
-      // Use data service to sync and transform data
-      const dataService = getDataService();
-      const transformedData = await dataService.syncAllFromFinale();
+      const syncService = getFinaleSyncService();
+      syncService.setCredentials(apiKey, apiSecret, accountPath, baseUrl);
+      await syncService.syncAll();
 
-      // Save inventory to Supabase
-      const inventoryResult = await upsertInventoryItems(transformedData.inventory);
-      if (!inventoryResult.success) {
-        throw new Error(`Failed to save inventory: ${inventoryResult.error}`);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('finale_api_key', apiKey);
+        localStorage.setItem('finale_api_secret', apiSecret);
+        localStorage.setItem('finale_account_path', accountPath);
+        localStorage.setItem('finale_base_url', baseUrl);
       }
-
-      // Save vendors to Supabase
-      const vendorResult = await upsertVendors(transformedData.vendors);
-      if (!vendorResult.success) {
-        throw new Error(`Failed to save vendors: ${vendorResult.error}`);
+      try {
+        await persistCredentials();
+      } catch (persistError) {
+        addToast(
+          persistError instanceof Error
+            ? persistError.message
+            : 'Stored locally, but failed to update secure vault.',
+          'warning',
+        );
       }
 
       addToast(
-        `Sync complete! Saved ${transformedData.inventory.length} products and ${transformedData.vendors.length} vendors to database`,
+        'Full Finale sync complete! Vendors, inventory, BOMs, and POs are now up to date.',
         'success'
       );
 

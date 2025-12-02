@@ -4,7 +4,7 @@
 -- Create SOP submissions table for staff to submit changes
 CREATE TABLE IF NOT EXISTS sop_submissions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    sop_id UUID NOT NULL REFERENCES sop_repository(id) ON DELETE CASCADE,
+    sop_id TEXT NOT NULL REFERENCES sop_repository(id) ON DELETE CASCADE,
     submitted_by UUID NOT NULL REFERENCES auth.users(id),
     submission_type TEXT NOT NULL CHECK (submission_type IN ('create', 'update', 'deprecate')),
     title TEXT NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS sop_reviews (
 -- Create department notifications table for interdepartmental updates
 CREATE TABLE IF NOT EXISTS department_notifications (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    sop_id UUID REFERENCES sop_repository(id) ON DELETE CASCADE,
+    sop_id TEXT REFERENCES sop_repository(id) ON DELETE CASCADE,
     submission_id UUID REFERENCES sop_submissions(id) ON DELETE CASCADE,
     notifying_department UUID NOT NULL REFERENCES sop_departments(id),
     affected_department UUID NOT NULL REFERENCES sop_departments(id),
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS department_notifications (
 -- Create SOP change history table to track all modifications
 CREATE TABLE IF NOT EXISTS sop_change_history (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    sop_id UUID NOT NULL REFERENCES sop_repository(id) ON DELETE CASCADE,
+    sop_id TEXT NOT NULL REFERENCES sop_repository(id) ON DELETE CASCADE,
     submission_id UUID REFERENCES sop_submissions(id) ON DELETE CASCADE,
     changed_by UUID NOT NULL REFERENCES auth.users(id),
     change_type TEXT NOT NULL CHECK (change_type IN ('created', 'updated', 'approved', 'implemented', 'deprecated')),
@@ -116,16 +116,18 @@ CREATE POLICY "Users can view their own submissions" ON sop_submissions
 CREATE POLICY "Department leads can view department submissions" ON sop_submissions
     FOR SELECT USING (
         department_id IN (
-            SELECT department_id FROM user_department_roles
-            WHERE user_id = auth.uid() AND role = 'lead'
+            SELECT udr.department_id FROM user_department_roles udr
+            JOIN sop_roles sr ON udr.role_id = sr.id
+            WHERE udr.user_id = auth.uid() AND sr.name = 'lead'
         )
     );
 
 CREATE POLICY "Compliance officers can view all submissions" ON sop_submissions
     FOR SELECT USING (
         EXISTS (
-            SELECT 1 FROM user_department_roles
-            WHERE user_id = auth.uid() AND role = 'compliance_officer'
+            SELECT 1 FROM user_department_roles udr
+            JOIN sop_roles sr ON udr.role_id = sr.id
+            WHERE udr.user_id = auth.uid() AND sr.name = 'compliance_officer'
         )
     );
 
@@ -176,20 +178,20 @@ ALTER TABLE department_notifications ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view notifications for their departments" ON department_notifications
     FOR SELECT USING (
         affected_department IN (
-            SELECT department_id FROM user_department_roles
-            WHERE user_id = auth.uid()
+            SELECT udr.department_id FROM user_department_roles udr
+            WHERE udr.user_id = auth.uid()
         ) OR
         notifying_department IN (
-            SELECT department_id FROM user_department_roles
-            WHERE user_id = auth.uid()
+            SELECT udr.department_id FROM user_department_roles udr
+            WHERE udr.user_id = auth.uid()
         )
     );
 
 CREATE POLICY "Users can update notifications requiring their response" ON department_notifications
     FOR UPDATE USING (
         affected_department IN (
-            SELECT department_id FROM user_department_roles
-            WHERE user_id = auth.uid()
+            SELECT udr.department_id FROM user_department_roles udr
+            WHERE udr.user_id = auth.uid()
         ) AND requires_response = TRUE
     );
 
@@ -200,12 +202,8 @@ CREATE POLICY "Users can view change history for SOPs they can access" ON sop_ch
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM sop_repository
-            WHERE id = sop_id AND (
-                created_by = auth.uid() OR
-                department_id IN (
-                    SELECT department_id FROM user_department_roles
-                    WHERE user_id = auth.uid()
-                )
+            WHERE id = sop_change_history.sop_id AND (
+                created_by = auth.uid()::text
             )
         )
     );
@@ -406,5 +404,15 @@ CREATE TRIGGER update_sop_submissions_updated_at
 
 CREATE TRIGGER update_department_notifications_updated_at
     BEFORE UPDATE ON department_notifications
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_sop_departments_updated_at
+    BEFORE UPDATE ON sop_departments
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_sop_roles_updated_at
+    BEFORE UPDATE ON sop_roles
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();

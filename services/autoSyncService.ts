@@ -18,23 +18,33 @@
 
 import { getFinaleSyncService } from './finaleSyncService';
 import { supabase } from '../lib/supabase/client';
+import { emitSystemAlert } from '../lib/systemAlerts/alertBus';
+
+type DataType = 'inventory' | 'vendors' | 'boms' | 'purchase_orders' | 'connection';
 
 interface SyncMetadata {
   lastSyncTime: string; // ISO timestamp
-  dataType: 'inventory' | 'vendors' | 'boms';
+  dataType: DataType;
   itemCount: number;
   success: boolean;
 }
 
-const REFRESH_INTERVALS = {
+const REFRESH_INTERVALS: Record<Exclude<DataType, 'connection'>, number> & { connection?: number } = {
   inventory: 5 * 60 * 1000, // 5 minutes
   vendors: 60 * 60 * 1000, // 1 hour
   boms: 60 * 60 * 1000, // 1 hour
+  purchase_orders: 15 * 60 * 1000, // 15 minutes
 };
 
 class AutoSyncService {
   private isRunning = false;
   private hasCredentials = false;
+  private retryTimers: Map<DataType, NodeJS.Timeout> = new Map();
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private connectionFailureCount = 0;
+  private connectionAlertActive = false;
+  private retryTimers: Map<DataType, NodeJS.Timeout> = new Map();
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   /**
    * Initialize auto-sync on app load
@@ -43,9 +53,15 @@ class AutoSyncService {
     console.log('[AutoSync] Initializing background sync...');
 
     // Check if Finale credentials are configured
-    const apiKey = localStorage.getItem('finale_api_key') || import.meta.env.VITE_FINALE_API_KEY;
-    const apiSecret = localStorage.getItem('finale_api_secret') || import.meta.env.VITE_FINALE_API_SECRET;
-    const accountPath = localStorage.getItem('finale_account_path') || import.meta.env.VITE_FINALE_ACCOUNT_PATH;
+    const readStorage = (key: string) =>
+      typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+    const apiKey = readStorage('finale_api_key') || import.meta.env.VITE_FINALE_API_KEY;
+    const apiSecret = readStorage('finale_api_secret') || import.meta.env.VITE_FINALE_API_SECRET;
+    const accountPath = readStorage('finale_account_path') || import.meta.env.VITE_FINALE_ACCOUNT_PATH;
+    const baseUrl =
+      readStorage('finale_base_url') ||
+      import.meta.env.VITE_FINALE_BASE_URL ||
+      'https://app.finaleinventory.com';
 
     if (!apiKey || !apiSecret || !accountPath) {
       console.log('[AutoSync] No Finale credentials - skipping auto-sync');
@@ -56,12 +72,15 @@ class AutoSyncService {
 
     // Configure sync service
     const syncService = getFinaleSyncService();
-    syncService.setCredentials(apiKey, apiSecret, accountPath);
+    syncService.setCredentials(apiKey, apiSecret, accountPath, baseUrl);
 
     // Check and sync each data type
     await this.checkAndSync('inventory');
     await this.checkAndSync('vendors');
     await this.checkAndSync('boms');
+    await this.checkAndSync('purchase_orders');
+
+    this.startConnectionHeartbeat(syncService);
 
     console.log('[AutoSync] ✅ Background sync complete');
   }
@@ -69,7 +88,7 @@ class AutoSyncService {
   /**
    * Check if data needs refresh and sync if needed
    */
-  private async checkAndSync(dataType: 'inventory' | 'vendors' | 'boms') {
+  private async checkAndSync(dataType: DataType) {
     if (this.isRunning) {
       console.log(`[AutoSync] Sync already running for ${dataType}, skipping`);
       return;
@@ -105,6 +124,10 @@ class AutoSyncService {
           await syncService.syncBOMsFromCSV();
           itemCount = await this.getDataCount('boms');
           break;
+        case 'purchase_orders':
+          await syncService.syncPurchaseOrders();
+          itemCount = await this.getDataCount('purchase_orders');
+          break;
       }
 
       // Save sync metadata
@@ -116,6 +139,7 @@ class AutoSyncService {
       });
 
       console.log(`[AutoSync] ✅ ${dataType} synced: ${itemCount} items`);
+      this.clearRetry(dataType);
     } catch (error) {
       console.error(`[AutoSync] Failed to sync ${dataType}:`, error);
       
@@ -126,6 +150,8 @@ class AutoSyncService {
         itemCount: 0,
         success: false,
       });
+
+      this.scheduleRetry(dataType);
     } finally {
       this.isRunning = false;
     }
@@ -134,7 +160,7 @@ class AutoSyncService {
   /**
    * Check if data needs refresh based on last sync time
    */
-  private needsRefresh(metadata: SyncMetadata | null, dataType: 'inventory' | 'vendors' | 'boms'): boolean {
+  private needsRefresh(metadata: SyncMetadata | null, dataType: DataType): boolean {
     if (!metadata || !metadata.lastSyncTime) {
       return true; // Never synced before
     }
@@ -146,7 +172,8 @@ class AutoSyncService {
     const lastSyncTime = new Date(metadata.lastSyncTime).getTime();
     const now = Date.now();
     const timeSinceSync = now - lastSyncTime;
-    const refreshInterval = REFRESH_INTERVALS[dataType];
+    const intervalMap: Record<string, number> = REFRESH_INTERVALS as Record<string, number>;
+    const refreshInterval = intervalMap[dataType] ?? REFRESH_INTERVALS.inventory;
 
     return timeSinceSync > refreshInterval;
   }
@@ -154,7 +181,7 @@ class AutoSyncService {
   /**
    * Get sync metadata from Supabase
    */
-  private async getSyncMetadata(dataType: string): Promise<SyncMetadata | null> {
+  private async getSyncMetadata(dataType: DataType): Promise<SyncMetadata | null> {
     try {
       const { data, error } = await supabase
         .from('sync_metadata')
@@ -204,6 +231,62 @@ class AutoSyncService {
     }
   }
 
+  private scheduleRetry(dataType: DataType) {
+    if (this.retryTimers.has(dataType)) {
+      return;
+    }
+
+    const delayMs = 2 * 60 * 1000; // 2 minutes
+    console.log(`[AutoSync] Scheduling retry for ${dataType} in ${delayMs / 1000}s`);
+    const timer = setTimeout(() => {
+      this.retryTimers.delete(dataType);
+      this.checkAndSync(dataType);
+    }, delayMs);
+    this.retryTimers.set(dataType, timer);
+  }
+
+  private clearRetry(dataType: DataType) {
+    const timer = this.retryTimers.get(dataType);
+    if (timer) {
+      clearTimeout(timer);
+      this.retryTimers.delete(dataType);
+    }
+  }
+
+  private startConnectionHeartbeat(syncService: ReturnType<typeof getFinaleSyncService>) {
+    if (!this.hasCredentials) return;
+
+    const runHeartbeat = async () => {
+      try {
+        const result = await syncService.testConnection();
+        await this.saveSyncMetadata({
+          dataType: 'connection',
+          lastSyncTime: new Date().toISOString(),
+          itemCount: result.success ? 1 : 0,
+          success: result.success,
+        });
+        if (!result.success) {
+          console.warn('[AutoSync] Finale connection heartbeat failed:', result.message);
+        }
+      } catch (error) {
+        console.error('[AutoSync] Finale heartbeat error:', error);
+        await this.saveSyncMetadata({
+          dataType: 'connection',
+          lastSyncTime: new Date().toISOString(),
+          itemCount: 0,
+          success: false,
+        });
+      }
+    };
+
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+
+    runHeartbeat();
+    this.heartbeatInterval = setInterval(runHeartbeat, 15 * 60 * 1000);
+  }
+
   /**
    * Get count of items in a Supabase table
    */
@@ -235,6 +318,76 @@ class AutoSyncService {
     await syncService.syncAll();
     
     console.log('[AutoSync] ✅ Force sync complete');
+  }
+
+  private scheduleRetry(dataType: DataType) {
+    if (this.retryTimers.has(dataType)) return;
+    const delayMs = 2 * 60 * 1000;
+    console.log(`[AutoSync] Scheduling retry for ${dataType} in ${delayMs / 1000}s`);
+    const timer = setTimeout(() => {
+      this.retryTimers.delete(dataType);
+      this.checkAndSync(dataType);
+    }, delayMs);
+    this.retryTimers.set(dataType, timer);
+  }
+
+  private clearRetry(dataType: DataType) {
+    const timer = this.retryTimers.get(dataType);
+    if (timer) {
+      clearTimeout(timer);
+      this.retryTimers.delete(dataType);
+    }
+  }
+
+  private startConnectionHeartbeat(syncService: ReturnType<typeof getFinaleSyncService>) {
+    if (!this.hasCredentials) return;
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+
+    const runHeartbeat = async () => {
+      try {
+        const result = await syncService.testConnection();
+        await this.saveSyncMetadata({
+          dataType: 'connection',
+          lastSyncTime: new Date().toISOString(),
+          itemCount: result.success ? 1 : 0,
+          success: result.success,
+        });
+        if (result.success) {
+          this.connectionFailureCount = 0;
+          if (this.connectionAlertActive) {
+            emitSystemAlert({
+              source: 'finale-connection',
+              severity: 'warning',
+              message: 'Finale API connection restored.',
+            });
+            this.connectionAlertActive = false;
+          }
+        } else {
+          this.handleConnectionFailure(result.message || 'Connection failed');
+        }
+      } catch (error) {
+        this.handleConnectionFailure(error instanceof Error ? error.message : 'Connection error');
+      }
+    };
+
+    runHeartbeat();
+    this.heartbeatInterval = setInterval(runHeartbeat, 60 * 60 * 1000); // hourly
+  }
+
+  private handleConnectionFailure(details: string) {
+    this.connectionFailureCount += 1;
+    console.warn('[AutoSync] Finale connection heartbeat failed:', details);
+    if (this.connectionFailureCount >= 2 && !this.connectionAlertActive) {
+      emitSystemAlert({
+        source: 'finale-connection',
+        severity: 'warning',
+        message: 'Finale API credentials appear invalid. Re-authenticate in Settings.',
+        details,
+      });
+      this.connectionAlertActive = true;
+    }
   }
 }
 

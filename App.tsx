@@ -27,6 +27,7 @@ import FeatureSpotlightReminder from './components/FeatureSpotlightReminder';
 import OnboardingChecklist from './components/OnboardingChecklist';
 import LoadingOverlay from './components/LoadingOverlay';
 import ProductPage from './pages/ProductPage';
+// import BuildBlockerModal from './components/BuildBlockerModal';
 import { supabase } from './lib/supabase/client';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
 import { UserPreferencesProvider } from './components/UserPreferencesProvider';
@@ -62,6 +63,7 @@ import {
   revertBomToRevision,
   appendPurchaseOrderNote,
 } from './hooks/useSupabaseMutations';
+import { checkBuildBlockers } from './services/approvalService';
 import {
     mockHistoricalSales,
     mockWatchlist,
@@ -168,7 +170,8 @@ const AppShell: React.FC = () => {
   const [apiKey, setApiKey] = usePersistentState<string | null>('apiKey', null);
   const [externalConnections, setExternalConnections] = usePersistentState<ExternalConnection[]>('externalConnections', []);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
-  const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(false);
+  const isE2ETestMode = isE2ETesting();
+  const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(isE2ETestMode);
   const trackingSignalRef = useRef<Map<string, { status?: POTrackingStatus | null; invoiceNotified?: boolean }>>(new Map());
   const notificationsPrimedRef = useRef(false);
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
@@ -177,6 +180,12 @@ const AppShell: React.FC = () => {
   const [guidedLaunchState, setGuidedLaunchState] = useState<GuidedLaunchState | null>(null);
   const [isShipmentReviewModalOpen, setIsShipmentReviewModalOpen] = useState(false);
   const [shipmentReviewPoId, setShipmentReviewPoId] = useState<string | null>(null);
+  
+  // Build blocker state
+  const [showBuildBlockerModal, setShowBuildBlockerModal] = useState(false);
+  const [pendingBuildBlockReason, setPendingBuildBlockReason] = useState<any>(null);
+  const [pendingBuildOrder, setPendingBuildOrder] = useState<any>(null);
+  
   const navigateToPage = useCallback((nextPage: Page) => {
     setCurrentPage(nextPage);
 
@@ -217,7 +226,6 @@ const AppShell: React.FC = () => {
   const users = userProfiles;
   const googleAuthService = useMemo(() => getGoogleAuthService(), []);
   const gmailService = useMemo(() => getGoogleGmailService(), []);
-  const isE2ETestMode = isE2ETesting();
   const inventory = useMemo(() => (isE2ETestMode ? mockInventory : inventoryData) ?? [], [isE2ETestMode, inventoryData]);
   const boms = useMemo(() => (isE2ETestMode ? mockBOMs : bomsData) ?? [], [isE2ETestMode, bomsData]);
   const purchaseOrders = useMemo(() => purchaseOrdersData ?? [], [purchaseOrdersData]);
@@ -1294,28 +1302,57 @@ const AppShell: React.FC = () => {
     scheduledDate?: string,
     dueDate?: string
   ) => {
-    const newBuildOrder: BuildOrder = {
-      id: `BO-${new Date().getFullYear()}-${(buildOrders.length + 1).toString().padStart(3, '0')}`,
-      finishedSku: sku,
-      name,
-      quantity,
-      status: 'Pending',
-      createdAt: new Date().toISOString(),
-      scheduledDate,
-      dueDate,
-      estimatedDurationHours: 2,
-    };
+    try {
+      // Get BOM for this product
+      const bom = bomMap.get(sku);
+      if (!bom) {
+        addToast(`Product ${sku} not found in BOM database`, 'error');
+        return;
+      }
 
-    const result = await createBuildOrder(newBuildOrder);
-    if (!result.success) {
-      addToast(`Failed to create Build Order: ${result.error}`, 'error');
-      return;
+      // Check for build blockers (respects configurable settings)
+      const blockReason = await checkBuildBlockers(bom);
+      if (blockReason.blocked) {
+        // Store block reason for modal display
+        setPendingBuildBlockReason(blockReason);
+        setPendingBuildOrder({
+          sku,
+          name,
+          quantity,
+          scheduledDate,
+          dueDate,
+        });
+        setShowBuildBlockerModal(true);
+        return;
+      }
+
+      // No blockers - proceed with build order creation
+      const newBuildOrder: BuildOrder = {
+        id: `BO-${new Date().getFullYear()}-${(buildOrders.length + 1).toString().padStart(3, '0')}`,
+        finishedSku: sku,
+        name,
+        quantity,
+        status: 'Pending',
+        createdAt: new Date().toISOString(),
+        scheduledDate,
+        dueDate,
+        estimatedDurationHours: 2,
+      };
+
+      const result = await createBuildOrder(newBuildOrder);
+      if (!result.success) {
+        addToast(`Failed to create Build Order: ${result.error}`, 'error');
+        return;
+      }
+
+      await queueShortagesForBuild(newBuildOrder);
+      refetchBuildOrders();
+      addToast(`Successfully created Build Order ${newBuildOrder.id} for ${quantity}x ${name}.`, 'success');
+      navigateToPage('Production');
+    } catch (error) {
+      console.error('[handleCreateBuildOrder] Error:', error);
+      addToast(`Error creating build order: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     }
-
-    await queueShortagesForBuild(newBuildOrder);
-    refetchBuildOrders();
-    addToast(`Successfully created Build Order ${newBuildOrder.id} for ${quantity}x ${name}.`, 'success');
-    navigateToPage('Production');
   };
 
   const handleApproveRequisition = async (reqId: string) => {
@@ -2010,7 +2047,19 @@ const AppShell: React.FC = () => {
         addToast={addToast}
       />
 
-      {!hasInitialDataLoaded && <LoadingOverlay />}
+      {/* <BuildBlockerModal
+        isOpen={showBuildBlockerModal}
+        onClose={() => {
+          setShowBuildBlockerModal(false);
+          setPendingBuildBlockReason(null);
+          setPendingBuildOrder(null);
+        }}
+        blockReason={pendingBuildBlockReason}
+        pendingBuildOrder={pendingBuildOrder}
+        onViewApprovalFlow={() => navigateToPage('BOMs')}
+      /> */}
+
+      {/* {!hasInitialDataLoaded && <LoadingOverlay />} */}
     </div>
   );
 };

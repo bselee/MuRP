@@ -1,6 +1,62 @@
 -- SOP Template System and Enhanced Categorization
 -- Adds standardized templates, department/role categorization, and external document server integrations
 
+-- First, create the required department and role tables
+CREATE TABLE IF NOT EXISTS sop_departments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS sop_roles (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    department_id UUID REFERENCES sop_departments(id),
+    permissions JSONB DEFAULT '{}', -- Role-specific permissions
+    hierarchy_level INTEGER DEFAULT 1, -- For approval hierarchies
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS user_department_roles (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    department_id UUID NOT NULL REFERENCES sop_departments(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES sop_roles(id) ON DELETE CASCADE,
+    assigned_by UUID REFERENCES auth.users(id),
+    assigned_at TIMESTAMPTZ DEFAULT NOW(),
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    UNIQUE(user_id, department_id, role_id)
+);
+
+-- Insert default departments and roles
+INSERT INTO sop_departments (name, description) VALUES
+('Operations', 'Manufacturing and production operations'),
+('Quality Control', 'Quality assurance and control'),
+('Compliance', 'Regulatory compliance and documentation'),
+('Engineering', 'Product and process engineering'),
+('Purchasing', 'Procurement and vendor management'),
+('Sales', 'Sales and customer service'),
+('IT', 'Information technology and systems'),
+('HR', 'Human resources and administration')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO sop_roles (name, description, hierarchy_level) VALUES
+('operator', 'Production line operator', 1),
+('supervisor', 'Department supervisor', 2),
+('manager', 'Department manager', 3),
+('compliance_officer', 'Compliance and regulatory officer', 3),
+('engineer', 'Process or product engineer', 2),
+('lead', 'Department lead or coordinator', 2),
+('admin', 'System administrator', 4),
+('executive', 'Executive leadership', 5)
+ON CONFLICT (name) DO NOTHING;
+
 -- SOP Templates table
 CREATE TABLE IF NOT EXISTS sop_templates (
   id TEXT PRIMARY KEY,
@@ -20,7 +76,7 @@ CREATE TABLE IF NOT EXISTS sop_templates (
 
 -- Add department and role fields to SOP repository
 ALTER TABLE sop_repository
-ADD COLUMN IF NOT EXISTS department TEXT DEFAULT 'General',
+ADD COLUMN IF NOT EXISTS department_id UUID REFERENCES sop_departments(id),
 ADD COLUMN IF NOT EXISTS applicable_roles TEXT[] DEFAULT '{}',
 ADD COLUMN IF NOT EXISTS template_id TEXT REFERENCES sop_templates(id),
 ADD COLUMN IF NOT EXISTS template_data JSONB; -- Structured data following template
@@ -52,7 +108,7 @@ CREATE TABLE IF NOT EXISTS sop_learning_data (
 );
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS idx_sop_repository_department ON sop_repository(department);
+CREATE INDEX IF NOT EXISTS idx_sop_repository_department_id ON sop_repository(department_id);
 CREATE INDEX IF NOT EXISTS idx_sop_repository_applicable_roles ON sop_repository USING GIN(applicable_roles);
 CREATE INDEX IF NOT EXISTS idx_sop_repository_template_id ON sop_repository(template_id);
 CREATE INDEX IF NOT EXISTS idx_sop_templates_category_dept ON sop_templates(category, department);

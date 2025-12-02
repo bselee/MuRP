@@ -2,9 +2,11 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
+import { SYSTEM_ALERT_EVENT, type SystemAlertPayload } from './alertBus';
 
 export type SystemAlertSeverity = 'error' | 'warning';
 
@@ -36,6 +38,18 @@ const SystemAlertContext = createContext<SystemAlertContextValue | undefined>(un
 
 export const SystemAlertProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<SystemAlertPayload>).detail;
+      if (!detail) return;
+      upsertAlert(detail);
+    };
+    window.addEventListener(SYSTEM_ALERT_EVENT, handler);
+    return () => {
+      window.removeEventListener(SYSTEM_ALERT_EVENT, handler);
+    };
+  }, [upsertAlert]);
 
   const upsertAlert: SystemAlertContextValue['upsertAlert'] = useCallback((alertInput) => {
     setAlerts((prev) => {

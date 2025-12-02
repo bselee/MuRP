@@ -14,12 +14,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-type SyncType = 'inventory' | 'vendors' | 'boms';
+type SyncType = 'inventory' | 'vendors' | 'boms' | 'purchase_orders';
 
 const SYNC_INTERVALS: Record<SyncType, number> = {
   inventory: 5 * 60 * 1000,
   vendors: 60 * 60 * 1000,
   boms: 60 * 60 * 1000,
+  purchase_orders: 15 * 60 * 1000, // 15 minutes for POs
 };
 
 interface SyncSummary {
@@ -83,6 +84,7 @@ serve(async (req) => {
       { type: 'vendors', url: vendorsReportUrl || null, intervalMs: SYNC_INTERVALS.vendors },
       { type: 'inventory', url: inventoryReportUrl || null, intervalMs: SYNC_INTERVALS.inventory },
       { type: 'boms', url: bomsReportUrl || null, intervalMs: SYNC_INTERVALS.boms },
+      { type: 'purchase_orders', url: null, intervalMs: SYNC_INTERVALS.purchase_orders }, // Uses API, not CSV
     ];
 
     const summaries: SyncSummary[] = [];
@@ -114,6 +116,9 @@ serve(async (req) => {
       }
 
       try {
+        // Create backup before sync for safety
+        const backupTable = await createBackupBeforeSync(supabase, entry.type);
+
         let itemCount = 0;
         switch (entry.type) {
           case 'inventory':
@@ -125,9 +130,29 @@ serve(async (req) => {
           case 'boms':
             itemCount = await syncBomData({ supabase, url: entry.url, credentials, now });
             break;
+          case 'purchase_orders':
+            itemCount = await syncPurchaseOrdersData({ supabase, now });
+            break;
+        }
+
+        // Check for empty data and trigger rollback if needed
+        if (itemCount === 0) {
+          console.warn(`[${entry.type}] Empty data detected, triggering automatic rollback`);
+          await triggerEmptyDataRollback(supabase, entry.type, backupTable);
+          throw new Error(`${entry.type} sync returned no data - automatically rolled back to last backup`);
         }
 
         await updateSyncMetadata(supabase, entry.type, now, itemCount, true);
+
+        // Update connection health status
+        const { error: healthError } = await supabase.rpc('update_connection_health_status', {
+          p_data_type: entry.type,
+          p_status: 'healthy',
+          p_item_count: itemCount,
+        });
+        if (healthError) {
+          console.error(`[ConnectionHealth] Failed to update ${entry.type}:`, healthError.message);
+        }
         summaries.push({
           dataType: entry.type,
           success: true,
@@ -136,8 +161,35 @@ serve(async (req) => {
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        syncErrors.push(`${entry.type}: ${message}`);
+
+        // Enqueue for retry if it's a recoverable error
+        if (isRecoverableError(message)) {
+          console.log(`[${entry.type}] Enqueuing recoverable error for retry: ${message}`);
+          await enqueueSyncRetry(supabase, entry.type, 'sync', message, {
+            forceSync,
+            triggerSource,
+            credentials: { apiKey: credentials.apiKey, apiSecret: '[REDACTED]' },
+            url: entry.url,
+            attemptNumber: 1,
+            maxRetries: 3,
+            backoffMs: 300000, // 5 minutes
+          });
+        } else {
+          console.log(`[${entry.type}] Non-recoverable error, not enqueuing for retry: ${message}`);
+        }
+
         await updateSyncMetadata(supabase, entry.type, now, 0, false);
+
+        // Update connection health status
+        const { error: healthError } = await supabase.rpc('update_connection_health_status', {
+          p_data_type: entry.type,
+          p_status: 'unhealthy',
+          p_item_count: 0,
+          p_error_message: message,
+        });
+        if (healthError) {
+          console.error(`[ConnectionHealth] Failed to update ${entry.type}:`, healthError.message);
+        }
         summaries.push({
           dataType: entry.type,
           success: false,
@@ -353,6 +405,132 @@ async function syncBomData(params: {
   await batchInsert(params.supabase, 'boms', bomRecords, 200);
   console.log(`[AutoSync][BOMs] Inserted ${bomRecords.length} rows`);
   return bomRecords.length;
+}
+
+async function syncPurchaseOrdersData(params: {
+  supabase: SupabaseClient;
+  now: Date;
+}): Promise<number> {
+  console.log('[AutoSync][PurchaseOrders] Fetching from API...');
+
+  // Get Finale credentials from vault (same as api-proxy)
+  const { data: secrets } = await params.supabase
+    .from('vault')
+    .select('secret')
+    .eq('name', 'finale_credentials')
+    .single();
+
+  if (!secrets) {
+    throw new Error('Finale credentials not configured in vault');
+  }
+
+  const credentials = JSON.parse(secrets.secret);
+  const finaleApiUrl = credentials.baseUrl || 'https://app.finaleinventory.com';
+  const accountPath = credentials.accountPath;
+  const apiKey = credentials.apiKey;
+  const apiSecret = credentials.apiSecret;
+
+  if (!accountPath || !apiKey || !apiSecret) {
+    throw new Error('Incomplete Finale credentials in vault');
+  }
+
+  // Get OAuth token (same as api-proxy)
+  const tokenResponse = await fetch(`${finaleApiUrl}/oauth/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: apiKey,
+      client_secret: apiSecret,
+      subdomain: accountPath,
+    }),
+  });
+
+  if (!tokenResponse.ok) {
+    throw new Error(`Failed to authenticate with Finale API: ${tokenResponse.status}`);
+  }
+
+  const { access_token } = await tokenResponse.json();
+
+  // Fetch purchase orders with pagination (same as api-proxy)
+  const limit = 100;
+  let offset = 0;
+  const allPurchaseOrders: any[] = [];
+  let hasMore = true;
+
+  while (hasMore) {
+    const url = `${finaleApiUrl}/purchase_orders?limit=${limit}&offset=${offset}&include=line_items`;
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Failed to fetch purchase orders (${response.status}): ${errorBody}`);
+    }
+
+    const payload = await response.json();
+    const batch = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : [];
+
+    allPurchaseOrders.push(...batch);
+
+    if (payload?.pagination?.totalPages && payload?.pagination?.page) {
+      const { page, totalPages } = payload.pagination;
+      hasMore = page < totalPages;
+      offset = page * limit;
+    } else {
+      hasMore = batch.length === limit;
+      offset += limit;
+    }
+  }
+
+  console.log(`[AutoSync][PurchaseOrders] Fetched ${allPurchaseOrders.length} POs from API`);
+
+  if (allPurchaseOrders.length === 0) {
+    throw new Error('Purchase orders API returned no data');
+  }
+
+  // Transform and upsert purchase orders
+  const nowIso = params.now.toISOString();
+  const transformedPOs: Array<Record<string, any>> = [];
+  const transformedPOItems: Array<Record<string, any>> = [];
+
+  for (const po of allPurchaseOrders) {
+    const transformedPO = transformPurchaseOrder(po, nowIso);
+    if (transformedPO) {
+      transformedPOs.push(transformedPO);
+
+      // Transform line items
+      if (po.line_items && Array.isArray(po.line_items)) {
+        for (const item of po.line_items) {
+          const transformedItem = transformPurchaseOrderItem(item, transformedPO.id, nowIso);
+          if (transformedItem) {
+            transformedPOItems.push(transformedItem);
+          }
+        }
+      }
+    }
+  }
+
+  if (transformedPOs.length === 0) {
+    throw new Error('No valid purchase orders after transformation');
+  }
+
+  // Upsert purchase orders and items
+  await batchUpsert(params.supabase, 'purchase_orders', transformedPOs, 'order_id');
+  if (transformedPOItems.length > 0) {
+    await batchUpsert(params.supabase, 'purchase_order_items', transformedPOItems, 'id');
+  }
+
+  console.log(`[AutoSync][PurchaseOrders] Inserted ${transformedPOs.length} POs with ${transformedPOItems.length} line items`);
+  return transformedPOs.length;
 }
 
 async function getSyncMetadata(supabase: SupabaseClient, dataType: SyncType) {
@@ -711,6 +889,97 @@ function transformVendorRow(raw: Record<string, any>, timestamp: string, _index:
   };
 }
 
+function transformPurchaseOrder(raw: Record<string, any>, timestamp: string) {
+  const orderId = (raw.order_number || raw.id || '').toString().trim();
+  if (!orderId) return null;
+
+  // Map Finale status to our status
+  const statusMap: Record<string, string> = {
+    'draft': 'draft',
+    'sent': 'sent',
+    'confirmed': 'confirmed',
+    'partial': 'partial',
+    'received': 'received',
+    'cancelled': 'cancelled',
+  };
+
+  const finaleStatus = (raw.status || '').toLowerCase();
+  const status = statusMap[finaleStatus] || 'draft';
+
+  // Extract vendor info
+  const vendorName = raw.vendor_name || raw.supplier_name || '';
+  const vendorId = vendorName ? generateDeterministicId(normalizeVendorKey(vendorName)) : null;
+
+  return {
+    id: generateDeterministicId(orderId),
+    order_id: orderId,
+    order_date: raw.order_date || raw.created_at || timestamp.split('T')[0],
+    vendor_id: vendorId,
+    supplier_code: raw.vendor_code || raw.supplier_code || '',
+    supplier_name: vendorName,
+    supplier_contact: raw.vendor_contact || '',
+    supplier_email: raw.vendor_email || '',
+    supplier_phone: raw.vendor_phone || '',
+    status,
+    priority: raw.priority || 'normal',
+    expected_date: raw.expected_delivery_date || raw.delivery_date,
+    actual_receive_date: raw.actual_delivery_date || raw.received_date,
+    tracking_number: raw.tracking_number || '',
+    tracking_link: raw.tracking_url || '',
+    carrier: raw.carrier || '',
+    subtotal: parseNumber(raw.subtotal, 0),
+    tax_amount: parseNumber(raw.tax_amount, 0),
+    shipping_cost: parseNumber(raw.shipping_amount || raw.shipping_cost, 0),
+    total_amount: parseNumber(raw.total_amount || raw.grand_total, 0),
+    currency: raw.currency || 'USD',
+    payment_terms: raw.payment_terms || '',
+    internal_notes: raw.notes || raw.internal_notes || '',
+    vendor_notes: raw.vendor_notes || '',
+    special_instructions: raw.special_instructions || '',
+    finale_po_id: raw.id?.toString(),
+    finale_status: finaleStatus,
+    last_finale_sync: timestamp,
+    source: 'api',
+    data_source: 'api',
+    last_sync_at: timestamp,
+    sync_status: 'synced',
+    record_created: raw.created_at || timestamp,
+    record_last_updated: timestamp,
+    updated_at: timestamp,
+  };
+}
+
+function transformPurchaseOrderItem(raw: Record<string, any>, poId: string, timestamp: string) {
+  const sku = (raw.sku || raw.product_sku || raw.item_code || '').trim();
+  if (!sku) return null;
+
+  const itemId = `${poId}_${sku}_${raw.id || 'item'}`;
+  const lineNumber = parseNumber(raw.line_number, 0);
+
+  return {
+    id: generateDeterministicId(itemId),
+    po_id: poId,
+    inventory_sku: sku,
+    item_name: raw.name || raw.product_name || raw.description || sku,
+    item_description: raw.description || '',
+    supplier_sku: raw.supplier_sku || sku,
+    quantity_ordered: parseNumber(raw.quantity_ordered || raw.quantity, 0),
+    quantity_received: parseNumber(raw.quantity_received, 0),
+    unit_of_measure: raw.unit_of_measure || 'EA',
+    unit_cost: parseNumber(raw.unit_cost || raw.cost, 0),
+    discount_percent: parseNumber(raw.discount_percent, 0),
+    discount_amount: parseNumber(raw.discount_amount, 0),
+    line_status: raw.line_status || 'pending',
+    expected_delivery: raw.expected_delivery_date,
+    actual_delivery: raw.actual_delivery_date,
+    reorder_reason: raw.reorder_reason || 'manual',
+    line_notes: raw.notes || '',
+    line_number: lineNumber,
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+}
+
 async function deleteAllRows(supabase: SupabaseClient, table: string, primaryKey: string) {
   const { error } = await supabase.from(table).delete().not(primaryKey, 'is', null);
   if (error) {
@@ -891,6 +1160,138 @@ function normalizeVendorKey(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, '')
     .replace(/\s+/g, ' ');
+}
+
+async function createBackupBeforeSync(supabase: SupabaseClient, dataType: SyncType): Promise<string | null> {
+  try {
+    const tableName = getTableNameForDataType(dataType);
+    const { data, error } = await supabase.rpc('backup_before_sync', {
+      p_data_type: dataType,
+      p_table_name: tableName,
+      p_triggered_by: 'auto_sync_finale'
+    });
+
+    if (error) {
+      console.warn(`[Backup] Failed to create backup for ${dataType}:`, error.message);
+      return null;
+    }
+
+    console.log(`[Backup] Created backup for ${dataType}: ${data}`);
+    return data;
+  } catch (error) {
+    console.warn(`[Backup] Error creating backup for ${dataType}:`, error);
+    return null;
+  }
+}
+
+async function triggerEmptyDataRollback(supabase: SupabaseClient, dataType: SyncType, backupTable: string | null): Promise<void> {
+  if (!backupTable) {
+    console.warn(`[Rollback] No backup available for ${dataType} rollback`);
+    return;
+  }
+
+  try {
+    const tableName = getTableNameForDataType(dataType);
+    const { data, error } = await supabase.rpc('trigger_empty_data_rollback', {
+      p_data_type: dataType,
+      p_table_name: tableName,
+      p_error_message: `Empty ${dataType} data detected during sync`
+    });
+
+    if (error) {
+      console.error(`[Rollback] Failed to rollback ${dataType}:`, error.message);
+    } else {
+      console.log(`[Rollback] Successfully rolled back ${dataType} to backup: ${data}`);
+    }
+  } catch (error) {
+    console.error(`[Rollback] Error during ${dataType} rollback:`, error);
+  }
+}
+
+async function enqueueSyncRetry(
+  supabase: SupabaseClient,
+  dataType: SyncType,
+  operation: string,
+  errorMessage: string,
+  contextData: Record<string, any>
+): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('enqueue_sync_retry', {
+      p_data_type: dataType,
+      p_operation: operation,
+      p_error_message: errorMessage,
+      p_context_data: contextData,
+      p_priority: 2, // Normal priority
+      p_max_retries: 3,
+      p_requires_rollback: false
+    });
+
+    if (error) {
+      console.warn(`[Retry] Failed to enqueue ${dataType} retry:`, error.message);
+    } else {
+      console.log(`[Retry] Enqueued ${dataType} for retry`);
+    }
+  } catch (error) {
+    console.warn(`[Retry] Error enqueuing ${dataType} retry:`, error);
+  }
+}
+
+function getTableNameForDataType(dataType: SyncType): string {
+  switch (dataType) {
+    case 'inventory': return 'inventory_items';
+    case 'vendors': return 'vendors';
+    case 'boms': return 'boms';
+    case 'purchase_orders': return 'purchase_orders';
+    default: return dataType;
+  }
+}
+
+function isRecoverableError(errorMessage: string): boolean {
+  // Define which errors are recoverable (network issues, temporary API problems, rate limits)
+  const recoverablePatterns = [
+    /network/i,
+    /timeout/i,
+    /connection/i,
+    /temporary/i,
+    /rate limit/i,
+    /server error/i,
+    /5\d{2}/, // 5xx HTTP errors
+    /fetch failed/i,
+    /connection refused/i,
+    /connection reset/i,
+    /dns/i,
+    /ssl/i,
+    /certificate/i,
+    /gateway timeout/i,
+    /bad gateway/i,
+    /service unavailable/i,
+    /internal server error/i,
+  ];
+
+  // Define which errors are NOT recoverable (data issues, auth problems, schema changes)
+  const nonRecoverablePatterns = [
+    /empty.*data/i,
+    /no.*rows/i,
+    /invalid.*credentials/i,
+    /unauthorized/i,
+    /forbidden/i,
+    /authentication/i,
+    /invalid.*token/i,
+    /schema.*error/i,
+    /column.*not.*exist/i,
+    /relation.*not.*exist/i,
+    /invalid.*csv/i,
+    /malformed.*data/i,
+    /data.*corruption/i,
+  ];
+
+  // Check for non-recoverable errors first
+  if (nonRecoverablePatterns.some(pattern => pattern.test(errorMessage))) {
+    return false;
+  }
+
+  // Check for recoverable errors
+  return recoverablePatterns.some(pattern => pattern.test(errorMessage));
 }
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {

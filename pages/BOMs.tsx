@@ -127,21 +127,6 @@ const BOMs: React.FC<BOMsProps> = ({
   const canSubmitRequisitions = permissions.canSubmitRequisition;
   const isOpsApprover = currentUser.role === 'Admin' || currentUser.department === 'Operations';
 
-  const revisionPillClass = (status?: string) =>
-    status === 'approved'
-      ? 'bg-emerald-900/30 text-emerald-200 border border-emerald-600/40'
-      : 'bg-rose-900/30 text-rose-200 border border-rose-500/40 animate-pulse';
-
-  const renderRevisionPill = (bom: BillOfMaterials) => (
-    <span
-      className={`text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full ${revisionPillClass(
-        bom.revisionStatus
-      )}`}
-    >
-      REV {bom.revisionNumber ?? 1}
-    </span>
-  );
-
   // New UI state with persistent storage
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>(() => readStoredCategoryFilter());
@@ -968,7 +953,6 @@ const BOMs: React.FC<BOMsProps> = ({
                               >
                                 {bom.finishedSku}
                               </Button>
-                              {renderRevisionPill(bom)}
                             </div>
                           </td>
                           <td className="px-6 py-1">
@@ -994,14 +978,6 @@ const BOMs: React.FC<BOMsProps> = ({
                           </td>
                           <td className="px-6 py-1 whitespace-nowrap text-right">
                             <div className="flex items-center justify-end gap-2">
-                              {isOpsApprover && bom.revisionStatus !== 'approved' && (
-                                <Button
-                                  onClick={() => onApproveRevision(bom)}
-                                  className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded transition-colors"
-                                >
-                                  Approve REV {bom.revisionNumber}
-                                </Button>
-                              )}
                               <Button
                                 onClick={() => handleViewDetails(bom)}
                                 className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"

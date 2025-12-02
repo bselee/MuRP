@@ -1358,6 +1358,59 @@ export interface RolePermissions {
     };
 }
 
+export interface BOMApprovalSettings {
+    // Build blocking for pending BOM revisions
+    enableBOMRevisionBlocking: boolean;
+    bomRevisionBlockingMessage?: string;
+
+    // Artwork approval workflow (doesn't block builds)
+    enableArtworkApprovalWorkflow: boolean;
+    requireArtworkApprovalBeforePrintReady: boolean;
+    artworkApprovalMessage?: string;
+
+    // Approval routing
+    bomRevisionApproversTeam: ('Operations' | 'Design' | 'Quality')[];
+    artworkApproversTeam: ('Operations' | 'Design' | 'Quality')[];
+
+    // Enforcement
+    enforceForAllProducts: boolean;
+    enforceForHighValueBOMs: boolean;
+    highValueThreshold?: number; // Number of components or cost threshold
+
+    // Last modified
+    updatedAt: string;
+    updatedBy: string;
+}
+
+export const defaultBOMApprovalSettings: BOMApprovalSettings = {
+    enableBOMRevisionBlocking: true,
+    bomRevisionBlockingMessage: 'BOM revisions must be approved before builds can proceed',
+    enableArtworkApprovalWorkflow: true,
+    requireArtworkApprovalBeforePrintReady: true,
+    artworkApprovalMessage: 'Artwork must be approved by the design team before marking as print-ready',
+    bomRevisionApproversTeam: ['Operations', 'Quality'],
+    artworkApproversTeam: ['Design'],
+    enforceForAllProducts: true,
+    enforceForHighValueBOMs: false,
+    highValueThreshold: undefined,
+    updatedAt: new Date().toISOString(),
+    updatedBy: 'system',
+};
+
+export interface RolePermissions {
+    boms: {
+        manager: RoleAccessRule;
+        staff: RoleAccessRule;
+    };
+    purchaseOrders: {
+        managersCanCreate: boolean;
+        staffCanCreate: boolean;
+    };
+    requisitions: {
+        staffCanCreate: boolean;
+    };
+}
+
 export const defaultRolePermissions: RolePermissions = {
     boms: {
         manager: { canView: true, canEdit: false },

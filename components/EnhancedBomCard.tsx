@@ -390,10 +390,6 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
     );
   };
   const hasSwapHints = bom.components?.some(component => Boolean(getSwapRuleForSku(component.sku)));
-  const isRevisionApproved = bom.revisionStatus === 'approved';
-  const revisionBadgeClass = isRevisionApproved
-    ? 'bg-emerald-900/30 text-emerald-200 border border-emerald-600/40'
-    : 'bg-rose-900/30 text-rose-200 border border-rose-500/40 animate-pulse';
 
   // Calculate financial metrics if available
   const totalMaterialCost = bom.components.reduce((sum, c) => {
@@ -441,21 +437,6 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
               >
                 {bom.finishedSku}
               </button>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-wide ${revisionBadgeClass}`}>
-                REV {bom.revisionNumber ?? 1}
-              </span>
-              {canApprove && !isRevisionApproved && onApproveRevision && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onApproveRevision();
-                  }}
-                  className="text-[10px] px-2 py-0.5 bg-emerald-700 text-white rounded-full hover:bg-emerald-600 transition-colors shadow-sm"
-                >
-                  Approve
-                </button>
-              )}
-              
               <h4 className={`${bodyHeadingClass} !mb-0 whitespace-nowrap text-sm`}>{bom.name}</h4>
 
               {bom.category && (
@@ -482,7 +463,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
         {/* KEY METRICS ROW with Artwork aligned */}
         <div className="flex items-start gap-3">
           {/* Artwork aligned with metrics */}
-          <div className={`flex-shrink-0 w-16 h-16 rounded-lg border-2 overflow-hidden ${
+          <div className={`flex-shrink-0 w-20 h-20 rounded-lg border-2 overflow-hidden ${
             labels.length > 0 
               ? themeSwap('border-emerald-400/40', 'border-emerald-500/40')
               : themeSwap('border-gray-300', 'border-gray-700')

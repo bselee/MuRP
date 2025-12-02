@@ -17,6 +17,7 @@ import FollowUpSettingsPanel from '../components/FollowUpSettingsPanel';
 import DataPipelineGuide from '../components/DataPipelineGuide';
 import GoogleDataPanel from '../components/GoogleDataPanel';
 import GoogleWorkspaceStatusCard from '../components/GoogleWorkspaceStatusCard';
+import FinaleSyncStatusCard from '../components/FinaleSyncStatusCard';
 import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
 import googleOAuthDocUrl from '../docs/GOOGLE_OAUTH_SETUP.md?url';
 import googleSheetsDocUrl from '../GOOGLE_SHEETS_INTEGRATION.md?url';
@@ -35,6 +36,7 @@ import NotificationPreferencesPanel from '../components/NotificationPreferencesP
 import RolePermissionMatrix from '../components/RolePermissionMatrix';
 import UserPersonalizationPanel from '../components/UserPersonalizationPanel';
 import SOPSettingsPanel from '../components/SOPSettingsPanel';
+import BOMApprovalSettingsPanel from '../components/BOMApprovalSettingsPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -93,6 +95,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isEmailPolicyOpen, setIsEmailPolicyOpen] = useState(false);
     const [isUserPersonalizationOpen, setIsUserPersonalizationOpen] = useState(false);
     const [isSopSettingsOpen, setIsSopSettingsOpen] = useState(false);
+    const [isBOMApprovalSettingsOpen, setIsBOMApprovalSettingsOpen] = useState(false);
     const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
     
     // API key visibility state
@@ -366,6 +369,7 @@ Thank you!`
                 addToast={addToast}
                 onNavigateToPanel={scrollToGooglePanel}
               />
+              <FinaleSyncStatusCard />
               <DataPipelineGuide
                 defaultCollapsed
                 items={[
@@ -560,6 +564,15 @@ Thank you!`
             onToggle={() => setIsComponentSwapOpen(!isComponentSwapOpen)}
           >
             <ComponentSwapSettingsPanel addToast={addToast} />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="BOM Approval Workflow"
+            icon={<ShieldCheckIcon className="w-6 h-6 text-blue-300" />}
+            isOpen={isBOMApprovalSettingsOpen}
+            onToggle={() => setIsBOMApprovalSettingsOpen(!isBOMApprovalSettingsOpen)}
+          >
+            <BOMApprovalSettingsPanel addToast={addToast} />
           </CollapsibleSection>
 
           {isFeatureEnabled('shopify') && (

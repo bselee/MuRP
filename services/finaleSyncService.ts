@@ -16,6 +16,7 @@ import { CircuitBreaker } from './circuitBreaker';
 import { retryWithBackoff } from './retryWithBackoff';
 import { supabase } from '../lib/supabase/client';
 import type { Tables } from '../lib/supabase/client';
+import { emitSystemAlert } from '../lib/systemAlerts/alertBus';
 import {
   transformFinaleProductsToInventory,
   transformFinaleSuppliersToVendors,
@@ -144,6 +145,7 @@ export class FinaleSyncService {
   private syncIntervals: Map<string, NodeJS.Timeout>;
   private statusListeners: Set<(status: SyncStatus) => void>;
   private backupService = createBackupService();
+  private reportAlerts: Record<string, boolean> = {};
 
   constructor(config?: Partial<SyncConfig>) {
     // Don't initialize Finale client yet - will be set via setCredentials()
@@ -311,7 +313,7 @@ export class FinaleSyncService {
       progress: {
         phase: 'vendors',
         current: 0,
-        total: 3,
+        total: 4,
         percentage: 0,
         message: 'Starting full sync...',
       },
@@ -327,8 +329,8 @@ export class FinaleSyncService {
       // Then BOMs (CSV-based, depends on inventory)
       await this.syncBOMsFromCSV();
 
-      // Purchase orders - still unavailable
-      console.log('[FinaleSyncService] Skipping purchase order sync (REST API unavailable)');
+      // Finally purchase orders
+      await this.syncPurchaseOrders();
 
       const duration = Date.now() - startTime;
 
@@ -477,6 +479,17 @@ export class FinaleSyncService {
     });
 
     try {
+      const inventoryReportUrl =
+        (typeof window !== 'undefined' && localStorage.getItem('finale_inventory_report_url')) ||
+        import.meta.env.VITE_FINALE_INVENTORY_REPORT_URL;
+      if (inventoryReportUrl) {
+        const healthy = await this.checkCSVHealth(inventoryReportUrl, 'Inventory report');
+        this.updateReportAlert('inventory', healthy, 'Inventory');
+        if (!healthy) {
+          console.warn('[FinaleSyncService] Inventory CSV health check failed. Sync may be stale until the report URL is refreshed in Finale.');
+        }
+      }
+
       // Fetch inventory CSV data via API proxy
       const rawInventory = await this.rateLimiter.schedule(async () => {
         return await this.circuitBreaker.execute(async () => {
@@ -570,6 +583,17 @@ export class FinaleSyncService {
     });
 
     try {
+      const bomReportUrl =
+        (typeof window !== 'undefined' && localStorage.getItem('finale_bom_report_url')) ||
+        import.meta.env.VITE_FINALE_BOM_REPORT_URL;
+      if (bomReportUrl) {
+        const healthy = await this.checkCSVHealth(bomReportUrl, 'BOM report');
+        this.updateReportAlert('boms', healthy, 'BOM');
+        if (!healthy) {
+          console.warn('[FinaleSyncService] BOM CSV health check failed. Sync may be stale until the report URL is refreshed in Finale.');
+        }
+      }
+
       // Fetch BOM CSV data via API proxy
       const rawBOMs = await this.rateLimiter.schedule(async () => {
         return await this.circuitBreaker.execute(async () => {
@@ -1582,6 +1606,25 @@ export class FinaleSyncService {
     } catch (error) {
       console.error(`[FinaleSyncService] CSV health check failed for ${description}:`, error);
       return false;
+    }
+  }
+
+  private updateReportAlert(key: string, healthy: boolean, description: string) {
+    const currentlyAlerting = this.reportAlerts[key] ?? false;
+    if (!healthy && !currentlyAlerting) {
+      emitSystemAlert({
+        source: `finale-report-${key}`,
+        severity: 'warning',
+        message: `${description} report URL may be expired. Regenerate the Finale report to restore syncing.`,
+      });
+      this.reportAlerts[key] = true;
+    } else if (healthy && currentlyAlerting) {
+      emitSystemAlert({
+        source: `finale-report-${key}`,
+        severity: 'warning',
+        message: `${description} report URL is healthy again.`,
+      });
+      this.reportAlerts[key] = false;
     }
   }
 

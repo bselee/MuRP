@@ -775,3 +775,104 @@ export async function batchUpdateInventory(
     return { success: false, error: error instanceof Error ? error.message : 'Failed to batch update inventory' };
   }
 }
+
+// ============================================================================
+// ARTWORK APPROVAL
+// ============================================================================
+
+export async function approveArtworkForPrintReady(
+  bomId: string,
+  artworkId: string,
+  approverId: string,
+  approvalNotes?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const now = new Date().toISOString();
+
+    // Update artwork record in BOM
+    const { data: bom, error: fetchError } = await supabase
+      .from('boms')
+      .select('artwork')
+      .eq('id', bomId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const updatedArtwork = (bom?.artwork ?? []).map((art: any) => {
+      if (art.id === artworkId) {
+        return {
+          ...art,
+          status: 'approved',
+          approvedBy: approverId,
+          approvedDate: now,
+          printReady: true,
+          approvalNotes,
+        };
+      }
+      return art;
+    });
+
+    const { error: updateError } = await supabase
+      .from('boms')
+      .update({ artwork: updatedArtwork, updated_at: now })
+      .eq('id', bomId);
+
+    if (updateError) throw updateError;
+
+    return { success: true };
+  } catch (error) {
+    console.error('[approveArtworkForPrintReady] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to approve artwork',
+    };
+  }
+}
+
+export async function rejectArtworkApproval(
+  bomId: string,
+  artworkId: string,
+  rejectionReason: string,
+  rejectedBy: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const now = new Date().toISOString();
+
+    const { data: bom, error: fetchError } = await supabase
+      .from('boms')
+      .select('artwork')
+      .eq('id', bomId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const updatedArtwork = (bom?.artwork ?? []).map((art: any) => {
+      if (art.id === artworkId) {
+        return {
+          ...art,
+          status: 'draft',
+          printReady: false,
+          rejectionReason,
+          rejectedBy,
+          rejectedAt: now,
+        };
+      }
+      return art;
+    });
+
+    const { error: updateError } = await supabase
+      .from('boms')
+      .update({ artwork: updatedArtwork, updated_at: now })
+      .eq('id', bomId);
+
+    if (updateError) throw updateError;
+
+    return { success: true };
+  } catch (error) {
+    console.error('[rejectArtworkApproval] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to reject artwork',
+    };
+  }
+}
