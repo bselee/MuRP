@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import ReactDOMServer from 'react-dom/server';
 import ReactMarkdown from 'react-markdown';
+import MarkdownIt from 'markdown-it';
 import Modal from './Modal';
 import Button from '@/components/ui/Button';
 import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
@@ -39,6 +39,12 @@ const markdownComponents = {
   ),
   hr: () => <hr className="my-6 border-gray-700/50" />,
 };
+
+const markdownIt = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: true,
+});
 
 const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({ isOpen, onClose }) => {
   const [markdown, setMarkdown] = useState('');
@@ -84,9 +90,7 @@ const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({ isOpen, onClo
 
   const htmlVersion = useMemo(() => {
     if (!markdown) return '';
-    return ReactDOMServer.renderToStaticMarkup(
-      <ReactMarkdown components={markdownComponents as any}>{markdown}</ReactMarkdown>
-    );
+    return markdownIt.render(markdown);
   }, [markdown]);
 
   const effectiveDate = useMemo(() => {
