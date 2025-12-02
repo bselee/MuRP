@@ -1,13 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import ReactDOMServer from 'react-dom/server';
 import ReactMarkdown from 'react-markdown';
-import { marked } from 'marked';
 import Modal from './Modal';
 import Button from '@/components/ui/Button';
 import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
 import { ArrowDownTrayIcon, DocumentTextIcon, RefreshCcwIcon } from './icons';
 import { useTheme } from './ThemeProvider';
-
-marked.setOptions({ mangle: false, headerIds: false });
 
 interface TermsOfServiceModalProps {
   isOpen: boolean;
@@ -86,7 +84,9 @@ const TermsOfServiceModal: React.FC<TermsOfServiceModalProps> = ({ isOpen, onClo
 
   const htmlVersion = useMemo(() => {
     if (!markdown) return '';
-    return marked.parse(markdown);
+    return ReactDOMServer.renderToStaticMarkup(
+      <ReactMarkdown components={markdownComponents as any}>{markdown}</ReactMarkdown>
+    );
   }, [markdown]);
 
   const effectiveDate = useMemo(() => {

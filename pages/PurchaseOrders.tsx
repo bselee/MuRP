@@ -635,13 +635,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <POTrackingDashboard />
                 </div>
 
-                {isAdminLike && (
+                {/* Temporarily disabled autonomous components for debugging */}
+                {/* {isAdminLike && (
                     <AutonomousControls addToast={addToast} />
                 )}
 
                 {isAdminLike && (
                     <AutonomousApprovals addToast={addToast} />
-                )}
+                )} */}
 
                 <DraftPOReviewSection
                     onApprove={(orderId) => {
