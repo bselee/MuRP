@@ -1,3 +1,60 @@
+### Session: 2025-12-02 (Inventory UI Refinement - Reduced Padding & BOM Marker Relocation)
+
+**Changes Made:**
+- Modified: `pages/Inventory.tsx` - Moved BOM markers from SKU column to under description (name column)
+- Modified: `pages/Inventory.tsx` - Reduced padding across all table columns from `px-6` → `px-3` (50% reduction)
+- Modified: `pages/Inventory.tsx` - Removed pill styling from Item Type column (no bg/border, text-only)
+- Modified: `pages/Inventory.tsx` - Simplified status column to text-only (removed rounded pill backgrounds)
+- Modified: `pages/Inventory.tsx` - Enhanced BOM hover tooltip to show details under description hover
+
+**Key Decisions:**
+- Decision: BOM markers now appear as minimal text links under item description
+- Rationale: User requested "BOM markers show UNDER description" - cleaner, less visual clutter
+- Decision: Reduced all table cell padding from px-6 to px-3 (6→3 spacing units)
+- Rationale: User stated "padding everywhere is too much, lots of wasted space" - 50% reduction maximizes visible data
+- Decision: Removed pill backgrounds from Item Type and Status columns
+- Rationale: Consistent with minimal design philosophy - text-only labels without bulky pill styling
+- Decision: Item Type labels simplified (e.g., "BOM Component" → "Component")
+- Rationale: Shorter labels fit better in compact table layout
+
+**UI Changes:**
+- ✅ BOM marker location: SKU column → Under description (name column)
+- ✅ BOM marker styling: Blue pill button → Simple blue text link "BOM (count)"
+- ✅ Table padding: All columns reduced from px-6 → px-3 (50% space reduction)
+- ✅ Item Type pills: Removed bg/border, now text-only with color coding
+- ✅ Status pills: Removed rounded pill background, now text-only color indicators
+- ✅ Description hover: Now includes BOM details in tooltip when hovering over name
+
+**Item Type Style Changes:**
+```typescript
+// Before: bg-accent-500/20 text-accent-300 border border-accent-500/30
+// After:  text-accent-300 (text-only, no background/border)
+retail: 'text-accent-300'      // Retail items
+component: 'text-amber-300'    // BOM components
+hybrid: 'text-pink-200'        // Hybrid items
+standalone: 'text-gray-400'    // Standalone items
+```
+
+**Tests:**
+- Verified: `npm run build` - Successful build in 7.94s
+- Verified: Bundle size: 2,916.70 KB (minimal change from 2,917 KB)
+- Verified: BOM marker rendering under description with tooltip
+- Verified: All padding reductions applied consistently across columns
+
+**Impact Assessment:**
+- ✅ Maximized visible data density - 50% padding reduction
+- ✅ Cleaner visual hierarchy - removed unnecessary pill styling
+- ✅ BOM markers logically positioned under item descriptions
+- ✅ Improved hover tooltips with BOM details in description hover
+- ✅ Consistent minimal design matching Finale's clean approach
+
+**Next Steps:**
+- [ ] Deploy to production for user testing
+- [ ] Monitor user feedback on new BOM marker placement
+- [ ] Verify table readability with reduced padding in production environment
+
+---
+
 ### Session: 2025-12-02 (Finale Integration - Vendor Resolution & Data Integrity)
 
 **Changes Made:**

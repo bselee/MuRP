@@ -786,10 +786,10 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const visibleColumns = columns.filter(col => col.visible);
 
     const itemTypeStyles: Record<ItemType, { label: string; className: string }> = {
-        retail: { label: 'Retail', className: 'bg-accent-500/20 text-accent-300 border border-accent-500/30' },
-        component: { label: 'BOM Component', className: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
-        hybrid: { label: 'Hybrid', className: 'bg-pink-500/20 text-pink-200 border border-pink-500/30' },
-        standalone: { label: 'Standalone', className: 'bg-gray-600/40 text-gray-200 border border-gray-500/40' },
+        retail: { label: 'Retail', className: 'text-accent-300' },
+        component: { label: 'Component', className: 'text-amber-300' },
+        hybrid: { label: 'Hybrid', className: 'text-pink-200' },
+        standalone: { label: 'Standalone', className: 'text-gray-400' },
     };
     const demandSourceLabels: Record<DemandSource, string> = {
         salesVelocity: 'Sales Velocity',
@@ -1140,45 +1140,21 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                 switch (col.key) {
                                                     case 'sku':
                                                         return (
-                                                            <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap font-mono ${widthClass}`}>
-                                                                <div className="flex items-center gap-2">
-                                                                    <Button
-                                                                        onClick={() => onNavigateToProduct?.(item.sku)}
-                                                                        className="text-white font-bold hover:text-accent-400 transition-colors cursor-pointer"
-                                                                        title="Click to view product details"
-                                                                    >
-                                                                        {item.sku}
-                                                                    </Button>
-                                                                    {bomCount > 0 && (
-                                                                        <div className="relative group flex-shrink-0">
-                                                                            <Button
-                                                                                onClick={() => handleBomClick(item)}
-                                                                                className="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-md text-xs hover:bg-blue-500/30 transition-colors"
-                                                                                title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
-                                                                            >
-                                                                                BOM {bomCount > 1 ? `(${bomCount})` : ''}
-                                                                            </Button>
-                                                                            <div className="hidden group-hover:block absolute left-0 top-full mt-2 w-64 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 p-3 text-left">
-                                                                                <p className="text-xs text-gray-400 mb-1">Used in:</p>
-                                                                                <ul className="space-y-1 max-h-48 overflow-auto pr-1">
-                                                                                    {bomDetails.map(detail => (
-                                                                                        <li key={detail.finishedSku} className="text-xs text-white truncate">
-                                                                                            <span className="font-semibold">{detail.finishedName}</span>
-                                                                                            <span className="text-gray-400 ml-1">({detail.finishedSku})</span>
-                                                                                        </li>
-                                                                                    ))}
-                                                                                </ul>
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
+                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap font-mono ${widthClass}`}>
+                                                                <Button
+                                                                    onClick={() => onNavigateToProduct?.(item.sku)}
+                                                                    className="text-white font-bold hover:text-accent-400 transition-colors cursor-pointer"
+                                                                    title="Click to view product details"
+                                                                >
+                                                                    {item.sku}
+                                                                </Button>
                                                             </td>
                                                         );
                                                     case 'itemType':
                                                         return (
-                                                            <td key={col.key} className={`px-4 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
+                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
                                                                 {insight ? (
-                                                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${itemTypeStyles[insight.itemType].className}`}>
+                                                                    <span className={`text-xs ${itemTypeStyles[insight.itemType].className}`}>
                                                                         {itemTypeStyles[insight.itemType].label}
                                                                     </span>
                                                                 ) : (
@@ -1188,12 +1164,38 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     case 'name':
                                                         return (
-                                                            <td key={col.key} className={`px-4 ${cellDensityClass} text-white max-w-xs group relative ${widthClass}`}>
-                                                                <span className="font-medium truncate block">
-                                                                    {item.name}
-                                                                </span>
+                                                            <td key={col.key} className={`px-3 ${cellDensityClass} text-white max-w-xs group relative ${widthClass}`}>
+                                                                <div>
+                                                                    <span className="font-medium truncate block">
+                                                                        {item.name}
+                                                                    </span>
+                                                                    {bomCount > 0 && (
+                                                                        <div className="relative inline-block mt-0.5">
+                                                                            <Button
+                                                                                onClick={() => handleBomClick(item)}
+                                                                                className="text-blue-400 hover:text-blue-300 text-xs transition-colors"
+                                                                                title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
+                                                                            >
+                                                                                BOM ({bomCount})
+                                                                            </Button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                                 <div className="hidden group-hover:block absolute left-0 top-full mt-1 bg-gray-800 text-white p-3 rounded-lg shadow-xl z-50 border border-gray-600 max-w-md whitespace-normal">
                                                                     {item.name}
+                                                                    {bomCount > 0 && (
+                                                                        <div className="mt-2 pt-2 border-t border-gray-700">
+                                                                            <p className="text-xs text-gray-400 mb-1">Used in:</p>
+                                                                            <ul className="space-y-1">
+                                                                                {bomDetails.map(detail => (
+                                                                                    <li key={detail.finishedSku} className="text-xs text-white">
+                                                                                        <span className="font-semibold">{detail.finishedName}</span>
+                                                                                        <span className="text-gray-400 ml-1">({detail.finishedSku})</span>
+                                                                                    </li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                         );
@@ -1201,31 +1203,31 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         const normalizedCategory = normalizeCategory(item.category);
                                                         const prettyCategory = categoryLabelMap.get(normalizedCategory) || formatCategoryLabel(normalizedCategory);
                                                         return (
-                                                            <td key={col.key} className={`px-4 ${cellDensityClass} whitespace-nowrap text-gray-300 truncate ${widthClass}`} title={normalizedCategory}>
+                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 truncate ${widthClass}`} title={normalizedCategory}>
                                                                 {prettyCategory}
                                                             </td>
                                                         );
                                                     }
                                                     case 'stock':
                                                         return (
-                                                            <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-white ${widthClass}`}>
+                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-white ${widthClass}`}>
                                                                 <div className="mb-0.5 font-semibold">{item.stock.toLocaleString()}</div>
                                                                 <StockIndicator item={item} />
                                                             </td>
                                                         );
                                                     case 'onOrder':
-                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 ${widthClass}`}>{item.onOrder.toLocaleString()}</td>;
+                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 ${widthClass}`}>{item.onOrder.toLocaleString()}</td>;
                                                     case 'reorderPoint':
-                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 ${widthClass}`}>{item.reorderPoint.toLocaleString()}</td>;
+                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 ${widthClass}`}>{item.reorderPoint.toLocaleString()}</td>;
                                                     case 'vendor':
-                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 truncate ${widthClass}`} title={vendor || 'N/A'}>{vendor || 'N/A'}</td>;
+                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 truncate ${widthClass}`} title={vendor || 'N/A'}>{vendor || 'N/A'}</td>;
                                                     case 'status':
                                                         return (
-                                                            <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
-                                                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                                    stockStatus === 'In Stock' ? 'bg-green-500/20 text-green-400' :
-                                                                    stockStatus === 'Low Stock' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                                    'bg-red-500/20 text-red-400'
+                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
+                                                                <span className={`text-xs ${
+                                                                    stockStatus === 'In Stock' ? 'text-green-400' :
+                                                                    stockStatus === 'Low Stock' ? 'text-yellow-400' :
+                                                                    'text-red-400'
                                                                 }`}>
                                                                     {stockStatus}
                                                                 </span>
@@ -1241,7 +1243,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                             : 100;
                                                         const breakdown = insight?.demandBreakdown;
                                                         return (
-                                                            <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
+                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
                                                                 <div className="relative group">
                                                                     <div className="flex items-center gap-2">
                                                                         <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
@@ -1309,20 +1311,20 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         );
                                                     }
                                                     case 'salesVelocity':
-                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
+                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
                                                     case 'sales30Days':
-                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales30Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales30Days || 0}</td>;
                                                     case 'sales60Days':
-                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales60Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales60Days || 0}</td>;
                                                     case 'sales90Days':
-                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales90Days || 0}</td>;
+                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales90Days || 0}</td>;
                                                     case 'unitCost':
-                                                        return <td key={col.key} className={`px-6 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>${item.unitCost?.toFixed(2) || '0.00'}</td>;
+                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>${item.unitCost?.toFixed(2) || '0.00'}</td>;
                                                     default:
                                                         return null;
                                                 }
                                             })}
-                                            <td className={`px-6 ${cellDensityClass} text-right whitespace-nowrap`}>
+                                            <td className={`px-3 ${cellDensityClass} text-right whitespace-nowrap`}>
                                                 <div className="flex justify-end gap-2">
                                                     <Button
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true })}
