@@ -828,6 +828,177 @@ export type Database = {
           },
         ]
       }
+      autonomous_po_settings: {
+        Row: {
+          auto_approve_below_threshold: number
+          autonomous_pricing_enabled: boolean
+          autonomous_shipping_enabled: boolean
+          created_at: string | null
+          id: string
+          require_approval_for_pricing: boolean
+          require_approval_for_shipping: boolean
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          auto_approve_below_threshold?: number
+          autonomous_pricing_enabled?: boolean
+          autonomous_shipping_enabled?: boolean
+          created_at?: string | null
+          id?: string
+          require_approval_for_pricing?: boolean
+          require_approval_for_shipping?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          auto_approve_below_threshold?: number
+          autonomous_pricing_enabled?: boolean
+          autonomous_shipping_enabled?: boolean
+          created_at?: string | null
+          id?: string
+          require_approval_for_pricing?: boolean
+          require_approval_for_shipping?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      autonomous_update_approvals: {
+        Row: {
+          changes: Json
+          confidence: number
+          created_at: string | null
+          id: string
+          po_id: string
+          requested_at: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source: string
+          status: string
+          update_type: string
+        }
+        Insert: {
+          changes: Json
+          confidence: number
+          created_at?: string | null
+          id?: string
+          po_id: string
+          requested_at?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source: string
+          status?: string
+          update_type: string
+        }
+        Update: {
+          changes?: Json
+          confidence?: number
+          created_at?: string | null
+          id?: string
+          po_id?: string
+          requested_at?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source?: string
+          status?: string
+          update_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "autonomous_update_approvals_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "active_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "autonomous_update_approvals_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "po_tracking_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "autonomous_update_approvals_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      autonomous_update_log: {
+        Row: {
+          applied_at: string | null
+          applied_by: string
+          approval_id: string | null
+          changes: Json
+          confidence: number
+          created_at: string | null
+          id: string
+          po_id: string
+          source: string
+          update_type: string
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by: string
+          approval_id?: string | null
+          changes: Json
+          confidence: number
+          created_at?: string | null
+          id?: string
+          po_id: string
+          source: string
+          update_type: string
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string
+          approval_id?: string | null
+          changes?: Json
+          confidence?: number
+          created_at?: string | null
+          id?: string
+          po_id?: string
+          source?: string
+          update_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "autonomous_update_log_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "autonomous_update_approvals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "autonomous_update_log_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "active_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "autonomous_update_log_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "po_tracking_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "autonomous_update_log_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_plans: {
         Row: {
           created_at: string
@@ -1608,6 +1779,9 @@ export type Database = {
           backup_table: string
           created_at: string | null
           id: string
+          last_rollback_at: string | null
+          rollback_count: number | null
+          rollback_reason: string | null
           row_count: number | null
           source_table: string
           trigger_reason: string | null
@@ -1619,6 +1793,9 @@ export type Database = {
           backup_table: string
           created_at?: string | null
           id?: string
+          last_rollback_at?: string | null
+          rollback_count?: number | null
+          rollback_reason?: string | null
           row_count?: number | null
           source_table: string
           trigger_reason?: string | null
@@ -1630,6 +1807,9 @@ export type Database = {
           backup_table?: string
           created_at?: string | null
           id?: string
+          last_rollback_at?: string | null
+          rollback_count?: number | null
+          rollback_reason?: string | null
           row_count?: number | null
           source_table?: string
           trigger_reason?: string | null
@@ -1693,6 +1873,89 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      department_notifications: {
+        Row: {
+          affected_department: string
+          created_at: string | null
+          id: string
+          message: string
+          notification_type: string
+          notifying_department: string
+          requires_response: boolean | null
+          responded_at: string | null
+          responded_by: string | null
+          response_comments: string | null
+          response_deadline: string | null
+          response_status: string | null
+          sop_id: string | null
+          submission_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          affected_department: string
+          created_at?: string | null
+          id?: string
+          message: string
+          notification_type: string
+          notifying_department: string
+          requires_response?: boolean | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response_comments?: string | null
+          response_deadline?: string | null
+          response_status?: string | null
+          sop_id?: string | null
+          submission_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          affected_department?: string
+          created_at?: string | null
+          id?: string
+          message?: string
+          notification_type?: string
+          notifying_department?: string
+          requires_response?: boolean | null
+          responded_at?: string | null
+          responded_by?: string | null
+          response_comments?: string | null
+          response_deadline?: string | null
+          response_status?: string | null
+          sop_id?: string | null
+          submission_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_notifications_affected_department_fkey"
+            columns: ["affected_department"]
+            isOneToOne: false
+            referencedRelation: "sop_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_notifications_notifying_department_fkey"
+            columns: ["notifying_department"]
+            isOneToOne: false
+            referencedRelation: "sop_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_notifications_sop_id_fkey"
+            columns: ["sop_id"]
+            isOneToOne: false
+            referencedRelation: "sop_repository"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "department_notifications_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "sop_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_templates: {
         Row: {
@@ -5777,6 +6040,57 @@ export type Database = {
         }
         Relationships: []
       }
+      sop_approvals: {
+        Row: {
+          approval_level: string
+          approved_at: string | null
+          approver_id: string
+          comments: string | null
+          created_at: string | null
+          department_id: string | null
+          id: string
+          status: string | null
+          submission_id: string
+        }
+        Insert: {
+          approval_level: string
+          approved_at?: string | null
+          approver_id: string
+          comments?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          id?: string
+          status?: string | null
+          submission_id: string
+        }
+        Update: {
+          approval_level?: string
+          approved_at?: string | null
+          approver_id?: string
+          comments?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          id?: string
+          status?: string | null
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sop_approvals_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "sop_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sop_approvals_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "sop_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sop_attachments: {
         Row: {
           id: string
@@ -5811,6 +6125,90 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sop_change_history: {
+        Row: {
+          affected_departments: string[] | null
+          change_reason: string | null
+          change_summary: string | null
+          change_type: string
+          changed_by: string
+          created_at: string | null
+          id: string
+          new_content: string | null
+          previous_content: string | null
+          sop_id: string
+          submission_id: string | null
+        }
+        Insert: {
+          affected_departments?: string[] | null
+          change_reason?: string | null
+          change_summary?: string | null
+          change_type: string
+          changed_by: string
+          created_at?: string | null
+          id?: string
+          new_content?: string | null
+          previous_content?: string | null
+          sop_id: string
+          submission_id?: string | null
+        }
+        Update: {
+          affected_departments?: string[] | null
+          change_reason?: string | null
+          change_summary?: string | null
+          change_type?: string
+          changed_by?: string
+          created_at?: string | null
+          id?: string
+          new_content?: string | null
+          previous_content?: string | null
+          sop_id?: string
+          submission_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sop_change_history_sop_id_fkey"
+            columns: ["sop_id"]
+            isOneToOne: false
+            referencedRelation: "sop_repository"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sop_change_history_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "sop_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sop_departments: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       sop_learning_data: {
         Row: {
@@ -5905,7 +6303,7 @@ export type Database = {
           content: string
           created_at: string
           created_by: string
-          department: string | null
+          department_id: string | null
           description: string
           difficulty: string
           estimated_time_minutes: number
@@ -5930,7 +6328,7 @@ export type Database = {
           content: string
           created_at?: string
           created_by: string
-          department?: string | null
+          department_id?: string | null
           description: string
           difficulty?: string
           estimated_time_minutes?: number
@@ -5955,7 +6353,7 @@ export type Database = {
           content?: string
           created_at?: string
           created_by?: string
-          department?: string | null
+          department_id?: string | null
           description?: string
           difficulty?: string
           estimated_time_minutes?: number
@@ -5975,10 +6373,181 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "sop_repository_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "sop_departments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sop_repository_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "sop_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sop_reviews: {
+        Row: {
+          comments: string | null
+          created_at: string | null
+          id: string
+          review_type: string
+          reviewed_at: string | null
+          reviewer_id: string
+          status: string | null
+          submission_id: string
+          suggested_changes: Json | null
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string | null
+          id?: string
+          review_type: string
+          reviewed_at?: string | null
+          reviewer_id: string
+          status?: string | null
+          submission_id: string
+          suggested_changes?: Json | null
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string | null
+          id?: string
+          review_type?: string
+          reviewed_at?: string | null
+          reviewer_id?: string
+          status?: string | null
+          submission_id?: string
+          suggested_changes?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sop_reviews_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "sop_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sop_roles: {
+        Row: {
+          created_at: string | null
+          department_id: string | null
+          description: string | null
+          hierarchy_level: number | null
+          id: string
+          is_active: boolean
+          name: string
+          permissions: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          hierarchy_level?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          permissions?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          hierarchy_level?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          permissions?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sop_roles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "sop_departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sop_submissions: {
+        Row: {
+          affected_departments: string[] | null
+          content: string | null
+          created_at: string | null
+          department_id: string | null
+          description: string | null
+          id: string
+          priority: string | null
+          role_id: string | null
+          sop_id: string
+          status: string | null
+          submission_type: string
+          submitted_at: string | null
+          submitted_by: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          affected_departments?: string[] | null
+          content?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          priority?: string | null
+          role_id?: string | null
+          sop_id: string
+          status?: string | null
+          submission_type: string
+          submitted_at?: string | null
+          submitted_by: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          affected_departments?: string[] | null
+          content?: string | null
+          created_at?: string | null
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          priority?: string | null
+          role_id?: string | null
+          sop_id?: string
+          status?: string | null
+          submission_type?: string
+          submitted_at?: string | null
+          submitted_by?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sop_submissions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "sop_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sop_submissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "sop_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sop_submissions_sop_id_fkey"
+            columns: ["sop_id"]
+            isOneToOne: false
+            referencedRelation: "sop_repository"
             referencedColumns: ["id"]
           },
         ]
@@ -6546,6 +7115,96 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_connection_health: {
+        Row: {
+          consecutive_failures: number | null
+          created_at: string | null
+          data_type: string
+          error_message: string | null
+          item_count: number | null
+          last_check_time: string
+          last_failure_time: string | null
+          last_success_time: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          consecutive_failures?: number | null
+          created_at?: string | null
+          data_type: string
+          error_message?: string | null
+          item_count?: number | null
+          last_check_time: string
+          last_failure_time?: string | null
+          last_success_time?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          consecutive_failures?: number | null
+          created_at?: string | null
+          data_type?: string
+          error_message?: string | null
+          item_count?: number | null
+          last_check_time?: string
+          last_failure_time?: string | null
+          last_success_time?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      sync_failure_logs: {
+        Row: {
+          auto_recovery_attempted: boolean | null
+          backup_available: boolean | null
+          backup_table_name: string | null
+          created_at: string | null
+          data_type: string
+          duration_ms: number | null
+          error_code: string | null
+          error_details: Json | null
+          error_message: string
+          id: string
+          operation: string
+          record_count: number | null
+          recovery_successful: boolean | null
+          triggered_by: string | null
+        }
+        Insert: {
+          auto_recovery_attempted?: boolean | null
+          backup_available?: boolean | null
+          backup_table_name?: string | null
+          created_at?: string | null
+          data_type: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_details?: Json | null
+          error_message: string
+          id?: string
+          operation: string
+          record_count?: number | null
+          recovery_successful?: boolean | null
+          triggered_by?: string | null
+        }
+        Update: {
+          auto_recovery_attempted?: boolean | null
+          backup_available?: boolean | null
+          backup_table_name?: string | null
+          created_at?: string | null
+          data_type?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          error_details?: Json | null
+          error_message?: string
+          id?: string
+          operation?: string
+          record_count?: number | null
+          recovery_successful?: boolean | null
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       sync_metadata: {
         Row: {
           created_at: string
@@ -6570,6 +7229,75 @@ export type Database = {
           last_sync_time?: string
           success?: boolean
           updated_at?: string
+        }
+        Relationships: []
+      }
+      sync_retry_queue: {
+        Row: {
+          backoff_multiplier: number | null
+          backup_table_name: string | null
+          consecutive_failures: number | null
+          context_data: Json | null
+          created_at: string | null
+          created_by: string | null
+          data_type: string
+          id: string
+          last_error_at: string | null
+          last_error_message: string | null
+          lock_expires_at: string | null
+          lock_token: string | null
+          max_retries: number | null
+          next_retry_at: string | null
+          operation: string
+          priority: number | null
+          requires_rollback: boolean | null
+          retry_count: number | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          backoff_multiplier?: number | null
+          backup_table_name?: string | null
+          consecutive_failures?: number | null
+          context_data?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          data_type: string
+          id?: string
+          last_error_at?: string | null
+          last_error_message?: string | null
+          lock_expires_at?: string | null
+          lock_token?: string | null
+          max_retries?: number | null
+          next_retry_at?: string | null
+          operation: string
+          priority?: number | null
+          requires_rollback?: boolean | null
+          retry_count?: number | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          backoff_multiplier?: number | null
+          backup_table_name?: string | null
+          consecutive_failures?: number | null
+          context_data?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          data_type?: string
+          id?: string
+          last_error_at?: string | null
+          last_error_message?: string | null
+          lock_expires_at?: string | null
+          lock_token?: string | null
+          max_retries?: number | null
+          next_retry_at?: string | null
+          operation?: string
+          priority?: number | null
+          requires_rollback?: boolean | null
+          retry_count?: number | null
+          status?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -6954,6 +7682,51 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_department_roles: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          department_id: string
+          id: string
+          is_active: boolean
+          role_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          department_id: string
+          id?: string
+          is_active?: boolean
+          role_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          department_id?: string
+          id?: string
+          is_active?: boolean
+          role_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_department_roles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "sop_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_department_roles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "sop_roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_notification_prefs: {
         Row: {
@@ -8872,6 +9645,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      backup_before_sync: {
+        Args: {
+          p_data_type: string
+          p_table_name: string
+          p_triggered_by?: string
+        }
+        Returns: string
+      }
       backup_inventory_items: {
         Args: { p_backup_reason?: string; p_backup_source?: string }
         Returns: {
@@ -8946,6 +9727,7 @@ export type Database = {
           threading_score: number
         }[]
       }
+      cleanup_expired_retry_locks: { Args: never; Returns: number }
       cleanup_old_audit_logs: {
         Args: { days_to_keep?: number }
         Returns: number
@@ -8956,6 +9738,18 @@ export type Database = {
           deleted_at: string
           deleted_backup: string
         }[]
+      }
+      cleanup_old_retry_queue: {
+        Args: { p_days_to_keep?: number }
+        Returns: number
+      }
+      complete_retry: {
+        Args: {
+          p_error_message?: string
+          p_retry_id: string
+          p_success: boolean
+        }
+        Returns: boolean
       }
       count_open_tickets_for_user: {
         Args: { user_id: string }
@@ -8990,6 +9784,19 @@ export type Database = {
       decrement_trial_checks: {
         Args: { p_user_id: string }
         Returns: undefined
+      }
+      enqueue_sync_retry: {
+        Args: {
+          p_backup_table_name?: string
+          p_context_data?: Json
+          p_data_type: string
+          p_error_message: string
+          p_max_retries?: number
+          p_operation: string
+          p_priority?: number
+          p_requires_rollback?: boolean
+        }
+        Returns: string
       }
       ensure_user_profile: { Args: never; Returns: Json }
       generate_sop_learning_insights: {
@@ -9261,6 +10068,17 @@ export type Database = {
           success: boolean
         }[]
       }
+      get_sync_system_health: {
+        Args: never
+        Returns: {
+          consecutive_failures: number
+          data_type: string
+          item_count: number
+          last_check_time: string
+          overall_health: string
+          status: string
+        }[]
+      }
       get_template_strictness_from_score: {
         Args: { score: number }
         Returns: string
@@ -9314,6 +10132,16 @@ export type Database = {
             }[]
           }
       mark_stale_insights: { Args: never; Returns: number }
+      process_next_retry: {
+        Args: never
+        Returns: {
+          backup_table_name: string
+          context_data: Json
+          data_type: string
+          operation: string
+          retry_id: string
+        }[]
+      }
       process_vendor_pricelist: {
         Args: {
           p_pricelist_data: Json
@@ -9366,11 +10194,28 @@ export type Database = {
           scan_status: string
         }[]
       }
+      trigger_empty_data_rollback: {
+        Args: {
+          p_data_type: string
+          p_error_message?: string
+          p_table_name: string
+        }
+        Returns: string
+      }
       update_all_boms_compliance: { Args: never; Returns: number }
       update_all_compliance_statuses: { Args: never; Returns: number }
       update_bom_compliance_summary: {
         Args: { p_bom_id: string }
         Returns: undefined
+      }
+      update_connection_health_status: {
+        Args: {
+          p_data_type: string
+          p_error_message?: string
+          p_item_count?: number
+          p_status: string
+        }
+        Returns: boolean
       }
       validate_sop_template: {
         Args: { sop_data: Json; template_id: string }
