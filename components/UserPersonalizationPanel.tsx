@@ -175,6 +175,7 @@ const UserPersonalizationPanel: React.FC<UserPersonalizationPanelProps> = ({
                                 </div>
                             )}
                             <button
+                                type="button"
                                 onClick={() => fileInputRef.current?.click()}
                                 className="absolute -bottom-1 -right-1 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors"
                                 disabled={isLoading}
@@ -198,6 +199,7 @@ const UserPersonalizationPanel: React.FC<UserPersonalizationPanelProps> = ({
                                 {AVATAR_COLORS.map((color) => (
                                     <button
                                         key={color}
+                                        type="button"
                                         onClick={() => handleAvatarColorChange(color)}
                                         className={`w-6 h-6 rounded-full border-2 transition-all ${
                                             selectedAvatarColor === color
@@ -206,6 +208,7 @@ const UserPersonalizationPanel: React.FC<UserPersonalizationPanelProps> = ({
                                         }`}
                                         style={{ backgroundColor: color }}
                                         disabled={isLoading}
+                                        aria-label={`Select ${color} color`}
                                     />
                                 ))}
                             </div>
@@ -215,8 +218,9 @@ const UserPersonalizationPanel: React.FC<UserPersonalizationPanelProps> = ({
                     {/* Profile Info */}
                     <div className="flex-1 space-y-4">
                         <div>
-                            <label className="text-xs font-semibold text-gray-400 uppercase">Display Name</label>
+                            <label htmlFor="display-name" className="text-xs font-semibold text-gray-400 uppercase">Display Name</label>
                             <input
+                                id="display-name"
                                 type="text"
                                 value={displayName}
                                 onChange={(e) => setDisplayName(e.target.value)}
@@ -226,8 +230,9 @@ const UserPersonalizationPanel: React.FC<UserPersonalizationPanelProps> = ({
                         </div>
 
                         <div>
-                            <label className="text-xs font-semibold text-gray-400 uppercase">Bio</label>
+                            <label htmlFor="bio" className="text-xs font-semibold text-gray-400 uppercase">Bio</label>
                             <textarea
+                                id="bio"
                                 value={bio}
                                 onChange={(e) => setBio(e.target.value)}
                                 rows={3}
@@ -257,8 +262,9 @@ const UserPersonalizationPanel: React.FC<UserPersonalizationPanelProps> = ({
                         </h4>
 
                         <div>
-                            <label className="text-xs font-semibold text-gray-400 uppercase">Timezone</label>
+                            <label htmlFor="timezone" className="text-xs font-semibold text-gray-400 uppercase">Timezone</label>
                             <select
+                                id="timezone"
                                 value={timezone}
                                 onChange={(e) => setTimezone(e.target.value)}
                                 className="w-full bg-gray-900/60 border border-gray-700 rounded-md p-3 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
@@ -270,8 +276,9 @@ const UserPersonalizationPanel: React.FC<UserPersonalizationPanelProps> = ({
                         </div>
 
                         <div>
-                            <label className="text-xs font-semibold text-gray-400 uppercase">Language</label>
+                            <label htmlFor="language" className="text-xs font-semibold text-gray-400 uppercase">Language</label>
                             <select
+                                id="language"
                                 value={language}
                                 onChange={(e) => setLanguage(e.target.value)}
                                 className="w-full bg-gray-900/60 border border-gray-700 rounded-md p-3 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400"

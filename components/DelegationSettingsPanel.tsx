@@ -23,8 +23,8 @@ import {
 } from './icons';
 
 interface DelegationSettingsPanelProps {
-  settings: DelegationSetting[];
-  onUpdate: (taskType: string, updates: Partial<DelegationSetting>) => Promise<boolean>;
+  settings?: DelegationSetting[];
+  onUpdate?: (taskType: string, updates: Partial<DelegationSetting>) => Promise<boolean>;
   loading?: boolean;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
@@ -81,21 +81,34 @@ const ALL_ROLES: User['role'][] = ['Admin', 'Manager', 'Staff'];
 const ALL_DEPARTMENTS: User['department'][] = ['Purchasing', 'Operations', 'MFG 1', 'MFG 2', 'Fulfillment', 'SHP/RCV'];
 
 const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
-  settings,
+  settings = [],
   onUpdate,
-  loading,
+  loading = false,
   addToast,
 }) => {
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [localSettings, setLocalSettings] = useState<Record<string, Partial<DelegationSetting>>>({});
   const [saving, setSaving] = useState<string | null>(null);
 
-  // Initialize local settings from props
+  // Initialize local settings from props or with defaults
   useEffect(() => {
     const initial: Record<string, Partial<DelegationSetting>> = {};
-    settings.forEach(s => {
-      initial[s.taskType] = { ...s };
+
+    // Create default settings for each task type if not provided
+    Object.keys(TASK_TYPE_INFO).forEach(taskType => {
+      const existing = settings.find(s => s.taskType === taskType);
+      initial[taskType] = existing ? { ...existing } : {
+        taskType: taskType as DelegationTaskType,
+        canCreateRoles: ['Admin', 'Manager'],
+        canAssignRoles: ['Admin', 'Manager'],
+        assignableToRoles: ['Admin', 'Manager', 'Staff'],
+        requiresApproval: false,
+        notifyOnCreate: true,
+        notifyOnAssign: true,
+        notifyOnComplete: false,
+      };
     });
+
     setLocalSettings(initial);
   }, [settings]);
 
@@ -126,6 +139,11 @@ const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
   const handleSave = useCallback(async (taskType: string) => {
     const updates = localSettings[taskType];
     if (!updates) return;
+
+    if (!onUpdate) {
+      addToast('Delegation settings are not fully configured. Contact your administrator.', 'info');
+      return;
+    }
 
     setSaving(taskType);
     try {
@@ -179,6 +197,7 @@ const DelegationSettingsPanel: React.FC<DelegationSettingsPanelProps> = ({
           >
             {/* Header */}
             <button
+              type="button"
               onClick={() => toggleExpanded(taskType)}
               className="w-full flex items-center justify-between p-4 hover:bg-gray-800/30 transition-colors"
             >
