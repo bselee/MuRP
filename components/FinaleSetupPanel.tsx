@@ -618,7 +618,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
             <DocumentTextIcon className="h-6 w-6 text-white/40" />
           </div>
 
-          <div className="mt-4 rounded-2xl border border-white/10 bg-[#0A0C10]/60 p-4">
+          <div className="mt-4 rounded-2xl border border-white/10 bg-gray-800/30 p-4">
             <p className="text-sm font-medium text-[#1D9BF0]">Where to find them</p>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-gray-400">
               <li>Sign in at app.finaleinventory.com</li>
@@ -636,7 +636,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 placeholder="API Key (e.g., I9TVdRvblFod)"
                 value={credentials.apiKey}
                 onChange={(e) => handleCredentialChange('apiKey', e.target.value)}
-                className="w-full rounded-full border border-white/10 bg-gray-900/60 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
+                className="w-full rounded-full border border-white/10 bg-gray-800/40 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
                 disabled={isConfigured && currentStep !== 'credentials'}
               />
             </div>
@@ -647,7 +647,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 placeholder="API Secret"
                 value={credentials.apiSecret}
                 onChange={(e) => handleCredentialChange('apiSecret', e.target.value)}
-                className="w-full rounded-full border border-white/10 bg-gray-900/60 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
+                className="w-full rounded-full border border-white/10 bg-gray-800/40 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
                 disabled={isConfigured && currentStep !== 'credentials'}
               />
             </div>
@@ -658,7 +658,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 placeholder="Account path (e.g., yourcompany)"
                 value={credentials.accountPath}
                 onChange={(e) => handleCredentialChange('accountPath', e.target.value)}
-                className="w-full rounded-full border border-white/10 bg-gray-900/60 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
+                className="w-full rounded-full border border-white/10 bg-gray-800/40 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
                 disabled={isConfigured && currentStep !== 'credentials'}
               />
             </div>
@@ -824,7 +824,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                   className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
                     isActive
                       ? 'border-[#1D9BF0] bg-[#1D9BF0]/10 text-white'
-                      : 'border-white/10 bg-black/10 text-gray-400'
+                      : 'border-white/10 bg-gray-800/30 text-gray-400'
                   }`}
                 >
                   <p className="font-medium">{option.label}</p>
@@ -887,7 +887,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
 
           <div
             className={`mt-5 rounded-3xl border-2 border-dashed px-6 py-10 text-center transition ${
-              dragActive ? 'border-[#1D9BF0] bg-[#1D9BF0]/5' : 'border-white/15 bg-black/10'
+              dragActive ? 'border-[#1D9BF0] bg-[#1D9BF0]/5' : 'border-white/15 bg-gray-800/20'
             }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
