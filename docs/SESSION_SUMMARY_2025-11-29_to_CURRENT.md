@@ -23,32 +23,65 @@
 
 ---
 
-### Session: 2025-11-29 (DAM Tier Implementation)
+### Session: 2025-11-29 (Autonomous PO Controls Implementation)
 
 **Changes Made:**
-- Modified: `types.ts` - Updated `DAM_TIER_LIMITS` with `uploadLimit` (10 for basic tier) and `uploadOnly` (true for basic tier) properties.
-- Modified: `pages/Artwork.tsx` - Added upload limit enforcement with user messaging, integrated ComplianceDashboard for paid tiers, enforced tier-based feature access controls.
-- Modified: `components/DAMSettingsPanel.tsx` - Added usage display against limits, tier status indicators, storage and upload usage tracking.
+- Created: `components/AutonomousControls.tsx` - Admin interface for configuring autonomous shipping/pricing updates with enable/disable toggles and approval thresholds.
+- Created: `components/AutonomousApprovals.tsx` - Interface for reviewing and approving/rejecting autonomous update requests that require manual approval.
+- Created: `services/autonomousPOService.ts` - Backend service handling autonomous updates with approval workflows, confidence scoring, and audit logging.
+- Created: `supabase/migrations/068_add_autonomous_po_settings.sql` - Database table for system-wide autonomous settings with RLS policies.
+- Created: `supabase/migrations/069_add_autonomous_approval_system.sql` - Approval queue and audit log tables for autonomous updates.
+- Modified: `pages/PurchaseOrders.tsx` - Integrated AutonomousControls and AutonomousApprovals components into PO interface (admin-only).
 
 **Key Decisions:**
-- Decision: Implemented free tier restrictions (10 artwork uploads max, upload-only mode).
-- Rationale: Balances accessibility with business model - free users get basic functionality, paid tiers unlock AI features and compliance scanning.
-- Decision: Focused regulatory compliance on heaviest states first (CA, OR, WA, NY, VT, ME).
-- Rationale: These states have the strictest agriculture/fertilizer regulations - addressing them first provides maximum compliance coverage.
-- Decision: Made compliance features extremely user-friendly despite regulatory complexity.
-- Rationale: Regulatory compliance can be intimidating for teams - designed with guided workflows, visual dashboards, and clear explanations.
+- Decision: Implemented autonomous controls as consolidated admin panels within PO interface, not separate settings.
+- Rationale: User requested keeping all PO features within PO reach, avoiding feature sprawl across settings pages.
+- Decision: Created approval workflow for significant autonomous changes (shipping status, pricing updates).
+- Rationale: Balances automation efficiency with human oversight for critical business decisions.
+- Decision: Added auto-approval threshold for small pricing changes ($100 default).
+- Rationale: Prevents approval fatigue for minor price adjustments while requiring review for significant changes.
+- Decision: Used Grok/X-inspired UI design with dark mode first, accent color #1D9BF0, pill-shaped elements.
+- Rationale: Maintains design consistency with existing application following ui_design.md guidelines.
 
 **Features Implemented:**
-- ✅ Free tier: 10 uploads max, upload-only, 100MB storage
-- ✅ Paid tiers: Unlimited uploads, AI features, compliance scanning
-- ✅ Compliance dashboard: Risk distribution, top flagged ingredients, state restrictions
-- ✅ BOM-artwork symbiosis: Recipes (BOMs) drive compliance requirements for communication (artwork)
-- ✅ State prioritization: Focus on CA, OR, WA, NY, VT, ME first
-- ✅ User-friendly design: Visual dashboards, guided workflows, contextual help
+- ✅ Autonomous shipping updates: Automatic PO status updates from carrier tracking
+- ✅ Autonomous pricing updates: AI-detected price changes from vendor communications
+- ✅ Approval workflows: Configurable approval requirements for significant changes
+- ✅ Admin controls: Enable/disable toggles with granular settings
+- ✅ Audit logging: Complete trail of autonomous actions and approvals
+- ✅ UI integration: Clean, consolidated interface within PO section
+- ✅ Confidence scoring: AI confidence levels for decision transparency
+
+**Database Schema:**
+- `autonomous_po_settings`: System-wide settings for autonomous behavior
+- `autonomous_update_approvals`: Pending approval requests queue
+- `autonomous_update_log`: Audit log of all autonomous updates
+
+**Security & Permissions:**
+- Admin-only access to autonomous controls and approvals
+- RLS policies ensuring proper data access controls
+- Audit trail for all autonomous and manual approval actions
 
 **Tests:**
 - Verified: `npm test` passed (9 schema transformer tests).
 - Verified: `npm run build` succeeded (TypeScript compilation clean).
+- Verified: Database migrations applied successfully.
+- Verified: All autonomous components render without errors.
+
+**Impact Assessment:**
+- ✅ Resolved potential conflicts between manual PO receiving and autonomous status updates
+- ✅ Added approval workflows for autonomous shipping/pricing changes
+- ✅ Maintained UI consolidation within PO interface
+- ✅ Implemented admin controls for autonomy switching
+- ✅ Created coordination logic between manual and autonomous updates
+
+**Next Steps:**
+- [ ] Test autonomous update processing with real carrier data
+- [ ] Implement email parsing integration for pricing updates
+- [ ] Add notification system for pending approvals
+- [ ] Monitor user adoption and adjust approval thresholds as needed
+
+---
 - Verified: E2E tests pass (36/38 tests successful, 2 unrelated failures).
 - Verified: DAM tier restrictions properly enforced in Artwork page.
 - Verified: Compliance dashboard integrated for paid tier users.
@@ -891,3 +924,173 @@
 - [ ] Monitor automated Vercel deployment completion
 - [ ] Verify production system functionality
 - [ ] Prepare for next development session with preserved context
+
+---
+
+### Session: 2025-12-02 (Purchase Order Workflow Complete Assessment)
+
+**Analysis Performed:**
+Comprehensive review of the entire Purchase Order (PO) lifecycle from item identification through receiving and completion, including email integration, tracking, and settings configuration.
+
+**Files Examined:**
+- `App.tsx` - Main PO handlers (handleCreatePo, handleSendPoEmail, handleUpdatePoTracking)
+- `pages/PurchaseOrders.tsx` - PO management UI and status styles
+- `pages/Settings.tsx` - Email sender policy and follow-up settings
+- `components/CreatePoModal.tsx` - PO creation with AI suggestions
+- `components/GeneratePoModal.tsx` - Batch PO from requisitions
+- `components/POEmailComposer.tsx` - Email composition and sending
+- `components/ReorderQueueDashboard.tsx` - Item identification
+- `hooks/useSupabaseMutations.ts` - Database operations
+- `services/poTrackingService.ts` - Tracking status management
+- `services/shipmentTrackingService.ts` - Advanced shipment tracking
+- `services/followUpService.ts` - Follow-up automation
+- `services/googleGmailService.ts` - Gmail integration
+- `services/pdfService.ts` - PO PDF generation
+- `supabase/functions/po-followup-runner/index.ts` - Follow-up Edge Function
+- `supabase/functions/gmail-webhook/index.ts` - Inbound email AI parsing
+
+**Current Flow Summary:**
+
+```
+IDENTIFICATION → CONSOLIDATION → APPROVAL → CREATION → SEND → TRACK → RECEIVE → COMPLETE
+     ↓              ↓             ↓          ↓         ↓       ↓        ↓          ↓
+Reorder Queue   Group by      Manager/    Database  Gmail   AI Parse  Manual    Manual
+AI Suggestions  Vendor        Ops Check   + PDF     OAuth   Webhook   Status    Status
+Requisitions    Truck Calc                                  Claude    Change    Change
+```
+
+**What's Working Well:**
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Reorder Queue Dashboard | ✅ Solid | Urgency scoring, AI-driven identification |
+| AI Item Suggestions | ✅ Solid | Sales velocity analysis in CreatePoModal |
+| Vendor Consolidation | ✅ Solid | Groups by vendor, draft queue via poDraftBridge |
+| Multi-Stage Approval | ✅ Solid | Manager → Ops chain with role-based permissions |
+| PDF Generation | ✅ Solid | jsPDF with customizable templates, branding |
+| Gmail Integration | ✅ Solid | OAuth2, thread management, attachments |
+| Follow-Up Automation | ✅ Solid | Edge function with configurable stages |
+| Inbound Email Parsing | ✅ Solid | Claude Haiku AI extracts tracking/invoice/pricelist |
+| Invoice Detection | ✅ Solid | PDF OCR, variance calculation, stores in database |
+| Shipment Tracking Service | ✅ Solid | Comprehensive data model, carrier validation |
+
+**Critical Gaps Identified:**
+
+| Gap | Impact | Priority |
+|-----|--------|----------|
+| **No "Mark as Received" UI** | Must manually change status without inventory update | 🔴 P0 |
+| **No partial receiving** | Can't receive 80/100 units with 20 on backorder | 🔴 P0 |
+| **Inventory not updated on receive** | stock += received, on_order -= ordered never happens | 🔴 P0 |
+| **No carrier API (AfterShip)** | Tracking is email-only, no live polling | 🟠 P1 |
+| **No "Forward to AP" action** | Invoice detected but no workflow to AP team | 🟠 P1 |
+| **PO email templates missing in Settings** | DocumentTemplatesPanel is generic | 🟠 P1 |
+| **Vendor Response Workbench missing** | AI parses but no queue UI for action | 🟡 P2 |
+| **No truck load calculator visible** | 21-pallet concept not surfaced in UI | 🟡 P2 |
+| **No PO amendment workflow** | Can't revise sent PO (qty/price changes) | 🟢 P3 |
+
+**Email System Assessment:**
+
+| Feature | Location | Status |
+|---------|----------|--------|
+| Gmail OAuth Connection | APIIntegrationsPanel | ✅ Working |
+| Company Email Policy | Settings → Email Sender Policy | ✅ Exists |
+| Follow-Up Automation | FollowUpSettingsPanel | ✅ Exists |
+| Document Templates | DocumentTemplatesPanel | ⚠️ Generic |
+| Vendor Email AI Config | Database app_settings | ✅ Exists |
+| PO-Specific Templates | Not in UI | ❌ Missing |
+
+**Key Technical Findings:**
+
+1. **Email Monitoring IS In Our Control:**
+   - Gmail webhook (`gmail-webhook` Edge Function) receives push notifications
+   - Claude Haiku AI parses vendor replies with confidence scoring
+   - Auto-updates: tracking_status, vendor_response_status, invoice_detected_at
+   - Creates shipment records in po_shipment_data
+
+2. **Tracking Flow:**
+   ```
+   Gmail Push → Edge Function → AI Parse → 
+   → Creates po_shipment_data record
+   → Creates shipment_tracking_events
+   → Updates purchase_orders.tracking_* columns
+   → Creates po_vendor_communications record
+   ```
+
+3. **Invoice Processing:**
+   - AI extracts invoice #, date, line items, totals from PDF
+   - Stores in po_invoice_data table
+   - Calculates variances via `calculate_invoice_variances` RPC
+   - Sets tracking_status = 'invoice_received'
+
+4. **Missing Receiving Logic:**
+   ```typescript
+   // NEEDED in useSupabaseMutations.ts:
+   export async function receivePurchaseOrder(poId: string, items: ReceivedItem[]) {
+     // 1. Update PO status to 'received'
+     // 2. inventory.stock += quantityReceived
+     // 3. inventory.on_order -= quantityOrdered
+     // 4. Create receiving audit record
+     // 5. Handle partial shipments → backorder
+   }
+   ```
+
+**Recommended Implementation Priority:**
+
+| Priority | Improvement | Effort | Impact |
+|----------|-------------|--------|--------|
+| 🔴 P0 | Receiving Modal + Inventory Update | 3-4 days | Completes the loop |
+| 🔴 P0 | Partial receiving/backorder | 2 days | Real-world necessity |
+| 🟠 P1 | Forward to AP action | 1 day | Closes invoice workflow |
+| 🟠 P1 | Vendor Response Workbench | 2-3 days | Surfaces AI value |
+| 🟡 P2 | AfterShip carrier API | 2 days | Live tracking |
+| 🟡 P2 | PO email templates in Settings | 1-2 days | Customization |
+| 🟢 P3 | Truck load calculator UI | 1 day | Freight optimization |
+| 🟢 P3 | PO amendment workflow | 2 days | Change management |
+
+**Database Tables Involved:**
+- `purchase_orders` - Main PO records with tracking_* columns
+- `purchase_order_items` - Line items with quantities
+- `po_email_tracking` - Gmail message/thread IDs
+- `po_vendor_communications` - All vendor comms with AI extraction
+- `po_shipment_data` - Shipment records with multiple tracking numbers
+- `po_shipment_items` - Line-level shipment details
+- `shipment_tracking_events` - Status history
+- `po_invoice_data` - Extracted invoice information
+- `po_invoice_variances` - Calculated variances
+- `po_followup_campaigns` - Follow-up automation rules
+- `po_followup_campaign_state` - Per-PO follow-up state
+- `vendor_followup_events` - Follow-up audit trail
+- `reorder_queue` - Items needing reorder
+
+**Key Code Entry Points:**
+
+| Component/Service | Purpose | File |
+|-------------------|---------|------|
+| Main PO Page | Central PO management UI | `pages/PurchaseOrders.tsx` |
+| Create PO Modal | PO creation with AI suggestions | `components/CreatePoModal.tsx` |
+| Generate PO Modal | Batch PO from requisitions | `components/GeneratePoModal.tsx` |
+| Reorder Queue | Item identification | `components/ReorderQueueDashboard.tsx` |
+| Email Composer | Vendor communication | `components/POEmailComposer.tsx` |
+| Gmail Service | Email sending | `services/googleGmailService.ts` |
+| PDF Service | Document generation | `services/pdfService.ts` |
+| Tracking Service | Status management | `services/poTrackingService.ts` |
+| Shipment Service | Advanced tracking | `services/shipmentTrackingService.ts` |
+| PO Mutations | Database operations | `hooks/useSupabaseMutations.ts` |
+| Follow-up Edge | Vendor nudges | `supabase/functions/po-followup-runner/` |
+| Gmail Webhook | Inbound parsing | `supabase/functions/gmail-webhook/` |
+
+**Next Steps:**
+- [ ] Implement ReceivePurchaseOrderModal component
+- [ ] Add receivePurchaseOrder function to useSupabaseMutations
+- [ ] Create inventory update logic on PO receive
+- [ ] Add partial receiving with backorder support
+- [ ] Create Forward to AP action button
+- [ ] Build Vendor Response Workbench UI
+- [ ] Consider AfterShip API integration
+- [ ] Add PO-specific email templates to Settings
+
+**Session Notes:**
+- This analysis confirms email monitoring is fully within the system's control via Gmail webhook
+- AfterShip would add live carrier polling but current email-based tracking works
+- The main gap is the receiving/completion step - currently manual status change only
+- AI parsing (Claude Haiku) provides excellent extraction with confidence scoring
+

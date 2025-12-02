@@ -392,7 +392,8 @@ npm run gemini                 # CLI for AI testing
 
 **For detailed workflows** (TFR protocol, deployment automation, error recovery), see the Universal Codespace Workflows sections that follow below.
 
-**💡 Pro Tip:** When starting a session, simply say "resume" or "catch me up" to trigger automatic session context loading.
+**💡 Pro Tip:** When starting a session, simply say "resume" or "catch me up" to trigger automatic session context loading.  
+**Shortcut keyword:** Saying **"startup"** is the fastest way to make the agent run the startup workflow (session doc review + memory sync) without any extra wording.
 
 ---
 
@@ -400,7 +401,7 @@ npm run gemini                 # CLI for AI testing
 
 ### 1. Automatic Session Resumption (STARTUP)
 
-**When to trigger:** First interaction in a new Copilot session or when user says "resume", "catch me up", "what was I working on?"
+**When to trigger:** First interaction in a new Copilot session or when user says "resume", "catch me up", "what was I working on?", **or just types `startup` right after Codespaces loads**.
 
 **Automatic startup workflow:**
 ```bash
@@ -702,6 +703,7 @@ Root level:                     # Only essential configs
       ✅ Build success confirmation
       ✅ Session docs updated
       ✅ Files staged and committed
+      ✅ **Change summary with detail** – call out new/removed files, major feature additions, and notable follow-up actions (1–2 sentences per item)
       ✅ Ready for Vercel deployment
       
 9. Automatic Vercel Deployment (if configured)

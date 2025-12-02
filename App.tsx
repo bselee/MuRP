@@ -112,8 +112,7 @@ import {
 } from './lib/systemAlerts/SystemAlertContext';
 import type { SyncHealthRow } from './lib/sync/healthUtils';
 import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amazonTracking';
-
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page';
+import { enqueuePoDrafts } from './lib/poDraftBridge';
 
 export type ToastInfo = {
   id: number;

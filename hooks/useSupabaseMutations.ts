@@ -876,3 +876,126 @@ export async function rejectArtworkApproval(
     };
   }
 }
+
+export async function receivePurchaseOrder({
+  poId,
+  receivedItems,
+  receivedBy,
+  notes,
+}: {
+  poId: string;
+  receivedItems: Array<{
+    itemId: string;
+    receivedQuantity: number;
+    backorderQuantity?: number;
+    condition?: 'good' | 'damaged' | 'partial';
+    notes?: string;
+  }>;
+  receivedBy: string;
+  notes?: string;
+}) {
+  try {
+    const now = new Date().toISOString();
+
+    // First, get the current PO to validate and update
+    const { data: po, error: fetchError } = await supabase
+      .from('purchase_orders')
+      .select('*')
+      .eq('id', poId)
+      .single();
+
+    if (fetchError || !po) {
+      throw new Error(`Purchase order not found: ${fetchError?.message || 'Unknown error'}`);
+    }
+
+    // Calculate totals for received items
+    const totalReceived = receivedItems.reduce((sum, item) => sum + item.receivedQuantity, 0);
+    const totalBackordered = receivedItems.reduce((sum, item) => sum + (item.backorderQuantity || 0), 0);
+
+    // Update inventory for each received item
+    for (const item of receivedItems) {
+      if (item.receivedQuantity > 0) {
+        // Get current inventory
+        const { data: inventoryItem, error: inventoryError } = await supabase
+          .from('inventory')
+          .select('*')
+          .eq('id', item.itemId)
+          .single();
+
+        if (inventoryError) {
+          console.warn(`Could not find inventory item ${item.itemId}:`, inventoryError);
+          continue;
+        }
+
+        // Update inventory quantity
+        const newQuantity = (inventoryItem.quantity || 0) + item.receivedQuantity;
+        const { error: updateInventoryError } = await supabase
+          .from('inventory')
+          .update({
+            quantity: newQuantity,
+            last_updated: now,
+            updated_by: receivedBy,
+          })
+          .eq('id', item.itemId);
+
+        if (updateInventoryError) {
+          console.error(`Failed to update inventory for item ${item.itemId}:`, updateInventoryError);
+        }
+      }
+    }
+
+    // Update PO status and tracking
+    const newStatus = totalBackordered > 0 ? 'partially_received' : 'received';
+    const { error: updatePoError } = await supabase
+      .from('purchase_orders')
+      .update({
+        status: newStatus,
+        received_at: now,
+        received_by: receivedBy,
+        received_quantity: totalReceived,
+        backorder_quantity: totalBackordered,
+        updated_at: now,
+      })
+      .eq('id', poId);
+
+    if (updatePoError) throw updatePoError;
+
+    // Add tracking entry
+    const { error: trackingError } = await supabase
+      .from('po_tracking')
+      .insert({
+        po_id: poId,
+        event_type: 'received',
+        event_data: {
+          receivedItems,
+          totalReceived,
+          totalBackordered,
+          receivedBy,
+          notes,
+        },
+        created_by: receivedBy,
+        created_at: now,
+      });
+
+    if (trackingError) {
+      console.error('Failed to add tracking entry:', trackingError);
+    }
+
+    // Add note if provided
+    if (notes) {
+      await appendPurchaseOrderNote({
+        poId,
+        note: `Received ${totalReceived} items${totalBackordered > 0 ? ` (${totalBackordered} backordered)` : ''}. ${notes}`,
+        createdBy: receivedBy,
+      });
+    }
+
+    return { success: true, totalReceived, totalBackordered };
+  } catch (error) {
+    console.error('[receivePurchaseOrder] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to receive purchase order',
+    };
+  }
+}

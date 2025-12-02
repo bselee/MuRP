@@ -24,13 +24,14 @@ import PoCommunicationModal from '../components/PoCommunicationModal';
 import ReorderQueueDashboard, { ReorderQueueVendorGroup } from '../components/ReorderQueueDashboard';
 import DraftPOReviewSection from '../components/DraftPOReviewSection';
 import POTrackingDashboard from '../components/POTrackingDashboard';
-import UpdateTrackingModal from '../components/UpdateTrackingModal';
-import VendorResponseWorkbench from '../components/VendorResponseWorkbench';
+import ReceivePurchaseOrderModal from '../components/ReceivePurchaseOrderModal';
 import { subscribeToPoDrafts } from '../lib/poDraftBridge';
 import { generatePoPdf } from '../services/pdfService';
 import { usePermissions } from '../hooks/usePermissions';
 import { runFollowUpAutomation } from '../services/followUpService';
 import { getGoogleGmailService } from '../services/googleGmailService';
+import AutonomousControls from '../components/AutonomousControls';
+import AutonomousApprovals from '../components/AutonomousApprovals';
 
 interface PurchaseOrdersProps {
     purchaseOrders: PurchaseOrder[];
@@ -145,6 +146,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [selectedPoForEmail, setSelectedPoForEmail] = useState<PurchaseOrder | null>(null);
     const [selectedPoForTracking, setSelectedPoForTracking] = useState<PurchaseOrder | null>(null);
     const [selectedPoForComm, setSelectedPoForComm] = useState<PurchaseOrder | null>(null);
+    const [selectedPoForReceive, setSelectedPoForReceive] = useState<PurchaseOrder | null>(null);
     const [activePoDraft, setActivePoDraft] = useState<PoDraftConfig | undefined>(undefined);
     const [pendingPoDrafts, setPendingPoDrafts] = useState<PoDraftConfig[]>([]);
     const [modalSession, setModalSession] = useState(0);
@@ -424,6 +426,39 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     setIsTrackingModalOpen(false);
   };
 
+  const handleReceivePO = (po: PurchaseOrder) => {
+    setSelectedPoForReceive(po);
+  };
+
+  const handleReceiveSubmit = async (poId: string, receivedItems: any[], notes?: string) => {
+    try {
+      // Import the receivePurchaseOrder function dynamically
+      const { receivePurchaseOrder } = await import('../hooks/useSupabaseMutations');
+      const result = await receivePurchaseOrder({
+        poId,
+        receivedItems: receivedItems.map(item => ({
+          itemId: item.poItemId,
+          receivedQuantity: item.quantityReceived,
+          backorderQuantity: Math.max(0, item.quantityOrdered - item.quantityReceived),
+          condition: item.condition,
+          notes: item.notes,
+        })),
+        receivedBy: currentUser.id,
+        notes,
+      });
+
+      if (result.success) {
+        addToast(`PO ${selectedPoForReceive?.orderId || poId} received successfully.`, 'success');
+        setSelectedPoForReceive(null);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Failed to receive PO:', error);
+      addToast(`Failed to receive PO: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    }
+  };
+
     // Calculate 2 weeks ago for filtering
     const twoWeeksAgo = useMemo(() => {
         const date = new Date();
@@ -600,6 +635,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <POTrackingDashboard />
                 </div>
 
+                {isAdminLike && (
+                    <AutonomousControls addToast={addToast} />
+                )}
+
+                {isAdminLike && (
+                    <AutonomousApprovals addToast={addToast} />
+                )}
+
                 <DraftPOReviewSection
                     onApprove={(orderId) => {
                         addToast(`Approved ${orderId} - ready to send to vendor`, 'success');
@@ -730,6 +773,15 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     Track
                                                 </Button>
                                             )}
+                                            {canManagePOs && ['shipped', 'in_transit', 'out_for_delivery', 'delivered'].includes(po.trackingStatus || '') && po.status !== 'received' && po.status !== 'partially_received' && (
+                                                <Button
+                                                    onClick={() => handleReceivePO(po)}
+                                                    className="p-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+                                                    title="Mark as Received"
+                                                >
+                                                    <CheckCircleIcon className="w-5 h-5" />
+                                                </Button>
+                                            )}
                                             <Button onClick={() => handleDownloadPdf(po)} title="Download PDF" className="p-2 text-gray-400 hover:text-accent-400 transition-colors"><FileTextIcon className="w-5 h-5"/></Button>
                                             <Button onClick={() => handleSendEmailClick(po)} title="Send Email" className="p-2 text-gray-400 hover:text-accent-400 transition-colors"><MailIcon className="w-5 h-5"/></Button>
                                             <Button
@@ -811,6 +863,17 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     inventory={inventory}
                     onCreate={(items, options) => onCreateRequisition(items, options)}
                     defaultOptions={{ requestType: 'consumable', priority: 'medium' }}
+                />
+            )}
+
+            {selectedPoForReceive && (
+                <ReceivePurchaseOrderModal
+                    isOpen={!!selectedPoForReceive}
+                    onClose={() => setSelectedPoForReceive(null)}
+                    po={selectedPoForReceive}
+                    inventory={inventory}
+                    onReceive={handleReceiveSubmit}
+                    addToast={addToast}
                 />
             )}
         </>
