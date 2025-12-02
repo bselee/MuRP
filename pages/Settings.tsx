@@ -338,9 +338,6 @@ Thank you!`
                 onRevokeApiKey={onRevokeApiKey}
                 showApiKey={showApiKey}
                 onToggleShowApiKey={setShowApiKey}
-                gmailConnection={gmailConnection}
-                onGmailConnect={onGmailConnect}
-                onGmailDisconnect={onGmailDisconnect}
                 externalConnections={externalConnections}
                 onSetExternalConnections={onSetExternalConnections}
                 setCurrentPage={setCurrentPage}

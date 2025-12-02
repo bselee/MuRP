@@ -551,11 +551,11 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
               <p className="font-semibold">Backend configuration required</p>
               <p className="mt-1 text-amber-100/80">
                 Supabase Edge Functions need the Finale CSV endpoints before sync can run. Ask an administrator to set
-                <code className="mx-1 rounded bg-black/30 px-1 py-0.5">FINALE_INVENTORY_REPORT_URL</code>
+                <code className="mx-1 rounded bg-gray-800/40 px-1 py-0.5">FINALE_INVENTORY_REPORT_URL</code>
                 ,
-                <code className="mx-1 rounded bg-black/30 px-1 py-0.5">FINALE_VENDORS_REPORT_URL</code>
+                <code className="mx-1 rounded bg-gray-800/40 px-1 py-0.5">FINALE_VENDORS_REPORT_URL</code>
                 , and
-                <code className="mx-1 rounded bg-black/30 px-1 py-0.5">FINALE_BOM_REPORT_URL</code>.
+                <code className="mx-1 rounded bg-gray-800/40 px-1 py-0.5">FINALE_BOM_REPORT_URL</code>.
               </p>
             </div>
           </div>
@@ -636,7 +636,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 placeholder="API Key (e.g., I9TVdRvblFod)"
                 value={credentials.apiKey}
                 onChange={(e) => handleCredentialChange('apiKey', e.target.value)}
-                className="w-full rounded-full border border-white/10 bg-black/30 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
+                className="w-full rounded-full border border-white/10 bg-gray-900/60 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
                 disabled={isConfigured && currentStep !== 'credentials'}
               />
             </div>
@@ -647,7 +647,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 placeholder="API Secret"
                 value={credentials.apiSecret}
                 onChange={(e) => handleCredentialChange('apiSecret', e.target.value)}
-                className="w-full rounded-full border border-white/10 bg-black/30 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
+                className="w-full rounded-full border border-white/10 bg-gray-900/60 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
                 disabled={isConfigured && currentStep !== 'credentials'}
               />
             </div>
@@ -658,7 +658,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 placeholder="Account path (e.g., yourcompany)"
                 value={credentials.accountPath}
                 onChange={(e) => handleCredentialChange('accountPath', e.target.value)}
-                className="w-full rounded-full border border-white/10 bg-black/30 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
+                className="w-full rounded-full border border-white/10 bg-gray-900/60 py-3 pl-12 pr-4 text-sm placeholder:text-gray-600 focus:border-[#1D9BF0] focus:outline-none"
                 disabled={isConfigured && currentStep !== 'credentials'}
               />
             </div>
@@ -721,7 +721,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
 
           <div className="mt-4 space-y-3 text-sm text-gray-400">
             <p>1. Validate credentials • 2. Ensure Supabase env vars exist • 3. Run the full import once.</p>
-            <p className="rounded-2xl border border-white/10 bg-black/20 px-4 py-2 text-xs text-gray-400">
+            <p className="rounded-2xl border border-white/10 bg-gray-800/30 px-4 py-2 text-xs text-gray-400">
               Tip: keep an eye on the cards below — sync stats update in real time while automation runs.
             </p>
           </div>
@@ -752,7 +752,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
             <Button
               onClick={handleToggleAutoSync}
               className={`relative inline-flex h-8 w-16 items-center rounded-full border border-white/10 ${
-                autoSyncEnabled ? 'bg-emerald-500/80' : 'bg-black/40'
+                autoSyncEnabled ? 'bg-emerald-500/80' : 'bg-gray-700/60'
               }`}
             >
               <span
@@ -765,12 +765,12 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
 
           {syncStatus && (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="rounded-2xl border border-white/10 bg-gray-800/30 p-4">
                 <p className="text-xs uppercase tracking-wide text-gray-500">Last run</p>
                 <p className="mt-1 text-lg font-semibold">{formatRelativeTime(syncStatus.lastSyncTime)}</p>
                 <p className="text-xs text-gray-500">{formatDate(syncStatus.lastSyncTime)}</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="rounded-2xl border border-white/10 bg-gray-800/30 p-4">
                 <p className="text-xs uppercase tracking-wide text-gray-500">Phase</p>
                 <p className="mt-1 text-lg font-semibold">{syncStatus.progress.phase}</p>
                 <p className="text-xs text-gray-500">{syncStatus.isRunning ? 'Running' : 'Idle'}</p>
@@ -784,7 +784,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
                 <span>{syncStatus.progress.message}</span>
                 <span className="text-white">{syncStatus.progress.percentage}%</span>
               </div>
-              <div className="mt-2 h-2 rounded-full bg-black/30">
+              <div className="mt-2 h-2 rounded-full bg-gray-700/40">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-[#1D9BF0] to-[#00BA7C]"
                   style={{ width: `${syncStatus.progress.percentage}%` }}
