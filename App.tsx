@@ -274,6 +274,23 @@ const AppShell: React.FC = () => {
     }
   }, [isDataLoading]);
 
+  // Initialize Finale auto-sync if credentials are configured
+  useEffect(() => {
+    // Import and initialize auto-sync
+    import('./services/finaleAutoSync').then(({ initializeFinaleAutoSync }) => {
+      initializeFinaleAutoSync();
+    }).catch(error => {
+      console.error('[App] Failed to load Finale auto-sync:', error);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      import('./services/finaleAutoSync').then(({ stopFinaleAutoSync }) => {
+        stopFinaleAutoSync();
+      }).catch(() => {});
+    };
+  }, []); // Run once on mount
+
   useEffect(() => {
     if (!currentUser?.guidedLaunchState) {
       setGuidedLaunchState(null);

@@ -84,7 +84,9 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
         const envApiSecret = import.meta.env.VITE_FINALE_API_SECRET;
         const envAccountPath = import.meta.env.VITE_FINALE_ACCOUNT_PATH;
 
-        if (envApiKey && envApiSecret && envAccountPath) {
+        const hasEnvCredentials = !!(envApiKey && envApiSecret && envAccountPath);
+
+        if (hasEnvCredentials) {
           // Auto-configure the global Finale client from environment
           updateFinaleClient({
             apiKey: envApiKey,
@@ -92,7 +94,16 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
             accountPath: envAccountPath,
             baseUrl: import.meta.env.VITE_FINALE_BASE_URL || 'https://app.finaleinventory.com',
           });
-          console.log('[FinaleSetupPanel] Auto-configured from environment variables');
+          console.log('[FinaleSetupPanel] ✅ Auto-configured from environment variables');
+          
+          // Check if auto-sync is running
+          const { getAutoSyncStatus } = await import('../services/finaleAutoSync');
+          const autoSyncStatus = getAutoSyncStatus();
+          
+          if (autoSyncStatus.initialized) {
+            setAutoSyncEnabled(true);
+            addToast('✅ Auto-sync running from environment credentials', 'success');
+          }
         }
 
         // Check Supabase for sync metadata (proves backend is working)
@@ -121,7 +132,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
     };
 
     checkBackendConfig();
-  }, []);
+  }, [addToast]);
 
   const handleCredentialChange = (field: keyof typeof credentials, value: string) => {
     setCredentials(prev => ({ ...prev, [field]: value }));

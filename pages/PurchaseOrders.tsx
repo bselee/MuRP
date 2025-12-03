@@ -675,21 +675,56 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         </Button>
                     </div>
                     <div className="overflow-x-auto max-h-[calc(100vh-320px)]">
-                        <table className="table-density min-w-full divide-y divide-gray-700">
-                            <thead className="bg-gray-800 sticky top-0 z-10">
-                                <tr>
-                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">PO Number</th>
-                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor</th>
-                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Created</th>
-                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Expected Date</th>
-                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Tracking</th>
-                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total</th>
-                                    <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-gray-800 divide-y divide-gray-700">
-                                {sortedPurchaseOrders.map((po) => (
+                        {sortedPurchaseOrders.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                                <div className="bg-gray-700/30 rounded-full p-6 mb-4">
+                                    <DocumentTextIcon className="w-16 h-16 text-gray-500" />
+                                </div>
+                                <h3 className="text-xl font-semibold text-gray-300 mb-2">
+                                    No Purchase Orders Yet
+                                </h3>
+                                <p className="text-gray-400 mb-6 max-w-md">
+                                    {purchaseOrders.length === 0 
+                                        ? "Get started by creating a purchase order manually or importing from your Finale inventory system."
+                                        : "No purchase orders match your current time filter. Try showing all POs."}
+                                </p>
+                                {purchaseOrders.length === 0 && canManagePOs && (
+                                    <div className="flex gap-3">
+                                        <Button
+                                            onClick={() => setIsCreatePoModalOpen(true)}
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-600 transition-colors font-medium"
+                                        >
+                                            <DocumentTextIcon className="w-5 h-5" />
+                                            Create Purchase Order
+                                        </Button>
+                                        <Button
+                                            onClick={async () => {
+                                                addToast('💡 To import from Finale, configure API credentials in Settings → Finale Integration', 'info');
+                                            }}
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 text-gray-300 rounded-md hover:bg-gray-600 transition-colors font-medium border border-gray-600"
+                                        >
+                                            <FileTextIcon className="w-5 h-5" />
+                                            Import from Finale
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <table className="table-density min-w-full divide-y divide-gray-700">
+                                <thead className="bg-gray-800 sticky top-0 z-10">
+                                    <tr>
+                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">PO Number</th>
+                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor</th>
+                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Created</th>
+                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Expected Date</th>
+                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Tracking</th>
+                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total</th>
+                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-gray-800 divide-y divide-gray-700">
+                                    {sortedPurchaseOrders.map((po) => (
                                     <tr key={po.id} className="hover:bg-gray-700/50 transition-colors duration-200">
                                         <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-accent-400">{po.orderId || po.id}</td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
@@ -773,6 +808,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 ))}
                             </tbody>
                         </table>
+                        )}
                     </div>
                 </div>
             </div>
