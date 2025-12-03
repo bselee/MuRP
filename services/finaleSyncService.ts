@@ -803,7 +803,7 @@ export class FinaleSyncService {
         const rawPOs = await this.rateLimiter.schedule(async () => {
           return await this.circuitBreaker.execute(async () => {
             return await retryWithBackoff(
-              async () => await this.client.fetchPurchaseOrders({ limit: this.config.batchSize, offset }),
+              async () => await this.client.getPurchaseOrders(this.config.batchSize, offset),
               {
                 maxAttempts: this.config.maxRetries,
                 baseDelayMs: this.config.retryDelayMs,
