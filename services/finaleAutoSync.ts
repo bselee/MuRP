@@ -2,7 +2,8 @@
  * Finale Auto-Sync Initialization
  * 
  * Automatically starts Finale data synchronization when credentials are detected
- * in environment variables. No user interaction required after initial setup.
+ * in environment variables. Uses professional REST API sync with intelligent
+ * delta sync to minimize API hits. No user interaction required after initial setup.
  * 
  * Environment variables (configured in .env.local for dev, Vercel for production):
  * - VITE_FINALE_API_KEY
@@ -11,7 +12,7 @@
  * - VITE_FINALE_BASE_URL (optional, defaults to https://app.finaleinventory.com)
  */
 
-import { getFinaleSyncService } from './finaleSyncService';
+import { getFinaleRestSyncService } from './finaleRestSyncService';
 
 let autoSyncInitialized = false;
 let syncCheckInterval: NodeJS.Timeout | null = null;
@@ -30,7 +31,7 @@ function hasFinaleCredentials(): boolean {
 /**
  * Initialize auto-sync if credentials are available
  */
-export function initializeFinaleAutoSync(): void {
+export async function initializeFinaleAutoSync(): Promise<void> {
   // Only initialize once
   if (autoSyncInitialized) {
     console.log('[FinaleAutoSync] Already initialized');
@@ -45,9 +46,9 @@ export function initializeFinaleAutoSync(): void {
   }
 
   try {
-    console.log('[FinaleAutoSync] ✅ Credentials detected. Initializing auto-sync...');
+    console.log('[FinaleAutoSync] ✅ Credentials detected. Initializing professional REST API sync...');
     
-    const syncService = getFinaleSyncService();
+    const syncService = getFinaleRestSyncService();
     
     // Set credentials from environment
     const credentials = {
@@ -57,19 +58,42 @@ export function initializeFinaleAutoSync(): void {
       baseUrl: import.meta.env.VITE_FINALE_BASE_URL || 'https://app.finaleinventory.com',
     };
     
-    syncService.setCredentials(credentials);
+    syncService.setCredentials(
+      credentials.apiKey,
+      credentials.apiSecret,
+      credentials.accountPath
+    );
     
-    // Start automatic synchronization
-    syncService.startAutoSync();
+    // Progress monitoring
+    syncService.onProgress((progress) => {
+      console.log(`[FinaleAutoSync] ${progress.phase}: ${progress.percentage}% - ${progress.message}`);
+    });
+    
+    // Start initial sync
+    console.log('[FinaleAutoSync] Starting initial sync...');
+    const metrics = await syncService.syncAll();
+    
+    console.log('[FinaleAutoSync] ✅ Initial sync complete:');
+    console.log(`  - Records processed: ${metrics.recordsProcessed}`);
+    console.log(`  - API calls made: ${metrics.apiCallsTotal}`);
+    console.log(`  - API calls saved: ${metrics.apiCallsSaved} (delta sync optimization)`);
+    console.log(`  - Duration: ${(metrics.duration / 1000).toFixed(1)}s`);
+    console.log(`  - Errors: ${metrics.errors}`);
     
     autoSyncInitialized = true;
     
-    console.log('[FinaleAutoSync] ✅ Auto-sync started successfully');
-    console.log('[FinaleAutoSync] Data will sync automatically:');
-    console.log('  - Inventory: every 5 minutes');
-    console.log('  - Vendors: every 1 hour');
-    console.log('  - Purchase Orders: every 15 minutes');
-    console.log('  - BOMs: every 1 hour');
+    // Set up periodic sync (every 4 hours for delta sync)
+    syncCheckInterval = setInterval(async () => {
+      console.log('[FinaleAutoSync] Running scheduled delta sync...');
+      try {
+        const deltaMetrics = await syncService.syncAll();
+        console.log(`[FinaleAutoSync] Delta sync complete: ${deltaMetrics.recordsProcessed} records, ${deltaMetrics.apiCallsTotal} API calls`);
+      } catch (error) {
+        console.error('[FinaleAutoSync] Delta sync failed:', error);
+      }
+    }, 4 * 60 * 60 * 1000); // 4 hours
+    
+    console.log('[FinaleAutoSync] ✅ Scheduled delta sync every 4 hours');
     
   } catch (error) {
     console.error('[FinaleAutoSync] ❌ Failed to initialize auto-sync:', error);
@@ -86,15 +110,12 @@ export function stopFinaleAutoSync(): void {
   }
 
   try {
-    const syncService = getFinaleSyncService();
-    syncService.stopAutoSync();
-    autoSyncInitialized = false;
-    
     if (syncCheckInterval) {
       clearInterval(syncCheckInterval);
       syncCheckInterval = null;
     }
     
+    autoSyncInitialized = false;
     console.log('[FinaleAutoSync] Auto-sync stopped');
   } catch (error) {
     console.error('[FinaleAutoSync] Error stopping auto-sync:', error);
