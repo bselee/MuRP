@@ -1,31 +1,24 @@
-import Button from '@/components/ui/Button';
 /**
- * Finale Integration Panel
+ * Finale Integration Panel - Simplified
  *
- * Beautiful, user-friendly interface for setting up Finale API integration
- * - Visual connection status
- * - Easy credential configuration
- * - One-click connection test
- * - Sync controls with progress
- * - Health monitoring
+ * Easy 3-step setup:
+ * 1. Enter credentials
+ * 2. Click Save & Test
+ * 3. See green status ✅
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { FinaleClient, getFinaleClient, updateFinaleClient } from '../lib/finale/client';
-import type { FinaleConnectionConfig, FinaleConnectionStatus } from '../lib/finale/types';
-import { getFinaleSyncService } from '../services/finaleSyncService';
-import { useAuth } from '../lib/auth/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { getFinaleClient, updateFinaleClient } from '../lib/finale/client';
+import type { FinaleConnectionConfig } from '../lib/finale/types';
 import {
   CheckCircleIcon,
   XCircleIcon,
-  RefreshIcon,
   KeyIcon,
-  ServerStackIcon,
-  LinkIcon,
-  ClipboardCopyIcon,
   EyeIcon,
   EyeSlashIcon,
+  RefreshIcon,
 } from './icons';
+import Button from './Button';
 
 interface FinaleIntegrationPanelProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -35,448 +28,241 @@ const readStored = (key: string, fallback = '') =>
   typeof window !== 'undefined' ? localStorage.getItem(key) ?? fallback : fallback;
 
 const FinaleIntegrationPanel: React.FC<FinaleIntegrationPanelProps> = ({ addToast }) => {
-  const { session } = useAuth();
-  // State for form inputs
+  
+  // Credentials
   const [apiKey, setApiKey] = useState<string>(() => readStored('finale_api_key', import.meta.env.VITE_FINALE_API_KEY || ''));
   const [apiSecret, setApiSecret] = useState<string>(() => readStored('finale_api_secret', import.meta.env.VITE_FINALE_API_SECRET || ''));
   const [accountPath, setAccountPath] = useState<string>(() => readStored('finale_account_path', import.meta.env.VITE_FINALE_ACCOUNT_PATH || ''));
-  const [baseUrl, setBaseUrl] = useState<string>(() => readStored('finale_base_url', import.meta.env.VITE_FINALE_BASE_URL || 'https://app.finaleinventory.com'));
 
   // UI state
-  const [showApiSecret, setShowApiSecret] = useState<boolean>(false);
-  const [isTesting, setIsTesting] = useState<boolean>(false);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [connectionStatus, setConnectionStatus] = useState<FinaleConnectionStatus | null>(null);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [finaleClient, setFinaleClient] = useState<FinaleClient | null>(getFinaleClient());
-  const accessToken = session?.access_token;
+  const [showSecret, setShowSecret] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  const persistCredentials = useCallback(async () => {
-    if (!accessToken) {
-      return;
-    }
-    const response = await fetch('/functions/v1/store-finale-credentials', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ apiKey, apiSecret, accountPath, baseUrl }),
-    });
-    if (!response.ok) {
-      let message = 'Failed to store Finale credentials';
-      try {
-        const data = await response.json();
-        if (data?.error) message = data.error;
-      } catch {
-        // ignore
-      }
-      throw new Error(message);
-    }
-  }, [accessToken, apiKey, apiSecret, accountPath, baseUrl]);
+  const hasAllCredentials = !!(apiKey && apiSecret && accountPath);
 
-  // Check if credentials are configured
-  const hasCredentials = apiKey && apiSecret && accountPath && baseUrl;
-  const isConfigured = !!finaleClient && hasCredentials;
-
-  // Load connection status on mount
+  // Check existing connection on mount
   useEffect(() => {
-    if (finaleClient) {
-      loadConnectionStatus();
-      // Start health checks
-      finaleClient.startHealthCheck(300000); // Every 5 minutes
-
-      return () => {
-        finaleClient.stopHealthCheck();
-      };
+    const client = getFinaleClient();
+    if (client && hasAllCredentials) {
+      checkConnection();
     }
-  }, [finaleClient]);
+  }, []);
 
-  const loadConnectionStatus = async () => {
-    if (!finaleClient) return;
+  const checkConnection = async () => {
     try {
-      const status = await finaleClient.getConnectionStatus();
-      setConnectionStatus(status);
+      const client = getFinaleClient();
+      if (!client) {
+        setIsConnected(false);
+        return;
+      }
+      const result = await client.testConnection();
+      setIsConnected(result.success);
+      setConnectionError(result.success ? null : result.message);
     } catch (error) {
-      console.error('Error loading connection status:', error);
+      setIsConnected(false);
+      setConnectionError(error instanceof Error ? error.message : 'Connection check failed');
     }
   };
 
-  const handleTestConnection = async () => {
-    if (!hasCredentials) {
-      addToast('Please fill in all required fields', 'error');
+  const handleSaveAndTest = async () => {
+    if (!hasAllCredentials) {
+      addToast('Please fill in all fields', 'error');
       return;
     }
 
-    setIsTesting(true);
-    setTestResult(null);
+    setIsSaving(true);
+    setConnectionError(null);
 
     try {
-      // Create or update client
+      // Save to localStorage
+      localStorage.setItem('finale_api_key', apiKey);
+      localStorage.setItem('finale_api_secret', apiSecret);
+      localStorage.setItem('finale_account_path', accountPath);
+
+      // Update the global Finale client
       const config: FinaleConnectionConfig = {
         apiKey,
         apiSecret,
         accountPath,
-        baseUrl,
+        baseUrl: 'https://app.finaleinventory.com',
       };
-
+      
       const client = updateFinaleClient(config);
-      setFinaleClient(client);
 
-      // Test connection
+      // Test the connection
       const result = await client.testConnection();
-      setTestResult(result);
 
       if (result.success) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('finale_api_key', apiKey);
-          localStorage.setItem('finale_api_secret', apiSecret);
-          localStorage.setItem('finale_account_path', accountPath);
-          localStorage.setItem('finale_base_url', baseUrl);
-        }
-        try {
-          await persistCredentials();
-        } catch (persistError) {
-          addToast(
-            persistError instanceof Error
-              ? persistError.message
-              : 'Stored locally, but failed to update secure vault.',
-            'warning',
-          );
-        }
-        addToast('Successfully connected to Finale!', 'success');
-        // Load status
-        await loadConnectionStatus();
+        setIsConnected(true);
+        addToast('✅ Connected to Finale! Auto-sync is now active.', 'success');
+        
+        // Trigger auto-sync to start immediately
+        import('../services/finaleAutoSync').then(({ initializeFinaleAutoSync }) => {
+          initializeFinaleAutoSync();
+        });
       } else {
+        setIsConnected(false);
+        setConnectionError(result.message);
         addToast(`Connection failed: ${result.message}`, 'error');
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      setTestResult({ success: false, message });
-      addToast(`Connection test failed: ${message}`, 'error');
+      setIsConnected(false);
+      const message = error instanceof Error ? error.message : 'Failed to save credentials';
+      setConnectionError(message);
+      addToast(message, 'error');
     } finally {
-      setIsTesting(false);
+      setIsSaving(false);
     }
-  };
-
-  const handleSync = async () => {
-    if (!finaleClient) {
-      addToast('Please connect to Finale first', 'error');
-      return;
-    }
-
-    setIsSyncing(true);
-    try {
-      const syncService = getFinaleSyncService();
-      syncService.setCredentials(apiKey, apiSecret, accountPath, baseUrl);
-      await syncService.syncAll();
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('finale_api_key', apiKey);
-        localStorage.setItem('finale_api_secret', apiSecret);
-        localStorage.setItem('finale_account_path', accountPath);
-        localStorage.setItem('finale_base_url', baseUrl);
-      }
-      try {
-        await persistCredentials();
-      } catch (persistError) {
-        addToast(
-          persistError instanceof Error
-            ? persistError.message
-            : 'Stored locally, but failed to update secure vault.',
-          'warning',
-        );
-      }
-
-      addToast(
-        'Full Finale sync complete! Vendors, inventory, BOMs, and POs are now up to date.',
-        'success'
-      );
-
-      // Reload status
-      await loadConnectionStatus();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      addToast(`Sync failed: ${message}`, 'error');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleCopySetupInstructions = () => {
-    const instructions = `
-# Finale API Setup Instructions
-
-1. Log in to Finale Inventory at: https://app.finaleinventory.com/${accountPath || 'YOUR_ACCOUNT'}
-
-2. Navigate to: Settings → Integrations → API Access
-
-3. Create a new API application or use existing credentials
-
-4. Copy your credentials:
-   - API Key: ${apiKey || '[YOUR_API_KEY]'}
-   - API Secret: ${apiSecret || '[YOUR_API_SECRET]'}
-   - Account Path: ${accountPath || '[YOUR_ACCOUNT_PATH]'}
-
-5. Add to your .env.local file:
-   VITE_FINALE_API_KEY=${apiKey || 'your-api-key-here'}
-   VITE_FINALE_API_SECRET=${apiSecret || 'your-api-secret-here'}
-   VITE_FINALE_ACCOUNT_PATH=${accountPath || 'your-account-path'}
-   VITE_FINALE_BASE_URL=${baseUrl}
-
-6. Restart your development server
-
-For more information, see: https://support.finaleinventory.com/hc/en-us/articles/4408832394647
-    `.trim();
-
-    navigator.clipboard.writeText(instructions);
-    addToast('Setup instructions copied to clipboard', 'success');
   };
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <ServerStackIcon className="w-8 h-8 text-accent-400" />
+    <div className="space-y-6">
+      {/* Header with Status */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-200">Finale Inventory Integration</h3>
+          <p className="text-sm text-gray-400 mt-1">Connect to sync inventory, vendors, and purchase orders automatically</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {isConnected ? (
+            <>
+              <CheckCircleIcon className="w-6 h-6 text-green-500" />
+              <span className="text-green-500 font-medium">Connected</span>
+            </>
+          ) : (
+            <>
+              <div className="w-6 h-6 rounded-full border-2 border-gray-600" />
+              <span className="text-gray-500">Not Connected</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Credentials Form */}
+      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-6 space-y-4">
+        <div className="space-y-4">
+          {/* API Key */}
           <div>
-            <h3 className="text-lg font-semibold text-white">Finale Inventory Integration</h3>
-            <p className="text-sm text-gray-400 mt-1">
-              Connect to your Finale account for real-time inventory sync
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              API Key <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Enter your Finale API key"
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* API Secret */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              API Secret <span className="text-red-400">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type={showSecret ? 'text' : 'password'}
+                value={apiSecret}
+                onChange={(e) => setApiSecret(e.target.value)}
+                placeholder="Enter your Finale API secret"
+                className="w-full px-4 py-2 pr-10 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSecret(!showSecret)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+              >
+                {showSecret ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Account Path */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Account Path <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={accountPath}
+              onChange={(e) => setAccountPath(e.target.value)}
+              placeholder="account/12345/facility/67890"
+              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Format: account/YOUR_ACCOUNT_ID/facility/YOUR_FACILITY_ID
             </p>
           </div>
         </div>
-        {isConfigured && connectionStatus?.isConnected && (
-          <div className="flex items-center gap-2 bg-green-900/30 text-green-400 px-3 py-1.5 rounded-full border border-green-700/50">
-            <CheckCircleIcon className="w-5 h-5" />
-            <span className="text-sm font-semibold">Connected</span>
+
+        {/* Error Message */}
+        {connectionError && (
+          <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-md">
+            <XCircleIcon className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm text-red-300">{connectionError}</p>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Connection Status (if connected) */}
-      {connectionStatus && (
-        <div className="mb-6 p-4 bg-gray-900/50 rounded-lg border border-gray-700/50">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-xs text-gray-400">Account</p>
-              <p className="text-sm font-semibold text-white">{connectionStatus.accountPath}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Products</p>
-              <p className="text-sm font-semibold text-white">
-                {connectionStatus.stats?.productCount || 0}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Vendors</p>
-              <p className="text-sm font-semibold text-white">
-                {connectionStatus.stats?.vendorCount || 0}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Purchase Orders</p>
-              <p className="text-sm font-semibold text-white">
-                {connectionStatus.stats?.poCount || 0}
-              </p>
-            </div>
-          </div>
-          {connectionStatus.lastSyncTime && (
-            <div className="mt-3 pt-3 border-t border-gray-700/50">
-              <p className="text-xs text-gray-400">
-                Last synced:{' '}
-                <span className="text-gray-300">
-                  {new Date(connectionStatus.lastSyncTime).toLocaleString()}
-                </span>
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Configuration Form */}
-      <div className="space-y-4 mb-6">
-        {/* Account Path */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Account Path <span className="text-red-400">*</span>
-          </label>
-          <div className="relative">
-            <ServerStackIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="e.g., buildasoilorganics"
-              value={accountPath}
-              onChange={(e) => setAccountPath(e.target.value)}
-              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 text-sm border border-gray-600 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Your Finale subdomain (e.g., yourcompany from yourcompany.finaleinventory.com)
-          </p>
-        </div>
-
-        {/* API Key */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            API Key <span className="text-red-400">*</span>
-          </label>
-          <div className="relative">
-            <KeyIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Enter your Finale API Key"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 text-sm border border-gray-600 focus:border-accent-500 focus:ring-1 focus:ring-accent-500 font-mono"
-            />
-          </div>
-        </div>
-
-        {/* API Secret */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            API Secret <span className="text-red-400">*</span>
-          </label>
-          <div className="relative">
-            <KeyIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type={showApiSecret ? 'text' : 'password'}
-              placeholder="Enter your Finale API Secret"
-              value={apiSecret}
-              onChange={(e) => setApiSecret(e.target.value)}
-              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 pr-10 text-sm border border-gray-600 focus:border-accent-500 focus:ring-1 focus:ring-accent-500 font-mono"
-            />
-            <Button
-              onClick={() => setShowApiSecret(!showApiSecret)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-            >
-              {showApiSecret ? (
-                <EyeSlashIcon className="w-5 h-5" />
-              ) : (
-                <EyeIcon className="w-5 h-5" />
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {/* Base URL */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">Base URL</label>
-          <div className="relative">
-            <LinkIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="https://app.finaleinventory.com"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              className="w-full bg-gray-700 text-white rounded-md p-2 pl-10 text-sm border border-gray-600 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Usually https://app.finaleinventory.com (change only if using custom domain)
-          </p>
-        </div>
-      </div>
-
-      {/* Test Result */}
-      {testResult && (
-        <div
-          className={`mb-4 p-3 rounded-md border ${
-            testResult.success
-              ? 'bg-green-900/20 border-green-700/50 text-green-400'
-              : 'bg-red-900/20 border-red-700/50 text-red-400'
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            {testResult.success ? (
-              <CheckCircleIcon className="w-5 h-5" />
+        {/* Save Button */}
+        <div className="pt-2">
+          <Button
+            onClick={handleSaveAndTest}
+            disabled={!hasAllCredentials || isSaving}
+            className={`w-full py-3 px-4 rounded-md font-medium transition-colors ${
+              hasAllCredentials && !isSaving
+                ? 'bg-accent-500 hover:bg-accent-600 text-white'
+                : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            {isSaving ? (
+              <span className="flex items-center justify-center gap-2">
+                <RefreshIcon className="w-5 h-5 animate-spin" />
+                Testing Connection...
+              </span>
             ) : (
-              <XCircleIcon className="w-5 h-5" />
+              <span className="flex items-center justify-center gap-2">
+                <KeyIcon className="w-5 h-5" />
+                Save & Test Connection
+              </span>
             )}
-            <span className="text-sm font-semibold">{testResult.message}</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Success Status */}
+      {isConnected && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircleIcon className="w-6 h-6 text-green-500 flex-shrink-0" />
+            <div>
+              <p className="text-green-300 font-medium">Successfully Connected</p>
+              <p className="text-sm text-green-400/80 mt-1">
+                Your data will automatically sync:
+              </p>
+              <ul className="text-sm text-green-400/80 mt-2 space-y-1">
+                <li>• Inventory: every 5 minutes</li>
+                <li>• Purchase Orders: every 15 minutes</li>
+                <li>• Vendors & BOMs: every hour</li>
+              </ul>
+            </div>
           </div>
         </div>
       )}
-
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3">
-        <Button
-          onClick={handleTestConnection}
-          disabled={!hasCredentials || isTesting}
-          className="flex-1 min-w-[150px] bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {isTesting ? (
-            <>
-              <RefreshIcon className="w-5 h-5 animate-spin" />
-              Testing...
-            </>
-          ) : (
-            <>
-              <CheckCircleIcon className="w-5 h-5" />
-              Test Connection
-            </>
-          )}
-        </Button>
-
-        <Button
-          onClick={handleSync}
-          disabled={!isConfigured || isSyncing}
-          className="flex-1 min-w-[150px] bg-green-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {isSyncing ? (
-            <>
-              <RefreshIcon className="w-5 h-5 animate-spin" />
-              Syncing...
-            </>
-          ) : (
-            <>
-              <RefreshIcon className="w-5 h-5" />
-              Sync Data
-            </>
-          )}
-        </Button>
-
-        <Button
-          onClick={handleCopySetupInstructions}
-          className="bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
-        >
-          <ClipboardCopyIcon className="w-5 h-5" />
-          Copy Setup Guide
-        </Button>
-      </div>
 
       {/* Help Text */}
-      <div className="mt-6 pt-6 border-t border-gray-700/50">
-        <h4 className="text-sm font-semibold text-gray-300 mb-2">How to get your API credentials:</h4>
+      <div className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-4">
+        <h4 className="text-sm font-medium text-gray-300 mb-2">Where to find your credentials:</h4>
         <ol className="text-sm text-gray-400 space-y-1 list-decimal list-inside">
-          <li>
-            Log in to{' '}
-            <a
-              href={`https://app.finaleinventory.com/${accountPath || 'YOUR_ACCOUNT'}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent-400 hover:underline"
-            >
-              Finale Inventory
-            </a>
-          </li>
-          <li>Navigate to Settings → Integrations → API Access</li>
-          <li>Create a new API application or use existing credentials</li>
-          <li>Copy your API Key and API Secret</li>
-          <li>Enter them above and click "Test Connection"</li>
+          <li>Log in to your Finale Inventory account</li>
+          <li>Go to Settings → API Settings</li>
+          <li>Generate or copy your API Key and Secret</li>
+          <li>Find your Account Path in the URL or API documentation</li>
         </ol>
-        <p className="text-xs text-gray-500 mt-3">
-          Need help? Check our{' '}
-          <a
-            href="https://support.finaleinventory.com/hc/en-us/articles/4408832394647"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent-400 hover:underline"
-          >
-            API documentation
-          </a>
-        </p>
       </div>
     </div>
   );
