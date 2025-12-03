@@ -548,22 +548,24 @@ export class FinaleRestSyncService {
     
     // Transform to database schema
     const dbPOs = pos.map(po => ({
-      po_number: po.orderNumber,
-      vendor_id: null, // Will be matched by supplier name
+      order_id: po.orderNumber,
+      supplier_name: po.supplier || 'Unknown Supplier',
+      vendor_id: null, // Will be matched by supplier name in a separate process
       status: po.status.toLowerCase().replace('_', ' '),
       order_date: po.orderDate,
       expected_date: po.expectedDate || null,
-      received_date: po.receivedDate || null,
+      actual_receive_date: po.receivedDate || null,
       subtotal: po.subtotal || 0,
-      tax: po.tax || 0,
-      shipping: po.shipping || 0,
-      total: po.total || 0,
+      tax_amount: po.tax || 0,
+      shipping_cost: po.shipping || 0,
+      total_amount: po.total || 0,
       notes: po.notes || '',
-      line_items: po.lineItems || [],
+      line_items: JSON.stringify(po.lineItems || []),
       finale_po_id: po.purchaseOrderId,
       finale_supplier: po.supplier,
       finale_last_modified: po.lastModified,
       updated_at: new Date().toISOString(),
+      created_at: po.createdDate || new Date().toISOString(),
     }));
     
     // Upsert in batches
@@ -574,7 +576,7 @@ export class FinaleRestSyncService {
       const { error } = await this.supabase
         .from('purchase_orders')
         .upsert(batch, { 
-          onConflict: 'po_number',
+          onConflict: 'order_id',
           ignoreDuplicates: false 
         });
       
