@@ -18,7 +18,7 @@ GmailIcon,
 } from './icons';
 import { supabase } from '../lib/supabase/client';
 import { dispatchSyncEvent } from '../lib/syncEventBus';
-import FinaleSetupPanel from './FinaleSetupPanel';
+import FinaleIntegrationPanel from './FinaleIntegrationPanel';
 import type { SyncHealthRow } from '../lib/sync/healthUtils';
 
 interface APIIntegrationsPanelProps {
@@ -1169,7 +1169,7 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
       </div>
 
       {/* Finale Inventory Integration */}
-      <FinaleSetupPanel addToast={addToast} />
+      <FinaleIntegrationPanel addToast={addToast} />
 
       {/* AfterShip Integration */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700 space-y-4">

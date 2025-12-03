@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "gemini": "tsx gemini-cli.ts",
+    "seed-finale": "node scripts/seed-simple.js",
     "test:transformers": "tsx lib/schema/transformers.smoke.ts",
     "test:transformers:all": "tsx lib/schema/transformers.runner.ts",
     "test:inventory-ui": "tsx tests/inventoryDisplay.test.ts",

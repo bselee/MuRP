@@ -18,7 +18,7 @@ import {
   EyeSlashIcon,
   RefreshIcon,
 } from './icons';
-import Button from './Button';
+import Button from '@/components/ui/Button';
 
 interface FinaleIntegrationPanelProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
