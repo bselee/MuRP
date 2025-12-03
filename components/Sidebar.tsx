@@ -4,7 +4,7 @@ import React from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MuRPLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, UsersIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MuRPLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, UsersIcon, ChartBarIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
 import UserSettingsDropdown from './UserSettingsDropdown';

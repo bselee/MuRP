@@ -169,8 +169,14 @@ export class FinaleRestSyncService {
     });
     
     this.rateLimiter = new RateLimiter({
-      maxRequests: this.config.requestsPerMinute,
-      windowMs: 60000,
+      perIdentity: {
+        maxRequests: this.config.requestsPerMinute,
+        intervalMs: 60000,
+      },
+      global: {
+        maxRequests: this.config.requestsPerMinute * 2,
+        intervalMs: 60000,
+      },
     });
     
     // Initialize metrics
