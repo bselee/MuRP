@@ -92,6 +92,12 @@ const readStoredCategoryFilter = (): Set<string> => {
   const saved = localStorage.getItem('bom-selected-categories');
   return saved ? new Set(JSON.parse(saved)) : new Set();
 };
+
+const readStoredCategoryConfig = (): Record<string, CategoryConfig> => {
+  if (typeof window === 'undefined') return {};
+  const saved = localStorage.getItem('bom-category-config');
+  return saved ? JSON.parse(saved) : {};
+};
 const BOMs: React.FC<BOMsProps> = ({
   boms,
   inventory,
@@ -138,6 +144,8 @@ const BOMs: React.FC<BOMsProps> = ({
   const [groupBy, setGroupBy] = useState<GroupByOption>(() => readStoredGroupBy());
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);
+  const [isCategoryManagementOpen, setIsCategoryManagementOpen] = useState(false);
+  const [categoryConfig, setCategoryConfig] = useState<Record<string, CategoryConfig>>(() => readStoredCategoryConfig());
   // Already declared above, remove duplicate declarations
   
   // Persist filter preferences

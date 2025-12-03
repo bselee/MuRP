@@ -1,0 +1,157 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e6]:
+        - generic [ref=e7]: MuRP
+      - generic [ref=e8]: MuRP
+      - button "Collapse sidebar" [expanded] [ref=e9] [cursor=pointer]:
+        - img [ref=e10]
+    - navigation "Main navigation" [ref=e13]:
+      - list [ref=e14]:
+        - listitem [ref=e15]:
+          - link "Navigate to Dashboard" [ref=e16] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e17]
+            - generic [ref=e20]: Dashboard
+        - listitem [ref=e21]:
+          - link "Navigate to Projects" [ref=e22] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e23]
+            - generic [ref=e25]: Projects
+        - listitem [ref=e26]:
+          - link "Navigate to Purchase Orders" [ref=e27] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e28]
+            - generic [ref=e31]: Purchase Orders
+        - listitem [ref=e32]:
+          - link "Navigate to Production" [ref=e33] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e34]
+            - generic [ref=e36]: Production
+        - listitem [ref=e37]:
+          - link "Navigate to BOMs" [ref=e38] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e39]
+            - generic [ref=e41]: BOMs
+        - listitem [ref=e42]:
+          - link "Navigate to Artwork" [ref=e43] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e44]
+            - generic [ref=e48]: Artwork
+        - listitem [ref=e49]:
+          - link "Navigate to Inventory" [ref=e50] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e51]
+            - generic [ref=e55]: Inventory
+        - listitem [ref=e56]:
+          - link "Navigate to Settings" [ref=e57] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e58]
+            - generic [ref=e61]: Settings
+    - generic [ref=e62]:
+      - button "User menu for Alicia Admin (E2E)" [ref=e64] [cursor=pointer]:
+        - img "Alicia Admin (E2E)'s profile picture" [ref=e67]
+        - generic [ref=e69]: Alicia Admin (E2E)
+      - link "Open MuRPBot AI Assistant" [ref=e70] [cursor=pointer]:
+        - /url: "#"
+        - img [ref=e73]
+        - generic [ref=e76]: MBMuRPBot
+  - generic [ref=e77]:
+    - banner [ref=e78]:
+      - generic [ref=e80]: Syncing · Dec 3, 6:50 PM
+    - main [ref=e81]:
+      - generic [ref=e82]:
+        - heading "We hit a snag loading this page." [level=2] [ref=e83]
+        - paragraph [ref=e84]: Try navigating to a different section or refreshing the browser.
+  - generic:
+    - complementary:
+      - generic:
+        - generic:
+          - paragraph: Ask About Product
+          - heading "Where is it?" [level=2]
+          - paragraph: Enter a SKU to see live inventory, inbound PO status, and kick off a question or requisition.
+        - button "Close quick request drawer":
+          - img
+      - generic:
+        - generic:
+          - text: What do you want to do?
+          - generic:
+            - button "Ask a Question Send a heads-up / status ping without ordering.":
+              - paragraph: Ask a Question
+              - paragraph: Send a heads-up / status ping without ordering.
+            - button "Create Requisition Kick off an internal PO with quantities.":
+              - paragraph: Create Requisition
+              - paragraph: Kick off an internal PO with quantities.
+        - generic:
+          - text: Request Type
+          - generic:
+            - button "Consumable / Component Something we stock regularly (bags, labels, inputs)":
+              - paragraph: Consumable / Component
+              - paragraph: Something we stock regularly (bags, labels, inputs)
+            - button "Product Alert Heads up that we need finished goods or expect demand":
+              - paragraph: Product Alert
+              - paragraph: Heads up that we need finished goods or expect demand
+            - button "Finished Good Need packaged goods for sales/ops":
+              - paragraph: Finished Good
+              - paragraph: Need packaged goods for sales/ops
+            - button "Other Anything else (tools, services, misc.)":
+              - paragraph: Other
+              - paragraph: Anything else (tools, services, misc.)
+        - generic:
+          - text: Priority
+          - generic:
+            - button "Low"
+            - button "Medium"
+            - button "High"
+        - generic:
+          - text: Which item?
+          - combobox "Search SKU..."
+          - textbox "Item name / description"
+        - paragraph: Start by entering a SKU to pull live inventory and PO status.
+        - generic:
+          - generic:
+            - text: Quantity
+            - spinbutton: "1"
+          - generic:
+            - text: Need By
+            - textbox
+        - generic:
+          - text: Context
+          - textbox "Add details (where the need came from, urgency, customer, etc.)"
+        - generic:
+          - text: Amazon / External Link
+          - textbox "https://www.amazon.com/dp/ASIN..."
+          - paragraph: Paste an Amazon product link so we can tie this requisition to the eventual Amazon order.
+        - generic:
+          - text: Options
+          - generic:
+            - generic:
+              - checkbox "This is just an alert (no quantity to order yet)"
+              - text: This is just an alert (no quantity to order yet)
+            - generic:
+              - checkbox "Auto-generate PO draft when approved"
+              - text: Auto-generate PO draft when approved
+            - generic:
+              - checkbox "Notify me when someone acknowledges this" [checked]
+              - text: Notify me when someone acknowledges this
+            - generic:
+              - checkbox "Requires Operations approval (large/strategic buy)"
+              - text: Requires Operations approval (large/strategic buy)
+      - generic:
+        - button "Submit Requisition" [disabled]:
+          - img
+          - text: Submit Requisition
+        - paragraph: Routes to purchasing with your department + priority so nothing slips through the cracks.
+  - generic [ref=e85]:
+    - generic [ref=e86]:
+      - img [ref=e87]
+      - text: Spotlight
+    - heading "Two-factor in two clicks" [level=3] [ref=e90]
+    - paragraph [ref=e91]: Keep purchasing safe by pairing an authenticator app. Each user owns their own codes so OTPs stay compliant.
+    - generic [ref=e92]:
+      - button "Explore" [ref=e93] [cursor=pointer]
+      - button "Later" [ref=e94] [cursor=pointer]
+```

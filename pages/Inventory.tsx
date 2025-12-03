@@ -769,20 +769,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         exportToXls(processedInventory, `inventory-export-${new Date().toISOString().split('T')[0]}.xls`);
     };
 
-    const StockIndicator: React.FC<{ item: InventoryItem }> = ({ item }) => {
-        const percentage = Math.max(0, (item.stock / (item.reorderPoint * 1.5)) * 100);
-        let bgColor = 'bg-green-500';
-        if (item.stock <= 0) bgColor = 'bg-red-500/50';
-        else if (item.stock < item.reorderPoint) bgColor = 'bg-red-500';
-        else if (item.stock < item.reorderPoint * 1.2) bgColor = 'bg-yellow-500';
-
-        return (
-            <div className="w-full bg-gray-600 rounded-full h-2.5">
-                <div className={`${bgColor} h-2.5 rounded-full`} style={{ width: `${Math.min(100, percentage)}%` }}></div>
-            </div>
-        );
-    };
-
     const visibleColumns = columns.filter(col => col.visible);
 
     const itemTypeStyles: Record<ItemType, { label: string; className: string }> = {
@@ -888,11 +874,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             </label>
                             <Button
                                 onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
+                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative`}
                             >
-                                {selectedCategories.size > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent-500 rounded-full"></span>
-                                )}
                                 <span className="truncate">
                                     {selectedCategories.size === 0 
                                         ? 'All Categories' 
@@ -972,11 +955,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             </label>
                             <Button
                                 onClick={() => setIsVendorDropdownOpen(!isVendorDropdownOpen)}
-                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative ${selectedVendors.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
+                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative`}
                             >
-                                {selectedVendors.size > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent-500 rounded-full"></span>
-                                )}
                                 <span className="truncate">
                                     {selectedVendors.size === 0 
                                         ? 'All Vendors' 
@@ -1056,14 +1036,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         
                         <div className="relative">
                             <label htmlFor="filter-bom" className="block text-sm font-medium text-gray-300 mb-1">BOM Status</label>
-                            <select id="filter-bom" value={bomFilter} onChange={(e) => setBomFilter(e.target.value)} className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 ${bomFilter !== 'all' ? 'ring-2 ring-accent-500/50' : ''}`}>
+                            <select id="filter-bom" value={bomFilter} onChange={(e) => setBomFilter(e.target.value)} className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600`}>
                                 <option value="all">All Items</option>
                                 <option value="with-bom">Has Constituents (BOM)</option>
                                 <option value="without-bom">No BOM</option>
                             </select>
-                            {bomFilter !== 'all' && (
-                                <span className="absolute top-6 right-2 w-3 h-3 bg-accent-500 rounded-full pointer-events-none"></span>
-                            )}
                         </div>
                     </div>
                     {false && <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -1154,7 +1131,10 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         return (
                                                             <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
                                                                 {insight ? (
-                                                                    <span className={`text-xs ${itemTypeStyles[insight.itemType].className}`}>
+                                                                    <span 
+                                                                        className="cursor-pointer hover:bg-gray-700 px-2 py-1 rounded text-xs"
+                                                                        onClick={() => {/* Add click handler if needed */}}
+                                                                    >
                                                                         {itemTypeStyles[insight.itemType].label}
                                                                     </span>
                                                                 ) : (
@@ -1171,13 +1151,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                     </span>
                                                                     {bomCount > 0 && (
                                                                         <div className="relative inline-block mt-0.5">
-                                                                            <Button
+                                                                            <span
                                                                                 onClick={() => handleBomClick(item)}
-                                                                                className="text-blue-400 hover:text-blue-300 text-xs transition-colors"
+                                                                                className="cursor-pointer hover:bg-blue-900 px-2 py-1 rounded text-xs text-blue-400 hover:text-blue-300 transition-colors"
                                                                                 title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
                                                                             >
                                                                                 BOM ({bomCount})
-                                                                            </Button>
+                                                                            </span>
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -1211,8 +1191,12 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                     case 'stock':
                                                         return (
                                                             <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-white ${widthClass}`}>
-                                                                <div className="mb-0.5 font-semibold">{item.stock.toLocaleString()}</div>
-                                                                <StockIndicator item={item} />
+                                                                <span 
+                                                                    className="cursor-pointer hover:bg-gray-700 px-2 py-1 rounded font-semibold"
+                                                                    onClick={() => {/* Add click handler if needed */}}
+                                                                >
+                                                                    {item.stock.toLocaleString()}
+                                                                </span>
                                                             </td>
                                                         );
                                                     case 'onOrder':
@@ -1224,11 +1208,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                     case 'status':
                                                         return (
                                                             <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
-                                                                <span className={`text-xs ${
-                                                                    stockStatus === 'In Stock' ? 'text-green-400' :
-                                                                    stockStatus === 'Low Stock' ? 'text-yellow-400' :
-                                                                    'text-red-400'
-                                                                }`}>
+                                                                <span 
+                                                                    className={`cursor-pointer hover:bg-gray-700 px-2 py-1 rounded text-xs ${
+                                                                        stockStatus === 'In Stock' ? 'text-green-400' :
+                                                                        stockStatus === 'Low Stock' ? 'text-yellow-400' :
+                                                                        'text-red-400'
+                                                                    }`}
+                                                                    onClick={() => {/* Add click handler if needed */}}
+                                                                >
                                                                     {stockStatus}
                                                                 </span>
                                                             </td>
@@ -1246,17 +1233,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                             <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
                                                                 <div className="relative group">
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
-                                                                            {runwayValue}
-                                                                        </span>
-                                                                        <span className="text-xs text-gray-400">vs {leadValue || '—'}d lead</span>
-                                                                        <div className="w-8 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                                                                            <div
-                                                                                className={`${insight?.needsOrder ? 'bg-red-500' : 'bg-emerald-500'} h-full`}
-                                                                                style={{ width: `${progressRatio}%` }}
-                                                                            ></div>
-                                                                        </div>
-                                                                    </div>
+                                                                    <span 
+                                                                        className={`font-semibold cursor-pointer hover:bg-gray-700 px-2 py-1 rounded ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}
+                                                                        onClick={() => {/* Add click handler if needed */}}
+                                                                    >
+                                                                        {runwayValue}
+                                                                    </span>
+                                                                    <span className="text-xs text-gray-400">vs {leadValue || '—'}d lead</span>
+                                                                </div>
                                                                     {/* Hover popup with detailed info */}
                                                                     <div className="hidden group-hover:block absolute left-0 top-full mt-2 w-80 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 p-4 text-left">
                                                                         <div className="text-sm font-semibold text-white mb-3">Runway Details</div>
@@ -1325,30 +1309,28 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                 }
                                             })}
                                             <td className={`px-3 ${cellDensityClass} text-right whitespace-nowrap`}>
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
+                                                <div className="flex justify-end gap-1 text-xs">
+                                                    <span 
+                                                        className="cursor-pointer hover:bg-gray-700 px-2 py-1 rounded text-gray-300 hover:text-white"
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true })}
-                                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-gray-700/80 hover:bg-gray-600 text-white transition disabled:opacity-40"
-                                                        disabled={!onQuickRequest}
+                                                        title="Ask about this product"
                                                     >
                                                         Ask
-                                                    </Button>
-                                                    <Button
+                                                    </span>
+                                                    <span 
+                                                        className="cursor-pointer hover:bg-accent-500 px-2 py-1 rounded text-accent-300 hover:text-white"
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'consumable' })}
-                                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-accent-500/80 hover:bg-accent-500 text-white transition disabled:opacity-40"
-                                                        disabled={!onQuickRequest}
+                                                        title="Create requisition"
                                                     >
-                                                        <PlusCircleIcon className="w-4 h-4" />
-                                                        Requisition
-                                                    </Button>
-                                                    <Button
+                                                        Req
+                                                    </span>
+                                                    <span 
+                                                        className="cursor-pointer hover:bg-amber-500 px-2 py-1 rounded text-amber-300 hover:text-white"
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true, priority: 'high' })}
-                                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md bg-amber-500/20 text-amber-200 border border-amber-500/40 hover:bg-amber-500/30 transition disabled:opacity-40"
-                                                        disabled={!onQuickRequest}
+                                                        title="Create high priority alert"
                                                     >
-                                                        <BellIcon className="w-4 h-4" />
                                                         Alert
-                                                    </Button>
+                                                    </span>
                                                 </div>
                                             </td>
                                         </tr>
