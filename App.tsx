@@ -15,6 +15,7 @@ import Production from './pages/Production';
 import BOMs from './pages/BOMs';
 import Settings from './pages/Settings';
 import StockIntelligence from './pages/StockIntelligence';
+import InventoryIntelligence from './pages/InventoryIntelligence';
 import ProjectsPage from './pages/ProjectsPage';
 import LoginScreen from './pages/LoginScreen';
 import Toast from './components/Toast';
@@ -1821,6 +1822,8 @@ const AppShell: React.FC = () => {
         />;
       case 'API Documentation':
           return <ApiDocs />;
+      case 'Inventory Intelligence':
+        return <InventoryIntelligence />;
       case 'Label Scanner':
         return <ManualLabelScanner
           boms={boms}

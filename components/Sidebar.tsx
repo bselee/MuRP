@@ -116,6 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
         },
         { page: 'Artwork', icon: <PhotoIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Inventory', icon: <PackageIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Inventory Intelligence', icon: <ChartBarIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Settings', icon: <CogIcon className="w-6 h-6" />, adminOnly: true },
     ];
     
