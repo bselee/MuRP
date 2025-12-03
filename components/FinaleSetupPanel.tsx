@@ -488,7 +488,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
   ];
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-[#050505] via-[#050505] to-[#0B0C0E] p-6 text-white shadow-[0_20px_80px_-40px_rgba(0,0,0,0.8)] md:p-7">
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl bg-[#1D9BF0]/10 text-[#1D9BF0] flex items-center justify-center">
@@ -608,7 +608,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Step 1</p>
@@ -709,7 +709,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+        <section className="rounded-lg border border-gray-700 bg-gray-900/40 p-6">
           <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Step 2</p>
           <div className="mt-1 flex items-center justify-between">
             <div>
@@ -741,7 +741,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <section
-          className={`rounded-3xl border border-white/10 bg-white/5 p-6 ${!isConfigured ? 'opacity-40 pointer-events-none' : ''}`}
+          className={`rounded-lg border border-gray-700 bg-gray-900/40 p-6 ${!isConfigured ? 'opacity-40 pointer-events-none' : ''}`}
         >
           <div className="flex items-center justify-between">
             <div>
@@ -874,7 +874,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
         </section>
 
         <section
-          className={`rounded-3xl border border-white/10 bg-white/5 p-6 ${!isConfigured ? 'opacity-40 pointer-events-none' : ''}`}
+          className={`rounded-lg border border-gray-700 bg-gray-900/40 p-6 ${!isConfigured ? 'opacity-40 pointer-events-none' : ''}`}
         >
           <div className="flex items-center justify-between">
             <div>

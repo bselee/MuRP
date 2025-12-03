@@ -31,9 +31,9 @@ import EnhancedBomCard from '../components/EnhancedBomCard';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
 import ScheduleBuildModal from '../components/ScheduleBuildModal';
 import { usePermissions } from '../hooks/usePermissions';
-import { useSupabaseLabels, useSupabaseComplianceRecords } from '../hooks/useSupabaseData';
 import { supabase } from '../lib/supabase/client';
 import { fetchComponentSwapRules, mapComponentSwaps } from '../services/componentSwapService';
+import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability' | 'category' | 'velocity' | 'runway';
@@ -87,12 +87,15 @@ const readStoredGroupBy = (): GroupByOption => {
   return validOptions.includes(stored as GroupByOption) ? (stored as GroupByOption) : 'none';
 };
 
+<<<<<<< HEAD
 const readStoredCategoryFilter = (): Set<string> => {
   if (typeof window === 'undefined') return new Set();
   const saved = localStorage.getItem('bom-selected-categories');
   return saved ? new Set(JSON.parse(saved)) : new Set();
 };
 
+=======
+>>>>>>> claude-fix-finale
 const BOMs: React.FC<BOMsProps> = ({
   boms,
   inventory,
@@ -130,7 +133,14 @@ const BOMs: React.FC<BOMsProps> = ({
 
   // New UI state with persistent storage
   const [searchQuery, setSearchQuery] = useState('');
+<<<<<<< HEAD
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => readStoredCategoryFilter());
+=======
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('bom-selected-categories');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+>>>>>>> claude-fix-finale
   const [buildabilityFilter, setBuildabilityFilter] = useState<BuildabilityFilter>(() => readStoredBuildabilityFilter());
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [categorySearchTerm, setCategorySearchTerm] = useState('');
@@ -139,6 +149,14 @@ const BOMs: React.FC<BOMsProps> = ({
   const [groupBy, setGroupBy] = useState<GroupByOption>(() => readStoredGroupBy());
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [categorySearchTerm, setCategorySearchTerm] = useState('');
+  const [isCategoryManagementOpen, setIsCategoryManagementOpen] = useState(false);
+  const [categoryConfig, setCategoryConfig] = useState<Record<string, CategoryConfig>>(() => {
+    const saved = localStorage.getItem('bom-category-config');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const categoryDropdownRef = React.useRef<HTMLDivElement>(null);
   
   // Persist filter preferences
   useEffect(() => {
@@ -147,19 +165,9 @@ const BOMs: React.FC<BOMsProps> = ({
       localStorage.setItem('bomSortBy', sortBy);
       localStorage.setItem('bomGroupBy', groupBy);
       localStorage.setItem('bom-selected-categories', JSON.stringify(Array.from(selectedCategories)));
+      localStorage.setItem('bom-category-config', JSON.stringify(categoryConfig));
     }
-  }, [buildabilityFilter, sortBy, groupBy, selectedCategories]);
-
-  // Close category dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
-        setIsCategoryDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [buildabilityFilter, sortBy, groupBy, selectedCategories, categoryConfig]);
 
   const bomLookupBySku = useMemo(() => {
     const map = new Map<string, BillOfMaterials>();
@@ -189,6 +197,10 @@ const BOMs: React.FC<BOMsProps> = ({
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isComplianceOpen, setIsComplianceOpen] = useState(false);
+
+  // Page-level data fetching for labels and compliance records to avoid N+1 query problem
+  const [allLabelsMap, setAllLabelsMap] = useState<Map<string, any[]>>(new Map());
+  const [allComplianceMap, setAllComplianceMap] = useState<Map<string, any[]>>(new Map());
 
   // Debug inventory integration
   useEffect(() => {
@@ -236,6 +248,174 @@ const BOMs: React.FC<BOMsProps> = ({
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Fetch all labels and compliance records at once to avoid overwhelming the browser
+  useEffect(() => {
+    if (boms.length === 0) {
+      setAllLabelsMap(new Map());
+      setAllComplianceMap(new Map());
+      return;
+    }
+
+    let isMounted = true;
+    const bomIds = boms.map(b => b.id);
+
+    const fetchAllData = async () => {
+      try {
+        // Fetch all labels in one query
+        const { data: labelsData, error: labelsError } = await supabase
+          .from('labels')
+          .select('*')
+          .in('bom_id', bomIds)
+          .order('created_at', { ascending: false });
+
+        if (labelsError) throw labelsError;
+
+        // Group labels by bom_id
+        const labelsMap = new Map<string, any[]>();
+        (labelsData || []).forEach((label: any) => {
+          const bomId = label.bom_id;
+          if (!labelsMap.has(bomId)) {
+            labelsMap.set(bomId, []);
+          }
+          // Transform from snake_case to camelCase
+          labelsMap.get(bomId)!.push({
+            id: label.id,
+            fileName: label.file_name,
+            fileUrl: label.file_url,
+            fileSize: label.file_size,
+            mimeType: label.mime_type,
+            barcode: label.barcode,
+            productName: label.product_name,
+            netWeight: label.net_weight,
+            revision: label.revision,
+            bomId: label.bom_id,
+            scanStatus: label.scan_status,
+            scanCompletedAt: label.scan_completed_at,
+            scanError: label.scan_error,
+            extractedData: label.extracted_data,
+            ingredientComparison: label.ingredient_comparison,
+            verified: label.verified,
+            verifiedBy: label.verified_by,
+            verifiedAt: label.verified_at,
+            fileType: label.file_type,
+            status: label.status,
+            approvedBy: label.approved_by,
+            approvedDate: label.approved_date,
+            notes: label.notes,
+            uploadedBy: label.uploaded_by,
+            createdAt: label.created_at,
+            updatedAt: label.updated_at,
+          });
+        });
+
+        // Fetch all compliance records in one query
+        const { data: complianceData, error: complianceError } = await supabase
+          .from('compliance_records')
+          .select('*')
+          .in('bom_id', bomIds)
+          .order('expiration_date', { ascending: true });
+
+        if (complianceError) throw complianceError;
+
+        // Group compliance records by bom_id
+        const complianceMap = new Map<string, any[]>();
+        (complianceData || []).forEach((record: any) => {
+          const bomId = record.bom_id;
+          if (!complianceMap.has(bomId)) {
+            complianceMap.set(bomId, []);
+          }
+          // Transform from snake_case to camelCase
+          complianceMap.get(bomId)!.push({
+            id: record.id,
+            bomId: record.bom_id,
+            labelId: record.label_id,
+            complianceType: record.compliance_type,
+            category: record.category,
+            issuingAuthority: record.issuing_authority,
+            stateCode: record.state_code,
+            stateName: record.state_name,
+            registrationNumber: record.registration_number,
+            licenseNumber: record.license_number,
+            registeredDate: record.registered_date,
+            effectiveDate: record.effective_date,
+            expirationDate: record.expiration_date,
+            renewalDate: record.renewal_date,
+            lastRenewedDate: record.last_renewed_date,
+            status: record.status,
+            daysUntilExpiration: record.days_until_expiration,
+            registrationFee: record.registration_fee,
+            renewalFee: record.renewal_fee,
+            lateFee: record.late_fee,
+            currency: record.currency,
+            paymentStatus: record.payment_status,
+            certificateUrl: record.certificate_url,
+            certificateFileName: record.certificate_file_name,
+            certificateFileSize: record.certificate_file_size,
+            additionalDocuments: record.additional_documents,
+            dueSoonAlertSent: record.due_soon_alert_sent,
+            urgentAlertSent: record.urgent_alert_sent,
+            expirationAlertSent: record.expiration_alert_sent,
+            alertEmailAddresses: record.alert_email_addresses,
+            requirements: record.requirements,
+            restrictions: record.restrictions,
+            conditions: record.conditions,
+            contactPerson: record.contact_person,
+            contactEmail: record.contact_email,
+            contactPhone: record.contact_phone,
+            authorityWebsite: record.authority_website,
+            assignedTo: record.assigned_to,
+            priority: record.priority,
+            notes: record.notes,
+            internalNotes: record.internal_notes,
+            createdBy: record.created_by,
+            createdAt: record.created_at,
+            updatedAt: record.updated_at,
+            lastVerifiedAt: record.last_verified_at,
+            lastVerifiedBy: record.last_verified_by,
+          });
+        });
+
+        if (isMounted) {
+          setAllLabelsMap(labelsMap);
+          setAllComplianceMap(complianceMap);
+        }
+      } catch (error) {
+        console.error('[BOMs] Failed to fetch labels/compliance data:', error);
+        if (isMounted) {
+          setAllLabelsMap(new Map());
+          setAllComplianceMap(new Map());
+        }
+      }
+    };
+
+    fetchAllData();
+
+    // Set up real-time subscriptions for labels and compliance records
+    const labelsChannel = supabase
+      .channel('boms-labels-all')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'labels' },
+        () => fetchAllData()
+      )
+      .subscribe();
+
+    const complianceChannel = supabase
+      .channel('boms-compliance-all')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'compliance_records' },
+        () => fetchAllData()
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(labelsChannel);
+      supabase.removeChannel(complianceChannel);
+    };
+  }, [boms]);
 
   // Normalize BOMs so missing component arrays don't hide entire records
   const filteredBoms = useMemo(() => {
@@ -473,12 +653,70 @@ const BOMs: React.FC<BOMsProps> = ({
     return Array.from(cats).sort();
   }, [filteredBoms]);
 
+<<<<<<< HEAD
   // Filtered categories for search in dropdown
   const filteredCategories = useMemo(() => {
     if (!categorySearchTerm.trim()) return categories;
     const query = categorySearchTerm.toLowerCase();
     return categories.filter(cat => cat.toLowerCase().includes(query));
   }, [categories, categorySearchTerm]);
+=======
+  // Category label mapping
+  const categoryLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    Object.entries(categoryConfig).forEach(([key, config]) => {
+      if (config.label) {
+        map.set(key, config.label);
+      }
+    });
+    return map;
+  }, [categoryConfig]);
+
+  // Format category label for display
+  const formatCategoryLabel = (category: string) => {
+    return categoryLabelMap.get(category) || category;
+  };
+
+  // Filtered categories for search
+  const filteredCategories = useMemo(() => {
+    if (!categorySearchTerm.trim()) return categories;
+    const search = categorySearchTerm.toLowerCase();
+    return categories.filter(cat => {
+      const label = formatCategoryLabel(cat).toLowerCase();
+      return label.includes(search) || cat.toLowerCase().includes(search);
+    });
+  }, [categories, categorySearchTerm, categoryLabelMap]);
+
+  // Category selection handlers
+  const toggleCategory = (category: string) => {
+    const newSelection = new Set(selectedCategories);
+    if (newSelection.has(category)) {
+      newSelection.delete(category);
+    } else {
+      newSelection.add(category);
+    }
+    setSelectedCategories(newSelection);
+  };
+
+  const selectAllCategories = () => {
+    setSelectedCategories(new Set(categories));
+  };
+
+  const clearAllCategories = () => {
+    setSelectedCategories(new Set());
+  };
+
+  // Click outside to close category dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+>>>>>>> claude-fix-finale
 
   // Apply search, filters, and sorting
   const processedBoms = useMemo(() => {
@@ -506,7 +744,11 @@ const BOMs: React.FC<BOMsProps> = ({
 
     // Category filter
     if (selectedCategories.size > 0) {
+<<<<<<< HEAD
       result = result.filter(bom => selectedCategories.has(bom.category || 'Uncategorized'));
+=======
+      result = result.filter(bom => bom.category && selectedCategories.has(bom.category));
+>>>>>>> claude-fix-finale
     }
 
     // Buildability filter
@@ -626,15 +868,11 @@ const BOMs: React.FC<BOMsProps> = ({
     return groups;
   }, [processedBoms, groupBy, inventoryMap]);
 
-  const BomCard: React.FC<{ bom: BillOfMaterials }> = ({ bom }) => {
+  const BomCard: React.FC<{ bom: BillOfMaterials; labels?: any[]; complianceRecords?: any[] }> = ({ bom, labels = [], complianceRecords = [] }) => {
     const isExpanded = expandedBoms.has(bom.id);
     const finishedItem = inventoryMap.get(bom.finishedSku);
     const finishedStock = finishedItem?.stock || 0;
     const buildability = calculateBuildability(bom);
-
-    // Fetch labels and compliance records from relational tables
-    const { data: labels } = useSupabaseLabels(bom.id);
-    const { data: complianceRecords } = useSupabaseComplianceRecords(bom.id);
 
     const queuedComponents = useMemo(() => {
       const map: Record<string, { status: string; poId: string | null }> = {};
@@ -846,14 +1084,23 @@ const BOMs: React.FC<BOMsProps> = ({
             <div ref={categoryDropdownRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-20'}`}>
               <Button
                 onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+<<<<<<< HEAD
                 className={`min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
+=======
+                className={`min-w-[160px] bg-gray-700 text-white rounded-xl px-4 py-2.5 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
+>>>>>>> claude-fix-finale
               >
                 {selectedCategories.size > 0 && (
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent-500 rounded-full"></span>
                 )}
                 <span className="truncate">
+<<<<<<< HEAD
                   {selectedCategories.size === 0 
                     ? 'All Categories' 
+=======
+                  {selectedCategories.size === 0
+                    ? 'All Categories'
+>>>>>>> claude-fix-finale
                     : selectedCategories.size === categories.length
                     ? 'All Categories'
                     : `${selectedCategories.size} selected`}
@@ -875,6 +1122,19 @@ const BOMs: React.FC<BOMsProps> = ({
                     >
                       Clear
                     </Button>
+<<<<<<< HEAD
+=======
+                    <Button
+                      onClick={() => {
+                        setIsCategoryDropdownOpen(false);
+                        setIsCategoryManagementOpen(true);
+                      }}
+                      className="ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 bg-gray-600 rounded flex items-center gap-1"
+                    >
+                      <AdjustmentsHorizontalIcon className="w-3 h-3" />
+                      Manage
+                    </Button>
+>>>>>>> claude-fix-finale
                   </div>
                   <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
                     <input
@@ -890,6 +1150,7 @@ const BOMs: React.FC<BOMsProps> = ({
                     {filteredCategories.length === 0 ? (
                       <div className="p-3 text-center text-gray-400 text-sm">No categories found</div>
                     ) : (
+<<<<<<< HEAD
                       filteredCategories.map(category => (
                         <label 
                           key={category} 
@@ -904,6 +1165,25 @@ const BOMs: React.FC<BOMsProps> = ({
                           <span className="text-sm text-white" title={category}>{category}</span>
                         </label>
                       ))
+=======
+                      filteredCategories.map(category => {
+                        const label = categoryLabelMap.get(category) || formatCategoryLabel(category);
+                        return (
+                          <label
+                            key={category}
+                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedCategories.has(category)}
+                              onChange={() => toggleCategory(category)}
+                              className="w-4 h-4 mr-2 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
+                            />
+                            <span className="text-sm text-white" title={category}>{label}</span>
+                          </label>
+                        );
+                      })
+>>>>>>> claude-fix-finale
                     )}
                   </div>
                 </div>
@@ -993,7 +1273,12 @@ const BOMs: React.FC<BOMsProps> = ({
                   )}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {boms.map(bom => (
-                      <BomCard key={bom.id} bom={bom} />
+                      <BomCard
+                        key={bom.id}
+                        bom={bom}
+                        labels={allLabelsMap.get(bom.id) || []}
+                        complianceRecords={allComplianceMap.get(bom.id) || []}
+                      />
                     ))}
                   </div>
                 </div>
@@ -1143,6 +1428,20 @@ const BOMs: React.FC<BOMsProps> = ({
         inventory={inventory}
         onCreate={(items, options) => onCreateRequisition(items, options)}
       />
+
+      {/* Category Management Modal */}
+      {isCategoryManagementOpen && (
+        <CategoryManagementModal
+          isOpen={isCategoryManagementOpen}
+          onClose={() => setIsCategoryManagementOpen(false)}
+          categories={categories}
+          categoryConfig={categoryConfig}
+          onSave={(config) => {
+            setCategoryConfig(config);
+            setIsCategoryManagementOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };
