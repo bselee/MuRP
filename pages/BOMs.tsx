@@ -33,6 +33,7 @@ import ScheduleBuildModal from '../components/ScheduleBuildModal';
 import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase/client';
 import { fetchComponentSwapRules, mapComponentSwaps } from '../services/componentSwapService';
+import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability' | 'category' | 'velocity' | 'runway';
@@ -86,11 +87,6 @@ const readStoredGroupBy = (): GroupByOption => {
   return validOptions.includes(stored as GroupByOption) ? (stored as GroupByOption) : 'none';
 };
 
-const readStoredCategoryFilter = (): string => {
-  if (typeof window === 'undefined') return 'all';
-  return localStorage.getItem('bomCategoryFilter') || 'all';
-};
-
 const BOMs: React.FC<BOMsProps> = ({
   boms,
   inventory,
@@ -128,12 +124,23 @@ const BOMs: React.FC<BOMsProps> = ({
 
   // New UI state with persistent storage
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>(() => readStoredCategoryFilter());
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('bom-selected-categories');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   const [buildabilityFilter, setBuildabilityFilter] = useState<BuildabilityFilter>(() => readStoredBuildabilityFilter());
   const [sortBy, setSortBy] = useState<SortOption>(() => readStoredSortOption());
   const [groupBy, setGroupBy] = useState<GroupByOption>(() => readStoredGroupBy());
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [categorySearchTerm, setCategorySearchTerm] = useState('');
+  const [isCategoryManagementOpen, setIsCategoryManagementOpen] = useState(false);
+  const [categoryConfig, setCategoryConfig] = useState<Record<string, CategoryConfig>>(() => {
+    const saved = localStorage.getItem('bom-category-config');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const categoryDropdownRef = React.useRef<HTMLDivElement>(null);
   
   // Persist filter preferences
   useEffect(() => {
@@ -141,9 +148,10 @@ const BOMs: React.FC<BOMsProps> = ({
       localStorage.setItem('bomStatusFilter', buildabilityFilter);
       localStorage.setItem('bomSortBy', sortBy);
       localStorage.setItem('bomGroupBy', groupBy);
-      localStorage.setItem('bomCategoryFilter', categoryFilter);
+      localStorage.setItem('bom-selected-categories', JSON.stringify(Array.from(selectedCategories)));
+      localStorage.setItem('bom-category-config', JSON.stringify(categoryConfig));
     }
-  }, [buildabilityFilter, sortBy, groupBy, categoryFilter]);
+  }, [buildabilityFilter, sortBy, groupBy, selectedCategories, categoryConfig]);
 
   const bomLookupBySku = useMemo(() => {
     const map = new Map<string, BillOfMaterials>();
@@ -611,6 +619,62 @@ const BOMs: React.FC<BOMsProps> = ({
     return Array.from(cats).sort();
   }, [filteredBoms]);
 
+  // Category label mapping
+  const categoryLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    Object.entries(categoryConfig).forEach(([key, config]) => {
+      if (config.label) {
+        map.set(key, config.label);
+      }
+    });
+    return map;
+  }, [categoryConfig]);
+
+  // Format category label for display
+  const formatCategoryLabel = (category: string) => {
+    return categoryLabelMap.get(category) || category;
+  };
+
+  // Filtered categories for search
+  const filteredCategories = useMemo(() => {
+    if (!categorySearchTerm.trim()) return categories;
+    const search = categorySearchTerm.toLowerCase();
+    return categories.filter(cat => {
+      const label = formatCategoryLabel(cat).toLowerCase();
+      return label.includes(search) || cat.toLowerCase().includes(search);
+    });
+  }, [categories, categorySearchTerm, categoryLabelMap]);
+
+  // Category selection handlers
+  const toggleCategory = (category: string) => {
+    const newSelection = new Set(selectedCategories);
+    if (newSelection.has(category)) {
+      newSelection.delete(category);
+    } else {
+      newSelection.add(category);
+    }
+    setSelectedCategories(newSelection);
+  };
+
+  const selectAllCategories = () => {
+    setSelectedCategories(new Set(categories));
+  };
+
+  const clearAllCategories = () => {
+    setSelectedCategories(new Set());
+  };
+
+  // Click outside to close category dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Apply search, filters, and sorting
   const processedBoms = useMemo(() => {
     let result = [...filteredBoms];
@@ -636,8 +700,8 @@ const BOMs: React.FC<BOMsProps> = ({
     }
 
     // Category filter
-    if (categoryFilter !== 'all') {
-      result = result.filter(bom => bom.category === categoryFilter);
+    if (selectedCategories.size > 0) {
+      result = result.filter(bom => bom.category && selectedCategories.has(bom.category));
     }
 
     // Buildability filter
@@ -700,7 +764,7 @@ const BOMs: React.FC<BOMsProps> = ({
     });
 
     return result;
-  }, [filteredBoms, searchQuery, categoryFilter, buildabilityFilter, sortBy, inventoryMap, componentFilter]);
+  }, [filteredBoms, searchQuery, selectedCategories, buildabilityFilter, sortBy, inventoryMap, componentFilter]);
 
   // Identify critical alerts
   const criticalBoms = useMemo(() => {
@@ -969,17 +1033,86 @@ const BOMs: React.FC<BOMsProps> = ({
               <option value="near-oos">Near OOS (≤10d)</option>
             </select>
 
-            {/* Category Filter */}
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
-            >
-              <option value="all">All Categories</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+            {/* Multi-select Category Filter */}
+            <div ref={categoryDropdownRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-20'}`}>
+              <Button
+                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                className={`min-w-[160px] bg-gray-700 text-white rounded-xl px-4 py-2.5 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
+              >
+                {selectedCategories.size > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent-500 rounded-full"></span>
+                )}
+                <span className="truncate">
+                  {selectedCategories.size === 0
+                    ? 'All Categories'
+                    : selectedCategories.size === categories.length
+                    ? 'All Categories'
+                    : `${selectedCategories.size} selected`}
+                </span>
+                <ChevronDownIcon className="w-4 h-4 ml-2" />
+              </Button>
+              {isCategoryDropdownOpen && (
+                <div className="absolute z-[100] w-full mt-1 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden bg-gray-900">
+                  <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2 bg-gray-900">
+                    <Button
+                      onClick={selectAllCategories}
+                      className="text-xs text-accent-400 hover:text-accent-300 px-2 py-1 bg-gray-600 rounded"
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      onClick={clearAllCategories}
+                      className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setIsCategoryDropdownOpen(false);
+                        setIsCategoryManagementOpen(true);
+                      }}
+                      className="ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 bg-gray-600 rounded flex items-center gap-1"
+                    >
+                      <AdjustmentsHorizontalIcon className="w-3 h-3" />
+                      Manage
+                    </Button>
+                  </div>
+                  <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
+                    <input
+                      type="text"
+                      value={categorySearchTerm}
+                      onChange={(e) => setCategorySearchTerm(e.target.value)}
+                      placeholder="Search categories..."
+                      className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border border-gray-600"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="max-h-60 overflow-auto">
+                    {filteredCategories.length === 0 ? (
+                      <div className="p-3 text-center text-gray-400 text-sm">No categories found</div>
+                    ) : (
+                      filteredCategories.map(category => {
+                        const label = categoryLabelMap.get(category) || formatCategoryLabel(category);
+                        return (
+                          <label
+                            key={category}
+                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedCategories.has(category)}
+                              onChange={() => toggleCategory(category)}
+                              className="w-4 h-4 mr-2 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
+                            />
+                            <span className="text-sm text-white" title={category}>{label}</span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Sort By */}
             <select
@@ -1219,6 +1352,20 @@ const BOMs: React.FC<BOMsProps> = ({
         inventory={inventory}
         onCreate={(items, options) => onCreateRequisition(items, options)}
       />
+
+      {/* Category Management Modal */}
+      {isCategoryManagementOpen && (
+        <CategoryManagementModal
+          isOpen={isCategoryManagementOpen}
+          onClose={() => setIsCategoryManagementOpen(false)}
+          categories={categories}
+          categoryConfig={categoryConfig}
+          onSave={(config) => {
+            setCategoryConfig(config);
+            setIsCategoryManagementOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };
