@@ -87,9 +87,10 @@ const readStoredGroupBy = (): GroupByOption => {
   return validOptions.includes(stored as GroupByOption) ? (stored as GroupByOption) : 'none';
 };
 
-const readStoredCategoryFilter = (): string => {
-  if (typeof window === 'undefined') return 'all';
-  return localStorage.getItem('bomCategoryFilter') || 'all';
+const readStoredCategoryFilter = (): Set<string> => {
+  if (typeof window === 'undefined') return new Set();
+  const saved = localStorage.getItem('bom-selected-categories');
+  return saved ? new Set(JSON.parse(saved)) : new Set();
 };
 
 const BOMs: React.FC<BOMsProps> = ({
@@ -129,8 +130,11 @@ const BOMs: React.FC<BOMsProps> = ({
 
   // New UI state with persistent storage
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>(() => readStoredCategoryFilter());
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => readStoredCategoryFilter());
   const [buildabilityFilter, setBuildabilityFilter] = useState<BuildabilityFilter>(() => readStoredBuildabilityFilter());
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [categorySearchTerm, setCategorySearchTerm] = useState('');
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const [sortBy, setSortBy] = useState<SortOption>(() => readStoredSortOption());
   const [groupBy, setGroupBy] = useState<GroupByOption>(() => readStoredGroupBy());
   const [viewMode, setViewMode] = useState<ViewMode>('card');
@@ -142,15 +146,44 @@ const BOMs: React.FC<BOMsProps> = ({
       localStorage.setItem('bomStatusFilter', buildabilityFilter);
       localStorage.setItem('bomSortBy', sortBy);
       localStorage.setItem('bomGroupBy', groupBy);
-      localStorage.setItem('bomCategoryFilter', categoryFilter);
+      localStorage.setItem('bom-selected-categories', JSON.stringify(Array.from(selectedCategories)));
     }
-  }, [buildabilityFilter, sortBy, groupBy, categoryFilter]);
+  }, [buildabilityFilter, sortBy, groupBy, selectedCategories]);
+
+  // Close category dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const bomLookupBySku = useMemo(() => {
     const map = new Map<string, BillOfMaterials>();
     boms.forEach(bom => map.set(bom.finishedSku, bom));
     return map;
   }, [boms]);
+
+  const toggleCategory = (category: string) => {
+    const newSet = new Set(selectedCategories);
+    if (newSet.has(category)) {
+      newSet.delete(category);
+    } else {
+      newSet.add(category);
+    }
+    setSelectedCategories(newSet);
+  };
+
+  const selectAllCategories = () => {
+    setSelectedCategories(new Set(categories));
+  };
+
+  const clearAllCategories = () => {
+    setSelectedCategories(new Set());
+  };
   
   // Collapsible sections state
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
@@ -440,6 +473,13 @@ const BOMs: React.FC<BOMsProps> = ({
     return Array.from(cats).sort();
   }, [filteredBoms]);
 
+  // Filtered categories for search in dropdown
+  const filteredCategories = useMemo(() => {
+    if (!categorySearchTerm.trim()) return categories;
+    const query = categorySearchTerm.toLowerCase();
+    return categories.filter(cat => cat.toLowerCase().includes(query));
+  }, [categories, categorySearchTerm]);
+
   // Apply search, filters, and sorting
   const processedBoms = useMemo(() => {
     let result = [...filteredBoms];
@@ -465,8 +505,8 @@ const BOMs: React.FC<BOMsProps> = ({
     }
 
     // Category filter
-    if (categoryFilter !== 'all') {
-      result = result.filter(bom => bom.category === categoryFilter);
+    if (selectedCategories.size > 0) {
+      result = result.filter(bom => selectedCategories.has(bom.category || 'Uncategorized'));
     }
 
     // Buildability filter
@@ -529,7 +569,7 @@ const BOMs: React.FC<BOMsProps> = ({
     });
 
     return result;
-  }, [filteredBoms, searchQuery, categoryFilter, buildabilityFilter, sortBy, inventoryMap, componentFilter]);
+  }, [filteredBoms, searchQuery, selectedCategories, buildabilityFilter, sortBy, inventoryMap, componentFilter]);
 
   // Identify critical alerts
   const criticalBoms = useMemo(() => {
@@ -802,17 +842,73 @@ const BOMs: React.FC<BOMsProps> = ({
               <option value="near-oos">Near OOS (≤10d)</option>
             </select>
 
-            {/* Category Filter */}
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
-            >
-              <option value="all">All Categories</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+            {/* Multi-select Category Filter */}
+            <div ref={categoryDropdownRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-20'}`}>
+              <Button
+                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                className={`min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
+              >
+                {selectedCategories.size > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent-500 rounded-full"></span>
+                )}
+                <span className="truncate">
+                  {selectedCategories.size === 0 
+                    ? 'All Categories' 
+                    : selectedCategories.size === categories.length
+                    ? 'All Categories'
+                    : `${selectedCategories.size} selected`}
+                </span>
+                <ChevronDownIcon className="w-4 h-4 ml-2" />
+              </Button>
+              {isCategoryDropdownOpen && (
+                <div className="absolute z-[100] w-full mt-1 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden bg-gray-900">
+                  <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2 bg-gray-900">
+                    <Button
+                      onClick={selectAllCategories}
+                      className="text-xs text-accent-400 hover:text-accent-300 px-2 py-1 bg-gray-600 rounded"
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      onClick={clearAllCategories}
+                      className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
+                    <input
+                      type="text"
+                      value={categorySearchTerm}
+                      onChange={(e) => setCategorySearchTerm(e.target.value)}
+                      placeholder="Search categories..."
+                      className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border border-gray-600"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="max-h-60 overflow-auto">
+                    {filteredCategories.length === 0 ? (
+                      <div className="p-3 text-center text-gray-400 text-sm">No categories found</div>
+                    ) : (
+                      filteredCategories.map(category => (
+                        <label 
+                          key={category} 
+                          className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedCategories.has(category)}
+                            onChange={() => toggleCategory(category)}
+                            className="w-4 h-4 mr-2 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
+                          />
+                          <span className="text-sm text-white" title={category}>{category}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Sort By */}
             <select

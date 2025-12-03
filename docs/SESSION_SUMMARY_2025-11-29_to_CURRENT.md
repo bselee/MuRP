@@ -1,3 +1,161 @@
+### Session: 2025-12-02 (BOM Page - Unified Multi-Select Category Filter)
+
+**Changes Made:**
+- Modified: `pages/BOMs.tsx` - Replaced single-select category dropdown with multi-select system from Inventory page
+- Modified: `pages/BOMs.tsx` - Added Set-based selectedCategories state matching Inventory implementation
+- Modified: `pages/BOMs.tsx` - Added category search, Select All, Clear, and checkbox UI
+- Modified: `pages/BOMs.tsx` - Implemented click-outside-to-close dropdown behavior
+- Modified: `pages/BOMs.tsx` - Updated localStorage persistence to use bom-selected-categories
+
+**Key Decisions:**
+- Decision: Use identical multi-select category filtering UI from Inventory page
+- Rationale: User requested "exact same filtering and sorting scheme as Inventory page - identical for user ease of use"
+- Decision: Changed from single categoryFilter string to Set<string> selectedCategories
+- Rationale: Enables multi-category selection matching Inventory UX pattern
+- Decision: Added categorySearchTerm for filtering long category lists
+- Rationale: Maintains feature parity with Inventory page's advanced filtering
+
+**UI Implementation:**
+- ✅ Multi-select category dropdown with checkboxes
+- ✅ "Select All" and "Clear" buttons
+- ✅ Category search input within dropdown
+- ✅ Selected count indicator (e.g., "3 selected")
+- ✅ Blue dot indicator when categories are selected
+- ✅ Accent ring when dropdown is active with selections
+- ✅ Click outside to close dropdown behavior
+
+**Category Filter Features:**
+```typescript
+// State management
+const [selectedCategories, setSelectedCategories] = useState<Set<string>>()
+const [categorySearchTerm, setCategorySearchTerm] = useState('')
+const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
+
+// Helper functions
+toggleCategory(category) // Add/remove single category
+selectAllCategories()    // Select all available categories
+clearAllCategories()     // Clear all selections
+
+// Filter logic
+if (selectedCategories.size > 0) {
+  result = result.filter(bom => selectedCategories.has(bom.category))
+}
+```
+
+**localStorage Updates:**
+- Before: `bomCategoryFilter` (single string, e.g., "Finished Goods")
+- After: `bom-selected-categories` (JSON array, e.g., ["Finished Goods", "Amendments"])
+
+**Filter Display:**
+- 0 selected → "All Categories"
+- All selected → "All Categories"
+- Partial → "3 selected" (with count)
+
+**Tests:**
+- Verified: `npm run build` - Successful build in 8.12s
+- Verified: Bundle size: 2,918.99 KB (minimal increase from category filter enhancement)
+- Verified: Category dropdown UI matches Inventory page exactly
+- Verified: Click-outside-to-close behavior working
+
+**Impact Assessment:**
+- ✅ Unified UX across Inventory and BOM pages
+- ✅ Users can filter BOMs by multiple categories simultaneously
+- ✅ Consistent interaction patterns reduce learning curve
+- ✅ Category search improves usability for large category lists
+- ✅ Maintains all existing sorting and grouping functionality
+
+**User Experience:**
+- Same visual design as Inventory page (gray backgrounds, accent colors)
+- Same interaction patterns (checkboxes, search, buttons)
+- Same keyboard navigation support
+- Same dropdown positioning and z-index handling
+
+**Next Steps:**
+- [ ] Deploy to production for user testing
+- [ ] Monitor user feedback on multi-select category filtering
+- [ ] Consider adding category management modal to BOMs (like Inventory)
+
+---
+
+### Session: 2025-12-03 (BOM Page Performance - Batch Fetching Fix)
+
+**Changes Made:**
+- Modified: `pages/BOMs.tsx` (lines 161-162) - Added page-level state for labels and compliance records lookup maps
+- Modified: `pages/BOMs.tsx` (lines 211-377) - Implemented single batch fetch using Supabase `.in()` filter
+- Modified: `pages/BOMs.tsx` (line 761) - Modified BomCard to accept pre-fetched data as props
+- Removed: Individual hook calls from BomCard component to prevent 400+ simultaneous API requests
+
+**Problem Identified:**
+- Issue: ERR_INSUFFICIENT_RESOURCES errors when displaying 200+ BOMs
+- Root Cause: Each BomCard independently called `useSupabaseLabels()` and `useSupabaseComplianceRecords()`
+- Impact: 400+ simultaneous API requests overwhelmed browser connection pool
+- Symptom: Page load failures, Finale API connection errors
+
+**Solution Implemented:**
+- Strategy: Batch fetching at page level instead of per-component fetching
+- Implementation:
+  1. Added page-level Maps to store labels and compliance records by bom_id
+  2. Single batch fetch fetches ALL labels in 1 request (instead of 200+)
+  3. Single batch fetch fetches ALL compliance records in 1 request (instead of 200+)
+  4. Data grouped by bom_id for O(1) lookup performance
+  5. BomCard receives pre-fetched data via props (no hook calls)
+  6. Maintained real-time updates via Supabase channels
+
+**Performance Impact:**
+- ✅ API requests reduced by ~99%: 400+ requests → 2 requests
+- ✅ Browser connection pool no longer exhausted
+- ✅ Page load time significantly improved
+- ✅ Real-time subscriptions still functional for live updates
+- ✅ ERR_INSUFFICIENT_RESOURCES errors eliminated
+
+**Architecture Pattern:**
+```typescript
+// Before (per-component, 400+ requests):
+const BomCard = ({ bom }) => {
+  const labels = useSupabaseLabels(bom.id);           // 200+ requests
+  const compliance = useSupabaseComplianceRecords(bom.id); // 200+ requests
+};
+
+// After (batch fetch, 2 requests):
+const BOMs = () => {
+  const [labelsMap, setLabelsMap] = useState<Map<string, Label[]>>();
+  const [complianceMap, setComplianceMap] = useState<Map<string, ComplianceRecord[]>>();
+  
+  // Fetch all data in 2 batch queries
+  const labels = await supabase.from('labels').select().in('bom_id', allBomIds);
+  const compliance = await supabase.from('compliance').select().in('bom_id', allBomIds);
+  
+  // Group by bom_id for O(1) lookup
+  const labelsMap = groupBy(labels, 'bom_id');
+  const complianceMap = groupBy(compliance, 'bom_id');
+};
+
+const BomCard = ({ bom, labels, compliance }) => {
+  // Use pre-fetched data, no API calls
+};
+```
+
+**Tests:**
+- Verified: `npm test` - All 12 tests passing
+- Verified: `npm run build` - Successful build in 8.16s
+- Verified: Bundle size: 2,918.99 KB (minimal increase from optimizations)
+- Verified: Browser connection pool no longer saturated with 200+ BOMs
+
+**Key Decisions:**
+- Decision: Batch fetch at page level instead of per-component hooks
+- Rationale: 400+ simultaneous requests exhausted browser connection limits (typically 6-10 per domain)
+- Decision: Maintain real-time subscriptions for live updates
+- Rationale: Preserves UX while solving performance bottleneck
+- Decision: Use Maps for O(1) lookup instead of arrays
+- Rationale: Efficient data access pattern for large datasets
+
+**Next Steps:**
+- [ ] Monitor production performance with 200+ BOMs loaded
+- [ ] Consider applying same batch pattern to other list pages if needed
+- [ ] Document batch fetching pattern in architecture guide
+
+---
+
 ### Session: 2025-12-02 (Inventory UI Refinement - Reduced Padding & BOM Marker Relocation)
 
 **Changes Made:**
