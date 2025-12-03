@@ -780,7 +780,7 @@ export function useSupabasePurchaseOrders(): UseSupabaseDataResult<PurchaseOrder
       // Fetch PO headers with line items from separate table
       const { data: pos, error: fetchError } = await supabase
         .from('purchase_orders')
-        .select('*, purchase_order_items(*), vendor_followup_events(count)')
+        .select('*, purchase_order_items(*)')
         .order('order_date', { ascending: false });
 
       if (fetchError) throw fetchError;
