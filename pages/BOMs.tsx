@@ -31,7 +31,6 @@ import EnhancedBomCard from '../components/EnhancedBomCard';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
 import ScheduleBuildModal from '../components/ScheduleBuildModal';
 import { usePermissions } from '../hooks/usePermissions';
-import { useSupabaseLabels, useSupabaseComplianceRecords } from '../hooks/useSupabaseData';
 import { supabase } from '../lib/supabase/client';
 import { fetchComponentSwapRules, mapComponentSwaps } from '../services/componentSwapService';
 
@@ -157,6 +156,10 @@ const BOMs: React.FC<BOMsProps> = ({
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isComplianceOpen, setIsComplianceOpen] = useState(false);
 
+  // Page-level data fetching for labels and compliance records to avoid N+1 query problem
+  const [allLabelsMap, setAllLabelsMap] = useState<Map<string, any[]>>(new Map());
+  const [allComplianceMap, setAllComplianceMap] = useState<Map<string, any[]>>(new Map());
+
   // Debug inventory integration
   useEffect(() => {
     // Component mounted/updated - no debug logging needed
@@ -203,6 +206,174 @@ const BOMs: React.FC<BOMsProps> = ({
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Fetch all labels and compliance records at once to avoid overwhelming the browser
+  useEffect(() => {
+    if (boms.length === 0) {
+      setAllLabelsMap(new Map());
+      setAllComplianceMap(new Map());
+      return;
+    }
+
+    let isMounted = true;
+    const bomIds = boms.map(b => b.id);
+
+    const fetchAllData = async () => {
+      try {
+        // Fetch all labels in one query
+        const { data: labelsData, error: labelsError } = await supabase
+          .from('labels')
+          .select('*')
+          .in('bom_id', bomIds)
+          .order('created_at', { ascending: false });
+
+        if (labelsError) throw labelsError;
+
+        // Group labels by bom_id
+        const labelsMap = new Map<string, any[]>();
+        (labelsData || []).forEach((label: any) => {
+          const bomId = label.bom_id;
+          if (!labelsMap.has(bomId)) {
+            labelsMap.set(bomId, []);
+          }
+          // Transform from snake_case to camelCase
+          labelsMap.get(bomId)!.push({
+            id: label.id,
+            fileName: label.file_name,
+            fileUrl: label.file_url,
+            fileSize: label.file_size,
+            mimeType: label.mime_type,
+            barcode: label.barcode,
+            productName: label.product_name,
+            netWeight: label.net_weight,
+            revision: label.revision,
+            bomId: label.bom_id,
+            scanStatus: label.scan_status,
+            scanCompletedAt: label.scan_completed_at,
+            scanError: label.scan_error,
+            extractedData: label.extracted_data,
+            ingredientComparison: label.ingredient_comparison,
+            verified: label.verified,
+            verifiedBy: label.verified_by,
+            verifiedAt: label.verified_at,
+            fileType: label.file_type,
+            status: label.status,
+            approvedBy: label.approved_by,
+            approvedDate: label.approved_date,
+            notes: label.notes,
+            uploadedBy: label.uploaded_by,
+            createdAt: label.created_at,
+            updatedAt: label.updated_at,
+          });
+        });
+
+        // Fetch all compliance records in one query
+        const { data: complianceData, error: complianceError } = await supabase
+          .from('compliance_records')
+          .select('*')
+          .in('bom_id', bomIds)
+          .order('expiration_date', { ascending: true });
+
+        if (complianceError) throw complianceError;
+
+        // Group compliance records by bom_id
+        const complianceMap = new Map<string, any[]>();
+        (complianceData || []).forEach((record: any) => {
+          const bomId = record.bom_id;
+          if (!complianceMap.has(bomId)) {
+            complianceMap.set(bomId, []);
+          }
+          // Transform from snake_case to camelCase
+          complianceMap.get(bomId)!.push({
+            id: record.id,
+            bomId: record.bom_id,
+            labelId: record.label_id,
+            complianceType: record.compliance_type,
+            category: record.category,
+            issuingAuthority: record.issuing_authority,
+            stateCode: record.state_code,
+            stateName: record.state_name,
+            registrationNumber: record.registration_number,
+            licenseNumber: record.license_number,
+            registeredDate: record.registered_date,
+            effectiveDate: record.effective_date,
+            expirationDate: record.expiration_date,
+            renewalDate: record.renewal_date,
+            lastRenewedDate: record.last_renewed_date,
+            status: record.status,
+            daysUntilExpiration: record.days_until_expiration,
+            registrationFee: record.registration_fee,
+            renewalFee: record.renewal_fee,
+            lateFee: record.late_fee,
+            currency: record.currency,
+            paymentStatus: record.payment_status,
+            certificateUrl: record.certificate_url,
+            certificateFileName: record.certificate_file_name,
+            certificateFileSize: record.certificate_file_size,
+            additionalDocuments: record.additional_documents,
+            dueSoonAlertSent: record.due_soon_alert_sent,
+            urgentAlertSent: record.urgent_alert_sent,
+            expirationAlertSent: record.expiration_alert_sent,
+            alertEmailAddresses: record.alert_email_addresses,
+            requirements: record.requirements,
+            restrictions: record.restrictions,
+            conditions: record.conditions,
+            contactPerson: record.contact_person,
+            contactEmail: record.contact_email,
+            contactPhone: record.contact_phone,
+            authorityWebsite: record.authority_website,
+            assignedTo: record.assigned_to,
+            priority: record.priority,
+            notes: record.notes,
+            internalNotes: record.internal_notes,
+            createdBy: record.created_by,
+            createdAt: record.created_at,
+            updatedAt: record.updated_at,
+            lastVerifiedAt: record.last_verified_at,
+            lastVerifiedBy: record.last_verified_by,
+          });
+        });
+
+        if (isMounted) {
+          setAllLabelsMap(labelsMap);
+          setAllComplianceMap(complianceMap);
+        }
+      } catch (error) {
+        console.error('[BOMs] Failed to fetch labels/compliance data:', error);
+        if (isMounted) {
+          setAllLabelsMap(new Map());
+          setAllComplianceMap(new Map());
+        }
+      }
+    };
+
+    fetchAllData();
+
+    // Set up real-time subscriptions for labels and compliance records
+    const labelsChannel = supabase
+      .channel('boms-labels-all')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'labels' },
+        () => fetchAllData()
+      )
+      .subscribe();
+
+    const complianceChannel = supabase
+      .channel('boms-compliance-all')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'compliance_records' },
+        () => fetchAllData()
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(labelsChannel);
+      supabase.removeChannel(complianceChannel);
+    };
+  }, [boms]);
 
   // Normalize BOMs so missing component arrays don't hide entire records
   const filteredBoms = useMemo(() => {
@@ -586,15 +757,11 @@ const BOMs: React.FC<BOMsProps> = ({
     return groups;
   }, [processedBoms, groupBy, inventoryMap]);
 
-  const BomCard: React.FC<{ bom: BillOfMaterials }> = ({ bom }) => {
+  const BomCard: React.FC<{ bom: BillOfMaterials; labels?: any[]; complianceRecords?: any[] }> = ({ bom, labels = [], complianceRecords = [] }) => {
     const isExpanded = expandedBoms.has(bom.id);
     const finishedItem = inventoryMap.get(bom.finishedSku);
     const finishedStock = finishedItem?.stock || 0;
     const buildability = calculateBuildability(bom);
-
-    // Fetch labels and compliance records from relational tables
-    const { data: labels } = useSupabaseLabels(bom.id);
-    const { data: complianceRecords } = useSupabaseComplianceRecords(bom.id);
 
     const queuedComponents = useMemo(() => {
       const map: Record<string, { status: string; poId: string | null }> = {};
@@ -897,7 +1064,12 @@ const BOMs: React.FC<BOMsProps> = ({
                   )}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {boms.map(bom => (
-                      <BomCard key={bom.id} bom={bom} />
+                      <BomCard
+                        key={bom.id}
+                        bom={bom}
+                        labels={allLabelsMap.get(bom.id) || []}
+                        complianceRecords={allComplianceMap.get(bom.id) || []}
+                      />
                     ))}
                   </div>
                 </div>
