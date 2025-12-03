@@ -87,15 +87,11 @@ const readStoredGroupBy = (): GroupByOption => {
   return validOptions.includes(stored as GroupByOption) ? (stored as GroupByOption) : 'none';
 };
 
-<<<<<<< HEAD
 const readStoredCategoryFilter = (): Set<string> => {
   if (typeof window === 'undefined') return new Set();
   const saved = localStorage.getItem('bom-selected-categories');
   return saved ? new Set(JSON.parse(saved)) : new Set();
 };
-
-=======
->>>>>>> claude-fix-finale
 const BOMs: React.FC<BOMsProps> = ({
   boms,
   inventory,
@@ -133,14 +129,7 @@ const BOMs: React.FC<BOMsProps> = ({
 
   // New UI state with persistent storage
   const [searchQuery, setSearchQuery] = useState('');
-<<<<<<< HEAD
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => readStoredCategoryFilter());
-=======
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
-    const saved = localStorage.getItem('bom-selected-categories');
-    return saved ? new Set(JSON.parse(saved)) : new Set();
-  });
->>>>>>> claude-fix-finale
   const [buildabilityFilter, setBuildabilityFilter] = useState<BuildabilityFilter>(() => readStoredBuildabilityFilter());
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [categorySearchTerm, setCategorySearchTerm] = useState('');
@@ -149,14 +138,7 @@ const BOMs: React.FC<BOMsProps> = ({
   const [groupBy, setGroupBy] = useState<GroupByOption>(() => readStoredGroupBy());
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);
-  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-  const [categorySearchTerm, setCategorySearchTerm] = useState('');
-  const [isCategoryManagementOpen, setIsCategoryManagementOpen] = useState(false);
-  const [categoryConfig, setCategoryConfig] = useState<Record<string, CategoryConfig>>(() => {
-    const saved = localStorage.getItem('bom-category-config');
-    return saved ? JSON.parse(saved) : {};
-  });
-  const categoryDropdownRef = React.useRef<HTMLDivElement>(null);
+  // Already declared above, remove duplicate declarations
   
   // Persist filter preferences
   useEffect(() => {
@@ -175,23 +157,7 @@ const BOMs: React.FC<BOMsProps> = ({
     return map;
   }, [boms]);
 
-  const toggleCategory = (category: string) => {
-    const newSet = new Set(selectedCategories);
-    if (newSet.has(category)) {
-      newSet.delete(category);
-    } else {
-      newSet.add(category);
-    }
-    setSelectedCategories(newSet);
-  };
-
-  const selectAllCategories = () => {
-    setSelectedCategories(new Set(categories));
-  };
-
-  const clearAllCategories = () => {
-    setSelectedCategories(new Set());
-  };
+  // Already declared above, remove duplicate declarations
   
   // Collapsible sections state
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
@@ -653,14 +619,6 @@ const BOMs: React.FC<BOMsProps> = ({
     return Array.from(cats).sort();
   }, [filteredBoms]);
 
-<<<<<<< HEAD
-  // Filtered categories for search in dropdown
-  const filteredCategories = useMemo(() => {
-    if (!categorySearchTerm.trim()) return categories;
-    const query = categorySearchTerm.toLowerCase();
-    return categories.filter(cat => cat.toLowerCase().includes(query));
-  }, [categories, categorySearchTerm]);
-=======
   // Category label mapping
   const categoryLabelMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -707,16 +665,7 @@ const BOMs: React.FC<BOMsProps> = ({
   };
 
   // Click outside to close category dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
-        setIsCategoryDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
->>>>>>> claude-fix-finale
+  // Already declared above, remove duplicate declarations
 
   // Apply search, filters, and sorting
   const processedBoms = useMemo(() => {
@@ -744,11 +693,7 @@ const BOMs: React.FC<BOMsProps> = ({
 
     // Category filter
     if (selectedCategories.size > 0) {
-<<<<<<< HEAD
-      result = result.filter(bom => selectedCategories.has(bom.category || 'Uncategorized'));
-=======
       result = result.filter(bom => bom.category && selectedCategories.has(bom.category));
->>>>>>> claude-fix-finale
     }
 
     // Buildability filter
@@ -1084,23 +1029,14 @@ const BOMs: React.FC<BOMsProps> = ({
             <div ref={categoryDropdownRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-20'}`}>
               <Button
                 onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-<<<<<<< HEAD
-                className={`min-w-[160px] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
-=======
                 className={`min-w-[160px] bg-gray-700 text-white rounded-xl px-4 py-2.5 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
->>>>>>> claude-fix-finale
               >
                 {selectedCategories.size > 0 && (
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent-500 rounded-full"></span>
                 )}
                 <span className="truncate">
-<<<<<<< HEAD
-                  {selectedCategories.size === 0 
-                    ? 'All Categories' 
-=======
                   {selectedCategories.size === 0
                     ? 'All Categories'
->>>>>>> claude-fix-finale
                     : selectedCategories.size === categories.length
                     ? 'All Categories'
                     : `${selectedCategories.size} selected`}
@@ -1122,8 +1058,6 @@ const BOMs: React.FC<BOMsProps> = ({
                     >
                       Clear
                     </Button>
-<<<<<<< HEAD
-=======
                     <Button
                       onClick={() => {
                         setIsCategoryDropdownOpen(false);
@@ -1134,7 +1068,6 @@ const BOMs: React.FC<BOMsProps> = ({
                       <AdjustmentsHorizontalIcon className="w-3 h-3" />
                       Manage
                     </Button>
->>>>>>> claude-fix-finale
                   </div>
                   <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
                     <input
@@ -1150,22 +1083,6 @@ const BOMs: React.FC<BOMsProps> = ({
                     {filteredCategories.length === 0 ? (
                       <div className="p-3 text-center text-gray-400 text-sm">No categories found</div>
                     ) : (
-<<<<<<< HEAD
-                      filteredCategories.map(category => (
-                        <label 
-                          key={category} 
-                          className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedCategories.has(category)}
-                            onChange={() => toggleCategory(category)}
-                            className="w-4 h-4 mr-2 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
-                          />
-                          <span className="text-sm text-white" title={category}>{category}</span>
-                        </label>
-                      ))
-=======
                       filteredCategories.map(category => {
                         const label = categoryLabelMap.get(category) || formatCategoryLabel(category);
                         return (
@@ -1183,7 +1100,6 @@ const BOMs: React.FC<BOMsProps> = ({
                           </label>
                         );
                       })
->>>>>>> claude-fix-finale
                     )}
                   </div>
                 </div>
