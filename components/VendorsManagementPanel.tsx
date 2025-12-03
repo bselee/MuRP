@@ -6,7 +6,7 @@
 import React, { useState, useMemo } from 'react';
 import Button from '@/components/ui/Button';
 import type { Vendor } from '../types';
-import { SearchIcon, CloudDownloadIcon, TableCellsIcon } from './icons';
+import { SearchIcon, ArrowDownTrayIcon, TableCellsIcon } from './icons';
 
 interface VendorsManagementPanelProps {
   vendors: Vendor[];
@@ -164,7 +164,7 @@ const VendorsManagementPanel: React.FC<VendorsManagementPanelProps> = ({ vendors
             onClick={handleExportCSV}
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
           >
-            <CloudDownloadIcon className="w-5 h-5" />
+            <ArrowDownTrayIcon className="w-5 h-5" />
             Export CSV
           </Button>
           <Button
