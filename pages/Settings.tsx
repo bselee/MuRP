@@ -35,6 +35,7 @@ import RolePermissionMatrix from '../components/RolePermissionMatrix';
 import UserPersonalizationPanel from '../components/UserPersonalizationPanel';
 import SOPSettingsPanel from '../components/SOPSettingsPanel';
 import BOMApprovalSettingsPanel from '../components/BOMApprovalSettingsPanel';
+import VendorsManagementPanel from '../components/VendorsManagementPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -376,28 +377,12 @@ Thank you!`
                 isOpen={isVendorAdminOpen}
                 onToggle={() => setIsVendorAdminOpen(!isVendorAdminOpen)}
               >
-                <div className="mb-2">
+                <div className="mb-4">
                   <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
                     Admin Only
                   </span>
                 </div>
-                <div className="space-y-3 bg-gray-900/40 border border-gray-800 rounded-lg p-4">
-                  <p className="text-sm text-gray-300">
-                    Everyone can see vendor info inside purchase orders and requisitions, but only admins can edit vendor
-                    records. Use the button below when you need to add, deactivate, or update a supplier profile.
-                  </p>
-                  <div className="flex flex-wrap gap-3">
-                    <Button
-                      onClick={() => setCurrentPage('Vendors')}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500 text-white font-semibold hover:bg-accent-500 transition-colors"
-                    >
-                      Manage Vendors
-                    </Button>
-                    <p className="text-xs text-gray-500 flex items-center">
-                      Vendor data remains visible elsewhere for job duties, but modifications stay locked to admins.
-                    </p>
-                  </div>
-                </div>
+                <VendorsManagementPanel vendors={vendors} addToast={addToast} />
               </CollapsibleSection>
             )}
 
