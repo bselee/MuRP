@@ -1132,7 +1132,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                             <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
                                                                 {insight ? (
                                                                     <span 
-                                                                        className="cursor-pointer hover:bg-gray-700 px-2 py-1 rounded text-xs"
+                                                                        className="cursor-pointer hover:text-accent-400 text-xs"
                                                                         onClick={() => {/* Add click handler if needed */}}
                                                                     >
                                                                         {itemTypeStyles[insight.itemType].label}
@@ -1153,7 +1153,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                         <div className="relative inline-block mt-0.5">
                                                                             <span
                                                                                 onClick={() => handleBomClick(item)}
-                                                                                className="cursor-pointer hover:bg-blue-900 px-2 py-1 rounded text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                                                                className="cursor-pointer hover:text-accent-400 text-xs text-blue-400 transition-colors"
                                                                                 title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
                                                                             >
                                                                                 BOM ({bomCount})
@@ -1192,7 +1192,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         return (
                                                             <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-white ${widthClass}`}>
                                                                 <span 
-                                                                    className="cursor-pointer hover:bg-gray-700 px-2 py-1 rounded font-semibold"
+                                                                    className="cursor-pointer hover:text-accent-400 font-semibold"
                                                                     onClick={() => {/* Add click handler if needed */}}
                                                                 >
                                                                     {item.stock.toLocaleString()}
@@ -1209,7 +1209,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         return (
                                                             <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
                                                                 <span 
-                                                                    className={`cursor-pointer hover:bg-gray-700 px-2 py-1 rounded text-xs ${
+                                                                    className={`cursor-pointer hover:text-accent-400 text-xs ${
                                                                         stockStatus === 'In Stock' ? 'text-green-400' :
                                                                         stockStatus === 'Low Stock' ? 'text-yellow-400' :
                                                                         'text-red-400'
@@ -1234,7 +1234,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                                 <div className="relative group">
                                                                     <div className="flex items-center gap-2">
                                                                     <span 
-                                                                        className={`font-semibold cursor-pointer hover:bg-gray-700 px-2 py-1 rounded ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}
+                                                                        className={`font-semibold cursor-pointer hover:text-accent-400 ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}
                                                                         onClick={() => {/* Add click handler if needed */}}
                                                                     >
                                                                         {runwayValue}
@@ -1311,21 +1311,21 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             <td className={`px-3 ${cellDensityClass} text-right whitespace-nowrap`}>
                                                 <div className="flex justify-end gap-1 text-xs">
                                                     <span 
-                                                        className="cursor-pointer hover:bg-gray-700 px-2 py-1 rounded text-gray-300 hover:text-white"
+                                                        className="cursor-pointer hover:text-accent-400 text-gray-300"
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true })}
                                                         title="Ask about this product"
                                                     >
                                                         Ask
                                                     </span>
                                                     <span 
-                                                        className="cursor-pointer hover:bg-accent-500 px-2 py-1 rounded text-accent-300 hover:text-white"
+                                                        className="cursor-pointer hover:text-accent-400 text-accent-300"
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'consumable' })}
                                                         title="Create requisition"
                                                     >
                                                         Req
                                                     </span>
                                                     <span 
-                                                        className="cursor-pointer hover:bg-amber-500 px-2 py-1 rounded text-amber-300 hover:text-white"
+                                                        className="cursor-pointer hover:text-accent-400 text-amber-300"
                                                         onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true, priority: 'high' })}
                                                         title="Create high priority alert"
                                                     >

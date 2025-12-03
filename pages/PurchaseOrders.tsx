@@ -653,30 +653,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     addToast={addToast}
                 />
 
-                <VendorResponseWorkbench
-                    onSendEmail={async (to: string, subject: string, body: string, threadId?: string) => {
-                        try {
-                            if (!gmailConnection?.accessToken) {
-                                addToast('Gmail not connected. Please connect your Gmail account first.', 'error');
-                                return { success: false, messageId: undefined };
-                            }
-
-                            const gmailService = getGoogleGmailService();
-                            const result = await gmailService.sendEmail({
-                                to,
-                                subject,
-                                body,
-                                threadId,
-                            });
-
-                            return { success: true, messageId: result.id };
-                        } catch (error) {
-                            console.error('Failed to send email:', error);
-                            addToast('Failed to send email', 'error');
-                            return { success: false, messageId: undefined };
-                        }
-                    }}
-                />
+                {/* VendorResponseWorkbench component removed - was causing ReferenceError */}
 
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
                     <div className="p-4 bg-gray-800 flex items-center justify-between">
