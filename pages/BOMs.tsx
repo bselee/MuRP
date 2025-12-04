@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button';
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions, QuickRequestDefaults, ComponentSwapMap, BomRevisionRequestOptions } from '../types';
+import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions, QuickRequestDefaults, ComponentSwapMap, BomRevisionRequestOptions, PurchaseOrder } from '../types';
 import type { ComplianceStatus } from '../types/regulatory';
 import {
   PencilIcon,
@@ -34,6 +34,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase/client';
 import { fetchComponentSwapRules, mapComponentSwaps } from '../services/componentSwapService';
 import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
+import { useLimitingSKUOnOrder } from '../hooks/useLimitingSKUOnOrder';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability' | 'category' | 'velocity' | 'runway';
@@ -43,6 +44,7 @@ type GroupByOption = 'none' | 'category' | 'buildability' | 'compliance';
 interface BOMsProps {
   boms: BillOfMaterials[];
   inventory: InventoryItem[];
+  purchaseOrders: PurchaseOrder[];
   currentUser: User;
   users: User[];
   watchlist: WatchlistItem[];
@@ -56,6 +58,7 @@ interface BOMsProps {
   onCreateBuildOrder: (sku: string, name: string, quantity: number, scheduledDate?: string, dueDate?: string) => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   onQuickRequest?: (defaults?: QuickRequestDefaults) => void;
+  onNavigateToPurchaseOrders?: (poId?: string) => void;
 }
 
 const isBuildabilityFilter = (value: string | null): value is BuildabilityFilter =>
@@ -101,6 +104,7 @@ const readStoredCategoryConfig = (): Record<string, CategoryConfig> => {
 const BOMs: React.FC<BOMsProps> = ({
   boms,
   inventory,
+  purchaseOrders,
   currentUser,
   users,
   watchlist,
@@ -113,7 +117,8 @@ const BOMs: React.FC<BOMsProps> = ({
   onCreateRequisition,
   onCreateBuildOrder,
   addToast,
-  onQuickRequest
+  onQuickRequest,
+  onNavigateToPurchaseOrders
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
@@ -827,6 +832,17 @@ const BOMs: React.FC<BOMsProps> = ({
     const finishedStock = finishedItem?.stock || 0;
     const buildability = calculateBuildability(bom);
 
+    // Get limiting SKUs and their on-order status
+    const limitingSkus = useMemo(() => 
+      buildability.limitingComponents.map(lc => lc.sku),
+      [buildability]
+    );
+    
+    const { getOnOrderInfo: getOnOrderInfoForSku, getAllOnOrderInfo } = useLimitingSKUOnOrder({
+      limitingSkus,
+      purchaseOrders
+    });
+
     const queuedComponents = useMemo(() => {
       const map: Record<string, { status: string; poId: string | null }> = {};
       bom.components?.forEach(component => {
@@ -865,6 +881,8 @@ const BOMs: React.FC<BOMsProps> = ({
           onNavigateToInventory={onNavigateToInventory}
           onQuickBuild={() => openScheduleModal(bom)}
           queueStatus={queuedComponents}
+          limitingSKUOnOrderData={getAllOnOrderInfo()}
+          onNavigateToPurchaseOrders={onNavigateToPurchaseOrders}
         />
       </div>
     );

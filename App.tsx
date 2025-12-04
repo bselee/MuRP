@@ -1767,6 +1767,7 @@ const AppShell: React.FC = () => {
         return <BOMs
           boms={boms}
           inventory={inventory}
+          purchaseOrders={purchaseOrders}
           currentUser={currentUser}
           watchlist={watchlist}
           onUpdateBom={handleUpdateBom}
@@ -1780,6 +1781,19 @@ const AppShell: React.FC = () => {
           addToast={addToast}
           onQuickRequest={openQuickRequestDrawer}
           users={userProfiles}
+          onNavigateToPurchaseOrders={(poId) => {
+            if (poId) {
+              // Scroll to and highlight the PO when navigating
+              setTimeout(() => {
+                const poElement = document.querySelector(`[data-po-id="${poId}"]`);
+                if (poElement) {
+                  poElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  poElement.classList.add('highlight-animation');
+                }
+              }, 100);
+            }
+            setCurrentPage('Purchase Orders');
+          }}
         />;
       case 'Artwork':
         return <ArtworkPage 

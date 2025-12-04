@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import { useTheme } from './ThemeProvider';
 import type { BillOfMaterials, InventoryItem, Label, ComplianceRecord, ComponentSwapMap } from '../types';
+import type { LimitingSKUOnOrder } from '../hooks/useLimitingSKUOnOrder';
 import {
   PencilIcon,
   ChevronDownIcon,
@@ -50,6 +51,8 @@ interface EnhancedBomCardProps {
   onQuickBuild?: () => void;
   onQuickOrder?: () => void;
   queueStatus?: Record<string, { status: string; poId: string | null }>;
+  limitingSKUOnOrderData?: LimitingSKUOnOrder[];
+  onNavigateToPurchaseOrders?: (poId?: string) => void;
 }
 
 const DARK_CARD_SHELL =
@@ -122,7 +125,9 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   onNavigateToInventory,
   onQuickBuild,
   onQuickOrder,
-  queueStatus = {}
+  queueStatus = {},
+  limitingSKUOnOrderData = [],
+  onNavigateToPurchaseOrders
 }) => {
   const { resolvedTheme } = useTheme();
   const isLightTheme = resolvedTheme === 'light';
@@ -742,17 +747,64 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
         )}
 
         {buildability.maxBuildable > 0 && buildability.limitingComponents.length > 0 && (
-          <div className={limitingAlertClass}>
-            <div className="flex items-center gap-2">
-              <ExclamationTriangleIcon className={limitingIconClass} />
-              <div>
-                <span className={limitingAccentText}>
-                  Limited to {buildability.maxBuildable} build{buildability.maxBuildable !== 1 ? 's' : ''}
-                </span>
-                <span className={limitingSummaryText}> — constrained by {limitingSummary}</span>
+          <>
+            <div className={limitingAlertClass}>
+              <div className="flex items-center gap-2">
+                <ExclamationTriangleIcon className={limitingIconClass} />
+                <div>
+                  <span className={limitingAccentText}>
+                    Limited to {buildability.maxBuildable} build{buildability.maxBuildable !== 1 ? 's' : ''}
+                  </span>
+                  <span className={limitingSummaryText}> — constrained by {limitingSummary}</span>
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* Limiting SKU On-Order Status */}
+            {limitingSKUOnOrderData && limitingSKUOnOrderData.length > 0 && (
+              <div className={`mt-3 space-y-2 p-3 rounded-lg border ${
+                isLightTheme
+                  ? 'bg-blue-50 border-blue-200'
+                  : 'bg-blue-900/20 border-blue-600/30'
+              }`}>
+                <div className={`text-xs font-semibold flex items-center gap-2 ${
+                  isLightTheme ? 'text-blue-700' : 'text-blue-300'
+                }`}>
+                  <ClockIcon className="w-4 h-4" />
+                  Limited SKUs On Order
+                </div>
+                {limitingSKUOnOrderData.map((onOrderInfo) => (
+                  <button
+                    key={onOrderInfo.sku}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onNavigateToPurchaseOrders?.(onOrderInfo.poId);
+                    }}
+                    className={`block w-full text-left p-2 rounded-md transition-all hover:opacity-80 ${
+                      isLightTheme
+                        ? 'bg-white/60 text-blue-800 border border-blue-200 hover:bg-white'
+                        : 'bg-slate-900/40 text-blue-200 border border-blue-500/30 hover:bg-slate-900/60'
+                    }`}
+                    title={`Click to view PO ${onOrderInfo.orderId}`}
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-mono font-semibold">{onOrderInfo.sku}</span>
+                      <span className={`font-semibold ${
+                        isLightTheme ? 'text-blue-700' : 'text-blue-300'
+                      }`}>
+                        ETA: {onOrderInfo.estimatedReceiveDate 
+                          ? new Date(onOrderInfo.estimatedReceiveDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
+                          : 'TBD'}
+                      </span>
+                    </div>
+                    <div className={`text-[11px] mt-1 ${isLightTheme ? 'text-blue-700/70' : 'text-blue-300/70'}`}>
+                      {onOrderInfo.supplier} • {onOrderInfo.quantity} units • PO #{onOrderInfo.orderId}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
