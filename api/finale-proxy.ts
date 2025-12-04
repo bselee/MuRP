@@ -597,11 +597,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { action, config, ...params } = req.body || {};
 
-    // Use server-side env vars as fallback if client didn't send config
-    const apiKey = config?.apiKey || process.env.FINALE_API_KEY || '';
-    const apiSecret = config?.apiSecret || process.env.FINALE_API_SECRET || '';
-    const accountPath = config?.accountPath || process.env.FINALE_ACCOUNT_PATH || '';
-    const baseUrl = config?.baseUrl || process.env.FINALE_BASE_URL || 'https://app.finaleinventory.com';
+    // Use server-side env vars only (ignore client config for security)
+    const apiKey = process.env.FINALE_API_KEY || '';
+    const apiSecret = process.env.FINALE_API_SECRET || '';
+    const accountPath = process.env.FINALE_ACCOUNT_PATH || '';
+    const baseUrl = process.env.FINALE_BASE_URL || 'https://app.finaleinventory.com';
 
     // Validate we have credentials from either source
     if (!apiKey || !apiSecret || !accountPath) {
