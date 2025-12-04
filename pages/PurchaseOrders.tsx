@@ -25,6 +25,7 @@ import ReorderQueueDashboard, { ReorderQueueVendorGroup } from '../components/Re
 import DraftPOReviewSection from '../components/DraftPOReviewSection';
 import POTrackingDashboard from '../components/POTrackingDashboard';
 import ReceivePurchaseOrderModal from '../components/ReceivePurchaseOrderModal';
+import UpdateTrackingModal from '../components/UpdateTrackingModal';
 import { subscribeToPoDrafts } from '../lib/poDraftBridge';
 import { generatePoPdf } from '../services/pdfService';
 import { usePermissions } from '../hooks/usePermissions';

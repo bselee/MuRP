@@ -15,7 +15,6 @@ import Production from './pages/Production';
 import BOMs from './pages/BOMs';
 import Settings from './pages/Settings';
 import StockIntelligence from './pages/StockIntelligence';
-import InventoryIntelligence from './pages/InventoryIntelligence';
 import ProjectsPage from './pages/ProjectsPage';
 import LoginScreen from './pages/LoginScreen';
 import Toast from './components/Toast';
@@ -113,7 +112,8 @@ import {
 } from './lib/systemAlerts/SystemAlertContext';
 import type { SyncHealthRow } from './lib/sync/healthUtils';
 import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amazonTracking';
-import { enqueuePoDrafts } from './lib/poDraftBridge';
+
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page';
 
 export type ToastInfo = {
   id: number;
@@ -274,23 +274,6 @@ const AppShell: React.FC = () => {
       setHasInitialDataLoaded(true);
     }
   }, [isDataLoading]);
-
-  // Initialize Finale auto-sync if credentials are configured
-  useEffect(() => {
-    // Import and initialize auto-sync
-    import('./services/finaleAutoSync').then(({ initializeFinaleAutoSync }) => {
-      initializeFinaleAutoSync();
-    }).catch(error => {
-      console.error('[App] Failed to load Finale auto-sync:', error);
-    });
-
-    // Cleanup on unmount
-    return () => {
-      import('./services/finaleAutoSync').then(({ stopFinaleAutoSync }) => {
-        stopFinaleAutoSync();
-      }).catch(() => {});
-    };
-  }, []); // Run once on mount
 
   useEffect(() => {
     if (!currentUser?.guidedLaunchState) {
@@ -1822,8 +1805,6 @@ const AppShell: React.FC = () => {
         />;
       case 'API Documentation':
           return <ApiDocs />;
-      case 'Inventory Intelligence':
-        return <InventoryIntelligence />;
       case 'Label Scanner':
         return <ManualLabelScanner
           boms={boms}
