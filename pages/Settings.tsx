@@ -5,6 +5,7 @@ import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, I
 import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, LightBulbIcon, SparklesIcon, BellIcon, ClipboardCopyIcon, TrashIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import UserManagementPanel from '../components/UserManagementPanel';
+import AdminUsersPanel from '../components/AdminUsersPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
 import APIIntegrationsPanel from '../components/APIIntegrationsPanel';
 import ShopifyIntegrationPanel from '../components/ShopifyIntegrationPanel';
@@ -237,7 +238,21 @@ Thank you!`
               </CollapsibleSection>
             )}
 
-            <CollapsibleSection
+            {isOpsAdmin && (
+              <CollapsibleSection
+                title="User Roles & Permissions"
+                icon={<ShieldCheckIcon className="w-6 h-6 text-accent-400" />}
+                isOpen={isUserManagementOpen}
+                onToggle={() => setIsUserManagementOpen(!isUserManagementOpen)}
+              >
+                <div className="mb-2">
+                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
+                    Admin Only
+                  </span>
+                </div>
+                <AdminUsersPanel currentUserId={currentUser.id} />
+              </CollapsibleSection>
+            )}            <CollapsibleSection
               title="Role Permissions Overview"
               icon={<ShieldCheckIcon className="w-6 h-6 text-accent-300" />}
               isOpen={isRoleMatrixOpen}
