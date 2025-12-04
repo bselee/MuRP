@@ -1,4 +1,5 @@
 import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 // Corrected import path for the Buildability type from buildabilityService
 import type { Buildability } from '../services/buildabilityService';
 import { BoxIcon, CheckCircleIcon, ExclamationCircleIcon, XCircleIcon } from './icons';
@@ -17,18 +18,20 @@ interface SummaryCardProps {
 }
 
 const SummaryCard: React.FC<SummaryCardProps> = ({ icon, title, value, color, onClick }) => (
-  <div 
-    className={`bg-gray-800 p-6 rounded-lg shadow-lg border-l-4 ${color} hover:bg-gray-700/50 cursor-pointer transition-colors duration-200`}
+  <Card
+    className={`border-l-4 ${color} hover:bg-gray-700/50 cursor-pointer transition-colors duration-200`}
     onClick={onClick}
   >
-    <div className="flex items-center">
-      <div className="mr-4">{icon}</div>
-      <div>
-        <p className="text-sm text-gray-400 font-medium">{title}</p>
-        <p className="text-3xl font-bold text-white">{value}</p>
+    <CardContent className="p-6">
+      <div className="flex items-center">
+        <div className="mr-4">{icon}</div>
+        <div>
+          <p className="text-sm text-gray-400 font-medium">{title}</p>
+          <p className="text-3xl font-bold text-white">{value}</p>
+        </div>
       </div>
-    </div>
-  </div>
+    </CardContent>
+  </Card>
 );
 
 const ExecutiveSummary: React.FC<ExecutiveSummaryProps> = ({ data, onCardClick }) => {
