@@ -141,7 +141,8 @@ async function testConnection(config: FinaleConfig) {
  * Get products with pagination
  */
 async function getProducts(config: FinaleConfig, limit = 100, offset = 0) {
-  return finaleGet(config, `/product?limit=${limit}&offset=${offset}`);
+  const columnarData = await finaleGet(config, `/product?limit=${limit}&offset=${offset}`);
+  return transformColumnarToRows(columnarData);
 }
 
 /**
@@ -261,6 +262,40 @@ function parseCSV(csvText: string): any[] {
 
   if (rows.length > 0) {
     console.log('[Finale Proxy] Sample row:', rows[0]);
+  }
+
+  return rows;
+}
+
+/**
+ * Transform Finale columnar JSON response to array of objects
+ */
+function transformColumnarToRows(columnarData: any): any[] {
+  if (!columnarData || typeof columnarData !== 'object') return [];
+
+  // Get all field names (keys)
+  const fields = Object.keys(columnarData);
+  if (fields.length === 0) return [];
+
+  // Get the length of the first array to determine number of rows
+  const firstField = fields[0];
+  const rowCount = Array.isArray(columnarData[firstField]) ? columnarData[firstField].length : 0;
+  if (rowCount === 0) return [];
+
+  // Transform to array of objects
+  const rows: any[] = [];
+  for (let i = 0; i < rowCount; i++) {
+    const row: any = {};
+    fields.forEach(field => {
+      const value = Array.isArray(columnarData[field]) ? columnarData[field][i] : columnarData[field];
+      row[field] = value;
+    });
+    rows.push(row);
+  }
+
+  console.log(`[Finale Proxy] Transformed ${rowCount} columnar rows to ${rows.length} object rows`);
+  if (rows.length > 0) {
+    console.log('[Finale Proxy] Sample transformed row:', rows[0]);
   }
 
   return rows;
@@ -418,7 +453,8 @@ async function getInventory(config: FinaleConfig) {
  * Get purchase orders with pagination
  */
 async function getPurchaseOrders(config: FinaleConfig, limit = 100, offset = 0) {
-  return finaleGet(config, `/purchaseOrder?limit=${limit}&offset=${offset}`);
+  const columnarData = await finaleGet(config, `/purchaseOrder?limit=${limit}&offset=${offset}`);
+  return transformColumnarToRows(columnarData);
 }
 
 /**
