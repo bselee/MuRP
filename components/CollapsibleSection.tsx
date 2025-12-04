@@ -11,16 +11,25 @@ interface CollapsibleSectionProps {
   children: React.ReactNode;
   defaultOpen?: boolean;
   id?: string; // Optional ID for scroll-to functionality
-  variant?: 'default' | 'card'; // Style variant
+  variant?: 'default' | 'card' | 'section'; // Style variant
+  /**
+   * Optional count badge to display next to title
+   */
+  count?: number;
+  /**
+   * Show count even if zero
+   */
+  showZeroCount?: boolean;
 }
 
 /**
  * Reusable collapsible section component
  * Provides consistent styling and animation for expandable sections
- * 
+ *
  * Variants:
  * - 'default': Simple border-bottom style (Settings page)
  * - 'card': Full card with background (Dashboard page)
+ * - 'section': Full section with background and border (PurchaseOrders page)
  */
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   title,
@@ -31,7 +40,49 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   children,
   id,
   variant = 'default',
+  count,
+  showZeroCount = false,
 }) => {
+  // Render count badge if count is provided
+  const renderCountBadge = () => {
+    if (count === undefined) return null;
+    if (count === 0 && !showZeroCount) return null;
+
+    return (
+      <span className="flex items-center justify-center text-xs font-bold text-white bg-yellow-500 rounded-full h-6 w-6">
+        {count}
+      </span>
+    );
+  };
+
+  // Section variant (PurchaseOrders style)
+  if (variant === 'section') {
+    return (
+      <section
+        id={id}
+        className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden"
+      >
+        <Button
+          onClick={onToggle}
+          variant="ghost"
+          className="w-full flex justify-between items-center p-4 bg-gray-800 hover:bg-gray-700/50 transition-colors rounded-none"
+        >
+          <h2 className="text-xl font-semibold text-gray-300 flex items-center gap-3">
+            {title}
+            {renderCountBadge()}
+          </h2>
+          <ChevronDownIcon className={`w-6 h-6 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </Button>
+        {isOpen && (
+          <div className="border-t border-gray-700">
+            {children}
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  // Card variant (Dashboard style)
   if (variant === 'card') {
     return (
       <section
@@ -46,6 +97,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
           <h2 className="text-xl font-semibold text-gray-100 flex items-center gap-3">
             {icon}
             {title}
+            {renderCountBadge()}
           </h2>
           <ChevronDownIcon className={`w-6 h-6 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </Button>
@@ -58,6 +110,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
     );
   }
 
+  // Default variant (Settings style)
   return (
     <section id={id}>
       <Button
@@ -70,9 +123,10 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
             {icon}
           </div>
           <h2 className="text-xl font-semibold text-gray-300">{title}</h2>
+          {renderCountBadge()}
         </div>
-        <ChevronDownIcon 
-          className={`w-6 h-6 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+        <ChevronDownIcon
+          className={`w-6 h-6 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </Button>
       {isOpen && (
