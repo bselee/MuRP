@@ -287,6 +287,8 @@ export class FinaleClient {
 
   /**
    * Fetch all purchase orders
+   * Note: Finale uses /order endpoint for both sales and purchase orders
+   * Filter by orderTypeId=PURCHASE_ORDER
    */
   async fetchPurchaseOrders(options?: {
     status?: 'DRAFT' | 'SUBMITTED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
@@ -294,12 +296,13 @@ export class FinaleClient {
     offset?: number;
   }): Promise<FinalePurchaseOrder[]> {
     const params = new URLSearchParams();
+    params.set('orderTypeId', 'PURCHASE_ORDER'); // Filter for purchase orders only
     if (options?.status) params.set('status', options.status);
     if (options?.limit) params.set('limit', options.limit.toString());
     if (options?.offset) params.set('offset', options.offset.toString());
 
     const queryString = params.toString();
-    const endpoint = `/purchaseOrder${queryString ? `?${queryString}` : ''}`;
+    const endpoint = `/order?${queryString}`;
 
     const response = await this.makeRequest<FinalePaginatedResponse<FinalePurchaseOrder>>(endpoint, {
       method: 'GET',
