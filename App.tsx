@@ -112,6 +112,7 @@ import {
 } from './lib/systemAlerts/SystemAlertContext';
 import type { SyncHealthRow } from './lib/sync/healthUtils';
 import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amazonTracking';
+import { initializeFinaleAutoSync } from './services/finaleAutoSync';
 
 export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page';
 
@@ -274,6 +275,20 @@ const AppShell: React.FC = () => {
       setHasInitialDataLoaded(true);
     }
   }, [isDataLoading]);
+
+  // Initialize Finale auto-sync when user is authenticated
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    if (isE2ETestMode) {
+      console.log('[App] E2E mode - skipping Finale auto-sync');
+      return;
+    }
+    
+    // Initialize auto-sync (will check credentials in env)
+    initializeFinaleAutoSync().catch((error) => {
+      console.error('[App] Failed to initialize Finale auto-sync:', error);
+    });
+  }, [currentUser?.id, isE2ETestMode]);
 
   useEffect(() => {
     if (!currentUser?.guidedLaunchState) {
