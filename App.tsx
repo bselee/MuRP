@@ -278,14 +278,21 @@ const AppShell: React.FC = () => {
 
   // Initialize Finale auto-sync when user is authenticated
   useEffect(() => {
-    if (!currentUser?.id) return;
+    console.log('[App] Auto-sync useEffect triggered', { userId: currentUser?.id, isE2ETestMode });
+    if (!currentUser?.id) {
+      console.log('[App] No user ID - skipping auto-sync');
+      return;
+    }
     if (isE2ETestMode) {
       console.log('[App] E2E mode - skipping Finale auto-sync');
       return;
     }
-    
+
+    console.log('[App] Initializing Finale auto-sync...');
     // Initialize auto-sync (will check credentials in env)
-    initializeFinaleAutoSync().catch((error) => {
+    initializeFinaleAutoSync().then(() => {
+      console.log('[App] Finale auto-sync initialization completed');
+    }).catch((error) => {
       console.error('[App] Failed to initialize Finale auto-sync:', error);
     });
   }, [currentUser?.id, isE2ETestMode]);

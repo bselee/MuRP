@@ -33,11 +33,15 @@ function hasFinaleCredentials(): boolean {
  * Initialize auto-sync if credentials are available
  */
 export async function initializeFinaleAutoSync(): Promise<void> {
+  console.log('[FinaleAutoSync] initializeFinaleAutoSync() called');
+
   // Only initialize once
   if (autoSyncInitialized) {
     console.log('[FinaleAutoSync] Already initialized');
     return;
   }
+
+  console.log('[FinaleAutoSync] Checking credentials...');
 
   // Check if credentials are configured
   if (!hasFinaleCredentials()) {
@@ -45,6 +49,8 @@ export async function initializeFinaleAutoSync(): Promise<void> {
     console.log('[FinaleAutoSync] Configure VITE_FINALE_API_KEY, VITE_FINALE_API_SECRET, and VITE_FINALE_ACCOUNT_PATH to enable.');
     return;
   }
+
+  console.log('[FinaleAutoSync] Credentials found, proceeding with initialization...');
 
   try {
     console.log('[FinaleAutoSync] ✅ Credentials detected. Initializing professional REST API sync...');
