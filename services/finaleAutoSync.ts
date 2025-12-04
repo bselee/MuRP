@@ -13,6 +13,7 @@
  */
 
 import { getFinaleRestSyncService } from './finaleRestSyncService';
+import { startPOAutoSync, triggerPOSync } from './purchaseOrderSyncService';
 
 let autoSyncInitialized = false;
 let syncCheckInterval: NodeJS.Timeout | null = null;
@@ -48,7 +49,7 @@ export async function initializeFinaleAutoSync(): Promise<void> {
   try {
     console.log('[FinaleAutoSync] ✅ Credentials detected. Initializing professional REST API sync...');
     
-    const syncService = getFinaleRestSyncService();
+    const restSyncService = getFinaleRestSyncService();
     
     // Set credentials from environment
     const credentials = {
@@ -58,42 +59,56 @@ export async function initializeFinaleAutoSync(): Promise<void> {
       baseUrl: import.meta.env.VITE_FINALE_BASE_URL || 'https://app.finaleinventory.com',
     };
     
-    syncService.setCredentials(
+    restSyncService.setCredentials(
       credentials.apiKey,
       credentials.apiSecret,
       credentials.accountPath
     );
     
-    // Progress monitoring
-    syncService.onProgress((progress) => {
+    // Progress monitoring for REST sync
+    restSyncService.onProgress((progress) => {
       console.log(`[FinaleAutoSync] ${progress.phase}: ${progress.percentage}% - ${progress.message}`);
     });
     
-    // Start initial sync
-    console.log('[FinaleAutoSync] Starting initial sync...');
-    const metrics = await syncService.syncAll();
+    // Start initial REST API sync (inventory, vendors, BOMs)
+    console.log('[FinaleAutoSync] Starting initial sync (Inventory + Vendors + BOMs)...');
+    const metrics = await restSyncService.syncAll();
     
-    console.log('[FinaleAutoSync] ✅ Initial sync complete:');
+    console.log('[FinaleAutoSync] ✅ REST API sync complete:');
     console.log(`  - Records processed: ${metrics.recordsProcessed}`);
     console.log(`  - API calls made: ${metrics.apiCallsTotal}`);
     console.log(`  - API calls saved: ${metrics.apiCallsSaved} (delta sync optimization)`);
     console.log(`  - Duration: ${(metrics.duration / 1000).toFixed(1)}s`);
     console.log(`  - Errors: ${metrics.errors}`);
     
+    // Start GraphQL PO sync (Purchase Orders with intelligence)
+    console.log('[FinaleAutoSync] Starting Purchase Order sync (GraphQL)...');
+    const poResult = await triggerPOSync('full');
+    
+    console.log('[FinaleAutoSync] ✅ GraphQL PO sync initiated');
+    
+    // Start automatic PO sync every 15 minutes
+    startPOAutoSync(15);
+    
     autoSyncInitialized = true;
     
-    // Set up periodic sync (every 4 hours for delta sync)
+    // Set up periodic syncs
+    // - REST API (inventory/vendors): every 4 hours
+    // - GraphQL PO: every 15 minutes (configured in PurchaseOrderSyncService)
+    
     syncCheckInterval = setInterval(async () => {
-      console.log('[FinaleAutoSync] Running scheduled delta sync...');
+      console.log('[FinaleAutoSync] Running scheduled REST API delta sync...');
       try {
-        const deltaMetrics = await syncService.syncAll();
-        console.log(`[FinaleAutoSync] Delta sync complete: ${deltaMetrics.recordsProcessed} records, ${deltaMetrics.apiCallsTotal} API calls`);
+        const deltaMetrics = await restSyncService.syncAll();
+        console.log(`[FinaleAutoSync] REST delta sync complete: ${deltaMetrics.recordsProcessed} records, ${deltaMetrics.apiCallsTotal} API calls`);
       } catch (error) {
-        console.error('[FinaleAutoSync] Delta sync failed:', error);
+        console.error('[FinaleAutoSync] REST delta sync failed:', error);
       }
     }, 4 * 60 * 60 * 1000); // 4 hours
     
-    console.log('[FinaleAutoSync] ✅ Scheduled delta sync every 4 hours');
+    console.log('[FinaleAutoSync] ✅ All syncs initialized:');
+    console.log('  - REST API (Inventory/Vendors): Delta sync every 4 hours');
+    console.log('  - GraphQL POs: Auto-sync every 15 minutes (PurchaseOrderSyncService)');
     
   } catch (error) {
     console.error('[FinaleAutoSync] ❌ Failed to initialize auto-sync:', error);
@@ -140,7 +155,7 @@ export async function triggerManualSync(): Promise<void> {
     throw new Error('Finale credentials not configured');
   }
 
-  const syncService = getFinaleSyncService();
+  const restSyncService = getFinaleRestSyncService();
   
   // Ensure credentials are set
   if (!autoSyncInitialized) {
@@ -150,10 +165,22 @@ export async function triggerManualSync(): Promise<void> {
       accountPath: import.meta.env.VITE_FINALE_ACCOUNT_PATH!,
       baseUrl: import.meta.env.VITE_FINALE_BASE_URL || 'https://app.finaleinventory.com',
     };
-    syncService.setCredentials(credentials);
+    restSyncService.setCredentials(
+      credentials.apiKey,
+      credentials.apiSecret,
+      credentials.accountPath
+    );
   }
 
-  console.log('[FinaleAutoSync] Starting manual sync...');
-  await syncService.syncAll();
-  console.log('[FinaleAutoSync] Manual sync completed');
+  console.log('[FinaleAutoSync] Starting manual sync (REST + GraphQL POs)...');
+  try {
+    const [restMetrics, poResult] = await Promise.all([
+      restSyncService.syncAll(),
+      triggerPOSync('full')
+    ]);
+    console.log('[FinaleAutoSync] Manual sync completed - REST:', restMetrics, 'POs: triggered');
+  } catch (error) {
+    console.error('[FinaleAutoSync] Manual sync failed:', error);
+    throw error;
+  }
 }

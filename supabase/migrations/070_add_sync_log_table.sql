@@ -35,15 +35,15 @@ ADD COLUMN IF NOT EXISTS finale_last_modified TIMESTAMPTZ;
 -- Add index for Finale PO lookups
 CREATE INDEX IF NOT EXISTS idx_purchase_orders_finale_id ON purchase_orders(finale_po_id);
 
--- Add columns to inventory for Finale tracking
-ALTER TABLE inventory
+-- Add columns to inventory_items for Finale tracking
+ALTER TABLE inventory_items
 ADD COLUMN IF NOT EXISTS finale_product_id TEXT,
 ADD COLUMN IF NOT EXISTS finale_last_modified TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS custom_fields JSONB DEFAULT '{}';
 
 -- Add index for Finale product lookups
-CREATE INDEX IF NOT EXISTS idx_inventory_finale_id ON inventory(finale_product_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_finale_id ON inventory_items(finale_product_id);
 
 -- Add index for last modified queries (delta sync)
-CREATE INDEX IF NOT EXISTS idx_inventory_finale_modified ON inventory(finale_last_modified);
+CREATE INDEX IF NOT EXISTS idx_inventory_items_finale_modified ON inventory_items(finale_last_modified);
 CREATE INDEX IF NOT EXISTS idx_purchase_orders_finale_modified ON purchase_orders(finale_last_modified);

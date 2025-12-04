@@ -803,6 +803,13 @@ export interface VendorConfidenceProfile {
   interactionsCount: number;
   lastRecalculatedAt?: string | null;
   updatedAt?: string | null;
+  // Detailed lead time metrics
+  avgLeadDays?: number | null;
+  medianLeadDays?: number | null;
+  stddevLeadDays?: number | null;
+  onTimePercentage?: number | null;
+  totalPosCompleted?: number | null;
+  leadTimeRiskLevel?: 'Low Risk' | 'Medium Risk' | 'High Risk' | null;
 }
 
 export interface VendorConfidenceHistoryPoint {
@@ -977,6 +984,10 @@ export interface PurchaseOrder {
   invoiceDetectedAt?: string;
   invoiceGmailMessageId?: string | null;
   invoiceSummary?: Record<string, any> | null;
+  // Lead time tracking fields
+  committedAt?: string | null;
+  receivedAt?: string | null;
+  actualLeadDays?: number | null;
 }
 
 export interface CreatePurchaseOrderItemInput {
