@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -177,6 +182,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_consolidation_opportunities_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
             referencedColumns: ["id"]
           },
           {
@@ -1408,6 +1420,67 @@ export type Database = {
           },
         ]
       }
+      build_orders: {
+        Row: {
+          assigned_user: string | null
+          bom_id: string | null
+          build_number: string
+          created_at: string | null
+          due_date: string | null
+          id: string
+          quantity: number | null
+          scheduled_date: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_user?: string | null
+          bom_id?: string | null
+          build_number: string
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          quantity?: number | null
+          scheduled_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_user?: string | null
+          bom_id?: string | null
+          build_number?: string
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          quantity?: number | null
+          scheduled_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "build_orders_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "boms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "build_orders_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "boms_with_compliance"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "build_orders_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_dashboard"
+            referencedColumns: ["bom_id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           address_line1: string | null
@@ -2025,6 +2098,13 @@ export type Database = {
             foreignKeyName: "email_templates_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_templates_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
@@ -2416,10 +2496,13 @@ export type Database = {
           category: string | null
           created_at: string | null
           currency: string | null
+          custom_fields: Json | null
           data_source: string | null
           description: string | null
           dimensions: string | null
           facility_id: string | null
+          finale_last_modified: string | null
+          finale_product_id: string | null
           id: string
           last_purchase_date: string | null
           last_sync_at: string | null
@@ -2458,10 +2541,13 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           currency?: string | null
+          custom_fields?: Json | null
           data_source?: string | null
           description?: string | null
           dimensions?: string | null
           facility_id?: string | null
+          finale_last_modified?: string | null
+          finale_product_id?: string | null
           id?: string
           last_purchase_date?: string | null
           last_sync_at?: string | null
@@ -2500,10 +2586,13 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           currency?: string | null
+          custom_fields?: Json | null
           data_source?: string | null
           description?: string | null
           dimensions?: string | null
           facility_id?: string | null
+          finale_last_modified?: string | null
+          finale_product_id?: string | null
           id?: string
           last_purchase_date?: string | null
           last_sync_at?: string | null
@@ -2550,6 +2639,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
             referencedColumns: ["id"]
           },
           {
@@ -3278,6 +3374,13 @@ export type Database = {
             foreignKeyName: "pdf_templates_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_templates_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
@@ -3787,6 +3890,13 @@ export type Database = {
             foreignKeyName: "po_patterns_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_patterns_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
@@ -3960,6 +4070,92 @@ export type Database = {
             columns: ["shipment_id"]
             isOneToOne: false
             referencedRelation: "po_shipment_data"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      po_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_status: string
+          notes: string | null
+          po_id: string
+          previous_status: string | null
+          status_changed_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_status: string
+          notes?: string | null
+          po_id: string
+          previous_status?: string | null
+          status_changed_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_status?: string
+          notes?: string | null
+          po_id?: string
+          previous_status?: string | null
+          status_changed_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_status_history_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "active_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_status_history_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "po_tracking_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_status_history_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_status_history_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_automation_summary"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "po_status_history_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_status_history_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_status_history_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -4715,6 +4911,13 @@ export type Database = {
             foreignKeyName: "product_pricing_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_pricing_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
@@ -4908,6 +5111,7 @@ export type Database = {
       }
       purchase_orders: {
         Row: {
+          actual_lead_days: number | null
           actual_receive_date: string | null
           approved_at: string | null
           approved_by: string | null
@@ -4916,13 +5120,16 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           carrier: string | null
+          committed_at: string | null
           confirmed_at: string | null
           created_by: string | null
           currency: string | null
           escalation_level: number | null
           expected_date: string | null
+          finale_last_modified: string | null
           finale_po_id: string | null
           finale_status: string | null
+          finale_supplier: string | null
           follow_up_required: boolean | null
           follow_up_status:
             | Database["public"]["Enums"]["vendor_response_status"]
@@ -4992,6 +5199,7 @@ export type Database = {
           verified_by: string | null
         }
         Insert: {
+          actual_lead_days?: number | null
           actual_receive_date?: string | null
           approved_at?: string | null
           approved_by?: string | null
@@ -5000,13 +5208,16 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           carrier?: string | null
+          committed_at?: string | null
           confirmed_at?: string | null
           created_by?: string | null
           currency?: string | null
           escalation_level?: number | null
           expected_date?: string | null
+          finale_last_modified?: string | null
           finale_po_id?: string | null
           finale_status?: string | null
+          finale_supplier?: string | null
           follow_up_required?: boolean | null
           follow_up_status?:
             | Database["public"]["Enums"]["vendor_response_status"]
@@ -5076,6 +5287,7 @@ export type Database = {
           verified_by?: string | null
         }
         Update: {
+          actual_lead_days?: number | null
           actual_receive_date?: string | null
           approved_at?: string | null
           approved_by?: string | null
@@ -5084,13 +5296,16 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           carrier?: string | null
+          committed_at?: string | null
           confirmed_at?: string | null
           created_by?: string | null
           currency?: string | null
           escalation_level?: number | null
           expected_date?: string | null
+          finale_last_modified?: string | null
           finale_po_id?: string | null
           finale_status?: string | null
+          finale_supplier?: string | null
           follow_up_required?: boolean | null
           follow_up_status?:
             | Database["public"]["Enums"]["vendor_response_status"]
@@ -5172,6 +5387,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
             referencedColumns: ["id"]
           },
           {
@@ -5478,10 +5700,74 @@ export type Database = {
             foreignKeyName: "reorder_queue_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_queue_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
+      }
+      requisitions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          department: string | null
+          id: string
+          items: Json | null
+          justification: string | null
+          priority: string | null
+          request_type: string
+          requester_email: string | null
+          requester_id: string | null
+          requisition_number: string
+          status: string
+          submitted_at: string | null
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          department?: string | null
+          id?: string
+          items?: Json | null
+          justification?: string | null
+          priority?: string | null
+          request_type?: string
+          requester_email?: string | null
+          requester_id?: string | null
+          requisition_number: string
+          status?: string
+          submitted_at?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          department?: string | null
+          id?: string
+          items?: Json | null
+          justification?: string | null
+          priority?: string | null
+          request_type?: string
+          requester_email?: string | null
+          requester_id?: string | null
+          requisition_number?: string
+          status?: string
+          submitted_at?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       scraping_configs: {
         Row: {
@@ -5718,6 +6004,61 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      shipment_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string | null
+          id: string
+          message: string
+          po_id: string | null
+          resolved_at: string | null
+          severity: string
+          status: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string | null
+          id?: string
+          message: string
+          po_id?: string | null
+          resolved_at?: string | null
+          severity: string
+          status?: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string | null
+          id?: string
+          message?: string
+          po_id?: string | null
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_alerts_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "active_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_alerts_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "po_tracking_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipment_alerts_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shipment_tracking_events: {
         Row: {
@@ -7205,6 +7546,54 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_log: {
+        Row: {
+          api_calls: number | null
+          api_calls_saved: number | null
+          completed_at: string
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          records_inserted: number | null
+          records_processed: number | null
+          records_updated: number | null
+          source: string
+          status: string
+        }
+        Insert: {
+          api_calls?: number | null
+          api_calls_saved?: number | null
+          completed_at?: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          records_inserted?: number | null
+          records_processed?: number | null
+          records_updated?: number | null
+          source: string
+          status: string
+        }
+        Update: {
+          api_calls?: number | null
+          api_calls_saved?: number | null
+          completed_at?: string
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          records_inserted?: number | null
+          records_processed?: number | null
+          records_updated?: number | null
+          source?: string
+          status?: string
+        }
+        Relationships: []
+      }
       sync_metadata: {
         Row: {
           created_at: string
@@ -8133,6 +8522,13 @@ export type Database = {
             foreignKeyName: "vendor_confidence_history_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_confidence_history_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
@@ -8212,6 +8608,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: true
             referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_confidence_profiles_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "vendor_lead_time_analysis"
             referencedColumns: ["id"]
           },
           {
@@ -8301,6 +8704,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_followup_events_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
             referencedColumns: ["id"]
           },
           {
@@ -8398,6 +8808,111 @@ export type Database = {
             foreignKeyName: "vendor_interaction_events_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_interaction_events_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_lead_time_metrics: {
+        Row: {
+          avg_lead_days: number | null
+          avg_lead_days_30d: number | null
+          calculated_at: string
+          id: string
+          last_updated_at: string
+          lead_time_predictability_score: number | null
+          lead_time_reliability_score: number | null
+          lead_time_variance_score: number | null
+          max_lead_days: number | null
+          median_lead_days: number | null
+          min_lead_days: number | null
+          on_time_percentage: number | null
+          on_time_percentage_30d: number | null
+          pos_late: number | null
+          pos_on_time: number | null
+          recent_pos_count: number | null
+          stddev_lead_days: number | null
+          total_pos_completed: number | null
+          updated_by: string | null
+          vendor_id: string
+        }
+        Insert: {
+          avg_lead_days?: number | null
+          avg_lead_days_30d?: number | null
+          calculated_at?: string
+          id?: string
+          last_updated_at?: string
+          lead_time_predictability_score?: number | null
+          lead_time_reliability_score?: number | null
+          lead_time_variance_score?: number | null
+          max_lead_days?: number | null
+          median_lead_days?: number | null
+          min_lead_days?: number | null
+          on_time_percentage?: number | null
+          on_time_percentage_30d?: number | null
+          pos_late?: number | null
+          pos_on_time?: number | null
+          recent_pos_count?: number | null
+          stddev_lead_days?: number | null
+          total_pos_completed?: number | null
+          updated_by?: string | null
+          vendor_id: string
+        }
+        Update: {
+          avg_lead_days?: number | null
+          avg_lead_days_30d?: number | null
+          calculated_at?: string
+          id?: string
+          last_updated_at?: string
+          lead_time_predictability_score?: number | null
+          lead_time_reliability_score?: number | null
+          lead_time_variance_score?: number | null
+          max_lead_days?: number | null
+          median_lead_days?: number | null
+          min_lead_days?: number | null
+          on_time_percentage?: number | null
+          on_time_percentage_30d?: number | null
+          pos_late?: number | null
+          pos_on_time?: number | null
+          recent_pos_count?: number | null
+          stddev_lead_days?: number | null
+          total_pos_completed?: number | null
+          updated_by?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_lead_time_metrics_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "vendor_automation_summary"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "vendor_lead_time_metrics_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_lead_time_metrics_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_lead_time_metrics_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
@@ -8483,6 +8998,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_performance_metrics_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
             referencedColumns: ["id"]
           },
           {
@@ -8590,6 +9112,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_pricelists_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
             referencedColumns: ["id"]
           },
           {
@@ -8807,6 +9336,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_sku_mappings_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
             referencedColumns: ["id"]
           },
           {
@@ -9200,6 +9736,13 @@ export type Database = {
             foreignKeyName: "inventory_items_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
@@ -9318,6 +9861,13 @@ export type Database = {
             foreignKeyName: "purchase_orders_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
@@ -9390,6 +9940,13 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_pricing_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
             referencedColumns: ["id"]
           },
           {
@@ -9635,6 +10192,31 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_lead_time_analysis: {
+        Row: {
+          avg_lead_days: number | null
+          avg_lead_days_30d: number | null
+          id: string | null
+          last_updated_at: string | null
+          lead_time_confidence_score: number | null
+          lead_time_predictability_score: number | null
+          lead_time_reliability_score: number | null
+          lead_time_risk_level: string | null
+          lead_time_variance_score: number | null
+          max_lead_days: number | null
+          median_lead_days: number | null
+          min_lead_days: number | null
+          name: string | null
+          on_time_percentage: number | null
+          on_time_percentage_30d: number | null
+          pos_late: number | null
+          pos_on_time: number | null
+          recent_pos_count: number | null
+          stddev_lead_days: number | null
+          total_pos_completed: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       approve_pricing_change: {
@@ -9680,6 +10262,19 @@ export type Database = {
           items_backed_up: number
         }[]
       }
+      calculate_cost_trends: {
+        Args: { p_months_back?: number }
+        Returns: {
+          avg_cost: number
+          cost_trend: string
+          cost_variance_pct: number
+          last_cost: number
+          max_cost: number
+          min_cost: number
+          product_id: string
+          purchase_count: number
+        }[]
+      }
       calculate_days_until_stockout: {
         Args: { p_consumption_daily: number; p_current_stock: number }
         Returns: number
@@ -9695,6 +10290,16 @@ export type Database = {
           variance_amount: number
           variance_percentage: number
           variance_type: string
+        }[]
+      }
+      calculate_on_order_quantities: {
+        Args: never
+        Returns: {
+          earliest_expected_date: string
+          latest_expected_date: string
+          on_order_qty: number
+          po_count: number
+          product_id: string
         }[]
       }
       calculate_pricelist_changes: {
@@ -9725,6 +10330,31 @@ export type Database = {
           lead_time_score: number
           response_latency_score: number
           threading_score: number
+        }[]
+      }
+      calculate_vendor_lead_time_metrics: {
+        Args: { p_vendor_id: string }
+        Returns: {
+          avg_lead_days: number
+          lead_time_reliability_score: number
+          median_lead_days: number
+          on_time_percentage: number
+          pos_completed: number
+          pos_on_time: number
+          vendor_id: string
+        }[]
+      }
+      calculate_vendor_lead_times: {
+        Args: never
+        Returns: {
+          avg_lead_days: number
+          completed_po_count: number
+          max_lead_days: number
+          min_lead_days: number
+          on_time_delivery_pct: number
+          stddev_lead_days: number
+          vendor_id: string
+          vendor_name: string
         }[]
       }
       cleanup_expired_retry_locks: { Args: never; Returns: number }
@@ -10013,6 +10643,19 @@ export type Database = {
           total_products: number
         }[]
       }
+      get_product_purchase_history: {
+        Args: { p_months_back?: number; p_product_id: string }
+        Returns: {
+          lead_days: number
+          order_date: string
+          po_status: string
+          quantity: number
+          total_cost: number
+          unit_cost: number
+          vendor_id: string
+          vendor_name: string
+        }[]
+      }
       get_rate_limit_status: {
         Args: {
           p_service: string
@@ -10038,13 +10681,12 @@ export type Database = {
       get_shipment_alerts: {
         Args: never
         Returns: {
-          alert_message: string
           alert_type: string
-          days_overdue: number
+          created_at: string
+          id: string
+          message: string
           po_id: string
-          po_number: string
           severity: string
-          shipment_id: string
         }[]
       }
       get_sop_usage_stats: {
@@ -10099,6 +10741,18 @@ export type Database = {
           registration_number: string
           state_name: string
           status: string
+        }[]
+      }
+      get_vendor_spending_summary: {
+        Args: { p_months_back?: number }
+        Returns: {
+          avg_po_value: number
+          last_order_date: string
+          po_count: number
+          total_spent: number
+          unique_products_count: number
+          vendor_id: string
+          vendor_name: string
         }[]
       }
       has_role: { Args: { required_role: string }; Returns: boolean }
@@ -10449,4 +11103,5 @@ export const Constants = {
     },
   },
 } as const
-
+A new version of Supabase CLI is available: v2.65.5 (currently installed v2.62.10)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

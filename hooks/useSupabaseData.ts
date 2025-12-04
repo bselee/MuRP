@@ -99,6 +99,29 @@ export function useData<T = unknown>(url: string | null): { data: T | null; load
 }
 
 // ============================================================================
+// SCHEMA CACHE ERROR HANDLING
+// ============================================================================
+
+/**
+ * Check if error is due to Supabase schema cache being stale
+ * PGRST205 = Could not find table in schema cache
+ * 42P01 = Undefined table (PostgreSQL error)
+ * 
+ * When migrations are pushed, the REST API cache can take a few seconds to update.
+ * This function helps identify when to retry or return empty data gracefully.
+ */
+const isSchemaCacheError = (err: any): boolean => {
+  if (!err) return false;
+  const errorStr = `${err.code ?? ''} ${err.message ?? ''} ${err.details ?? ''} ${err.hint ?? ''}`.toLowerCase();
+  return (
+    err.code === 'PGRST205' ||  // Table not found in schema cache
+    err.code === '42P01' ||      // PostgreSQL: undefined table
+    errorStr.includes('could not find the table') ||
+    errorStr.includes('schema cache')
+  );
+};
+
+// ============================================================================
 // INVENTORY HOOKS
 // ============================================================================
 
@@ -1011,7 +1034,15 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
       setData(transformBuildOrders(orders));
     } catch (err) {
       console.error('[useSupabaseBuildOrders] Error:', err);
-      setError(err instanceof Error ? err : new Error('Failed to fetch build orders'));
+      
+      // If it's a schema cache error, return empty array and log warning instead of error
+      if (isSchemaCacheError(err)) {
+        console.warn('[useSupabaseBuildOrders] Schema cache stale, will retry on next fetch');
+        setData([]);
+        setError(null);
+      } else {
+        setError(err instanceof Error ? err : new Error('Failed to fetch build orders'));
+      }
     } finally {
       setLoading(false);
     }
@@ -1106,7 +1137,15 @@ export function useSupabaseRequisitions(): UseSupabaseDataResult<InternalRequisi
       setData(transformed);
     } catch (err) {
       console.error('[useSupabaseRequisitions] Error:', err);
-      setError(err instanceof Error ? err : new Error('Failed to fetch requisitions'));
+      
+      // If it's a schema cache error, return empty array and log warning instead of error
+      if (isSchemaCacheError(err)) {
+        console.warn('[useSupabaseRequisitions] Schema cache stale, will retry on next fetch');
+        setData([]);
+        setError(null);
+      } else {
+        setError(err instanceof Error ? err : new Error('Failed to fetch requisitions'));
+      }
     } finally {
       setLoading(false);
     }
