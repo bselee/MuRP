@@ -7,7 +7,15 @@
 --------------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.ensure_user_profile()
-RETURNS JSONB
+RETURNS TABLE (
+  id UUID,
+  email TEXT,
+  full_name TEXT,
+  role TEXT,
+  department TEXT,
+  onboarding_complete BOOLEAN,
+  tier TEXT
+)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
@@ -16,7 +24,6 @@ DECLARE
   v_user_id UUID;
   v_email TEXT;
   v_full_name TEXT;
-  v_result JSONB;
 BEGIN
   -- Get current user info
   v_user_id := auth.uid();
@@ -38,14 +45,15 @@ BEGIN
   WHERE id = v_user_id;
 
   -- Upsert the profile
-  INSERT INTO public.user_profiles (id, email, full_name, role, department, onboarding_complete)
+  INSERT INTO public.user_profiles (id, email, full_name, role, department, onboarding_complete, tier)
   VALUES (
     v_user_id,
     v_email,
     v_full_name,
     'Staff',
     'Purchasing',
-    true
+    true,
+    'basic'
   )
   ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email,
@@ -53,20 +61,18 @@ BEGIN
     onboarding_complete = true,
     updated_at = timezone('utc', NOW());
 
-  -- Return the profile
-  SELECT jsonb_build_object(
-    'id', id,
-    'email', email,
-    'full_name', full_name,
-    'role', role,
-    'department', department,
-    'onboarding_complete', onboarding_complete
-  )
-  INTO v_result
-  FROM public.user_profiles
-  WHERE id = v_user_id;
-
-  RETURN v_result;
+  -- Return the profile as table
+  RETURN QUERY
+  SELECT
+    up.id,
+    up.email,
+    up.full_name,
+    up.role,
+    up.department,
+    up.onboarding_complete,
+    up.tier
+  FROM public.user_profiles up
+  WHERE up.id = v_user_id;
 END;
 $$;
 

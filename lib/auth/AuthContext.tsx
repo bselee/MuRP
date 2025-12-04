@@ -92,8 +92,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(transformProfile(data));
     } else {
       // Profile doesn't exist, create it via server function
-      const { data: profile } = await supabase.rpc('ensure_user_profile');
-      setUser(profile ? transformProfile(profile) : null);
+      try {
+        const { data: profiles, error } = await supabase.rpc('ensure_user_profile');
+        if (error) {
+          console.error('Failed to create profile:', error);
+          setUser(null);
+          return;
+        }
+        // profiles is an array with one element when using RETURNS TABLE
+        if (profiles && Array.isArray(profiles) && profiles.length > 0) {
+          setUser(transformProfile(profiles[0]));
+        } else if (profiles && !Array.isArray(profiles)) {
+          // Fallback in case it returns a single object
+          setUser(transformProfile(profiles));
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error calling ensure_user_profile:', error);
+        setUser(null);
+      }
     }
   }, []);
 

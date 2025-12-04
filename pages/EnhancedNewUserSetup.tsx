@@ -40,6 +40,57 @@ const densityOptions: Array<{ label: string; value: RowDensity; blurb: string }>
   { label: 'Ultra', value: 'ultra', blurb: 'Tight rows, max data per screen' },
 ];
 
+const departmentPlaybooks: Record<User['department'], { title: string; highlights: string[] }> = {
+  Purchasing: {
+    title: 'Your day starts in Requisitions + PO Tracking.',
+    highlights: [
+      'Review incoming requests, approve or clarify',
+      'Keep vendors honest with automated follow-ups',
+      'Watch shipments via the PO Tracking timeline',
+    ],
+  },
+  Operations: {
+    title: 'Ops keeps every team unblocked.',
+    highlights: [
+      'Scan dashboards for blockers',
+      'Balance demand between production + purchasing',
+      'Coordinate with receiving on urgent inbound freight',
+    ],
+  },
+  'MFG 1': {
+    title: 'Production is your canvas.',
+    highlights: [
+      'Check todays build schedule',
+      'Verify inventory sufficiency before batching',
+      'Log completions so fulfillment stays ahead',
+    ],
+  },
+  'MFG 2': {
+    title: 'Production is your canvas.',
+    highlights: [
+      'Monitor component health from Inventory',
+      'Coordinate with Purchasing when stocks dip',
+      'Feed status updates back to Ops',
+    ],
+  },
+  Fulfillment: {
+    title: 'Turn finished goods into customer delight.',
+    highlights: [
+      'Peek at Inventory to reserve units',
+      'Use Label Scanner to keep paperwork airtight',
+      'Flag shortages early so Purchasing can react',
+    ],
+  },
+  'SHP/RCV': {
+    title: 'You are the gatekeeper of inbound & outbound.',
+    highlights: [
+      'Use the Receiving view + Label Scanner',
+      'Validate paperwork before anything hits shelves',
+      'Log exceptions right away for Ops & Purchasing',
+    ],
+  },
+};
+
 const SAMPLE_INVENTORY_DATA = [
   // Header row with instructions
   ['INSTRUCTIONS: Fill out your inventory below. Required fields: SKU, Name, Category, Quantity. Optional: Description, Reorder Point, Cost/Price, Supplier, UPC. Delete this row before importing.'],
@@ -308,6 +359,9 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
         // Simple navigation - in a real app this would use React Router or similar
         window.location.href = `/${page.toLowerCase()}`;
     };
+
+    // Define roleMessaging based on user role
+    const roleMessaging = roleCopy[user.role] ?? roleCopy.Staff;
 
     const handleNext = () => setStep((prev) => Math.min(prev + 1, totalSteps - 1));
     const handleBack = () => setStep((prev) => Math.max(prev - 1, 0));
