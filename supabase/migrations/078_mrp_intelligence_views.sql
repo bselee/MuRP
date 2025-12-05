@@ -239,14 +239,14 @@ WITH RECURSIVE bom_tree AS (
   SELECT
     b.parent_product_url,
     b.parent_sku,
-    b.parent_name,
+    b.parent_name as parent_name,
     b.component_product_url,
     b.component_sku,
-    b.component_name,
-    b.quantity_per,
-    b.effective_quantity,
+    b.component_name as component_name,
+    CAST(b.quantity_per_parent AS DECIMAL(12,4)) as quantity_per,
+    CAST(b.quantity_per_parent AS DECIMAL(12,4)) as effective_quantity,
     1 as bom_level,
-    ARRAY[b.parent_sku] as path_array,
+    ARRAY[b.parent_sku::varchar] as path_array,
     b.parent_sku || ' → ' || b.component_sku as path_string
   FROM finale_boms b
 
@@ -259,11 +259,11 @@ WITH RECURSIVE bom_tree AS (
     bt.parent_name,
     b.component_product_url,
     b.component_sku,
-    b.component_name,
-    bt.effective_quantity * b.quantity_per as quantity_per,
-    bt.effective_quantity * b.effective_quantity as effective_quantity,
+    b.component_name as component_name,
+    CAST(bt.effective_quantity * b.quantity_per_parent AS DECIMAL(12,4)) as quantity_per,
+    CAST(bt.effective_quantity * b.quantity_per_parent AS DECIMAL(12,4)) as effective_quantity,
     bt.bom_level + 1,
-    bt.path_array || b.component_sku,
+    bt.path_array || b.component_sku::varchar,
     bt.path_string || ' → ' || b.component_sku
   FROM bom_tree bt
   JOIN finale_boms b ON bt.component_product_url = b.parent_product_url
@@ -415,31 +415,27 @@ SELECT
 
   -- Order counts
   COUNT(DISTINCT po.id) as total_orders,
-  COUNT(DISTINCT po.id) FILTER (WHERE po.status = 'Completed') as completed_orders,
-  COUNT(DISTINCT po.id) FILTER (WHERE po.status IN ('Pending', 'Submitted', 'Ordered')) as open_orders,
+  SUM(CASE WHEN po.status = 'Completed' THEN 1 ELSE 0 END) as completed_orders,
+  SUM(CASE WHEN po.status IN ('Pending', 'Submitted', 'Ordered') THEN 1 ELSE 0 END) as open_orders,
 
   -- Spend analysis
   COALESCE(SUM(po.total), 0) as lifetime_spend,
-  COALESCE(SUM(po.total) FILTER (WHERE po.order_date >= CURRENT_DATE - INTERVAL '12 months'), 0) as spend_12m,
-  COALESCE(SUM(po.total) FILTER (WHERE po.order_date >= CURRENT_DATE - INTERVAL '3 months'), 0) as spend_3m,
+  COALESCE(SUM(CASE WHEN po.order_date >= CURRENT_DATE - INTERVAL '12 months' THEN po.total ELSE 0 END), 0) as spend_12m,
+  COALESCE(SUM(CASE WHEN po.order_date >= CURRENT_DATE - INTERVAL '3 months' THEN po.total ELSE 0 END), 0) as spend_3m,
   ROUND(COALESCE(AVG(po.total), 0), 2) as avg_order_value,
 
   -- Lead time analysis
-  ROUND(AVG(EXTRACT(DAY FROM (po.received_date - po.order_date)))::NUMERIC, 1)
-    FILTER (WHERE po.received_date IS NOT NULL) as avg_actual_lead_days,
-  MIN(EXTRACT(DAY FROM (po.received_date - po.order_date)))::INTEGER
-    FILTER (WHERE po.received_date IS NOT NULL) as min_lead_days,
-  MAX(EXTRACT(DAY FROM (po.received_date - po.order_date)))::INTEGER
-    FILTER (WHERE po.received_date IS NOT NULL) as max_lead_days,
-  ROUND(STDDEV(EXTRACT(DAY FROM (po.received_date - po.order_date)))::NUMERIC, 1)
-    FILTER (WHERE po.received_date IS NOT NULL) as lead_time_stddev,
+  ROUND(AVG(CASE WHEN po.received_date IS NOT NULL THEN (po.received_date - po.order_date) ELSE NULL END)::NUMERIC, 1) as avg_actual_lead_days,
+  MIN(CASE WHEN po.received_date IS NOT NULL THEN (po.received_date - po.order_date) ELSE NULL END)::INTEGER as min_lead_days,
+  MAX(CASE WHEN po.received_date IS NOT NULL THEN (po.received_date - po.order_date) ELSE NULL END)::INTEGER as max_lead_days,
+  ROUND(STDDEV(CASE WHEN po.received_date IS NOT NULL THEN (po.received_date - po.order_date) ELSE NULL END)::NUMERIC, 1) as lead_time_stddev,
 
   -- On-time delivery
-  COUNT(*) FILTER (WHERE po.received_date <= po.expected_date AND po.received_date IS NOT NULL) as on_time_count,
-  COUNT(*) FILTER (WHERE po.received_date IS NOT NULL) as total_deliveries,
+  SUM(CASE WHEN po.received_date <= po.expected_date AND po.received_date IS NOT NULL THEN 1 ELSE 0 END) as on_time_count,
+  SUM(CASE WHEN po.received_date IS NOT NULL THEN 1 ELSE 0 END) as total_deliveries,
   ROUND(
-    COUNT(*) FILTER (WHERE po.received_date <= po.expected_date AND po.received_date IS NOT NULL)::DECIMAL /
-    NULLIF(COUNT(*) FILTER (WHERE po.received_date IS NOT NULL), 0) * 100, 1
+    SUM(CASE WHEN po.received_date <= po.expected_date AND po.received_date IS NOT NULL THEN 1 ELSE 0 END)::DECIMAL /
+    NULLIF(SUM(CASE WHEN po.received_date IS NOT NULL THEN 1 ELSE 0 END), 0) * 100, 1
   ) as on_time_delivery_pct,
 
   -- Product coverage
@@ -453,12 +449,12 @@ SELECT
   -- Vendor score (composite)
   ROUND(
     (COALESCE(
-      COUNT(*) FILTER (WHERE po.received_date <= po.expected_date)::DECIMAL /
-      NULLIF(COUNT(*) FILTER (WHERE po.received_date IS NOT NULL), 0), 0) * 50) + -- On-time weight: 50%
-    (CASE WHEN AVG(EXTRACT(DAY FROM (po.received_date - po.order_date))) IS NULL THEN 50
-          WHEN AVG(EXTRACT(DAY FROM (po.received_date - po.order_date))) <= 7 THEN 50
-          WHEN AVG(EXTRACT(DAY FROM (po.received_date - po.order_date))) <= 14 THEN 40
-          WHEN AVG(EXTRACT(DAY FROM (po.received_date - po.order_date))) <= 21 THEN 30
+      SUM(CASE WHEN po.received_date <= po.expected_date AND po.received_date IS NOT NULL THEN 1 ELSE 0 END)::DECIMAL /
+      NULLIF(SUM(CASE WHEN po.received_date IS NOT NULL THEN 1 ELSE 0 END), 0), 0) * 50) + -- On-time weight: 50%
+    (CASE WHEN AVG(CASE WHEN po.received_date IS NOT NULL THEN (po.received_date - po.order_date) ELSE NULL END) IS NULL THEN 50
+          WHEN AVG(CASE WHEN po.received_date IS NOT NULL THEN (po.received_date - po.order_date) ELSE NULL END) <= 7 THEN 50
+          WHEN AVG(CASE WHEN po.received_date IS NOT NULL THEN (po.received_date - po.order_date) ELSE NULL END) <= 14 THEN 40
+          WHEN AVG(CASE WHEN po.received_date IS NOT NULL THEN (po.received_date - po.order_date) ELSE NULL END) <= 21 THEN 30
           ELSE 20 END) -- Lead time weight: up to 50%
   , 1) as vendor_score
 
@@ -582,9 +578,8 @@ ORDER BY stock_value DESC;
 -- =============================================
 -- INDEXES FOR VIEW PERFORMANCE
 -- =============================================
-CREATE INDEX IF NOT EXISTS idx_stock_history_velocity
-  ON finale_stock_history(finale_product_url, transaction_date, quantity)
-  WHERE transaction_date >= CURRENT_DATE - INTERVAL '90 days';
+-- Note: Removed CURRENT_DATE indexes as they cannot be immutable
+-- These should be created manually if needed for performance
 
 CREATE INDEX IF NOT EXISTS idx_products_active
   ON finale_products(finale_product_url)

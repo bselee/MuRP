@@ -33,10 +33,10 @@
 7. **mrp_inventory_by_department** - Department summaries with stock value and reorder counts
 
 **Problems & Solutions:**
-- **Problem:** Migration failed due to missing Finale tables (finale_stock_history, etc.)
-- **Root Cause:** MRP views depend on underlying Finale data tables that haven't been created yet
-- **Solution:** Created comprehensive validation framework, documented dependency requirements, implemented limited API testing to avoid rate limits
-- **Impact:** Migration ready for deployment once Finale data sync creates required tables
+- **Problem:** Migration 078 applied but MRP views don't exist in database
+- **Root Cause:** Column name mismatches between schema and view definitions (total_on_hand vs quantity_on_hand, parent_name vs parent_product_name, etc.)
+- **Solution:** Identified specific column mismatches preventing view creation, prepared fixes for MRP intelligence views
+- **Impact:** Views failed silently during migration - need to correct column references and re-apply
 
 **Tests:**
 - ✅ Schema transformer tests: 9 passed, 0 failed
@@ -46,8 +46,12 @@
 - ✅ Database connectivity: Supabase connection confirmed
 
 **Next Steps:**
-- [ ] Sync Finale data to create required tables (finale_products, finale_inventory, finale_stock_history, etc.)
-- [ ] Re-apply MRP views migration after data tables exist
+- [ ] Fix MRP view column references to match deployed schema
+- [ ] Re-apply MRP views migration after column fixes
+- [ ] Sync Finale data to populate required tables
+- [ ] Run full validation tests with actual data
+- [ ] Test view calculations and performance
+- [ ] Document MRP intelligence views usage and maintenance
 - [ ] Run full validation tests with actual data
 - [ ] Test view calculations and performance
 - [ ] Document MRP intelligence views usage and maintenance
