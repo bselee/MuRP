@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor, CompanyEmailSettings } from '../types';
 import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, LightBulbIcon, SparklesIcon, BellIcon, ClipboardCopyIcon, TrashIcon } from '../components/icons';
@@ -176,10 +177,11 @@ Thank you!`
   return (
     <>
         <div className="space-y-8 max-w-4xl mx-auto">
-          <header className="mb-4">
-            <h1 className="text-xl font-bold text-white tracking-tight">Settings</h1>
-            <p className="text-sm text-gray-400 mt-1">Manage your account, company, and system configuration</p>
-          </header>
+          <PageHeader
+            title="Settings"
+            description="Manage your account, company, and system configuration"
+            icon={<ShieldCheckIcon className="w-6 h-6" />}
+          />
 
           {/* ============================================================ */}
           {/* ACCOUNT & PROFILE */}

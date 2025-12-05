@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
+import SearchBar from '@/components/ui/SearchBar';
 import type { Vendor } from '../types';
 import VendorAutomationModal from '../components/VendorAutomationModal';
 import VendorManagementModal, { type VendorConfig } from '../components/VendorManagementModal';
-import { SearchIcon, AdjustmentsHorizontalIcon } from '../components/icons';
+import { SearchIcon, AdjustmentsHorizontalIcon, UsersIcon } from '../components/icons';
 import VendorConfidenceDashboard from '../components/VendorConfidenceDashboard';
 
 interface VendorsProps {
@@ -87,12 +89,16 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
 
     return (
         <div className="space-y-6">
-            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-                <h1 className="text-xl font-bold text-white tracking-tight">Vendors</h1>
-                <Button className="w-full sm:w-auto bg-accent-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-accent-600 transition-colors text-sm">
-                    Add New Vendor
-                </Button>
-            </header>
+            <PageHeader
+                title="Vendors"
+                description="Manage vendor contacts, lead times, and automation settings"
+                icon={<UsersIcon className="w-6 h-6" />}
+                actions={
+                    <Button className="bg-accent-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-accent-600 transition-colors text-sm">
+                        Add New Vendor
+                    </Button>
+                }
+            />
 
             <VendorConfidenceDashboard />
 
@@ -103,19 +109,11 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                         <label htmlFor="search-vendors" className="block text-sm font-medium text-gray-300 mb-1">
                             Search Vendors
                         </label>
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <SearchIcon className="h-5 w-5 text-gray-400" />
-                            </div>
-                            <input
-                                id="search-vendors"
-                                type="text"
-                                placeholder="Search by name, email, phone, city..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full"
-                            />
-                        </div>
+                        <SearchBar
+                            value={searchTerm}
+                            onChange={setSearchTerm}
+                            placeholder="Search by name, email, phone, city..."
+                        />
                     </div>
                     <Button
                         onClick={() => setIsVendorManagementOpen(true)}
