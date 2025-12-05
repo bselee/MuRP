@@ -14,7 +14,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { FinaleBasicAuthClient } from './finaleBasicAuthClient';
+import { FinaleClient, createFinaleClient } from '../lib/finale-client-v2';
 import { CircuitBreaker } from './circuitBreaker';
 import { RateLimiter } from './rateLimiter';
 import { retryWithBackoff } from './retryWithBackoff';
@@ -23,10 +23,11 @@ import type { Database } from '../types/database';
 // Types for Finale REST API responses
 interface FinaleProduct {
   productId: string;
-  sku: string;
-  name: string;
+  internalName?: string;
+  name?: string;
   description?: string;
-  status: 'PRODUCT_ACTIVE' | 'PRODUCT_INACTIVE' | 'PRODUCT_DISCONTINUED';
+  statusId: 'PRODUCT_ACTIVE' | 'PRODUCT_INACTIVE' | 'PRODUCT_DISCONTINUED';
+  status?: 'PRODUCT_ACTIVE' | 'PRODUCT_INACTIVE' | 'PRODUCT_DISCONTINUED'; // fallback
   unitsInStock: number;
   unitsOnOrder: number;
   unitsReserved: number;
@@ -43,7 +44,8 @@ interface FinaleProduct {
   weightUnit?: string;
   customFields?: Record<string, any>;
   createdDate: string;
-  lastModified: string;
+  lastUpdatedDate: string;
+  lastModified?: string; // fallback
 }
 
 interface FinalePurchaseOrder {
@@ -126,7 +128,7 @@ interface SyncConfig {
 }
 
 export class FinaleRestSyncService {
-  private client: FinaleBasicAuthClient | null = null;
+  private client: FinaleClient | null = null;
   private supabase: ReturnType<typeof createClient<Database>>;
   private config: SyncConfig;
   private circuitBreaker: CircuitBreaker;
@@ -136,9 +138,9 @@ export class FinaleRestSyncService {
   private metrics: SyncMetrics;
   private listeners: Array<(progress: SyncProgress) => void> = [];
   
-  constructor(config?: Partial<SyncConfig>) {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  constructor(config?: Partial<SyncConfig> & { supabaseUrl?: string; supabaseKey?: string }) {
+    const supabaseUrl = config?.supabaseUrl || import.meta.env?.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseKey = config?.supabaseKey || import.meta.env?.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
     
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Supabase configuration missing');
@@ -187,11 +189,12 @@ export class FinaleRestSyncService {
    * Set Finale API credentials
    */
   setCredentials(apiKey: string, apiSecret: string, accountPath: string): void {
-    this.client = new FinaleBasicAuthClient({
+    this.client = createFinaleClient({
       apiKey,
       apiSecret,
       accountPath,
-      baseUrl: 'https://app.finaleinventory.com/api',
+      timeout: 30000,
+      requestsPerMinute: 50,
     });
   }
   
@@ -295,7 +298,7 @@ export class FinaleRestSyncService {
     while (hasMore) {
       batchCount++;
       
-      const products = await this.rateLimiter.schedule(async () => {
+      const response = await this.rateLimiter.schedule(async () => {
         return await this.circuitBreaker.execute(async () => {
           return await retryWithBackoff(
             async () => await this.client!.getProducts(this.config.productBatchSize, offset),
@@ -306,6 +309,16 @@ export class FinaleRestSyncService {
           );
         });
       }, 'finale-products');
+      
+      if (!response.success) {
+        throw new Error(`Failed to fetch products: ${response.error}`);
+      }
+      
+      // Transform columnar data to array
+      const columnarData = response.data;
+      const products = this.transformColumnarToProducts(columnarData);
+      
+      console.log(`[FinaleRestSync] Batch ${batchCount}: received ${products.length} products`);
       
       this.metrics.apiCallsTotal++;
       
@@ -362,7 +375,7 @@ export class FinaleRestSyncService {
    */
   private async syncPurchaseOrders(deltaSyncFrom: Date | null): Promise<void> {
     console.log('[FinaleRestSync] Syncing purchase orders...');
-    
+
     this.updateProgress({
       phase: 'purchase_orders',
       current: 0,
@@ -370,19 +383,24 @@ export class FinaleRestSyncService {
       percentage: 0,
       message: 'Fetching purchase orders from Finale API...',
     });
-    
+
     const allPOs: FinalePurchaseOrder[] = [];
-    let offset = 0;
-    let hasMore = true;
+    let hasNextPage = true;
+    let endCursor: string | undefined;
     let batchCount = 0;
-    
-    while (hasMore) {
+
+    while (hasNextPage) {
       batchCount++;
-      
-      const pos = await this.rateLimiter.schedule(async () => {
+
+      const response = await this.rateLimiter.schedule(async () => {
         return await this.circuitBreaker.execute(async () => {
           return await retryWithBackoff(
-            async () => await this.client!.getPurchaseOrders(this.config.purchaseOrderBatchSize, offset),
+            async () => await this.client!.getPurchaseOrders({
+              first: this.config.purchaseOrderBatchSize,
+              after: endCursor,
+              startDate: this.config.historicalStartDate,
+              status: ['Pending', 'Submitted', 'Ordered', 'Partial', 'Completed']
+            }),
             {
               maxAttempts: this.config.maxRetries,
               baseDelayMs: this.config.retryDelayMs,
@@ -390,55 +408,65 @@ export class FinaleRestSyncService {
           );
         });
       }, 'finale-pos');
-      
+
+      if (!response.success) {
+        throw new Error(`Failed to fetch purchase orders: ${response.error}`);
+      }
+
+      const data = response.data;
+      if (!data?.orderViewConnection) {
+        console.log('[FinaleRestSync] No more purchase orders to fetch');
+        break;
+      }
+
+      // Transform GraphQL response to FinalePurchaseOrder format
+      const pos = this.transformGraphQLPurchaseOrders(data.orderViewConnection.edges);
+
       this.metrics.apiCallsTotal++;
-      
-      // Filter by facility and date range
+
+      // Filter by facility and date range (additional filtering beyond GraphQL)
       const relevantPOs = pos.filter(po => {
-        // Facility filter
-        const facilityMatch = !po.facility || 
+        // Facility filter (if needed beyond GraphQL filtering)
+        const facilityMatch = !po.facility ||
           po.facility.toLowerCase().includes(this.config.facilityName.toLowerCase());
-        
-        // Date filter (current year onwards)
-        const orderDate = new Date(po.orderDate);
-        const dateMatch = orderDate >= new Date(this.config.historicalStartDate);
-        
+
         // Delta sync filter
         const deltaMatch = deltaSyncFrom
           ? new Date(po.lastModified) > deltaSyncFrom
           : true;
-        
-        return facilityMatch && dateMatch && deltaMatch;
+
+        return facilityMatch && deltaMatch;
       });
-      
+
       allPOs.push(...relevantPOs);
-      
+
       console.log(`[FinaleRestSync] PO Batch ${batchCount}: Fetched ${pos.length}, Relevant ${relevantPOs.length}`);
-      
-      hasMore = pos.length === this.config.purchaseOrderBatchSize;
-      offset += this.config.purchaseOrderBatchSize;
-      
+
+      // Check pagination
+      hasNextPage = data.orderViewConnection.pageInfo?.hasNextPage || false;
+      endCursor = data.orderViewConnection.pageInfo?.endCursor;
+
       // Early exit for delta sync
       if (deltaSyncFrom && relevantPOs.length === 0 && batchCount > 2) {
         console.log('[FinaleRestSync] Delta sync: No recent PO changes, stopping early');
         this.metrics.apiCallsSaved += 5;
-        hasMore = false;
+        hasNextPage = false;
       }
-      
+
       this.updateProgress({
         phase: 'purchase_orders',
-        current: offset,
-        total: offset + (hasMore ? this.config.purchaseOrderBatchSize : 0),
-        percentage: Math.min(90, (offset / (offset + 100)) * 100),
+        current: allPOs.length,
+        total: allPOs.length + (hasNextPage ? this.config.purchaseOrderBatchSize : 0),
+        percentage: Math.min(90, (allPOs.length / (allPOs.length + 100)) * 100),
         message: `Fetched ${allPOs.length} purchase orders (${batchCount} API calls)`,
       });
     }
-    
+
     console.log(`[FinaleRestSync] Total purchase orders fetched: ${allPOs.length}`);
-    
+
     // Save to database
     await this.savePurchaseOrdersToDatabase(allPOs);
-    
+
     this.updateProgress({
       phase: 'purchase_orders',
       current: allPOs.length,
@@ -458,7 +486,7 @@ export class FinaleRestSyncService {
     // This is a lightweight operation using existing product data
     
     const { data: products, error } = await this.supabase
-      .from('inventory')
+      .from('inventory_items')
       .select('id, sku, finale_product_id, custom_fields')
       .eq('status', 'active');
     
@@ -499,11 +527,11 @@ export class FinaleRestSyncService {
     
     // Transform to database schema
     const dbProducts = products.map(p => ({
-      sku: p.sku,
-      name: p.name,
+      sku: p.productId, // API returns productId, not sku
+      name: p.internalName || p.name || '', // API returns internalName, not name
       description: p.description || '',
       category: p.category || 'Uncategorized',
-      status: p.status === 'PRODUCT_ACTIVE' ? 'active' : 'inactive',
+      status: p.statusId === 'PRODUCT_ACTIVE' ? 'active' : 'inactive', // API returns statusId, not status
       stock: p.unitsInStock || 0,
       on_order: p.unitsOnOrder || 0,
       reserved: p.unitsReserved || 0,
@@ -515,7 +543,7 @@ export class FinaleRestSyncService {
       barcode: p.barcode || '',
       notes: '',
       finale_product_id: p.productId,
-      finale_last_modified: p.lastModified,
+      finale_last_modified: p.lastUpdatedDate || p.lastModified, // API returns lastUpdatedDate
       custom_fields: p.customFields || {},
       updated_at: new Date().toISOString(),
     }));
@@ -526,7 +554,7 @@ export class FinaleRestSyncService {
       const batch = dbProducts.slice(i, i + batchSize);
       
       const { error } = await this.supabase
-        .from('inventory')
+        .from('inventory_items')
         .upsert(batch, { 
           onConflict: 'sku',
           ignoreDuplicates: false 
@@ -664,6 +692,97 @@ export class FinaleRestSyncService {
     };
   }
   
+  /**
+   * Transform Finale columnar JSON response to array of product objects
+   */
+  private transformColumnarToProducts(columnarData: any): FinaleProduct[] {
+    if (!columnarData || typeof columnarData !== 'object') {
+      return [];
+    }
+
+    // Get the productId array to determine how many products we have
+    const productIds = columnarData.productId;
+    if (!Array.isArray(productIds)) {
+      return [];
+    }
+
+    const products: FinaleProduct[] = [];
+
+    // Transform each product
+    for (let i = 0; i < productIds.length; i++) {
+      const product: FinaleProduct = {
+        productId: productIds[i],
+        name: columnarData.internalName?.[i] || columnarData.name?.[i] || '',
+        internalName: columnarData.internalName?.[i] || columnarData.name?.[i] || '',
+        description: columnarData.description?.[i] || '',
+        statusId: (columnarData.statusId?.[i] || columnarData.status?.[i] || 'PRODUCT_ACTIVE') as any,
+        status: (columnarData.statusId?.[i] || columnarData.status?.[i] || 'PRODUCT_ACTIVE') as any,
+        unitsInStock: parseFloat(columnarData.unitsInStock?.[i] || '0') || 0,
+        unitsOnOrder: parseFloat(columnarData.unitsOnOrder?.[i] || '0') || 0,
+        unitsReserved: parseFloat(columnarData.unitsReserved?.[i] || '0') || 0,
+        reorderPoint: columnarData.reorderPoint?.[i] ? parseFloat(columnarData.reorderPoint[i]) : undefined,
+        reorderQuantity: columnarData.reorderQuantity?.[i] ? parseFloat(columnarData.reorderQuantity[i]) : undefined,
+        moq: columnarData.moq?.[i] ? parseFloat(columnarData.moq[i]) : undefined,
+        cost: columnarData.cost?.[i] ? parseFloat(columnarData.cost[i]) : undefined,
+        price: columnarData.price?.[i] ? parseFloat(columnarData.price[i]) : undefined,
+        defaultSupplier: columnarData.defaultSupplier?.[i] || '',
+        facility: columnarData.facility?.[i] || '',
+        category: columnarData.category?.[i] || '',
+        barcode: columnarData.barcode?.[i] || '',
+        weight: columnarData.weight?.[i] ? parseFloat(columnarData.weight[i]) : undefined,
+        weightUnit: columnarData.weightUnit?.[i] || '',
+        createdDate: columnarData.createdDate?.[i] || '',
+        lastUpdatedDate: columnarData.lastModified?.[i] || columnarData.lastUpdatedDate?.[i] || '',
+        lastModified: columnarData.lastModified?.[i] || columnarData.lastUpdatedDate?.[i] || '',
+      };
+
+      products.push(product);
+    }
+
+    return products;
+  }
+
+  /**
+   * Transform GraphQL purchase order response to FinalePurchaseOrder format
+   */
+  private transformGraphQLPurchaseOrders(edges: any[]): FinalePurchaseOrder[] {
+    return edges.map(edge => {
+      const node = edge.node;
+      return {
+        orderId: node.orderId,
+        orderUrl: node.orderUrl,
+        type: node.type,
+        status: node.status,
+        orderDate: node.orderDate,
+        receiveDate: node.receiveDate,
+        total: parseFloat(node.total) || 0,
+        subtotal: parseFloat(node.subtotal) || 0,
+        publicNotes: node.publicNotes || '',
+        privateNotes: node.privateNotes || '',
+        lastModified: node.recordLastUpdated,
+        supplier: node.supplier ? {
+          partyId: node.supplier.partyId,
+          partyUrl: node.supplier.partyUrl,
+          name: node.supplier.name
+        } : undefined,
+        facility: node.origin?.name || '',
+        facilityId: node.origin?.facilityId || '',
+        items: node.itemList?.edges?.map((itemEdge: any) => ({
+          productId: itemEdge.node.productId,
+          productUrl: itemEdge.node.productUrl,
+          productName: itemEdge.node.productName,
+          quantity: parseFloat(itemEdge.node.quantity) || 0,
+          unitPrice: parseFloat(itemEdge.node.unitPrice) || 0,
+          receivedQuantity: parseFloat(itemEdge.node.receivedQuantity) || 0
+        })) || [],
+        customFields: node.userFieldDataList?.reduce((acc: Record<string, any>, field: any) => {
+          acc[field.attrName] = field.attrValue;
+          return acc;
+        }, {}) || {}
+      };
+    });
+  }
+
   /**
    * Get current metrics
    */

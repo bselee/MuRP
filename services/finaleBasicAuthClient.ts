@@ -43,6 +43,56 @@ interface FinalePurchaseOrder {
   [key: string]: any;
 }
 
+/**
+ * Transform Finale columnar JSON response to array of product objects
+ */
+function transformColumnarToProducts(columnarData: any): FinaleProduct[] {
+  if (!columnarData || typeof columnarData !== 'object') {
+    return [];
+  }
+
+  // Get the productId array to determine how many products we have
+  const productIds = columnarData.productId;
+  if (!Array.isArray(productIds)) {
+    return [];
+  }
+
+  const products: FinaleProduct[] = [];
+
+  // Transform each product
+  for (let i = 0; i < productIds.length; i++) {
+    const product: FinaleProduct = {
+      productId: productIds[i],
+      name: columnarData.internalName?.[i] || columnarData.name?.[i] || '',
+      sku: productIds[i], // productId is the SKU
+      description: columnarData.description?.[i] || '',
+      statusId: columnarData.statusId?.[i] || columnarData.status?.[i] || 'PRODUCT_ACTIVE',
+      status: columnarData.statusId?.[i] || columnarData.status?.[i] || 'PRODUCT_ACTIVE',
+      unitsInStock: parseFloat(columnarData.unitsInStock?.[i] || '0') || 0,
+      unitsOnOrder: parseFloat(columnarData.unitsOnOrder?.[i] || '0') || 0,
+      unitsReserved: parseFloat(columnarData.unitsReserved?.[i] || '0') || 0,
+      reorderPoint: columnarData.reorderPoint?.[i] ? parseFloat(columnarData.reorderPoint[i]) : undefined,
+      reorderQuantity: columnarData.reorderQuantity?.[i] ? parseFloat(columnarData.reorderQuantity[i]) : undefined,
+      moq: columnarData.moq?.[i] ? parseFloat(columnarData.moq[i]) : undefined,
+      cost: columnarData.cost?.[i] ? parseFloat(columnarData.cost[i]) : undefined,
+      price: columnarData.price?.[i] ? parseFloat(columnarData.price[i]) : undefined,
+      defaultSupplier: columnarData.defaultSupplier?.[i] || '',
+      facility: columnarData.facility?.[i] || '',
+      category: columnarData.category?.[i] || '',
+      barcode: columnarData.barcode?.[i] || '',
+      weight: columnarData.weight?.[i] ? parseFloat(columnarData.weight[i]) : undefined,
+      weightUnit: columnarData.weightUnit?.[i] || '',
+      createdDate: columnarData.createdDate?.[i] || '',
+      lastUpdatedDate: columnarData.lastModified?.[i] || columnarData.lastUpdatedDate?.[i] || '',
+      lastModified: columnarData.lastModified?.[i] || columnarData.lastUpdatedDate?.[i] || '',
+    };
+
+    products.push(product);
+  }
+
+  return products;
+}
+
 export class FinaleBasicAuthClient {
   private config: FinaleConfig;
   private authHeader: string;
@@ -60,16 +110,9 @@ export class FinaleBasicAuthClient {
       baseUrl: config?.baseUrl || (this.isBrowser ? '' : process.env.FINALE_BASE_URL || 'https://app.finaleinventory.com'),
     };
 
-    // Validate configuration (skip in browser - will use proxy)
-    if (!this.isBrowser) {
-      if (!this.config.apiKey || !this.config.apiSecret) {
-        throw new Error('Finale API Key and Secret are required');
-      }
-      if (!this.config.accountPath) {
-        throw new Error('Finale Account Path is required');
-      }
-
-      // Create Basic Auth header (Node.js only)
+    // Create Basic Auth header (always, for both browser and server)
+    // In production browser, this will be overridden by proxy calls
+    if (this.config.apiKey && this.config.apiSecret) {
       const authString = `${this.config.apiKey}:${this.config.apiSecret}`;
       this.authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
     } else {
@@ -237,10 +280,25 @@ export class FinaleBasicAuthClient {
    * Get all products
    */
   async getProducts(limit = 100, offset = 0): Promise<FinaleProduct[]> {
-    if (this.isBrowser) {
+    // Allow direct API calls in development
+    const isDevelopment = (import.meta.env?.DEV || import.meta.env?.MODE === 'development') ?? 
+                         (typeof process !== 'undefined' && process.env.NODE_ENV === 'development');
+    
+    if (this.isBrowser && !isDevelopment) {
       return this.callProxy<FinaleProduct[]>('getProducts', { limit, offset });
     }
-    return this.get<FinaleProduct[]>(`/product?limit=${limit}&offset=${offset}`);
+    
+    // Direct API call for development or server environments
+    if (!this.authHeader) {
+      const authString = `${this.config.apiKey}:${this.config.apiSecret}`;
+      this.authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
+    }
+    
+    const response = this.get<any>(`/product?limit=${limit}&offset=${offset}`);
+    
+    // Transform columnar JSON response to array of objects
+    const columnarData = await response;
+    return transformColumnarToProducts(columnarData);
   }
 
   /**
@@ -302,9 +360,20 @@ export class FinaleBasicAuthClient {
    * Get all purchase orders
    */
   async getPurchaseOrders(limit = 100, offset = 0): Promise<FinalePurchaseOrder[]> {
-    if (this.isBrowser) {
+    // Allow direct API calls in development
+    const isDevelopment = (import.meta.env?.DEV || import.meta.env?.MODE === 'development') ?? 
+                         (typeof process !== 'undefined' && process.env.NODE_ENV === 'development');
+    
+    if (this.isBrowser && !isDevelopment) {
       return this.callProxy<FinalePurchaseOrder[]>('getPurchaseOrders', { limit, offset });
     }
+    
+    // Direct API call for development or server environments
+    if (!this.authHeader) {
+      const authString = `${this.config.apiKey}:${this.config.apiSecret}`;
+      this.authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
+    }
+    
     return this.get<FinalePurchaseOrder[]>(`/purchaseOrder?limit=${limit}&offset=${offset}`);
   }
 

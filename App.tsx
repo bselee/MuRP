@@ -113,6 +113,7 @@ import {
 import type { SyncHealthRow } from './lib/sync/healthUtils';
 import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amazonTracking';
 import { initializeFinaleAutoSync } from './services/finaleAutoSync';
+import { triggerPOSync } from './services/purchaseOrderSyncService';
 
 export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page';
 
@@ -296,6 +297,14 @@ const AppShell: React.FC = () => {
       console.error('[App] Failed to initialize Finale auto-sync:', error);
     });
   }, [currentUser?.id, isE2ETestMode]);
+
+  // Expose debug functions to window for console testing
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).triggerPOSync = triggerPOSync;
+      (window as any).initializeFinaleAutoSync = initializeFinaleAutoSync;
+    }
+  }, []);
 
   useEffect(() => {
     if (!currentUser?.guidedLaunchState) {

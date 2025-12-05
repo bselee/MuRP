@@ -47,25 +47,107 @@
             - img [ref=e51]
             - generic [ref=e55]: Inventory
         - listitem [ref=e56]:
-          - link "Navigate to Settings" [ref=e57] [cursor=pointer]:
+          - link "Navigate to Inventory Intelligence" [ref=e57] [cursor=pointer]:
             - /url: "#"
             - img [ref=e58]
-            - generic [ref=e61]: Settings
-    - generic [ref=e62]:
-      - button "User menu for Alicia Admin (E2E)" [ref=e64] [cursor=pointer]:
-        - img "Alicia Admin (E2E)'s profile picture" [ref=e67]
-        - generic [ref=e69]: Alicia Admin (E2E)
-      - link "Open MuRPBot AI Assistant" [ref=e70] [cursor=pointer]:
+            - generic [ref=e60]: Inventory Intelligence
+        - listitem [ref=e61]:
+          - link "Navigate to Settings" [ref=e62] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e63]
+            - generic [ref=e66]: Settings
+    - generic [ref=e67]:
+      - button "User menu for Alicia Admin (E2E)" [ref=e69] [cursor=pointer]:
+        - img "Alicia Admin (E2E)'s profile picture" [ref=e72]
+        - generic [ref=e74]: Alicia Admin (E2E)
+      - link "Open MuRPBot AI Assistant" [ref=e75] [cursor=pointer]:
         - /url: "#"
-        - img [ref=e73]
-        - generic [ref=e76]: MBMuRPBot
-  - generic [ref=e77]:
-    - banner [ref=e78]:
-      - generic [ref=e80]: Syncing · Dec 3, 6:50 PM
-    - main [ref=e81]:
-      - generic [ref=e82]:
-        - heading "We hit a snag loading this page." [level=2] [ref=e83]
-        - paragraph [ref=e84]: Try navigating to a different section or refreshing the browser.
+        - img [ref=e78]
+        - generic [ref=e81]: MBMuRPBot
+  - generic [ref=e82]:
+    - banner [ref=e83]:
+      - generic [ref=e85]: Loading data…
+    - main [ref=e86]:
+      - generic [ref=e87]:
+        - generic [ref=e88]:
+          - heading "Purchase Orders" [level=1] [ref=e89]
+          - button "Create New PO" [ref=e91] [cursor=pointer]
+        - generic [ref=e92]:
+          - generic [ref=e93]:
+            - generic [ref=e94]:
+              - paragraph [ref=e95]: Purchasing Command Center
+              - paragraph [ref=e96]: Approvals, vendor comms, and tracking health at a glance.
+            - generic [ref=e97]: "Follow-up backlog: 0"
+          - generic [ref=e98]:
+            - button "Manager Review 0 Awaiting department approval" [ref=e99] [cursor=pointer]:
+              - paragraph [ref=e100]: Manager Review
+              - paragraph [ref=e101]: "0"
+              - paragraph [ref=e102]: Awaiting department approval
+            - button "Ops Review 0 Strategic buys waiting on Ops" [ref=e103] [cursor=pointer]:
+              - paragraph [ref=e104]: Ops Review
+              - paragraph [ref=e105]: "0"
+              - paragraph [ref=e106]: Strategic buys waiting on Ops
+            - button "Ready for PO Build 0 Fully approved requisitions" [ref=e107] [cursor=pointer]:
+              - paragraph [ref=e108]: Ready for PO Build
+              - paragraph [ref=e109]: "0"
+              - paragraph [ref=e110]: Fully approved requisitions
+            - button "Tracking Missing 0 0 vendor nudges queued" [ref=e111] [cursor=pointer]:
+              - paragraph [ref=e112]: Tracking Missing
+              - paragraph [ref=e113]: "0"
+              - paragraph [ref=e114]: 0 vendor nudges queued
+          - generic [ref=e115]:
+            - generic [ref=e116]:
+              - generic [ref=e117]:
+                - paragraph [ref=e118]: Requests in Review
+                - button "Open queue →" [ref=e119] [cursor=pointer]
+              - paragraph [ref=e120]: No escalations — requisitions are flowing smoothly.
+              - generic [ref=e121]:
+                - paragraph [ref=e122]: Ready for PO build
+                - paragraph [ref=e123]: No requisitions are staged for PO creation yet.
+            - generic [ref=e124]:
+              - generic [ref=e125]:
+                - paragraph [ref=e126]: Logistics Watchlist
+                - button "Update tracking →" [ref=e127] [cursor=pointer]
+              - paragraph [ref=e128]: All active POs have tracking or confirmed ship dates.
+              - generic [ref=e129]: Keep vendors in the loop — add tracking or run nudges from the automation widget below.
+        - button "Internal Requisitions" [ref=e132] [cursor=pointer]:
+          - heading "Internal Requisitions" [level=2] [ref=e133]
+          - img [ref=e134]
+        - paragraph [ref=e137]: Loading reorder queue...
+        - generic [ref=e138]:
+          - generic [ref=e139]:
+            - paragraph [ref=e140]: Follow-up Automation
+            - paragraph [ref=e141]: "Gmail nudges reuse the original thread so vendors reply with tracking only. Backlog: 0 POs waiting on details."
+          - generic [ref=e142]:
+            - button "Nudge Vendors" [ref=e143] [cursor=pointer]
+            - generic [ref=e144]: Configure templates in Settings → Follow-up Rules.
+        - paragraph [ref=e147]: Loading tracking data…
+        - generic [ref=e149]:
+          - img [ref=e150]
+          - paragraph [ref=e153]: Loading autonomous controls...
+        - generic [ref=e155]:
+          - img [ref=e156]
+          - paragraph [ref=e159]: Loading approval requests...
+        - paragraph [ref=e161]: Loading draft POs...
+        - generic [ref=e162]:
+          - generic [ref=e163]:
+            - generic [ref=e164]:
+              - heading "Purchase Orders" [level=2] [ref=e165]
+              - generic [ref=e166]: 0 of 0 (last 2 weeks)
+            - button "Show All POs" [ref=e167] [cursor=pointer]:
+              - img [ref=e168]
+              - text: Show All POs
+          - generic [ref=e171]:
+            - img [ref=e173]
+            - heading "No Purchase Orders Yet" [level=3] [ref=e176]
+            - paragraph [ref=e177]: Get started by creating a purchase order manually or importing from your Finale inventory system.
+            - generic [ref=e178]:
+              - button "Create Purchase Order" [ref=e179] [cursor=pointer]:
+                - img [ref=e180]
+                - text: Create Purchase Order
+              - button "Import from Finale" [ref=e183] [cursor=pointer]:
+                - img [ref=e184]
+                - text: Import from Finale
   - generic:
     - complementary:
       - generic:
@@ -145,13 +227,4 @@
           - img
           - text: Submit Requisition
         - paragraph: Routes to purchasing with your department + priority so nothing slips through the cracks.
-  - generic [ref=e85]:
-    - generic [ref=e86]:
-      - img [ref=e87]
-      - text: Spotlight
-    - heading "Two-factor in two clicks" [level=3] [ref=e90]
-    - paragraph [ref=e91]: Keep purchasing safe by pairing an authenticator app. Each user owns their own codes so OTPs stay compliant.
-    - generic [ref=e92]:
-      - button "Explore" [ref=e93] [cursor=pointer]
-      - button "Later" [ref=e94] [cursor=pointer]
 ```

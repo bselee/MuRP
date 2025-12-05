@@ -14,7 +14,7 @@
  * - Data validation
  */
 
-import { getFinaleClient } from './finale/client';
+import { createFinaleClient } from './finale-client-v2';
 import {
   transformFinaleProductsToInventory,
   transformFinaleVendorsToVendors,
@@ -31,6 +31,7 @@ import type {
   Vendor,
   PurchaseOrder,
   BillOfMaterials,
+  FinalePurchaseOrder,
 } from '../types';
 
 // =============================================================================
@@ -213,19 +214,34 @@ export class DataService {
    * Fetch inventory from Finale API
    */
   private async getInventoryFromFinale(): Promise<InventoryItem[]> {
-    const finaleClient = getFinaleClient();
+    // Create new Finale client from environment variables
+    const apiKey = import.meta.env.VITE_FINALE_API_KEY;
+    const apiSecret = import.meta.env.VITE_FINALE_API_SECRET;
+    const accountPath = import.meta.env.VITE_FINALE_ACCOUNT_PATH;
 
-    if (!finaleClient) {
+    if (!apiKey || !apiSecret || !accountPath) {
       throw new Error('Finale client not configured. Please set up Finale API credentials.');
     }
 
-    console.log('[DataService] Fetching inventory from Finale API...');
-
-    const finaleProducts = await finaleClient.fetchProducts({
-      status: 'PRODUCT_ACTIVE',
+    const finaleClient = createFinaleClient({
+      accountPath,
+      apiKey,
+      apiSecret,
+      timeout: 30000,
+      requestsPerMinute: 50
     });
 
-    const inventory = transformFinaleProductsToInventory(finaleProducts);
+    console.log('[DataService] Fetching inventory from Finale API...');
+
+    const response = await finaleClient.getProductsWithStock({
+      status: ['PRODUCT_ACTIVE']
+    });
+
+    if (!response.success) {
+      throw new Error(`Failed to fetch products: ${response.error}`);
+    }
+
+    const inventory = transformFinaleProductsToInventory(response.data);
 
     console.log(`[DataService] Fetched ${inventory.length} products from Finale`);
 
@@ -327,15 +343,26 @@ export class DataService {
    * Fetch vendors from Finale API
    */
   private async getVendorsFromFinale(): Promise<Vendor[]> {
-    const finaleClient = getFinaleClient();
+    // Create new Finale client from environment variables
+    const apiKey = import.meta.env.VITE_FINALE_API_KEY;
+    const apiSecret = import.meta.env.VITE_FINALE_API_SECRET;
+    const accountPath = import.meta.env.VITE_FINALE_ACCOUNT_PATH;
 
-    if (!finaleClient) {
-      throw new Error('Finale client not configured. Please set up Finale API credentials.');
+    if (!apiKey || !apiSecret || !accountPath) {
+      throw new Error('Finale API credentials not configured. Please set up Finale API credentials.');
     }
+
+    const finaleClient = createFinaleClient({
+      accountPath,
+      apiKey,
+      apiSecret,
+      timeout: 30000,
+      requestsPerMinute: 50
+    });
 
     console.log('[DataService] Fetching vendors from Finale API...');
 
-    const finaleVendors = await finaleClient.fetchVendors();
+    const finaleVendors = await finaleClient.getAllVendors();
     const vendors = transformFinaleVendorsToVendors(finaleVendors);
 
     console.log(`[DataService] Fetched ${vendors.length} vendors from Finale`);
@@ -354,27 +381,41 @@ export class DataService {
   }
 
   /**
-   * Validate vendor data
+   * Transform GraphQL purchase order response to FinalePurchaseOrder format
    */
-  private validateVendorData(vendors: Vendor[]): Vendor[] {
-    const validVendors: Vendor[] = [];
-    const errors: string[] = [];
-
-    vendors.forEach((vendor, index) => {
-      const validation = validateVendor(vendor);
-
-      if (validation.valid) {
-        validVendors.push(vendor);
-      } else {
-        errors.push(`Vendor ${index} (${vendor.name}): ${validation.errors.join(', ')}`);
-      }
-    });
-
-    if (errors.length > 0) {
-      console.warn('[DataService] Validation errors:', errors);
-    }
-
-    return validVendors;
+  private transformGraphQLPurchaseOrders(edges: any[]): FinalePurchaseOrder[] {
+    return edges.map(node => ({
+      orderId: node.orderId,
+      orderUrl: node.orderUrl,
+      type: node.type,
+      status: node.status,
+      orderDate: node.orderDate,
+      receiveDate: node.receiveDate,
+      total: parseFloat(node.total) || 0,
+      subtotal: parseFloat(node.subtotal) || 0,
+      publicNotes: node.publicNotes || '',
+      privateNotes: node.privateNotes || '',
+      lastModified: node.recordLastUpdated,
+      supplier: node.supplier ? {
+        partyId: node.supplier.partyId,
+        partyUrl: node.supplier.partyUrl,
+        name: node.supplier.name
+      } : undefined,
+      facility: node.origin?.name || '',
+      facilityId: node.origin?.facilityId || '',
+      items: node.itemList?.edges?.map((itemEdge: any) => ({
+        productId: itemEdge.node.productId,
+        productUrl: itemEdge.node.productUrl,
+        productName: itemEdge.node.productName,
+        quantity: parseFloat(itemEdge.node.quantity) || 0,
+        unitPrice: parseFloat(itemEdge.node.unitPrice) || 0,
+        receivedQuantity: parseFloat(itemEdge.node.receivedQuantity) || 0
+      })) || [],
+      customFields: node.userFieldDataList?.reduce((acc: Record<string, any>, field: any) => {
+        acc[field.attrName] = field.attrValue;
+        return acc;
+      }, {}) || {}
+    }));
   }
 
   // ===========================================================================
@@ -438,16 +479,32 @@ export class DataService {
    * Fetch purchase orders from Finale API
    */
   private async getPurchaseOrdersFromFinale(): Promise<PurchaseOrder[]> {
-    const finaleClient = getFinaleClient();
+    // Create new Finale client from environment variables
+    const apiKey = import.meta.env.VITE_FINALE_API_KEY;
+    const apiSecret = import.meta.env.VITE_FINALE_API_SECRET;
+    const accountPath = import.meta.env.VITE_FINALE_ACCOUNT_PATH;
 
-    if (!finaleClient) {
+    if (!apiKey || !apiSecret || !accountPath) {
       throw new Error('Finale client not configured. Please set up Finale API credentials.');
     }
 
+    const finaleClient = createFinaleClient({
+      accountPath,
+      apiKey,
+      apiSecret,
+      timeout: 30000,
+      requestsPerMinute: 50
+    });
+
     console.log('[DataService] Fetching purchase orders from Finale API...');
 
-    const finalePOs = await finaleClient.fetchPurchaseOrders();
-    const purchaseOrders = transformFinalePOsToPurchaseOrders(finalePOs);
+    const finalePOs = await finaleClient.getAllPurchaseOrders({
+      startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // Last year
+    });
+
+    // Transform GraphQL response to FinalePurchaseOrder format
+    const transformedPOs = this.transformGraphQLPurchaseOrders(finalePOs);
+    const purchaseOrders = transformFinalePOsToPurchaseOrders(transformedPOs);
 
     console.log(`[DataService] Fetched ${purchaseOrders.length} purchase orders from Finale`);
 
@@ -486,11 +543,22 @@ export class DataService {
    * Sync all data from Finale at once
    */
   async syncAllFromFinale(): Promise<TransformedFinaleData> {
-    const finaleClient = getFinaleClient();
+    // Create new Finale client from environment variables
+    const apiKey = import.meta.env.VITE_FINALE_API_KEY;
+    const apiSecret = import.meta.env.VITE_FINALE_API_SECRET;
+    const accountPath = import.meta.env.VITE_FINALE_ACCOUNT_PATH;
 
-    if (!finaleClient) {
+    if (!apiKey || !apiSecret || !accountPath) {
       throw new Error('Finale client not configured. Please set up Finale API credentials.');
     }
+
+    const finaleClient = createFinaleClient({
+      accountPath,
+      apiKey,
+      apiSecret,
+      timeout: 30000,
+      requestsPerMinute: 50
+    });
 
     this.setLoading(true);
 
@@ -498,17 +566,28 @@ export class DataService {
       console.log('[DataService] Starting bulk sync from Finale...');
 
       // Fetch all data in parallel
-      const [products, vendors, purchaseOrders] = await Promise.all([
-        finaleClient.fetchProducts({ status: 'PRODUCT_ACTIVE' }),
-        finaleClient.fetchVendors(),
-        finaleClient.fetchPurchaseOrders(),
+      const [productsResponse, vendors, purchaseOrders] = await Promise.all([
+        finaleClient.getProductsWithStock({ status: ['PRODUCT_ACTIVE'] }),
+        finaleClient.getAllVendors(),
+        finaleClient.getAllPurchaseOrders({
+          startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        }),
       ]);
+
+      if (!productsResponse.success) {
+        throw new Error(`Failed to fetch products: ${productsResponse.error}`);
+      }
+
+      // Transform GraphQL data
+      const transformedVendors = transformFinaleVendorsToVendors(vendors);
+      const transformedPOs = this.transformGraphQLPurchaseOrders(purchaseOrders);
+      const transformedPurchaseOrders = transformFinalePOsToPurchaseOrders(transformedPOs);
 
       // Transform all data
       const transformedData = transformFinaleData({
-        products,
-        vendors,
-        purchaseOrders,
+        products: productsResponse.data,
+        vendors: transformedVendors,
+        purchaseOrders: transformedPurchaseOrders,
       });
 
       // Cache everything

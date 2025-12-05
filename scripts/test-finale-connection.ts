@@ -11,11 +11,11 @@ import { FinaleBasicAuthClient } from '../services/finaleBasicAuthClient.js';
 // Load .env.local file
 config({ path: '.env.local' });
 
-// Load environment variables
-const FINALE_API_KEY = process.env.FINALE_API_KEY;
-const FINALE_API_SECRET = process.env.FINALE_API_SECRET;
-const FINALE_ACCOUNT_PATH = process.env.FINALE_ACCOUNT_PATH;
-const FINALE_BASE_URL = process.env.FINALE_BASE_URL;
+// Load environment variables (with VITE_ prefix for client-side)
+const FINALE_API_KEY = process.env.VITE_FINALE_API_KEY;
+const FINALE_API_SECRET = process.env.VITE_FINALE_API_SECRET;
+const FINALE_ACCOUNT_PATH = process.env.VITE_FINALE_ACCOUNT_PATH;
+const FINALE_BASE_URL = process.env.VITE_FINALE_BASE_URL;
 
 const FINALE_VENDORS_REPORT_URL = process.env.FINALE_VENDORS_REPORT_URL;
 const FINALE_INVENTORY_REPORT_URL = process.env.FINALE_INVENTORY_REPORT_URL;
@@ -45,7 +45,7 @@ function testEnvironmentVariables(): TestResult {
   if (!FINALE_BASE_URL) missing.push('FINALE_BASE_URL');
   if (!FINALE_VENDORS_REPORT_URL) missing.push('FINALE_VENDORS_REPORT_URL');
   if (!FINALE_INVENTORY_REPORT_URL) missing.push('FINALE_INVENTORY_REPORT_URL');
-  if (!FINALE_REORDER_REPORT_URL) missing.push('FINALE_REORDER_REPORT_URL');
+  // if (!FINALE_REORDER_REPORT_URL) missing.push('FINALE_REORDER_REPORT_URL'); // Optional
   
   if (missing.length > 0) {
     return {

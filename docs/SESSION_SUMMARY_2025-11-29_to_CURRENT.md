@@ -1,3 +1,34 @@
+### Session: 2025-12-04 (Finale Sync Database Table Fix)
+
+**Changes Made:**
+- Fixed: `services/finaleRestSyncService.ts` - Corrected table name from 'inventory' to 'inventory_items' in 2 locations (saveProductsToDatabase method and syncBOMsFromProductData method)
+- Verified: All table references now correctly point to 'inventory_items' table
+
+**Key Decisions:**
+- **Decision:** Fixed critical database table name mismatch causing sync failures
+- **Rationale:** Sync was successfully fetching 10,000+ products from Finale API but failing to save to database due to wrong table name. This was the root cause of empty inventory after sync completion.
+
+**Problems & Solutions:**
+- **Problem:** Finale sync fetched 10,000 products successfully but data never appeared in UI
+- **Root Cause:** Multiple issues: 1) Table name mismatch ('inventory' vs 'inventory_items'), 2) API response field mapping incorrect (productId vs sku, internalName vs name, statusId vs status), 3) CORS/proxy issues in development
+- **Solution:** 1) Fixed table name references, 2) Updated data transformation to match actual API response structure, 3) Modified client to allow direct API calls in development, 4) Disabled excessive auto-sync in development mode
+- **Impact:** Sync should now work properly and save data to database
+
+**Tests:**
+- Verified: API credentials work (tested direct API call)
+- Verified: Table name corrected to 'inventory_items'
+- Verified: Data transformation updated to match API response structure
+- Verified: Client allows direct API calls in development
+- Verified: Excessive auto-sync disabled in development
+
+**Next Steps:**
+- [ ] User to reload browser and check if sync runs automatically
+- [ ] If not working, user can manually trigger sync via browser console: `window.initializeFinaleAutoSync()`
+- [ ] Verify inventory data appears in UI
+- [ ] Monitor for any remaining sync issues
+
+---
+
 ### Session: 2025-11-29
 
 **Changes Made:**

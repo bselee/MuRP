@@ -76,6 +76,16 @@ export async function initializeFinaleAutoSync(): Promise<void> {
       console.log(`[FinaleAutoSync] ${progress.phase}: ${progress.percentage}% - ${progress.message}`);
     });
     
+    // Start GraphQL PO sync immediately (in parallel with REST sync)
+    console.log('[FinaleAutoSync] Starting Purchase Order sync (GraphQL) in parallel...');
+    const poPromise = triggerPOSync('full').then((result) => {
+      console.log('[FinaleAutoSync] PO sync promise resolved:', result);
+      return result;
+    }).catch((error) => {
+      console.error('[FinaleAutoSync] PO sync failed:', error);
+      throw error;
+    });
+    
     // Start initial REST API sync (inventory, vendors, BOMs)
     console.log('[FinaleAutoSync] Starting initial sync (Inventory + Vendors + BOMs)...');
     const metrics = await restSyncService.syncAll();
@@ -87,30 +97,38 @@ export async function initializeFinaleAutoSync(): Promise<void> {
     console.log(`  - Duration: ${(metrics.duration / 1000).toFixed(1)}s`);
     console.log(`  - Errors: ${metrics.errors}`);
     
-    // Start GraphQL PO sync (Purchase Orders with intelligence)
-    console.log('[FinaleAutoSync] Starting Purchase Order sync (GraphQL)...');
-    const poResult = await triggerPOSync('full');
+    // Wait for PO sync to complete
+    const poResult = await poPromise;
+    console.log('[FinaleAutoSync] ✅ GraphQL PO sync complete');
     
-    console.log('[FinaleAutoSync] ✅ GraphQL PO sync initiated');
-    
-    // Start automatic PO sync every 15 minutes
-    startPOAutoSync(15);
+    // Start automatic PO sync (only in production)
+    if (!isDevelopment) {
+      startPOAutoSync(15);
+    } else {
+      console.log('[FinaleAutoSync] Development mode: Skipping PO auto-sync to avoid excessive API calls');
+    }
     
     autoSyncInitialized = true;
     
-    // Set up periodic syncs
+    // Set up periodic syncs (only in production)
     // - REST API (inventory/vendors): every 4 hours
     // - GraphQL PO: every 15 minutes (configured in PurchaseOrderSyncService)
     
-    syncCheckInterval = setInterval(async () => {
-      console.log('[FinaleAutoSync] Running scheduled REST API delta sync...');
-      try {
-        const deltaMetrics = await restSyncService.syncAll();
-        console.log(`[FinaleAutoSync] REST delta sync complete: ${deltaMetrics.recordsProcessed} records, ${deltaMetrics.apiCallsTotal} API calls`);
-      } catch (error) {
-        console.error('[FinaleAutoSync] REST delta sync failed:', error);
-      }
-    }, 4 * 60 * 60 * 1000); // 4 hours
+    const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+    
+    if (!isDevelopment) {
+      syncCheckInterval = setInterval(async () => {
+        console.log('[FinaleAutoSync] Running scheduled REST API delta sync...');
+        try {
+          const deltaMetrics = await restSyncService.syncAll();
+          console.log(`[FinaleAutoSync] REST delta sync complete: ${deltaMetrics.recordsProcessed} records, ${deltaMetrics.apiCallsTotal} API calls`);
+        } catch (error) {
+          console.error('[FinaleAutoSync] REST delta sync failed:', error);
+        }
+      }, 4 * 60 * 60 * 1000); // 4 hours
+    } else {
+      console.log('[FinaleAutoSync] Development mode: Skipping periodic syncs to avoid excessive API calls');
+    }
     
     console.log('[FinaleAutoSync] ✅ All syncs initialized:');
     console.log('  - REST API (Inventory/Vendors): Delta sync every 4 hours');
