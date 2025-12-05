@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
 import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults, PurchaseOrder } from '../types';
 import { useUserPreferences, type RowDensity, type FontScale } from '../components/UserPreferencesProvider';
 import { 
@@ -791,12 +792,15 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         <>
             {loading && <LoadingOverlay />}
             <div className="space-y-6">
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-                    <h1 className="text-xl font-bold text-white tracking-tight">Inventory</h1>
-                    <div className="flex gap-2 flex-shrink-0 flex-wrap">
-                        <Button
-                            onClick={() => setIsPresetManagerOpen(true)}
-                            className={`flex items-center gap-2 font-semibold py-2 px-3 rounded-md transition-colors text-sm ${
+                <PageHeader
+                    title="Inventory"
+                    description="Manage stock levels, track vendors, and monitor demand"
+                    icon={<SearchIcon className="w-6 h-6" />}
+                    actions={
+                        <div className="flex gap-2 flex-shrink-0 flex-wrap">
+                            <Button
+                                onClick={() => setIsPresetManagerOpen(true)}
+                                className={`flex items-center gap-2 font-semibold py-2 px-3 rounded-md transition-colors text-sm ${
                                 activePresetId 
                                     ? 'bg-accent-500 text-white hover:bg-accent-600' 
                                     : 'bg-gray-700 text-white hover:bg-gray-600'
@@ -825,8 +829,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             <ArrowsUpDownIcon className="w-4 h-4" />
                             <span className="hidden sm:inline">Import / Export</span>
                         </Button>
-                    </div>
-                </header>
+                        </div>
+                    }
+                />
 
                 <div className="space-y-6">
                 <CollapsibleSection
