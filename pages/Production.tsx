@@ -3,6 +3,8 @@ import ProductionCalendarView from '../components/ProductionCalendarView';
 import ProductionTimelineView from '../components/ProductionTimelineView';
 import { CalendarIcon, TableCellsIcon, TimelineIcon } from '../components/icons';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
+import StatusBadge from '@/components/ui/StatusBadge';
 import type { BuildOrder, BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, QuickRequestDefaults } from '../types';
 import ScheduleBuildModal from '../components/ScheduleBuildModal';
 
@@ -18,16 +20,6 @@ interface ProductionProps {
     addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
     onQuickRequest?: (defaults?: QuickRequestDefaults) => void;
 }
-
-const StatusBadge: React.FC<{ status: BuildOrder['status'] }> = ({ status }) => {
-    const statusConfig = {
-      'Pending': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-      'In Progress': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      'Completed': 'bg-green-500/20 text-green-400 border-green-500/30',
-    };
-    return <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border ${statusConfig[status]}`}>{status}</span>;
-};
-
 
 const Production: React.FC<ProductionProps> = ({ 
     buildOrders, 
@@ -52,10 +44,11 @@ const Production: React.FC<ProductionProps> = ({
 
     return (
         <div className="space-y-6">
-            <header className="mb-4">
-                <div className="flex justify-between items-center">
-                    <h1 className="text-xl font-bold text-white tracking-tight">Production</h1>
-                    
+            <PageHeader
+                title="Production"
+                description="Schedule builds, track orders, and manage production workflow"
+                icon={<CalendarIcon className="w-6 h-6" />}
+                actions={
                     <div className="flex items-center gap-3 flex-wrap justify-end">
                         <div className="flex gap-2 flex-wrap justify-end">
                             {onQuickRequest && (
@@ -110,8 +103,8 @@ const Production: React.FC<ProductionProps> = ({
                             </button>
                         </div>
                     </div>
-                </div>
-            </header>
+                }
+            />
 
             {view === 'calendar' ? (
                 <ProductionCalendarView

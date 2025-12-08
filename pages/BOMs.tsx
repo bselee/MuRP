@@ -1,4 +1,5 @@
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
 /**
  * BOMs Page - MERGED VERSION
  *
@@ -901,18 +902,21 @@ const BOMs: React.FC<BOMsProps> = ({
 
   return (
     <div className="container mx-auto p-4 space-y-4">
-      {/* Page Header */}
-      <header className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <h1 className="text-xl font-bold text-white tracking-tight">Bills of Materials</h1>
-        {canSubmitRequisitions && onQuickRequest && (
-          <Button
-            onClick={() => onQuickRequest()}
-            className="inline-flex items-center justify-center rounded-md bg-accent-500 px-3 py-2 font-semibold text-white shadow hover:bg-accent-500 transition-colors text-sm"
-          >
-            Ask About Product
-          </Button>
-        )}
-      </header>
+      <PageHeader
+        title="Bills of Materials"
+        description="Manage product recipes, buildability, and compliance documentation"
+        icon={<PackageIcon className="w-6 h-6" />}
+        actions={
+          canSubmitRequisitions && onQuickRequest ? (
+            <Button
+              onClick={() => onQuickRequest()}
+              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-3 py-2 font-semibold text-white shadow hover:bg-accent-500 transition-colors text-sm"
+            >
+              Ask About Product
+            </Button>
+          ) : undefined
+        }
+      />
 
       {componentFilter && (
         <div className="bg-accent-900/30 border border-accent-600 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

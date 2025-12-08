@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
 import type { Page } from '../App';
 import type { BillOfMaterials, InventoryItem, HistoricalSale, Vendor, InternalRequisition, User, AiConfig, RequisitionItem, PurchaseOrder, RequisitionRequestOptions } from '../types';
 import CollapsibleSection from '../components/CollapsibleSection';
@@ -399,9 +400,11 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
 
   return (
     <div className="space-y-8">
-      <header className="mb-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-white tracking-tight">Dashboard</h1>
+      <PageHeader
+        title="Dashboard"
+        description="Overview of production, buildability, and inventory intelligence"
+        icon={<HomeIcon />}
+        actions={
           <Button
             onClick={() => setCurrentPage('Purchase Orders')}
             size="sm"
@@ -409,8 +412,8 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
           >
             View Reorder Queue
           </Button>
-        </div>
-      </header>
+        }
+      />
 
       {/* Tabs */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">

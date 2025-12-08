@@ -10,6 +10,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
 import type { 
   Project, 
   Ticket, 
@@ -261,24 +262,22 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Projects & Tasks</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            {viewMode === 'my-tickets' 
-              ? 'Your assigned tickets and questions'
-              : viewMode === 'board' && selectedProject
-                ? selectedProject.name
-                : viewMode === 'list'
-                  ? 'Owner → Delegate task assignments'
-                  : viewMode === 'timeline' && selectedProject
-                    ? `${selectedProject.name} - Timeline`
-                    : 'Manage projects and track work'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
+      <PageHeader
+        title="Projects & Tasks"
+        description={
+          viewMode === 'my-tickets'
+            ? 'Your assigned tickets and questions'
+            : viewMode === 'board' && selectedProject
+              ? selectedProject.name
+              : viewMode === 'list'
+                ? 'Owner → Delegate task assignments'
+                : viewMode === 'timeline' && selectedProject
+                  ? `${selectedProject.name} - Timeline`
+                  : 'Manage projects and track work'
+        }
+        icon={<FolderIcon className="w-6 h-6" />}
+        actions={
+          <div className="flex items-center gap-3">
           {/* View Toggle */}
           <div className="flex bg-gray-800 rounded-lg p-1 flex-wrap gap-1">
             <button
@@ -322,8 +321,9 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
               New Project
             </Button>
           )}
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* Content */}
       {viewMode === 'projects' && (

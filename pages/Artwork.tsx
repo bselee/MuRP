@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
 import type { BillOfMaterials, Artwork, WatchlistItem, AiConfig, ArtworkFolder, GmailConnection, InventoryItem, Vendor, ArtworkShareEvent, DAMTier, DamSettingsState, CompanyEmailSettings } from '../types';
 import { mockBOMs } from '../types';
 import { isE2ETesting } from '../lib/auth/guards';
@@ -842,11 +843,13 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                 </aside>
 
                 <main className="flex-1 space-y-6">
-                    <header className="mb-4">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <h1 className="text-xl font-bold text-white tracking-tight">Artwork Library</h1>
+                    <PageHeader
+                        title="Artwork Library"
+                        description="Manage product artwork, labels, and regulatory compliance"
+                        icon={<PhotoIcon className="w-6 h-6" />}
+                        actions={
                             <div className="flex flex-wrap gap-2">
-                                <Button 
+                                <Button
                                     onClick={() => {
                                         if (!canUpload) {
                                             addToast(`Upload limit reached (${uploadLimit} files) for ${damTier} tier. Please upgrade to upload more.`, 'error');
@@ -863,7 +866,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                     <CloudUploadIcon className="w-4 h-4" />
                                     Upload
                                 </Button>
-                                <Button 
+                                <Button
                                     onClick={() => {
                                         if (isUploadOnly) {
                                             addToast('AI scanning features require a paid DAM tier. Upgrade to unlock regulatory compliance scanning and AI-powered analysis.', 'error');
@@ -898,12 +901,12 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                     </svg>
                                 </Button>
                             </div>
-                        </div>
-                        <div className="relative mt-3">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="h-5 w-5 text-gray-400" /></div>
-                            <input type="text" placeholder="Search by filename, product name, or SKU..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-gray-800/50 border border-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full" />
-                        </div>
-                    </header>
+                        }
+                    />
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="h-5 w-5 text-gray-400" /></div>
+                        <input type="text" placeholder="Search by filename, product name, or SKU..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-gray-800/50 border border-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full" />
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {processedArtwork.map(art => (
                             <ArtworkCard 

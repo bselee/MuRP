@@ -2,6 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
+import StatusBadge, { formatStatusText } from '@/components/ui/StatusBadge';
 import type {
     PurchaseOrder,
     Vendor,
@@ -16,6 +18,7 @@ import type {
     RequisitionRequestOptions,
 } from '../types';
 import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon } from '../components/icons';
+import CollapsibleSection from '../components/CollapsibleSection';
 import CreatePoModal from '../components/CreatePoModal';
 import EmailComposerModal from '../components/EmailComposerModal';
 import GeneratePoModal from '../components/GeneratePoModal';
@@ -70,64 +73,8 @@ type PoDraftConfig = {
     sourceLabel?: string;
 };
 
-const PO_STATUS_STYLES: Record<string, { label: string; className: string }> = {
-  draft: { label: 'Draft', className: 'bg-gray-600/20 text-gray-200 border-gray-500/40' },
-  pending: { label: 'Pending', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
-  committed: { label: 'Committed', className: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-  sent: { label: 'Sent', className: 'bg-accent-500/20 text-accent-300 border-accent-500/30' },
-  confirmed: { label: 'Confirmed', className: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
-  partial: { label: 'Partial', className: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-  received: { label: 'Received', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  cancelled: { label: 'Cancelled', className: 'bg-red-500/20 text-red-300 border-red-500/30' },
-  Pending: { label: 'Pending', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
-  Submitted: { label: 'Submitted', className: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-  Fulfilled: { label: 'Fulfilled', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
-};
-
-const PoStatusBadge: React.FC<{ status: PurchaseOrder['status'] }> = ({ status }) => {
-  const config = PO_STATUS_STYLES[status] ?? { label: status, className: 'bg-gray-600/20 text-gray-200 border-gray-500/30' };
-  return (
-    <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border ${config.className}`}>
-      {config.label}
-    </span>
-  );
-};
-
-const TRACKING_STATUS_STYLES: Record<POTrackingStatus, { label: string; className: string }> = {
-  awaiting_confirmation: { label: 'Awaiting Reply', className: 'bg-gray-600/20 text-gray-200 border-gray-500/30' },
-  confirmed: { label: 'Confirmed', className: 'bg-blue-500/20 text-blue-200 border-blue-500/30' },
-  processing: { label: 'Processing', className: 'bg-accent-500/20 text-accent-200 border-accent-500/30' },
-  shipped: { label: 'Shipped', className: 'bg-cyan-500/20 text-cyan-200 border-cyan-500/30' },
-  in_transit: { label: 'In Transit', className: 'bg-purple-500/20 text-purple-200 border-purple-500/30' },
-  out_for_delivery: { label: 'Out for Delivery', className: 'bg-amber-500/20 text-amber-200 border-amber-500/30' },
-  delivered: { label: 'Delivered', className: 'bg-green-500/20 text-green-200 border-green-500/30' },
-  exception: { label: 'Exception', className: 'bg-red-500/20 text-red-200 border-red-500/30' },
-  cancelled: { label: 'Cancelled', className: 'bg-gray-500/20 text-gray-300 border-gray-500/30' },
-  invoice_received: { label: 'Invoice Logged', className: 'bg-teal-500/20 text-teal-100 border-teal-500/30' },
-};
-
-const CollapsibleSection: React.FC<{
-  title: string;
-  count: number;
-  children: React.ReactNode;
-  isOpen: boolean;
-  onToggle: () => void;
-}> = ({ title, count, children, isOpen, onToggle }) => (
-    <section className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
-        <Button onClick={onToggle} className="w-full flex justify-between items-center p-4 bg-gray-800 hover:bg-gray-700/50 transition-colors">
-            <h2 className="text-xl font-semibold text-gray-300 flex items-center gap-3">
-              {title}
-              {count > 0 && <span className="flex items-center justify-center text-xs font-bold text-white bg-yellow-500 rounded-full h-6 w-6">{count}</span>}
-            </h2>
-            <ChevronDownIcon className={`w-6 h-6 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </Button>
-        {isOpen && (
-            <div className="border-t border-gray-700">
-                {children}
-            </div>
-        )}
-    </section>
-);
+// Status badges now use shared StatusBadge component from /components/ui/StatusBadge.tsx
+// Supports auto-detection via status prop and formatStatusText utility
 
 const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const { 
@@ -515,31 +462,34 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     return (
         <>
             <div className="space-y-6">
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-                    <h1 className="text-xl font-bold text-white tracking-tight">Purchase Orders</h1>
-                    {canManagePOs && (
-                        <div className="flex w-full sm:w-auto gap-2">
-                            {currentUser.role !== 'Staff' && approvedRequisitions.length > 0 && (
+                <PageHeader
+                    title="Purchase Orders"
+                    description="Manage purchase orders, requisitions, and vendor communications"
+                    actions={
+                        canManagePOs && (
+                            <>
+                                {currentUser.role !== 'Staff' && approvedRequisitions.length > 0 && (
+                                    <Button
+                                        onClick={() => setIsGeneratePoModalOpen(true)}
+                                        className="relative"
+                                        variant="secondary"
+                                    >
+                                        Generate from Requisitions
+                                        <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs">
+                                            {approvedRequisitions.length}
+                                        </span>
+                                    </Button>
+                                )}
                                 <Button
-                                    onClick={() => setIsGeneratePoModalOpen(true)}
-                                    className="relative flex-1 sm:flex-initial bg-green-600 hover:bg-green-500 focus-visible:ring-green-500 text-sm py-2 px-3"
+                                    onClick={handleManualCreateClick}
+                                    variant="primary"
                                 >
-                                    Generate from Requisitions
-                                    <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs">
-                                        {approvedRequisitions.length}
-                                    </span>
+                                    Create New PO
                                 </Button>
-                            )}
-                            <Button
-                                onClick={handleManualCreateClick}
-                                className="flex-1 sm:flex-initial text-sm py-2 px-3"
-                                variant="primary"
-                            >
-                                Create New PO
-                            </Button>
-                        </div>
-                    )}
-                </header>
+                            </>
+                        )
+                    }
+                />
 
                 {showCommandCenter && (
                     <PurchasingCommandCenter
@@ -738,7 +688,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-1 whitespace-nowrap"><PoStatusBadge status={po.status} /></td>
+                                        <td className="px-6 py-1 whitespace-nowrap">
+                                            <StatusBadge status={po.status}>
+                                                {formatStatusText(po.status)}
+                                            </StatusBadge>
+                                        </td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : 'N/A'}</td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
@@ -747,10 +701,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     <span className="font-mono text-sm">{po.trackingNumber}</span>
                                                     <span className="text-xs text-gray-400 uppercase">{po.trackingCarrier || '—'}</span>
                                                     {po.trackingStatus && (
-                                                    <span className={`inline-flex items-center px-2 py-0.5 mt-1 rounded-full border text-[11px] font-medium ${TRACKING_STATUS_STYLES[po.trackingStatus]?.className ?? 'bg-gray-600/20 text-gray-200 border-gray-500/30'}`}>
-                                                        {TRACKING_STATUS_STYLES[po.trackingStatus]?.label ?? po.trackingStatus}
-                                                    </span>
-                                                )}
+                                                        <StatusBadge status={po.trackingStatus} size="sm" className="mt-1">
+                                                            {formatStatusText(po.trackingStatus)}
+                                                        </StatusBadge>
+                                                    )}
                                                 {po.invoiceDetectedAt && (
                                                     <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded-full border text-[11px] font-medium bg-teal-500/10 text-teal-100 border-teal-500/30">
                                                         Invoice logged {new Date(po.invoiceDetectedAt).toLocaleDateString()}

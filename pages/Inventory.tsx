@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import Button from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
+import Table, { type Column } from '@/components/ui/Table';
 import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults, PurchaseOrder } from '../types';
 import { useUserPreferences, type RowDensity, type FontScale } from '../components/UserPreferencesProvider';
 import { 
@@ -771,6 +773,235 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
     const visibleColumns = columns.filter(col => col.visible);
 
+    // Table component columns configuration
+    const tableColumns: Column<InventoryItem>[] = visibleColumns.map(col => ({
+        key: col.key,
+        label: col.label,
+        sortable: col.sortable,
+        visible: col.visible,
+        width: COLUMN_WIDTH_CLASSES[col.key],
+        render: (item: InventoryItem) => {
+            const stockStatus = getStockStatus(item);
+            const vendor = getVendorName(item.vendorId);
+            const bomDetails = getBomDetailsForComponent(item.sku, bomUsageMap);
+            const bomCount = bomDetails.length;
+            const insight = demandInsights.get(item.sku);
+
+            switch (col.key) {
+                case 'sku':
+                    return (
+                        <Button
+                            onClick={() => onNavigateToProduct?.(item.sku)}
+                            className="text-white font-bold hover:text-accent-400 transition-colors cursor-pointer font-mono"
+                            title="Click to view product details"
+                        >
+                            {item.sku}
+                        </Button>
+                    );
+                case 'itemType':
+                    return insight ? (
+                        <span
+                            className="cursor-pointer hover:text-accent-400 text-xs"
+                            onClick={() => {/* Add click handler if needed */}}
+                        >
+                            {itemTypeStyles[insight.itemType].label}
+                        </span>
+                    ) : (
+                        <span className="text-gray-500">—</span>
+                    );
+                case 'name':
+                    return (
+                        <div className="max-w-xs group relative">
+                            <div>
+                                <span className="font-medium truncate block text-white">
+                                    {item.name}
+                                </span>
+                                {bomCount > 0 && (
+                                    <div className="relative inline-block mt-0.5">
+                                        <span
+                                            onClick={() => handleBomClick(item)}
+                                            className="cursor-pointer hover:text-accent-400 text-xs text-blue-400 transition-colors"
+                                            title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
+                                        >
+                                            BOM ({bomCount})
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="hidden group-hover:block absolute left-0 top-full mt-1 bg-gray-800 text-white p-3 rounded-lg shadow-xl z-50 border border-gray-600 max-w-md whitespace-normal">
+                                {item.name}
+                                {bomCount > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-gray-700">
+                                        <p className="text-xs text-gray-400 mb-1">Used in:</p>
+                                        <ul className="space-y-1">
+                                            {bomDetails.map(detail => (
+                                                <li key={detail.finishedSku} className="text-xs text-white">
+                                                    <span className="font-semibold">{detail.finishedName}</span>
+                                                    <span className="text-gray-400 ml-1">({detail.finishedSku})</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                case 'category': {
+                    const normalizedCategory = normalizeCategory(item.category);
+                    const prettyCategory = categoryLabelMap.get(normalizedCategory) || formatCategoryLabel(normalizedCategory);
+                    return (
+                        <span className="text-gray-300 truncate" title={normalizedCategory}>
+                            {prettyCategory}
+                        </span>
+                    );
+                }
+                case 'stock':
+                    return (
+                        <span
+                            className="cursor-pointer hover:text-accent-400 font-semibold text-white"
+                            onClick={() => {/* Add click handler if needed */}}
+                        >
+                            {item.stock.toLocaleString()}
+                        </span>
+                    );
+                case 'onOrder':
+                    return <span className="text-gray-300">{item.onOrder.toLocaleString()}</span>;
+                case 'reorderPoint':
+                    return <span className="text-gray-300">{item.reorderPoint.toLocaleString()}</span>;
+                case 'vendor':
+                    return <span className="text-gray-300 truncate" title={vendor || 'N/A'}>{vendor || 'N/A'}</span>;
+                case 'status':
+                    return (
+                        <span
+                            className={`cursor-pointer hover:text-accent-400 text-xs ${
+                                stockStatus === 'In Stock' ? 'text-green-400' :
+                                stockStatus === 'Low Stock' ? 'text-yellow-400' :
+                                'text-red-400'
+                            }`}
+                            onClick={() => {/* Add click handler if needed */}}
+                        >
+                            {stockStatus}
+                        </span>
+                    );
+                case 'runway': {
+                    const runwayValue = insight && Number.isFinite(insight.runwayDays)
+                        ? `${Math.max(0, Math.round(insight.runwayDays))}d`
+                        : 'No demand';
+                    const leadValue = insight?.vendorLeadTime ?? 0;
+                    const breakdown = insight?.demandBreakdown;
+                    return (
+                        <div className="relative group">
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className={`font-semibold cursor-pointer hover:text-accent-400 ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}
+                                    onClick={() => {/* Add click handler if needed */}}
+                                >
+                                    {runwayValue}
+                                </span>
+                                <span className="text-xs text-gray-400">vs {leadValue || '—'}d lead</span>
+                            </div>
+                            <div className="hidden group-hover:block absolute left-0 top-full mt-2 w-80 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 p-4 text-left">
+                                <div className="text-sm font-semibold text-white mb-3">Runway Details</div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-gray-400">Runway:</span>
+                                        <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
+                                            {runwayValue}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-gray-400">Lead Time:</span>
+                                        <span className="text-gray-300">{leadValue || '—'} days</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-gray-400">Source:</span>
+                                        <span className="text-gray-300">{insight ? demandSourceLabels[insight.demandSource] : 'N/A'}</span>
+                                    </div>
+                                    {insight && insight.dailyDemand > 0 && (
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-gray-400">Daily Demand:</span>
+                                            <span className="text-gray-300">≈ {insight.dailyDemand.toFixed(1)} units/day</span>
+                                        </div>
+                                    )}
+                                    {breakdown && (
+                                        <div className="mt-3 pt-3 border-t border-gray-700">
+                                            <div className="text-xs text-gray-400 mb-2">Demand Breakdown:</div>
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-500">30d avg:</span>
+                                                    <span className="text-gray-300">{formatDemandRate(breakdown.avg30)}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-500">60d avg:</span>
+                                                    <span className="text-gray-300">{formatDemandRate(breakdown.avg60)}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-500">90d avg:</span>
+                                                    <span className="text-gray-300">{formatDemandRate(breakdown.avg90)}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-500">Velocity:</span>
+                                                    <span className="text-gray-300">{formatDemandRate(breakdown.salesVelocity)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+                case 'salesVelocity':
+                    return <span className="text-gray-300">{item.salesVelocity?.toFixed(2) || '0.00'}</span>;
+                case 'sales30Days':
+                    return <span className="text-gray-300">{item.sales30Days || 0}</span>;
+                case 'sales60Days':
+                    return <span className="text-gray-300">{item.sales60Days || 0}</span>;
+                case 'sales90Days':
+                    return <span className="text-gray-300">{item.sales90Days || 0}</span>;
+                case 'unitCost':
+                    return <span className="text-gray-300">${item.unitCost?.toFixed(2) || '0.00'}</span>;
+                default:
+                    return null;
+            }
+        },
+    }));
+
+    // Add Actions column
+    tableColumns.push({
+        key: 'actions',
+        label: 'Actions',
+        sortable: false,
+        visible: true,
+        width: 'w-36',
+        align: 'right',
+        render: (item: InventoryItem) => (
+            <div className="flex justify-end gap-1 text-xs">
+                <span
+                    className="cursor-pointer hover:text-accent-400 text-gray-300"
+                    onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true })}
+                    title="Ask about this product"
+                >
+                    Ask
+                </span>
+                <span
+                    className="cursor-pointer hover:text-accent-400 text-accent-300"
+                    onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'consumable' })}
+                    title="Create requisition"
+                >
+                    Req
+                </span>
+                <span
+                    className="cursor-pointer hover:text-accent-400 text-amber-300"
+                    onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true, priority: 'high' })}
+                    title="High priority alert"
+                >
+                    Alert
+                </span>
+            </div>
+        ),
+    });
+
     const itemTypeStyles: Record<ItemType, { label: string; className: string }> = {
         retail: { label: 'Retail', className: 'text-accent-300' },
         component: { label: 'Component', className: 'text-amber-300' },
@@ -791,12 +1022,15 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         <>
             {loading && <LoadingOverlay />}
             <div className="space-y-6">
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-                    <h1 className="text-xl font-bold text-white tracking-tight">Inventory</h1>
-                    <div className="flex gap-2 flex-shrink-0 flex-wrap">
-                        <Button
-                            onClick={() => setIsPresetManagerOpen(true)}
-                            className={`flex items-center gap-2 font-semibold py-2 px-3 rounded-md transition-colors text-sm ${
+                <PageHeader
+                    title="Inventory"
+                    description="Manage stock levels, track vendors, and monitor demand"
+                    icon={<SearchIcon className="w-6 h-6" />}
+                    actions={
+                        <div className="flex gap-2 flex-shrink-0 flex-wrap">
+                            <Button
+                                onClick={() => setIsPresetManagerOpen(true)}
+                                className={`flex items-center gap-2 font-semibold py-2 px-3 rounded-md transition-colors text-sm ${
                                 activePresetId 
                                     ? 'bg-accent-500 text-white hover:bg-accent-600' 
                                     : 'bg-gray-700 text-white hover:bg-gray-600'
@@ -825,8 +1059,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             <ArrowsUpDownIcon className="w-4 h-4" />
                             <span className="hidden sm:inline">Import / Export</span>
                         </Button>
-                    </div>
-                </header>
+                        </div>
+                    }
+                />
 
                 <div className="space-y-6">
                 <CollapsibleSection
@@ -1073,272 +1308,18 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     </div>
                     </div>
                 </CollapsibleSection>
-                    <div className="relative z-0 bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-                    <div className="overflow-x-auto max-h-[calc(100vh-280px)]">
-                    <table className="table-density w-full divide-y divide-gray-700 table-auto">
-                            <thead className="bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
-                                <tr>
-                                    {visibleColumns.map(col => {
-                                        const widthClass = COLUMN_WIDTH_CLASSES[col.key] || '';
-                                        if (!col.sortable) {
-                                            return (
-                                                <th key={col.key} className={`px-4 py-2 text-left text-xs font-medium text-gray-400 ${widthClass}`}>
-                                                    {col.label}
-                                                </th>
-                                            );
-                                        }
-                                        const sortKey = col.key === 'vendor' ? 'vendor' : col.key as SortKeys;
-                                        return <SortableHeader key={col.key} title={col.label} sortKey={sortKey} sortConfig={sortConfig} requestSort={requestSort} className={widthClass} />;
-                                    })}
-                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-400 w-36">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-800">
-                                {processedInventory.map((item, index) => {
-                                    const stockStatus = getStockStatus(item);
-                                    const vendor = getVendorName(item.vendorId);
-                                    const bomDetails = getBomDetailsForComponent(item.sku, bomUsageMap);
-                                    const bomCount = bomDetails.length;
-                                    const insight = demandInsights.get(item.sku);
-                                    const zebraClass = index % 2 === 0 ? 'inventory-row-even' : 'inventory-row-odd';
-
-                                    return (
-                                        <tr 
-                                            key={item.sku} 
-                                            ref={(el) => {
-                                                if (el) inventoryRowRefs.current.set(item.sku, el);
-                                            }}
-                                            className={`inventory-row ${zebraClass} transition-colors`}
-                                        >
-                                            {visibleColumns.map(col => {
-                                                const widthClass = COLUMN_WIDTH_CLASSES[col.key] || '';
-                                                switch (col.key) {
-                                                    case 'sku':
-                                                        return (
-                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap font-mono ${widthClass}`}>
-                                                                <Button
-                                                                    onClick={() => onNavigateToProduct?.(item.sku)}
-                                                                    className="text-white font-bold hover:text-accent-400 transition-colors cursor-pointer"
-                                                                    title="Click to view product details"
-                                                                >
-                                                                    {item.sku}
-                                                                </Button>
-                                                            </td>
-                                                        );
-                                                    case 'itemType':
-                                                        return (
-                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
-                                                                {insight ? (
-                                                                    <span 
-                                                                        className="cursor-pointer hover:text-accent-400 text-xs"
-                                                                        onClick={() => {/* Add click handler if needed */}}
-                                                                    >
-                                                                        {itemTypeStyles[insight.itemType].label}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="text-gray-500">—</span>
-                                                                )}
-                                                            </td>
-                                                        );
-                                                    case 'name':
-                                                        return (
-                                                            <td key={col.key} className={`px-3 ${cellDensityClass} text-white max-w-xs group relative ${widthClass}`}>
-                                                                <div>
-                                                                    <span className="font-medium truncate block">
-                                                                        {item.name}
-                                                                    </span>
-                                                                    {bomCount > 0 && (
-                                                                        <div className="relative inline-block mt-0.5">
-                                                                            <span
-                                                                                onClick={() => handleBomClick(item)}
-                                                                                className="cursor-pointer hover:text-accent-400 text-xs text-blue-400 transition-colors"
-                                                                                title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
-                                                                            >
-                                                                                BOM ({bomCount})
-                                                                            </span>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                                <div className="hidden group-hover:block absolute left-0 top-full mt-1 bg-gray-800 text-white p-3 rounded-lg shadow-xl z-50 border border-gray-600 max-w-md whitespace-normal">
-                                                                    {item.name}
-                                                                    {bomCount > 0 && (
-                                                                        <div className="mt-2 pt-2 border-t border-gray-700">
-                                                                            <p className="text-xs text-gray-400 mb-1">Used in:</p>
-                                                                            <ul className="space-y-1">
-                                                                                {bomDetails.map(detail => (
-                                                                                    <li key={detail.finishedSku} className="text-xs text-white">
-                                                                                        <span className="font-semibold">{detail.finishedName}</span>
-                                                                                        <span className="text-gray-400 ml-1">({detail.finishedSku})</span>
-                                                                                    </li>
-                                                                                ))}
-                                                                            </ul>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        );
-                                                    case 'category': {
-                                                        const normalizedCategory = normalizeCategory(item.category);
-                                                        const prettyCategory = categoryLabelMap.get(normalizedCategory) || formatCategoryLabel(normalizedCategory);
-                                                        return (
-                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 truncate ${widthClass}`} title={normalizedCategory}>
-                                                                {prettyCategory}
-                                                            </td>
-                                                        );
-                                                    }
-                                                    case 'stock':
-                                                        return (
-                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-white ${widthClass}`}>
-                                                                <span 
-                                                                    className="cursor-pointer hover:text-accent-400 font-semibold"
-                                                                    onClick={() => {/* Add click handler if needed */}}
-                                                                >
-                                                                    {item.stock.toLocaleString()}
-                                                                </span>
-                                                            </td>
-                                                        );
-                                                    case 'onOrder':
-                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 ${widthClass}`}>{item.onOrder.toLocaleString()}</td>;
-                                                    case 'reorderPoint':
-                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 ${widthClass}`}>{item.reorderPoint.toLocaleString()}</td>;
-                                                    case 'vendor':
-                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 truncate ${widthClass}`} title={vendor || 'N/A'}>{vendor || 'N/A'}</td>;
-                                                    case 'status':
-                                                        return (
-                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
-                                                                <span 
-                                                                    className={`cursor-pointer hover:text-accent-400 text-xs ${
-                                                                        stockStatus === 'In Stock' ? 'text-green-400' :
-                                                                        stockStatus === 'Low Stock' ? 'text-yellow-400' :
-                                                                        'text-red-400'
-                                                                    }`}
-                                                                    onClick={() => {/* Add click handler if needed */}}
-                                                                >
-                                                                    {stockStatus}
-                                                                </span>
-                                                            </td>
-                                                        );
-                                                    case 'runway': {
-                                                        const runwayValue = insight && Number.isFinite(insight.runwayDays)
-                                                            ? `${Math.max(0, Math.round(insight.runwayDays))}d`
-                                                            : 'No demand';
-                                                        const leadValue = insight?.vendorLeadTime ?? 0;
-                                                        const progressRatio = insight && Number.isFinite(insight.runwayDays) && leadValue > 0
-                                                            ? Math.min(100, (insight.runwayDays / leadValue) * 100)
-                                                            : 100;
-                                                        const breakdown = insight?.demandBreakdown;
-                                                        return (
-                                                            <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap ${widthClass}`}>
-                                                                <div className="relative group">
-                                                                    <div className="flex items-center gap-2">
-                                                                    <span 
-                                                                        className={`font-semibold cursor-pointer hover:text-accent-400 ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}
-                                                                        onClick={() => {/* Add click handler if needed */}}
-                                                                    >
-                                                                        {runwayValue}
-                                                                    </span>
-                                                                    <span className="text-xs text-gray-400">vs {leadValue || '—'}d lead</span>
-                                                                </div>
-                                                                    {/* Hover popup with detailed info */}
-                                                                    <div className="hidden group-hover:block absolute left-0 top-full mt-2 w-80 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 p-4 text-left">
-                                                                        <div className="text-sm font-semibold text-white mb-3">Runway Details</div>
-                                                                        <div className="space-y-2">
-                                                                            <div className="flex justify-between items-center">
-                                                                                <span className="text-xs text-gray-400">Runway:</span>
-                                                                                <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
-                                                                                    {runwayValue}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div className="flex justify-between items-center">
-                                                                                <span className="text-xs text-gray-400">Lead Time:</span>
-                                                                                <span className="text-gray-300">{leadValue || '—'} days</span>
-                                                                            </div>
-                                                                            <div className="flex justify-between items-center">
-                                                                                <span className="text-xs text-gray-400">Source:</span>
-                                                                                <span className="text-gray-300">{insight ? demandSourceLabels[insight.demandSource] : 'N/A'}</span>
-                                                                            </div>
-                                                                            {insight && insight.dailyDemand > 0 && (
-                                                                                <div className="flex justify-between items-center">
-                                                                                    <span className="text-xs text-gray-400">Daily Demand:</span>
-                                                                                    <span className="text-gray-300">≈ {insight.dailyDemand.toFixed(1)} units/day</span>
-                                                                                </div>
-                                                                            )}
-                                                                            {breakdown && (
-                                                                                <div className="mt-3 pt-3 border-t border-gray-700">
-                                                                                    <div className="text-xs text-gray-400 mb-2">Demand Breakdown:</div>
-                                                                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                                                                        <div className="flex justify-between">
-                                                                                            <span className="text-gray-500">30d avg:</span>
-                                                                                            <span className="text-gray-300">{formatDemandRate(breakdown.avg30)}</span>
-                                                                                        </div>
-                                                                                        <div className="flex justify-between">
-                                                                                            <span className="text-gray-500">60d avg:</span>
-                                                                                            <span className="text-gray-300">{formatDemandRate(breakdown.avg60)}</span>
-                                                                                        </div>
-                                                                                        <div className="flex justify-between">
-                                                                                            <span className="text-gray-500">90d avg:</span>
-                                                                                            <span className="text-gray-300">{formatDemandRate(breakdown.avg90)}</span>
-                                                                                        </div>
-                                                                                        <div className="flex justify-between">
-                                                                                            <span className="text-gray-500">Velocity:</span>
-                                                                                            <span className="text-gray-300">{formatDemandRate(breakdown.salesVelocity)}</span>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                        );
-                                                    }
-                                                    case 'salesVelocity':
-                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.salesVelocity?.toFixed(2) || '0.00'}</td>;
-                                                    case 'sales30Days':
-                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales30Days || 0}</td>;
-                                                    case 'sales60Days':
-                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales60Days || 0}</td>;
-                                                    case 'sales90Days':
-                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>{item.sales90Days || 0}</td>;
-                                                    case 'unitCost':
-                                                        return <td key={col.key} className={`px-3 ${cellDensityClass} whitespace-nowrap text-gray-300 text-right ${widthClass}`}>${item.unitCost?.toFixed(2) || '0.00'}</td>;
-                                                    default:
-                                                        return null;
-                                                }
-                                            })}
-                                            <td className={`px-3 ${cellDensityClass} text-right whitespace-nowrap`}>
-                                                <div className="flex justify-end gap-1 text-xs">
-                                                    <span 
-                                                        className="cursor-pointer hover:text-accent-400 text-gray-300"
-                                                        onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true })}
-                                                        title="Ask about this product"
-                                                    >
-                                                        Ask
-                                                    </span>
-                                                    <span 
-                                                        className="cursor-pointer hover:text-accent-400 text-accent-300"
-                                                        onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'consumable' })}
-                                                        title="Create requisition"
-                                                    >
-                                                        Req
-                                                    </span>
-                                                    <span 
-                                                        className="cursor-pointer hover:text-accent-400 text-amber-300"
-                                                        onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true, priority: 'high' })}
-                                                        title="Create high priority alert"
-                                                    >
-                                                        Alert
-                                                    </span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                {/* Inventory Table */}
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
+                    <Table
+                        columns={tableColumns}
+                        data={processedInventory}
+                        getRowKey={(item) => item.sku}
+                        stickyHeader
+                        hoverable
+                        compact={rowDensity === 'compact' || rowDensity === 'ultra'}
+                        loading={loading}
+                        emptyMessage="No inventory items found"
+                    />
                 </div>
             </div>
         </div>
