@@ -10,6 +10,36 @@
 
 import type { VendorParsed } from '../lib/schema/index';
 
+/**
+ * Browser-safe Base64 encoding for Basic Auth
+ * Uses btoa() in browser, Buffer in Node.js
+ */
+function toBase64(str: string): string {
+  if (typeof window !== 'undefined' && typeof btoa === 'function') {
+    // Browser environment - use btoa
+    return btoa(str);
+  } else if (typeof Buffer !== 'undefined') {
+    // Node.js environment - use Buffer
+    return Buffer.from(str).toString('base64');
+  } else {
+    // Fallback - manual Base64 encoding
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    let result = '';
+    let i = 0;
+    while (i < str.length) {
+      const a = str.charCodeAt(i++);
+      const b = i < str.length ? str.charCodeAt(i++) : 0;
+      const c = i < str.length ? str.charCodeAt(i++) : 0;
+      const triplet = (a << 16) | (b << 8) | c;
+      result += chars[(triplet >> 18) & 0x3f];
+      result += chars[(triplet >> 12) & 0x3f];
+      result += i > str.length + 1 ? '=' : chars[(triplet >> 6) & 0x3f];
+      result += i > str.length ? '=' : chars[triplet & 0x3f];
+    }
+    return result;
+  }
+}
+
 interface FinaleConfig {
   apiKey: string;
   apiSecret: string;
@@ -114,7 +144,7 @@ export class FinaleBasicAuthClient {
     // In production browser, this will be overridden by proxy calls
     if (this.config.apiKey && this.config.apiSecret) {
       const authString = `${this.config.apiKey}:${this.config.apiSecret}`;
-      this.authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
+      this.authHeader = `Basic ${toBase64(authString)}`;
     } else {
       this.authHeader = '';
     }
@@ -291,7 +321,7 @@ export class FinaleBasicAuthClient {
     // Direct API call for development or server environments
     if (!this.authHeader) {
       const authString = `${this.config.apiKey}:${this.config.apiSecret}`;
-      this.authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
+      this.authHeader = `Basic ${toBase64(authString)}`;
     }
     
     const response = this.get<any>(`/product?limit=${limit}&offset=${offset}`);
@@ -371,7 +401,7 @@ export class FinaleBasicAuthClient {
     // Direct API call for development or server environments
     if (!this.authHeader) {
       const authString = `${this.config.apiKey}:${this.config.apiSecret}`;
-      this.authHeader = `Basic ${Buffer.from(authString).toString('base64')}`;
+      this.authHeader = `Basic ${toBase64(authString)}`;
     }
     
     return this.get<FinalePurchaseOrder[]>(`/purchaseOrder?limit=${limit}&offset=${offset}`);

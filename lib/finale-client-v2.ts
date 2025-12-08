@@ -2,6 +2,33 @@
 // Enhanced Finale Inventory API Client
 // CRITICAL: Uses GraphQL for Purchase Orders (REST filtering is broken!)
 
+/**
+ * Browser-safe Base64 encoding for Basic Auth
+ * Uses btoa() in browser, Buffer in Node.js
+ */
+function toBase64(str: string): string {
+  if (typeof window !== 'undefined' && typeof btoa === 'function') {
+    return btoa(str);
+  } else if (typeof Buffer !== 'undefined') {
+    return Buffer.from(str).toString('base64');
+  } else {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    let result = '';
+    let i = 0;
+    while (i < str.length) {
+      const a = str.charCodeAt(i++);
+      const b = i < str.length ? str.charCodeAt(i++) : 0;
+      const c = i < str.length ? str.charCodeAt(i++) : 0;
+      const triplet = (a << 16) | (b << 8) | c;
+      result += chars[(triplet >> 18) & 0x3f];
+      result += chars[(triplet >> 12) & 0x3f];
+      result += i > str.length + 1 ? '=' : chars[(triplet >> 6) & 0x3f];
+      result += i > str.length ? '=' : chars[triplet & 0x3f];
+    }
+    return result;
+  }
+}
+
 interface FinaleConfig {
   accountPath: string;
   apiKey: string;
@@ -68,9 +95,9 @@ export class FinaleClient {
     this.timeout = config.timeout || 30000;
     this.requestsPerMinute = config.requestsPerMinute || 50;
 
-    const credentials = Buffer.from(
+    const credentials = toBase64(
       `${config.apiKey}:${config.apiSecret}`
-    ).toString('base64');
+    );
 
     this.authHeader = `Basic ${credentials}`;
   }
