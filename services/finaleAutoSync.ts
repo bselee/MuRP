@@ -35,6 +35,15 @@ function hasFinaleCredentials(): boolean {
 export async function initializeFinaleAutoSync(): Promise<void> {
   console.log('[FinaleAutoSync] initializeFinaleAutoSync() called');
 
+  // CRITICAL: Sync must run server-side only to avoid CORS errors
+  // Browser cannot call Finale API directly - must use proxy or server-side functions
+  if (typeof window !== 'undefined') {
+    console.log('[FinaleAutoSync] ⚠️  Browser detected - skipping client-side sync (CORS restricted)');
+    console.log('[FinaleAutoSync] ℹ️  Data sync runs automatically via server-side functions');
+    console.log('[FinaleAutoSync] ✅ Use Supabase Edge Functions for scheduled syncs');
+    return;
+  }
+
   // Only initialize once
   if (autoSyncInitialized) {
     console.log('[FinaleAutoSync] Already initialized');
@@ -100,21 +109,22 @@ export async function initializeFinaleAutoSync(): Promise<void> {
     // Wait for PO sync to complete
     const poResult = await poPromise;
     console.log('[FinaleAutoSync] ✅ GraphQL PO sync complete');
-    
+
+    // Check if running in development mode
+    const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+
     // Start automatic PO sync (only in production)
     if (!isDevelopment) {
       startPOAutoSync(15);
     } else {
       console.log('[FinaleAutoSync] Development mode: Skipping PO auto-sync to avoid excessive API calls');
     }
-    
+
     autoSyncInitialized = true;
-    
+
     // Set up periodic syncs (only in production)
     // - REST API (inventory/vendors): every 4 hours
     // - GraphQL PO: every 15 minutes (configured in PurchaseOrderSyncService)
-    
-    const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
     
     if (!isDevelopment) {
       syncCheckInterval = setInterval(async () => {
@@ -175,6 +185,13 @@ export function getAutoSyncStatus(): { initialized: boolean; hasCredentials: boo
  * Manually trigger a full sync (useful for testing)
  */
 export async function triggerManualSync(): Promise<void> {
+  // Browser cannot run sync directly due to CORS
+  if (typeof window !== 'undefined') {
+    console.warn('[FinaleAutoSync] Manual sync blocked: Cannot run from browser (CORS restricted)');
+    console.log('[FinaleAutoSync] Use Supabase Edge Function or server-side endpoint instead');
+    throw new Error('Manual sync must be triggered server-side. Use /api/sync-finale endpoint.');
+  }
+
   if (!hasFinaleCredentials()) {
     throw new Error('Finale credentials not configured');
   }

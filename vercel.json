@@ -5,6 +5,12 @@
       "includeFiles": "lib/**/*"
     }
   },
+  "crons": [
+    {
+      "path": "/api/sync-finale",
+      "schedule": "0 */4 * * *"
+    }
+  ],
   "routes": [
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
