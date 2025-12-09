@@ -299,10 +299,13 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   const queuedCount = queueStatus ? Object.keys(queueStatus).length : 0;
   const hasPoDraft = queueStatus ? Object.values(queueStatus).some(entry => entry.status === 'po_created') : false;
   const velocityPerDay = typeof finishedItem?.salesVelocity === 'number' ? finishedItem.salesVelocity : null;
-  const sales30Days = typeof finishedItem?.sales30Days === 'number' ? finishedItem.sales30Days : null;
+  const sales30Days = typeof finishedItem?.sales30Days === 'number' ? finishedItem.sales30Days : 
+    typeof finishedItem?.sales_30_days === 'number' ? finishedItem.sales_30_days : null;
   const avg30PerDay = sales30Days != null ? sales30Days / 30 : null;
-  const avg60PerDay = typeof finishedItem?.sales60Days === 'number' ? finishedItem.sales60Days / 60 : null;
-  const avg90PerDay = typeof finishedItem?.sales90Days === 'number' ? finishedItem.sales90Days / 90 : null;
+  const avg60PerDay = typeof finishedItem?.sales60Days === 'number' ? finishedItem.sales60Days / 60 : 
+    typeof finishedItem?.sales_60_days === 'number' ? finishedItem.sales_60_days / 60 : null;
+  const avg90PerDay = typeof finishedItem?.sales90Days === 'number' ? finishedItem.sales90Days / 90 : 
+    typeof finishedItem?.sales_90_days === 'number' ? finishedItem.sales_90_days / 90 : null;
   const currentVelocity = velocityPerDay ?? avg30PerDay ?? null;
   const trailingVelocity = avg60PerDay ?? avg90PerDay ?? null;
   const velocityTrendRaw = currentVelocity != null && trailingVelocity != null && trailingVelocity !== 0

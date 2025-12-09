@@ -1,6 +1,7 @@
 
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTheme } from '../components/ThemeProvider';
 import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge, { formatStatusText } from '@/components/ui/StatusBadge';
@@ -107,6 +108,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [statusFilter, setStatusFilter] = useState<string>('active');
     const [finalePOStatusFilter, setFinalePOStatusFilter] = useState<string>('all');
     
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme !== 'light';
     const permissions = usePermissions();
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
     const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
@@ -673,14 +676,28 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 return (
                                     <div 
                                         key={fpo.id} 
-                                        className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] transition-all duration-300 hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]"
+                                        className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
+                                            isDark
+                                                ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]'
+                                                : 'border-stone-300/30 bg-gradient-to-br from-white/95 via-stone-100/60 to-white/95 shadow-[0_30px_90px_rgba(15,23,42,0.25)] hover:border-stone-400/50 hover:shadow-[0_32px_110px_rgba(120,113,108,0.3)]'
+                                        }`}
                                     >
                                         {/* Card overlay effect */}
-                                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]" />
+                                        <div className={`pointer-events-none absolute inset-0 ${
+                                            isDark
+                                                ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]'
+                                                : 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.6),rgba(253,244,223,0))]'
+                                        }`} />
                                         
                                         {/* Header */}
-                                        <div className="relative p-2.5 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70">
-                                            <div className="pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20" />
+                                        <div className={`relative p-2.5 ${
+                                            isDark
+                                                ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70'
+                                                : 'bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90'
+                                        }`}>
+                                            <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${
+                                                isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-amber-200/60'
+                                            }`} />
                                             <div 
                                                 className="flex items-center justify-between cursor-pointer"
                                                 onClick={(e) => {
@@ -690,10 +707,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             >
                                                 <div className="flex items-center gap-4">
                                                     <div>
-                                                        <div className="text-lg font-semibold text-amber-400 font-mono">
+                                                        <div className={`text-lg font-semibold font-mono ${
+                                                            isDark ? 'text-amber-400' : 'text-amber-700'
+                                                        }`}>
                                                             PO #{fpo.orderId}
                                                         </div>
-                                                        <div className="text-sm text-gray-400">
+                                                        <div className={isDark ? 'text-sm text-gray-400' : 'text-sm text-gray-600'}>
                                                             {fpo.vendorName || 'Unknown Vendor'}
                                                         </div>
                                                     </div>
@@ -709,27 +728,27 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 </div>
                                                 <div className="flex items-center gap-6">
                                                     <div className="text-right">
-                                                        <div className="text-xs text-gray-500 uppercase tracking-wide">Order Date</div>
-                                                        <div className="text-sm text-gray-300">
+                                                        <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Order Date</div>
+                                                        <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                             {fpo.orderDate ? new Date(fpo.orderDate).toLocaleDateString() : 'N/A'}
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-xs text-gray-500 uppercase tracking-wide">Expected</div>
-                                                        <div className="text-sm text-gray-300">
+                                                        <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Expected</div>
+                                                        <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                             {fpo.expectedDate ? new Date(fpo.expectedDate).toLocaleDateString() : 'TBD'}
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-2xl font-bold text-amber-400">
+                                                        <div className={`text-2xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
                                                             ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                                                         </div>
-                                                        <div className="text-xs text-gray-500">
+                                                        <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
                                                             {fpo.lineCount || 0} items • {fpo.totalQuantity?.toFixed(0) || 0} units
                                                         </div>
                                                     </div>
                                                     <ChevronDownIcon 
-                                                        className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+                                                        className={`w-5 h-5 transition-transform ${isDark ? 'text-gray-400' : 'text-gray-600'} ${isExpanded ? 'rotate-180' : ''}`} 
                                                     />
                                                 </div>
                                             </div>
@@ -737,10 +756,18 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                                         {/* Expanded Details */}
                                         {isExpanded && (
-                                            <div className="relative p-4 space-y-4 border-t border-white/5 bg-slate-950/70 backdrop-blur-lg">
+                                            <div className={`relative p-4 space-y-4 border-t backdrop-blur-lg ${
+                                                isDark
+                                                    ? 'border-white/5 bg-slate-950/70'
+                                                    : 'border-amber-900/15 bg-amber-50/80'
+                                            }`}>
                                                 {/* Summary Info */}
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] p-4 space-y-3">
+                                                    <div className={`rounded-xl border backdrop-blur-lg p-4 space-y-3 ${
+                                                        isDark
+                                                            ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
+                                                            : 'border-stone-300/25 bg-gradient-to-br from-white/98 via-stone-100/50 to-white/92 shadow-[0_18px_40px_rgba(15,23,42,0.18)]'
+                                                    }`}>
                                                         <div>
                                                             <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Vendor Information</div>
                                                             <div className="text-sm text-gray-200">{fpo.vendorName || 'Unknown'}</div>
