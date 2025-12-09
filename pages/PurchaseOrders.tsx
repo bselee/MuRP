@@ -1193,11 +1193,12 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
                 )}
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
                     Keep vendors in the loop — add tracking or run nudges from the automation widget below.
-                    </div>
                 </div>
             </div>
-        )}
-    </section>
+        </div>
+    </div>
+            )}
+        </section>
     );
 };
 
