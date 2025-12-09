@@ -562,36 +562,19 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     addToast={addToast}
                 />
 
-                {canManagePOs && (
-                    <div className="bg-accent-900/20 border border-accent-500/30 rounded-lg px-4 py-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between shadow-inner shadow-accent-800/30">
-                        <div>
-                            <p className="text-sm font-semibold text-accent-100">Follow-up Automation</p>
-                            <p className="text-xs text-accent-100/80">
-                                Gmail nudges reuse the original thread so vendors reply with tracking only. Backlog:{' '}
-                                <span className="font-semibold">{followUpBacklog}</span> PO{followUpBacklog === 1 ? '' : 's'} waiting on details.
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <Button
-                                onClick={handleRunFollowUps}
-                                disabled={isRunningFollowUps}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500 text-white text-sm font-semibold hover:bg-accent-500 disabled:opacity-60"
-                            >
-                                {isRunningFollowUps ? 'Sending…' : 'Nudge Vendors'}
-                            </Button>
-                            <span className="text-[11px] text-accent-100/70">
-                                Configure templates in Settings → Follow-up Rules.
-                            </span>
-                        </div>
-                    </div>
-                )}
-
                 <div id="po-tracking">
                     <POTrackingDashboard />
                 </div>
 
-                {isAdminLike && (
-                    <AutonomousControls addToast={addToast} />
+                {(canManagePOs || isAdminLike) && (
+                    <AutomationControlsSection 
+                        canManagePOs={canManagePOs}
+                        isAdminLike={isAdminLike}
+                        followUpBacklog={followUpBacklog}
+                        isRunningFollowUps={isRunningFollowUps}
+                        handleRunFollowUps={handleRunFollowUps}
+                        addToast={addToast}
+                    />
                 )}
 
                 {isAdminLike && (
@@ -641,7 +624,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             <div className="pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20" />
                                             <div 
                                                 className="flex items-center justify-between cursor-pointer"
-                                                onClick={() => setExpandedFinalePO(isExpanded ? null : fpo.id)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setExpandedFinalePO(isExpanded ? null : fpo.id);
+                                                }}
                                             >
                                                 <div className="flex items-center gap-4">
                                                     <div>
@@ -1443,6 +1429,312 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                 </table>
             </div>
         </CollapsibleSection>
+    );
+};
+
+// --- Automation Controls Section Component ---
+interface AutomationControlsSectionProps {
+    canManagePOs: boolean;
+    isAdminLike: boolean;
+    followUpBacklog: number;
+    isRunningFollowUps: boolean;
+    handleRunFollowUps: () => void;
+    addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+}
+
+const AutomationControlsSection: React.FC<AutomationControlsSectionProps> = ({
+    canManagePOs,
+    isAdminLike,
+    followUpBacklog,
+    isRunningFollowUps,
+    handleRunFollowUps,
+    addToast,
+}) => {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const [settings, setSettings] = React.useState<any>(null);
+    const [loading, setLoading] = React.useState(true);
+    const [saving, setSaving] = React.useState(false);
+
+    useEffect(() => {
+        if (isAdminLike) {
+            loadSettings();
+        } else {
+            setLoading(false);
+        }
+    }, [isAdminLike]);
+
+    const loadSettings = async () => {
+        try {
+            const { supabase } = await import('../lib/supabase/client');
+            const { data, error } = await supabase
+                .from('autonomous_po_settings')
+                .select('*')
+                .single();
+
+            if (error && error.code !== 'PGRST116') {
+                throw error;
+            }
+
+            if (data) {
+                setSettings(data);
+            } else {
+                const defaultSettings = {
+                    autonomous_shipping_enabled: false,
+                    autonomous_pricing_enabled: false,
+                    require_approval_for_shipping: true,
+                    require_approval_for_pricing: true,
+                    auto_approve_below_threshold: 100,
+                };
+
+                const { data: newSettings, error: insertError } = await supabase
+                    .from('autonomous_po_settings')
+                    .insert(defaultSettings)
+                    .select()
+                    .single();
+
+                if (insertError) throw insertError;
+                setSettings(newSettings);
+            }
+        } catch (error) {
+            console.error('Error loading autonomous settings:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const updateSetting = async (key: string, value: any) => {
+        if (!settings) return;
+
+        setSaving(true);
+        try {
+            const { supabase } = await import('../lib/supabase/client');
+            const { error } = await supabase
+                .from('autonomous_po_settings')
+                .update({
+                    [key]: value,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', settings.id);
+
+            if (error) throw error;
+
+            setSettings((prev: any) => prev ? { ...prev, [key]: value } : null);
+            addToast('Settings updated', 'success');
+        } catch (error) {
+            console.error('Error updating settings:', error);
+            addToast('Failed to update settings', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="bg-gray-800/40 border border-gray-700 rounded-2xl overflow-hidden shadow-inner shadow-black/20">
+            <div 
+                className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between p-4 cursor-pointer hover:bg-gray-800/60 transition-colors"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex items-center gap-3">
+                    <ChevronDownIcon className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    <div>
+                        <p className="text-lg font-semibold text-white">PO Automation & Controls</p>
+                        <p className="text-sm text-gray-400">
+                            {canManagePOs && `${followUpBacklog} PO${followUpBacklog === 1 ? '' : 's'} awaiting follow-up`}
+                            {canManagePOs && isAdminLike && ' • '}
+                            {isAdminLike && 'Autonomous shipping & pricing updates'}
+                        </p>
+                    </div>
+                </div>
+                {isOpen && saving && (
+                    <div className="flex items-center gap-2 text-sm text-accent-300">
+                        <BotIcon className="w-4 h-4 animate-spin" />
+                        Saving...
+                    </div>
+                )}
+            </div>
+            
+            {isOpen && (
+                <div className="p-4 pt-0 space-y-6 border-t border-gray-700/50">
+                    {/* Follow-up Automation */}
+                    {canManagePOs && (
+                        <div className="space-y-3">
+                            <h3 className="text-base font-semibold text-accent-100">Follow-up Automation</h3>
+                            <p className="text-xs text-gray-400">
+                                Gmail nudges reuse the original thread so vendors reply with tracking only.
+                            </p>
+                            <div className="flex items-center justify-between gap-4 bg-accent-900/20 border border-accent-500/30 rounded-lg p-4">
+                                <div className="flex-1">
+                                    <p className="text-sm text-accent-100">
+                                        <span className="font-semibold">{followUpBacklog}</span> PO{followUpBacklog === 1 ? '' : 's'} waiting on tracking details
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <Button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRunFollowUps();
+                                        }}
+                                        disabled={isRunningFollowUps}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500 text-white text-sm font-semibold hover:bg-accent-600 disabled:opacity-60 transition-colors"
+                                    >
+                                        {isRunningFollowUps ? 'Sending…' : 'Nudge Vendors'}
+                                    </Button>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                Configure templates in Settings → Follow-up Rules.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Autonomous Controls */}
+                    {isAdminLike && !loading && settings && (
+                        <div className="space-y-4 pt-4 border-t border-gray-700/50">
+                            <h3 className="text-base font-semibold text-white">Autonomous PO Controls</h3>
+                            
+                            {/* Shipping Updates */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-white">Shipping Status Updates</h4>
+                                        <p className="text-xs text-gray-400">Automatically update PO status based on carrier tracking</p>
+                                    </div>
+                                    <Button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateSetting('autonomous_shipping_enabled', !settings.autonomous_shipping_enabled);
+                                        }}
+                                        disabled={saving}
+                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                                            settings.autonomous_shipping_enabled
+                                                ? 'bg-accent-500 text-white hover:bg-accent-600'
+                                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                        }`}
+                                    >
+                                        {settings.autonomous_shipping_enabled ? (
+                                            <><CheckCircleIcon className="w-4 h-4 mr-2 inline" /> Enabled</>
+                                        ) : (
+                                            <><XCircleIcon className="w-4 h-4 mr-2 inline" /> Disabled</>
+                                        )}
+                                    </Button>
+                                </div>
+
+                                {settings.autonomous_shipping_enabled && (
+                                    <div className="ml-6 space-y-2">
+                                        <label className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={settings.require_approval_for_shipping}
+                                                onChange={(e) => {
+                                                    e.stopPropagation();
+                                                    updateSetting('require_approval_for_shipping', e.target.checked);
+                                                }}
+                                                disabled={saving}
+                                                className="w-4 h-4 text-accent-500 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+                                            />
+                                            <span className="text-sm text-gray-300">Require approval for autonomous shipping updates</span>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Pricing Updates */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-white">Pricing Updates</h4>
+                                        <p className="text-xs text-gray-400">Automatically update item prices from vendor communications</p>
+                                    </div>
+                                    <Button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateSetting('autonomous_pricing_enabled', !settings.autonomous_pricing_enabled);
+                                        }}
+                                        disabled={saving}
+                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                                            settings.autonomous_pricing_enabled
+                                                ? 'bg-accent-500 text-white hover:bg-accent-600'
+                                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                        }`}
+                                    >
+                                        {settings.autonomous_pricing_enabled ? (
+                                            <><CheckCircleIcon className="w-4 h-4 mr-2 inline" /> Enabled</>
+                                        ) : (
+                                            <><XCircleIcon className="w-4 h-4 mr-2 inline" /> Disabled</>
+                                        )}
+                                    </Button>
+                                </div>
+
+                                {settings.autonomous_pricing_enabled && (
+                                    <div className="ml-6 space-y-3">
+                                        <label className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={settings.require_approval_for_pricing}
+                                                onChange={(e) => {
+                                                    e.stopPropagation();
+                                                    updateSetting('require_approval_for_pricing', e.target.checked);
+                                                }}
+                                                disabled={saving}
+                                                className="w-4 h-4 text-accent-500 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+                                            />
+                                            <span className="text-sm text-gray-300">Require approval for autonomous pricing updates</span>
+                                        </label>
+
+                                        <div className="flex items-center gap-3">
+                                            <label className="text-sm text-gray-300">Auto-approve changes below:</label>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-accent-400">$</span>
+                                                <input
+                                                    type="number"
+                                                    value={settings.auto_approve_below_threshold}
+                                                    onChange={(e) => {
+                                                        e.stopPropagation();
+                                                        updateSetting('auto_approve_below_threshold', parseFloat(e.target.value) || 0);
+                                                    }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    disabled={saving}
+                                                    className="w-20 px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
+                                                    min="0"
+                                                    step="0.01"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Status Summary */}
+                            <div className="border-t border-gray-700 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div className="space-y-2">
+                                    <p className="text-gray-400">Shipping Automation</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${settings.autonomous_shipping_enabled ? 'bg-green-400' : 'bg-gray-600'}`} />
+                                        <span className={settings.autonomous_shipping_enabled ? 'text-green-300' : 'text-gray-500'}>
+                                            {settings.autonomous_shipping_enabled ? 'Active' : 'Disabled'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <p className="text-gray-400">Pricing Automation</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${settings.autonomous_pricing_enabled ? 'bg-green-400' : 'bg-gray-600'}`} />
+                                        <span className={settings.autonomous_pricing_enabled ? 'text-green-300' : 'text-gray-500'}>
+                                            {settings.autonomous_pricing_enabled ? 'Active' : 'Disabled'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="text-xs text-gray-500">
+                                Last updated: {new Date(settings.updated_at).toLocaleString()}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
     );
 };
 
