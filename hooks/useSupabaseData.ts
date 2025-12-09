@@ -1611,11 +1611,9 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
         .select('*')
         .order('order_date', { ascending: false });
 
-      // TEMPORARILY SHOW ALL POs TO DEBUG
-      // Filter out only RECEIVED and CANCELLED statuses (keep everything else)
-      if (!options?.includeCompleted) {
-        query = query.not('status', 'in', '(RECEIVED,CANCELLED,Completed,Closed)');
-      }
+      // Show all POs - filtering will be done on frontend
+      // This allows users to see and filter by all statuses including committed
+      // No backend filtering by status
 
       const { data: pos, error: fetchError } = await query.limit(500);
 
