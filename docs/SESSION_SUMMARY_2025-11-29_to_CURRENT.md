@@ -1,3 +1,53 @@
+### Session: 2025-12-09 (UI Fixes - Velocity, Theme, PO Expansion)
+
+**Changes Made:**
+- Fixed: `pages/PurchaseOrders.tsx` - Removed template literal syntax errors (embedded newlines in className)
+- Updated: `components/EnhancedBomCard.tsx` - Added snake_case field fallbacks for velocity display
+  - Now checks both `sales30Days` and `sales_30_days` (similarly for 60/90 day fields)
+- Added: Light/dark theme support for Finale PO cards with useTheme hook
+- Fixed: PO card expansion - added stopPropagation() to onClick handlers
+- Applied: Consistent BOM card styling (slate gradients, amber accents) to PO page
+
+**Key Decisions:**
+- **Decision:** Support both camelCase and snake_case for velocity fields
+- **Rationale:** Database may return either format, need to check both to ensure velocity displays
+- **Decision:** Flatten template literal className conditionals to single lines
+- **Rationale:** JSX/esbuild doesn't accept embedded newlines in template strings (syntax error)
+- **Decision:** Use isDark conditional throughout instead of hardcoded colors
+- **Rationale:** Ensures theme switching works properly for light/dark modes
+
+**Problems & Solutions:**
+- **Problem:** Velocity not showing on BOM cards
+- **Solution:** Added fallback checks for snake_case field names (sales_30_days, sales_60_days, sales_90_days)
+- **Problem:** PO cards won't expand on click (error)
+- **Solution:** Added stopPropagation() to prevent event bubbling
+- **Problem:** Build failing with "Syntax error 'n'" at line 731
+- **Solution:** Removed `\n` from template literals - flattened to single-line conditionals
+
+**Commits:**
+- `4d3941b` - fix(ui): resolve PO card theme syntax errors and add velocity field fallbacks
+
+**Testing:**
+- ✅ Build successful after syntax fix
+- ✅ Template literals properly formatted (single-line)
+- ✅ Theme support implemented for PO cards
+- 🔄 Pending: Verify velocity displays on BOM cards in UI
+- ❌ PO cards still do not expand into full PO document (needs investigation)
+
+**Known Issues:**
+- **PO Card Expansion Not Working**: Added stopPropagation() but cards still don't expand to show full PO details
+  - Likely needs: Expanded state management, conditional rendering of detail sections, or modal implementation
+  - Current behavior: Cards show summary but clicking doesn't reveal line items/full document
+  - Next action: Investigate expansion mechanism and implement proper detail view
+
+**Next Steps:**
+- [ ] Fix PO card expansion - implement proper detail view/modal for full PO document
+- [ ] Test velocity display on BOM cards with real data
+- [ ] Verify theme switching works correctly in production
+- [ ] Complete theme support for Internal PO cards (only Finale cards themed currently)
+
+---
+
 ### Session: 2025-12-09 (Auto-Sync Complete, GitHub Push)
 
 **Changes Made:**
