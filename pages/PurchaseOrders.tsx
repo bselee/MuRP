@@ -103,6 +103,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [isRunningFollowUps, setIsRunningFollowUps] = useState(false);
     const [showAllPOs, setShowAllPOs] = useState(false);
     const [expandedFinalePO, setExpandedFinalePO] = useState<string | null>(null);
+    const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
     
     const permissions = usePermissions();
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
@@ -612,18 +613,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 {/* Finale Purchase Orders - Current/Open POs from Finale API */}
                 {finalePurchaseOrders.length > 0 && (
                     <div className="space-y-4">
-                        <div className="bg-gradient-to-r from-emerald-900/30 to-emerald-800/20 backdrop-blur-sm rounded-lg shadow-lg p-4 border border-emerald-600/30">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <h2 className="text-xl font-semibold text-emerald-300">📦 Finale Purchase Orders</h2>
-                                    <span className="px-3 py-1 rounded-full text-sm bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
-                                        {finalePurchaseOrders.length} open orders
-                                    </span>
-                                </div>
-                                <span className="text-xs text-emerald-400/70">
-                                    Synced from Finale API • Click to expand details
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-xl font-semibold text-gray-300">📦 Finale Purchase Orders</h2>
+                                <span className="px-3 py-1 rounded-full text-sm bg-accent-500/20 text-accent-300 border border-accent-500/30 font-medium">
+                                    {finalePurchaseOrders.length} open
                                 </span>
                             </div>
+                            <span className="text-xs text-gray-400">
+                                Synced from Finale API
+                            </span>
                         </div>
 
                         <div className="grid gap-4">
@@ -632,20 +631,24 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 return (
                                     <div 
                                         key={fpo.id} 
-                                        className="bg-emerald-900/20 backdrop-blur-sm rounded-lg shadow-lg border border-emerald-600/30 overflow-hidden hover:border-emerald-500/50 transition-all"
+                                        className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] transition-all duration-300 hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]"
                                     >
-                                        {/* Header - Always Visible */}
-                                        <div 
-                                            className="p-4 bg-emerald-900/30 cursor-pointer hover:bg-emerald-900/40 transition-colors"
-                                            onClick={() => setExpandedFinalePO(isExpanded ? null : fpo.id)}
-                                        >
-                                            <div className="flex items-center justify-between">
+                                        {/* Card overlay effect */}
+                                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]" />
+                                        
+                                        {/* Header */}
+                                        <div className="relative p-2.5 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70">
+                                            <div className="pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20" />
+                                            <div 
+                                                className="flex items-center justify-between cursor-pointer"
+                                                onClick={() => setExpandedFinalePO(isExpanded ? null : fpo.id)}
+                                            >
                                                 <div className="flex items-center gap-4">
                                                     <div>
-                                                        <div className="text-lg font-semibold text-emerald-300 font-mono">
+                                                        <div className="text-lg font-semibold text-amber-400 font-mono">
                                                             PO #{fpo.orderId}
                                                         </div>
-                                                        <div className="text-sm text-emerald-400/80">
+                                                        <div className="text-sm text-gray-400">
                                                             {fpo.vendorName || 'Unknown Vendor'}
                                                         </div>
                                                     </div>
@@ -654,34 +657,34 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                         fpo.status === 'Partial' || fpo.status === 'PARTIALLY_RECEIVED' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
                                                         fpo.status === 'Pending' || fpo.status === 'DRAFT' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
                                                         fpo.status === 'Ordered' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
-                                                        'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                                        'bg-accent-500/20 text-accent-300 border border-accent-500/30'
                                                     }`}>
                                                         {fpo.status}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-6">
                                                     <div className="text-right">
-                                                        <div className="text-sm text-emerald-400/70">Order Date</div>
-                                                        <div className="text-sm text-emerald-300">
+                                                        <div className="text-xs text-gray-500 uppercase tracking-wide">Order Date</div>
+                                                        <div className="text-sm text-gray-300">
                                                             {fpo.orderDate ? new Date(fpo.orderDate).toLocaleDateString() : 'N/A'}
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-sm text-emerald-400/70">Expected</div>
-                                                        <div className="text-sm text-emerald-300">
+                                                        <div className="text-xs text-gray-500 uppercase tracking-wide">Expected</div>
+                                                        <div className="text-sm text-gray-300">
                                                             {fpo.expectedDate ? new Date(fpo.expectedDate).toLocaleDateString() : 'TBD'}
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-2xl font-bold text-emerald-300">
+                                                        <div className="text-2xl font-bold text-amber-400">
                                                             ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                                                         </div>
-                                                        <div className="text-xs text-emerald-400/70">
+                                                        <div className="text-xs text-gray-500">
                                                             {fpo.lineCount || 0} items • {fpo.totalQuantity?.toFixed(0) || 0} units
                                                         </div>
                                                     </div>
                                                     <ChevronDownIcon 
-                                                        className={`w-5 h-5 text-emerald-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+                                                        className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
                                                     />
                                                 </div>
                                             </div>
@@ -689,48 +692,46 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                                         {/* Expanded Details */}
                                         {isExpanded && (
-                                            <div className="p-4 bg-emerald-950/30 border-t border-emerald-600/30 space-y-4">
+                                            <div className="relative p-4 space-y-4 border-t border-white/5 bg-slate-950/70 backdrop-blur-lg">
                                                 {/* Summary Info */}
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-3">
+                                                    <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] p-4 space-y-3">
                                                         <div>
-                                                            <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-1">Vendor Information</div>
-                                                            <div className="text-sm text-emerald-300">{fpo.vendorName || 'Unknown'}</div>
+                                                            <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Vendor Information</div>
+                                                            <div className="text-sm text-gray-200">{fpo.vendorName || 'Unknown'}</div>
                                                             {fpo.vendorUrl && (
-                                                                <div className="text-xs text-emerald-400/50 font-mono mt-0.5">{fpo.vendorUrl}</div>
+                                                                <div className="text-xs text-gray-500 font-mono mt-0.5">{fpo.vendorUrl}</div>
                                                             )}
                                                         </div>
                                                         {fpo.facilityId && (
                                                             <div>
-                                                                <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-1">Facility</div>
-                                                                <div className="text-sm text-emerald-300">{fpo.facilityId}</div>
+                                                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Facility</div>
+                                                                <div className="text-sm text-gray-200">{fpo.facilityId}</div>
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <div className="space-y-3">
-                                                        <div>
-                                                            <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-1">Financial Summary</div>
-                                                            <div className="space-y-1 text-sm">
-                                                                <div className="flex justify-between text-emerald-300">
-                                                                    <span>Subtotal:</span>
-                                                                    <span className="font-mono">${fpo.subtotal?.toFixed(2) || '0.00'}</span>
+                                                    <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] p-4">
+                                                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Financial Summary</div>
+                                                        <div className="space-y-1 text-sm">
+                                                            <div className="flex justify-between text-gray-300">
+                                                                <span>Subtotal:</span>
+                                                                <span className="font-mono">${fpo.subtotal?.toFixed(2) || '0.00'}</span>
+                                                            </div>
+                                                            {fpo.tax && fpo.tax > 0 && (
+                                                                <div className="flex justify-between text-gray-300">
+                                                                    <span>Tax:</span>
+                                                                    <span className="font-mono">${fpo.tax.toFixed(2)}</span>
                                                                 </div>
-                                                                {fpo.tax && fpo.tax > 0 && (
-                                                                    <div className="flex justify-between text-emerald-300">
-                                                                        <span>Tax:</span>
-                                                                        <span className="font-mono">${fpo.tax.toFixed(2)}</span>
-                                                                    </div>
-                                                                )}
-                                                                {fpo.shipping && fpo.shipping > 0 && (
-                                                                    <div className="flex justify-between text-emerald-300">
-                                                                        <span>Shipping:</span>
-                                                                        <span className="font-mono">${fpo.shipping.toFixed(2)}</span>
-                                                                    </div>
-                                                                )}
-                                                                <div className="flex justify-between text-emerald-300 font-semibold pt-1 border-t border-emerald-600/30">
-                                                                    <span>Total:</span>
-                                                                    <span className="font-mono">${fpo.total?.toFixed(2) || '0.00'}</span>
+                                                            )}
+                                                            {fpo.shipping && fpo.shipping > 0 && (
+                                                                <div className="flex justify-between text-gray-300">
+                                                                    <span>Shipping:</span>
+                                                                    <span className="font-mono">${fpo.shipping.toFixed(2)}</span>
                                                                 </div>
+                                                            )}
+                                                            <div className="flex justify-between text-amber-400 font-semibold pt-2 border-t border-white/10">
+                                                                <span>Total:</span>
+                                                                <span className="font-mono">${fpo.total?.toFixed(2) || '0.00'}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -741,16 +742,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     <div className="space-y-2">
                                                         {fpo.publicNotes && (
                                                             <div>
-                                                                <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-1">Public Notes</div>
-                                                                <div className="text-sm text-emerald-300 bg-emerald-950/50 p-3 rounded border border-emerald-600/20">
+                                                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Public Notes</div>
+                                                                <div className="text-sm text-gray-300 bg-slate-950/50 p-3 rounded-lg border border-white/5">
                                                                     {fpo.publicNotes}
                                                                 </div>
                                                             </div>
                                                         )}
                                                         {fpo.privateNotes && (
                                                             <div>
-                                                                <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-1">Private Notes</div>
-                                                                <div className="text-sm text-emerald-300 bg-emerald-950/50 p-3 rounded border border-emerald-600/20">
+                                                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Private Notes</div>
+                                                                <div className="text-sm text-gray-300 bg-slate-950/50 p-3 rounded-lg border border-white/5">
                                                                     {fpo.privateNotes}
                                                                 </div>
                                                             </div>
@@ -761,28 +762,28 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 {/* Line Items */}
                                                 {fpo.lineItems && fpo.lineItems.length > 0 && (
                                                     <div>
-                                                        <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-2">Line Items</div>
-                                                        <div className="bg-emerald-950/50 rounded border border-emerald-600/20 overflow-hidden">
+                                                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Line Items</div>
+                                                        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] overflow-hidden">
                                                             <table className="min-w-full">
-                                                                <thead className="bg-emerald-900/30">
+                                                                <thead className="bg-slate-900/50">
                                                                     <tr>
-                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-emerald-300 uppercase">#</th>
-                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-emerald-300 uppercase">Product</th>
-                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-emerald-300 uppercase">Ordered</th>
-                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-emerald-300 uppercase">Received</th>
-                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-emerald-300 uppercase">Unit Price</th>
-                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-emerald-300 uppercase">Total</th>
+                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">#</th>
+                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">Product</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Ordered</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Received</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Unit Price</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Total</th>
                                                                     </tr>
                                                                 </thead>
-                                                                <tbody className="divide-y divide-emerald-600/20">
+                                                                <tbody className="divide-y divide-white/5">
                                                                     {fpo.lineItems.map((item: any, idx: number) => (
-                                                                        <tr key={idx} className="hover:bg-emerald-900/20">
-                                                                            <td className="px-3 py-2 text-sm text-emerald-400">{item.line_number || idx + 1}</td>
-                                                                            <td className="px-3 py-2 text-sm text-emerald-300 font-mono">{item.product_id || 'N/A'}</td>
-                                                                            <td className="px-3 py-2 text-sm text-emerald-300 text-right font-mono">{item.quantity_ordered || 0}</td>
-                                                                            <td className="px-3 py-2 text-sm text-emerald-300 text-right font-mono">{item.quantity_received || 0}</td>
-                                                                            <td className="px-3 py-2 text-sm text-emerald-300 text-right font-mono">${item.unit_price?.toFixed(2) || '0.00'}</td>
-                                                                            <td className="px-3 py-2 text-sm text-emerald-300 text-right font-mono font-semibold">${item.line_total?.toFixed(2) || '0.00'}</td>
+                                                                        <tr key={idx} className="hover:bg-slate-900/30">
+                                                                            <td className="px-3 py-2 text-sm text-gray-400">{item.line_number || idx + 1}</td>
+                                                                            <td className="px-3 py-2 text-sm text-gray-300 font-mono">{item.product_id || 'N/A'}</td>
+                                                                            <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_ordered || 0}</td>
+                                                                            <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_received || 0}</td>
+                                                                            <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">${item.unit_price?.toFixed(2) || '0.00'}</td>
+                                                                            <td className="px-3 py-2 text-sm text-amber-400 text-right font-mono font-semibold">${item.line_total?.toFixed(2) || '0.00'}</td>
                                                                         </tr>
                                                                     ))}
                                                                 </tbody>
@@ -792,9 +793,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 )}
 
                                                 {/* Metadata */}
-                                                <div className="flex items-center justify-between pt-3 border-t border-emerald-600/30 text-xs text-emerald-400/50">
-                                                    <div>Finale Order URL: <span className="font-mono">{fpo.finaleOrderUrl}</span></div>
-                                                    <div>Last Modified: {fpo.finaleLastModified ? new Date(fpo.finaleLastModified).toLocaleString() : 'N/A'}</div>
+                                                <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs text-gray-500">
+                                                    <div>Finale: <span className="font-mono text-gray-400">{fpo.finaleOrderUrl}</span></div>
+                                                    <div>Modified: {fpo.finaleLastModified ? new Date(fpo.finaleLastModified).toLocaleString() : 'N/A'}</div>
                                                 </div>
                                             </div>
                                         )}
@@ -1074,19 +1075,31 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
     followUpBacklog,
     onFocusRequisitions,
     onFocusTracking,
-}) => (
-    <section className="bg-gray-800/40 border border-gray-700 rounded-2xl p-4 space-y-5 shadow-inner shadow-black/20">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-                <p className="text-lg font-semibold text-white">Purchasing Command Center</p>
-                <p className="text-sm text-gray-400">Approvals, vendor comms, and tracking health at a glance.</p>
+}) => {
+    const [isOpen, setIsOpen] = React.useState(false);
+    
+    return (
+        <section className="bg-gray-800/40 border border-gray-700 rounded-2xl overflow-hidden shadow-inner shadow-black/20">
+            <div 
+                className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between p-4 cursor-pointer hover:bg-gray-800/60 transition-colors"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex items-center gap-3">
+                    <ChevronDownIcon className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    <div>
+                        <p className="text-lg font-semibold text-white">Purchasing Command Center</p>
+                        <p className="text-sm text-gray-400">Approvals, vendor comms, and tracking health at a glance.</p>
+                    </div>
+                </div>
+                <div className="text-xs text-gray-400">
+                    Follow-up backlog:{' '}
+                    <span className="font-semibold text-accent-200">{followUpBacklog}</span>
+                </div>
             </div>
-            <div className="text-xs text-gray-400">
-                Follow-up backlog:{' '}
-                <span className="font-semibold text-accent-200">{followUpBacklog}</span>
-            </div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            
+            {isOpen && (
+                <div className="p-4 pt-0 space-y-5">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map(stat => (
                 <Button
                     key={stat.id}
@@ -1180,11 +1193,13 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
                 )}
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
                     Keep vendors in the loop — add tracking or run nudges from the automation widget below.
+                    </div>
                 </div>
             </div>
-        </div>
+        )}
     </section>
-);
+    );
+};
 
 // --- Requisitions Section Component ---
 
