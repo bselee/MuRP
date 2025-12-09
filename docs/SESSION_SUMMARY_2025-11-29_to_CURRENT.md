@@ -1,3 +1,44 @@
+### Session: 2025-12-08 18:00-19:20 (Finale Data Sync WORKING!)
+
+**Changes Made:**
+- Fixed: `sync-finale-data` edge function - now calls Finale REST API directly
+- Deployed: `api-proxy` edge function (was missing, sync-finale-data originally depended on it)
+- Created: `supabase/migrations/079_finale_anon_read_access.sql` - RLS policy for frontend access
+- Modified: `supabase/functions/sync-finale-data/index.ts` - Complete rewrite (240 lines)
+
+**Key Decisions:**
+- **Decision:** Direct REST API calls instead of routing through api-proxy
+- **Rationale:** Simpler, more reliable, fewer moving parts
+- **Decision:** Added anon read access to finale_* tables
+- **Rationale:** Frontend needs to read inventory data without forcing authentication
+
+**Problems & Solutions:**
+- **Problem 1:** `api-proxy` edge function was not deployed (sync-finale-data depended on it)
+- **Solution:** Deployed api-proxy, but then rewrote sync-finale-data to not need it
+- **Problem 2:** Schema mismatch - tried to insert `active` column that doesn't exist
+- **Solution:** Updated transform to match actual `finale_products` table schema
+- **Problem 3:** Duplicate finale_product_url values causing ON CONFLICT errors
+- **Solution:** Added deduplication via Map before upsert
+- **Problem 4:** RLS blocked anon reads (200 OK but 0 rows)
+- **Solution:** Migration 079 adds anon read policies to finale tables
+
+**Results:**
+- ✅ **100 products synced from Finale to Supabase**
+- ✅ Sample data: BC101 (Bio Char), PU101 (Pumice), etc.
+- ✅ Data readable via frontend with anon key
+- ✅ Tests passing, build clean
+
+**Commits:**
+- `02a9292` - fix(sync): rewrite sync-finale-data to call Finale REST API directly
+
+**Next Steps:**
+- [ ] Sync more than 100 products (pagination limit)
+- [ ] Add vendor sync
+- [ ] Add inventory levels sync (finale_inventory table)
+- [ ] Set up Vercel cron for automatic sync
+
+---
+
 ### Session: 2025-12-08 (Claude UI Work Merge & GitHub Push)
 
 **Changes Made:**
