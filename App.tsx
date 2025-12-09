@@ -23,7 +23,8 @@ import ArtworkPage from './pages/Artwork';
 import EnhancedNewUserSetup from './pages/EnhancedNewUserSetup';
 import ManualLabelScanner from './components/ManualLabelScanner';
 import QuickRequestDrawer from './components/QuickRequestDrawer';
-import FeatureSpotlightReminder from './components/FeatureSpotlightReminder';
+// Feature discovery popup removed - annoying and not needed
+// import FeatureSpotlightReminder from './components/FeatureSpotlightReminder';
 import OnboardingChecklist from './components/OnboardingChecklist';
 import LoadingOverlay from './components/LoadingOverlay';
 import ProductPage from './pages/ProductPage';
@@ -2065,9 +2066,10 @@ const AppShell: React.FC = () => {
         />
       )}
 
-      {!showOnboardingChecklist && (
+      {/* Feature discovery popup removed - annoying and not needed */}
+      {/* {!showOnboardingChecklist && (
         <FeatureSpotlightReminder currentUser={currentUser ?? null} navigateTo={(pageName) => navigateToPage(pageName as Page)} />
-      )}
+      )} */}
 
       <AiAssistant
         isOpen={isAiAssistantOpen}
