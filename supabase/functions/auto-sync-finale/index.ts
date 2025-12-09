@@ -52,6 +52,11 @@ interface SyncResult {
 
 // Call another Supabase edge function
 async function callSyncFunction(functionName: string): Promise<SyncResult> {
+  return callSyncFunctionWithBody(functionName, {});
+}
+
+// Call another Supabase edge function with custom body
+async function callSyncFunctionWithBody(functionName: string, body: Record<string, any>): Promise<SyncResult> {
   const startTime = Date.now();
   
   try {
@@ -63,7 +68,7 @@ async function callSyncFunction(functionName: string): Promise<SyncResult> {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -208,7 +213,34 @@ serve(async (req) => {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // STEP 3: Log results and update metadata
+    // STEP 3: Shipment/Transaction Sync (for velocity calculations)
+    // Runs with limited scope to stay within compute limits
+    // Full historical sync can be triggered separately
+    // ═══════════════════════════════════════════════════════════════════
+    if (!options.syncType || options.syncType === 'all' || options.syncType === 'shipments') {
+      console.log('[AutoSync] Step 3: Running shipment sync (velocity data)...');
+      
+      // Call shipments sync with smaller parameters to stay within limits
+      const shipmentsResult = await callSyncFunctionWithBody('sync-finale-shipments', {
+        daysBack: 30, // Shorter window for regular syncs
+        maxRecords: 500, // Smaller batch to stay within compute limits
+      });
+      results.push(shipmentsResult);
+      
+      if (shipmentsResult.success) {
+        console.log(`[AutoSync] ✅ Shipments sync complete in ${shipmentsResult.duration}ms`);
+        if (shipmentsResult.results) {
+          for (const r of shipmentsResult.results) {
+            console.log(`[AutoSync]   - ${r.dataType}: ${r.itemCount} items`);
+          }
+        }
+      } else {
+        console.error(`[AutoSync] ❌ Shipments sync failed: ${shipmentsResult.error}`);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // STEP 4: Log results and update metadata
     // ═══════════════════════════════════════════════════════════════════
     const totalDuration = Date.now() - startTime;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);

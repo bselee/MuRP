@@ -29,8 +29,9 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const FINALE_API_KEY = Deno.env.get('FINALE_API_KEY') || '';
 const FINALE_API_SECRET = Deno.env.get('FINALE_API_SECRET') || '';
-const FINALE_ACCOUNT_PATH = 'buildasoilorganics';
-const FINALE_API_BASE = `https://app.finaleinventory.com/${FINALE_ACCOUNT_PATH}/api`;
+const FINALE_ACCOUNT_PATH = Deno.env.get('FINALE_ACCOUNT_PATH') || '';
+const FINALE_BASE_URL = Deno.env.get('FINALE_BASE_URL') || 'https://app.finaleinventory.com';
+const FINALE_API_BASE = `${FINALE_BASE_URL}/${FINALE_ACCOUNT_PATH}/api`;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -79,14 +80,14 @@ async function fetchShipments(
   const dateFilter = fromDate.toISOString().split('T')[0];
   
   try {
-    // Fetch sales shipments (these are outbound = consumption)
+    // Fetch all shipments first - we'll filter by type after
+    // Note: Finale's statusId filter may not work as expected
     const url = `${FINALE_API_BASE}/shipment?` + new URLSearchParams({
-      shipmentTypeId: 'SALES_SHIPMENT',
-      statusId: 'SHIPMENT_SHIPPED',
       limit: maxRecords.toString(),
     });
     
     console.log(`[ShipmentSync] Fetching shipments from: ${url}`);
+    console.log(`[ShipmentSync] Looking for shipments in last ${daysBack} days (since ${dateFilter})`);
     
     const response = await fetch(url, {
       method: 'GET',
@@ -103,7 +104,20 @@ async function fetchShipments(
     }
     
     const data = await response.json();
-    console.log(`[ShipmentSync] Fetched ${data.shipmentId?.length || 0} shipments`);
+    const totalCount = data.shipmentId?.length || 0;
+    console.log(`[ShipmentSync] Fetched ${totalCount} total shipments`);
+    
+    // Log shipment types found
+    if (data.shipmentTypeId) {
+      const types = [...new Set(data.shipmentTypeId)];
+      console.log(`[ShipmentSync] Shipment types found: ${types.join(', ')}`);
+    }
+    
+    // Log status IDs found
+    if (data.statusId) {
+      const statuses = [...new Set(data.statusId)];
+      console.log(`[ShipmentSync] Status IDs found: ${statuses.join(', ')}`);
+    }
     
     return data;
   } catch (error) {
@@ -321,6 +335,29 @@ serve(async (req) => {
     console.log('[ShipmentSync] ═══════════════════════════════════════════════════');
     console.log('[ShipmentSync] Starting shipment/velocity sync...');
     console.log('[ShipmentSync] ═══════════════════════════════════════════════════');
+    
+    // Check environment variables
+    if (!FINALE_API_KEY || !FINALE_API_SECRET || !FINALE_ACCOUNT_PATH) {
+      console.error('[ShipmentSync] Missing Finale credentials:');
+      console.error('[ShipmentSync] FINALE_API_KEY:', FINALE_API_KEY ? 'SET' : 'MISSING');
+      console.error('[ShipmentSync] FINALE_API_SECRET:', FINALE_API_SECRET ? 'SET' : 'MISSING');
+      console.error('[ShipmentSync] FINALE_ACCOUNT_PATH:', FINALE_ACCOUNT_PATH ? 'SET' : 'MISSING');
+      console.error('[ShipmentSync] FINALE_API_BASE:', FINALE_API_BASE);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Missing Finale API credentials',
+          credentials: {
+            apiKey: !!FINALE_API_KEY,
+            apiSecret: !!FINALE_API_SECRET,
+            accountPath: !!FINALE_ACCOUNT_PATH,
+          },
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log('[ShipmentSync] Finale API Base:', FINALE_API_BASE);
 
     // Parse request body for options
     let options: { daysBack?: number; maxRecords?: number } = {};

@@ -1611,14 +1611,21 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
         .select('*')
         .order('order_date', { ascending: false });
 
-      // By default, filter to show only non-completed POs
+      // TEMPORARILY SHOW ALL POs TO DEBUG
+      // Filter out only RECEIVED and CANCELLED statuses (keep everything else)
       if (!options?.includeCompleted) {
-        query = query.in('status', ['DRAFT', 'SUBMITTED', 'PARTIALLY_RECEIVED', 'Open', 'Pending']);
+        query = query.not('status', 'in', '(RECEIVED,CANCELLED,Completed,Closed)');
       }
 
       const { data: pos, error: fetchError } = await query.limit(500);
 
       if (fetchError) throw fetchError;
+
+      console.log('[useSupabaseFinalePurchaseOrders] Fetched POs:', pos?.length || 0);
+      if (pos && pos.length > 0) {
+        console.log('[useSupabaseFinalePurchaseOrders] Sample PO statuses:', 
+          [...new Set(pos.slice(0, 10).map(p => p.status))]);
+      }
 
       // Transform database snake_case to camelCase for frontend
       const transformed = (pos || []).map((po: any) => ({

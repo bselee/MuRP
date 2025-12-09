@@ -1,3 +1,47 @@
+Connecting to db 5432
+v0.95.0: Pulling from supabase/postgres-meta
+8e44f01296e3: Already exists
+667488fa5220: Pulling fs layer
+e96ce70b461a: Pulling fs layer
+6c2b787b4c45: Pulling fs layer
+aa42edbc26fe: Pulling fs layer
+682efb44150d: Pulling fs layer
+7652074ca272: Pulling fs layer
+2794f533e784: Pulling fs layer
+d0eb60a11722: Pulling fs layer
+36e200cbc90c: Pulling fs layer
+aa42edbc26fe: Waiting
+682efb44150d: Waiting
+d0eb60a11722: Waiting
+7652074ca272: Waiting
+36e200cbc90c: Waiting
+2794f533e784: Waiting
+667488fa5220: Download complete
+667488fa5220: Pull complete
+6c2b787b4c45: Download complete
+e96ce70b461a: Verifying Checksum
+e96ce70b461a: Download complete
+aa42edbc26fe: Verifying Checksum
+aa42edbc26fe: Download complete
+682efb44150d: Verifying Checksum
+682efb44150d: Download complete
+7652074ca272: Verifying Checksum
+7652074ca272: Download complete
+d0eb60a11722: Verifying Checksum
+d0eb60a11722: Download complete
+2794f533e784: Verifying Checksum
+2794f533e784: Download complete
+36e200cbc90c: Download complete
+e96ce70b461a: Pull complete
+6c2b787b4c45: Pull complete
+aa42edbc26fe: Pull complete
+682efb44150d: Pull complete
+7652074ca272: Pull complete
+2794f533e784: Pull complete
+d0eb60a11722: Pull complete
+36e200cbc90c: Pull complete
+Digest: sha256:86c11d740fda2eefc469487b77bf5a2b0af6325a1f9740976ed9f313c292724a
+Status: Downloaded newer image for public.ecr.aws/supabase/postgres-meta:v0.95.0
 export type Json =
   | string
   | number
@@ -7,11 +51,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -1298,18 +1337,25 @@ export type Database = {
       }
       boms: {
         Row: {
+          artwork: Json | null
           barcode: string | null
           build_time_minutes: number | null
+          category: string | null
           compliance_last_checked: string | null
           compliance_status: string | null
+          components: Json | null
           created_at: string | null
+          data_source: string | null
+          description: string | null
           expiring_registrations_count: number | null
           finished_sku: string | null
           id: string
           labor_cost_per_hour: number | null
           last_approved_at: string | null
           last_approved_by: string | null
+          last_sync_at: string | null
           name: string
+          packaging: Json | null
           primary_data_sheet_id: string | null
           primary_label_id: string | null
           revision_approved_at: string | null
@@ -1320,22 +1366,31 @@ export type Database = {
           revision_reviewer_id: string | null
           revision_status: string
           revision_summary: string | null
+          sync_status: string | null
           total_state_registrations: number | null
           updated_at: string | null
+          yield_quantity: number | null
         }
         Insert: {
+          artwork?: Json | null
           barcode?: string | null
           build_time_minutes?: number | null
+          category?: string | null
           compliance_last_checked?: string | null
           compliance_status?: string | null
+          components?: Json | null
           created_at?: string | null
+          data_source?: string | null
+          description?: string | null
           expiring_registrations_count?: number | null
           finished_sku?: string | null
           id?: string
           labor_cost_per_hour?: number | null
           last_approved_at?: string | null
           last_approved_by?: string | null
+          last_sync_at?: string | null
           name: string
+          packaging?: Json | null
           primary_data_sheet_id?: string | null
           primary_label_id?: string | null
           revision_approved_at?: string | null
@@ -1346,22 +1401,31 @@ export type Database = {
           revision_reviewer_id?: string | null
           revision_status?: string
           revision_summary?: string | null
+          sync_status?: string | null
           total_state_registrations?: number | null
           updated_at?: string | null
+          yield_quantity?: number | null
         }
         Update: {
+          artwork?: Json | null
           barcode?: string | null
           build_time_minutes?: number | null
+          category?: string | null
           compliance_last_checked?: string | null
           compliance_status?: string | null
+          components?: Json | null
           created_at?: string | null
+          data_source?: string | null
+          description?: string | null
           expiring_registrations_count?: number | null
           finished_sku?: string | null
           id?: string
           labor_cost_per_hour?: number | null
           last_approved_at?: string | null
           last_approved_by?: string | null
+          last_sync_at?: string | null
           name?: string
+          packaging?: Json | null
           primary_data_sheet_id?: string | null
           primary_label_id?: string | null
           revision_approved_at?: string | null
@@ -1372,8 +1436,10 @@ export type Database = {
           revision_reviewer_id?: string | null
           revision_status?: string
           revision_summary?: string | null
+          sync_status?: string | null
           total_state_registrations?: number | null
           updated_at?: string | null
+          yield_quantity?: number | null
         }
         Relationships: [
           {
@@ -1416,6 +1482,58 @@ export type Database = {
             columns: ["revision_reviewer_id"]
             isOneToOne: false
             referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      build_order_material_requirements: {
+        Row: {
+          build_order_id: string | null
+          created_at: string | null
+          id: string
+          inventory_item_id: string | null
+          quantity_allocated: number | null
+          quantity_required: number
+          updated_at: string | null
+        }
+        Insert: {
+          build_order_id?: string | null
+          created_at?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          quantity_allocated?: number | null
+          quantity_required: number
+          updated_at?: string | null
+        }
+        Update: {
+          build_order_id?: string | null
+          created_at?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          quantity_allocated?: number | null
+          quantity_required?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "build_order_material_requirements_build_order_id_fkey"
+            columns: ["build_order_id"]
+            isOneToOne: false
+            referencedRelation: "build_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "build_order_material_requirements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "build_order_material_requirements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
         ]
@@ -2241,6 +2359,731 @@ export type Database = {
           },
         ]
       }
+      finale_boms: {
+        Row: {
+          bom_id: string
+          bom_type: string | null
+          component_cost: number | null
+          component_name: string | null
+          component_product_id: string | null
+          component_product_url: string | null
+          component_sku: string | null
+          created_at: string | null
+          effective_quantity: number | null
+          finale_bom_url: string
+          id: string
+          parent_name: string | null
+          parent_product_id: string | null
+          parent_product_url: string | null
+          parent_sku: string | null
+          quantity_per: number
+          quantity_per_parent: number | null
+          raw_data: Json | null
+          status: string | null
+          synced_at: string | null
+          updated_at: string | null
+          user_field_data: Json | null
+        }
+        Insert: {
+          bom_id: string
+          bom_type?: string | null
+          component_cost?: number | null
+          component_name?: string | null
+          component_product_id?: string | null
+          component_product_url?: string | null
+          component_sku?: string | null
+          created_at?: string | null
+          effective_quantity?: number | null
+          finale_bom_url: string
+          id?: string
+          parent_name?: string | null
+          parent_product_id?: string | null
+          parent_product_url?: string | null
+          parent_sku?: string | null
+          quantity_per: number
+          quantity_per_parent?: number | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Update: {
+          bom_id?: string
+          bom_type?: string | null
+          component_cost?: number | null
+          component_name?: string | null
+          component_product_id?: string | null
+          component_product_url?: string | null
+          component_sku?: string | null
+          created_at?: string | null
+          effective_quantity?: number | null
+          finale_bom_url?: string
+          id?: string
+          parent_name?: string | null
+          parent_product_id?: string | null
+          parent_product_url?: string | null
+          parent_sku?: string | null
+          quantity_per?: number
+          quantity_per_parent?: number | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finale_boms_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "finale_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_boms_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_reorder_recommendations"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "finale_boms_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_velocity_analysis"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "finale_boms_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "finale_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_boms_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_reorder_recommendations"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "finale_boms_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_velocity_analysis"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
+      finale_custom_field_definitions: {
+        Row: {
+          attr_name: string
+          created_at: string | null
+          data_type: string | null
+          display_name: string | null
+          entity_type: string
+          id: string
+          picklist_values: Json | null
+        }
+        Insert: {
+          attr_name: string
+          created_at?: string | null
+          data_type?: string | null
+          display_name?: string | null
+          entity_type: string
+          id?: string
+          picklist_values?: Json | null
+        }
+        Update: {
+          attr_name?: string
+          created_at?: string | null
+          data_type?: string | null
+          display_name?: string | null
+          entity_type?: string
+          id?: string
+          picklist_values?: Json | null
+        }
+        Relationships: []
+      }
+      finale_facilities: {
+        Row: {
+          address_city: string | null
+          address_country: string | null
+          address_postal_code: string | null
+          address_state: string | null
+          address_street: string | null
+          created_at: string | null
+          facility_id: string
+          facility_name: string
+          facility_type: string | null
+          finale_facility_url: string
+          id: string
+          parent_facility_url: string | null
+          raw_data: Json | null
+          status: string | null
+          synced_at: string | null
+          updated_at: string | null
+          user_field_data: Json | null
+        }
+        Insert: {
+          address_city?: string | null
+          address_country?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          created_at?: string | null
+          facility_id: string
+          facility_name: string
+          facility_type?: string | null
+          finale_facility_url: string
+          id?: string
+          parent_facility_url?: string | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Update: {
+          address_city?: string | null
+          address_country?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          created_at?: string | null
+          facility_id?: string
+          facility_name?: string
+          facility_type?: string | null
+          finale_facility_url?: string
+          id?: string
+          parent_facility_url?: string | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Relationships: []
+      }
+      finale_inventory: {
+        Row: {
+          created_at: string | null
+          facility_id: string | null
+          facility_name: string | null
+          facility_url: string | null
+          finale_inventory_url: string | null
+          finale_product_url: string
+          id: string
+          lot_expiration_date: string | null
+          lot_id: string | null
+          normalized_packing_string: string | null
+          order_type: string | null
+          order_url: string | null
+          parent_facility_url: string | null
+          product_id: string | null
+          quantity_available: number | null
+          quantity_on_hand: number | null
+          quantity_on_order: number | null
+          quantity_reserved: number | null
+          raw_data: Json | null
+          synced_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          facility_id?: string | null
+          facility_name?: string | null
+          facility_url?: string | null
+          finale_inventory_url?: string | null
+          finale_product_url: string
+          id?: string
+          lot_expiration_date?: string | null
+          lot_id?: string | null
+          normalized_packing_string?: string | null
+          order_type?: string | null
+          order_url?: string | null
+          parent_facility_url?: string | null
+          product_id?: string | null
+          quantity_available?: number | null
+          quantity_on_hand?: number | null
+          quantity_on_order?: number | null
+          quantity_reserved?: number | null
+          raw_data?: Json | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          facility_id?: string | null
+          facility_name?: string | null
+          facility_url?: string | null
+          finale_inventory_url?: string | null
+          finale_product_url?: string
+          id?: string
+          lot_expiration_date?: string | null
+          lot_id?: string | null
+          normalized_packing_string?: string | null
+          order_type?: string | null
+          order_url?: string | null
+          parent_facility_url?: string | null
+          product_id?: string | null
+          quantity_available?: number | null
+          quantity_on_hand?: number | null
+          quantity_on_order?: number | null
+          quantity_reserved?: number | null
+          raw_data?: Json | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finale_inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "finale_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_reorder_recommendations"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "finale_inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_velocity_analysis"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
+      finale_po_line_items: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          finale_order_url: string
+          finale_product_url: string | null
+          id: string
+          line_number: number | null
+          line_total: number | null
+          po_id: string | null
+          product_id: string | null
+          product_name: string | null
+          quantity_backordered: number | null
+          quantity_ordered: number | null
+          quantity_received: number | null
+          raw_data: Json | null
+          unit_cost: number | null
+          updated_at: string | null
+          user_field_data: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          finale_order_url: string
+          finale_product_url?: string | null
+          id?: string
+          line_number?: number | null
+          line_total?: number | null
+          po_id?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          quantity_backordered?: number | null
+          quantity_ordered?: number | null
+          quantity_received?: number | null
+          raw_data?: Json | null
+          unit_cost?: number | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          finale_order_url?: string
+          finale_product_url?: string | null
+          id?: string
+          line_number?: number | null
+          line_total?: number | null
+          po_id?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          quantity_backordered?: number | null
+          quantity_ordered?: number | null
+          quantity_received?: number | null
+          raw_data?: Json | null
+          unit_cost?: number | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finale_po_line_items_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "finale_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_po_line_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "finale_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_po_line_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_reorder_recommendations"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "finale_po_line_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_velocity_analysis"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
+      finale_products: {
+        Row: {
+          bom_url: string | null
+          created_at: string | null
+          custom_category: string | null
+          custom_department: string | null
+          custom_lead_time: number | null
+          custom_max_stock: number | null
+          custom_min_stock: number | null
+          custom_vendor_sku: string | null
+          description: string | null
+          finale_last_modified: string | null
+          finale_product_url: string
+          id: string
+          internal_name: string | null
+          is_assembly: boolean | null
+          lead_time_days: number | null
+          minimum_order_qty: number | null
+          primary_supplier_id: string | null
+          primary_supplier_url: string | null
+          product_id: string
+          product_type: string | null
+          raw_data: Json | null
+          reorder_point: number | null
+          reorder_quantity: number | null
+          sku: string | null
+          status: string | null
+          synced_at: string | null
+          unit_cost: number | null
+          unit_price: number | null
+          upc: string | null
+          updated_at: string | null
+          user_field_data: Json | null
+        }
+        Insert: {
+          bom_url?: string | null
+          created_at?: string | null
+          custom_category?: string | null
+          custom_department?: string | null
+          custom_lead_time?: number | null
+          custom_max_stock?: number | null
+          custom_min_stock?: number | null
+          custom_vendor_sku?: string | null
+          description?: string | null
+          finale_last_modified?: string | null
+          finale_product_url: string
+          id?: string
+          internal_name?: string | null
+          is_assembly?: boolean | null
+          lead_time_days?: number | null
+          minimum_order_qty?: number | null
+          primary_supplier_id?: string | null
+          primary_supplier_url?: string | null
+          product_id: string
+          product_type?: string | null
+          raw_data?: Json | null
+          reorder_point?: number | null
+          reorder_quantity?: number | null
+          sku?: string | null
+          status?: string | null
+          synced_at?: string | null
+          unit_cost?: number | null
+          unit_price?: number | null
+          upc?: string | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Update: {
+          bom_url?: string | null
+          created_at?: string | null
+          custom_category?: string | null
+          custom_department?: string | null
+          custom_lead_time?: number | null
+          custom_max_stock?: number | null
+          custom_min_stock?: number | null
+          custom_vendor_sku?: string | null
+          description?: string | null
+          finale_last_modified?: string | null
+          finale_product_url?: string
+          id?: string
+          internal_name?: string | null
+          is_assembly?: boolean | null
+          lead_time_days?: number | null
+          minimum_order_qty?: number | null
+          primary_supplier_id?: string | null
+          primary_supplier_url?: string | null
+          product_id?: string
+          product_type?: string | null
+          raw_data?: Json | null
+          reorder_point?: number | null
+          reorder_quantity?: number | null
+          sku?: string | null
+          status?: string | null
+          synced_at?: string | null
+          unit_cost?: number | null
+          unit_price?: number | null
+          upc?: string | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Relationships: []
+      }
+      finale_purchase_orders: {
+        Row: {
+          created_at: string | null
+          delivery_status: string | null
+          expected_date: string | null
+          facility_id: string | null
+          facility_url: string | null
+          finale_last_modified: string | null
+          finale_order_url: string
+          id: string
+          line_count: number | null
+          line_items: Json | null
+          order_date: string | null
+          order_id: string
+          order_type: string | null
+          private_notes: string | null
+          public_notes: string | null
+          raw_data: Json | null
+          received_date: string | null
+          shipping: number | null
+          status: string
+          subtotal: number | null
+          synced_at: string | null
+          tax: number | null
+          total: number | null
+          total_quantity: number | null
+          updated_at: string | null
+          user_field_data: Json | null
+          vendor_id: string | null
+          vendor_name: string | null
+          vendor_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          delivery_status?: string | null
+          expected_date?: string | null
+          facility_id?: string | null
+          facility_url?: string | null
+          finale_last_modified?: string | null
+          finale_order_url: string
+          id?: string
+          line_count?: number | null
+          line_items?: Json | null
+          order_date?: string | null
+          order_id: string
+          order_type?: string | null
+          private_notes?: string | null
+          public_notes?: string | null
+          raw_data?: Json | null
+          received_date?: string | null
+          shipping?: number | null
+          status: string
+          subtotal?: number | null
+          synced_at?: string | null
+          tax?: number | null
+          total?: number | null
+          total_quantity?: number | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+          vendor_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          delivery_status?: string | null
+          expected_date?: string | null
+          facility_id?: string | null
+          facility_url?: string | null
+          finale_last_modified?: string | null
+          finale_order_url?: string
+          id?: string
+          line_count?: number | null
+          line_items?: Json | null
+          order_date?: string | null
+          order_id?: string
+          order_type?: string | null
+          private_notes?: string | null
+          public_notes?: string | null
+          raw_data?: Json | null
+          received_date?: string | null
+          shipping?: number | null
+          status?: string
+          subtotal?: number | null
+          synced_at?: string | null
+          tax?: number | null
+          total?: number | null
+          total_quantity?: number | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+          vendor_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finale_purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "finale_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_vendor_performance"
+            referencedColumns: ["vendor_id"]
+          },
+        ]
+      }
+      finale_stock_history: {
+        Row: {
+          created_at: string | null
+          facility_name: string | null
+          facility_url: string | null
+          finale_product_url: string
+          finale_transaction_url: string | null
+          id: string
+          lot_expiration_date: string | null
+          lot_id: string | null
+          notes: string | null
+          order_type: string | null
+          order_url: string | null
+          product_id: string | null
+          quantity: number
+          raw_data: Json | null
+          reference_number: string | null
+          synced_at: string | null
+          transaction_date: string
+          transaction_type: string | null
+          user_field_data: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          facility_name?: string | null
+          facility_url?: string | null
+          finale_product_url: string
+          finale_transaction_url?: string | null
+          id?: string
+          lot_expiration_date?: string | null
+          lot_id?: string | null
+          notes?: string | null
+          order_type?: string | null
+          order_url?: string | null
+          product_id?: string | null
+          quantity: number
+          raw_data?: Json | null
+          reference_number?: string | null
+          synced_at?: string | null
+          transaction_date: string
+          transaction_type?: string | null
+          user_field_data?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          facility_name?: string | null
+          facility_url?: string | null
+          finale_product_url?: string
+          finale_transaction_url?: string | null
+          id?: string
+          lot_expiration_date?: string | null
+          lot_id?: string | null
+          notes?: string | null
+          order_type?: string | null
+          order_url?: string | null
+          product_id?: string | null
+          quantity?: number
+          raw_data?: Json | null
+          reference_number?: string | null
+          synced_at?: string | null
+          transaction_date?: string
+          transaction_type?: string | null
+          user_field_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finale_stock_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "finale_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_stock_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_reorder_recommendations"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "finale_stock_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_velocity_analysis"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
+      finale_sync_changes: {
+        Row: {
+          change_type: string
+          changed_at: string | null
+          entity_id: string
+          entity_type: string
+          finale_url: string | null
+          id: string
+          sync_batch_id: string | null
+          synced_at: string | null
+        }
+        Insert: {
+          change_type: string
+          changed_at?: string | null
+          entity_id: string
+          entity_type: string
+          finale_url?: string | null
+          id?: string
+          sync_batch_id?: string | null
+          synced_at?: string | null
+        }
+        Update: {
+          change_type?: string
+          changed_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          finale_url?: string | null
+          id?: string
+          sync_batch_id?: string | null
+          synced_at?: string | null
+        }
+        Relationships: []
+      }
       finale_sync_log: {
         Row: {
           completed_at: string | null
@@ -2298,6 +3141,141 @@ export type Database = {
           sync_source?: string | null
           sync_type?: string
           triggered_by?: string | null
+        }
+        Relationships: []
+      }
+      finale_sync_state: {
+        Row: {
+          api_calls_today: number | null
+          created_at: string | null
+          current_sync_started_at: string | null
+          id: string
+          last_delta_sync_at: string | null
+          last_full_sync_at: string | null
+          last_po_sync_at: string | null
+          last_reset_date: string | null
+          last_stock_sync_at: string | null
+          records_synced_today: number | null
+          sync_in_progress: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_calls_today?: number | null
+          created_at?: string | null
+          current_sync_started_at?: string | null
+          id?: string
+          last_delta_sync_at?: string | null
+          last_full_sync_at?: string | null
+          last_po_sync_at?: string | null
+          last_reset_date?: string | null
+          last_stock_sync_at?: string | null
+          records_synced_today?: number | null
+          sync_in_progress?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_calls_today?: number | null
+          created_at?: string | null
+          current_sync_started_at?: string | null
+          id?: string
+          last_delta_sync_at?: string | null
+          last_full_sync_at?: string | null
+          last_po_sync_at?: string | null
+          last_reset_date?: string | null
+          last_stock_sync_at?: string | null
+          records_synced_today?: number | null
+          sync_in_progress?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      finale_vendors: {
+        Row: {
+          address_city: string | null
+          address_country: string | null
+          address_postal_code: string | null
+          address_state: string | null
+          address_street: string | null
+          avg_lead_time_days: number | null
+          contact_name: string | null
+          created_at: string | null
+          custom_account_number: string | null
+          custom_vendor_code: string | null
+          default_lead_time_days: number | null
+          email: string | null
+          finale_party_url: string
+          id: string
+          minimum_order_amount: number | null
+          on_time_delivery_pct: number | null
+          party_id: string
+          party_name: string
+          payment_terms: string | null
+          phone: string | null
+          raw_data: Json | null
+          status: string | null
+          synced_at: string | null
+          total_orders: number | null
+          total_spend: number | null
+          updated_at: string | null
+          user_field_data: Json | null
+        }
+        Insert: {
+          address_city?: string | null
+          address_country?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          avg_lead_time_days?: number | null
+          contact_name?: string | null
+          created_at?: string | null
+          custom_account_number?: string | null
+          custom_vendor_code?: string | null
+          default_lead_time_days?: number | null
+          email?: string | null
+          finale_party_url: string
+          id?: string
+          minimum_order_amount?: number | null
+          on_time_delivery_pct?: number | null
+          party_id: string
+          party_name: string
+          payment_terms?: string | null
+          phone?: string | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          total_orders?: number | null
+          total_spend?: number | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Update: {
+          address_city?: string | null
+          address_country?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          avg_lead_time_days?: number | null
+          contact_name?: string | null
+          created_at?: string | null
+          custom_account_number?: string | null
+          custom_vendor_code?: string | null
+          default_lead_time_days?: number | null
+          email?: string | null
+          finale_party_url?: string
+          id?: string
+          minimum_order_amount?: number | null
+          on_time_delivery_pct?: number | null
+          party_id?: string
+          party_name?: string
+          payment_terms?: string | null
+          phone?: string | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          total_orders?: number | null
+          total_spend?: number | null
+          updated_at?: string | null
+          user_field_data?: Json | null
         }
         Relationships: []
       }
@@ -2513,9 +3491,13 @@ export type Database = {
           qty_to_order: number | null
           reorder_point: number | null
           reorder_variance: number | null
+          sales_30_days: number | null
+          sales_60_days: number | null
+          sales_90_days: number | null
           sales_last_30_days: number | null
           sales_last_60_days: number | null
           sales_last_90_days: number | null
+          sales_velocity: number | null
           sales_velocity_consolidated: number | null
           sku: string
           status: string | null
@@ -2558,9 +3540,13 @@ export type Database = {
           qty_to_order?: number | null
           reorder_point?: number | null
           reorder_variance?: number | null
+          sales_30_days?: number | null
+          sales_60_days?: number | null
+          sales_90_days?: number | null
           sales_last_30_days?: number | null
           sales_last_60_days?: number | null
           sales_last_90_days?: number | null
+          sales_velocity?: number | null
           sales_velocity_consolidated?: number | null
           sku: string
           status?: string | null
@@ -2603,9 +3589,13 @@ export type Database = {
           qty_to_order?: number | null
           reorder_point?: number | null
           reorder_variance?: number | null
+          sales_30_days?: number | null
+          sales_60_days?: number | null
+          sales_90_days?: number | null
           sales_last_30_days?: number | null
           sales_last_60_days?: number | null
           sales_last_90_days?: number | null
+          sales_velocity?: number | null
           sales_velocity_consolidated?: number | null
           sku?: string
           status?: string | null
@@ -4891,6 +5881,13 @@ export type Database = {
             columns: ["internal_sku"]
             isOneToOne: false
             referencedRelation: "inventory_trends"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "inventory_velocity_summary"
             referencedColumns: ["sku"]
           },
           {
@@ -9325,6 +10322,13 @@ export type Database = {
             referencedColumns: ["sku"]
           },
           {
+            foreignKeyName: "vendor_sku_mappings_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "inventory_velocity_summary"
+            referencedColumns: ["sku"]
+          },
+          {
             foreignKeyName: "vendor_sku_mappings_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
@@ -9764,6 +10768,48 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_velocity_summary: {
+        Row: {
+          category: string | null
+          days_of_stock: number | null
+          name: string | null
+          reorder_urgency: string | null
+          sales_30_days: number | null
+          sales_60_days: number | null
+          sales_90_days: number | null
+          sales_velocity: number | null
+          sku: string | null
+          stock: number | null
+          velocity_class: string | null
+        }
+        Insert: {
+          category?: string | null
+          days_of_stock?: never
+          name?: string | null
+          reorder_urgency?: never
+          sales_30_days?: number | null
+          sales_60_days?: number | null
+          sales_90_days?: number | null
+          sales_velocity?: number | null
+          sku?: string | null
+          stock?: number | null
+          velocity_class?: never
+        }
+        Update: {
+          category?: string | null
+          days_of_stock?: never
+          name?: string | null
+          reorder_urgency?: never
+          sales_30_days?: number | null
+          sales_60_days?: number | null
+          sales_90_days?: number | null
+          sales_velocity?: number | null
+          sku?: string | null
+          stock?: number | null
+          velocity_class?: never
+        }
+        Relationships: []
+      }
       invoice_variance_summary: {
         Row: {
           detected_at: string | null
@@ -9804,6 +10850,211 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mrp_bom_explosion: {
+        Row: {
+          assemblies_possible_from_stock: number | null
+          assemblies_possible_total: number | null
+          assembly_name: string | null
+          assembly_sku: string | null
+          availability_status: string | null
+          bom_level: number | null
+          component_cost_per_assembly: number | null
+          component_name: string | null
+          component_on_hand: number | null
+          component_on_order: number | null
+          component_path: string | null
+          component_reserved: number | null
+          component_sku: string | null
+          component_unit_cost: number | null
+          qty_per_assembly: number | null
+        }
+        Relationships: []
+      }
+      mrp_build_requirements: {
+        Row: {
+          assemblies: string | null
+          build_status: string | null
+          description: string | null
+          net_position: number | null
+          on_hand: number | null
+          on_order: number | null
+          qty_needed_for_builds: number | null
+          shortage_qty: number | null
+          sku: string | null
+          unit_cost: number | null
+          vendor_name: string | null
+          vendor_url: string | null
+        }
+        Relationships: []
+      }
+      mrp_inventory_by_department: {
+        Row: {
+          avg_days_of_stock: number | null
+          department: string | null
+          high_velocity_items: number | null
+          items_below_reorder_point: number | null
+          low_velocity_items: number | null
+          medium_velocity_items: number | null
+          product_count: number | null
+          slow_dead_items: number | null
+          stock_value: number | null
+          total_on_hand: number | null
+          total_on_order: number | null
+          total_reserved: number | null
+        }
+        Relationships: []
+      }
+      mrp_open_purchase_orders: {
+        Row: {
+          days_until_expected: number | null
+          delivery_status: string | null
+          expected_date: string | null
+          finale_order_url: string | null
+          line_count: number | null
+          order_date: string | null
+          order_id: string | null
+          public_notes: string | null
+          status: string | null
+          synced_at: string | null
+          top_items: string | null
+          total: number | null
+          total_quantity: number | null
+          value_pending: number | null
+          vendor_name: string | null
+        }
+        Insert: {
+          days_until_expected?: never
+          delivery_status?: string | null
+          expected_date?: string | null
+          finale_order_url?: string | null
+          line_count?: number | null
+          order_date?: string | null
+          order_id?: string | null
+          public_notes?: string | null
+          status?: string | null
+          synced_at?: string | null
+          top_items?: never
+          total?: number | null
+          total_quantity?: number | null
+          value_pending?: never
+          vendor_name?: string | null
+        }
+        Update: {
+          days_until_expected?: never
+          delivery_status?: string | null
+          expected_date?: string | null
+          finale_order_url?: string | null
+          line_count?: number | null
+          order_date?: string | null
+          order_id?: string | null
+          public_notes?: string | null
+          status?: string | null
+          synced_at?: string | null
+          top_items?: never
+          total?: number | null
+          total_quantity?: number | null
+          value_pending?: never
+          vendor_name?: string | null
+        }
+        Relationships: []
+      }
+      mrp_reorder_recommendations: {
+        Row: {
+          avg_daily_usage_30d: number | null
+          calculated_reorder_point: number | null
+          current_stock: number | null
+          days_of_stock: number | null
+          demand_increasing: boolean | null
+          department: string | null
+          description: string | null
+          finale_reorder_point: number | null
+          lead_time_days: number | null
+          monthly_cost: number | null
+          needs_order: boolean | null
+          on_order: number | null
+          product_id: string | null
+          projected_available: number | null
+          projected_stockout_date: string | null
+          reserved: number | null
+          safety_stock: number | null
+          sku: string | null
+          suggested_order_qty: number | null
+          unit_cost: number | null
+          urgency: string | null
+          urgency_score: number | null
+          velocity_class: string | null
+          velocity_description: string | null
+          velocity_trend_pct: number | null
+          vendor_name: string | null
+          vendor_url: string | null
+        }
+        Relationships: []
+      }
+      mrp_velocity_analysis: {
+        Row: {
+          avg_daily_usage_30d: number | null
+          avg_daily_usage_60d: number | null
+          avg_daily_usage_90d: number | null
+          current_stock: number | null
+          days_of_stock: number | null
+          days_since_last_usage: number | null
+          department: string | null
+          description: string | null
+          last_receipt_date: string | null
+          last_sync: string | null
+          last_usage_date: string | null
+          lead_time_days: number | null
+          on_order: number | null
+          product_id: string | null
+          projected_available: number | null
+          reorder_point: number | null
+          reorder_quantity: number | null
+          reserved: number | null
+          sku: string | null
+          stock_value: number | null
+          unit_cost: number | null
+          usage_30d: number | null
+          usage_60d: number | null
+          usage_90d: number | null
+          usage_frequency_pct: number | null
+          velocity_class: string | null
+          velocity_description: string | null
+          velocity_trend_pct: number | null
+          vendor_id: string | null
+        }
+        Relationships: []
+      }
+      mrp_vendor_performance: {
+        Row: {
+          avg_actual_lead_days: number | null
+          avg_order_value: number | null
+          completed_orders: number | null
+          days_since_last_order: number | null
+          default_lead_time_days: number | null
+          email: string | null
+          last_order_date: string | null
+          last_receipt_date: string | null
+          lead_time_stddev: number | null
+          lifetime_spend: number | null
+          max_lead_days: number | null
+          min_lead_days: number | null
+          on_time_count: number | null
+          on_time_delivery_pct: number | null
+          open_orders: number | null
+          party_id: string | null
+          payment_terms: string | null
+          phone: string | null
+          products_supplied: number | null
+          spend_12m: number | null
+          spend_3m: number | null
+          total_deliveries: number | null
+          total_orders: number | null
+          vendor_id: string | null
+          vendor_name: string | null
+          vendor_score: number | null
+        }
+        Relationships: []
       }
       po_tracking_overview: {
         Row: {
@@ -9929,6 +11180,13 @@ export type Database = {
             referencedColumns: ["sku"]
           },
           {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "inventory_velocity_summary"
+            referencedColumns: ["sku"]
+          },
+          {
             foreignKeyName: "product_pricing_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
@@ -10034,6 +11292,13 @@ export type Database = {
             referencedRelation: "inventory_trends"
             referencedColumns: ["sku"]
           },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "inventory_velocity_summary"
+            referencedColumns: ["sku"]
+          },
         ]
       }
       shopify_sales_summary: {
@@ -10046,6 +11311,51 @@ export type Database = {
           total_revenue: number | null
           total_tax: number | null
           unique_customers: number | null
+        }
+        Relationships: []
+      }
+      sync_dashboard: {
+        Row: {
+          api_calls_today: number | null
+          last_delta_sync_at: string | null
+          last_full_sync_at: string | null
+          last_po_sync_at: string | null
+          last_stock_sync_at: string | null
+          pending_changes: number | null
+          records_synced_today: number | null
+          sync_in_progress: boolean | null
+          total_bom_components: number | null
+          total_pos: number | null
+          total_products: number | null
+          total_vendors: number | null
+        }
+        Insert: {
+          api_calls_today?: number | null
+          last_delta_sync_at?: string | null
+          last_full_sync_at?: string | null
+          last_po_sync_at?: string | null
+          last_stock_sync_at?: string | null
+          pending_changes?: never
+          records_synced_today?: number | null
+          sync_in_progress?: boolean | null
+          total_bom_components?: never
+          total_pos?: never
+          total_products?: never
+          total_vendors?: never
+        }
+        Update: {
+          api_calls_today?: number | null
+          last_delta_sync_at?: string | null
+          last_full_sync_at?: string | null
+          last_po_sync_at?: string | null
+          last_stock_sync_at?: string | null
+          pending_changes?: never
+          records_synced_today?: number | null
+          sync_in_progress?: boolean | null
+          total_bom_components?: never
+          total_pos?: never
+          total_products?: never
+          total_vendors?: never
         }
         Relationships: []
       }
@@ -10306,6 +11616,16 @@ export type Database = {
         Args: { new_pricelist_id: string }
         Returns: number
       }
+      calculate_product_velocity: {
+        Args: { p_product_url: string }
+        Returns: {
+          daily_velocity: number
+          usage_30d: number
+          usage_60d: number
+          usage_90d: number
+          velocity_trend: number
+        }[]
+      }
       calculate_reorder_quantity: {
         Args: { p_sku: string }
         Returns: {
@@ -10428,7 +11748,18 @@ export type Database = {
         }
         Returns: string
       }
-      ensure_user_profile: { Args: never; Returns: Json }
+      ensure_user_profile: {
+        Args: never
+        Returns: {
+          department: string
+          email: string
+          full_name: string
+          id: string
+          onboarding_complete: boolean
+          role: string
+          tier: string
+        }[]
+      }
       generate_sop_learning_insights: {
         Args: { sop_id_param: string }
         Returns: {
@@ -10455,6 +11786,19 @@ export type Database = {
           remaining: number
           service_breakdown: Json
           total_spent: number
+        }[]
+      }
+      get_all_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          department: string
+          email: string
+          full_name: string
+          id: string
+          onboarding_complete: boolean
+          role: string
+          updated_at: string
         }[]
       }
       get_applicable_sop_templates: {
@@ -10602,6 +11946,13 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_pending_sync_changes: {
+        Args: { limit_count?: number }
+        Returns: {
+          entity_ids: string[]
+          entity_type: string
+        }[]
+      }
       get_po_shipment_data: {
         Args: { po_id: string }
         Returns: {
@@ -10710,6 +12061,18 @@ export type Database = {
           success: boolean
         }[]
       }
+      get_sync_stats: {
+        Args: never
+        Returns: {
+          api_calls_today: number
+          is_syncing: boolean
+          last_delta_sync: string
+          last_full_sync: string
+          last_po_sync: string
+          last_stock_sync: string
+          records_today: number
+        }[]
+      }
       get_sync_system_health: {
         Args: never
         Returns: {
@@ -10786,6 +12149,11 @@ export type Database = {
             }[]
           }
       mark_stale_insights: { Args: never; Returns: number }
+      mark_sync_complete: {
+        Args: { records_count?: number; sync_type: string }
+        Returns: undefined
+      }
+      mark_sync_start: { Args: never; Returns: undefined }
       process_next_retry: {
         Args: never
         Returns: {
@@ -10818,6 +12186,7 @@ export type Database = {
         Returns: undefined
       }
       refresh_inventory_trends: { Args: never; Returns: undefined }
+      refresh_inventory_velocity: { Args: never; Returns: number }
       refresh_shopify_sales_summary: { Args: never; Returns: undefined }
       refresh_vendor_confidence_profile: {
         Args: { trigger_source?: string; vendor_id: string }
@@ -10848,6 +12217,8 @@ export type Database = {
           scan_status: string
         }[]
       }
+      should_run_sync: { Args: { sync_type: string }; Returns: boolean }
+      trigger_auto_sync: { Args: { sync_type?: string }; Returns: Json }
       trigger_empty_data_rollback: {
         Args: {
           p_data_type: string
@@ -10856,6 +12227,7 @@ export type Database = {
         }
         Returns: string
       }
+      trigger_shipment_sync: { Args: never; Returns: Json }
       update_all_boms_compliance: { Args: never; Returns: number }
       update_all_compliance_statuses: { Args: never; Returns: number }
       update_bom_compliance_summary: {
@@ -10870,6 +12242,16 @@ export type Database = {
           p_status: string
         }
         Returns: boolean
+      }
+      update_user_role: {
+        Args: { new_role: string; target_user_id: string }
+        Returns: {
+          email: string
+          message: string
+          role: string
+          success: boolean
+          user_id: string
+        }[]
       }
       validate_sop_template: {
         Args: { sop_data: Json; template_id: string }
@@ -11103,5 +12485,4 @@ export const Constants = {
     },
   },
 } as const
-A new version of Supabase CLI is available: v2.65.5 (currently installed v2.62.10)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
+
