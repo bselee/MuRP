@@ -1417,6 +1417,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     bomFilter,
                     riskFilter,
                 }}
+                availableCategories={filterOptions.categories}
+                availableVendors={filterOptions.vendors.map(vendorId => ({
+                    id: vendorId,
+                    name: getVendorName(vendorId)
+                }))}
                 onSavePreset={handleSavePreset}
                 onDeletePreset={handleDeletePreset}
                 onApplyPreset={handleApplyPreset}
