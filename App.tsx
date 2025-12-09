@@ -46,6 +46,7 @@ import {
   useSupabaseBuildOrders,
   useSupabaseRequisitions,
   useSupabaseUserProfiles,
+  useSupabaseFinalePurchaseOrders,
 } from './hooks/useSupabaseData';
 import {
   createPurchaseOrder,
@@ -146,6 +147,8 @@ const AppShell: React.FC = () => {
   const { data: buildOrders, loading: buildOrdersLoading, error: buildOrdersError, refetch: refetchBuildOrders } = useSupabaseBuildOrders();
   const { data: requisitions, loading: requisitionsLoading, error: requisitionsError, refetch: refetchRequisitions } = useSupabaseRequisitions();
   const { data: userProfiles, loading: userProfilesLoading, refetch: refetchUserProfiles } = useSupabaseUserProfiles();
+  // Finale POs - from Finale API sync (shows current non-completed POs)
+  const { data: finalePurchaseOrders, loading: finalePOsLoading, refetch: refetchFinalePOs } = useSupabaseFinalePurchaseOrders();
 
   // UI/Config state (keep in localStorage - not business data)
   const [historicalSales] = usePersistentState<HistoricalSale[]>('historicalSales', mockHistoricalSales);
@@ -1756,7 +1759,8 @@ const AppShell: React.FC = () => {
         />;
       case 'Purchase Orders':
         return <PurchaseOrders 
-                    purchaseOrders={purchaseOrders} 
+                    purchaseOrders={purchaseOrders}
+                    finalePurchaseOrders={finalePurchaseOrders}
                     vendors={vendors}
                     inventory={inventory}
                     onCreatePo={handleCreatePo}

@@ -96,7 +96,7 @@ async function callSyncFunction(functionName: string): Promise<SyncResult> {
 }
 
 // Log sync event to database
-async function logSyncEvent(supabase: any, results: SyncResult[], totalDuration: number) {
+async function logSyncEvent(supabase: any, results: SyncResult[], totalDuration: number, syncType: string) {
   try {
     const successCount = results.filter(r => r.success).length;
     const totalItems = results.reduce((sum, r) => {
@@ -106,6 +106,7 @@ async function logSyncEvent(supabase: any, results: SyncResult[], totalDuration:
       return sum;
     }, 0);
 
+    // Update sync_metadata (legacy)
     await supabase.from('sync_metadata').upsert({
       sync_type: 'auto_sync_finale',
       last_sync_at: new Date().toISOString(),
@@ -114,6 +115,28 @@ async function logSyncEvent(supabase: any, results: SyncResult[], totalDuration:
       sync_duration_ms: totalDuration,
       error_message: results.filter(r => !r.success).map(r => r.error).join('; ') || null,
     }, { onConflict: 'sync_type' });
+
+    // Update finale_sync_state for delta tracking
+    const syncStateUpdate: Record<string, any> = {
+      sync_in_progress: false,
+      current_sync_started_at: null,
+      updated_at: new Date().toISOString(),
+    };
+    
+    // Update appropriate timestamp based on sync type
+    if (syncType === 'all') {
+      syncStateUpdate.last_full_sync_at = new Date().toISOString();
+    } else if (syncType === 'graphql') {
+      syncStateUpdate.last_po_sync_at = new Date().toISOString();
+      syncStateUpdate.last_stock_sync_at = new Date().toISOString();
+    } else if (syncType === 'rest') {
+      syncStateUpdate.last_delta_sync_at = new Date().toISOString();
+    }
+    
+    await supabase.from('finale_sync_state')
+      .update(syncStateUpdate)
+      .eq('id', 'main');
+
   } catch (error) {
     console.error('[AutoSync] Failed to log sync event:', error);
   }
@@ -189,7 +212,8 @@ serve(async (req) => {
     // ═══════════════════════════════════════════════════════════════════
     const totalDuration = Date.now() - startTime;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    await logSyncEvent(supabase, results, totalDuration);
+    const syncType = options.syncType || 'all';
+    await logSyncEvent(supabase, results, totalDuration, syncType);
 
     const successCount = results.filter(r => r.success).length;
     console.log('[AutoSync] ═══════════════════════════════════════════════════');

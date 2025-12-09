@@ -990,6 +990,48 @@ export interface PurchaseOrder {
   actualLeadDays?: number | null;
 }
 
+/**
+ * Finale Purchase Order from finale_purchase_orders table
+ * Synced from Finale API via GraphQL
+ */
+export interface FinalePurchaseOrderRecord {
+  id: string;
+  finaleOrderUrl: string;
+  orderId: string;
+  orderType: string;
+  status: 'DRAFT' | 'SUBMITTED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED' | string;
+  vendorId?: string;
+  vendorUrl?: string;
+  vendorName?: string;
+  facilityUrl?: string;
+  facilityId?: string;
+  orderDate?: string;
+  expectedDate?: string;
+  receivedDate?: string;
+  subtotal?: number;
+  tax?: number;
+  shipping?: number;
+  total?: number;
+  publicNotes?: string;
+  privateNotes?: string;
+  lineItems: Array<{
+    line_number: number;
+    product_id?: string;
+    product_url?: string;
+    quantity_ordered: number;
+    quantity_received: number;
+    unit_price: number;
+    line_total: number;
+  }>;
+  lineCount: number;
+  totalQuantity: number;
+  deliveryStatus?: string;
+  finaleLastModified?: string;
+  syncedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface CreatePurchaseOrderItemInput {
   sku: string;
   name: string;

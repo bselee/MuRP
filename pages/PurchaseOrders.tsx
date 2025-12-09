@@ -36,9 +36,11 @@ import { runFollowUpAutomation } from '../services/followUpService';
 import { getGoogleGmailService } from '../services/googleGmailService';
 import AutonomousControls from '../components/AutonomousControls';
 import AutonomousApprovals from '../components/AutonomousApprovals';
+import type { FinalePurchaseOrderRecord } from '../types';
 
 interface PurchaseOrdersProps {
     purchaseOrders: PurchaseOrder[];
+    finalePurchaseOrders?: FinalePurchaseOrderRecord[];
     vendors: Vendor[];
     inventory: InventoryItem[];
     onCreatePo: (poDetails: CreatePurchaseOrderInput) => Promise<void> | void;
@@ -78,7 +80,7 @@ type PoDraftConfig = {
 
 const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const { 
-        purchaseOrders, vendors, inventory, onCreatePo, addToast, currentUser, 
+        purchaseOrders, finalePurchaseOrders = [], vendors, inventory, onCreatePo, addToast, currentUser, 
         approvedRequisitions, gmailConnection, onSendEmail, onUpdateTracking,
         requisitions, users, onApproveRequisition, onOpsApproveRequisition, onRejectRequisition, onCreateRequisition,
         onConnectGoogle,
@@ -605,6 +607,72 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 />
 
                 {/* VendorResponseWorkbench component removed - was causing ReferenceError */}
+
+                {/* Finale Purchase Orders - Current/Open POs from Finale API */}
+                {finalePurchaseOrders.length > 0 && (
+                    <div className="bg-emerald-900/20 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-emerald-600/30">
+                        <div className="p-4 bg-emerald-900/30 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-xl font-semibold text-emerald-300">📦 Finale Open POs</h2>
+                                <span className="text-sm text-emerald-400">
+                                    {finalePurchaseOrders.length} open orders from Finale
+                                </span>
+                            </div>
+                            <span className="text-xs text-emerald-400/70">
+                                Synced from Finale API • Shows non-completed POs
+                            </span>
+                        </div>
+                        <div className="overflow-x-auto max-h-96">
+                            <table className="table-density min-w-full divide-y divide-emerald-700/30">
+                                <thead className="bg-emerald-900/40 sticky top-0 z-10">
+                                    <tr>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">PO #</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Vendor</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Status</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Order Date</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Expected</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Items</th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-emerald-700/20">
+                                    {finalePurchaseOrders.map((fpo) => (
+                                        <tr key={fpo.id} className="hover:bg-emerald-900/30 transition-colors">
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-emerald-400">
+                                                {fpo.orderId}
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-300">
+                                                {fpo.vendorName || 'Unknown'}
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap">
+                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                    fpo.status === 'SUBMITTED' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                                                    fpo.status === 'PARTIALLY_RECEIVED' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                                                    fpo.status === 'DRAFT' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
+                                                    'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                                }`}>
+                                                    {fpo.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
+                                                {fpo.orderDate ? new Date(fpo.orderDate).toLocaleDateString() : 'N/A'}
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
+                                                {fpo.expectedDate ? new Date(fpo.expectedDate).toLocaleDateString() : 'N/A'}
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-300">
+                                                {fpo.lineCount} items ({fpo.totalQuantity?.toFixed(0) || 0} units)
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-emerald-300">
+                                                ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
 
                 <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
                     <div className="p-4 bg-gray-800 flex items-center justify-between">

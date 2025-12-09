@@ -899,7 +899,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 
                           {/* Ingredient Details */}
                           <div className="flex-1 min-w-0">
-                            {/* SKU + Name */}
+                            {/* SKU + Description + Name */}
                             <div className="flex items-baseline gap-2 flex-wrap">
                               {onNavigateToInventory ? (
                                 <Button
@@ -913,6 +913,11 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                                 </Button>
                               ) : (
                                 <span className={themeSwap('font-bold font-mono text-sm text-emerald-800', 'font-bold font-mono text-sm text-emerald-300')}>{c.sku}</span>
+                              )}
+                              {componentItem?.description && (
+                                <span className={themeSwap('text-xs text-gray-600 italic', 'text-xs text-gray-400 italic')}>
+                                  {componentItem.description}
+                                </span>
                               )}
                               <span className={themeSwap('text-sm text-gray-800', 'text-sm text-gray-200')}>— {c.name}</span>
                               {nestedBom && (
@@ -962,6 +967,41 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                                 </>
                               )}
                             </div>
+
+                            {/* Velocity / Usage Data */}
+                            {componentItem && (componentItem.salesVelocity || componentItem.sales30Days) && (
+                              <div className="flex items-center gap-3 mt-1 text-[11px]">
+                                {componentItem.salesVelocity && componentItem.salesVelocity > 0 && (
+                                  <span className={themeSwap('text-sky-700', 'text-sky-400')}>
+                                    <TrendingUpIcon className="w-3 h-3 inline mr-1" />
+                                    {componentItem.salesVelocity.toFixed(1)}/day velocity
+                                  </span>
+                                )}
+                                {componentItem.sales30Days && componentItem.sales30Days > 0 && (
+                                  <>
+                                    {componentItem.salesVelocity && <span className={dividerClass}>•</span>}
+                                    <span className={themeSwap('text-gray-600', 'text-gray-400')}>
+                                      {componentItem.sales30Days} sold (30d)
+                                    </span>
+                                  </>
+                                )}
+                                {/* Days of stock estimate */}
+                                {componentItem.salesVelocity && componentItem.salesVelocity > 0 && available > 0 && (
+                                  <>
+                                    <span className={dividerClass}>•</span>
+                                    <span className={`font-semibold ${
+                                      (available / componentItem.salesVelocity) < 7 
+                                        ? themeSwap('text-rose-700', 'text-rose-400')
+                                        : (available / componentItem.salesVelocity) < 14 
+                                          ? themeSwap('text-amber-700', 'text-amber-400')
+                                          : themeSwap('text-emerald-700', 'text-emerald-400')
+                                    }`}>
+                                      ~{Math.round(available / componentItem.salesVelocity)} days stock
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
 

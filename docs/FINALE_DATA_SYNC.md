@@ -289,28 +289,27 @@ curl -X POST "https://<project>.supabase.co/functions/v1/auto-sync-finale" \
 
 ### Setting up pg_cron (in Supabase Dashboard)
 
+**NOTE:** pg_cron is now automatically configured via migration 081!
+
+The following schedules are active:
+- **Full sync**: Every 12 hours (1 AM and 1 PM UTC / ~6 AM and 6 PM MT)
+- **PO sync**: Every hour at minute 30
+- **Shipment sync**: Every 6 hours (for velocity calculations)
+
 ```sql
--- Enable pg_cron extension (if not already enabled)
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-
--- Full sync every 4 hours
-SELECT cron.schedule(
-  'finale-full-sync',
-  '0 */4 * * *',  -- Every 4 hours at minute 0
-  $$
-  SELECT net.http_post(
-    url := 'https://mpuevsmtowyexhsqugkm.supabase.co/functions/v1/auto-sync-finale',
-    headers := '{"Authorization": "Bearer <service_role_key>", "Content-Type": "application/json"}'::jsonb,
-    body := '{"syncType": "all"}'::jsonb
-  );
-  $$
-);
-
--- View scheduled jobs
+-- View current schedules
 SELECT * FROM cron.job;
 
--- Remove a job
-SELECT cron.unschedule('finale-full-sync');
+-- View sync state
+SELECT * FROM sync_dashboard;
+
+-- Manually trigger sync
+SELECT trigger_auto_sync('all');  -- Full sync
+SELECT trigger_auto_sync('graphql');  -- PO/stock only
+SELECT trigger_shipment_sync();  -- Shipments for velocity
+
+-- Check sync history
+SELECT * FROM finale_sync_state;
 ```
 
 ---
@@ -426,6 +425,78 @@ View function logs in Supabase Dashboard:
 
 ---
 
+## Velocity & Consumption Tracking
+
+### Overview
+
+Velocity data is **CRITICAL** for MRP forecasting. The system calculates:
+- 30/60/90 day consumption from shipment history
+- Daily velocity (units/day)
+- ABC velocity classification (A=High, B=Medium, C=Low, D=VeryLow, F=NoMovement)
+- Days of stock remaining at current velocity
+
+### Data Flow
+
+```
+Finale Shipments → sync-finale-shipments → finale_stock_history
+                                                  ↓
+                                      refresh_inventory_velocity()
+                                                  ↓
+                                      inventory_items (sales_30_days, sales_velocity, etc.)
+                                                  ↓
+                                      inventory_velocity_summary view
+```
+
+### Tables & Views
+
+**finale_stock_history** - Raw transaction log
+- Stores outbound shipments (negative quantities)
+- Source for all velocity calculations
+
+**inventory_items** - Updated velocity columns:
+- `sales_30_days` - Units consumed in last 30 days
+- `sales_60_days` - Units consumed in last 60 days
+- `sales_90_days` - Units consumed in last 90 days
+- `sales_velocity` - Daily average (sales_30_days / 30)
+
+**inventory_velocity_summary** - Dashboard view:
+- Days of stock remaining
+- ABC velocity classification
+- Reorder urgency (CRITICAL/LOW/WATCH/OK)
+
+### SQL Functions
+
+```sql
+-- Calculate velocity for single product
+SELECT * FROM calculate_product_velocity('/buildasoilorganics/api/product/12345');
+
+-- Batch update all inventory items
+SELECT refresh_inventory_velocity();
+
+-- View velocity summary
+SELECT * FROM inventory_velocity_summary WHERE velocity_class IN ('A', 'B');
+```
+
+### Scheduled Sync
+
+Shipment sync runs every 6 hours via pg_cron:
+- Fetches last 90 days of shipments from Finale
+- Populates finale_stock_history table
+- Triggers velocity recalculation
+
+```sql
+-- Manually trigger shipment sync
+SELECT trigger_shipment_sync();
+
+-- Check velocity data
+SELECT sku, name, sales_velocity, days_of_stock, velocity_class
+FROM inventory_velocity_summary
+ORDER BY sales_velocity DESC
+LIMIT 20;
+```
+
+---
+
 ## Quick Reference
 
 ### Environment Variables Required
@@ -453,6 +524,7 @@ FINALE_BASE_URL=https://app.finaleinventory.com
 | finale_boms | 506 | Components |
 | boms | 90 | Assemblies |
 | inventory_items | 4400 | App format |
+| finale_stock_history | TBD | Shipment transactions |
 
 ---
 
@@ -461,10 +533,11 @@ FINALE_BASE_URL=https://app.finaleinventory.com
 - `supabase/functions/auto-sync-finale/index.ts` - Orchestrator
 - `supabase/functions/sync-finale-data/index.ts` - REST sync
 - `supabase/functions/sync-finale-graphql/index.ts` - GraphQL sync
+- `supabase/functions/sync-finale-shipments/index.ts` - Shipment/velocity sync
 - `hooks/useSupabaseData.ts` - App data hooks
 - `components/EnhancedBomCard.tsx` - BOM display
 
 ---
 
 *Last updated: December 9, 2025*
-*Version: 2.0.0*
+*Version: 2.1.0*
