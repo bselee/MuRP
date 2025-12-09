@@ -102,6 +102,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [modalSession, setModalSession] = useState(0);
     const [isRunningFollowUps, setIsRunningFollowUps] = useState(false);
     const [showAllPOs, setShowAllPOs] = useState(false);
+    const [expandedFinalePO, setExpandedFinalePO] = useState<string | null>(null);
     
     const permissions = usePermissions();
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
@@ -610,66 +611,196 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                 {/* Finale Purchase Orders - Current/Open POs from Finale API */}
                 {finalePurchaseOrders.length > 0 && (
-                    <div className="bg-emerald-900/20 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-emerald-600/30">
-                        <div className="p-4 bg-emerald-900/30 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <h2 className="text-xl font-semibold text-emerald-300">📦 Finale Open POs</h2>
-                                <span className="text-sm text-emerald-400">
-                                    {finalePurchaseOrders.length} open orders from Finale
+                    <div className="space-y-4">
+                        <div className="bg-gradient-to-r from-emerald-900/30 to-emerald-800/20 backdrop-blur-sm rounded-lg shadow-lg p-4 border border-emerald-600/30">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-xl font-semibold text-emerald-300">📦 Finale Purchase Orders</h2>
+                                    <span className="px-3 py-1 rounded-full text-sm bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">
+                                        {finalePurchaseOrders.length} open orders
+                                    </span>
+                                </div>
+                                <span className="text-xs text-emerald-400/70">
+                                    Synced from Finale API • Click to expand details
                                 </span>
                             </div>
-                            <span className="text-xs text-emerald-400/70">
-                                Synced from Finale API • Shows non-completed POs
-                            </span>
                         </div>
-                        <div className="overflow-x-auto max-h-96">
-                            <table className="table-density min-w-full divide-y divide-emerald-700/30">
-                                <thead className="bg-emerald-900/40 sticky top-0 z-10">
-                                    <tr>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">PO #</th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Vendor</th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Status</th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Order Date</th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Expected</th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Items</th>
-                                        <th className="px-4 py-2 text-left text-xs font-medium text-emerald-300 uppercase tracking-wider">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-emerald-700/20">
-                                    {finalePurchaseOrders.map((fpo) => (
-                                        <tr key={fpo.id} className="hover:bg-emerald-900/30 transition-colors">
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-emerald-400">
-                                                {fpo.orderId}
-                                            </td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-300">
-                                                {fpo.vendorName || 'Unknown'}
-                                            </td>
-                                            <td className="px-4 py-2 whitespace-nowrap">
-                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                    fpo.status === 'SUBMITTED' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
-                                                    fpo.status === 'PARTIALLY_RECEIVED' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                                                    fpo.status === 'DRAFT' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
-                                                    'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                                }`}>
-                                                    {fpo.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
-                                                {fpo.orderDate ? new Date(fpo.orderDate).toLocaleDateString() : 'N/A'}
-                                            </td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
-                                                {fpo.expectedDate ? new Date(fpo.expectedDate).toLocaleDateString() : 'N/A'}
-                                            </td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-300">
-                                                {fpo.lineCount} items ({fpo.totalQuantity?.toFixed(0) || 0} units)
-                                            </td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-emerald-300">
-                                                ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+
+                        <div className="grid gap-4">
+                            {finalePurchaseOrders.map((fpo) => {
+                                const isExpanded = expandedFinalePO === fpo.id;
+                                return (
+                                    <div 
+                                        key={fpo.id} 
+                                        className="bg-emerald-900/20 backdrop-blur-sm rounded-lg shadow-lg border border-emerald-600/30 overflow-hidden hover:border-emerald-500/50 transition-all"
+                                    >
+                                        {/* Header - Always Visible */}
+                                        <div 
+                                            className="p-4 bg-emerald-900/30 cursor-pointer hover:bg-emerald-900/40 transition-colors"
+                                            onClick={() => setExpandedFinalePO(isExpanded ? null : fpo.id)}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div>
+                                                        <div className="text-lg font-semibold text-emerald-300 font-mono">
+                                                            PO #{fpo.orderId}
+                                                        </div>
+                                                        <div className="text-sm text-emerald-400/80">
+                                                            {fpo.vendorName || 'Unknown Vendor'}
+                                                        </div>
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                                        fpo.status === 'Submitted' || fpo.status === 'SUBMITTED' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                                                        fpo.status === 'Partial' || fpo.status === 'PARTIALLY_RECEIVED' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                                                        fpo.status === 'Pending' || fpo.status === 'DRAFT' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
+                                                        fpo.status === 'Ordered' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                                                        'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                                    }`}>
+                                                        {fpo.status}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-6">
+                                                    <div className="text-right">
+                                                        <div className="text-sm text-emerald-400/70">Order Date</div>
+                                                        <div className="text-sm text-emerald-300">
+                                                            {fpo.orderDate ? new Date(fpo.orderDate).toLocaleDateString() : 'N/A'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-sm text-emerald-400/70">Expected</div>
+                                                        <div className="text-sm text-emerald-300">
+                                                            {fpo.expectedDate ? new Date(fpo.expectedDate).toLocaleDateString() : 'TBD'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-2xl font-bold text-emerald-300">
+                                                            ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                                        </div>
+                                                        <div className="text-xs text-emerald-400/70">
+                                                            {fpo.lineCount || 0} items • {fpo.totalQuantity?.toFixed(0) || 0} units
+                                                        </div>
+                                                    </div>
+                                                    <ChevronDownIcon 
+                                                        className={`w-5 h-5 text-emerald-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Details */}
+                                        {isExpanded && (
+                                            <div className="p-4 bg-emerald-950/30 border-t border-emerald-600/30 space-y-4">
+                                                {/* Summary Info */}
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-1">Vendor Information</div>
+                                                            <div className="text-sm text-emerald-300">{fpo.vendorName || 'Unknown'}</div>
+                                                            {fpo.vendorUrl && (
+                                                                <div className="text-xs text-emerald-400/50 font-mono mt-0.5">{fpo.vendorUrl}</div>
+                                                            )}
+                                                        </div>
+                                                        {fpo.facilityId && (
+                                                            <div>
+                                                                <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-1">Facility</div>
+                                                                <div className="text-sm text-emerald-300">{fpo.facilityId}</div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-1">Financial Summary</div>
+                                                            <div className="space-y-1 text-sm">
+                                                                <div className="flex justify-between text-emerald-300">
+                                                                    <span>Subtotal:</span>
+                                                                    <span className="font-mono">${fpo.subtotal?.toFixed(2) || '0.00'}</span>
+                                                                </div>
+                                                                {fpo.tax && fpo.tax > 0 && (
+                                                                    <div className="flex justify-between text-emerald-300">
+                                                                        <span>Tax:</span>
+                                                                        <span className="font-mono">${fpo.tax.toFixed(2)}</span>
+                                                                    </div>
+                                                                )}
+                                                                {fpo.shipping && fpo.shipping > 0 && (
+                                                                    <div className="flex justify-between text-emerald-300">
+                                                                        <span>Shipping:</span>
+                                                                        <span className="font-mono">${fpo.shipping.toFixed(2)}</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex justify-between text-emerald-300 font-semibold pt-1 border-t border-emerald-600/30">
+                                                                    <span>Total:</span>
+                                                                    <span className="font-mono">${fpo.total?.toFixed(2) || '0.00'}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Notes */}
+                                                {(fpo.publicNotes || fpo.privateNotes) && (
+                                                    <div className="space-y-2">
+                                                        {fpo.publicNotes && (
+                                                            <div>
+                                                                <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-1">Public Notes</div>
+                                                                <div className="text-sm text-emerald-300 bg-emerald-950/50 p-3 rounded border border-emerald-600/20">
+                                                                    {fpo.publicNotes}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {fpo.privateNotes && (
+                                                            <div>
+                                                                <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-1">Private Notes</div>
+                                                                <div className="text-sm text-emerald-300 bg-emerald-950/50 p-3 rounded border border-emerald-600/20">
+                                                                    {fpo.privateNotes}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Line Items */}
+                                                {fpo.lineItems && fpo.lineItems.length > 0 && (
+                                                    <div>
+                                                        <div className="text-xs text-emerald-400/70 uppercase tracking-wider mb-2">Line Items</div>
+                                                        <div className="bg-emerald-950/50 rounded border border-emerald-600/20 overflow-hidden">
+                                                            <table className="min-w-full">
+                                                                <thead className="bg-emerald-900/30">
+                                                                    <tr>
+                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-emerald-300 uppercase">#</th>
+                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-emerald-300 uppercase">Product</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-emerald-300 uppercase">Ordered</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-emerald-300 uppercase">Received</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-emerald-300 uppercase">Unit Price</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-emerald-300 uppercase">Total</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-emerald-600/20">
+                                                                    {fpo.lineItems.map((item: any, idx: number) => (
+                                                                        <tr key={idx} className="hover:bg-emerald-900/20">
+                                                                            <td className="px-3 py-2 text-sm text-emerald-400">{item.line_number || idx + 1}</td>
+                                                                            <td className="px-3 py-2 text-sm text-emerald-300 font-mono">{item.product_id || 'N/A'}</td>
+                                                                            <td className="px-3 py-2 text-sm text-emerald-300 text-right font-mono">{item.quantity_ordered || 0}</td>
+                                                                            <td className="px-3 py-2 text-sm text-emerald-300 text-right font-mono">{item.quantity_received || 0}</td>
+                                                                            <td className="px-3 py-2 text-sm text-emerald-300 text-right font-mono">${item.unit_price?.toFixed(2) || '0.00'}</td>
+                                                                            <td className="px-3 py-2 text-sm text-emerald-300 text-right font-mono font-semibold">${item.line_total?.toFixed(2) || '0.00'}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Metadata */}
+                                                <div className="flex items-center justify-between pt-3 border-t border-emerald-600/30 text-xs text-emerald-400/50">
+                                                    <div>Finale Order URL: <span className="font-mono">{fpo.finaleOrderUrl}</span></div>
+                                                    <div>Last Modified: {fpo.finaleLastModified ? new Date(fpo.finaleLastModified).toLocaleString() : 'N/A'}</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
