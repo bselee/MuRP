@@ -1,3 +1,51 @@
+### Session: 2025-12-09 (Auto-Sync Complete, GitHub Push)
+
+**Changes Made:**
+- Created: `auto-sync-finale` edge function - orchestrates both REST and GraphQL syncs
+- Updated: `sync-finale-data` - category-only filter, maxProducts=10000, BOM extraction for all products
+- Created: `sync-finale-graphql` - GraphQL sync with stock levels, cleanup step for inactive/deprecating
+- Created: `docs/FINALE_DATA_SYNC.md` - **AUTHORITATIVE** single-source documentation (600+ lines)
+- Created: `supabase/migrations/080_boms_components_jsonb.sql` - JSONB column for component details
+- Archived: 8 old Finale docs → `docs/archive/2025-12-finale/`
+- Merged: Claude UI flow analysis branch (FilterPresetManager improvements)
+- Archived: UI docs → `docs/archive/2025-12-ui/`
+
+**Key Decisions:**
+- **Decision:** REST API status filter removed
+- **Rationale:** REST returns "PRODUCT_INACTIVE" for all products (different from GraphQL "Active/Inactive")
+- **Decision:** Created auto-sync orchestrator instead of single combined function
+- **Rationale:** Allows independent testing, each function has clear responsibility
+- **Decision:** Single authoritative doc instead of multiple scattered docs
+- **Rationale:** Previous docs were contradictory and confusing
+
+**Database Results:**
+- 954 products (active only, no Deprecating category)
+- 908 vendors
+- 1000 purchase orders
+- 506 BOM components → 90 assemblies
+- 4400 inventory items
+- 1791 items with stock > 0
+
+**Stock Priority:**
+- BuildASoil Shipping (10005) is primary for stock assessment
+- Falls back to: Main (10000) → Grow Depot (10003) → Testing (10059) → Dispensary (10109)
+
+**Commits:**
+- `0906a49` - feat(sync): complete auto-sync orchestrator with comprehensive docs
+
+**Testing:**
+- ✅ All unit tests passing (3/3)
+- ✅ Build successful
+- ✅ Auto-sync tested: 43s total execution
+- ✅ GitHub push successful
+
+**Next Steps:**
+- [ ] Set up pg_cron for scheduled auto-sync (daily at 6 AM)
+- [ ] Implement velocity/usage data for forecasting
+- [ ] Test BOM card display with synced data
+
+---
+
 ### Session: 2025-12-08 18:00-19:20 (Finale Data Sync WORKING!)
 
 **Changes Made:**
