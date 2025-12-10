@@ -4,16 +4,16 @@ import PageHeader from '@/components/ui/PageHeader';
 import Table, { type Column } from '@/components/ui/Table';
 import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults, PurchaseOrder } from '../types';
 import { useUserPreferences, type RowDensity, type FontScale } from '../components/UserPreferencesProvider';
-import { 
-  SearchIcon, 
-  ChevronUpIcon, 
-  ChevronDownIcon, 
-  ArrowsUpDownIcon,
-  AdjustmentsHorizontalIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  BookmarkIcon,
-  BellIcon,
+import {
+    SearchIcon,
+    ChevronUpIcon,
+    ChevronDownIcon,
+    ArrowsUpDownIcon,
+    AdjustmentsHorizontalIcon,
+    EyeIcon,
+    EyeSlashIcon,
+    BookmarkIcon,
+    BellIcon,
     PlusCircleIcon
 } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
@@ -64,28 +64,28 @@ type ColumnKey =
     | 'unitCost';
 
 interface ColumnConfig {
-  key: ColumnKey;
-  label: string;
-  visible: boolean;
-  sortable: boolean;
+    key: ColumnKey;
+    label: string;
+    visible: boolean;
+    sortable: boolean;
 }
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
-  { key: 'sku', label: 'SKU', visible: true, sortable: true },
-  { key: 'name', label: 'Description', visible: true, sortable: true },
-  { key: 'category', label: 'Category', visible: true, sortable: true },
-  { key: 'stock', label: 'Stock', visible: true, sortable: true },
-  { key: 'onOrder', label: 'On Order', visible: true, sortable: true },
-  { key: 'reorderPoint', label: 'Reorder Point', visible: true, sortable: true },
-  { key: 'vendor', label: 'Vendor', visible: true, sortable: true },
-  { key: 'status', label: 'Status', visible: true, sortable: false },
+    { key: 'sku', label: 'SKU', visible: true, sortable: true },
+    { key: 'name', label: 'Description', visible: true, sortable: true },
+    { key: 'category', label: 'Category', visible: true, sortable: true },
+    { key: 'stock', label: 'Stock', visible: true, sortable: true },
+    { key: 'onOrder', label: 'On Order', visible: true, sortable: true },
+    { key: 'reorderPoint', label: 'Reorder Point', visible: true, sortable: true },
+    { key: 'vendor', label: 'Vendor', visible: true, sortable: true },
+    { key: 'status', label: 'Status', visible: true, sortable: false },
     { key: 'itemType', label: 'Item Type', visible: true, sortable: false },
     { key: 'runway', label: 'Runway vs Lead', visible: true, sortable: true },
-  { key: 'salesVelocity', label: 'Velocity/Day', visible: true, sortable: true },
-  { key: 'sales30Days', label: 'Sales (30d)', visible: true, sortable: true },
-  { key: 'sales60Days', label: 'Sales (60d)', visible: false, sortable: true },
-  { key: 'sales90Days', label: 'Sales (90d)', visible: false, sortable: true },
-  { key: 'unitCost', label: 'Unit Cost', visible: false, sortable: true },
+    { key: 'salesVelocity', label: 'Velocity/Day', visible: true, sortable: true },
+    { key: 'sales30Days', label: 'Sales (30d)', visible: true, sortable: true },
+    { key: 'sales60Days', label: 'Sales (60d)', visible: false, sortable: true },
+    { key: 'sales90Days', label: 'Sales (90d)', visible: false, sortable: true },
+    { key: 'unitCost', label: 'Unit Cost', visible: false, sortable: true },
 ];
 
 const COLUMN_WIDTH_CLASSES: Partial<Record<ColumnKey, string>> = {
@@ -170,17 +170,17 @@ const SortableHeader: React.FC<{
     const direction = isSorted ? sortConfig?.direction : undefined;
 
     // Map direction to ARIA sort value
-    const ariaSortValue = isSorted 
+    const ariaSortValue = isSorted
         ? (direction === 'ascending' ? 'ascending' : 'descending')
         : undefined;
 
     return (
-        <th 
+        <th
             className={`px-4 py-2 text-left text-xs font-medium text-gray-400 ${className || ''}`}
             aria-sort={ariaSortValue}
         >
-            <Button 
-                className="flex items-center gap-2 group" 
+            <Button
+                className="flex items-center gap-2 group"
                 onClick={() => requestSort(sortKey)}
                 aria-label={`Sort by ${title}${isSorted ? `, currently sorted ${direction}` : ''}`}
             >
@@ -223,7 +223,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
     const [categorySearchTerm, setCategorySearchTerm] = useState('');
     const [vendorSearchTerm, setVendorSearchTerm] = useState('');
-    
+
     // Filter preset system state
     const [categoryConfig, setCategoryConfig] = useState<Record<string, CategoryConfig>>(() => {
         const saved = localStorage.getItem('inventory-category-config');
@@ -257,7 +257,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         }
         return DEFAULT_COLUMNS;
     });
-    
+
     const categoryDropdownRef = useRef<HTMLDivElement>(null);
     const vendorDropdownRef = useRef<HTMLDivElement>(null);
     const inventoryRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
@@ -589,14 +589,14 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     };
 
     const toggleColumn = (key: ColumnKey) => {
-        setColumns(prev => prev.map(col => 
+        setColumns(prev => prev.map(col =>
             col.key === key ? { ...col, visible: !col.visible } : col
         ));
     };
 
     const moveColumn = (index: number, direction: 'up' | 'down') => {
         if ((direction === 'up' && index === 0) || (direction === 'down' && index === columns.length - 1)) return;
-        
+
         const newColumns = [...columns];
         const targetIndex = direction === 'up' ? index - 1 : index + 1;
         [newColumns[index], newColumns[targetIndex]] = [newColumns[targetIndex], newColumns[index]];
@@ -650,7 +650,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         if (riskFilter === 'needs-order') {
             filteredItems = filteredItems.filter(item => demandInsights.get(item.sku)?.needsOrder);
         }
-        
+
         // Vendor filter with exclusion support
         if (selectedVendors.size > 0) {
             filteredItems = filteredItems.filter(item => {
@@ -674,7 +674,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         }
 
         if (searchTerm) {
-             filteredItems = filteredItems.filter(item =>
+            filteredItems = filteredItems.filter(item =>
                 item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 item.sku.toLowerCase().includes(searchTerm.toLowerCase())
             );
@@ -790,19 +790,19 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
             switch (col.key) {
                 case 'sku':
                     return (
-                        <Button
+                        <div
                             onClick={() => onNavigateToProduct?.(item.sku)}
-                            className="text-white font-bold hover:text-accent-400 transition-colors cursor-pointer font-mono"
+                            className="font-mono font-medium text-accent-400 hover:text-accent-300 hover:underline cursor-pointer"
                             title="Click to view product details"
                         >
                             {item.sku}
-                        </Button>
+                        </div>
                     );
                 case 'itemType':
                     return insight ? (
                         <span
                             className="cursor-pointer hover:text-accent-400 text-xs"
-                            onClick={() => {/* Add click handler if needed */}}
+                            onClick={() => {/* Add click handler if needed */ }}
                         >
                             {itemTypeStyles[insight.itemType].label}
                         </span>
@@ -811,7 +811,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     );
                 case 'name':
                     return (
-                        <div className="max-w-xs group relative">
+                        <div className="max-w-xs group relative" >
                             <div>
                                 <span className="font-medium truncate block text-white">
                                     {item.name}
@@ -844,7 +844,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </div >
                     );
                 case 'category': {
                     const normalizedCategory = normalizeCategory(item.category);
@@ -859,7 +859,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     return (
                         <span
                             className="cursor-pointer hover:text-accent-400 font-semibold text-white"
-                            onClick={() => {/* Add click handler if needed */}}
+                            onClick={() => {/* Add click handler if needed */ }}
                         >
                             {item.stock.toLocaleString()}
                         </span>
@@ -873,12 +873,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 case 'status':
                     return (
                         <span
-                            className={`cursor-pointer hover:text-accent-400 text-xs ${
-                                stockStatus === 'In Stock' ? 'text-green-400' :
+                            className={`cursor-pointer hover:text-accent-400 text-xs ${stockStatus === 'In Stock' ? 'text-green-400' :
                                 stockStatus === 'Low Stock' ? 'text-yellow-400' :
-                                'text-red-400'
-                            }`}
-                            onClick={() => {/* Add click handler if needed */}}
+                                    'text-red-400'
+                                }`}
+                            onClick={() => {/* Add click handler if needed */ }}
                         >
                             {stockStatus}
                         </span>
@@ -894,7 +893,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             <div className="flex items-center gap-2">
                                 <span
                                     className={`font-semibold cursor-pointer hover:text-accent-400 ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}
-                                    onClick={() => {/* Add click handler if needed */}}
+                                    onClick={() => {/* Add click handler if needed */ }}
                                 >
                                     {runwayValue}
                                 </span>
@@ -1030,299 +1029,297 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         <div className="flex gap-2 flex-shrink-0 flex-wrap">
                             <Button
                                 onClick={() => setIsPresetManagerOpen(true)}
-                                className={`flex items-center gap-2 font-semibold py-2 px-3 rounded-md transition-colors text-sm ${
-                                activePresetId 
-                                    ? 'bg-accent-500 text-white hover:bg-accent-600' 
+                                className={`flex items-center gap-2 font-semibold py-2 px-3 rounded-md transition-colors text-sm ${activePresetId
+                                    ? 'bg-accent-500 text-white hover:bg-accent-600'
                                     : 'bg-gray-700 text-white hover:bg-gray-600'
-                            }`}
-                            title="Manage filter presets"
-                        >
-                            <BookmarkIcon className="w-4 h-4" />
-                            <span className="hidden sm:inline">
-                                {activePresetId 
-                                    ? filterPresets.find(p => p.id === activePresetId)?.name || 'Presets'
-                                    : 'Filter Presets'}
-                            </span>
-                        </Button>
-                        <Button
-                            onClick={() => setIsColumnModalOpen(true)}
-                            className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-600 transition-colors text-sm"
-                            title="Manage columns"
-                        >
-                            <AdjustmentsHorizontalIcon className="w-4 h-4" />
-                            <span className="hidden sm:inline">Columns</span>
-                        </Button>
-                        <Button
-                            onClick={() => setIsImportExportModalOpen(true)}
-                            className="flex items-center gap-2 bg-accent-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-accent-600 transition-colors text-sm"
-                        >
-                            <ArrowsUpDownIcon className="w-4 h-4" />
-                            <span className="hidden sm:inline">Import / Export</span>
-                        </Button>
+                                    }`}
+                                title="Manage filter presets"
+                            >
+                                <BookmarkIcon className="w-4 h-4" />
+                                <span className="hidden sm:inline">
+                                    {activePresetId
+                                        ? filterPresets.find(p => p.id === activePresetId)?.name || 'Presets'
+                                        : 'Filter Presets'}
+                                </span>
+                            </Button>
+                            <Button
+                                onClick={() => setIsColumnModalOpen(true)}
+                                className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-600 transition-colors text-sm"
+                                title="Manage columns"
+                            >
+                                <AdjustmentsHorizontalIcon className="w-4 h-4" />
+                                <span className="hidden sm:inline">Columns</span>
+                            </Button>
+                            <Button
+                                onClick={() => setIsImportExportModalOpen(true)}
+                                className="flex items-center gap-2 bg-accent-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-accent-600 transition-colors text-sm"
+                            >
+                                <ArrowsUpDownIcon className="w-4 h-4" />
+                                <span className="hidden sm:inline">Import / Export</span>
+                            </Button>
                         </div>
                     }
                 />
 
                 <div className="space-y-6">
-                <CollapsibleSection
-                    title="Search & Filters"
-                    icon={<AdjustmentsHorizontalIcon className="w-6 h-6 text-blue-400" />}
-                    variant="card"
-                    isOpen={isFiltersOpen}
-                    onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
-                >
-                    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
-                        <div className="relative lg:col-span-1">
-                            <label htmlFor="search-inventory" className="block text-sm font-medium text-gray-300 mb-1">Search by name or SKU</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <SearchIcon className="h-5 w-5 text-gray-400" />
+                    <CollapsibleSection
+                        title="Search & Filters"
+                        icon={<AdjustmentsHorizontalIcon className="w-6 h-6 text-blue-400" />}
+                        variant="card"
+                        isOpen={isFiltersOpen}
+                        onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
+                    >
+                        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                                <div className="relative lg:col-span-1">
+                                    <label htmlFor="search-inventory" className="block text-sm font-medium text-gray-300 mb-1">Search by name or SKU</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <SearchIcon className="h-5 w-5 text-gray-400" />
+                                        </div>
+                                        <input
+                                            id="search-inventory"
+                                            type="text"
+                                            placeholder="Worm Castings..."
+                                            value={searchTerm}
+                                            onChange={handleSearchChange}
+                                            onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 200)}
+                                            onFocus={handleSearchChange}
+                                            autoComplete="off"
+                                            className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full"
+                                        />
+                                        {isSuggestionsVisible && suggestions.length > 0 && (
+                                            <ul className="absolute z-50 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-auto shadow-lg">
+                                                {suggestions.map(item => (
+                                                    <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className="p-2 text-sm text-white hover:bg-accent-500 cursor-pointer">
+                                                        {item.name} <span className="text-gray-400">({item.sku})</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
                                 </div>
-                                <input
-                                    id="search-inventory"
-                                    type="text"
-                                    placeholder="Worm Castings..."
-                                    value={searchTerm}
-                                    onChange={handleSearchChange}
-                                    onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 200)}
-                                    onFocus={handleSearchChange}
-                                    autoComplete="off"
-                                    className="bg-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full"
-                                />
-                                {isSuggestionsVisible && suggestions.length > 0 && (
-                                    <ul className="absolute z-50 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 max-h-60 overflow-auto shadow-lg">
-                                        {suggestions.map(item => (
-                                            <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className="p-2 text-sm text-white hover:bg-accent-500 cursor-pointer">
-                                                {item.name} <span className="text-gray-400">({item.sku})</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+
+                                {/* Multi-select Category Filter */}
+                                <div ref={categoryDropdownRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-20'}`}>
+                                    <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-1">
+                                        Categories {selectedCategories.size > 0 && <span className="text-accent-400">({selectedCategories.size})</span>}
+                                    </label>
+                                    <Button
+                                        onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                                        className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative`}
+                                    >
+                                        <span className="truncate">
+                                            {selectedCategories.size === 0
+                                                ? 'All Categories'
+                                                : selectedCategories.size === filterOptions.categories.length
+                                                    ? 'All Categories'
+                                                    : `${selectedCategories.size} selected`}
+                                        </span>
+                                        <ChevronDownIcon className="w-4 h-4 ml-2" />
+                                    </Button>
+                                    {isCategoryDropdownOpen && (
+                                        <div className="absolute z-[100] w-full mt-1 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden bg-gray-900">
+                                            <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2 bg-gray-900">
+                                                <Button
+                                                    onClick={selectAllCategories}
+                                                    className="text-xs text-accent-400 hover:text-accent-300 px-2 py-1 bg-gray-600 rounded"
+                                                >
+                                                    Select All
+                                                </Button>
+                                                <Button
+                                                    onClick={clearAllCategories}
+                                                    className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
+                                                >
+                                                    Clear
+                                                </Button>
+                                                <Button
+                                                    onClick={() => {
+                                                        setIsCategoryDropdownOpen(false);
+                                                        setIsCategoryManagementOpen(true);
+                                                    }}
+                                                    className="ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 bg-gray-600 rounded flex items-center gap-1"
+                                                >
+                                                    <AdjustmentsHorizontalIcon className="w-3 h-3" />
+                                                    Manage
+                                                </Button>
+                                            </div>
+                                            <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
+                                                <input
+                                                    type="text"
+                                                    value={categorySearchTerm}
+                                                    onChange={(e) => setCategorySearchTerm(e.target.value)}
+                                                    placeholder="Search categories..."
+                                                    className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border border-gray-600"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div className="max-h-60 overflow-auto">
+                                                {filteredCategories.length === 0 ? (
+                                                    <div className="p-3 text-center text-gray-400 text-sm">No categories found</div>
+                                                ) : (
+                                                    filteredCategories.map(category => {
+                                                        const label = categoryLabelMap.get(category) || formatCategoryLabel(category);
+                                                        return (
+                                                            <label
+                                                                key={category}
+                                                                className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedCategories.has(category)}
+                                                                    onChange={() => toggleCategory(category)}
+                                                                    className="w-4 h-4 mr-2 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
+                                                                />
+                                                                <span className="text-sm text-white" title={category}>{label}</span>
+                                                            </label>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Multi-select Vendor Filter */}
+                                <div ref={vendorDropdownRef} className={`relative ${isVendorDropdownOpen ? 'z-40' : 'z-20'}`}>
+                                    <label htmlFor="filter-vendor" className="block text-sm font-medium text-gray-300 mb-1">
+                                        Vendors {selectedVendors.size > 0 && <span className="text-accent-400">({selectedVendors.size})</span>}
+                                    </label>
+                                    <Button
+                                        onClick={() => setIsVendorDropdownOpen(!isVendorDropdownOpen)}
+                                        className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative`}
+                                    >
+                                        <span className="truncate">
+                                            {selectedVendors.size === 0
+                                                ? 'All Vendors'
+                                                : selectedVendors.size === filterOptions.vendors.length
+                                                    ? 'All Vendors'
+                                                    : `${selectedVendors.size} selected`}
+                                        </span>
+                                        <ChevronDownIcon className="w-4 h-4 ml-2" />
+                                    </Button>
+                                    {isVendorDropdownOpen && (
+                                        <div className="absolute z-[100] w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden">
+                                            <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2">
+                                                <Button
+                                                    onClick={selectAllVendors}
+                                                    className="text-xs text-accent-400 hover:text-accent-300 px-2 py-1 bg-gray-600 rounded"
+                                                >
+                                                    Select All
+                                                </Button>
+                                                <Button
+                                                    onClick={clearAllVendors}
+                                                    className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
+                                                >
+                                                    Clear
+                                                </Button>
+                                                <Button
+                                                    onClick={() => {
+                                                        setIsVendorDropdownOpen(false);
+                                                        setIsVendorManagementOpen(true);
+                                                    }}
+                                                    className="ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 bg-gray-600 rounded flex items-center gap-1"
+                                                >
+                                                    <AdjustmentsHorizontalIcon className="w-3 h-3" />
+                                                    Manage
+                                                </Button>
+                                            </div>
+                                            <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
+                                                <input
+                                                    type="text"
+                                                    value={vendorSearchTerm}
+                                                    onChange={(e) => setVendorSearchTerm(e.target.value)}
+                                                    placeholder="Search vendors..."
+                                                    className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border border-gray-600"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            <div className="max-h-60 overflow-auto">
+                                                {filteredVendors.length === 0 ? (
+                                                    <div className="p-3 text-center text-gray-400 text-sm">No vendors found</div>
+                                                ) : (
+                                                    filteredVendors.map(vendorId => (
+                                                        <label
+                                                            key={vendorId}
+                                                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedVendors.has(vendorId)}
+                                                                onChange={() => toggleVendor(vendorId)}
+                                                                className="w-4 h-4 mr-2 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
+                                                            />
+                                                            <span className="text-sm text-white">{getVendorName(vendorId)}</span>
+                                                        </label>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-1">Stock Status</label>
+                                    <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600">
+                                        <option value="">All Statuses</option>
+                                        {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="relative">
+                                    <label htmlFor="filter-bom" className="block text-sm font-medium text-gray-300 mb-1">BOM Status</label>
+                                    <select id="filter-bom" value={bomFilter} onChange={(e) => setBomFilter(e.target.value)} className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600`}>
+                                        <option value="all">All Items</option>
+                                        <option value="with-bom">Has Constituents (BOM)</option>
+                                        <option value="without-bom">No BOM</option>
+                                    </select>
+                                </div>
+                            </div>
+                            {false && <div className="mt-4 flex flex-wrap items-center gap-3">
+                                <Button
+                                    onClick={handleNeedsOrderToggle}
+                                    className={`px-4 py-2 text-sm font-semibold rounded-md border transition-colors ${riskFilter === 'needs-order'
+                                        ? 'bg-red-500/20 border-red-400/60 text-red-200 shadow-lg shadow-red-900/40'
+                                        : 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600'
+                                        }`}
+                                >
+                                    Needs Order ({needsOrderCount})
+                                </Button>
+                                <span className="text-xs text-gray-400">
+                                    Flags SKUs when runway &lt; vendor lead time or stock is at/below the reorder point. Daily demand uses the most conservative rate across sales velocity and 30/60/90-day averages.
+                                </span>
+                            </div>}
+                            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                                <p className="text-sm text-gray-400">
+                                    Showing <span className="font-semibold text-white">{processedInventory.length}</span> of <span className="font-semibold text-white">{inventory.length}</span> items
+                                </p>
+                                {onQuickRequest && (
+                                    <Button
+                                        onClick={() => onQuickRequest?.()}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500/80 hover:bg-accent-500 text-white text-sm font-semibold transition-colors"
+                                    >
+                                        Ask About Product
+                                    </Button>
                                 )}
                             </div>
                         </div>
-                        
-                        {/* Multi-select Category Filter */}
-                        <div ref={categoryDropdownRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-20'}`}>
-                            <label htmlFor="filter-category" className="block text-sm font-medium text-gray-300 mb-1">
-                                Categories {selectedCategories.size > 0 && <span className="text-accent-400">({selectedCategories.size})</span>}
-                            </label>
-                            <Button
-                                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative`}
-                            >
-                                <span className="truncate">
-                                    {selectedCategories.size === 0 
-                                        ? 'All Categories' 
-                                        : selectedCategories.size === filterOptions.categories.length
-                                        ? 'All Categories'
-                                        : `${selectedCategories.size} selected`}
-                                </span>
-                                <ChevronDownIcon className="w-4 h-4 ml-2" />
-                            </Button>
-                            {isCategoryDropdownOpen && (
-                                <div className="absolute z-[100] w-full mt-1 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden bg-gray-900">
-                                    <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2 bg-gray-900">
-                                        <Button
-                                            onClick={selectAllCategories}
-                                            className="text-xs text-accent-400 hover:text-accent-300 px-2 py-1 bg-gray-600 rounded"
-                                        >
-                                            Select All
-                                        </Button>
-                                        <Button
-                                            onClick={clearAllCategories}
-                                            className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
-                                        >
-                                            Clear
-                                        </Button>
-                                        <Button
-                                            onClick={() => {
-                                                setIsCategoryDropdownOpen(false);
-                                                setIsCategoryManagementOpen(true);
-                                            }}
-                                            className="ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 bg-gray-600 rounded flex items-center gap-1"
-                                        >
-                                            <AdjustmentsHorizontalIcon className="w-3 h-3" />
-                                            Manage
-                                        </Button>
-                                    </div>
-                                    <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
-                                        <input
-                                            type="text"
-                                            value={categorySearchTerm}
-                                            onChange={(e) => setCategorySearchTerm(e.target.value)}
-                                            placeholder="Search categories..."
-                                            className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border border-gray-600"
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    <div className="max-h-60 overflow-auto">
-                                        {filteredCategories.length === 0 ? (
-                                            <div className="p-3 text-center text-gray-400 text-sm">No categories found</div>
-                                        ) : (
-                                            filteredCategories.map(category => {
-                                                const label = categoryLabelMap.get(category) || formatCategoryLabel(category);
-                                                return (
-                                                    <label 
-                                                        key={category} 
-                                                        className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedCategories.has(category)}
-                                                            onChange={() => toggleCategory(category)}
-                                                            className="w-4 h-4 mr-2 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
-                                                        />
-                                                        <span className="text-sm text-white" title={category}>{label}</span>
-                                                    </label>
-                                                );
-                                            })
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Multi-select Vendor Filter */}
-                        <div ref={vendorDropdownRef} className={`relative ${isVendorDropdownOpen ? 'z-40' : 'z-20'}`}>
-                            <label htmlFor="filter-vendor" className="block text-sm font-medium text-gray-300 mb-1">
-                                Vendors {selectedVendors.size > 0 && <span className="text-accent-400">({selectedVendors.size})</span>}
-                            </label>
-                            <Button
-                                onClick={() => setIsVendorDropdownOpen(!isVendorDropdownOpen)}
-                                className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative`}
-                            >
-                                <span className="truncate">
-                                    {selectedVendors.size === 0 
-                                        ? 'All Vendors' 
-                                        : selectedVendors.size === filterOptions.vendors.length
-                                        ? 'All Vendors'
-                                        : `${selectedVendors.size} selected`}
-                                </span>
-                                <ChevronDownIcon className="w-4 h-4 ml-2" />
-                            </Button>
-                            {isVendorDropdownOpen && (
-                                <div className="absolute z-[100] w-full mt-1 bg-gray-900 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden">
-                                    <div className="sticky top-0 bg-gray-900 p-2 border-b border-gray-600 flex gap-2">
-                                        <Button
-                                            onClick={selectAllVendors}
-                                            className="text-xs text-accent-400 hover:text-accent-300 px-2 py-1 bg-gray-600 rounded"
-                                        >
-                                            Select All
-                                        </Button>
-                                        <Button
-                                            onClick={clearAllVendors}
-                                            className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
-                                        >
-                                            Clear
-                                        </Button>
-                                        <Button
-                                            onClick={() => {
-                                                setIsVendorDropdownOpen(false);
-                                                setIsVendorManagementOpen(true);
-                                            }}
-                                            className="ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 bg-gray-600 rounded flex items-center gap-1"
-                                        >
-                                            <AdjustmentsHorizontalIcon className="w-3 h-3" />
-                                            Manage
-                                        </Button>
-                                    </div>
-                                    <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
-                                        <input
-                                            type="text"
-                                            value={vendorSearchTerm}
-                                            onChange={(e) => setVendorSearchTerm(e.target.value)}
-                                            placeholder="Search vendors..."
-                                            className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border border-gray-600"
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    <div className="max-h-60 overflow-auto">
-                                        {filteredVendors.length === 0 ? (
-                                            <div className="p-3 text-center text-gray-400 text-sm">No vendors found</div>
-                                        ) : (
-                                            filteredVendors.map(vendorId => (
-                                                <label 
-                                                    key={vendorId} 
-                                                    className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedVendors.has(vendorId)}
-                                                        onChange={() => toggleVendor(vendorId)}
-                                                        className="w-4 h-4 mr-2 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
-                                                    />
-                                                    <span className="text-sm text-white">{getVendorName(vendorId)}</span>
-                                                </label>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div>
-                            <label htmlFor="filter-status" className="block text-sm font-medium text-gray-300 mb-1">Stock Status</label>
-                            <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600">
-                                <option value="">All Statuses</option>
-                                {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        
-                        <div className="relative">
-                            <label htmlFor="filter-bom" className="block text-sm font-medium text-gray-300 mb-1">BOM Status</label>
-                            <select id="filter-bom" value={bomFilter} onChange={(e) => setBomFilter(e.target.value)} className={`w-full bg-gray-700 text-white rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border-gray-600`}>
-                                <option value="all">All Items</option>
-                                <option value="with-bom">Has Constituents (BOM)</option>
-                                <option value="without-bom">No BOM</option>
-                            </select>
-                        </div>
+                    </CollapsibleSection>
+                    {/* Inventory Table */}
+                    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
+                        <Table
+                            columns={tableColumns}
+                            data={processedInventory}
+                            getRowKey={(item) => item.sku}
+                            stickyHeader
+                            hoverable
+                            compact={rowDensity === 'compact' || rowDensity === 'ultra'}
+                            loading={loading}
+                            emptyMessage="No inventory items found"
+                        />
                     </div>
-                    {false && <div className="mt-4 flex flex-wrap items-center gap-3">
-                        <Button
-                            onClick={handleNeedsOrderToggle}
-                            className={`px-4 py-2 text-sm font-semibold rounded-md border transition-colors ${
-                                riskFilter === 'needs-order'
-                                    ? 'bg-red-500/20 border-red-400/60 text-red-200 shadow-lg shadow-red-900/40'
-                                    : 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600'
-                            }`}
-                        >
-                            Needs Order ({needsOrderCount})
-                        </Button>
-                        <span className="text-xs text-gray-400">
-                            Flags SKUs when runway &lt; vendor lead time or stock is at/below the reorder point. Daily demand uses the most conservative rate across sales velocity and 30/60/90-day averages.
-                        </span>
-                    </div>}
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm text-gray-400">
-                            Showing <span className="font-semibold text-white">{processedInventory.length}</span> of <span className="font-semibold text-white">{inventory.length}</span> items
-                        </p>
-                        {onQuickRequest && (
-                            <Button
-                                onClick={() => onQuickRequest?.()}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500/80 hover:bg-accent-500 text-white text-sm font-semibold transition-colors"
-                            >
-                                Ask About Product
-                            </Button>
-                        )}
-                    </div>
-                    </div>
-                </CollapsibleSection>
-                {/* Inventory Table */}
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-                    <Table
-                        columns={tableColumns}
-                        data={processedInventory}
-                        getRowKey={(item) => item.sku}
-                        stickyHeader
-                        hoverable
-                        compact={rowDensity === 'compact' || rowDensity === 'ultra'}
-                        loading={loading}
-                        emptyMessage="No inventory items found"
-                    />
                 </div>
             </div>
-        </div>
 
             {isColumnModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
