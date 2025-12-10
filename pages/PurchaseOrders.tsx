@@ -658,7 +658,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     }).length} {finalePOStatusFilter === 'all' ? 'total' : finalePOStatusFilter}
                                 </span>
                                 {!showAllFinaleHistory && (
-                                    <span className="text-xs text-gray-500">(Last 90 days)</span>
+                                    <span className="text-xs text-gray-500">(Last 12 months)</span>
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
@@ -725,7 +725,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     {hideDropship ? '🚫 Dropship Hidden' : 'Show All'}
                                 </Button>
                                 
-                                {/* 90-day / All History Toggle */}
+                                {/* 12-month / All History Toggle */}
                                 <Button
                                     onClick={() => setShowAllFinaleHistory(!showAllFinaleHistory)}
                                     className={`px-3 py-1.5 text-xs rounded transition-colors ${
@@ -734,7 +734,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
                                     }`}
                                 >
-                                    {showAllFinaleHistory ? 'All History' : '90 Days'}
+                                    {showAllFinaleHistory ? 'All History' : '12 Months'}
                                 </Button>
                                 
                                 <span className="text-xs text-gray-400">
@@ -746,12 +746,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <div className="grid gap-4">
                             {finalePurchaseOrders
                                 .filter(fpo => {
-                                    // Date filter: 90 days unless showing all
+                                    // Date filter: 12 months unless showing all
                                     if (!showAllFinaleHistory) {
-                                        const ninetyDaysAgo = new Date();
-                                        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+                                        const twelveMonthsAgo = new Date();
+                                        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
                                         const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
-                                        if (!orderDate || orderDate < ninetyDaysAgo) return false;
+                                        if (!orderDate || orderDate < twelveMonthsAgo) return false;
                                     }
                                     // Dropship filter - check in notes (publicNotes or privateNotes)
                                     if (hideDropship) {
