@@ -225,7 +225,16 @@ async function fetchInventoryForReorder(supabase: any): Promise<InventoryForReor
 
   if (error) throw error;
 
-  // Calculate on_order quantities
+  // 🚀 VENDOR WATCHDOG INTEGRATION: Fetch learned performance metrics
+  const { data: vendorPerformance } = await supabase
+    .from('vendor_performance_metrics')
+    .select('vendor_id, effective_lead_time_days, trust_score');
+
+  const vendorPerfMap = new Map(
+    (vendorPerformance || []).map((v: any) => [v.vendor_id, v])
+  );
+
+  // Calculate on_order quantities and apply learned lead times
   const itemsWithOnOrder: InventoryForReorder[] = await Promise.all(
     (items || []).map(async (item: any) => {
       const { data: poItems } = await supabase
@@ -239,6 +248,19 @@ async function fetchInventoryForReorder(supabase: any): Promise<InventoryForReor
         0
       ) || 0;
 
+      // 👀 Use effective lead time (learned) if available, otherwise use promised
+      const vendorPerf = item.vendor_id ? vendorPerfMap.get(item.vendor_id) : null;
+      const effectiveLeadTime = vendorPerf?.effective_lead_time_days || item.lead_time_days || 14;
+
+      // Log when agent is using learned lead time (different from promised)
+      if (vendorPerf && vendorPerf.effective_lead_time_days !== item.lead_time_days) {
+        console.log(
+          `📊 Vendor Watchdog: Using learned lead time for ${item.vendors?.name || 'vendor'} ` +
+          `(promised: ${item.lead_time_days}d → effective: ${effectiveLeadTime}d, ` +
+          `trust: ${vendorPerf.trust_score}/100)`
+        );
+      }
+
       return {
         sku: item.sku,
         name: item.name,
@@ -248,7 +270,7 @@ async function fetchInventoryForReorder(supabase: any): Promise<InventoryForReor
         moq: item.moq || 1,
         vendor_id: item.vendor_id,
         vendor_name: item.vendors?.name || 'Unknown Vendor',
-        lead_time_days: item.lead_time_days || 14,
+        lead_time_days: effectiveLeadTime, // 🎯 Using learned lead time!
         unit_cost: item.unit_cost || 0,
         sales_last_30_days: item.sales_last_30_days || 0,
         sales_last_90_days: item.sales_last_90_days || 0,
@@ -619,6 +641,15 @@ async function createAutoDraftPOs(supabase: any): Promise<{ pos_created: number;
     return { pos_created: 0, vendors: [] };
   }
 
+  // 🚀 VENDOR WATCHDOG INTEGRATION: Fetch learned lead times for PO creation
+  const { data: vendorPerformance } = await supabase
+    .from('vendor_performance_metrics')
+    .select('vendor_id, effective_lead_time_days, trust_score');
+
+  const vendorPerfMap = new Map(
+    (vendorPerformance || []).map((v: any) => [v.vendor_id, v])
+  );
+
   const vendorMap = new Map(vendors.map((v: any) => [v.id, v]));
 
   // 3. Filter items by vendor automation settings & urgency threshold
@@ -656,10 +687,21 @@ async function createAutoDraftPOs(supabase: any): Promise<{ pos_created: number;
       // Generate order ID
       const orderId = await generateOrderId(supabase);
 
-      // Calculate expected date
+      // Calculate expected date using Vendor Watchdog learned lead time
       const orderDate = new Date().toISOString();
       const expectedDate = new Date();
-      expectedDate.setDate(expectedDate.getDate() + (vendor.lead_time_days || 14));
+      const vendorPerf = vendorPerfMap.get(vendorId);
+      const effectiveLeadTime = vendorPerf?.effective_lead_time_days || vendor.lead_time_days || 14;
+
+      expectedDate.setDate(expectedDate.getDate() + effectiveLeadTime);
+
+      // Log if using learned lead time
+      if (vendorPerf && vendorPerf.effective_lead_time_days !== vendor.lead_time_days) {
+        console.log(
+          `📊 PO for ${vendor.name}: Using learned lead time ` +
+          `(${effectiveLeadTime}d vs promised ${vendor.lead_time_days}d)`
+        );
+      }
 
       // Calculate AI confidence score based on consumption variance
       const avgVariance = items.reduce((sum: number, i: any) => sum + i.consumption_variance, 0) / items.length;
