@@ -18,7 +18,7 @@ import type {
     POTrackingStatus,
     RequisitionRequestOptions,
 } from '../types';
-import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon } from '../components/icons';
+import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, CogIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CreatePoModal from '../components/CreatePoModal';
 import Modal from '../components/Modal';
@@ -501,7 +501,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     title="Purchase Orders"
                     description="Manage purchase orders, requisitions, and vendor communications"
                     actions={
-                        actions = {
                             canManagePOs && (
                             <div className="flex items-center gap-3">
                                 {currentUser.role !== 'Staff' && approvedRequisitions.length > 0 && (
@@ -529,12 +528,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         className="p-2 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 w-10 h-10 flex items-center justify-center rounded-lg shadow-sm"
                                         aria-label="Agent Command Center & Settings"
                                     >
-                                        <SettingsIcon className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                        <CogIcon className="w-5 h-5 text-gray-400 group-hover:text-white" />
                                     </Button>
                                 )}
                             </div>
                         )
-                    }
                     }
                 />
 
