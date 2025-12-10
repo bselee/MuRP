@@ -18,9 +18,10 @@ import type {
     POTrackingStatus,
     RequisitionRequestOptions,
 } from '../types';
-import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon } from '../components/icons';
+import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CreatePoModal from '../components/CreatePoModal';
+import Modal from '../components/Modal';
 import EmailComposerModal from '../components/EmailComposerModal';
 import GeneratePoModal from '../components/GeneratePoModal';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
@@ -83,13 +84,13 @@ type PoDraftConfig = {
 // Supports auto-detection via status prop and formatStatusText utility
 
 const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
-    const { 
-        purchaseOrders, finalePurchaseOrders = [], vendors, inventory, onCreatePo, addToast, currentUser, 
+    const {
+        purchaseOrders, finalePurchaseOrders = [], vendors, inventory, onCreatePo, addToast, currentUser,
         approvedRequisitions, gmailConnection, onSendEmail, onUpdateTracking,
         requisitions, users, onApproveRequisition, onOpsApproveRequisition, onRejectRequisition, onCreateRequisition,
         onConnectGoogle,
     } = props;
-    
+
     const [isCreatePoModalOpen, setIsCreatePoModalOpen] = useState(false);
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false);
@@ -113,7 +114,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default newest first
     const [showAllFinaleHistory, setShowAllFinaleHistory] = useState(false); // Default: 12 months only
     const [hideDropship, setHideDropship] = useState(true); // Default: hide dropship POs
-    
+    const [isAgentSettingsOpen, setIsAgentSettingsOpen] = useState(false);
+
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
     const permissions = usePermissions();
@@ -121,14 +123,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
     const inventoryMap = useMemo(() => new Map(inventory.map(item => [item.sku, item])), [inventory]);
     const followUpBacklog = useMemo(
-      () =>
-        purchaseOrders.filter(
-          po =>
-            (po.followUpRequired ?? true) &&
-            (!po.trackingNumber || po.trackingStatus === 'awaiting_confirmation') &&
-            ['sent', 'pending', 'confirmed', 'committed'].includes(po.status),
-        ).length,
-      [purchaseOrders],
+        () =>
+            purchaseOrders.filter(
+                po =>
+                    (po.followUpRequired ?? true) &&
+                    (!po.trackingNumber || po.trackingStatus === 'awaiting_confirmation') &&
+                    ['sent', 'pending', 'confirmed', 'committed'].includes(po.status),
+            ).length,
+        [purchaseOrders],
     );
 
     const managerQueue = useMemo(
@@ -300,7 +302,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         const total = typeof po.total === 'number' ? po.total : po.items.reduce((sum, item) => sum + (item.lineTotal ?? item.quantity * (item.price ?? 0)), 0);
         return total.toFixed(2);
     };
-    
+
     const handleDownloadPdf = (po: PurchaseOrder) => {
         if (!po.vendorId) {
             addToast(`Could not generate PDF: Vendor not linked for ${po.orderId || po.id}`, 'error');
@@ -314,7 +316,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
             addToast(`Could not generate PDF: Vendor not found for ${po.orderId || po.id}`, 'error');
         }
     };
-    
+
     const handleSendEmailClick = (po: PurchaseOrder) => {
         if (!po.vendorId || !vendorMap.get(po.vendorId)) {
             addToast('Cannot compose email: vendor contact information is missing.', 'error');
@@ -324,103 +326,103 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         setIsEmailModalOpen(true);
     };
 
-  const handleSendEmail = async (sentViaGmail: boolean) => {
-      if (selectedPoForEmail) {
-          await onSendEmail(selectedPoForEmail.id, sentViaGmail);
-      }
-      setIsEmailModalOpen(false);
-      setSelectedPoForEmail(null);
-  };
+    const handleSendEmail = async (sentViaGmail: boolean) => {
+        if (selectedPoForEmail) {
+            await onSendEmail(selectedPoForEmail.id, sentViaGmail);
+        }
+        setIsEmailModalOpen(false);
+        setSelectedPoForEmail(null);
+    };
 
-  const getTrackingUrl = (po: PurchaseOrder): string | null => {
-    if (po.trackingLink) return po.trackingLink;
-    const trackingNumber = po.trackingNumber ?? '';
-    if (!trackingNumber) return null;
-    const carrier = (po.trackingCarrier || po.trackingLink || '').toLowerCase();
-    if (carrier.includes('ups')) {
-      return `https://www.ups.com/track?loc=en_US&tracknum=${trackingNumber}`;
-    }
-    if (carrier.includes('fedex')) {
-      return `https://www.fedex.com/fedextrack/?tracknumbers=${trackingNumber}`;
-    }
-    if (carrier.includes('usps') || carrier.includes('postal')) {
-      return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
-    }
-    if (carrier.includes('dhl')) {
-      return `https://www.dhl.com/global-en/home/tracking.html?tracking-id=${trackingNumber}`;
-    }
-    return null;
-  };
+    const getTrackingUrl = (po: PurchaseOrder): string | null => {
+        if (po.trackingLink) return po.trackingLink;
+        const trackingNumber = po.trackingNumber ?? '';
+        if (!trackingNumber) return null;
+        const carrier = (po.trackingCarrier || po.trackingLink || '').toLowerCase();
+        if (carrier.includes('ups')) {
+            return `https://www.ups.com/track?loc=en_US&tracknum=${trackingNumber}`;
+        }
+        if (carrier.includes('fedex')) {
+            return `https://www.fedex.com/fedextrack/?tracknumbers=${trackingNumber}`;
+        }
+        if (carrier.includes('usps') || carrier.includes('postal')) {
+            return `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
+        }
+        if (carrier.includes('dhl')) {
+            return `https://www.dhl.com/global-en/home/tracking.html?tracking-id=${trackingNumber}`;
+        }
+        return null;
+    };
 
-  const handleOpenTracking = (po: PurchaseOrder) => {
-    const url = getTrackingUrl(po);
-    if (url && typeof window !== 'undefined') {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } else {
-      addToast('Tracking link not available for this PO yet.', 'info');
-    }
-  };
+    const handleOpenTracking = (po: PurchaseOrder) => {
+        const url = getTrackingUrl(po);
+        if (url && typeof window !== 'undefined') {
+            window.open(url, '_blank', 'noopener,noreferrer');
+        } else {
+            addToast('Tracking link not available for this PO yet.', 'info');
+        }
+    };
 
-  const handleOpenComm = (po: PurchaseOrder) => {
-    setSelectedPoForComm(po);
-    setIsCommModalOpen(true);
-  };
+    const handleOpenComm = (po: PurchaseOrder) => {
+        setSelectedPoForComm(po);
+        setIsCommModalOpen(true);
+    };
 
-  const handleCloseComm = () => {
-    setIsCommModalOpen(false);
-    setSelectedPoForComm(null);
-  };
+    const handleCloseComm = () => {
+        setIsCommModalOpen(false);
+        setSelectedPoForComm(null);
+    };
 
-  const handleEditTracking = (po: PurchaseOrder) => {
-    setSelectedPoForTracking(po);
-    setIsTrackingModalOpen(true);
-  };
+    const handleEditTracking = (po: PurchaseOrder) => {
+        setSelectedPoForTracking(po);
+        setIsTrackingModalOpen(true);
+    };
 
-  const handleSaveTracking = async (updates: {
-    trackingNumber?: string | null;
-    trackingCarrier?: string | null;
-    trackingStatus: POTrackingStatus;
-    trackingEstimatedDelivery?: string | null;
-    trackingLastException?: string | null;
-  }) => {
-    if (!selectedPoForTracking) return;
-    await onUpdateTracking(selectedPoForTracking.id, updates);
-    setSelectedPoForTracking(null);
-    setIsTrackingModalOpen(false);
-  };
+    const handleSaveTracking = async (updates: {
+        trackingNumber?: string | null;
+        trackingCarrier?: string | null;
+        trackingStatus: POTrackingStatus;
+        trackingEstimatedDelivery?: string | null;
+        trackingLastException?: string | null;
+    }) => {
+        if (!selectedPoForTracking) return;
+        await onUpdateTracking(selectedPoForTracking.id, updates);
+        setSelectedPoForTracking(null);
+        setIsTrackingModalOpen(false);
+    };
 
-  const handleReceivePO = (po: PurchaseOrder) => {
-    setSelectedPoForReceive(po);
-  };
+    const handleReceivePO = (po: PurchaseOrder) => {
+        setSelectedPoForReceive(po);
+    };
 
-  const handleReceiveSubmit = async (poId: string, receivedItems: any[], notes?: string) => {
-    try {
-      // Import the receivePurchaseOrder function dynamically
-      const { receivePurchaseOrder } = await import('../hooks/useSupabaseMutations');
-      const result = await receivePurchaseOrder({
-        poId,
-        receivedItems: receivedItems.map(item => ({
-          itemId: item.poItemId,
-          receivedQuantity: item.quantityReceived,
-          backorderQuantity: Math.max(0, item.quantityOrdered - item.quantityReceived),
-          condition: item.condition,
-          notes: item.notes,
-        })),
-        receivedBy: currentUser.id,
-        notes,
-      });
+    const handleReceiveSubmit = async (poId: string, receivedItems: any[], notes?: string) => {
+        try {
+            // Import the receivePurchaseOrder function dynamically
+            const { receivePurchaseOrder } = await import('../hooks/useSupabaseMutations');
+            const result = await receivePurchaseOrder({
+                poId,
+                receivedItems: receivedItems.map(item => ({
+                    itemId: item.poItemId,
+                    receivedQuantity: item.quantityReceived,
+                    backorderQuantity: Math.max(0, item.quantityOrdered - item.quantityReceived),
+                    condition: item.condition,
+                    notes: item.notes,
+                })),
+                receivedBy: currentUser.id,
+                notes,
+            });
 
-      if (result.success) {
-        addToast(`PO ${selectedPoForReceive?.orderId || poId} received successfully.`, 'success');
-        setSelectedPoForReceive(null);
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
-      console.error('Failed to receive PO:', error);
-      addToast(`Failed to receive PO: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
-    }
-  };
+            if (result.success) {
+                addToast(`PO ${selectedPoForReceive?.orderId || poId} received successfully.`, 'success');
+                setSelectedPoForReceive(null);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Failed to receive PO:', error);
+            addToast(`Failed to receive PO: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+        }
+    };
 
     // Calculate 2 weeks ago for filtering
     const twoWeeksAgo = useMemo(() => {
@@ -432,31 +434,31 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     // Filter and sort purchase orders by status and date
     const sortedPurchaseOrders = useMemo(() => {
         let filtered = [...purchaseOrders];
-        
+
         // Filter by status
         if (statusFilter === 'active') {
-            filtered = filtered.filter(po => 
+            filtered = filtered.filter(po =>
                 ['draft', 'pending', 'sent', 'confirmed', 'committed'].includes(po.status.toLowerCase())
             );
         } else if (statusFilter === 'committed') {
             filtered = filtered.filter(po => po.status.toLowerCase() === 'committed');
         } else if (statusFilter === 'received') {
-            filtered = filtered.filter(po => 
+            filtered = filtered.filter(po =>
                 ['received', 'partially_received'].includes(po.status.toLowerCase())
             );
         } else if (statusFilter === 'cancelled') {
             filtered = filtered.filter(po => po.status.toLowerCase() === 'cancelled');
         }
         // 'all' shows everything
-        
-        const sorted = filtered.sort((a, b) => 
+
+        const sorted = filtered.sort((a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
-        
+
         if (showAllPOs) {
             return sorted;
         }
-        
+
         // Filter to POs created in the last 2 weeks
         return sorted.filter(po => {
             const poDate = new Date(po.createdAt);
@@ -499,8 +501,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     title="Purchase Orders"
                     description="Manage purchase orders, requisitions, and vendor communications"
                     actions={
-                        canManagePOs && (
-                            <>
+                        actions = {
+                            canManagePOs && (
+                            <div className="flex items-center gap-3">
                                 {currentUser.role !== 'Staff' && approvedRequisitions.length > 0 && (
                                     <Button
                                         onClick={() => setIsGeneratePoModalOpen(true)}
@@ -519,55 +522,23 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 >
                                     Create New PO
                                 </Button>
-                            </>
+                                {(isAdminLike || showCommandCenter) && (
+                                    <Button
+                                        onClick={() => setIsAgentSettingsOpen(true)}
+                                        variant="secondary"
+                                        className="p-2 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 w-10 h-10 flex items-center justify-center rounded-lg shadow-sm"
+                                        aria-label="Agent Command Center & Settings"
+                                    >
+                                        <SettingsIcon className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                    </Button>
+                                )}
+                            </div>
                         )
+                    }
                     }
                 />
 
-                {showCommandCenter && (
-                    <PurchasingCommandCenter
-                        stats={[
-                            {
-                                id: 'manager',
-                                label: 'Manager Review',
-                                value: managerQueue.length,
-                                description: 'Awaiting department approval',
-                                accent: managerQueue.length > 0 ? 'border-amber-400/50 text-amber-100' : 'border-gray-600 text-gray-300',
-                                onClick: focusRequisitionSection,
-                            },
-                            {
-                                id: 'ops',
-                                label: 'Ops Review',
-                                value: opsQueue.length,
-                                description: 'Strategic buys waiting on Ops',
-                                accent: opsQueue.length > 0 ? 'border-purple-400/50 text-purple-100' : 'border-gray-600 text-gray-300',
-                                onClick: focusRequisitionSection,
-                            },
-                            {
-                                id: 'ready',
-                                label: 'Ready for PO Build',
-                                value: readyQueue.length,
-                                description: 'Fully approved requisitions',
-                                accent: readyQueue.length > 0 ? 'border-sky-400/50 text-sky-100' : 'border-gray-600 text-gray-300',
-                                onClick: focusRequisitionSection,
-                            },
-                            {
-                                id: 'tracking',
-                                label: 'Tracking Missing',
-                                value: trackingAlerts.length,
-                                description: `${followUpBacklog} vendor nudges queued`,
-                                accent: trackingAlerts.length > 0 ? 'border-rose-400/50 text-rose-100' : 'border-gray-600 text-gray-300',
-                                onClick: focusTrackingPanel,
-                            },
-                        ]}
-                        highRiskRequests={urgentRequests}
-                        readyQueue={readyHighlights}
-                        trackingAlerts={trackingAlerts}
-                        followUpBacklog={followUpBacklog}
-                        onFocusRequisitions={focusRequisitionSection}
-                        onFocusTracking={focusTrackingPanel}
-                    />
-                )}
+                {/* Purchasing Command Center moved to Agent Settings Modal */}
 
                 <div id="po-requisitions">
                     <RequisitionsSection
@@ -586,46 +557,100 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     />
                 </div>
 
-                {(canManagePOs || isAdminLike) && (
-                    <AutomationControlsSection 
-                        canManagePOs={canManagePOs}
-                        isAdminLike={isAdminLike}
-                        followUpBacklog={followUpBacklog}
-                        isRunningFollowUps={isRunningFollowUps}
-                        handleRunFollowUps={handleRunFollowUps}
-                        addToast={addToast}
-                    />
-                )}
+                {/* Agent/Auto Controls moved to Modal */}
+                <Modal
+                    isOpen={isAgentSettingsOpen}
+                    onClose={() => setIsAgentSettingsOpen(false)}
+                    title="Agent Command Center"
+                >
+                    <div className="space-y-8 p-1">
+                        {showCommandCenter && (
+                            <section>
+                                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Purchasing Overview</h3>
+                                <PurchasingCommandCenter
+                                    stats={[
+                                        {
+                                            id: 'manager',
+                                            label: 'Manager Review',
+                                            value: managerQueue.length,
+                                            description: 'Awaiting department approval',
+                                            accent: managerQueue.length > 0 ? 'border-amber-400/50 text-amber-100' : 'border-gray-600 text-gray-300',
+                                            onClick: () => { setIsAgentSettingsOpen(false); focusRequisitionSection(); },
+                                        },
+                                        {
+                                            id: 'ops',
+                                            label: 'Ops Review',
+                                            value: opsQueue.length,
+                                            description: 'Strategic buys waiting on Ops',
+                                            accent: opsQueue.length > 0 ? 'border-purple-400/50 text-purple-100' : 'border-gray-600 text-gray-300',
+                                            onClick: () => { setIsAgentSettingsOpen(false); focusRequisitionSection(); },
+                                        },
+                                        {
+                                            id: 'ready',
+                                            label: 'Ready for PO Build',
+                                            value: readyQueue.length,
+                                            description: 'Fully approved requisitions',
+                                            accent: readyQueue.length > 0 ? 'border-sky-400/50 text-sky-100' : 'border-gray-600 text-gray-300',
+                                            onClick: () => { setIsAgentSettingsOpen(false); focusRequisitionSection(); },
+                                        },
+                                        {
+                                            id: 'tracking',
+                                            label: 'Tracking Missing',
+                                            value: trackingAlerts.length,
+                                            description: `${followUpBacklog} vendor nudges queued`,
+                                            accent: trackingAlerts.length > 0 ? 'border-rose-400/50 text-rose-100' : 'border-gray-600 text-gray-300',
+                                            onClick: () => { setIsAgentSettingsOpen(false); focusTrackingPanel(); },
+                                        },
+                                    ]}
+                                    highRiskRequests={urgentRequests}
+                                    readyQueue={readyHighlights}
+                                    trackingAlerts={trackingAlerts}
+                                    followUpBacklog={followUpBacklog}
+                                    onFocusRequisitions={focusRequisitionSection}
+                                    onFocusTracking={focusTrackingPanel}
+                                />
+                            </section>
+                        )}
 
-                {isAdminLike && (
-                    <AutonomousApprovals addToast={addToast} />
-                )}
+                        {(canManagePOs || isAdminLike) && (
+                            <section>
+                                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Automation Controls</h3>
+                                <AutomationControlsSection
+                                    canManagePOs={canManagePOs}
+                                    isAdminLike={isAdminLike}
+                                    followUpBacklog={followUpBacklog}
+                                    isRunningFollowUps={isRunningFollowUps}
+                                    handleRunFollowUps={handleRunFollowUps}
+                                    addToast={addToast}
+                                />
+                            </section>
+                        )}
 
-                {/* Agent Command Center - AI Agent Monitoring Dashboard */}
-                {isAdminLike && (
-                    <CollapsibleSection 
-                        title="🤖 Agent Command Center" 
-                        count={0} 
-                        isOpen={true}
-                    >
-                        <div className="space-y-6">
-                            {/* Trust Score Overview */}
-                            <TrustScoreDashboard />
-                            
-                            {/* PO Delay Alerts from Air Traffic Controller */}
-                            <div>
-                                <h3 className="text-sm font-semibold text-gray-300 mb-3">📢 Active Alerts</h3>
-                                <AlertFeedComponent limit={20} showResolved={false} />
-                            </div>
-                            
-                            {/* Vendor Performance from Vendor Watchdog */}
-                            <div>
-                                <h3 className="text-sm font-semibold text-gray-300 mb-3">📊 Vendor Intelligence</h3>
-                                <VendorScorecardComponent limit={10} />
-                            </div>
-                        </div>
-                    </CollapsibleSection>
-                )}
+                        {isAdminLike && (
+                            <section>
+                                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Autonomous Signing</h3>
+                                <AutonomousApprovals addToast={addToast} />
+                            </section>
+                        )}
+
+                        {isAdminLike && (
+                            <section>
+                                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">System Intelligence</h3>
+                                <div className="space-y-6">
+                                    <TrustScoreDashboard />
+                                    <div>
+                                        <h4 className="text-xs font-semibold text-gray-500 mb-2">ACTIVE ALERTS</h4>
+                                        <AlertFeedComponent limit={20} showResolved={false} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-semibold text-gray-500 mb-2">VENDOR INTELLIGENCE</h4>
+                                        <VendorScorecardComponent limit={10} />
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+                    </div>
+                </Modal>
 
                 {/* VendorResponseWorkbench component removed - was causing ReferenceError */}
 
@@ -665,46 +690,42 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <div className="flex items-center gap-1 bg-gray-800/50 rounded-lg p-1 border border-gray-700">
                                     <Button
                                         onClick={() => setFinalePOStatusFilter('all')}
-                                        className={`px-3 py-1 text-xs rounded transition-colors ${
-                                            finalePOStatusFilter === 'all'
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'all'
                                                 ? 'bg-accent-500 text-white'
                                                 : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                                        }`}
+                                            }`}
                                     >
                                         All
                                     </Button>
                                     <Button
                                         onClick={() => setFinalePOStatusFilter('committed')}
-                                        className={`px-3 py-1 text-xs rounded transition-colors ${
-                                            finalePOStatusFilter === 'committed'
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'committed'
                                                 ? 'bg-blue-500 text-white'
                                                 : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                                        }`}
+                                            }`}
                                     >
                                         Committed
                                     </Button>
                                     <Button
                                         onClick={() => setFinalePOStatusFilter('pending')}
-                                        className={`px-3 py-1 text-xs rounded transition-colors ${
-                                            finalePOStatusFilter === 'pending'
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'pending'
                                                 ? 'bg-amber-500 text-white'
                                                 : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                                        }`}
+                                            }`}
                                     >
                                         Pending
                                     </Button>
                                     <Button
                                         onClick={() => setFinalePOStatusFilter('received')}
-                                        className={`px-3 py-1 text-xs rounded transition-colors ${
-                                            finalePOStatusFilter === 'received'
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'received'
                                                 ? 'bg-green-500 text-white'
                                                 : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                                        }`}
+                                            }`}
                                     >
                                         Received
                                     </Button>
                                 </div>
-                                
+
                                 {/* Sort Order Toggle */}
                                 <Button
                                     onClick={() => setFinalePOSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
@@ -712,31 +733,29 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 >
                                     {finalePOSortOrder === 'asc' ? 'A-Z ↑' : 'Z-A ↓'}
                                 </Button>
-                                
+
                                 {/* Dropship Filter Toggle */}
                                 <Button
                                     onClick={() => setHideDropship(!hideDropship)}
-                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                                        hideDropship
+                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${hideDropship
                                             ? 'bg-red-500/20 text-red-300 border border-red-500/50'
                                             : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
-                                    }`}
+                                        }`}
                                 >
                                     {hideDropship ? '🚫 Dropship Hidden' : 'Show All'}
                                 </Button>
-                                
+
                                 {/* 12-month / All History Toggle */}
                                 <Button
                                     onClick={() => setShowAllFinaleHistory(!showAllFinaleHistory)}
-                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                                        showAllFinaleHistory
+                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${showAllFinaleHistory
                                             ? 'bg-accent-500/20 text-accent-300 border border-accent-500/50'
                                             : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
-                                    }`}
+                                        }`}
                                 >
                                     {showAllFinaleHistory ? 'All History' : '12 Months'}
                                 </Button>
-                                
+
                                 <span className="text-xs text-gray-400">
                                     Synced from Finale API
                                 </span>
@@ -772,208 +791,200 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     return finalePOSortOrder === 'asc' ? aId.localeCompare(bId) : bId.localeCompare(aId);
                                 })
                                 .map((fpo) => {
-                                const isExpanded = expandedFinalePO === fpo.id;
-                                return (
-                                    <div 
-                                        key={fpo.id} 
-                                        className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
-                                            isDark
-                                                ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]'
-                                                : 'border-stone-300/30 bg-gradient-to-br from-white/95 via-stone-100/60 to-white/95 shadow-[0_30px_90px_rgba(15,23,42,0.25)] hover:border-stone-400/50 hover:shadow-[0_32px_110px_rgba(120,113,108,0.3)]'
-                                        }`}
-                                    >
-                                        {/* Card overlay effect */}
-                                        <div className={`pointer-events-none absolute inset-0 ${
-                                            isDark
-                                                ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]'
-                                                : 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.6),rgba(253,244,223,0))]'
-                                        }`} />
-                                        
-                                        {/* Header */}
-                                        <div className={`relative p-2.5 ${
-                                            isDark
-                                                ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70'
-                                                : 'bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90'
-                                        }`}>
-                                            <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${
-                                                isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-amber-200/60'
-                                            }`} />
-                                            <div 
-                                                className="flex items-center justify-between cursor-pointer"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setExpandedFinalePO(isExpanded ? null : fpo.id);
-                                                }}
-                                            >
-                                                <div className="flex items-center gap-4">
-                                                    <div>
-                                                        <div className={`text-lg font-semibold font-mono ${
-                                                            isDark ? 'text-amber-400' : 'text-amber-700'
-                                                        }`}>
-                                                            PO #{fpo.orderId}
-                                                        </div>
-                                                        <div className={isDark ? 'text-sm text-gray-400' : 'text-sm text-gray-600'}>
-                                                            {fpo.vendorName || 'Unknown Vendor'}
-                                                        </div>
-                                                    </div>
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                                        fpo.status === 'Submitted' || fpo.status === 'SUBMITTED' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
-                                                        fpo.status === 'Partial' || fpo.status === 'PARTIALLY_RECEIVED' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                                                        fpo.status === 'Pending' || fpo.status === 'DRAFT' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
-                                                        fpo.status === 'Ordered' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
-                                                        'bg-accent-500/20 text-accent-300 border border-accent-500/30'
-                                                    }`}>
-                                                        {fpo.status}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-6">
-                                                    <div className="text-right">
-                                                        <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Order Date</div>
-                                                        <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                            {fpo.orderDate ? new Date(fpo.orderDate).toLocaleDateString() : 'N/A'}
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Expected</div>
-                                                        <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                            {fpo.expectedDate ? new Date(fpo.expectedDate).toLocaleDateString() : 'TBD'}
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className={`text-2xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                                                            ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-                                                        </div>
-                                                        <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
-                                                            {fpo.lineCount || 0} items • {fpo.totalQuantity?.toFixed(0) || 0} units
-                                                        </div>
-                                                    </div>
-                                                    <ChevronDownIcon 
-                                                        className={`w-5 h-5 transition-transform ${isDark ? 'text-gray-400' : 'text-gray-600'} ${isExpanded ? 'rotate-180' : ''}`} 
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
+                                    const isExpanded = expandedFinalePO === fpo.id;
+                                    return (
+                                        <div
+                                            key={fpo.id}
+                                            className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${isDark
+                                                    ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]'
+                                                    : 'border-stone-300/30 bg-gradient-to-br from-white/95 via-stone-100/60 to-white/95 shadow-[0_30px_90px_rgba(15,23,42,0.25)] hover:border-stone-400/50 hover:shadow-[0_32px_110px_rgba(120,113,108,0.3)]'
+                                                }`}
+                                        >
+                                            {/* Card overlay effect */}
+                                            <div className={`pointer-events-none absolute inset-0 ${isDark
+                                                    ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]'
+                                                    : 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.6),rgba(253,244,223,0))]'
+                                                }`} />
 
-                                        {/* Expanded Details */}
-                                        {isExpanded && (
-                                            <div className={`relative p-4 space-y-4 border-t backdrop-blur-lg ${
-                                                isDark
-                                                    ? 'border-white/5 bg-slate-950/70'
-                                                    : 'border-amber-900/15 bg-amber-50/80'
-                                            }`}>
-                                                {/* Summary Info */}
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className={`rounded-xl border backdrop-blur-lg p-4 space-y-3 ${
-                                                        isDark
-                                                            ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
-                                                            : 'border-stone-300/25 bg-gradient-to-br from-white/98 via-stone-100/50 to-white/92 shadow-[0_18px_40px_rgba(15,23,42,0.18)]'
-                                                    }`}>
+                                            {/* Header */}
+                                            <div className={`relative p-2.5 ${isDark
+                                                    ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70'
+                                                    : 'bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90'
+                                                }`}>
+                                                <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-amber-200/60'
+                                                    }`} />
+                                                <div
+                                                    className="flex items-center justify-between cursor-pointer"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setExpandedFinalePO(isExpanded ? null : fpo.id);
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-4">
                                                         <div>
-                                                            <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Vendor Information</div>
-                                                            <div className="text-sm text-gray-200">{fpo.vendorName || 'Unknown'}</div>
-                                                            {fpo.vendorUrl && (
-                                                                <div className="text-xs text-gray-500 font-mono mt-0.5">{fpo.vendorUrl}</div>
-                                                            )}
-                                                        </div>
-                                                        {fpo.facilityId && (
-                                                            <div>
-                                                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Facility</div>
-                                                                <div className="text-sm text-gray-200">{fpo.facilityId}</div>
+                                                            <div className={`text-lg font-semibold font-mono ${isDark ? 'text-amber-400' : 'text-amber-700'
+                                                                }`}>
+                                                                PO #{fpo.orderId}
                                                             </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] p-4">
-                                                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Financial Summary</div>
-                                                        <div className="space-y-1 text-sm">
-                                                            <div className="flex justify-between text-gray-300">
-                                                                <span>Subtotal:</span>
-                                                                <span className="font-mono">${fpo.subtotal?.toFixed(2) || '0.00'}</span>
-                                                            </div>
-                                                            {fpo.tax && fpo.tax > 0 && (
-                                                                <div className="flex justify-between text-gray-300">
-                                                                    <span>Tax:</span>
-                                                                    <span className="font-mono">${fpo.tax.toFixed(2)}</span>
-                                                                </div>
-                                                            )}
-                                                            {fpo.shipping && fpo.shipping > 0 && (
-                                                                <div className="flex justify-between text-gray-300">
-                                                                    <span>Shipping:</span>
-                                                                    <span className="font-mono">${fpo.shipping.toFixed(2)}</span>
-                                                                </div>
-                                                            )}
-                                                            <div className="flex justify-between text-amber-400 font-semibold pt-2 border-t border-white/10">
-                                                                <span>Total:</span>
-                                                                <span className="font-mono">${fpo.total?.toFixed(2) || '0.00'}</span>
+                                                            <div className={isDark ? 'text-sm text-gray-400' : 'text-sm text-gray-600'}>
+                                                                {fpo.vendorName || 'Unknown Vendor'}
                                                             </div>
                                                         </div>
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${fpo.status === 'Submitted' || fpo.status === 'SUBMITTED' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                                                                fpo.status === 'Partial' || fpo.status === 'PARTIALLY_RECEIVED' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                                                                    fpo.status === 'Pending' || fpo.status === 'DRAFT' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
+                                                                        fpo.status === 'Ordered' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                                                                            'bg-accent-500/20 text-accent-300 border border-accent-500/30'
+                                                            }`}>
+                                                            {fpo.status}
+                                                        </span>
                                                     </div>
-                                                </div>
-
-                                                {/* Notes */}
-                                                {(fpo.publicNotes || fpo.privateNotes) && (
-                                                    <div className="space-y-2">
-                                                        {fpo.publicNotes && (
-                                                            <div>
-                                                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Public Notes</div>
-                                                                <div className="text-sm text-gray-300 bg-slate-950/50 p-3 rounded-lg border border-white/5">
-                                                                    {fpo.publicNotes}
-                                                                </div>
+                                                    <div className="flex items-center gap-6">
+                                                        <div className="text-right">
+                                                            <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Order Date</div>
+                                                            <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                                {fpo.orderDate ? new Date(fpo.orderDate).toLocaleDateString() : 'N/A'}
                                                             </div>
-                                                        )}
-                                                        {fpo.privateNotes && (
-                                                            <div>
-                                                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Private Notes</div>
-                                                                <div className="text-sm text-gray-300 bg-slate-950/50 p-3 rounded-lg border border-white/5">
-                                                                    {fpo.privateNotes}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {/* Line Items */}
-                                                {fpo.lineItems && fpo.lineItems.length > 0 && (
-                                                    <div>
-                                                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Line Items</div>
-                                                        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] overflow-hidden">
-                                                            <table className="min-w-full">
-                                                                <thead className="bg-slate-900/50">
-                                                                    <tr>
-                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">#</th>
-                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">Product</th>
-                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Ordered</th>
-                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Received</th>
-                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Unit Price</th>
-                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Total</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody className="divide-y divide-white/5">
-                                                                    {fpo.lineItems.map((item: any, idx: number) => (
-                                                                        <tr key={idx} className="hover:bg-slate-900/30">
-                                                                            <td className="px-3 py-2 text-sm text-gray-400">{item.line_number || idx + 1}</td>
-                                                                            <td className="px-3 py-2 text-sm text-gray-300 font-mono">{item.product_id || 'N/A'}</td>
-                                                                            <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_ordered || 0}</td>
-                                                                            <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_received || 0}</td>
-                                                                            <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">${item.unit_price?.toFixed(2) || '0.00'}</td>
-                                                                            <td className="px-3 py-2 text-sm text-amber-400 text-right font-mono font-semibold">${item.line_total?.toFixed(2) || '0.00'}</td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
                                                         </div>
+                                                        <div className="text-right">
+                                                            <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Expected</div>
+                                                            <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                                {fpo.expectedDate ? new Date(fpo.expectedDate).toLocaleDateString() : 'TBD'}
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className={`text-2xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                                                                ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                                            </div>
+                                                            <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
+                                                                {fpo.lineCount || 0} items • {fpo.totalQuantity?.toFixed(0) || 0} units
+                                                            </div>
+                                                        </div>
+                                                        <ChevronDownIcon
+                                                            className={`w-5 h-5 transition-transform ${isDark ? 'text-gray-400' : 'text-gray-600'} ${isExpanded ? 'rotate-180' : ''}`}
+                                                        />
                                                     </div>
-                                                )}
-
-                                                {/* Metadata */}
-                                                <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs text-gray-500">
-                                                    <div>Finale: <span className="font-mono text-gray-400">{fpo.finaleOrderUrl}</span></div>
-                                                    <div>Modified: {fpo.finaleLastModified ? new Date(fpo.finaleLastModified).toLocaleString() : 'N/A'}</div>
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+
+                                            {/* Expanded Details */}
+                                            {isExpanded && (
+                                                <div className={`relative p-4 space-y-4 border-t backdrop-blur-lg ${isDark
+                                                        ? 'border-white/5 bg-slate-950/70'
+                                                        : 'border-amber-900/15 bg-amber-50/80'
+                                                    }`}>
+                                                    {/* Summary Info */}
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className={`rounded-xl border backdrop-blur-lg p-4 space-y-3 ${isDark
+                                                                ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
+                                                                : 'border-stone-300/25 bg-gradient-to-br from-white/98 via-stone-100/50 to-white/92 shadow-[0_18px_40px_rgba(15,23,42,0.18)]'
+                                                            }`}>
+                                                            <div>
+                                                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Vendor Information</div>
+                                                                <div className="text-sm text-gray-200">{fpo.vendorName || 'Unknown'}</div>
+                                                                {fpo.vendorUrl && (
+                                                                    <div className="text-xs text-gray-500 font-mono mt-0.5">{fpo.vendorUrl}</div>
+                                                                )}
+                                                            </div>
+                                                            {fpo.facilityId && (
+                                                                <div>
+                                                                    <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Facility</div>
+                                                                    <div className="text-sm text-gray-200">{fpo.facilityId}</div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] p-4">
+                                                            <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Financial Summary</div>
+                                                            <div className="space-y-1 text-sm">
+                                                                <div className="flex justify-between text-gray-300">
+                                                                    <span>Subtotal:</span>
+                                                                    <span className="font-mono">${fpo.subtotal?.toFixed(2) || '0.00'}</span>
+                                                                </div>
+                                                                {fpo.tax && fpo.tax > 0 && (
+                                                                    <div className="flex justify-between text-gray-300">
+                                                                        <span>Tax:</span>
+                                                                        <span className="font-mono">${fpo.tax.toFixed(2)}</span>
+                                                                    </div>
+                                                                )}
+                                                                {fpo.shipping && fpo.shipping > 0 && (
+                                                                    <div className="flex justify-between text-gray-300">
+                                                                        <span>Shipping:</span>
+                                                                        <span className="font-mono">${fpo.shipping.toFixed(2)}</span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex justify-between text-amber-400 font-semibold pt-2 border-t border-white/10">
+                                                                    <span>Total:</span>
+                                                                    <span className="font-mono">${fpo.total?.toFixed(2) || '0.00'}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Notes */}
+                                                    {(fpo.publicNotes || fpo.privateNotes) && (
+                                                        <div className="space-y-2">
+                                                            {fpo.publicNotes && (
+                                                                <div>
+                                                                    <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Public Notes</div>
+                                                                    <div className="text-sm text-gray-300 bg-slate-950/50 p-3 rounded-lg border border-white/5">
+                                                                        {fpo.publicNotes}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {fpo.privateNotes && (
+                                                                <div>
+                                                                    <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Private Notes</div>
+                                                                    <div className="text-sm text-gray-300 bg-slate-950/50 p-3 rounded-lg border border-white/5">
+                                                                        {fpo.privateNotes}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Line Items */}
+                                                    {fpo.lineItems && fpo.lineItems.length > 0 && (
+                                                        <div>
+                                                            <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Line Items</div>
+                                                            <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] overflow-hidden">
+                                                                <table className="min-w-full">
+                                                                    <thead className="bg-slate-900/50">
+                                                                        <tr>
+                                                                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">#</th>
+                                                                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">Product</th>
+                                                                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Ordered</th>
+                                                                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Received</th>
+                                                                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Unit Price</th>
+                                                                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Total</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody className="divide-y divide-white/5">
+                                                                        {fpo.lineItems.map((item: any, idx: number) => (
+                                                                            <tr key={idx} className="hover:bg-slate-900/30">
+                                                                                <td className="px-3 py-2 text-sm text-gray-400">{item.line_number || idx + 1}</td>
+                                                                                <td className="px-3 py-2 text-sm text-gray-300 font-mono">{item.product_id || 'N/A'}</td>
+                                                                                <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_ordered || 0}</td>
+                                                                                <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_received || 0}</td>
+                                                                                <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">${item.unit_price?.toFixed(2) || '0.00'}</td>
+                                                                                <td className="px-3 py-2 text-sm text-amber-400 text-right font-mono font-semibold">${item.line_total?.toFixed(2) || '0.00'}</td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Metadata */}
+                                                    <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs text-gray-500">
+                                                        <div>Finale: <span className="font-mono text-gray-400">{fpo.finaleOrderUrl}</span></div>
+                                                        <div>Modified: {fpo.finaleLastModified ? new Date(fpo.finaleLastModified).toLocaleString() : 'N/A'}</div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                         </div>
                     </div>
                 )}
@@ -981,7 +992,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)]">
                     {/* Card overlay effect */}
                     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]" />
-                    
+
                     {/* Header */}
                     <div className="relative p-4 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70 border-b border-white/5">
                         <div className="pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20" />
@@ -996,51 +1007,46 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <div className="flex items-center gap-1 bg-slate-950/50 rounded-lg p-1 border border-slate-800">
                                     <Button
                                         onClick={() => setStatusFilter('active')}
-                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                                            statusFilter === 'active'
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'active'
                                                 ? 'bg-accent-500 text-white'
                                                 : 'text-gray-400 hover:text-white hover:bg-slate-800'
-                                        }`}
+                                            }`}
                                     >
                                         Active
                                     </Button>
                                     <Button
                                         onClick={() => setStatusFilter('committed')}
-                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                                            statusFilter === 'committed'
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'committed'
                                                 ? 'bg-blue-500 text-white'
                                                 : 'text-gray-400 hover:text-white hover:bg-slate-800'
-                                        }`}
+                                            }`}
                                     >
                                         Committed
                                     </Button>
                                     <Button
                                         onClick={() => setStatusFilter('received')}
-                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                                            statusFilter === 'received'
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'received'
                                                 ? 'bg-green-500 text-white'
                                                 : 'text-gray-400 hover:text-white hover:bg-slate-800'
-                                        }`}
+                                            }`}
                                     >
                                         Received
                                     </Button>
                                     <Button
                                         onClick={() => setStatusFilter('cancelled')}
-                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                                            statusFilter === 'cancelled'
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'cancelled'
                                                 ? 'bg-red-500 text-white'
                                                 : 'text-gray-400 hover:text-white hover:bg-slate-800'
-                                        }`}
+                                            }`}
                                     >
                                         Cancelled
                                     </Button>
                                     <Button
                                         onClick={() => setStatusFilter('all')}
-                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${
-                                            statusFilter === 'all'
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'all'
                                                 ? 'bg-slate-700 text-white'
                                                 : 'text-gray-400 hover:text-white hover:bg-slate-800'
-                                        }`}
+                                            }`}
                                     >
                                         All
                                     </Button>
@@ -1055,7 +1061,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="relative overflow-x-auto max-h-[calc(100vh-320px)]">
                         {sortedPurchaseOrders.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
@@ -1066,7 +1072,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     No Purchase Orders Yet
                                 </h3>
                                 <p className="text-gray-400 mb-6 max-w-md">
-                                    {purchaseOrders.length === 0 
+                                    {purchaseOrders.length === 0
                                         ? "Get started by creating a purchase order manually or importing from your Finale inventory system."
                                         : "No purchase orders match your current time filter. Try showing all POs."}
                                 </p>
@@ -1107,98 +1113,98 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 </thead>
                                 <tbody className="bg-slate-950/30 divide-y divide-slate-800/50">
                                     {sortedPurchaseOrders.map((po) => (
-                                    <tr key={po.id} className="hover:bg-slate-900/50 transition-colors duration-200">
-                                        <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-amber-400">{po.orderId || po.id}</td>
-                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
-                                            <div className="flex items-center gap-2">
-                                                <span>{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</span>
-                                                {po.followUpCount && po.followUpCount > 0 && (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/20 text-sky-200 border border-sky-500/40">
-                                                        FU {po.followUpCount}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-1 whitespace-nowrap">
-                                            <StatusBadge status={po.status}>
-                                                {formatStatusText(po.status)}
-                                            </StatusBadge>
-                                        </td>
-                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</td>
-                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : 'N/A'}</td>
-                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
-                                            {po.trackingNumber ? (
-                                                <div className="flex flex-col">
-                                                    <span className="font-mono text-sm">{po.trackingNumber}</span>
-                                                    <span className="text-xs text-gray-400 uppercase">{po.trackingCarrier || '—'}</span>
-                                                    {po.trackingStatus && (
-                                                        <StatusBadge status={po.trackingStatus} size="sm" className="mt-1">
-                                                            {formatStatusText(po.trackingStatus)}
-                                                        </StatusBadge>
+                                        <tr key={po.id} className="hover:bg-slate-900/50 transition-colors duration-200">
+                                            <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-amber-400">{po.orderId || po.id}</td>
+                                            <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
+                                                <div className="flex items-center gap-2">
+                                                    <span>{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</span>
+                                                    {po.followUpCount && po.followUpCount > 0 && (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/20 text-sky-200 border border-sky-500/40">
+                                                            FU {po.followUpCount}
+                                                        </span>
                                                     )}
-                                                {po.invoiceDetectedAt && (
-                                                    <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded-full border text-[11px] font-medium bg-teal-500/10 text-teal-100 border-teal-500/30">
-                                                        Invoice logged {new Date(po.invoiceDetectedAt).toLocaleDateString()}
-                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-1 whitespace-nowrap">
+                                                <StatusBadge status={po.status}>
+                                                    {formatStatusText(po.status)}
+                                                </StatusBadge>
+                                            </td>
+                                            <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</td>
+                                            <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : 'N/A'}</td>
+                                            <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
+                                                {po.trackingNumber ? (
+                                                    <div className="flex flex-col">
+                                                        <span className="font-mono text-sm">{po.trackingNumber}</span>
+                                                        <span className="text-xs text-gray-400 uppercase">{po.trackingCarrier || '—'}</span>
+                                                        {po.trackingStatus && (
+                                                            <StatusBadge status={po.trackingStatus} size="sm" className="mt-1">
+                                                                {formatStatusText(po.trackingStatus)}
+                                                            </StatusBadge>
+                                                        )}
+                                                        {po.invoiceDetectedAt && (
+                                                            <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded-full border text-[11px] font-medium bg-teal-500/10 text-teal-100 border-teal-500/30">
+                                                                Invoice logged {new Date(po.invoiceDetectedAt).toLocaleDateString()}
+                                                            </span>
+                                                        )}
+                                                        {po.lastFollowUpSentAt && (
+                                                            <span className="text-xs text-gray-500 mt-1">
+                                                                Last follow-up {new Date(po.lastFollowUpSentAt).toLocaleDateString()}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-gray-500">No tracking</span>
                                                 )}
-                                                {po.lastFollowUpSentAt && (
-                                                    <span className="text-xs text-gray-500 mt-1">
-                                                        Last follow-up {new Date(po.lastFollowUpSentAt).toLocaleDateString()}
-                                                    </span>
+                                            </td>
+                                            <td className="px-6 py-1 whitespace-nowrap text-sm text-white font-semibold">${formatPoTotal(po)}</td>
+                                            <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
+                                                {canManagePOs && (
+                                                    <Button
+                                                        onClick={() => handleEditTracking(po)}
+                                                        className="p-2 text-accent-300 hover:text-accent-100 transition-colors"
+                                                        title="Update Tracking"
+                                                    >
+                                                        <TruckIcon className="w-5 h-5" />
+                                                    </Button>
                                                 )}
-                                            </div>
-                                        ) : (
-                                            <span className="text-xs text-gray-500">No tracking</span>
-                                        )}
-                                        </td>
-                                        <td className="px-6 py-1 whitespace-nowrap text-sm text-white font-semibold">${formatPoTotal(po)}</td>
-                                        <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
-                                            {canManagePOs && (
+                                                {po.trackingNumber && (
+                                                    <Button
+                                                        onClick={() => handleOpenTracking(po)}
+                                                        className="p-2 text-green-300 hover:text-green-100 transition-colors"
+                                                        title="Track Shipment"
+                                                    >
+                                                        Track
+                                                    </Button>
+                                                )}
+                                                {canManagePOs && ['shipped', 'in_transit', 'out_for_delivery', 'delivered'].includes(po.trackingStatus || '') && po.status !== 'received' && po.status !== 'partially_received' && (
+                                                    <Button
+                                                        onClick={() => handleReceivePO(po)}
+                                                        className="p-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+                                                        title="Mark as Received"
+                                                    >
+                                                        <CheckCircleIcon className="w-5 h-5" />
+                                                    </Button>
+                                                )}
+                                                <Button onClick={() => handleDownloadPdf(po)} title="Download PDF" className="p-2 text-gray-400 hover:text-accent-400 transition-colors"><FileTextIcon className="w-5 h-5" /></Button>
+                                                <Button onClick={() => handleSendEmailClick(po)} title="Send Email" className="p-2 text-gray-400 hover:text-accent-400 transition-colors"><MailIcon className="w-5 h-5" /></Button>
                                                 <Button
-                                                    onClick={() => handleEditTracking(po)}
-                                                    className="p-2 text-accent-300 hover:text-accent-100 transition-colors"
-                                                    title="Update Tracking"
+                                                    onClick={() => handleOpenComm(po)}
+                                                    title="View Thread"
+                                                    className="p-2 text-gray-400 hover:text-emerald-300 transition-colors"
                                                 >
-                                                    <TruckIcon className="w-5 h-5" />
+                                                    <DocumentTextIcon className="w-5 h-5" />
                                                 </Button>
-                                            )}
-                                            {po.trackingNumber && (
-                                                <Button
-                                                    onClick={() => handleOpenTracking(po)}
-                                                    className="p-2 text-green-300 hover:text-green-100 transition-colors"
-                                                    title="Track Shipment"
-                                                >
-                                                    Track
-                                                </Button>
-                                            )}
-                                            {canManagePOs && ['shipped', 'in_transit', 'out_for_delivery', 'delivered'].includes(po.trackingStatus || '') && po.status !== 'received' && po.status !== 'partially_received' && (
-                                                <Button
-                                                    onClick={() => handleReceivePO(po)}
-                                                    className="p-2 text-emerald-400 hover:text-emerald-300 transition-colors"
-                                                    title="Mark as Received"
-                                                >
-                                                    <CheckCircleIcon className="w-5 h-5" />
-                                                </Button>
-                                            )}
-                                            <Button onClick={() => handleDownloadPdf(po)} title="Download PDF" className="p-2 text-gray-400 hover:text-accent-400 transition-colors"><FileTextIcon className="w-5 h-5"/></Button>
-                                            <Button onClick={() => handleSendEmailClick(po)} title="Send Email" className="p-2 text-gray-400 hover:text-accent-400 transition-colors"><MailIcon className="w-5 h-5"/></Button>
-                                            <Button
-                                                onClick={() => handleOpenComm(po)}
-                                                title="View Thread"
-                                                className="p-2 text-gray-400 hover:text-emerald-300 transition-colors"
-                                            >
-                                                <DocumentTextIcon className="w-5 h-5" />
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         )}
                     </div>
                 </div>
             </div>
-            
+
             <CreatePoModal
                 key={modalSession}
                 isOpen={isCreatePoModalOpen}
@@ -1210,7 +1216,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
             />
 
             {selectedPoForEmail && selectedPoForEmail.vendorId && vendorMap.get(selectedPoForEmail.vendorId) && (
-                <EmailComposerModal 
+                <EmailComposerModal
                     isOpen={isEmailModalOpen}
                     onClose={() => setIsEmailModalOpen(false)}
                     onSend={handleSendEmail}
@@ -1221,7 +1227,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     onConnectGoogle={onConnectGoogle}
                 />
             )}
-            
+
             {selectedPoForComm && selectedPoForComm.vendorId && vendorMap.get(selectedPoForComm.vendorId) && (
                 <PoCommunicationModal
                     isOpen={isCommModalOpen}
@@ -1233,7 +1239,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     onConnectGoogle={onConnectGoogle}
                 />
             )}
-            
+
             <UpdateTrackingModal
                 isOpen={isTrackingModalOpen}
                 onClose={() => {
@@ -1243,9 +1249,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 purchaseOrder={selectedPoForTracking}
                 onSave={handleSaveTracking}
             />
-            
+
             {isAdminLike && (
-                <GeneratePoModal 
+                <GeneratePoModal
                     isOpen={isGeneratePoModalOpen}
                     onClose={() => setIsGeneratePoModalOpen(false)}
                     approvedRequisitions={approvedRequisitions}
@@ -1256,7 +1262,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
             )}
 
             {canSubmitRequisitions && (
-                <CreateRequisitionModal 
+                <CreateRequisitionModal
                     isOpen={isCreateReqModalOpen}
                     onClose={() => setIsCreateReqModalOpen(false)}
                     inventory={inventory}
@@ -1308,10 +1314,10 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
     onFocusTracking,
 }) => {
     const [isOpen, setIsOpen] = React.useState(false);
-    
+
     return (
         <section className="bg-gray-800/40 border border-gray-700 rounded-2xl overflow-hidden shadow-inner shadow-black/20">
-            <div 
+            <div
                 className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between p-4 cursor-pointer hover:bg-gray-800/60 transition-colors"
                 onClick={() => setIsOpen(!isOpen)}
             >
@@ -1327,107 +1333,107 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
                     <span className="font-semibold text-accent-200">{followUpBacklog}</span>
                 </div>
             </div>
-            
+
             {isOpen && (
                 <div className="p-4 pt-0 space-y-5">
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {stats.map(stat => (
-                <Button
-                    key={stat.id}
-                    type="button"
-                    onClick={() => stat.onClick?.()}
-                    className={`text-left rounded-xl border bg-gray-900/40 px-4 py-3 transition-colors hover:bg-gray-900/70 ${stat.accent}`}
-                >
-                    <p className="text-[11px] uppercase tracking-wide text-gray-400">{stat.label}</p>
-                    <p className="text-3xl font-semibold text-white mt-1">{stat.value}</p>
-                    <p className="text-xs text-gray-400 mt-1">{stat.description}</p>
-                </Button>
-            ))}
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-            <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-200">Requests in Review</p>
-                    <Button
-                        className="text-xs text-accent-300 hover:text-accent-100"
-                        onClick={onFocusRequisitions}
-                    >
-                        Open queue →
-                    </Button>
-                </div>
-                {highRiskRequests.length === 0 ? (
-                    <p className="text-xs text-gray-500">No escalations — requisitions are flowing smoothly.</p>
-                ) : (
-                    <ul className="space-y-2 text-sm">
-                        {highRiskRequests.map(req => (
-                            <li key={req.id} className="flex items-start justify-between gap-2">
-                                <div>
-                                    <p className="text-white font-medium">
-                                        {req.items[0]?.name ?? req.id}
-                                    </p>
-                                    <p className="text-xs text-gray-400">
-                                        {req.department} • {req.priority ?? 'medium'} priority
-                                    </p>
-                                </div>
-                                <span className="text-xs text-rose-200">
-                                    {req.status === 'OpsPending' ? 'Ops review' : 'Mgr review'}
-                                </span>
-                            </li>
+                        {stats.map(stat => (
+                            <Button
+                                key={stat.id}
+                                type="button"
+                                onClick={() => stat.onClick?.()}
+                                className={`text-left rounded-xl border bg-gray-900/40 px-4 py-3 transition-colors hover:bg-gray-900/70 ${stat.accent}`}
+                            >
+                                <p className="text-[11px] uppercase tracking-wide text-gray-400">{stat.label}</p>
+                                <p className="text-3xl font-semibold text-white mt-1">{stat.value}</p>
+                                <p className="text-xs text-gray-400 mt-1">{stat.description}</p>
+                            </Button>
                         ))}
-                    </ul>
-                )}
-                <div className="border-t border-gray-800 pt-3">
-                    <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Ready for PO build</p>
-                    {readyQueue.length === 0 ? (
-                        <p className="text-xs text-gray-500">No requisitions are staged for PO creation yet.</p>
-                    ) : (
-                        <ul className="space-y-1 text-sm">
-                            {readyQueue.map(req => (
-                                <li key={req.id} className="flex items-center justify-between">
-                                    <span className="text-gray-200">{req.id}</span>
-                                    <span className="text-xs text-emerald-300">Ready</span>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm font-semibold text-gray-200">Requests in Review</p>
+                                <Button
+                                    className="text-xs text-accent-300 hover:text-accent-100"
+                                    onClick={onFocusRequisitions}
+                                >
+                                    Open queue →
+                                </Button>
+                            </div>
+                            {highRiskRequests.length === 0 ? (
+                                <p className="text-xs text-gray-500">No escalations — requisitions are flowing smoothly.</p>
+                            ) : (
+                                <ul className="space-y-2 text-sm">
+                                    {highRiskRequests.map(req => (
+                                        <li key={req.id} className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <p className="text-white font-medium">
+                                                    {req.items[0]?.name ?? req.id}
+                                                </p>
+                                                <p className="text-xs text-gray-400">
+                                                    {req.department} • {req.priority ?? 'medium'} priority
+                                                </p>
+                                            </div>
+                                            <span className="text-xs text-rose-200">
+                                                {req.status === 'OpsPending' ? 'Ops review' : 'Mgr review'}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            <div className="border-t border-gray-800 pt-3">
+                                <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">Ready for PO build</p>
+                                {readyQueue.length === 0 ? (
+                                    <p className="text-xs text-gray-500">No requisitions are staged for PO creation yet.</p>
+                                ) : (
+                                    <ul className="space-y-1 text-sm">
+                                        {readyQueue.map(req => (
+                                            <li key={req.id} className="flex items-center justify-between">
+                                                <span className="text-gray-200">{req.id}</span>
+                                                <span className="text-xs text-emerald-300">Ready</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        </div>
+                        <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm font-semibold text-gray-200">Logistics Watchlist</p>
+                                <Button
+                                    className="text-xs text-accent-300 hover:text-accent-100"
+                                    onClick={onFocusTracking}
+                                >
+                                    Update tracking →
+                                </Button>
+                            </div>
+                            {trackingAlerts.length === 0 ? (
+                                <p className="text-xs text-gray-500">All active POs have tracking or confirmed ship dates.</p>
+                            ) : (
+                                <ul className="space-y-2 text-sm">
+                                    {trackingAlerts.map(po => (
+                                        <li key={po.id} className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <p className="text-white font-medium">{po.orderId || po.id}</p>
+                                                <p className="text-xs text-gray-400">
+                                                    {po.supplier || 'Vendor TBD'} •{' '}
+                                                    {new Date(po.orderDate || po.createdAt).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <span className="text-xs text-yellow-200">
+                                                Awaiting tracking
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                                Keep vendors in the loop — add tracking or run nudges from the automation widget below.
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div className="bg-gray-900/40 border border-gray-700 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-200">Logistics Watchlist</p>
-                    <Button
-                        className="text-xs text-accent-300 hover:text-accent-100"
-                        onClick={onFocusTracking}
-                    >
-                        Update tracking →
-                    </Button>
-                </div>
-                {trackingAlerts.length === 0 ? (
-                    <p className="text-xs text-gray-500">All active POs have tracking or confirmed ship dates.</p>
-                ) : (
-                    <ul className="space-y-2 text-sm">
-                        {trackingAlerts.map(po => (
-                            <li key={po.id} className="flex items-start justify-between gap-2">
-                                <div>
-                                    <p className="text-white font-medium">{po.orderId || po.id}</p>
-                                    <p className="text-xs text-gray-400">
-                                        {po.supplier || 'Vendor TBD'} •{' '}
-                                        {new Date(po.orderDate || po.createdAt).toLocaleDateString()}
-                                    </p>
-                                </div>
-                                <span className="text-xs text-yellow-200">
-                                    Awaiting tracking
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                    Keep vendors in the loop — add tracking or run nudges from the automation widget below.
-                </div>
-            </div>
-        </div>
-    </div>
             )}
         </section>
     );
@@ -1437,13 +1443,13 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
 
 const ReqStatusBadge: React.FC<{ status: InternalRequisition['status'] }> = ({ status }) => {
     const statusConfig: Record<InternalRequisition['status'], string> = {
-      Pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-      ManagerApproved: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      OpsPending: 'bg-purple-500/20 text-purple-200 border-purple-500/30',
-      OpsApproved: 'bg-sky-500/20 text-sky-200 border-sky-500/30',
-      Rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
-      Ordered: 'bg-green-500/20 text-green-400 border-green-500/30',
-      Fulfilled: 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30',
+        Pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+        ManagerApproved: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+        OpsPending: 'bg-purple-500/20 text-purple-200 border-purple-500/30',
+        OpsApproved: 'bg-sky-500/20 text-sky-200 border-sky-500/30',
+        Rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
+        Ordered: 'bg-green-500/20 text-green-400 border-green-500/30',
+        Fulfilled: 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30',
     };
     return <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border ${statusConfig[status]}`}>{status.replace(/([A-Z])/g, ' $1').trim()}</span>;
 };
@@ -1524,7 +1530,7 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Items</th>
                             {(isAdminLike || currentUser.role === 'Manager' || currentUser.department === 'Operations') && (
-                              <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                                <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                             )}
                         </tr>
                     </thead>
@@ -1535,7 +1541,7 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                                 <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">
                                     {req.source === 'System' ? (
                                         <div className="flex items-center gap-2" title="Auto-generated by AI Planning Insights based on demand forecast">
-                                            <BotIcon className="w-4 h-4 text-accent-400"/> 
+                                            <BotIcon className="w-4 h-4 text-accent-400" />
                                             <span className="text-accent-300 font-semibold">AI Generated</span>
                                         </div>
                                     ) : (req.requesterId ? (userMap.get(req.requesterId) || 'Unknown User') : 'Unassigned')}
@@ -1554,13 +1560,12 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                                             <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-gray-700 text-gray-200">
                                                 {req.requestType?.replace('_', ' ') || 'consumable'}
                                             </span>
-                                            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide ${
-                                                req.priority === 'high'
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide ${req.priority === 'high'
                                                     ? 'bg-rose-500/20 text-rose-200 border border-rose-500/40'
                                                     : req.priority === 'medium'
-                                                    ? 'bg-amber-500/20 text-amber-200 border border-amber-500/30'
-                                                    : 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
-                                            }`}>
+                                                        ? 'bg-amber-500/20 text-amber-200 border border-amber-500/30'
+                                                        : 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
+                                                }`}>
                                                 {req.priority} priority
                                             </span>
                                             {req.alertOnly && (
@@ -1591,8 +1596,8 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                                                 Ops:{' '}
                                                 {req.opsApprovedAt
                                                     ? `${userMap.get(req.opsApprovedBy ?? '') ?? 'Ops'} on ${new Date(
-                                                          req.opsApprovedAt,
-                                                      ).toLocaleDateString()}`
+                                                        req.opsApprovedAt,
+                                                    ).toLocaleDateString()}`
                                                     : 'Pending'}
                                             </p>
                                         )}
@@ -1775,7 +1780,7 @@ const AutomationControlsSection: React.FC<AutomationControlsSectionProps> = ({
 
     return (
         <div className="bg-gray-800/40 border border-gray-700 rounded-2xl overflow-hidden shadow-inner shadow-black/20">
-            <div 
+            <div
                 className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between p-4 cursor-pointer hover:bg-gray-800/60 transition-colors"
                 onClick={() => setIsOpen(!isOpen)}
             >
@@ -1797,7 +1802,7 @@ const AutomationControlsSection: React.FC<AutomationControlsSectionProps> = ({
                     </div>
                 )}
             </div>
-            
+
             {isOpen && (
                 <div className="p-4 pt-0 space-y-6 border-t border-gray-700/50">
                     {/* Follow-up Automation */}
@@ -1836,7 +1841,7 @@ const AutomationControlsSection: React.FC<AutomationControlsSectionProps> = ({
                     {isAdminLike && !loading && settings && (
                         <div className="space-y-4 pt-4 border-t border-gray-700/50">
                             <h3 className="text-base font-semibold text-white">Autonomous PO Controls</h3>
-                            
+
                             {/* Shipping Updates */}
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
@@ -1850,11 +1855,10 @@ const AutomationControlsSection: React.FC<AutomationControlsSectionProps> = ({
                                             updateSetting('autonomous_shipping_enabled', !settings.autonomous_shipping_enabled);
                                         }}
                                         disabled={saving}
-                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                                            settings.autonomous_shipping_enabled
+                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${settings.autonomous_shipping_enabled
                                                 ? 'bg-accent-500 text-white hover:bg-accent-600'
                                                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                        }`}
+                                            }`}
                                     >
                                         {settings.autonomous_shipping_enabled ? (
                                             <><CheckCircleIcon className="w-4 h-4 mr-2 inline" /> Enabled</>
@@ -1896,11 +1900,10 @@ const AutomationControlsSection: React.FC<AutomationControlsSectionProps> = ({
                                             updateSetting('autonomous_pricing_enabled', !settings.autonomous_pricing_enabled);
                                         }}
                                         disabled={saving}
-                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                                            settings.autonomous_pricing_enabled
+                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${settings.autonomous_pricing_enabled
                                                 ? 'bg-accent-500 text-white hover:bg-accent-600'
                                                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                        }`}
+                                            }`}
                                     >
                                         {settings.autonomous_pricing_enabled ? (
                                             <><CheckCircleIcon className="w-4 h-4 mr-2 inline" /> Enabled</>
