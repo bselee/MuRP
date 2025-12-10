@@ -110,9 +110,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('active');
     const [finalePOStatusFilter, setFinalePOStatusFilter] = useState<string>('all');
-    const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default Z-A (newest first)
-    const [showAllFinaleHistory, setShowAllFinaleHistory] = useState(false); // Default: 90 days only
-    const [hideDropship, setHideDropship] = useState(false);
+    const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default newest first
+    const [showAllFinaleHistory, setShowAllFinaleHistory] = useState(false); // Default: 12 months only
+    const [hideDropship, setHideDropship] = useState(true); // Default: hide dropship POs
     
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
@@ -637,15 +637,18 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <h2 className="text-xl font-semibold text-gray-300">📦 Finale Purchase Orders</h2>
                                 <span className="px-3 py-1 rounded-full text-sm bg-accent-500/20 text-accent-300 border border-accent-500/30 font-medium">
                                     {finalePurchaseOrders.filter(fpo => {
-                                        // Date filter: 90 days unless showing all
+                                        // Date filter: 12 months unless showing all
                                         if (!showAllFinaleHistory) {
-                                            const ninetyDaysAgo = new Date();
-                                            ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+                                            const twelveMonthsAgo = new Date();
+                                            twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
                                             const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
-                                            if (!orderDate || orderDate < ninetyDaysAgo) return false;
+                                            if (!orderDate || orderDate < twelveMonthsAgo) return false;
                                         }
-                                        // Dropship filter
-                                        if (hideDropship && fpo.publicNotes?.toLowerCase().includes('dropship')) return false;
+                                        // Dropship filter - check in notes
+                                        if (hideDropship) {
+                                            const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
+                                            if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) return false;
+                                        }
                                         // Status filter
                                         if (finalePOStatusFilter === 'all') return true;
                                         if (finalePOStatusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
