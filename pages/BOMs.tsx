@@ -754,13 +754,20 @@ const BOMs: React.FC<BOMsProps> = ({
         case 'category':
           return (a.category || '').localeCompare(b.category || '');
         case 'velocity': {
-          const velA = inventoryMap.get(a.finishedSku)?.velocity || 0;
-          const velB = inventoryMap.get(b.finishedSku)?.velocity || 0;
+          const velA = inventoryMap.get(a.finishedSku)?.salesVelocity || 0;
+          const velB = inventoryMap.get(b.finishedSku)?.salesVelocity || 0;
           return velB - velA;
         }
         case 'runway': {
-          const runwayA = inventoryMap.get(a.finishedSku)?.daysOfStock || 0;
-          const runwayB = inventoryMap.get(b.finishedSku)?.daysOfStock || 0;
+          // Calculate runway as stock / velocity (days of stock remaining)
+          const itemA = inventoryMap.get(a.finishedSku);
+          const itemB = inventoryMap.get(b.finishedSku);
+          const runwayA = (itemA?.salesVelocity && itemA.salesVelocity > 0) 
+            ? (itemA.stock || 0) / itemA.salesVelocity 
+            : (itemA?.stock || 0) > 0 ? 999 : 0; // If no velocity but has stock, put at end
+          const runwayB = (itemB?.salesVelocity && itemB.salesVelocity > 0)
+            ? (itemB.stock || 0) / itemB.salesVelocity
+            : (itemB?.stock || 0) > 0 ? 999 : 0;
           return runwayA - runwayB; // Ascending: shortest runway first
         }
         case 'name':
