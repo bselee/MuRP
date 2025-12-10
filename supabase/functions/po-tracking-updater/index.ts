@@ -126,6 +126,9 @@ async function updatePOTracking(supabase: any) {
       const { error: eventError } = await supabase.from('po_tracking_events').insert(eventPayload);
       if (eventError) throw eventError;
 
+      // ✈️ AIR TRAFFIC CONTROLLER INTEGRATION: Assess delay impact
+      await assessDelayImpact(supabase, po, carrierStatus);
+
       if (carrierStatus.checkpoints?.length) {
         const latest = carrierStatus.checkpoints[carrierStatus.checkpoints.length - 1];
         if (latest) {
@@ -383,5 +386,205 @@ async function fetchAfterShipTracking(
       error: error.message,
     });
     throw error; // Re-throw for updatePOTracking to catch and fall back
+  }
+}
+
+/**
+ * ✈️ AIR TRAFFIC CONTROLLER INTEGRATION
+ * Assess delay impact and create intelligent alerts based on stock levels
+ */
+async function assessDelayImpact(
+  supabase: any,
+  po: any,
+  carrierStatus: { status: TrackingStatus; estimatedDelivery?: string; description?: string }
+): Promise<void> {
+  try {
+    // Only assess if tracking shows exception or estimated delivery changed
+    if (carrierStatus.status !== 'exception' && !carrierStatus.estimatedDelivery) {
+      return;
+    }
+
+    // Get full PO data with expected date
+    const { data: fullPO, error: poError } = await supabase
+      .from('purchase_orders')
+      .select('id, order_id, vendor_id, vendor_name, expected_date')
+      .eq('id', po.id)
+      .single();
+
+    if (poError || !fullPO) {
+      console.warn(`[Air Traffic Controller] Could not fetch PO ${po.id}:`, poError);
+      return;
+    }
+
+    const originalETA = fullPO.expected_date;
+    const newETA = carrierStatus.estimatedDelivery;
+
+    if (!originalETA || !newETA) {
+      return; // Can't calculate delay without dates
+    }
+
+    // Calculate delay in days
+    const originalDate = new Date(originalETA);
+    const newDate = new Date(newETA);
+    const delayDays = Math.ceil((newDate.getTime() - originalDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    // No delay or shipment is early - silent update
+    if (delayDays <= 0) {
+      return;
+    }
+
+    console.log(`✈️ Air Traffic Controller: PO ${fullPO.order_id} delayed ${delayDays} days`);
+
+    // Get PO line items to assess stock impact
+    const { data: poItems, error: itemsError } = await supabase
+      .from('purchase_order_items')
+      .select(`
+        inventory_sku,
+        item_name,
+        quantity_ordered,
+        inventory_items (
+          current_stock,
+          sales_last_30_days
+        )
+      `)
+      .eq('po_id', fullPO.id);
+
+    if (itemsError || !poItems || poItems.length === 0) {
+      console.warn(`[Air Traffic Controller] Could not fetch PO items for ${po.id}`);
+      return;
+    }
+
+    // Calculate impact for each item
+    let criticalItems = 0;
+    let highPriorityItems = 0;
+    let maxImpactDays = 0;
+    const affectedItems = [];
+
+    for (const item of poItems) {
+      const currentStock = item.inventory_items?.current_stock || 0;
+      const dailySales = (item.inventory_items?.sales_last_30_days || 0) / 30;
+
+      if (dailySales === 0) continue; // Skip items with no sales
+
+      const daysOfStock = currentStock / dailySales;
+      const daysUntilStockout = Math.max(0, daysOfStock);
+
+      // Determine impact level
+      let impactLevel = 'low';
+      if (daysUntilStockout < delayDays) {
+        // Will stockout before delivery
+        impactLevel = 'critical';
+        criticalItems++;
+      } else if (daysUntilStockout < delayDays + 7) {
+        // Will be very low stock
+        impactLevel = 'high';
+        highPriorityItems++;
+      } else if (daysUntilStockout < delayDays + 14) {
+        impactLevel = 'medium';
+      }
+
+      if (impactLevel !== 'low') {
+        affectedItems.push({
+          sku: item.inventory_sku,
+          name: item.item_name,
+          current_stock: currentStock,
+          days_until_stockout: Math.floor(daysUntilStockout),
+          impact_level: impactLevel,
+        });
+
+        maxImpactDays = Math.max(maxImpactDays, daysUntilStockout);
+      }
+    }
+
+    // Determine overall priority
+    let priorityLevel = 'low';
+    if (criticalItems > 0) {
+      priorityLevel = 'critical';
+    } else if (highPriorityItems > 0) {
+      priorityLevel = 'high';
+    } else if (affectedItems.length > 0) {
+      priorityLevel = 'medium';
+    }
+
+    // Low priority = silent update, no alert needed
+    if (priorityLevel === 'low') {
+      console.log(`✈️ Air Traffic Controller: PO ${fullPO.order_id} delay is LOW priority (plenty of stock)`);
+
+      // Silent update - just update expected date
+      await supabase
+        .from('purchase_orders')
+        .update({ expected_date: newETA })
+        .eq('id', fullPO.id);
+
+      return;
+    }
+
+    // Medium/High/Critical = Create alert
+    console.log(`✈️ Air Traffic Controller: Creating ${priorityLevel.toUpperCase()} alert for PO ${fullPO.order_id}`);
+
+    // Draft vendor email for critical alerts
+    let draftEmail = null;
+    if (priorityLevel === 'critical') {
+      draftEmail = `Subject: URGENT: PO ${fullPO.order_id} Delayed - Critical Stock Impact
+
+Hi ${fullPO.vendor_name},
+
+I'm writing regarding PO ${fullPO.order_id} which is now showing an expected delivery of ${newETA} (${delayDays} days later than originally planned).
+
+This delay is critical as we will run out of stock on the following items before delivery:
+
+${affectedItems
+  .filter(i => i.impact_level === 'critical')
+  .map(i => `• ${i.name} (${i.sku}): ${i.current_stock} units in stock, will run out in ${i.days_until_stockout} days`)
+  .join('\n')}
+
+Is there any way to expedite this shipment? We're willing to pay additional shipping fees if necessary.
+
+Alternatively, can you confirm if a partial shipment is possible for the critical items listed above?
+
+Please respond ASAP as we're at risk of stockout.
+
+Thank you,
+[Your Name]`;
+    }
+
+    // Create alert in database
+    await supabase.from('po_alert_log').insert({
+      po_id: fullPO.id,
+      po_number: fullPO.order_id,
+      vendor_id: fullPO.vendor_id,
+      vendor_name: fullPO.vendor_name,
+      alert_type: 'delay',
+      priority_level: priorityLevel,
+      delay_days: delayDays,
+      original_eta: originalETA,
+      new_eta: newETA,
+      stockout_risk_days: Math.floor(maxImpactDays),
+      affected_items: affectedItems,
+      impact_summary: criticalItems > 0
+        ? `${criticalItems} item(s) will stockout before delivery`
+        : highPriorityItems > 0
+        ? `${highPriorityItems} item(s) will be critically low`
+        : `${affectedItems.length} item(s) impacted`,
+      recommended_action: criticalItems > 0
+        ? 'Contact vendor immediately - expedite shipment or find backup supplier'
+        : highPriorityItems > 0
+        ? 'Review with vendor within 24 hours'
+        : 'Monitor - no immediate action required',
+      draft_vendor_email: draftEmail,
+      created_at: new Date().toISOString(),
+    });
+
+    // Update PO expected date
+    await supabase
+      .from('purchase_orders')
+      .update({ expected_date: newETA })
+      .eq('id', fullPO.id);
+
+    console.log(`✈️ Air Traffic Controller: Alert created for PO ${fullPO.order_id} (${priorityLevel})`);
+
+  } catch (error) {
+    console.error('[Air Traffic Controller] Failed to assess delay impact:', error);
+    // Don't throw - tracking update should still succeed even if alert fails
   }
 }

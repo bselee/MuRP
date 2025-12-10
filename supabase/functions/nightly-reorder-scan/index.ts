@@ -153,6 +153,15 @@ serve(async (req) => {
       // Don't fail entire job if auto-PO fails
     }
 
+    // 7. Record daily agent performance for Trust Score Dashboard
+    try {
+      await recordAgentPerformance(supabase, recommendations);
+      console.log('📊 Recorded agent performance metrics');
+    } catch (error: any) {
+      console.error('⚠️ Failed to record agent performance:', error.message);
+      // Don't fail job if metrics recording fails
+    }
+
     // Log job completion
     const duration = Date.now() - startTime;
     await logJobComplete(supabase, jobLogId, summary, duration);
@@ -216,7 +225,16 @@ async function fetchInventoryForReorder(supabase: any): Promise<InventoryForReor
 
   if (error) throw error;
 
-  // Calculate on_order quantities
+  // 🚀 VENDOR WATCHDOG INTEGRATION: Fetch learned performance metrics
+  const { data: vendorPerformance } = await supabase
+    .from('vendor_performance_metrics')
+    .select('vendor_id, effective_lead_time_days, trust_score');
+
+  const vendorPerfMap = new Map(
+    (vendorPerformance || []).map((v: any) => [v.vendor_id, v])
+  );
+
+  // Calculate on_order quantities and apply learned lead times
   const itemsWithOnOrder: InventoryForReorder[] = await Promise.all(
     (items || []).map(async (item: any) => {
       const { data: poItems } = await supabase
@@ -230,6 +248,19 @@ async function fetchInventoryForReorder(supabase: any): Promise<InventoryForReor
         0
       ) || 0;
 
+      // 👀 Use effective lead time (learned) if available, otherwise use promised
+      const vendorPerf = item.vendor_id ? vendorPerfMap.get(item.vendor_id) : null;
+      const effectiveLeadTime = vendorPerf?.effective_lead_time_days || item.lead_time_days || 14;
+
+      // Log when agent is using learned lead time (different from promised)
+      if (vendorPerf && vendorPerf.effective_lead_time_days !== item.lead_time_days) {
+        console.log(
+          `📊 Vendor Watchdog: Using learned lead time for ${item.vendors?.name || 'vendor'} ` +
+          `(promised: ${item.lead_time_days}d → effective: ${effectiveLeadTime}d, ` +
+          `trust: ${vendorPerf.trust_score}/100)`
+        );
+      }
+
       return {
         sku: item.sku,
         name: item.name,
@@ -239,7 +270,7 @@ async function fetchInventoryForReorder(supabase: any): Promise<InventoryForReor
         moq: item.moq || 1,
         vendor_id: item.vendor_id,
         vendor_name: item.vendors?.name || 'Unknown Vendor',
-        lead_time_days: item.lead_time_days || 14,
+        lead_time_days: effectiveLeadTime, // 🎯 Using learned lead time!
         unit_cost: item.unit_cost || 0,
         sales_last_30_days: item.sales_last_30_days || 0,
         sales_last_90_days: item.sales_last_90_days || 0,
@@ -610,6 +641,15 @@ async function createAutoDraftPOs(supabase: any): Promise<{ pos_created: number;
     return { pos_created: 0, vendors: [] };
   }
 
+  // 🚀 VENDOR WATCHDOG INTEGRATION: Fetch learned lead times for PO creation
+  const { data: vendorPerformance } = await supabase
+    .from('vendor_performance_metrics')
+    .select('vendor_id, effective_lead_time_days, trust_score');
+
+  const vendorPerfMap = new Map(
+    (vendorPerformance || []).map((v: any) => [v.vendor_id, v])
+  );
+
   const vendorMap = new Map(vendors.map((v: any) => [v.id, v]));
 
   // 3. Filter items by vendor automation settings & urgency threshold
@@ -647,12 +687,50 @@ async function createAutoDraftPOs(supabase: any): Promise<{ pos_created: number;
       // Generate order ID
       const orderId = await generateOrderId(supabase);
 
-      // Calculate expected date
+      // Calculate expected date using Vendor Watchdog learned lead time
       const orderDate = new Date().toISOString();
       const expectedDate = new Date();
-      expectedDate.setDate(expectedDate.getDate() + (vendor.lead_time_days || 14));
+      const vendorPerf = vendorPerfMap.get(vendorId);
+      const effectiveLeadTime = vendorPerf?.effective_lead_time_days || vendor.lead_time_days || 14;
 
-      // Insert PO header
+      expectedDate.setDate(expectedDate.getDate() + effectiveLeadTime);
+
+      // Log if using learned lead time
+      if (vendorPerf && vendorPerf.effective_lead_time_days !== vendor.lead_time_days) {
+        console.log(
+          `📊 PO for ${vendor.name}: Using learned lead time ` +
+          `(${effectiveLeadTime}d vs promised ${vendor.lead_time_days}d)`
+        );
+      }
+
+      // Calculate AI confidence score based on consumption variance
+      const avgVariance = items.reduce((sum: number, i: any) => sum + i.consumption_variance, 0) / items.length;
+      const aiConfidenceScore = Math.max(0.4, Math.min(1.0, 1.0 - avgVariance));
+
+      // Generate AI reasoning
+      const criticalCount = items.filter((i: any) => i.urgency === 'critical').length;
+      const highCount = items.filter((i: any) => i.urgency === 'high').length;
+      const totalCost = items.reduce((sum: number, i: any) => sum + i.estimated_cost, 0);
+
+      let aiReasoning = `Auto-generated order for ${vendor.name}. `;
+      if (criticalCount > 0) {
+        aiReasoning += `${criticalCount} item(s) at critical stock levels. `;
+      }
+      if (highCount > 0) {
+        aiReasoning += `${highCount} item(s) at high priority. `;
+      }
+      aiReasoning += `Total estimated cost: $${totalCost.toFixed(2)}.`;
+
+      // Determine urgency
+      let urgency = 'low';
+      if (criticalCount > 0) urgency = 'critical';
+      else if (highCount > 0) urgency = 'high';
+      else if (items.length >= 3) urgency = 'medium';
+
+      // Calculate AI priority score
+      const aiPriorityScore = items.reduce((max: number, i: any) => Math.max(max, i.priority_score), 0);
+
+      // Insert PO header with AI fields
       const { data: newPO, error: poError } = await supabase
         .from('purchase_orders')
         .insert({
@@ -666,6 +744,12 @@ async function createAutoDraftPOs(supabase: any): Promise<{ pos_created: number;
           source: 'auto_reorder',
           auto_generated: true,
           auto_approved: false,
+          // AI Agent fields
+          ai_confidence_score: aiConfidenceScore,
+          ai_reasoning: aiReasoning,
+          ai_model_used: 'nightly-reorder-scan-v1',
+          urgency: urgency,
+          ai_priority_score: aiPriorityScore,
           record_created: new Date().toISOString(),
         })
         .select('id')
@@ -735,4 +819,109 @@ async function generateOrderId(supabase: any): Promise<string> {
   }
 
   return `PO-${dateStr}-${sequence.toString().padStart(3, '0')}`;
+}
+
+/**
+ * Record daily agent performance for Trust Score Dashboard
+ */
+async function recordAgentPerformance(
+  supabase: any,
+  recommendations: ReorderRecommendation[]
+): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+
+  // 1. Get total SKUs being monitored
+  const { data: activeItems } = await supabase
+    .from('inventory_items')
+    .select('sku')
+    .eq('status', 'active');
+
+  const totalSkus = activeItems?.length || 0;
+
+  // 2. Calculate stockout prevention
+  const predictedStockouts = recommendations.filter(r => r.urgency === 'critical').length;
+
+  const { data: actualStockouts } = await supabase
+    .from('inventory_items')
+    .select('sku')
+    .eq('stock', 0)
+    .gte('record_last_updated', today);
+
+  const actualStockoutCount = actualStockouts?.length || 0;
+
+  // 3. Calculate touchless PO rate
+  const { data: posToday } = await supabase
+    .from('purchase_orders')
+    .select('auto_generated, updated_by')
+    .gte('record_created', today);
+
+  const aiPOs = posToday?.filter(po => po.auto_generated).length || 0;
+  const editedPOs = posToday?.filter(po => po.auto_generated && po.updated_by).length || 0;
+
+  // 4. Calculate ETA accuracy
+  const { data: deliveriesToday } = await supabase
+    .from('po_delivery_performance')
+    .select('actual_delivery_date, expected_date')
+    .eq('actual_delivery_date', today);
+
+  const deliveriesWithin1Day = deliveriesToday?.filter((d: any) => {
+    const expected = new Date(d.expected_date);
+    const actual = new Date(d.actual_delivery_date);
+    const diff = Math.abs(actual.getTime() - expected.getTime()) / (1000 * 60 * 60 * 24);
+    return diff <= 1;
+  }).length || 0;
+
+  const totalDeliveries = deliveriesToday?.length || 0;
+
+  // 5. Calculate capital efficiency (Days Sales of Inventory)
+  const { data: inventoryValue } = await supabase
+    .from('inventory_items')
+    .select('stock, unit_cost, sales_last_30_days');
+
+  const totalValue = inventoryValue?.reduce((sum: number, item: any) =>
+    sum + (item.stock * item.unit_cost), 0) || 0;
+
+  const totalSales30d = inventoryValue?.reduce((sum: number, item: any) =>
+    sum + (item.sales_last_30_days || 0), 0) || 1;
+
+  const daysInventory = totalValue / (totalSales30d / 30);
+
+  // Calculate stockout prevention rate
+  const stockoutPreventionRate = predictedStockouts > 0
+    ? ((predictedStockouts - actualStockoutCount) / predictedStockouts) * 100
+    : 100;
+
+  // Calculate touchless PO rate
+  const touchlessPORate = aiPOs > 0 ? ((aiPOs - editedPOs) / aiPOs) * 100 : 0;
+
+  // Calculate ETA accuracy rate
+  const etaAccuracyRate = totalDeliveries > 0 ? (deliveriesWithin1Day / totalDeliveries) * 100 : 0;
+
+  // Calculate capital efficiency score
+  const capitalEfficiencyScore = daysInventory < 30 ? 100 : Math.max(0, 100 - (daysInventory - 30));
+
+  // Calculate overall trust score
+  const overallTrustScore = Math.round(
+    stockoutPreventionRate * 0.40 +
+    touchlessPORate * 0.30 +
+    etaAccuracyRate * 0.20 +
+    capitalEfficiencyScore * 0.10
+  );
+
+  // Record performance
+  await supabase.from('agent_performance_log').insert({
+    period_date: today,
+    total_skus_monitored: totalSkus,
+    predicted_stockouts: predictedStockouts,
+    actual_stockouts: actualStockoutCount,
+    stockouts_prevented: Math.max(0, predictedStockouts - actualStockoutCount),
+    total_pos_created: posToday?.length || 0,
+    ai_generated_pos: aiPOs,
+    human_edited_pos: editedPOs,
+    total_deliveries: totalDeliveries,
+    deliveries_within_1day: deliveriesWithin1Day,
+    total_inventory_value_usd: totalValue,
+    days_sales_of_inventory: daysInventory,
+    overall_trust_score: overallTrustScore,
+  });
 }
