@@ -57,408 +57,411 @@
             - img [ref=e63]
             - generic [ref=e66]: Settings
     - generic [ref=e67]:
-      - button "User menu for Alicia Admin (E2E)" [ref=e69] [cursor=pointer]:
-        - img "Alicia Admin (E2E)'s profile picture" [ref=e72]
-        - generic [ref=e74]: Alicia Admin (E2E)
-      - link "Open MuRPBot AI Assistant" [ref=e75] [cursor=pointer]:
+      - button "User menu for Alicia Admin (E2E), 1 alerts" [ref=e69] [cursor=pointer]:
+        - generic [ref=e70]:
+          - img "Alicia Admin (E2E)'s profile picture" [ref=e72]
+          - generic [ref=e74]: "1"
+        - generic [ref=e75]:
+          - generic [ref=e76]: Alicia Admin (E2E)
+          - generic [ref=e77]: 1 alert
+      - link "Open MuRPBot AI Assistant" [ref=e78] [cursor=pointer]:
         - /url: "#"
-        - img [ref=e78]
-        - generic [ref=e81]: MBMuRPBot
-  - generic [ref=e82]:
-    - banner [ref=e83]:
-      - generic [ref=e85]: Syncing · Dec 4, 9:25 PM
-    - main [ref=e86]:
-      - generic [ref=e87]:
-        - generic [ref=e88]:
-          - heading "Settings" [level=1] [ref=e89]
-          - paragraph [ref=e90]: Manage your account, company, and system configuration
-        - generic [ref=e91]:
-          - heading "Account & Profile" [level=2] [ref=e92]
-          - generic [ref=e93]:
-            - button "User Personalization" [ref=e94] [cursor=pointer]:
-              - generic [ref=e95]:
-                - img [ref=e97]
-                - heading "User Personalization" [level=2] [ref=e102]
-              - img [ref=e103]
-            - generic [ref=e106]:
-              - generic [ref=e107]:
-                - heading "Profile & Avatar" [level=3] [ref=e108]:
-                  - img [ref=e109]
+        - img [ref=e81]
+        - generic [ref=e84]: MBMuRPBot
+  - generic [ref=e85]:
+    - banner [ref=e86]:
+      - generic [ref=e88]: Syncing · Dec 10, 8:56 PM
+    - main [ref=e89]:
+      - generic [ref=e90]:
+        - generic [ref=e93]:
+          - generic [ref=e94]:
+            - img [ref=e96]
+            - heading "Settings" [level=1] [ref=e99]
+          - paragraph [ref=e100]: Manage your account, company, and system configuration
+        - generic [ref=e101]:
+          - heading "Account & Profile" [level=2] [ref=e102]
+          - generic [ref=e103]:
+            - button "User Personalization" [ref=e104] [cursor=pointer]:
+              - generic [ref=e105]:
+                - img [ref=e107]
+                - heading "User Personalization" [level=2] [ref=e112]
+              - img [ref=e113]
+            - generic [ref=e116]:
+              - generic [ref=e117]:
+                - heading "Profile & Avatar" [level=3] [ref=e118]:
+                  - img [ref=e119]
                   - text: Profile & Avatar
-                - generic [ref=e112]:
-                  - generic [ref=e113]:
-                    - generic [ref=e114]:
-                      - generic [ref=e115]: AA
-                      - button [ref=e116] [cursor=pointer]:
-                        - img [ref=e117]
-                    - generic [ref=e121]:
-                      - generic [ref=e122]: Avatar Color
-                      - generic [ref=e123]:
-                        - 'button "Select #3B82F6 color" [ref=e124] [cursor=pointer]'
-                        - 'button "Select #EF4444 color" [ref=e125] [cursor=pointer]'
-                        - 'button "Select #10B981 color" [ref=e126] [cursor=pointer]'
-                        - 'button "Select #F59E0B color" [ref=e127] [cursor=pointer]'
-                        - 'button "Select #8B5CF6 color" [ref=e128] [cursor=pointer]'
-                        - 'button "Select #EC4899 color" [ref=e129] [cursor=pointer]'
-                        - 'button "Select #06B6D4 color" [ref=e130] [cursor=pointer]'
-                        - 'button "Select #84CC16 color" [ref=e131] [cursor=pointer]'
-                  - generic [ref=e132]:
-                    - generic [ref=e133]:
+                - generic [ref=e122]:
+                  - generic [ref=e123]:
+                    - generic [ref=e124]:
+                      - generic [ref=e125]: AA
+                      - button [ref=e126] [cursor=pointer]:
+                        - img [ref=e127]
+                    - generic [ref=e131]:
+                      - generic [ref=e132]: Avatar Color
+                      - generic [ref=e133]:
+                        - 'button "Select #3B82F6 color" [ref=e134] [cursor=pointer]'
+                        - 'button "Select #EF4444 color" [ref=e135] [cursor=pointer]'
+                        - 'button "Select #10B981 color" [ref=e136] [cursor=pointer]'
+                        - 'button "Select #F59E0B color" [ref=e137] [cursor=pointer]'
+                        - 'button "Select #8B5CF6 color" [ref=e138] [cursor=pointer]'
+                        - 'button "Select #EC4899 color" [ref=e139] [cursor=pointer]'
+                        - 'button "Select #06B6D4 color" [ref=e140] [cursor=pointer]'
+                        - 'button "Select #84CC16 color" [ref=e141] [cursor=pointer]'
+                  - generic [ref=e142]:
+                    - generic [ref=e143]:
                       - text: Display Name
-                      - textbox "Display Name" [ref=e134]:
+                      - textbox "Display Name" [ref=e144]:
                         - /placeholder: Your display name
                         - text: Alicia Admin (E2E)
-                    - generic [ref=e135]:
+                    - generic [ref=e145]:
                       - text: Bio
-                      - textbox "Bio" [ref=e136]:
+                      - textbox "Bio" [ref=e146]:
                         - /placeholder: Tell us a bit about yourself...
-                      - paragraph [ref=e137]: 0/200 characters
-              - generic [ref=e138]:
-                - heading "Preferences" [level=3] [ref=e139]:
-                  - img [ref=e140]
+                      - paragraph [ref=e147]: 0/200 characters
+              - generic [ref=e148]:
+                - heading "Preferences" [level=3] [ref=e149]:
+                  - img [ref=e150]
                   - text: Preferences
-                - generic [ref=e143]:
-                  - generic [ref=e144]:
-                    - heading "Localization" [level=4] [ref=e145]:
-                      - img [ref=e146]
+                - generic [ref=e153]:
+                  - generic [ref=e154]:
+                    - heading "Localization" [level=4] [ref=e155]:
+                      - img [ref=e156]
                       - text: Localization
-                    - generic [ref=e149]:
+                    - generic [ref=e159]:
                       - text: Timezone
-                      - combobox "Timezone" [ref=e150]:
+                      - combobox "Timezone" [ref=e160]:
                         - option "Eastern Time (ET)" [selected]
                         - option "Central Time (CT)"
                         - option "Mountain Time (MT)"
                         - option "Pacific Time (PT)"
                         - option "UTC"
-                    - generic [ref=e151]:
+                    - generic [ref=e161]:
                       - text: Language
-                      - combobox "Language" [ref=e152]:
+                      - combobox "Language" [ref=e162]:
                         - option "English" [selected]
                         - option "Spanish"
                         - option "French"
                         - option "German"
-                  - generic [ref=e153]:
-                    - heading "Notifications" [level=4] [ref=e154]:
-                      - img [ref=e155]
+                  - generic [ref=e163]:
+                    - heading "Notifications" [level=4] [ref=e164]:
+                      - img [ref=e165]
                       - text: Notifications
-                    - generic [ref=e158]:
-                      - generic [ref=e159]:
-                        - generic [ref=e160]: Email notifications
-                        - checkbox "Email notifications" [checked] [ref=e161]
-                      - generic [ref=e162]:
-                        - generic [ref=e163]: Browser notifications
-                        - checkbox "Browser notifications" [checked] [ref=e164]
-                      - generic [ref=e165]:
-                        - generic [ref=e166]: Mobile notifications
-                        - checkbox "Mobile notifications" [ref=e167]
-              - button "Save Personalization" [ref=e169] [cursor=pointer]
-        - generic [ref=e170]:
-          - heading "Company & Team" [level=2] [ref=e171]
-          - button "Billing & Subscription" [ref=e173] [cursor=pointer]:
-            - generic [ref=e174]:
-              - img [ref=e176]
-              - heading "Billing & Subscription" [level=2] [ref=e179]
-            - img [ref=e180]
-          - button "User Management" [ref=e183] [cursor=pointer]:
+                    - generic [ref=e168]:
+                      - generic [ref=e169]:
+                        - generic [ref=e170]: Email notifications
+                        - checkbox "Email notifications" [checked] [ref=e171]
+                      - generic [ref=e172]:
+                        - generic [ref=e173]: Browser notifications
+                        - checkbox "Browser notifications" [checked] [ref=e174]
+                      - generic [ref=e175]:
+                        - generic [ref=e176]: Mobile notifications
+                        - checkbox "Mobile notifications" [ref=e177]
+              - button "Save Personalization" [ref=e179] [cursor=pointer]
+        - generic [ref=e180]:
+          - heading "Company & Team" [level=2] [ref=e181]
+          - button "Billing & Subscription" [ref=e183] [cursor=pointer]:
             - generic [ref=e184]:
               - img [ref=e186]
-              - heading "User Management" [level=2] [ref=e191]
-            - img [ref=e192]
-          - button "User Roles & Permissions" [ref=e195] [cursor=pointer]:
-            - generic [ref=e196]:
-              - img [ref=e198]
-              - heading "User Roles & Permissions" [level=2] [ref=e201]
+              - heading "Billing & Subscription" [level=2] [ref=e189]
+            - img [ref=e190]
+          - button "User Management" [ref=e193] [cursor=pointer]:
+            - generic [ref=e194]:
+              - img [ref=e196]
+              - heading "User Management" [level=2] [ref=e201]
             - img [ref=e202]
-          - button "Role Permissions Overview" [ref=e205] [cursor=pointer]:
+          - button "User Roles & Permissions" [ref=e205] [cursor=pointer]:
             - generic [ref=e206]:
               - img [ref=e208]
-              - heading "Role Permissions Overview" [level=2] [ref=e211]
+              - heading "User Roles & Permissions" [level=2] [ref=e211]
             - img [ref=e212]
-          - button "Task Delegation" [ref=e215] [cursor=pointer]:
+          - button "Role Permissions Overview" [ref=e215] [cursor=pointer]:
             - generic [ref=e216]:
               - img [ref=e218]
-              - heading "Task Delegation" [level=2] [ref=e223]
-            - img [ref=e224]
-          - button "Notification Preferences" [ref=e227] [cursor=pointer]:
-            - generic [ref=e228]:
-              - img [ref=e230]
-              - heading "Notification Preferences" [level=2] [ref=e233]
+              - heading "Role Permissions Overview" [level=2] [ref=e221]
+            - img [ref=e222]
+          - button "Task Delegation" [ref=e225] [cursor=pointer]:
+            - generic [ref=e226]:
+              - img [ref=e228]
+              - heading "Task Delegation" [level=2] [ref=e233]
             - img [ref=e234]
-        - generic [ref=e236]:
-          - heading "Data & Integrations" [level=2] [ref=e237]
-          - generic [ref=e238]:
-            - button "Google Workspace & Finale Inventory" [ref=e239] [cursor=pointer]:
-              - generic [ref=e240]:
-                - img [ref=e242]
-                - heading "Google Workspace & Finale Inventory" [level=2] [ref=e245]
-              - img [ref=e246]
-            - generic [ref=e249]:
+          - button "Notification Preferences" [ref=e237] [cursor=pointer]:
+            - generic [ref=e238]:
+              - img [ref=e240]
+              - heading "Notification Preferences" [level=2] [ref=e243]
+            - img [ref=e244]
+        - generic [ref=e246]:
+          - heading "Data & Integrations" [level=2] [ref=e247]
+          - generic [ref=e248]:
+            - button "Google Workspace & Finale Inventory" [ref=e249] [cursor=pointer]:
               - generic [ref=e250]:
-                - generic [ref=e251]:
-                  - generic [ref=e252]:
-                    - paragraph [ref=e253]: Data inputs
-                    - heading "Configure every pipeline in minutes" [level=3] [ref=e254]
-                    - paragraph [ref=e255]: Follow these tiles when you need the playbook. Collapse them to keep the Settings surface light.
-                  - button "Show guidance" [ref=e256] [cursor=pointer]
-                - paragraph [ref=e257]: Need the checklist? Expand the guidance when you’re ready to wire each pipeline.
-              - generic [ref=e259]:
-                - generic [ref=e260]:
-                  - generic [ref=e261]:
-                    - generic [ref=e262]:
-                      - img [ref=e263]
-                      - img [ref=e267]
-                      - img [ref=e270]
-                    - generic [ref=e273]:
-                      - heading "Google Workspace" [level=3] [ref=e274]
-                      - paragraph [ref=e275]: Connect to enable Calendar, Sheets, and Gmail
-                  - img [ref=e277]
-                - generic [ref=e282]:
-                  - heading "Connect Your Account" [level=4] [ref=e283]
-                  - paragraph [ref=e284]: Sign in with Google to enable Calendar sync, Sheets integration, and Gmail automation
-                  - button "Connect Google Workspace" [ref=e285] [cursor=pointer]
-              - generic [ref=e286]:
-                - generic [ref=e287]:
-                  - heading "Our API Credentials" [level=3] [ref=e288]
-                  - paragraph [ref=e289]: Allow external services to connect to this MRP instance.
-                  - generic [ref=e291]:
-                    - paragraph [ref=e292]: No API key is currently active.
-                    - button "Generate API Key" [ref=e293] [cursor=pointer]
-                  - button "View API Documentation →" [ref=e295] [cursor=pointer]
-                - generic [ref=e296]:
-                  - generic [ref=e297]:
-                    - img [ref=e298]
-                    - generic [ref=e301]:
-                      - heading "Purchasing Alerts (Slack)" [level=3] [ref=e302]
-                      - paragraph [ref=e303]: Send delivery + exception updates to the purchasing channel for validation before anyone else sees them.
-                  - generic [ref=e304]:
-                    - checkbox "Enable purchasing-only Slack notifications" [ref=e305]
-                    - text: Enable purchasing-only Slack notifications
-                  - paragraph [ref=e306]: Exceptions and deliveries stay in one designated channel. We’ll append the mention you provide on every alert.
+                - img [ref=e252]
+                - heading "Google Workspace & Finale Inventory" [level=2] [ref=e255]
+              - img [ref=e256]
+            - generic [ref=e259]:
+              - generic [ref=e260]:
+                - generic [ref=e261]:
+                  - generic [ref=e262]:
+                    - paragraph [ref=e263]: Data inputs
+                    - heading "Configure every pipeline in minutes" [level=3] [ref=e264]
+                    - paragraph [ref=e265]: Follow these tiles when you need the playbook. Collapse them to keep the Settings surface light.
+                  - button "Show guidance" [ref=e266] [cursor=pointer]
+                - paragraph [ref=e267]: Need the checklist? Expand the guidance when you’re ready to wire each pipeline.
+              - generic [ref=e269]:
+                - generic [ref=e270]:
+                  - generic [ref=e271]:
+                    - generic [ref=e272]:
+                      - img [ref=e273]
+                      - img [ref=e277]
+                      - img [ref=e280]
+                    - generic [ref=e283]:
+                      - heading "Google Workspace" [level=3] [ref=e284]
+                      - paragraph [ref=e285]: Connect to enable Calendar, Sheets, and Gmail
+                  - img [ref=e287]
+                - generic [ref=e292]:
+                  - heading "Connect Your Account" [level=4] [ref=e293]
+                  - paragraph [ref=e294]: Sign in with Google to enable Calendar sync, Sheets integration, and Gmail automation
+                  - button "Connect Google Workspace" [ref=e295] [cursor=pointer]
+              - generic [ref=e296]:
+                - generic [ref=e297]:
+                  - heading "Our API Credentials" [level=3] [ref=e298]
+                  - paragraph [ref=e299]: Allow external services to connect to this MRP instance.
+                  - generic [ref=e301]:
+                    - paragraph [ref=e302]: No API key is currently active.
+                    - button "Generate API Key" [ref=e303] [cursor=pointer]
+                  - button "View API Documentation →" [ref=e305] [cursor=pointer]
+                - generic [ref=e306]:
                   - generic [ref=e307]:
-                    - generic [ref=e308]:
-                      - generic [ref=e309]: Slack Webhook URL
-                      - textbox "https://hooks.slack.com/services/…" [disabled] [ref=e310]
-                      - paragraph [ref=e311]: Paste the incoming webhook URL for your purchasing channel.
-                    - generic [ref=e312]:
-                      - generic [ref=e313]: Channel label (optional)
-                      - 'textbox "e.g., #purchasing-tracking" [disabled] [ref=e314]'
-                  - generic [ref=e315]:
-                    - generic [ref=e316]:
-                      - generic [ref=e317]: Mention (optional)
-                      - textbox "@purchasing-managers" [disabled] [ref=e318]
-                      - paragraph [ref=e319]: Use Slack handle, user ID, or group mention to get instant validation.
-                    - generic [ref=e320]:
-                      - generic [ref=e321]: Tracked statuses
-                      - generic [ref=e322]:
-                        - generic [ref=e323]:
-                          - checkbox "Exception Carrier flagged an issue – needs purchasing review." [checked] [disabled] [ref=e324]
-                          - generic [ref=e325]:
-                            - generic [ref=e326]: Exception
+                    - img [ref=e308]
+                    - generic [ref=e311]:
+                      - heading "Purchasing Alerts (Slack)" [level=3] [ref=e312]
+                      - paragraph [ref=e313]: Send delivery + exception updates to the purchasing channel for validation before anyone else sees them.
+                  - generic [ref=e314]:
+                    - checkbox "Enable purchasing-only Slack notifications" [ref=e315]
+                    - text: Enable purchasing-only Slack notifications
+                  - paragraph [ref=e316]: Exceptions and deliveries stay in one designated channel. We’ll append the mention you provide on every alert.
+                  - generic [ref=e317]:
+                    - generic [ref=e318]:
+                      - generic [ref=e319]: Slack Webhook URL
+                      - textbox "https://hooks.slack.com/services/…" [disabled] [ref=e320]
+                      - paragraph [ref=e321]: Paste the incoming webhook URL for your purchasing channel.
+                    - generic [ref=e322]:
+                      - generic [ref=e323]: Channel label (optional)
+                      - 'textbox "e.g., #purchasing-tracking" [disabled] [ref=e324]'
+                  - generic [ref=e325]:
+                    - generic [ref=e326]:
+                      - generic [ref=e327]: Mention (optional)
+                      - textbox "@purchasing-managers" [disabled] [ref=e328]
+                      - paragraph [ref=e329]: Use Slack handle, user ID, or group mention to get instant validation.
+                    - generic [ref=e330]:
+                      - generic [ref=e331]: Tracked statuses
+                      - generic [ref=e332]:
+                        - generic [ref=e333]:
+                          - checkbox "Exception Carrier flagged an issue – needs purchasing review." [checked] [disabled] [ref=e334]
+                          - generic [ref=e335]:
+                            - generic [ref=e336]: Exception
                             - text: Carrier flagged an issue – needs purchasing review.
-                        - generic [ref=e327]:
-                          - checkbox "Delivered Confirm receiving + close the loop." [checked] [disabled] [ref=e328]
-                          - generic [ref=e329]:
-                            - generic [ref=e330]: Delivered
+                        - generic [ref=e337]:
+                          - checkbox "Delivered Confirm receiving + close the loop." [checked] [disabled] [ref=e338]
+                          - generic [ref=e339]:
+                            - generic [ref=e340]: Delivered
                             - text: Confirm receiving + close the loop.
-                        - generic [ref=e331]:
-                          - checkbox "Out for Delivery Heads-up that receiving should prep." [disabled] [ref=e332]
-                          - generic [ref=e333]:
-                            - generic [ref=e334]: Out for Delivery
+                        - generic [ref=e341]:
+                          - checkbox "Out for Delivery Heads-up that receiving should prep." [disabled] [ref=e342]
+                          - generic [ref=e343]:
+                            - generic [ref=e344]: Out for Delivery
                             - text: Heads-up that receiving should prep.
-                        - generic [ref=e335]:
-                          - checkbox "Shipped Vendor confirmed carrier acceptance." [disabled] [ref=e336]
-                          - generic [ref=e337]:
-                            - generic [ref=e338]: Shipped
+                        - generic [ref=e345]:
+                          - checkbox "Shipped Vendor confirmed carrier acceptance." [disabled] [ref=e346]
+                          - generic [ref=e347]:
+                            - generic [ref=e348]: Shipped
                             - text: Vendor confirmed carrier acceptance.
-                        - generic [ref=e339]:
-                          - checkbox "In Transit Optional progress pings while in route." [disabled] [ref=e340]
-                          - generic [ref=e341]:
-                            - generic [ref=e342]: In Transit
+                        - generic [ref=e349]:
+                          - checkbox "In Transit Optional progress pings while in route." [disabled] [ref=e350]
+                          - generic [ref=e351]:
+                            - generic [ref=e352]: In Transit
                             - text: Optional progress pings while in route.
-                  - paragraph [ref=e343]: Unable to load tracking notification settings.
-                  - generic [ref=e344]:
-                    - button "Reset" [ref=e345] [cursor=pointer]
-                    - button "Save Alert Settings" [ref=e346] [cursor=pointer]
-                  - paragraph [ref=e347]: Notifications stay locked to the purchasing department. Only the statuses you select will ever post to Slack.
-                - generic [ref=e348]:
-                  - generic [ref=e349]:
-                    - generic [ref=e350]:
-                      - heading "Finale Data Sync" [level=3] [ref=e351]
-                      - paragraph [ref=e352]: Trigger the Supabase auto-sync function on demand and monitor each data stream.
-                    - generic [ref=e353]:
-                      - button "Run Diagnostics" [ref=e354] [cursor=pointer]:
-                        - img [ref=e355]
+                  - generic [ref=e353]:
+                    - button "Reset" [ref=e354] [cursor=pointer]
+                    - button "Save Alert Settings" [ref=e355] [cursor=pointer]
+                  - paragraph [ref=e356]: Notifications stay locked to the purchasing department. Only the statuses you select will ever post to Slack.
+                - generic [ref=e357]:
+                  - generic [ref=e358]:
+                    - generic [ref=e359]:
+                      - heading "Finale Data Sync" [level=3] [ref=e360]
+                      - paragraph [ref=e361]: Trigger the Supabase auto-sync function on demand and monitor each data stream.
+                    - generic [ref=e362]:
+                      - button "Run Diagnostics" [ref=e363] [cursor=pointer]:
+                        - img [ref=e364]
                         - text: Run Diagnostics
-                      - button "Force Sync Now" [ref=e357] [cursor=pointer]:
-                        - img [ref=e358]
+                      - button "Force Sync Now" [ref=e366] [cursor=pointer]:
+                        - img [ref=e367]
                         - text: Force Sync Now
-                  - generic [ref=e363]:
-                    - generic [ref=e364]:
-                      - generic [ref=e365]:
-                        - generic [ref=e366]:
-                          - paragraph [ref=e367]: Vendors
-                          - paragraph [ref=e368]: Last update
-                        - generic [ref=e369]: Not synced
-                      - generic [ref=e370]:
-                        - paragraph [ref=e371]: "Last sync: Never synced"
-                        - paragraph [ref=e372]: "Records: 0"
-                        - paragraph [ref=e373]: No history
-                    - generic [ref=e374]:
-                      - generic [ref=e375]:
-                        - generic [ref=e376]:
-                          - paragraph [ref=e377]: Inventory
-                          - paragraph [ref=e378]: Last update
-                        - generic [ref=e379]: Not synced
-                      - generic [ref=e380]:
-                        - paragraph [ref=e381]: "Last sync: Never synced"
-                        - paragraph [ref=e382]: "Records: 0"
-                        - paragraph [ref=e383]: No history
-                    - generic [ref=e384]:
-                      - generic [ref=e385]:
-                        - generic [ref=e386]:
-                          - paragraph [ref=e387]: BOMs
-                          - paragraph [ref=e388]: Last update
-                        - generic [ref=e389]: Not synced
-                      - generic [ref=e390]:
-                        - paragraph [ref=e391]: "Last sync: Never synced"
-                        - paragraph [ref=e392]: "Records: 0"
-                        - paragraph [ref=e393]: No history
-                - generic [ref=e394]:
-                  - heading "External Integrations" [level=3] [ref=e395]
-                  - paragraph [ref=e396]: Connect to external services like supplier portals or shipping APIs.
-                  - generic [ref=e398]:
-                    - heading "Add New Connection" [level=4] [ref=e399]
-                    - generic [ref=e400]:
-                      - generic [ref=e401]:
-                        - img [ref=e402]
-                        - textbox "Service Name (e.g., Supplier Portal)" [ref=e405]
-                      - generic [ref=e406]:
-                        - img [ref=e407]
-                        - textbox "API URL" [ref=e410]
-                      - generic [ref=e411]:
-                        - img [ref=e412]
-                        - textbox "API Key / Bearer Token" [ref=e415]
-                      - button "Add Connection" [ref=e417] [cursor=pointer]
-                - generic [ref=e418]:
-                  - generic [ref=e419]:
-                    - generic [ref=e420]:
-                      - heading "Finale Inventory Integration" [level=3] [ref=e421]
-                      - paragraph [ref=e422]: Connect to sync inventory, vendors, and purchase orders automatically
-                    - generic [ref=e425]: Not Connected
-                  - generic [ref=e426]:
-                    - generic [ref=e427]:
-                      - generic [ref=e428]:
-                        - generic [ref=e429]: API Key *
-                        - textbox "Enter your Finale API key" [ref=e430]: I9TVdRvblFod
-                      - generic [ref=e431]:
-                        - generic [ref=e432]: API Secret *
-                        - generic [ref=e433]:
-                          - textbox "Enter your Finale API secret" [ref=e434]: 63h4TCI62vlQUYM3btEA7bycoIflGQUz
-                          - button [ref=e435] [cursor=pointer]:
-                            - img [ref=e436]
-                      - generic [ref=e439]:
-                        - generic [ref=e440]: Account Path *
-                        - textbox "account/12345/facility/67890" [ref=e441]: buildasoilorganics
-                        - paragraph [ref=e442]: "Format: account/YOUR_ACCOUNT_ID/facility/YOUR_FACILITY_ID"
-                    - button "Save & Test Connection" [ref=e444] [cursor=pointer]:
-                      - generic [ref=e445]:
-                        - img [ref=e446]
+                  - generic [ref=e372]:
+                    - generic [ref=e373]:
+                      - generic [ref=e374]:
+                        - generic [ref=e375]:
+                          - paragraph [ref=e376]: Vendors
+                          - paragraph [ref=e377]: Last update
+                        - generic [ref=e378]: Stale
+                      - generic [ref=e379]:
+                        - paragraph [ref=e380]: "Last sync: 2d ago"
+                        - paragraph [ref=e381]: "Records: 460"
+                        - paragraph [ref=e382]: 12/8/2025, 7:51:10 PM
+                    - generic [ref=e383]:
+                      - generic [ref=e384]:
+                        - generic [ref=e385]:
+                          - paragraph [ref=e386]: Inventory
+                          - paragraph [ref=e387]: Last update
+                        - generic [ref=e388]: Stale
+                      - generic [ref=e389]:
+                        - paragraph [ref=e390]: "Last sync: 2d ago"
+                        - paragraph [ref=e391]: "Records: 2591"
+                        - paragraph [ref=e392]: 12/8/2025, 7:51:10 PM
+                    - generic [ref=e393]:
+                      - generic [ref=e394]:
+                        - generic [ref=e395]:
+                          - paragraph [ref=e396]: BOMs
+                          - paragraph [ref=e397]: Last update
+                        - generic [ref=e398]: Stale
+                      - generic [ref=e399]:
+                        - paragraph [ref=e400]: "Last sync: 2d ago"
+                        - paragraph [ref=e401]: "Records: 0"
+                        - paragraph [ref=e402]: 12/8/2025, 7:51:10 PM
+                      - generic [ref=e403]:
+                        - img [ref=e404]
+                        - text: Last attempt failed
+                - generic [ref=e406]:
+                  - heading "External Integrations" [level=3] [ref=e407]
+                  - paragraph [ref=e408]: Connect to external services like supplier portals or shipping APIs.
+                  - generic [ref=e410]:
+                    - heading "Add New Connection" [level=4] [ref=e411]
+                    - generic [ref=e412]:
+                      - generic [ref=e413]:
+                        - img [ref=e414]
+                        - textbox "Service Name (e.g., Supplier Portal)" [ref=e417]
+                      - generic [ref=e418]:
+                        - img [ref=e419]
+                        - textbox "API URL" [ref=e422]
+                      - generic [ref=e423]:
+                        - img [ref=e424]
+                        - textbox "API Key / Bearer Token" [ref=e427]
+                      - button "Add Connection" [ref=e429] [cursor=pointer]
+                - generic [ref=e430]:
+                  - generic [ref=e431]:
+                    - generic [ref=e432]:
+                      - heading "Finale Inventory Integration" [level=3] [ref=e433]
+                      - paragraph [ref=e434]: Connect to sync inventory, vendors, and purchase orders automatically
+                    - generic [ref=e437]: Not Connected
+                  - generic [ref=e438]:
+                    - generic [ref=e439]:
+                      - generic [ref=e440]:
+                        - generic [ref=e441]: API Key *
+                        - textbox "Enter your Finale API key" [ref=e442]: I9TVdRvblFod
+                      - generic [ref=e443]:
+                        - generic [ref=e444]: API Secret *
+                        - generic [ref=e445]:
+                          - textbox "Enter your Finale API secret" [ref=e446]: 63h4TCI62vlQUYM3btEA7bycoIflGQUz
+                          - button [ref=e447] [cursor=pointer]:
+                            - img [ref=e448]
+                      - generic [ref=e451]:
+                        - generic [ref=e452]: Account Path *
+                        - textbox "account/12345/facility/67890" [ref=e453]: buildasoilorganics
+                        - paragraph [ref=e454]: "Format: account/YOUR_ACCOUNT_ID/facility/YOUR_FACILITY_ID"
+                    - button "Save & Test Connection" [ref=e456] [cursor=pointer]:
+                      - generic [ref=e457]:
+                        - img [ref=e458]
                         - text: Save & Test Connection
-                  - generic [ref=e449]:
-                    - heading "Where to find your credentials:" [level=4] [ref=e450]
-                    - list [ref=e451]:
-                      - listitem [ref=e452]: Log in to your Finale Inventory account
-                      - listitem [ref=e453]: Go to Settings → API Settings
-                      - listitem [ref=e454]: Generate or copy your API Key and Secret
-                      - listitem [ref=e455]: Find your Account Path in the URL or API documentation
-                - generic [ref=e456]:
-                  - generic [ref=e457]:
-                    - img [ref=e458]
-                    - generic [ref=e463]:
-                      - heading "AfterShip Tracking" [level=3] [ref=e464]
-                      - paragraph [ref=e465]: Poll carrier APIs via AfterShip to update PO tracking statuses automatically.
-                  - generic [ref=e466]:
-                    - generic [ref=e467]:
-                      - checkbox "Enable automatic tracking updates" [ref=e468]
+                  - generic [ref=e461]:
+                    - heading "Where to find your credentials:" [level=4] [ref=e462]
+                    - list [ref=e463]:
+                      - listitem [ref=e464]: Log in to your Finale Inventory account
+                      - listitem [ref=e465]: Go to Settings → API Settings
+                      - listitem [ref=e466]: Generate or copy your API Key and Secret
+                      - listitem [ref=e467]: Find your Account Path in the URL or API documentation
+                - generic [ref=e468]:
+                  - generic [ref=e469]:
+                    - img [ref=e470]
+                    - generic [ref=e475]:
+                      - heading "AfterShip Tracking" [level=3] [ref=e476]
+                      - paragraph [ref=e477]: Poll carrier APIs via AfterShip to update PO tracking statuses automatically.
+                  - generic [ref=e478]:
+                    - generic [ref=e479]:
+                      - checkbox "Enable automatic tracking updates" [ref=e480]
                       - text: Enable automatic tracking updates
-                    - generic [ref=e469]:
-                      - generic [ref=e470]: Default Carrier Slug
-                      - combobox [ref=e471]:
+                    - generic [ref=e481]:
+                      - generic [ref=e482]: Default Carrier Slug
+                      - combobox [ref=e483]:
                         - option "UPS" [selected]
                         - option "FedEx"
                         - option "USPS"
                         - option "DHL"
                         - option "Custom Carrier"
-                  - generic [ref=e472]:
-                    - generic [ref=e473]: AfterShip API Key
-                    - textbox "Enter AfterShip API key" [ref=e474]
-                    - generic [ref=e476]: No API key stored yet.
-                  - generic [ref=e477]:
-                    - button "Reset Changes" [ref=e478] [cursor=pointer]
-                    - button "Save AfterShip Settings" [ref=e479] [cursor=pointer]
-        - generic [ref=e480]:
-          - heading "Operations & Purchasing" [level=2] [ref=e481]
-          - button "Purchase Order Automation" [ref=e483] [cursor=pointer]:
-            - generic [ref=e484]:
-              - img [ref=e486]
-              - heading "Purchase Order Automation" [level=2] [ref=e489]
-            - img [ref=e490]
-          - button "Vendor Management" [ref=e493] [cursor=pointer]:
-            - generic [ref=e494]:
-              - img [ref=e496]
-              - heading "Vendor Management" [level=2] [ref=e501]
+                  - generic [ref=e484]:
+                    - generic [ref=e485]: AfterShip API Key
+                    - textbox "Enter AfterShip API key" [ref=e486]
+                    - generic [ref=e488]: No API key stored yet.
+                  - generic [ref=e489]:
+                    - button "Reset Changes" [ref=e490] [cursor=pointer]
+                    - button "Save AfterShip Settings" [ref=e491] [cursor=pointer]
+        - generic [ref=e492]:
+          - heading "Operations & Purchasing" [level=2] [ref=e493]
+          - button "Purchase Order Automation" [ref=e495] [cursor=pointer]:
+            - generic [ref=e496]:
+              - img [ref=e498]
+              - heading "Purchase Order Automation" [level=2] [ref=e501]
             - img [ref=e502]
-          - button "BOM Management" [ref=e505] [cursor=pointer]:
+          - button "Vendor Management" [ref=e505] [cursor=pointer]:
             - generic [ref=e506]:
               - img [ref=e508]
-              - heading "BOM Management" [level=2] [ref=e511]
-            - img [ref=e512]
-          - button "Inventory Search & Indexing" [ref=e515] [cursor=pointer]:
-            - generic [ref=e516]:
-              - img [ref=e518]
-              - heading "Inventory Search & Indexing" [level=2] [ref=e521]
-            - img [ref=e522]
-          - button "SOPs & Job Descriptions" [ref=e525] [cursor=pointer]:
-            - generic [ref=e526]:
-              - img [ref=e528]
-              - heading "SOPs & Job Descriptions" [level=2] [ref=e533]
+              - heading "Vendor Management" [level=2] [ref=e513]
+            - img [ref=e514]
+          - button "BOM Management" [ref=e517] [cursor=pointer]:
+            - generic [ref=e518]:
+              - img [ref=e520]
+              - heading "BOM Management" [level=2] [ref=e523]
+            - img [ref=e524]
+          - button "Inventory Search & Indexing" [ref=e527] [cursor=pointer]:
+            - generic [ref=e528]:
+              - img [ref=e530]
+              - heading "Inventory Search & Indexing" [level=2] [ref=e533]
             - img [ref=e534]
-        - generic [ref=e536]:
-          - heading "Communication" [level=2] [ref=e537]
-          - button "Email Configuration" [ref=e539] [cursor=pointer]:
-            - generic [ref=e540]:
-              - img [ref=e542]
-              - heading "Email Configuration" [level=2] [ref=e545]
+          - button "SOPs & Job Descriptions" [ref=e537] [cursor=pointer]:
+            - generic [ref=e538]:
+              - img [ref=e540]
+              - heading "SOPs & Job Descriptions" [level=2] [ref=e545]
             - img [ref=e546]
-          - button "Document Templates" [ref=e549] [cursor=pointer]:
-            - generic [ref=e550]:
-              - img [ref=e552]
-              - heading "Document Templates" [level=2] [ref=e555]
-            - img [ref=e556]
-        - generic [ref=e558]:
-          - heading "AI & Automation" [level=2] [ref=e559]
-          - button "AI Assistant & Provider" [ref=e561] [cursor=pointer]:
+        - generic [ref=e548]:
+          - heading "Communication" [level=2] [ref=e549]
+          - button "Email Configuration" [ref=e551] [cursor=pointer]:
+            - generic [ref=e552]:
+              - img [ref=e554]
+              - heading "Email Configuration" [level=2] [ref=e557]
+            - img [ref=e558]
+          - button "Document Templates" [ref=e561] [cursor=pointer]:
             - generic [ref=e562]:
               - img [ref=e564]
-              - heading "AI Assistant & Provider" [level=2] [ref=e567]
+              - heading "Document Templates" [level=2] [ref=e567]
             - img [ref=e568]
         - generic [ref=e570]:
-          - heading "Advanced & Support" [level=2] [ref=e571]
-          - button "MCP Server Configuration" [ref=e573] [cursor=pointer]:
+          - heading "AI & Automation" [level=2] [ref=e571]
+          - button "AI Assistant & Provider" [ref=e573] [cursor=pointer]:
             - generic [ref=e574]:
               - img [ref=e576]
-              - heading "MCP Server Configuration" [level=2] [ref=e579]
+              - heading "AI Assistant & Provider" [level=2] [ref=e579]
             - img [ref=e580]
-          - button "Help & Compliance" [ref=e583] [cursor=pointer]:
-            - generic [ref=e584]:
-              - img [ref=e586]
-              - heading "Help & Compliance" [level=2] [ref=e589]
-            - img [ref=e590]
-  - alert [ref=e593]:
-    - img [ref=e595]
-    - generic [ref=e599]: Failed to load AfterShip settings
-    - button "Close" [ref=e600] [cursor=pointer]:
-      - generic [ref=e601]: Close
+        - generic [ref=e582]:
+          - heading "Advanced & Support" [level=2] [ref=e583]
+          - button "MCP Server Configuration" [ref=e585] [cursor=pointer]:
+            - generic [ref=e586]:
+              - img [ref=e588]
+              - heading "MCP Server Configuration" [level=2] [ref=e591]
+            - img [ref=e592]
+          - button "Help & Compliance" [ref=e595] [cursor=pointer]:
+            - generic [ref=e596]:
+              - img [ref=e598]
+              - heading "Help & Compliance" [level=2] [ref=e601]
+            - img [ref=e602]
   - generic:
     - complementary:
       - generic:
@@ -538,13 +541,4 @@
           - img
           - text: Submit Requisition
         - paragraph: Routes to purchasing with your department + priority so nothing slips through the cracks.
-  - generic [ref=e604]:
-    - generic [ref=e605]:
-      - img [ref=e606]
-      - text: Spotlight
-    - heading "Two-factor in two clicks" [level=3] [ref=e609]
-    - paragraph [ref=e610]: Keep purchasing safe by pairing an authenticator app. Each user owns their own codes so OTPs stay compliant.
-    - generic [ref=e611]:
-      - button "Explore" [ref=e612] [cursor=pointer]
-      - button "Later" [ref=e613] [cursor=pointer]
 ```

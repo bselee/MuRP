@@ -57,96 +57,198 @@
             - img [ref=e63]
             - generic [ref=e66]: Settings
     - generic [ref=e67]:
-      - button "User menu for Alicia Admin (E2E)" [ref=e69] [cursor=pointer]:
-        - img "Alicia Admin (E2E)'s profile picture" [ref=e72]
-        - generic [ref=e74]: Alicia Admin (E2E)
-      - link "Open MuRPBot AI Assistant" [ref=e75] [cursor=pointer]:
+      - button "User menu for Alicia Admin (E2E), 1 alerts" [ref=e69] [cursor=pointer]:
+        - generic [ref=e70]:
+          - img "Alicia Admin (E2E)'s profile picture" [ref=e72]
+          - generic [ref=e74]: "1"
+        - generic [ref=e75]:
+          - generic [ref=e76]: Alicia Admin (E2E)
+          - generic [ref=e77]: 1 alert
+      - link "Open MuRPBot AI Assistant" [ref=e78] [cursor=pointer]:
         - /url: "#"
-        - img [ref=e78]
-        - generic [ref=e81]: MBMuRPBot
-  - generic [ref=e82]:
-    - banner [ref=e83]:
-      - generic [ref=e85]: Loading data…
-    - main [ref=e86]:
-      - generic [ref=e87]:
-        - generic [ref=e88]:
-          - heading "Purchase Orders" [level=1] [ref=e89]
-          - button "Create New PO" [ref=e91] [cursor=pointer]
+        - img [ref=e81]
+        - generic [ref=e84]: MBMuRPBot
+  - generic [ref=e85]:
+    - banner [ref=e86]:
+      - generic [ref=e88]: Syncing · Dec 10, 8:55 PM
+    - main [ref=e89]:
+      - generic [ref=e90]:
         - generic [ref=e92]:
           - generic [ref=e93]:
-            - generic [ref=e94]:
-              - paragraph [ref=e95]: Purchasing Command Center
-              - paragraph [ref=e96]: Approvals, vendor comms, and tracking health at a glance.
-            - generic [ref=e97]: "Follow-up backlog: 0"
-          - generic [ref=e98]:
-            - button "Manager Review 0 Awaiting department approval" [ref=e99] [cursor=pointer]:
-              - paragraph [ref=e100]: Manager Review
-              - paragraph [ref=e101]: "0"
-              - paragraph [ref=e102]: Awaiting department approval
-            - button "Ops Review 0 Strategic buys waiting on Ops" [ref=e103] [cursor=pointer]:
-              - paragraph [ref=e104]: Ops Review
-              - paragraph [ref=e105]: "0"
-              - paragraph [ref=e106]: Strategic buys waiting on Ops
-            - button "Ready for PO Build 0 Fully approved requisitions" [ref=e107] [cursor=pointer]:
-              - paragraph [ref=e108]: Ready for PO Build
-              - paragraph [ref=e109]: "0"
-              - paragraph [ref=e110]: Fully approved requisitions
-            - button "Tracking Missing 0 0 vendor nudges queued" [ref=e111] [cursor=pointer]:
-              - paragraph [ref=e112]: Tracking Missing
-              - paragraph [ref=e113]: "0"
-              - paragraph [ref=e114]: 0 vendor nudges queued
-          - generic [ref=e115]:
-            - generic [ref=e116]:
-              - generic [ref=e117]:
-                - paragraph [ref=e118]: Requests in Review
-                - button "Open queue →" [ref=e119] [cursor=pointer]
-              - paragraph [ref=e120]: No escalations — requisitions are flowing smoothly.
-              - generic [ref=e121]:
-                - paragraph [ref=e122]: Ready for PO build
-                - paragraph [ref=e123]: No requisitions are staged for PO creation yet.
-            - generic [ref=e124]:
-              - generic [ref=e125]:
-                - paragraph [ref=e126]: Logistics Watchlist
-                - button "Update tracking →" [ref=e127] [cursor=pointer]
-              - paragraph [ref=e128]: All active POs have tracking or confirmed ship dates.
-              - generic [ref=e129]: Keep vendors in the loop — add tracking or run nudges from the automation widget below.
-        - button "Internal Requisitions" [ref=e132] [cursor=pointer]:
-          - heading "Internal Requisitions" [level=2] [ref=e133]
-          - img [ref=e134]
-        - paragraph [ref=e137]: Loading reorder queue...
-        - generic [ref=e138]:
-          - generic [ref=e139]:
-            - paragraph [ref=e140]: Follow-up Automation
-            - paragraph [ref=e141]: "Gmail nudges reuse the original thread so vendors reply with tracking only. Backlog: 0 POs waiting on details."
-          - generic [ref=e142]:
-            - button "Nudge Vendors" [ref=e143] [cursor=pointer]
-            - generic [ref=e144]: Configure templates in Settings → Follow-up Rules.
-        - paragraph [ref=e147]: Loading tracking data…
-        - generic [ref=e149]:
-          - img [ref=e150]
-          - paragraph [ref=e153]: Loading autonomous controls...
-        - generic [ref=e155]:
-          - img [ref=e156]
-          - paragraph [ref=e159]: Loading approval requests...
-        - paragraph [ref=e161]: Loading draft POs...
-        - generic [ref=e162]:
-          - generic [ref=e163]:
-            - generic [ref=e164]:
-              - heading "Purchase Orders" [level=2] [ref=e165]
-              - generic [ref=e166]: 0 of 0 (last 2 weeks)
-            - button "Show All POs" [ref=e167] [cursor=pointer]:
-              - img [ref=e168]
-              - text: Show All POs
-          - generic [ref=e171]:
-            - img [ref=e173]
-            - heading "No Purchase Orders Yet" [level=3] [ref=e176]
-            - paragraph [ref=e177]: Get started by creating a purchase order manually or importing from your Finale inventory system.
-            - generic [ref=e178]:
-              - button "Create Purchase Order" [ref=e179] [cursor=pointer]:
-                - img [ref=e180]
+            - heading "Purchase Orders" [level=1] [ref=e95]
+            - paragraph [ref=e96]: Manage purchase orders, requisitions, and vendor communications
+          - button "Create New PO" [ref=e98] [cursor=pointer]
+        - generic [ref=e100] [cursor=pointer]:
+          - generic [ref=e101]:
+            - img [ref=e102]
+            - generic [ref=e104]:
+              - paragraph [ref=e105]: Purchasing Command Center
+              - paragraph [ref=e106]: Approvals, vendor comms, and tracking health at a glance.
+          - generic [ref=e107]: "Follow-up backlog: 0"
+        - button "Internal Requisitions" [ref=e110] [cursor=pointer]:
+          - heading "Internal Requisitions" [level=2] [ref=e113]
+          - img [ref=e114]
+        - generic [ref=e118] [cursor=pointer]:
+          - img [ref=e119]
+          - generic [ref=e121]:
+            - paragraph [ref=e122]: PO Automation & Controls
+            - paragraph [ref=e123]: 0 POs awaiting follow-up • Autonomous shipping & pricing updates
+        - generic [ref=e125]:
+          - img [ref=e126]
+          - generic [ref=e129]:
+            - heading "No Pending Approvals" [level=3] [ref=e130]
+            - paragraph [ref=e131]: All autonomous updates are being processed automatically.
+        - generic [ref=e132]:
+          - button "🤖 Agent Command Center" [ref=e133] [cursor=pointer]:
+            - heading "🤖 Agent Command Center" [level=2] [ref=e136]
+            - img [ref=e137]
+          - generic [ref=e140]:
+            - generic [ref=e141]:
+              - heading "No Data Available" [level=3] [ref=e142]
+              - paragraph [ref=e143]: Trust Score data will be available after the first nightly scan runs.
+            - generic [ref=e144]:
+              - heading "📢 Active Alerts" [level=3] [ref=e145]
+              - generic [ref=e146]:
+                - generic [ref=e147]:
+                  - heading "PO Delay Alerts" [level=2] [ref=e148]
+                  - generic [ref=e149]:
+                    - generic [ref=e150]: 0 Critical
+                    - generic [ref=e151]: 0 High
+                    - generic [ref=e152]: 0 Medium
+                - generic [ref=e153]:
+                  - generic [ref=e154]: ✅
+                  - generic [ref=e155]: No Active Alerts
+                  - generic [ref=e156]: All purchase orders are on track. The Air Traffic Controller is monitoring for delays.
+            - generic [ref=e157]:
+              - heading "📊 Vendor Intelligence" [level=3] [ref=e158]
+              - generic [ref=e159]: No vendor performance data available yet.
+        - generic [ref=e160]:
+          - generic [ref=e161]:
+            - generic [ref=e162]:
+              - heading "📦 Finale Purchase Orders" [level=2] [ref=e163]
+              - generic [ref=e164]: 5 total
+              - generic [ref=e165]: (Last 12 months)
+            - generic [ref=e166]:
+              - generic [ref=e167]:
+                - button "All" [ref=e168] [cursor=pointer]
+                - button "Committed" [ref=e169] [cursor=pointer]
+                - button "Pending" [ref=e170] [cursor=pointer]
+                - button "Received" [ref=e171] [cursor=pointer]
+              - button "Z-A ↓" [ref=e172] [cursor=pointer]
+              - button "🚫 Dropship Hidden" [ref=e173] [cursor=pointer]
+              - button "12 Months" [ref=e174] [cursor=pointer]
+              - generic [ref=e175]: Synced from Finale API
+          - generic [ref=e176]:
+            - generic [ref=e179] [cursor=pointer]:
+              - generic [ref=e180]:
+                - generic [ref=e181]:
+                  - generic [ref=e182]: "PO #4320-DropshipPO"
+                  - generic [ref=e183]: Rootwise Soil Dynamics
+                - generic [ref=e184]: Completed
+              - generic [ref=e185]:
+                - generic [ref=e186]:
+                  - generic [ref=e187]: Order Date
+                  - generic [ref=e188]: 11/21/2025
+                - generic [ref=e189]:
+                  - generic [ref=e190]: Expected
+                  - generic [ref=e191]: TBD
+                - generic [ref=e192]:
+                  - generic [ref=e193]: $675.00
+                  - generic [ref=e194]: 1 items • 1 units
+                - img [ref=e195]
+            - generic [ref=e199] [cursor=pointer]:
+              - generic [ref=e200]:
+                - generic [ref=e201]:
+                  - generic [ref=e202]: "PO #4157-DropshipPO"
+                  - generic [ref=e203]: Rootwise Soil Dynamics
+                - generic [ref=e204]: Completed
+              - generic [ref=e205]:
+                - generic [ref=e206]:
+                  - generic [ref=e207]: Order Date
+                  - generic [ref=e208]: 8/18/2025
+                - generic [ref=e209]:
+                  - generic [ref=e210]: Expected
+                  - generic [ref=e211]: TBD
+                - generic [ref=e212]:
+                  - generic [ref=e213]: $1.00
+                  - generic [ref=e214]: 2 items • 3 units
+                - img [ref=e215]
+            - generic [ref=e219] [cursor=pointer]:
+              - generic [ref=e220]:
+                - generic [ref=e221]:
+                  - generic [ref=e222]: "PO #4150-DropshipPO"
+                  - generic [ref=e223]: Rootwise Soil Dynamics
+                - generic [ref=e224]: Completed
+              - generic [ref=e225]:
+                - generic [ref=e226]:
+                  - generic [ref=e227]: Order Date
+                  - generic [ref=e228]: 8/15/2025
+                - generic [ref=e229]:
+                  - generic [ref=e230]: Expected
+                  - generic [ref=e231]: TBD
+                - generic [ref=e232]:
+                  - generic [ref=e233]: $1.00
+                  - generic [ref=e234]: 1 items • 2 units
+                - img [ref=e235]
+            - generic [ref=e239] [cursor=pointer]:
+              - generic [ref=e240]:
+                - generic [ref=e241]:
+                  - generic [ref=e242]: "PO #3492-DropshipPO"
+                  - generic [ref=e243]: Rootwise Soil Dynamics
+                - generic [ref=e244]: Completed
+              - generic [ref=e245]:
+                - generic [ref=e246]:
+                  - generic [ref=e247]: Order Date
+                  - generic [ref=e248]: 2/26/2025
+                - generic [ref=e249]:
+                  - generic [ref=e250]: Expected
+                  - generic [ref=e251]: TBD
+                - generic [ref=e252]:
+                  - generic [ref=e253]: $8.00
+                  - generic [ref=e254]: 3 items • 16 units
+                - img [ref=e255]
+            - generic [ref=e259] [cursor=pointer]:
+              - generic [ref=e260]:
+                - generic [ref=e261]:
+                  - generic [ref=e262]: "PO ##1258-DropshipPO"
+                  - generic [ref=e263]: AC Infinity Inc.
+                - generic [ref=e264]: Completed
+              - generic [ref=e265]:
+                - generic [ref=e266]:
+                  - generic [ref=e267]: Order Date
+                  - generic [ref=e268]: 2/3/2025
+                - generic [ref=e269]:
+                  - generic [ref=e270]: Expected
+                  - generic [ref=e271]: TBD
+                - generic [ref=e272]:
+                  - generic [ref=e273]: $75.54
+                  - generic [ref=e274]: 1 items • 1 units
+                - img [ref=e275]
+        - generic [ref=e277]:
+          - generic [ref=e279]:
+            - generic [ref=e280]:
+              - heading "Internal Purchase Orders" [level=2] [ref=e281]
+              - generic [ref=e282]: 0 active
+            - generic [ref=e283]:
+              - generic [ref=e284]:
+                - button "Active" [ref=e285] [cursor=pointer]
+                - button "Committed" [ref=e286] [cursor=pointer]
+                - button "Received" [ref=e287] [cursor=pointer]
+                - button "Cancelled" [ref=e288] [cursor=pointer]
+                - button "All" [ref=e289] [cursor=pointer]
+              - button "All Time" [ref=e290] [cursor=pointer]:
+                - img [ref=e291]
+                - text: All Time
+          - generic [ref=e294]:
+            - img [ref=e296]
+            - heading "No Purchase Orders Yet" [level=3] [ref=e299]
+            - paragraph [ref=e300]: Get started by creating a purchase order manually or importing from your Finale inventory system.
+            - generic [ref=e301]:
+              - button "Create Purchase Order" [ref=e302] [cursor=pointer]:
+                - img [ref=e303]
                 - text: Create Purchase Order
-              - button "Import from Finale" [ref=e183] [cursor=pointer]:
-                - img [ref=e184]
+              - button "Import from Finale" [ref=e306] [cursor=pointer]:
+                - img [ref=e307]
                 - text: Import from Finale
   - generic:
     - complementary:
