@@ -28,6 +28,7 @@ import QuickRequestDrawer from './components/QuickRequestDrawer';
 import OnboardingChecklist from './components/OnboardingChecklist';
 import LoadingOverlay from './components/LoadingOverlay';
 import ProductPage from './pages/ProductPage';
+import { AgentCommandCenter } from './components/admin/AgentCommandCenter';
 // import BuildBlockerModal from './components/BuildBlockerModal';
 import { supabase } from './lib/supabase/client';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
@@ -67,39 +68,39 @@ import {
 } from './hooks/useSupabaseMutations';
 import { checkBuildBlockers } from './services/approvalService';
 import {
-    mockHistoricalSales,
-    mockWatchlist,
-    defaultAiConfig,
-    mockArtworkFolders,
-    mockVendors,
-    mockInventory,
-    mockBOMs,
+  mockHistoricalSales,
+  mockWatchlist,
+  defaultAiConfig,
+  mockArtworkFolders,
+  mockVendors,
+  mockInventory,
+  mockBOMs,
 } from './types';
 import type {
-    BillOfMaterials,
-    InventoryItem,
-    Vendor,
-    PurchaseOrder,
-    HistoricalSale,
-    BuildOrder,
-    User,
-    InternalRequisition,
-    RequisitionItem,
-    ExternalConnection,
-    GmailConnection,
-    Artwork,
-    WatchlistItem,
-    AiConfig,
-    ArtworkFolder,
-    AiSettings,
-    CreatePurchaseOrderInput,
-    POTrackingStatus,
-    RequisitionRequestOptions,
-    QuickRequestDefaults,
-    BomRevisionRequestOptions,
-    GuidedLaunchState,
-    ArtworkShareEvent,
-    CompanyEmailSettings,
+  BillOfMaterials,
+  InventoryItem,
+  Vendor,
+  PurchaseOrder,
+  HistoricalSale,
+  BuildOrder,
+  User,
+  InternalRequisition,
+  RequisitionItem,
+  ExternalConnection,
+  GmailConnection,
+  Artwork,
+  WatchlistItem,
+  AiConfig,
+  ArtworkFolder,
+  AiSettings,
+  CreatePurchaseOrderInput,
+  POTrackingStatus,
+  RequisitionRequestOptions,
+  QuickRequestDefaults,
+  BomRevisionRequestOptions,
+  GuidedLaunchState,
+  ArtworkShareEvent,
+  CompanyEmailSettings,
 } from './types';
 import { getDefaultAiSettings } from './services/tokenCounter';
 import { getGoogleAuthService } from './services/googleAuthService';
@@ -117,7 +118,7 @@ import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amaz
 import { initializeFinaleAutoSync } from './services/finaleAutoSync';
 import { triggerPOSync } from './services/purchaseOrderSyncService';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page' | 'Agent Command Center';
 
 export type ToastInfo = {
   id: number;
@@ -163,7 +164,7 @@ const AppShell: React.FC = () => {
     provider: 'resend',
     workspaceMailbox: undefined,
   });
-  
+
   const {
     isOpen: isAiAssistantOpen,
     open: openAiAssistant,
@@ -186,12 +187,12 @@ const AppShell: React.FC = () => {
   const [guidedLaunchState, setGuidedLaunchState] = useState<GuidedLaunchState | null>(null);
   const [isShipmentReviewModalOpen, setIsShipmentReviewModalOpen] = useState(false);
   const [shipmentReviewPoId, setShipmentReviewPoId] = useState<string | null>(null);
-  
+
   // Build blocker state
   const [showBuildBlockerModal, setShowBuildBlockerModal] = useState(false);
   const [pendingBuildBlockReason, setPendingBuildBlockReason] = useState<any>(null);
   const [pendingBuildOrder, setPendingBuildOrder] = useState<any>(null);
-  
+
   const navigateToPage = useCallback((nextPage: Page) => {
     setCurrentPage(nextPage);
 
@@ -210,6 +211,7 @@ const AppShell: React.FC = () => {
       'Projects': '/projects',
       'Label Scanner': '/label-scanner',
       'Product Page': '/product',
+      'Agent Command Center': '/admin/agents',
     };
 
     const path = pageToPath[nextPage] || '/';
@@ -491,6 +493,7 @@ const AppShell: React.FC = () => {
         '/labels': 'Label Scanner',
         '/projects': 'Projects',
         '/product': 'Product Page',
+        '/admin/agents': 'Agent Command Center',
       };
       const initialPage = pathToPage[path] ?? 'Dashboard';
       setCurrentPage(initialPage);
@@ -510,6 +513,7 @@ const AppShell: React.FC = () => {
         'Projects': '/projects',
         'Label Scanner': '/label-scanner',
         'Product Page': '/product',
+        'Agent Command Center': '/admin/agents',
       };
       const initialPath = pageToPath[initialPage] || '/';
       window.history.replaceState({ page: initialPage }, '', initialPath + search);
@@ -529,14 +533,14 @@ const AppShell: React.FC = () => {
 
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
-        
+
         // If email is confirmed, user already set password during signup
         if (authUser?.email_confirmed_at) {
           await supabase
             .from('user_profiles')
             .update({ onboarding_complete: true })
             .eq('id', currentUser.id);
-          
+
           await refreshProfile();
         }
       } catch (err) {
@@ -646,7 +650,7 @@ const AppShell: React.FC = () => {
     addToast(`Goodbye, ${currentUser?.name ?? 'MuRP user'}.`, 'info');
     await authSignOut();
   };
-  
+
   const generateOrderId = () => {
     const now = new Date();
     const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
@@ -702,7 +706,7 @@ const AppShell: React.FC = () => {
       onOrderDelta: item.quantity,
     }));
     const inventoryResult = await batchUpdateInventory(inventoryUpdates);
-    
+
     // Update requisitions if linked
     if (requisitionIds && requisitionIds.length > 0) {
       await updateMultipleRequisitions(requisitionIds, 'Fulfilled');
@@ -850,35 +854,35 @@ const AppShell: React.FC = () => {
   const handleCreatePoFromArtwork = (artworkIds: string[]) => {
     const artworkToBomMap = new Map<string, BillOfMaterials>();
     boms.forEach(bom => {
-        bom.artwork.forEach(art => {
-            if (artworkIds.includes(art.id)) {
-                artworkToBomMap.set(art.id, bom);
-            }
-        });
+      bom.artwork.forEach(art => {
+        if (artworkIds.includes(art.id)) {
+          artworkToBomMap.set(art.id, bom);
+        }
+      });
     });
 
     const itemsByVendor = new Map<string, { sku: string; name: string; quantity: number; unitCost: number }[]>();
 
     artworkIds.forEach(artId => {
-        const bom = artworkToBomMap.get(artId);
-        if (bom) {
-            const packagingComponents = bom.components.map(c => inventory.find(i => i.sku === c.sku)).filter(Boolean) as InventoryItem[];
-            packagingComponents.filter(pc => pc.category === 'Packaging').forEach(pc => {
-                const vendorItems = itemsByVendor.get(pc.vendorId) || [];
-                const existingItem = vendorItems.find(item => item.sku === pc.sku);
-                if(existingItem) {
-                    existingItem.quantity += 1; // Assume 1 unit of packaging per artwork selection for simplicity
-                } else {
-                    vendorItems.push({ sku: pc.sku, name: pc.name, quantity: 1, unitCost: pc.unitCost ?? 0 });
-                }
-                itemsByVendor.set(pc.vendorId, vendorItems);
-            });
-        }
+      const bom = artworkToBomMap.get(artId);
+      if (bom) {
+        const packagingComponents = bom.components.map(c => inventory.find(i => i.sku === c.sku)).filter(Boolean) as InventoryItem[];
+        packagingComponents.filter(pc => pc.category === 'Packaging').forEach(pc => {
+          const vendorItems = itemsByVendor.get(pc.vendorId) || [];
+          const existingItem = vendorItems.find(item => item.sku === pc.sku);
+          if (existingItem) {
+            existingItem.quantity += 1; // Assume 1 unit of packaging per artwork selection for simplicity
+          } else {
+            vendorItems.push({ sku: pc.sku, name: pc.name, quantity: 1, unitCost: pc.unitCost ?? 0 });
+          }
+          itemsByVendor.set(pc.vendorId, vendorItems);
+        });
+      }
     });
 
     const posToCreate: { vendorId: string; items: { sku: string; name: string; quantity: number; unitCost: number }[] }[] = [];
     itemsByVendor.forEach((items, vendorId) => {
-        posToCreate.push({ vendorId, items });
+      posToCreate.push({ vendorId, items });
     });
 
     if (!posToCreate.length) {
@@ -966,7 +970,7 @@ const AppShell: React.FC = () => {
     refetchBOMs();
     addToast(`Reverted ${bom.finishedSku} to REV ${targetRevision}.`, 'success');
   };
-  
+
   const handleCreateArtworkFolder = (name: string) => {
     const newFolder: ArtworkFolder = { id: `folder-${Date.now()}`, name };
     setArtworkFolders(prev => [...prev, newFolder]);
@@ -997,10 +1001,10 @@ const AppShell: React.FC = () => {
         ...(item.metadata ?? {}),
         ...(derivedAmazonMeta
           ? {
-              amazon: derivedAmazonMeta,
-              trackingEmail:
-                item.metadata?.trackingEmail ?? DEFAULT_AMAZON_TRACKING_EMAIL,
-            }
+            amazon: derivedAmazonMeta,
+            trackingEmail:
+              item.metadata?.trackingEmail ?? DEFAULT_AMAZON_TRACKING_EMAIL,
+          }
           : {}),
       };
 
@@ -1080,7 +1084,7 @@ const AppShell: React.FC = () => {
     }
 
     refetchRequisitions();
-    
+
     const label = newReq.alertOnly ? 'Alert' : 'Requisition';
     if (source === 'System') {
       addToast(`⚡ AI-Generated ${label} ${newReq.id} created! Auto-generated based on demand forecast. Pending approval.`, 'success');
@@ -1500,8 +1504,7 @@ const AppShell: React.FC = () => {
     } catch (error) {
       console.error('[App] Gmail connect error:', error);
       addToast(
-        `Failed to connect Google Workspace Gmail: ${
-          error instanceof Error ? error.message : 'Unknown error'
+        `Failed to connect Google Workspace Gmail: ${error instanceof Error ? error.message : 'Unknown error'
         }`,
         'error',
       );
@@ -1583,12 +1586,12 @@ const AppShell: React.FC = () => {
     setApiKey(newKey);
     addToast('New API Key generated successfully.', 'success');
   };
-  
+
   const revokeApiKey = () => {
     setApiKey(null);
     addToast('API Key has been revoked.', 'info');
   };
-  
+
   const handleInviteUser = async (email: string, role: User['role'], department: User['department']) => {
     try {
       const { error } = await supabase.functions.invoke('admin-invite', {
@@ -1685,25 +1688,25 @@ const AppShell: React.FC = () => {
   const pendingRequisitionCount = useMemo(() => {
     if (!currentUser) return 0;
     if (isOpsAdmin) {
-        return requisitions.filter(r => r.status === 'Pending' || r.status === 'OpsPending').length;
+      return requisitions.filter(r => r.status === 'Pending' || r.status === 'OpsPending').length;
     }
     if (currentUser.department === 'Operations') {
-        return requisitions.filter(r => r.status === 'OpsPending').length;
+      return requisitions.filter(r => r.status === 'OpsPending').length;
     }
     if (currentUser.role === 'Manager') {
-        return requisitions.filter(r => r.status === 'Pending' && r.department === currentUser.department).length;
+      return requisitions.filter(r => r.status === 'Pending' && r.department === currentUser.department).length;
     }
     return 0;
   }, [requisitions, currentUser, isOpsAdmin]);
-  
+
   const approvedRequisitionsForPoGen = useMemo(() => {
     if (!currentUser || !permissions.canManagePurchaseOrders) return [];
     const readyStatuses: InternalRequisition['status'][] = ['ManagerApproved', 'OpsApproved'];
     if (isOpsAdmin || currentUser.department === 'Purchasing') {
-        return requisitions.filter(r => readyStatuses.includes(r.status));
+      return requisitions.filter(r => readyStatuses.includes(r.status));
     }
     if (currentUser.role === 'Manager') {
-        return requisitions.filter(r => readyStatuses.includes(r.status) && r.department === currentUser.department);
+      return requisitions.filter(r => readyStatuses.includes(r.status) && r.department === currentUser.department);
     }
     return [];
   }, [requisitions, currentUser, permissions.canManagePurchaseOrders, isOpsAdmin]);
@@ -1720,12 +1723,12 @@ const AppShell: React.FC = () => {
 
   const renderPage = () => {
     if (!currentUser) return null;
-    
+
     switch (currentPage) {
       case 'Dashboard':
-        return <Dashboard 
-          inventory={inventory} 
-          boms={boms} 
+        return <Dashboard
+          inventory={inventory}
+          boms={boms}
           historicalSales={historicalSales}
           vendors={vendors}
           purchaseOrders={purchaseOrders}
@@ -1738,9 +1741,9 @@ const AppShell: React.FC = () => {
           aiConfig={aiConfig}
         />;
       case 'Inventory':
-        return <Inventory 
-          inventory={inventory} 
-          vendors={vendors} 
+        return <Inventory
+          inventory={inventory}
+          vendors={vendors}
           boms={boms}
           loading={inventoryLoading}
           onQuickRequest={openQuickRequestDrawer}
@@ -1758,42 +1761,42 @@ const AppShell: React.FC = () => {
           }}
         />;
       case 'Purchase Orders':
-        return <PurchaseOrders 
-                    purchaseOrders={purchaseOrders}
-                    finalePurchaseOrders={finalePurchaseOrders}
-                    vendors={vendors}
-                    inventory={inventory}
-                    onCreatePo={handleCreatePo}
-                    addToast={addToast}
-                    currentUser={currentUser}
-                    approvedRequisitions={approvedRequisitionsForPoGen}
-                    gmailConnection={gmailConnection}
-                    onSendEmail={handleSendPoEmail}
-                    onUpdateTracking={handleUpdatePoTracking}
-                    requisitions={requisitions}
-                    users={users}
-                    onApproveRequisition={handleApproveRequisition}
-                    onOpsApproveRequisition={handleOpsApproveRequisition}
-                    onRejectRequisition={handleRejectRequisition}
-                    onCreateRequisition={(items, options) => handleCreateRequisition(items, 'Manual', options)}
-                    onConnectGoogle={handleGmailConnect}
-                />;
+        return <PurchaseOrders
+          purchaseOrders={purchaseOrders}
+          finalePurchaseOrders={finalePurchaseOrders}
+          vendors={vendors}
+          inventory={inventory}
+          onCreatePo={handleCreatePo}
+          addToast={addToast}
+          currentUser={currentUser}
+          approvedRequisitions={approvedRequisitionsForPoGen}
+          gmailConnection={gmailConnection}
+          onSendEmail={handleSendPoEmail}
+          onUpdateTracking={handleUpdatePoTracking}
+          requisitions={requisitions}
+          users={users}
+          onApproveRequisition={handleApproveRequisition}
+          onOpsApproveRequisition={handleOpsApproveRequisition}
+          onRejectRequisition={handleRejectRequisition}
+          onCreateRequisition={(items, options) => handleCreateRequisition(items, 'Manual', options)}
+          onConnectGoogle={handleGmailConnect}
+        />;
       case 'Vendors':
         return <Vendors vendors={vendors} />;
       case 'Stock Intelligence':
-        return <StockIntelligence 
+        return <StockIntelligence
           inventory={inventory}
           vendors={vendors}
           purchaseOrders={purchaseOrders}
         />;
       case 'Production':
-        return <Production 
-          buildOrders={buildOrders} 
+        return <Production
+          buildOrders={buildOrders}
           boms={boms}
           inventory={inventory}
           vendors={vendors}
           purchaseOrders={purchaseOrders}
-          onCompleteBuildOrder={handleCompleteBuildOrder} 
+          onCompleteBuildOrder={handleCompleteBuildOrder}
           onCreateBuildOrder={handleCreateBuildOrder}
           onUpdateBuildOrder={handleUpdateBuildOrder}
           addToast={addToast}
@@ -1832,29 +1835,29 @@ const AppShell: React.FC = () => {
           }}
         />;
       case 'Artwork':
-        return <ArtworkPage 
-            boms={boms}
-            inventory={inventory}
-            vendors={vendors}
-            onAddArtwork={handleAddArtworkToBom}
-            onCreatePoFromArtwork={handleCreatePoFromArtwork}
-            onUpdateArtwork={handleUpdateArtwork}
-            initialFilter={artworkFilter}
-            onClearFilter={() => setArtworkFilter('')}
-            watchlist={watchlist}
-            aiConfig={aiConfig}
-            artworkFolders={artworkFolders}
-            onCreateArtworkFolder={handleCreateArtworkFolder}
-            currentUser={currentUser}
-            gmailConnection={gmailConnection}
-            addToast={addToast}
-            artworkShareHistory={artworkShareHistory}
-            onRecordArtworkShare={handleRecordArtworkShare}
-            onConnectGoogle={handleGmailConnect}
-            companyEmailSettings={companyEmailSettings}
+        return <ArtworkPage
+          boms={boms}
+          inventory={inventory}
+          vendors={vendors}
+          onAddArtwork={handleAddArtworkToBom}
+          onCreatePoFromArtwork={handleCreatePoFromArtwork}
+          onUpdateArtwork={handleUpdateArtwork}
+          initialFilter={artworkFilter}
+          onClearFilter={() => setArtworkFilter('')}
+          watchlist={watchlist}
+          aiConfig={aiConfig}
+          artworkFolders={artworkFolders}
+          onCreateArtworkFolder={handleCreateArtworkFolder}
+          currentUser={currentUser}
+          gmailConnection={gmailConnection}
+          addToast={addToast}
+          artworkShareHistory={artworkShareHistory}
+          onRecordArtworkShare={handleRecordArtworkShare}
+          onConnectGoogle={handleGmailConnect}
+          companyEmailSettings={companyEmailSettings}
         />;
       case 'API Documentation':
-          return <ApiDocs />;
+        return <ApiDocs />;
       case 'Label Scanner':
         return <ManualLabelScanner
           boms={boms}
@@ -1887,37 +1890,39 @@ const AppShell: React.FC = () => {
           addToast={addToast}
           onQuickRequest={openQuickRequestDrawer}
         />;
+      case 'Agent Command Center':
+        return <AgentCommandCenter />;
       case 'Settings':
         return <Settings
-            currentUser={currentUser}
-            aiConfig={aiConfig}
-            setAiConfig={setAiConfig}
-            aiSettings={aiSettings}
-            onUpdateAiSettings={handleUpdateAiSettings}
-            gmailConnection={gmailConnection}
-            onGmailConnect={handleGmailConnect}
-            onGmailDisconnect={handleGmailDisconnect}
-            apiKey={apiKey}
-            onGenerateApiKey={generateApiKey}
-            onRevokeApiKey={revokeApiKey}
-            addToast={addToast}
-            setCurrentPage={navigateToPage}
-            externalConnections={externalConnections}
-            onSetExternalConnections={setExternalConnections}
-            users={users}
-            onInviteUser={handleInviteUser}
-            onUpdateUser={handleUpdateUser}
-            onDeleteUser={handleDeleteUser}
-            inventory={inventory}
-            boms={boms}
-            vendors={vendors}
-            companyEmailSettings={companyEmailSettings}
-            onUpdateCompanyEmailSettings={setCompanyEmailSettings}
+          currentUser={currentUser}
+          aiConfig={aiConfig}
+          setAiConfig={setAiConfig}
+          aiSettings={aiSettings}
+          onUpdateAiSettings={handleUpdateAiSettings}
+          gmailConnection={gmailConnection}
+          onGmailConnect={handleGmailConnect}
+          onGmailDisconnect={handleGmailDisconnect}
+          apiKey={apiKey}
+          onGenerateApiKey={generateApiKey}
+          onRevokeApiKey={revokeApiKey}
+          addToast={addToast}
+          setCurrentPage={navigateToPage}
+          externalConnections={externalConnections}
+          onSetExternalConnections={setExternalConnections}
+          users={users}
+          onInviteUser={handleInviteUser}
+          onUpdateUser={handleUpdateUser}
+          onDeleteUser={handleDeleteUser}
+          inventory={inventory}
+          boms={boms}
+          vendors={vendors}
+          companyEmailSettings={companyEmailSettings}
+          onUpdateCompanyEmailSettings={setCompanyEmailSettings}
         />;
       default:
-        return <Dashboard 
-          inventory={inventory} 
-          boms={boms} 
+        return <Dashboard
+          inventory={inventory}
+          boms={boms}
           historicalSales={historicalSales}
           vendors={vendors}
           onCreateBuildOrder={handleCreateBuildOrder}
@@ -1977,7 +1982,7 @@ const AppShell: React.FC = () => {
   }
 
   if (!currentUser.onboardingComplete) {
-      return <EnhancedNewUserSetup user={currentUser} onSetupComplete={() => handleCompleteOnboarding(currentUser.id)} />;
+    return <EnhancedNewUserSetup user={currentUser} onSetupComplete={() => handleCompleteOnboarding(currentUser.id)} />;
   }
 
   const shellBackground = resolvedTheme === 'light'
@@ -1990,9 +1995,9 @@ const AppShell: React.FC = () => {
 
   return (
     <div className={`flex h-screen ${shellBackground} text-[var(--text-color)] transition-colors duration-300`}>
-      <Sidebar 
-        currentPage={currentPage} 
-        setCurrentPage={navigateToPage} 
+      <Sidebar
+        currentPage={currentPage}
+        setCurrentPage={navigateToPage}
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         currentUser={currentUser}
@@ -2002,7 +2007,7 @@ const AppShell: React.FC = () => {
         onOpenSettings={() => navigateToPage('Settings')}
         systemAlerts={systemAlerts}
       />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
           currentUser={currentUser}
@@ -2011,7 +2016,7 @@ const AppShell: React.FC = () => {
           showLogo={isSidebarCollapsed}
           devModeActive={permissions.isGodMode}
         />
-        
+
         <main
           data-surface="workspace"
           className={`workspace-surface flex-1 overflow-x-hidden overflow-y-auto ${mainBackground} p-4 sm:p-6 lg:p-8 pb-20 md:pb-8 transition-colors duration-300`}

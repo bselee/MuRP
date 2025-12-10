@@ -4,7 +4,7 @@ import React from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MuRPLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, UsersIcon, ChartBarIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MuRPLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, UsersIcon, ChartBarIcon, CpuChipIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
 import UserSettingsDropdown from './UserSettingsDropdown';
@@ -40,9 +40,8 @@ const NavItem: React.FC<{
             onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}
             aria-label={`Navigate to ${page}${notificationCount ? `, ${notificationCount} pending items` : ''}`}
             aria-current={currentPage === page ? 'page' : undefined}
-            className={`relative flex items-center p-2 text-base font-normal rounded-lg transition-colors duration-150 group border border-transparent ${
-                currentPage === page ? activeClass : inactiveClass
-            } ${isCollapsed ? 'justify-center' : ''}`}
+            className={`relative flex items-center p-2 text-base font-normal rounded-lg transition-colors duration-150 group border border-transparent ${currentPage === page ? activeClass : inactiveClass
+                } ${isCollapsed ? 'justify-center' : ''}`}
         >
             {icon}
             <span className={`ml-3 whitespace-nowrap transition-opacity duration-200 ${isCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>{page}</span>
@@ -62,7 +61,7 @@ const NavItem: React.FC<{
 );
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollapsed, onToggle, currentUser, pendingRequisitionCount, onOpenAiAssistant, onSignOut, onOpenSettings, systemAlerts = [] }) => {
-    
+
     const permissions = usePermissions();
     const { resolvedTheme } = useTheme();
     const isLight = resolvedTheme === 'light';
@@ -87,13 +86,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
     const tooltipClass = isLight
         ? 'bg-amber-900 text-amber-50 border border-amber-200 shadow-lg shadow-amber-900/20'
         : 'bg-gray-900 text-white border border-gray-600 shadow-xl shadow-black/40';
-    
+
     type NavItemConfig = { page: Page; icon: React.ReactNode; notificationKey?: 'pendingRequisitions'; adminOnly?: boolean; managerAndUp?: boolean; isVisible?: (input: { user: User }) => boolean };
 
     const navItems: NavItemConfig[] = [
         { page: 'Dashboard', icon: <HomeIcon className="w-6 h-6" /> },
         { page: 'Projects', icon: <Squares2X2Icon className="w-6 h-6" /> },
-        { 
+        {
             page: 'Purchase Orders',
             icon: <DocumentTextIcon className="w-6 h-6" />,
             managerAndUp: true,
@@ -108,7 +107,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
             }
         },
         { page: 'Production', icon: <WrenchScrewdriverIcon className="w-6 h-6" />, managerAndUp: true },
-        { 
+        {
             page: 'BOMs',
             icon: <BeakerIcon className="w-6 h-6" />,
             managerAndUp: true,
@@ -117,9 +116,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
         { page: 'Artwork', icon: <PhotoIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Inventory', icon: <PackageIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Inventory Intelligence', icon: <ChartBarIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Agent Command Center', icon: <CpuChipIcon className="w-6 h-6" />, adminOnly: true },
         { page: 'Settings', icon: <CogIcon className="w-6 h-6" />, adminOnly: true },
     ];
-    
+
     const getVisibleNavItems = () => {
         if (!currentUser) return [];
         const adminLike = currentUser.role === 'Admin' || currentUser.department === 'Operations';
@@ -164,7 +164,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
                         <div className={`text-2xl font-bold tracking-tight whitespace-nowrap ${isLight ? 'text-amber-900' : 'text-white'}`}>MuRP</div>
                     </>
                 )}
-                <Button 
+                <Button
                     onClick={onToggle}
                     aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                     aria-expanded={!isCollapsed}

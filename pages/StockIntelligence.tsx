@@ -17,13 +17,15 @@ import Button from '@/components/ui/Button';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import type { InventoryItem, Vendor, PurchaseOrder } from '../types';
-import { 
-  ChartBarIcon, 
-  AlertCircleIcon, 
-  TrendingUpIcon, 
+import PurchasingGuidanceDashboard from '../components/PurchasingGuidanceDashboard';
+import {
+  ChartBarIcon,
+  AlertCircleIcon,
+  TrendingUpIcon,
   CalendarIcon,
   DollarSignIcon,
-  UsersIcon
+  UsersIcon,
+  ClipboardIcon
 } from '../components/icons';
 import { usePermissions } from '../hooks/usePermissions';
 
@@ -55,7 +57,7 @@ interface VendorPerformance {
 
 const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendors, purchaseOrders }) => {
   const permissions = usePermissions();
-  const [activeTab, setActiveTab] = useState<'risks' | 'forecasts' | 'trends' | 'vendors' | 'budget'>('risks');
+  const [activeTab, setActiveTab] = useState<'guidance' | 'risks' | 'forecasts' | 'trends' | 'vendors' | 'budget'>('guidance');
   const [loading, setLoading] = useState(true);
   const [stockoutRisks, setStockoutRisks] = useState<StockoutRisk[]>([]);
   const [vendorPerformances, setVendorPerformances] = useState<VendorPerformance[]>([]);
@@ -65,18 +67,18 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
     const risks: StockoutRisk[] = [];
 
     inventory.forEach(item => {
-      const consumptionDaily = (item.salesLast30Days || 0) / 30;
-      
+      const consumptionDaily = (item.sales30Days || 0) / 30;
+
       if (consumptionDaily === 0) return;
 
       const availableStock = item.stock + (item.onOrder || 0);
       const daysUntilStockout = Math.floor(availableStock / consumptionDaily);
 
       // Calculate trend (comparing 30-day vs 90-day)
-      const trend30 = (item.salesLast30Days || 0) / 30;
-      const trend90 = (item.salesLast90Days || 0) / 90;
+      const trend30 = (item.sales30Days || 0) / 30;
+      const trend90 = (item.sales90Days || 0) / 90;
       const trendChange = trend30 - trend90;
-      
+
       let trendDirection: 'up' | 'down' | 'stable' = 'stable';
       if (trendChange > trend90 * 0.15) trendDirection = 'up';
       else if (trendChange < -trend90 * 0.15) trendDirection = 'down';
@@ -84,7 +86,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
       // Determine risk level
       const leadTime = item.leadTimeDays || 14;
       let riskLevel: 'critical' | 'high' | 'medium' | 'low';
-      
+
       if (daysUntilStockout <= 0) riskLevel = 'critical';
       else if (daysUntilStockout < leadTime * 0.5) riskLevel = 'critical';
       else if (daysUntilStockout < leadTime) riskLevel = 'high';
@@ -109,26 +111,26 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
 
     vendors.forEach(vendor => {
       const vendorPOs = purchaseOrders.filter(po => po.vendorId === vendor.id);
-      
+
       if (vendorPOs.length === 0) return;
 
       // On-time delivery rate
       const completedPOs = vendorPOs.filter(po => po.status === 'received' || po.status === 'Fulfilled');
       const onTimePOs = completedPOs.filter(po => {
-        if (!po.expectedDate || !po.actualReceiveDate) return false;
-        return new Date(po.actualReceiveDate) <= new Date(po.expectedDate);
+        if (!po.expectedDate || !po.receivedAt) return false;
+        return new Date(po.receivedAt) <= new Date(po.expectedDate);
       });
       const onTimeRate = completedPOs.length > 0 ? (onTimePOs.length / completedPOs.length) * 100 : 0;
 
       // Lead time accuracy
       const leadTimes = completedPOs
-        .filter(po => po.orderDate && po.actualReceiveDate)
+        .filter(po => po.orderDate && po.receivedAt)
         .map(po => {
           const ordered = new Date(po.orderDate);
-          const received = new Date(po.actualReceiveDate!);
+          const received = new Date(po.receivedAt!);
           return Math.floor((received.getTime() - ordered.getTime()) / (1000 * 60 * 60 * 24));
         });
-      
+
       const avgActualLeadTime = leadTimes.length > 0
         ? leadTimes.reduce((sum, lt) => sum + lt, 0) / leadTimes.length
         : 0;
@@ -232,7 +234,9 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
       {/* Tabs */}
       <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
         <div className="flex border-b border-gray-700">
+
           {[
+            { id: 'guidance', label: 'Purchasing Guidance', icon: ClipboardIcon },
             { id: 'risks', label: 'Stockout Risks', icon: AlertCircleIcon },
             { id: 'forecasts', label: 'Forecast Accuracy', icon: ChartBarIcon },
             { id: 'trends', label: 'Trends & Patterns', icon: TrendingUpIcon },
@@ -244,11 +248,10 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
               <Button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex-1 px-4 py-1 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-                  activeTab === tab.id
-                    ? 'bg-accent-500 text-white'
-                    : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
-                }`}
+                className={`flex-1 px-4 py-1 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${activeTab === tab.id
+                  ? 'bg-accent-500 text-white'
+                  : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                  }`}
               >
                 <Icon className="w-4 h-4" />
                 {tab.label}
@@ -258,11 +261,17 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
         </div>
 
         <div className="p-6">
+          {/* Purchasing Guidance Tab */}
+          {activeTab === 'guidance' && (
+            <div className="space-y-4">
+              <PurchasingGuidanceDashboard />
+            </div>
+          )}
           {/* Stockout Risks Tab */}
           {activeTab === 'risks' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Stockout Risk Analysis</h3>
-              
+
               {stockoutRisks.length === 0 ? (
                 <p className="text-gray-400 text-center py-8">No stockout risks detected</p>
               ) : (
@@ -283,11 +292,10 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                           <td className="px-4 py-1 text-sm text-gray-300">{risk.sku}</td>
                           <td className="px-4 py-1 text-sm text-white font-medium">{risk.name}</td>
                           <td className="px-4 py-1 text-sm">
-                            <span className={`font-semibold ${
-                              risk.daysUntilStockout <= 0 ? 'text-red-400' :
+                            <span className={`font-semibold ${risk.daysUntilStockout <= 0 ? 'text-red-400' :
                               risk.daysUntilStockout < 7 ? 'text-orange-400' :
-                              'text-gray-300'
-                            }`}>
+                                'text-gray-300'
+                              }`}>
                               {risk.daysUntilStockout <= 0 ? 'OUT OF STOCK' : `${risk.daysUntilStockout} days`}
                             </span>
                           </td>
@@ -331,13 +339,13 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                   <div className="space-y-2">
                     {inventory
                       .filter(item => {
-                        const trend30 = (item.salesLast30Days || 0) / 30;
-                        const trend90 = (item.salesLast90Days || 0) / 90;
+                        const trend30 = (item.sales30Days || 0) / 30;
+                        const trend90 = (item.sales90Days || 0) / 90;
                         return trend30 > trend90 * 1.15;
                       })
                       .slice(0, 10)
                       .map(item => {
-                        const growth = ((((item.salesLast30Days || 0) / 30) / ((item.salesLast90Days || 0) / 90)) - 1) * 100;
+                        const growth = ((((item.sales30Days || 0) / 30) / ((item.sales90Days || 0) / 90)) - 1) * 100;
                         return (
                           <div key={item.sku} className="flex justify-between items-center">
                             <span className="text-sm text-gray-300">{item.name}</span>
@@ -353,13 +361,13 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                   <div className="space-y-2">
                     {inventory
                       .filter(item => {
-                        const trend30 = (item.salesLast30Days || 0) / 30;
-                        const trend90 = (item.salesLast90Days || 0) / 90;
+                        const trend30 = (item.sales30Days || 0) / 30;
+                        const trend90 = (item.sales90Days || 0) / 90;
                         return trend30 < trend90 * 0.85 && trend90 > 0;
                       })
                       .slice(0, 10)
                       .map(item => {
-                        const decline = ((((item.salesLast30Days || 0) / 30) / ((item.salesLast90Days || 0) / 90)) - 1) * 100;
+                        const decline = ((((item.sales30Days || 0) / 30) / ((item.sales90Days || 0) / 90)) - 1) * 100;
                         return (
                           <div key={item.sku} className="flex justify-between items-center">
                             <span className="text-sm text-gray-300">{item.name}</span>
@@ -377,7 +385,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           {activeTab === 'vendors' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Vendor Performance Scoring</h3>
-              
+
               {vendorPerformances.length === 0 ? (
                 <p className="text-gray-400 text-center py-8">No vendor performance data available yet</p>
               ) : (
@@ -394,7 +402,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                           <div className="text-xs text-gray-400">/ 100</div>
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs text-gray-400">On-Time Delivery</p>
@@ -416,11 +424,10 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                       {/* Reliability bar */}
                       <div className="mt-3 h-2 bg-gray-700 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${
-                            vp.reliabilityScore >= 80 ? 'bg-green-500' :
+                          className={`h-full rounded-full ${vp.reliabilityScore >= 80 ? 'bg-green-500' :
                             vp.reliabilityScore >= 60 ? 'bg-yellow-500' :
-                            'bg-red-500'
-                          }`}
+                              'bg-red-500'
+                            }`}
                           style={{ width: `${vp.reliabilityScore}%` }}
                         />
                       </div>
