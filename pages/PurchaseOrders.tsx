@@ -110,10 +110,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [expandedFinalePO, setExpandedFinalePO] = useState<string | null>(null);
     const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('active');
-    const [finalePOStatusFilter, setFinalePOStatusFilter] = useState<string>('all');
-    const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default newest first
-    const [showAllFinaleHistory, setShowAllFinaleHistory] = useState(false); // Default: 12 months only
-    const [hideDropship, setHideDropship] = useState(true); // Default: hide dropship POs
     const [isAgentSettingsOpen, setIsAgentSettingsOpen] = useState(false);
 
     const { resolvedTheme } = useTheme();
@@ -660,133 +656,34 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <h2 className="text-xl font-semibold text-gray-300">📦 Finale Purchase Orders</h2>
                                 <span className="px-3 py-1 rounded-full text-sm bg-accent-500/20 text-accent-300 border border-accent-500/30 font-medium">
                                     {finalePurchaseOrders.filter(fpo => {
-                                        // Date filter: 12 months unless showing all
-                                        if (!showAllFinaleHistory) {
-                                            const twelveMonthsAgo = new Date();
-                                            twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-                                            const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
-                                            if (!orderDate || orderDate < twelveMonthsAgo) return false;
-                                        }
-                                        // Dropship filter - check in notes
-                                        if (hideDropship) {
-                                            const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
-                                            if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) return false;
-                                        }
-                                        // Status filter
-                                        if (finalePOStatusFilter === 'all') return true;
-                                        if (finalePOStatusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
-                                        if (finalePOStatusFilter === 'received') return ['Received', 'RECEIVED', 'Partial', 'PARTIALLY_RECEIVED'].includes(fpo.status);
-                                        if (finalePOStatusFilter === 'pending') return ['Pending', 'DRAFT', 'Draft'].includes(fpo.status);
-                                        return false;
-                                    }).length} {finalePOStatusFilter === 'all' ? 'total' : finalePOStatusFilter}
+                                        // Only show last 12 months
+                                        const twelveMonthsAgo = new Date();
+                                        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+                                        const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
+                                        return orderDate && orderDate >= twelveMonthsAgo;
+                                    }).length} total
                                 </span>
-                                {!showAllFinaleHistory && (
-                                    <span className="text-xs text-gray-500">(Last 12 months)</span>
-                                )}
+                                <span className="text-xs text-gray-500">(Last 12 months)</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1 bg-gray-800/50 rounded-lg p-1 border border-gray-700">
-                                    <Button
-                                        onClick={() => setFinalePOStatusFilter('all')}
-                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'all'
-                                                ? 'bg-accent-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                                            }`}
-                                    >
-                                        All
-                                    </Button>
-                                    <Button
-                                        onClick={() => setFinalePOStatusFilter('committed')}
-                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'committed'
-                                                ? 'bg-blue-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                                            }`}
-                                    >
-                                        Committed
-                                    </Button>
-                                    <Button
-                                        onClick={() => setFinalePOStatusFilter('pending')}
-                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'pending'
-                                                ? 'bg-amber-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                                            }`}
-                                    >
-                                        Pending
-                                    </Button>
-                                    <Button
-                                        onClick={() => setFinalePOStatusFilter('received')}
-                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'received'
-                                                ? 'bg-green-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                                            }`}
-                                    >
-                                        Received
-                                    </Button>
-                                </div>
-
-                                {/* Sort Order Toggle */}
-                                <Button
-                                    onClick={() => setFinalePOSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                                    className="px-3 py-1.5 text-xs rounded bg-gray-800/50 border border-gray-700 text-gray-300 hover:bg-gray-700 transition-colors"
-                                >
-                                    {finalePOSortOrder === 'asc' ? 'A-Z ↑' : 'Z-A ↓'}
-                                </Button>
-
-                                {/* Dropship Filter Toggle */}
-                                <Button
-                                    onClick={() => setHideDropship(!hideDropship)}
-                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${hideDropship
-                                            ? 'bg-red-500/20 text-red-300 border border-red-500/50'
-                                            : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
-                                        }`}
-                                >
-                                    {hideDropship ? '🚫 Dropship Hidden' : 'Show All'}
-                                </Button>
-
-                                {/* 12-month / All History Toggle */}
-                                <Button
-                                    onClick={() => setShowAllFinaleHistory(!showAllFinaleHistory)}
-                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${showAllFinaleHistory
-                                            ? 'bg-accent-500/20 text-accent-300 border border-accent-500/50'
-                                            : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
-                                        }`}
-                                >
-                                    {showAllFinaleHistory ? 'All History' : '12 Months'}
-                                </Button>
-
-                                <span className="text-xs text-gray-400">
-                                    Synced from Finale API
-                                </span>
-                            </div>
+                            <span className="text-xs text-gray-400">
+                                Synced from Finale API
+                            </span>
                         </div>
 
                         <div className="grid gap-4">
                             {finalePurchaseOrders
                                 .filter(fpo => {
-                                    // Date filter: 12 months unless showing all
-                                    if (!showAllFinaleHistory) {
-                                        const twelveMonthsAgo = new Date();
-                                        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-                                        const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
-                                        if (!orderDate || orderDate < twelveMonthsAgo) return false;
-                                    }
-                                    // Dropship filter - check in notes (publicNotes or privateNotes)
-                                    if (hideDropship) {
-                                        const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
-                                        if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) return false;
-                                    }
-                                    // Status filter
-                                    if (finalePOStatusFilter === 'all') return true;
-                                    if (finalePOStatusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
-                                    if (finalePOStatusFilter === 'received') return ['Received', 'RECEIVED', 'Partial', 'PARTIALLY_RECEIVED'].includes(fpo.status);
-                                    if (finalePOStatusFilter === 'pending') return ['Pending', 'DRAFT', 'Draft'].includes(fpo.status);
-                                    return false;
+                                    // Only show last 12 months
+                                    const twelveMonthsAgo = new Date();
+                                    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+                                    const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
+                                    return orderDate && orderDate >= twelveMonthsAgo;
                                 })
                                 .sort((a, b) => {
-                                    // Sort by order ID (A-Z or Z-A)
-                                    const aId = a.orderId || '';
-                                    const bId = b.orderId || '';
-                                    return finalePOSortOrder === 'asc' ? aId.localeCompare(bId) : bId.localeCompare(aId);
+                                    // Sort by date, newest first
+                                    const aDate = a.orderDate ? new Date(a.orderDate).getTime() : 0;
+                                    const bDate = b.orderDate ? new Date(b.orderDate).getTime() : 0;
+                                    return bDate - aDate;
                                 })
                                 .map((fpo) => {
                                     const isExpanded = expandedFinalePO === fpo.id;
