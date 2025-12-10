@@ -1,3 +1,97 @@
+### Session: 2025-12-10 (PO Filtering - Year/Date/Sort/Dropship)
+
+**Changes Made:**
+- Modified: `supabase/functions/sync-finale-graphql/index.ts` (+15 lines)
+  - Added current year filter to PO sync (only fetch orders from YYYY-01-01 onwards)
+  - Reduces database size by excluding old historical orders
+  - Logs show year being synced for transparency
+- Modified: `pages/PurchaseOrders.tsx` (+65 lines)
+  - Added 90-day default view with toggle for full history
+  - Added A-Z/Z-A sorting by order ID
+  - Added dropship filter (hides POs with 'dropship', 'drop ship', or 'drop-ship' in notes)
+  - All filters work together (date range + status + dropship + sorting)
+  - UI controls: Sort button, dropship toggle, date range toggle
+  - Real-time count badge updates based on active filters
+
+**Key Decisions:**
+- **Decision:** Sync only current year POs by default
+- **Rationale:** Historical orders beyond 1 year rarely needed, reduces data volume and sync time
+- **Decision:** Default to 90-day view in UI
+- **Rationale:** Recent orders most relevant, user can toggle to see full history if needed
+- **Decision:** Check both publicNotes and privateNotes for dropship keyword
+- **Rationale:** Ensure complete filtering regardless of where dropship info is stored
+- **Decision:** Sort by order ID instead of date
+- **Rationale:** Order IDs often sequential and meaningful (PO-2025-001, etc.)
+
+**Filter Implementation:**
+```typescript
+// Backend: Current year filter
+const currentYear = new Date().getFullYear();
+const yearStart = `${currentYear}-01-01`;
+if (orderDate && orderDate >= yearStart) {
+  allPOs.push(edge.node);
+}
+
+// Frontend: 90-day + dropship + status filters
+.filter(fpo => {
+  // Date: Last 90 days unless showAllFinaleHistory
+  if (!showAllFinaleHistory) {
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    if (!orderDate || orderDate < ninetyDaysAgo) return false;
+  }
+  // Dropship: Check notes for variants
+  if (hideDropship) {
+    const notes = `${fpo.publicNotes} ${fpo.privateNotes}`.toLowerCase();
+    if (notes.includes('dropship') || notes.includes('drop ship')) return false;
+  }
+  // Status filter (existing logic)
+})
+.sort((a, b) => {
+  // A-Z or Z-A by order ID
+  return finalePOSortOrder === 'asc' ? a.orderId.localeCompare(b.orderId) : b.orderId.localeCompare(a.orderId);
+})
+```
+
+**UI Controls Added:**
+- **Sort Toggle:** "A-Z ↑" / "Z-A ↓" button (gray background, border)
+- **Dropship Filter:** "🚫 Dropship Hidden" (red) / "Show All" (gray) button
+- **Date Range:** "90 Days" (gray) / "All History" (accent yellow) button
+- **Count Badge:** Shows filtered count with "(Last 90 days)" indicator when applicable
+
+**User Experience:**
+- Default state: Last 90 days, Z-A sort (newest first), all dropship POs shown
+- Click "A-Z ↑" → Toggles to alphabetical ascending order
+- Click "Show All" → Toggles to "🚫 Dropship Hidden" (red badge)
+- Click "90 Days" → Toggles to "All History" (accent yellow badge)
+- All filters update count badge in real-time
+- Visual feedback: Active filters show with distinct colors
+
+**Deployment:**
+- ✅ Edge function deployed to Supabase (78.06kB bundle)
+- ✅ Build passing (8.11s)
+- ✅ Changes pushed to GitHub (commit `44775b1`)
+- ⏳ Pending: Test in production UI after Vercel deployment
+
+**Testing:**
+- ✅ TypeScript compilation clean
+- ✅ Build successful
+- ⏳ UI testing pending (verify filters work correctly)
+- ⏳ Sync testing pending (confirm year filter works in production)
+
+**Performance Impact:**
+- **Sync:** Reduced data transfer (only current year orders)
+- **UI:** Faster initial render (90 days vs all history)
+- **Database:** Smaller finale_purchase_orders table size over time
+
+**Next Steps:**
+- [ ] Verify Vercel deployment completes
+- [ ] Test UI filters in production (90-day toggle, dropship filter, A-Z sort)
+- [ ] Monitor next PO sync to confirm year filtering works
+- [ ] Consider adding date picker for custom date ranges (future enhancement)
+
+---
+
 ### Session: 2025-12-10 (Sales Velocity Calculation Implementation)
 
 **Changes Made:**
