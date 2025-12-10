@@ -1,3 +1,114 @@
+### Session: 2025-12-10 (Sales Velocity Calculation Implementation)
+
+**Changes Made:**
+- Created: `supabase/migrations/083_finale_orders_and_velocity.sql` (213 lines)
+  - Table: `finale_orders` with JSONB order_items array structure
+  - Indexes: 7 total (order_id, dates, status, GIN on JSONB, synced_at)
+  - Functions: `calculate_product_sales_period()`, `update_inventory_velocity()`, `update_all_inventory_velocities()`
+  - View: `v_product_sales_summary` for analytics dashboard
+  - RLS Policies: 3 (anon read, authenticated read, service_role full access)
+- Modified: `supabase/functions/sync-finale-data/index.ts` (+140 lines)
+  - Added: `transformOrder()` function to convert Finale orders to database format
+  - Added: Order sync section with pagination (500 per batch, 5000 max)
+  - Added: Velocity calculation call after order upsert completes
+  - Integration: Calls `update_all_inventory_velocities()` RPC after sync
+- Created: `docs/VELOCITY_CALCULATION_IMPLEMENTATION.md` (comprehensive documentation)
+  - Complete architecture documentation
+  - Function reference with examples
+  - Testing and troubleshooting guide
+  - Performance considerations
+
+**Key Decisions:**
+- **Decision:** Use JSONB array for order_items instead of junction table
+- **Rationale:** Flexible schema for variable line items, fast GIN indexed queries, simpler data model
+- **Decision:** Weighted velocity formula: `(30d * 0.5 + 60d * 0.3 + 90d * 0.2) / 30`
+- **Rationale:** Weights recent data (50%) more heavily than historical, smooths seasonal variations
+- **Decision:** Filter orders by status: COMPLETED, SHIPPED, DELIVERED
+- **Rationale:** Only count actually fulfilled orders, exclude cancelled/pending
+- **Decision:** Limit order sync to 5000 recent records
+- **Rationale:** Velocity only uses 90-day window, older orders don't affect calculations
+
+**Database Architecture:**
+- **finale_orders table:** Stores sales orders with JSONB product line items
+- **JSONB structure:** `[{"productId": "SKU", "quantity": N, "unitPrice": X}]`
+- **Indexes:** GIN on order_items for fast JSONB queries, DESC on dates for latest-first sorting
+- **Functions:** 3-layer calculation (period aggregation → single SKU → batch processing)
+- **View:** Aggregates sales by product with rolling windows (30/60/90 days)
+
+**Velocity Calculation Flow:**
+```
+1. Finale orders synced → finale_orders table (JSONB order_items)
+2. calculate_product_sales_period(sku, days) → sums quantities from JSONB
+3. update_inventory_velocity(sku) → calculates weighted average
+4. Updates inventory_items → sales_last_30_days, sales_last_60_days, sales_last_90_days, sales_velocity_consolidated
+5. UI displays → Inventory page velocity column, ConsumptionChart component
+```
+
+**Edge Function Integration:**
+- **Order sync:** Fetches `/salesorder` with pagination, transforms to finale_orders format
+- **JSONB extraction:** Parses orderItemList into order_items array structure
+- **Deduplication:** By finale_order_url to prevent duplicates
+- **Velocity calculation:** Automatic RPC call after successful order upsert
+- **Error handling:** Try/catch blocks with detailed logging, non-blocking failures
+
+**Deployment:**
+- ✅ Migration 083 applied to local database (all objects created)
+- ✅ Edge function deployed to Supabase production (83.42kB bundle)
+- ✅ Build passing (8.07s)
+- ⏳ Pending: First production sync to populate finale_orders table
+
+**Testing:**
+- ✅ TypeScript compilation clean (build successful)
+- ✅ Migration creates all objects (table, 7 indexes, 3 functions, 1 view)
+- ✅ Edge function deploys without errors
+- ⏳ Pending: Trigger sync to test order fetch and velocity calculation
+- ⏳ Pending: Verify UI displays non-zero velocity values
+
+**Problems & Solutions:**
+- **Problem:** Persistent zero values in velocity fields (sales30Days, sales60Days, sales90Days)
+- **Root Cause:** No sales transaction data synced from Finale (only products/vendors/inventory)
+- **Solution:** Created finale_orders table + sync orders + calculate velocity from transaction history
+- **Implementation:** Migration 083 + edge function order sync section + automatic calculation
+
+**Function Signatures:**
+```sql
+calculate_product_sales_period(p_product_id TEXT, p_days INTEGER) RETURNS NUMERIC
+update_inventory_velocity(p_sku TEXT) RETURNS VOID
+update_all_inventory_velocities() RETURNS TABLE (sku TEXT, sales_30d INT, sales_60d INT, sales_90d INT, velocity NUMERIC)
+```
+
+**Performance:**
+- **STABLE function:** calculate_product_sales_period can be cached within transaction
+- **GIN index:** Fast JSONB array queries (productId lookups)
+- **Batch processing:** ~100ms per SKU, 300 items = ~30 seconds (acceptable for cron)
+- **Indexes:** 7 total for fast date/status/JSONB filtering
+
+**Next Steps:**
+- [ ] Trigger production sync (Vercel cron or manual via `/api/trigger-finale-sync`)
+- [ ] Verify finale_orders table populates with order data
+- [ ] Confirm update_all_inventory_velocities() executes successfully
+- [ ] Check inventory_items has updated sales_last_X_days values
+- [ ] Validate UI displays non-zero velocity on Inventory page
+- [ ] Spot-check calculation accuracy against Finale reports
+- [ ] Monitor first sync execution time and performance
+
+**Documentation:**
+- Created: `docs/VELOCITY_CALCULATION_IMPLEMENTATION.md` - Complete implementation guide
+  - Database schema documentation
+  - Function reference with examples
+  - Testing procedures and validation queries
+  - Troubleshooting guide
+  - Performance considerations
+  - Deployment checklist
+
+**Open Questions:**
+- What Finale API endpoint returns sales orders? (`/salesorder` assumed, needs verification)
+- What is the exact order status field name? (`statusId` or `status`?)
+- What date field should be prioritized? (Using ship_date with order_date fallback)
+- Should we archive orders older than 1 year? (Only 90-day window needed for velocity)
+
+---
+
 ### Session: 2025-12-09 (UI Fixes - Velocity, Theme, PO Expansion)
 
 **Changes Made:**

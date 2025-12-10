@@ -191,6 +191,51 @@ function transformToLegacyVendor(party: any): any {
   };
 }
 
+// Transform Finale order to finale_orders table format
+function transformOrder(order: any): any {
+  const orderUrl = order.orderUrl || order.orderId
+    ? `/${Deno.env.get('FINALE_ACCOUNT_PATH')}/api/order/${order.orderId}`
+    : null;
+  
+  if (!orderUrl || !order.orderId) {
+    return null;
+  }
+
+  // Extract order items (product IDs and quantities)
+  const orderItems: any[] = [];
+  const orderItemList = order.orderItemList || [];
+  
+  for (const item of orderItemList) {
+    if (item.productId && item.quantity) {
+      orderItems.push({
+        productId: item.productId,
+        quantity: parseFloat(item.quantity) || 0,
+        unitPrice: item.unitPrice ? parseFloat(item.unitPrice) : null,
+        productName: item.productName || item.productId,
+      });
+    }
+  }
+
+  return {
+    finale_order_url: orderUrl,
+    order_id: order.orderId,
+    order_type: order.orderTypeId || 'SALES_ORDER',
+    order_status: order.statusId || order.status || 'UNKNOWN',
+    order_date: order.orderDate || order.createdDate || null,
+    ship_date: order.shipDate || order.shippedDate || null,
+    delivered_date: order.deliveredDate || null,
+    customer_id: order.customerId || order.partyId || null,
+    customer_name: order.customerName || order.partyName || null,
+    ship_to_location: order.shipToLocation || order.destinationFacilityUrl || null,
+    total_amount: order.grandTotal ? parseFloat(order.grandTotal) : null,
+    currency: order.currencyUomId || 'USD',
+    order_items: orderItems,
+    raw_data: order,
+    synced_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
 // Extract BOMs from product's productAssocList
 function extractBomsFromProduct(product: any, accountPath: string): any[] {
   const boms: any[] = [];
@@ -544,6 +589,333 @@ serve(async (req) => {
         : (typeof error === 'object' ? JSON.stringify(error) : String(error));
       results.push({
         dataType: 'products',
+        success: false,
+        itemCount: 0,
+        duration: 0,
+        error: errorMessage,
+      });
+    }
+
+    // ========================================
+    // SYNC INVENTORY LEVELS
+    // ========================================
+    try {
+      const inventoryStart = Date.now();
+      console.log('[Sync] Fetching inventory levels from Finale...');
+      
+      // Fetch inventory with pagination
+      const allInventory: any[] = [];
+      let offset = 0;
+      const limit = 500;
+      let hasMore = true;
+      const maxRecords = 10000; // Safety limit
+
+      while (hasMore && allInventory.length < maxRecords) {
+        const columnarData = await finaleGet(`/inventory?limit=${limit}&offset=${offset}`);
+        const inventory = transformColumnarToRows(columnarData);
+        
+        console.log(`[Sync] Fetched ${inventory.length} inventory records at offset ${offset}`);
+        
+        if (inventory.length === 0) {
+          hasMore = false;
+        } else {
+          allInventory.push(...inventory);
+          offset += limit;
+          if (inventory.length < limit) {
+            hasMore = false;
+          }
+        }
+      }
+
+      console.log(`[Sync] Total inventory records fetched: ${allInventory.length}`);
+
+      if (allInventory.length > 0) {
+        // Transform inventory records
+        const transformedInventory = allInventory
+          .map((inv) => {
+            const productUrl = inv.productUrl || (inv.productId ? `/${FINALE_ACCOUNT_PATH}/api/product/${inv.productId}` : null);
+            const facilityUrl = inv.facilityUrl || inv.facilityId;
+            
+            if (!productUrl || !facilityUrl) {
+              return null;
+            }
+
+            return {
+              finale_inventory_url: inv.inventoryUrl || `${productUrl}/inventory/${facilityUrl}`,
+              finale_product_url: productUrl,
+              facility_url: facilityUrl,
+              facility_id: inv.facilityId || facilityUrl,
+              facility_name: inv.facilityName || null,
+              parent_facility_url: inv.parentFacilityUrl || null,
+              quantity_on_hand: inv.quantityOnHand ? parseFloat(inv.quantityOnHand) : 0,
+              quantity_on_order: inv.quantityOnOrder ? parseFloat(inv.quantityOnOrder) : 0,
+              quantity_reserved: inv.quantityReserved ? parseFloat(inv.quantityReserved) : 0,
+              quantity_available: inv.quantityAvailable ? parseFloat(inv.quantityAvailable) : 0,
+              lot_id: inv.lotId || null,
+              lot_expiration_date: inv.lotExpirationDate || null,
+              order_url: inv.orderUrl || null,
+              order_type: inv.orderType || null,
+              normalized_packing_string: inv.normalizedPackingString || null,
+              raw_data: inv,
+              synced_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+          })
+          .filter((inv): inv is NonNullable<typeof inv> => inv !== null);
+
+        console.log(`[Sync] Transformed ${transformedInventory.length} valid inventory records`);
+
+        if (transformedInventory.length > 0) {
+          // Deduplicate by product + facility
+          const uniqueKey = (inv: any) => `${inv.finale_product_url}|||${inv.facility_url}`;
+          const uniqueInventory = new Map<string, typeof transformedInventory[0]>();
+          for (const inv of transformedInventory) {
+            uniqueInventory.set(uniqueKey(inv), inv);
+          }
+          const deduplicatedInventory = Array.from(uniqueInventory.values());
+
+          console.log(`[Sync] Upserting ${deduplicatedInventory.length} inventory records to finale_inventory...`);
+
+          const { error: invError } = await supabase
+            .from('finale_inventory')
+            .upsert(deduplicatedInventory, { 
+              onConflict: 'finale_product_url,facility_url',
+              ignoreDuplicates: false 
+            });
+
+          if (invError) {
+            console.error('[Sync] finale_inventory upsert error:', JSON.stringify(invError));
+            results.push({
+              dataType: 'finale_inventory',
+              success: false,
+              itemCount: 0,
+              duration: Date.now() - inventoryStart,
+              error: invError.message || JSON.stringify(invError),
+            });
+          } else {
+            results.push({
+              dataType: 'finale_inventory',
+              success: true,
+              itemCount: deduplicatedInventory.length,
+              duration: Date.now() - inventoryStart,
+            });
+            console.log(`[Sync] ✅ finale_inventory: ${deduplicatedInventory.length} records in ${Date.now() - inventoryStart}ms`);
+
+            // Update inventory_items with aggregated stock levels
+            try {
+              const stockUpdateStart = Date.now();
+              console.log('[Sync] Updating inventory_items with aggregated stock levels...');
+
+              // Aggregate inventory by product (sum across all facilities)
+              const stockByProduct = new Map<string, { onHand: number; onOrder: number; reserved: number }>();
+              
+              for (const inv of deduplicatedInventory) {
+                // Extract product ID from URL (e.g., "/account/api/product/BC101" -> "BC101")
+                const productId = inv.finale_product_url.split('/').pop() || '';
+                
+                const existing = stockByProduct.get(productId) || { onHand: 0, onOrder: 0, reserved: 0 };
+                stockByProduct.set(productId, {
+                  onHand: existing.onHand + (inv.quantity_on_hand || 0),
+                  onOrder: existing.onOrder + (inv.quantity_on_order || 0),
+                  reserved: existing.reserved + (inv.quantity_reserved || 0),
+                });
+              }
+
+              console.log(`[Sync] Aggregated stock for ${stockByProduct.size} products`);
+
+              // Update inventory_items in batches
+              let updatedCount = 0;
+              for (const [productId, stock] of stockByProduct) {
+                const { error: updateError } = await supabase
+                  .from('inventory_items')
+                  .update({
+                    units_in_stock: Math.floor(stock.onHand),
+                    units_on_order: Math.floor(stock.onOrder),
+                    units_reserved: Math.floor(stock.reserved),
+                    stock: Math.floor(stock.onHand), // Legacy field
+                    on_order: Math.floor(stock.onOrder), // Legacy field
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('sku', productId);
+
+                if (!updateError) {
+                  updatedCount++;
+                }
+              }
+
+              console.log(`[Sync] ✅ Updated stock levels for ${updatedCount}/${stockByProduct.size} inventory items in ${Date.now() - stockUpdateStart}ms`);
+              
+              results.push({
+                dataType: 'inventory_stock_update',
+                success: true,
+                itemCount: updatedCount,
+                duration: Date.now() - stockUpdateStart,
+              });
+            } catch (stockError) {
+              console.error('[Sync] Stock update failed:', stockError);
+              results.push({
+                dataType: 'inventory_stock_update',
+                success: false,
+                itemCount: 0,
+                duration: 0,
+                error: stockError instanceof Error ? stockError.message : String(stockError),
+              });
+            }
+          }
+        }
+      } else {
+        results.push({
+          dataType: 'finale_inventory',
+          success: true,
+          itemCount: 0,
+          duration: Date.now() - inventoryStart,
+          error: 'No inventory records found',
+        });
+      }
+    } catch (error) {
+      console.error('[Sync] Inventory sync failed:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      results.push({
+        dataType: 'finale_inventory',
+        success: false,
+        itemCount: 0,
+        duration: 0,
+        error: errorMessage,
+      });
+    }
+
+    // ========================================
+    // SYNC SALES ORDERS (for velocity calculation)
+    // ========================================
+    try {
+      const ordersStart = Date.now();
+      console.log('[Sync] Fetching sales orders from Finale...');
+      
+      const allOrders: any[] = [];
+      let offset = 0;
+      const limit = 500;
+      let hasMore = true;
+      const maxRecords = 5000; // Limit to recent orders for velocity
+
+      while (hasMore && allOrders.length < maxRecords) {
+        const columnarData = await finaleGet(`/salesorder?limit=${limit}&offset=${offset}`);
+        const orders = transformColumnarToRows(columnarData);
+        
+        console.log(`[Sync] Fetched ${orders.length} orders at offset ${offset}`);
+        
+        if (orders.length === 0) {
+          hasMore = false;
+        } else {
+          allOrders.push(...orders);
+          offset += limit;
+          if (orders.length < limit) {
+            hasMore = false;
+          }
+        }
+      }
+
+      console.log(`[Sync] Total orders fetched: ${allOrders.length}`);
+
+      if (allOrders.length > 0) {
+        // Transform orders
+        const transformedOrders = allOrders
+          .map(transformOrder)
+          .filter((order): order is NonNullable<typeof order> => order !== null);
+
+        console.log(`[Sync] Transformed ${transformedOrders.length} valid orders`);
+
+        if (transformedOrders.length > 0) {
+          // Deduplicate by finale_order_url
+          const uniqueOrders = new Map<string, typeof transformedOrders[0]>();
+          for (const order of transformedOrders) {
+            uniqueOrders.set(order.finale_order_url, order);
+          }
+          const deduplicatedOrders = Array.from(uniqueOrders.values());
+
+          console.log(`[Sync] Upserting ${deduplicatedOrders.length} orders to finale_orders...`);
+
+          const { error: orderError } = await supabase
+            .from('finale_orders')
+            .upsert(deduplicatedOrders, { 
+              onConflict: 'finale_order_url',
+              ignoreDuplicates: false 
+            });
+
+          if (orderError) {
+            console.error('[Sync] finale_orders upsert error:', JSON.stringify(orderError));
+            results.push({
+              dataType: 'finale_orders',
+              success: false,
+              itemCount: 0,
+              duration: Date.now() - ordersStart,
+              error: orderError.message || JSON.stringify(orderError),
+            });
+          } else {
+            results.push({
+              dataType: 'finale_orders',
+              success: true,
+              itemCount: deduplicatedOrders.length,
+              duration: Date.now() - ordersStart,
+            });
+            console.log(`[Sync] ✅ finale_orders: ${deduplicatedOrders.length} records in ${Date.now() - ordersStart}ms`);
+
+            // Calculate velocity for all products
+            try {
+              const velocityStart = Date.now();
+              console.log('[Sync] Calculating sales velocity for all inventory items...');
+
+              const { data: velocityResults, error: velocityError } = await supabase
+                .rpc('update_all_inventory_velocities');
+
+              if (velocityError) {
+                console.error('[Sync] Velocity calculation error:', velocityError);
+                results.push({
+                  dataType: 'velocity_calculation',
+                  success: false,
+                  itemCount: 0,
+                  duration: Date.now() - velocityStart,
+                  error: velocityError.message || JSON.stringify(velocityError),
+                });
+              } else {
+                const itemsUpdated = velocityResults ? velocityResults.length : 0;
+                console.log(`[Sync] ✅ Updated velocity for ${itemsUpdated} items in ${Date.now() - velocityStart}ms`);
+                results.push({
+                  dataType: 'velocity_calculation',
+                  success: true,
+                  itemCount: itemsUpdated,
+                  duration: Date.now() - velocityStart,
+                });
+              }
+            } catch (velocityError) {
+              console.error('[Sync] Velocity calculation failed:', velocityError);
+              results.push({
+                dataType: 'velocity_calculation',
+                success: false,
+                itemCount: 0,
+                duration: 0,
+                error: velocityError instanceof Error ? velocityError.message : String(velocityError),
+              });
+            }
+          }
+        }
+      } else {
+        results.push({
+          dataType: 'finale_orders',
+          success: true,
+          itemCount: 0,
+          duration: Date.now() - ordersStart,
+          error: 'No orders found',
+        });
+      }
+    } catch (error) {
+      console.error('[Sync] Orders sync failed:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      results.push({
+        dataType: 'finale_orders',
         success: false,
         itemCount: 0,
         duration: 0,
