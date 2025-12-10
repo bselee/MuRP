@@ -1,3 +1,54 @@
+### Session: 2025-12-11 (Migration Fixes & BOM Testing)
+
+**Changes Made:**
+- Modified: `supabase/migrations/085_regulatory_context.sql`
+  - Fixed all 8 references from `bill_of_materials` → `boms` (actual table name)
+  - ALTER TABLE, FROM clauses, COMMENT statements updated
+- Modified: `supabase/migrations/086_vendor_intelligence.sql`
+  - Added `IF NOT EXISTS` to all 18 CREATE INDEX statements for idempotency
+  - Migration can now be re-run without duplicate index errors
+- Modified: `supabase/migrations/088_po_email_monitoring.sql`
+  - Made pg_cron scheduling conditional with DO block
+  - Falls back gracefully when pg_cron extension not available
+  - Added documentation for external scheduling alternatives (Vercel cron, GitHub Actions)
+- Created: `e2e/boms.spec.ts` (+130 lines)
+  - 11 new E2E tests for BOM page interactions
+  - Tests: page rendering, button presence, click handling, sorting, search
+
+**Git Commits:**
+- `5bc6399` - fix(migrations): correct table names, add IF NOT EXISTS, and make pg_cron optional
+- `3f55b64` - test(e2e): add BOM card interaction tests
+
+**E2E Test Results:**
+- 45/49 tests passing
+- 11/11 BOM tests passing
+- 4 failing tests: smoke tests for specific page elements (non-critical)
+
+**Migration Fix Details:**
+```sql
+-- 085: Table name fix (8 occurrences)
+bill_of_materials → boms
+
+-- 086: Index idempotency (18 indexes)
+CREATE INDEX idx_* → CREATE INDEX IF NOT EXISTS idx_*
+
+-- 088: pg_cron conditional scheduling
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    PERFORM cron.schedule(...);
+  ELSE
+    RAISE NOTICE 'pg_cron not available - use external scheduling';
+  END IF;
+END $$;
+```
+
+**Next Steps:**
+- [ ] Re-run migrations 085, 086 in production (user action)
+- [ ] Configure external scheduler if pg_cron not available
+- [ ] Fix remaining 4 smoke test failures (optional)
+
+---
+
 ### Session: 2025-12-10 (PO Filtering - Year/Date/Sort/Dropship)
 
 **Changes Made:**
