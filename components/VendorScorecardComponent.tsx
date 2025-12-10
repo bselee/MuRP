@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '../lib/supabase/client';
 
 interface VendorPerformance {
   vendor_id: string;
@@ -24,7 +24,6 @@ interface VendorScorecardProps {
 export default function VendorScorecardComponent({ vendorId, limit = 10 }: VendorScorecardProps) {
   const [vendors, setVendors] = useState<VendorPerformance[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClientComponentClient();
 
   useEffect(() => {
     loadVendorPerformance();

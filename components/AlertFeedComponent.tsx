@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '../lib/supabase/client';
 
 interface POAlert {
   id: string;
@@ -40,7 +40,7 @@ export default function AlertFeedComponent({ showResolved = false, limit = 50 }:
   const [alerts, setAlerts] = useState<POAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [emailCopied, setEmailCopied] = useState<string | null>(null);
-  const supabase = createClientComponentClient();
+
 
   useEffect(() => {
     loadAlerts();

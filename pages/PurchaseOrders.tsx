@@ -37,6 +37,9 @@ import { runFollowUpAutomation } from '../services/followUpService';
 import { getGoogleGmailService } from '../services/googleGmailService';
 import AutonomousControls from '../components/AutonomousControls';
 import AutonomousApprovals from '../components/AutonomousApprovals';
+import AlertFeedComponent from '../components/AlertFeedComponent';
+import TrustScoreDashboard from '../components/TrustScoreDashboard';
+import VendorScorecardComponent from '../components/VendorScorecardComponent';
 import type { FinalePurchaseOrderRecord } from '../types';
 
 interface PurchaseOrdersProps {
@@ -596,6 +599,32 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                 {isAdminLike && (
                     <AutonomousApprovals addToast={addToast} />
+                )}
+
+                {/* Agent Command Center - AI Agent Monitoring Dashboard */}
+                {isAdminLike && (
+                    <CollapsibleSection 
+                        title="🤖 Agent Command Center" 
+                        count={0} 
+                        isOpen={true}
+                    >
+                        <div className="space-y-6">
+                            {/* Trust Score Overview */}
+                            <TrustScoreDashboard />
+                            
+                            {/* PO Delay Alerts from Air Traffic Controller */}
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-300 mb-3">📢 Active Alerts</h3>
+                                <AlertFeedComponent limit={20} showResolved={false} />
+                            </div>
+                            
+                            {/* Vendor Performance from Vendor Watchdog */}
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-300 mb-3">📊 Vendor Intelligence</h3>
+                                <VendorScorecardComponent limit={10} />
+                            </div>
+                        </div>
+                    </CollapsibleSection>
                 )}
 
                 {/* VendorResponseWorkbench component removed - was causing ReferenceError */}
