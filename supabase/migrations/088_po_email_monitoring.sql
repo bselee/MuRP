@@ -79,24 +79,37 @@ ON purchase_orders(vendor_response_status)
 WHERE vendor_response_status IS NULL OR vendor_response_status = 'pending_response';
 
 -- Schedule PO email monitoring to run every 5 minutes
--- Uses pg_cron extension to invoke the edge function
-SELECT cron.schedule(
-  'po-email-monitor-scan',
-  '*/5 * * * *', -- Every 5 minutes
-  $$
-  SELECT
-    net.http_post(
-      url := current_setting('app.supabase_url') || '/functions/v1/po-email-monitor',
-      headers := jsonb_build_object(
-        'Content-Type', 'application/json',
-        'Authorization', 'Bearer ' || current_setting('app.service_role_key')
-      ),
-      body := '{}'::jsonb
-    ) AS request_id;
-  $$
-);
+-- Uses pg_cron extension to invoke the edge function (requires Supabase Pro)
+-- NOTE: If pg_cron is not available, use external scheduling (Vercel cron, GitHub Actions, etc.)
+DO $$
+BEGIN
+  -- Check if pg_cron extension is available
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    -- Schedule the job if cron extension exists
+    PERFORM cron.schedule(
+      'po-email-monitor-scan',
+      '*/5 * * * *', -- Every 5 minutes
+      $cron$
+      SELECT
+        net.http_post(
+          url := current_setting('app.supabase_url') || '/functions/v1/po-email-monitor',
+          headers := jsonb_build_object(
+            'Content-Type', 'application/json',
+            'Authorization', 'Bearer ' || current_setting('app.service_role_key')
+          ),
+          body := '{}'::jsonb
+        ) AS request_id;
+      $cron$
+    );
+    RAISE NOTICE 'pg_cron job scheduled for PO email monitoring';
+  ELSE
+    RAISE NOTICE 'pg_cron extension not available - use external scheduling (Vercel cron, GitHub Actions) for PO email monitoring';
+  END IF;
+END $$;
 
-COMMENT ON EXTENSION cron IS 'Scheduled PO email monitoring runs every 5 minutes to check for vendor responses';
+-- Note: For external scheduling, call the edge function every 5 minutes:
+-- POST https://<project-ref>.supabase.co/functions/v1/po-email-monitor
+-- Headers: Authorization: Bearer <service_role_key>, Content-Type: application/json
 
 -- Grant necessary permissions
 GRANT SELECT, UPDATE ON purchase_orders TO service_role;

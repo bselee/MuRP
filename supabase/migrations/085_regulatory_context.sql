@@ -34,7 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_state_regulations_jurisdiction ON state_regulatio
 -- ============================================================================
 
 -- Add regulatory_category to BOMs for product-specific compliance
-ALTER TABLE bill_of_materials
+ALTER TABLE boms
 ADD COLUMN IF NOT EXISTS regulatory_category text CHECK (regulatory_category IN (
   'soil_amendment',
   'fertilizer_organic',
@@ -49,15 +49,15 @@ ADD COLUMN IF NOT EXISTS regulatory_category text CHECK (regulatory_category IN 
 ));
 
 -- Add target_states for BOM-level compliance tracking
-ALTER TABLE bill_of_materials
+ALTER TABLE boms
 ADD COLUMN IF NOT EXISTS target_states text[];
 
 -- Add compliance_notes for BOM-specific requirements
-ALTER TABLE bill_of_materials
+ALTER TABLE boms
 ADD COLUMN IF NOT EXISTS compliance_notes text;
 
 -- Add index for category filtering
-CREATE INDEX IF NOT EXISTS idx_boms_regulatory_category ON bill_of_materials(regulatory_category);
+CREATE INDEX IF NOT EXISTS idx_boms_regulatory_category ON boms(regulatory_category);
 
 -- ============================================================================
 -- COMPLIANCE MAPPING TABLE
@@ -140,7 +140,7 @@ BEGIN
     regulatory_category,
     target_states
   INTO v_bom
-  FROM bill_of_materials
+  FROM boms
   WHERE id = p_bom_id;
 
   IF NOT FOUND THEN
@@ -234,7 +234,7 @@ BEGIN
       ORDER BY cc2.check_date DESC
       LIMIT 1
     ) as has_active_violations
-  FROM bill_of_materials b
+  FROM boms b
   LEFT JOIN compliance_checks cc ON cc.label_id::text = b.id::text
   WHERE
     b.regulatory_category IS NOT NULL
@@ -284,7 +284,7 @@ SELECT
     SELECT 1 FROM compliance_checks cc
     WHERE cc.label_id::text = b.id::text
   ) THEN 1 END) as unchecked_boms
-FROM bill_of_materials b
+FROM boms b
 WHERE b.regulatory_category IS NOT NULL
   AND b.target_states IS NOT NULL
 GROUP BY unnest(b.target_states), b.regulatory_category;
@@ -299,10 +299,10 @@ COMMENT ON VIEW compliance_overview_by_state IS
 COMMENT ON COLUMN state_regulations.jurisdiction_type IS
 'Type of regulatory body: agriculture, food_safety, dietary_supplements, cosmetics, etc.';
 
-COMMENT ON COLUMN bill_of_materials.regulatory_category IS
+COMMENT ON COLUMN boms.regulatory_category IS
 'Product category for regulatory compliance (soil_amendment, fertilizer, dietary_supplement, etc.)';
 
-COMMENT ON COLUMN bill_of_materials.target_states IS
+COMMENT ON COLUMN boms.target_states IS
 'Array of state codes where this product will be sold, used for compliance checking';
 
 COMMENT ON TABLE regulatory_jurisdiction_map IS

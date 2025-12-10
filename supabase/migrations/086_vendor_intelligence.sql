@@ -75,9 +75,9 @@ CREATE TABLE IF NOT EXISTS vendor_performance_metrics (
   created_at timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_vendor_performance_vendor ON vendor_performance_metrics(vendor_id);
-CREATE INDEX idx_vendor_performance_period ON vendor_performance_metrics(period_start, period_end);
-CREATE INDEX idx_vendor_performance_trust ON vendor_performance_metrics(trust_score DESC);
+CREATE INDEX IF NOT EXISTS idx_vendor_performance_vendor ON vendor_performance_metrics(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_vendor_performance_period ON vendor_performance_metrics(period_start, period_end);
+CREATE INDEX IF NOT EXISTS idx_vendor_performance_trust ON vendor_performance_metrics(trust_score DESC);
 
 -- ============================================================================
 -- PO DELIVERY TRACKING (Actual Performance)
@@ -127,10 +127,10 @@ CREATE TABLE IF NOT EXISTS po_delivery_performance (
   updated_at timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_po_delivery_po ON po_delivery_performance(po_id);
-CREATE INDEX idx_po_delivery_vendor ON po_delivery_performance(vendor_id);
-CREATE INDEX idx_po_delivery_status ON po_delivery_performance(delivery_status);
-CREATE INDEX idx_po_delivery_date ON po_delivery_performance(actual_delivery_date DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_po_delivery_po ON po_delivery_performance(po_id);
+CREATE INDEX IF NOT EXISTS idx_po_delivery_vendor ON po_delivery_performance(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_po_delivery_status ON po_delivery_performance(delivery_status);
+CREATE INDEX IF NOT EXISTS idx_po_delivery_date ON po_delivery_performance(actual_delivery_date DESC NULLS LAST);
 
 -- ============================================================================
 -- BULK BUYING OPPORTUNITIES
@@ -194,10 +194,10 @@ CREATE TABLE IF NOT EXISTS bulk_opportunity_analysis (
   valid_until timestamptz DEFAULT (now() + INTERVAL '30 days')
 );
 
-CREATE INDEX idx_bulk_opportunity_sku ON bulk_opportunity_analysis(inventory_sku);
-CREATE INDEX idx_bulk_opportunity_vendor ON bulk_opportunity_analysis(vendor_id);
-CREATE INDEX idx_bulk_opportunity_savings ON bulk_opportunity_analysis(net_savings_year_usd DESC);
-CREATE INDEX idx_bulk_opportunity_status ON bulk_opportunity_analysis(status);
+CREATE INDEX IF NOT EXISTS idx_bulk_opportunity_sku ON bulk_opportunity_analysis(inventory_sku);
+CREATE INDEX IF NOT EXISTS idx_bulk_opportunity_vendor ON bulk_opportunity_analysis(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_bulk_opportunity_savings ON bulk_opportunity_analysis(net_savings_year_usd DESC);
+CREATE INDEX IF NOT EXISTS idx_bulk_opportunity_status ON bulk_opportunity_analysis(status);
 
 -- ============================================================================
 -- PO ALERT LOG (Air Traffic Controller)
@@ -232,10 +232,10 @@ CREATE TABLE IF NOT EXISTS po_alert_log (
   created_at timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_po_alert_po ON po_alert_log(po_id);
-CREATE INDEX idx_po_alert_priority ON po_alert_log(priority_level);
-CREATE INDEX idx_po_alert_unresolved ON po_alert_log(resolved_at) WHERE resolved_at IS NULL;
-CREATE INDEX idx_po_alert_created ON po_alert_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_po_alert_po ON po_alert_log(po_id);
+CREATE INDEX IF NOT EXISTS idx_po_alert_priority ON po_alert_log(priority_level);
+CREATE INDEX IF NOT EXISTS idx_po_alert_unresolved ON po_alert_log(resolved_at) WHERE resolved_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_po_alert_created ON po_alert_log(created_at DESC);
 
 COMMENT ON TABLE po_alert_log IS
 'Air Traffic Controller: Intelligent alert prioritization for PO delays';
@@ -299,8 +299,8 @@ CREATE TABLE IF NOT EXISTS agent_performance_log (
   created_at timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_agent_performance_date ON agent_performance_log(period_date DESC);
-CREATE INDEX idx_agent_performance_trust ON agent_performance_log(overall_trust_score DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_performance_date ON agent_performance_log(period_date DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_performance_trust ON agent_performance_log(overall_trust_score DESC);
 
 -- ============================================================================
 -- CRITICAL ALERT PRIORITIES
@@ -337,7 +337,7 @@ CREATE TABLE IF NOT EXISTS alert_priority_rules (
   updated_at timestamptz DEFAULT now()
 );
 
-CREATE INDEX idx_alert_priority_type ON alert_priority_rules(alert_type);
+CREATE INDEX IF NOT EXISTS idx_alert_priority_type ON alert_priority_rules(alert_type);
 
 -- ============================================================================
 -- FUNCTIONS
