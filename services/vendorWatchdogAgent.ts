@@ -102,6 +102,7 @@ export async function recordPODelivery(
 
     // Record performance
     const { error: insertError } = await supabase
+      // @ts-ignore - Types not yet generated for this view
       .from('po_delivery_performance')
       .insert({
         po_id: poId,
@@ -151,6 +152,7 @@ export async function getVendorPerformance(
   vendorId: string
 ): Promise<VendorPerformanceSnapshot | null> {
   try {
+    // @ts-ignore - Types not yet generated for this view
     const { data, error } = await supabase
       .from('vendor_scorecard')
       .select('*')
@@ -326,7 +328,7 @@ export async function getVendorRecommendation(
  * Flag vendors needing review
  * Returns vendors with declining performance
  */
-export async function getFlagged Vendors(): Promise<Array<{
+export async function getFlaggedVendors(): Promise<Array<{
   vendor_id: string;
   vendor_name: string;
   issue: string;
@@ -334,6 +336,7 @@ export async function getFlagged Vendors(): Promise<Array<{
   recommendation: string;
 }>> {
   try {
+    // @ts-ignore - Types not yet generated for this view
     const { data: scorecards, error } = await supabase
       .from('vendor_scorecard')
       .select('*')

@@ -444,7 +444,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
             filtered = filtered.filter(po => po.status.toLowerCase() === 'committed');
         } else if (statusFilter === 'received') {
             filtered = filtered.filter(po =>
-                ['received', 'partially_received'].includes(po.status.toLowerCase())
+                ['received', 'partial'].includes(po.status.toLowerCase())
             );
         } else if (statusFilter === 'cancelled') {
             filtered = filtered.filter(po => po.status.toLowerCase() === 'cancelled');
@@ -501,10 +501,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     title="Purchase Orders"
                     description="Manage purchase orders, requisitions, and vendor communications"
                     actions={
-                        actions = {
-                            canManagePOs && (
+                        canManagePOs && (
                             <div className="flex items-center gap-3">
-                                {currentUser.role !== 'Staff' && approvedRequisitions.length > 0 && (
+                                {currentUser.role !== 'Staff' && readyQueue.length > 0 && (
                                     <Button
                                         onClick={() => setIsGeneratePoModalOpen(true)}
                                         className="relative"
@@ -512,7 +511,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     >
                                         Generate from Requisitions
                                         <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs">
-                                            {approvedRequisitions.length}
+                                            {readyQueue.length}
                                         </span>
                                     </Button>
                                 )}
@@ -535,9 +534,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             </div>
                         )
                     }
-                    }
-                />
 
+                />
                 {/* Purchasing Command Center moved to Agent Settings Modal */}
 
                 <div id="po-requisitions">
@@ -691,8 +689,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setFinalePOStatusFilter('all')}
                                         className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'all'
-                                                ? 'bg-accent-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-accent-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
                                             }`}
                                     >
                                         All
@@ -700,8 +698,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setFinalePOStatusFilter('committed')}
                                         className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'committed'
-                                                ? 'bg-blue-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-blue-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
                                             }`}
                                     >
                                         Committed
@@ -709,8 +707,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setFinalePOStatusFilter('pending')}
                                         className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'pending'
-                                                ? 'bg-amber-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-amber-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
                                             }`}
                                     >
                                         Pending
@@ -718,8 +716,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setFinalePOStatusFilter('received')}
                                         className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'received'
-                                                ? 'bg-green-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-green-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
                                             }`}
                                     >
                                         Received
@@ -738,8 +736,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <Button
                                     onClick={() => setHideDropship(!hideDropship)}
                                     className={`px-3 py-1.5 text-xs rounded transition-colors ${hideDropship
-                                            ? 'bg-red-500/20 text-red-300 border border-red-500/50'
-                                            : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                                        ? 'bg-red-500/20 text-red-300 border border-red-500/50'
+                                        : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
                                         }`}
                                 >
                                     {hideDropship ? '🚫 Dropship Hidden' : 'Show All'}
@@ -749,8 +747,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <Button
                                     onClick={() => setShowAllFinaleHistory(!showAllFinaleHistory)}
                                     className={`px-3 py-1.5 text-xs rounded transition-colors ${showAllFinaleHistory
-                                            ? 'bg-accent-500/20 text-accent-300 border border-accent-500/50'
-                                            : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                                        ? 'bg-accent-500/20 text-accent-300 border border-accent-500/50'
+                                        : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
                                         }`}
                                 >
                                     {showAllFinaleHistory ? 'All History' : '12 Months'}
@@ -796,20 +794,20 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         <div
                                             key={fpo.id}
                                             className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${isDark
-                                                    ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]'
-                                                    : 'border-stone-300/30 bg-gradient-to-br from-white/95 via-stone-100/60 to-white/95 shadow-[0_30px_90px_rgba(15,23,42,0.25)] hover:border-stone-400/50 hover:shadow-[0_32px_110px_rgba(120,113,108,0.3)]'
+                                                ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]'
+                                                : 'border-stone-300/30 bg-gradient-to-br from-white/95 via-stone-100/60 to-white/95 shadow-[0_30px_90px_rgba(15,23,42,0.25)] hover:border-stone-400/50 hover:shadow-[0_32px_110px_rgba(120,113,108,0.3)]'
                                                 }`}
                                         >
                                             {/* Card overlay effect */}
                                             <div className={`pointer-events-none absolute inset-0 ${isDark
-                                                    ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]'
-                                                    : 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.6),rgba(253,244,223,0))]'
+                                                ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]'
+                                                : 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.6),rgba(253,244,223,0))]'
                                                 }`} />
 
                                             {/* Header */}
                                             <div className={`relative p-2.5 ${isDark
-                                                    ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70'
-                                                    : 'bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90'
+                                                ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70'
+                                                : 'bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90'
                                                 }`}>
                                                 <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-amber-200/60'
                                                     }`} />
@@ -831,10 +829,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                             </div>
                                                         </div>
                                                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${fpo.status === 'Submitted' || fpo.status === 'SUBMITTED' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
-                                                                fpo.status === 'Partial' || fpo.status === 'PARTIALLY_RECEIVED' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                                                                    fpo.status === 'Pending' || fpo.status === 'DRAFT' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
-                                                                        fpo.status === 'Ordered' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
-                                                                            'bg-accent-500/20 text-accent-300 border border-accent-500/30'
+                                                            fpo.status === 'Partial' || fpo.status === 'PARTIALLY_RECEIVED' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                                                                fpo.status === 'Pending' || fpo.status === 'DRAFT' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
+                                                                    fpo.status === 'Ordered' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                                                                        'bg-accent-500/20 text-accent-300 border border-accent-500/30'
                                                             }`}>
                                                             {fpo.status}
                                                         </span>
@@ -870,14 +868,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             {/* Expanded Details */}
                                             {isExpanded && (
                                                 <div className={`relative p-4 space-y-4 border-t backdrop-blur-lg ${isDark
-                                                        ? 'border-white/5 bg-slate-950/70'
-                                                        : 'border-amber-900/15 bg-amber-50/80'
+                                                    ? 'border-white/5 bg-slate-950/70'
+                                                    : 'border-amber-900/15 bg-amber-50/80'
                                                     }`}>
                                                     {/* Summary Info */}
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className={`rounded-xl border backdrop-blur-lg p-4 space-y-3 ${isDark
-                                                                ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
-                                                                : 'border-stone-300/25 bg-gradient-to-br from-white/98 via-stone-100/50 to-white/92 shadow-[0_18px_40px_rgba(15,23,42,0.18)]'
+                                                            ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
+                                                            : 'border-stone-300/25 bg-gradient-to-br from-white/98 via-stone-100/50 to-white/92 shadow-[0_18px_40px_rgba(15,23,42,0.18)]'
                                                             }`}>
                                                             <div>
                                                                 <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Vendor Information</div>
@@ -1008,8 +1006,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setStatusFilter('active')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'active'
-                                                ? 'bg-accent-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            ? 'bg-accent-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
                                             }`}
                                     >
                                         Active
@@ -1017,8 +1015,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setStatusFilter('committed')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'committed'
-                                                ? 'bg-blue-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            ? 'bg-blue-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
                                             }`}
                                     >
                                         Committed
@@ -1026,8 +1024,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setStatusFilter('received')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'received'
-                                                ? 'bg-green-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            ? 'bg-green-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
                                             }`}
                                     >
                                         Received
@@ -1035,8 +1033,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setStatusFilter('cancelled')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'cancelled'
-                                                ? 'bg-red-500 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            ? 'bg-red-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
                                             }`}
                                     >
                                         Cancelled
@@ -1044,8 +1042,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setStatusFilter('all')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'all'
-                                                ? 'bg-slate-700 text-white'
-                                                : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            ? 'bg-slate-700 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
                                             }`}
                                     >
                                         All
@@ -1177,7 +1175,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                         Track
                                                     </Button>
                                                 )}
-                                                {canManagePOs && ['shipped', 'in_transit', 'out_for_delivery', 'delivered'].includes(po.trackingStatus || '') && po.status !== 'received' && po.status !== 'partially_received' && (
+                                                {canManagePOs && ['shipped', 'in_transit', 'out_for_delivery', 'delivered'].includes(po.trackingStatus || '') && po.status !== 'received' && po.status !== 'partial' && (
                                                     <Button
                                                         onClick={() => handleReceivePO(po)}
                                                         className="p-2 text-emerald-400 hover:text-emerald-300 transition-colors"
@@ -1510,7 +1508,7 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
         req.status === 'OpsPending';
 
     return (
-        <CollapsibleSection title="Internal Requisitions" count={pendingCount} isOpen={isOpen} onToggle={onToggle}>
+        <CollapsibleSection title="Internal Requisitions" icon={<FileTextIcon className="w-5 h-5" />} count={pendingCount} isOpen={isOpen} onToggle={onToggle}>
             <div className="p-4 flex justify-end">
                 {allowManualCreation && (
                     <Button onClick={onCreate} size="sm">
@@ -1561,10 +1559,10 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                                                 {req.requestType?.replace('_', ' ') || 'consumable'}
                                             </span>
                                             <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide ${req.priority === 'high'
-                                                    ? 'bg-rose-500/20 text-rose-200 border border-rose-500/40'
-                                                    : req.priority === 'medium'
-                                                        ? 'bg-amber-500/20 text-amber-200 border border-amber-500/30'
-                                                        : 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
+                                                ? 'bg-rose-500/20 text-rose-200 border border-rose-500/40'
+                                                : req.priority === 'medium'
+                                                    ? 'bg-amber-500/20 text-amber-200 border border-amber-500/30'
+                                                    : 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
                                                 }`}>
                                                 {req.priority} priority
                                             </span>
@@ -1856,8 +1854,8 @@ const AutomationControlsSection: React.FC<AutomationControlsSectionProps> = ({
                                         }}
                                         disabled={saving}
                                         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${settings.autonomous_shipping_enabled
-                                                ? 'bg-accent-500 text-white hover:bg-accent-600'
-                                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                            ? 'bg-accent-500 text-white hover:bg-accent-600'
+                                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                             }`}
                                     >
                                         {settings.autonomous_shipping_enabled ? (
@@ -1901,8 +1899,8 @@ const AutomationControlsSection: React.FC<AutomationControlsSectionProps> = ({
                                         }}
                                         disabled={saving}
                                         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${settings.autonomous_pricing_enabled
-                                                ? 'bg-accent-500 text-white hover:bg-accent-600'
-                                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                            ? 'bg-accent-500 text-white hover:bg-accent-600'
+                                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                             }`}
                                     >
                                         {settings.autonomous_pricing_enabled ? (

@@ -12,6 +12,7 @@ import {
   Bookmark,
   Bot,
   Box,
+  Cpu,
   Calendar as CalendarIconBase,
   CalendarClock,
   CalendarDays,
@@ -104,6 +105,7 @@ export const MagicSparklesIcon = wrapIcon(Sparkles);
 export const AiSwirlIcon = wrapIcon(RefreshCw);
 export const RobotIcon = wrapIcon(Bot);
 export const MuRPBotIcon = wrapIcon(Bot);
+export const CpuChipIcon = wrapIcon(Cpu);
 
 export const BoxIcon = wrapIcon(Box);
 export const CheckCircleIcon = wrapIcon(CheckCircle);
@@ -124,6 +126,7 @@ export const DocumentTextIcon = wrapIcon(FileText);
 export const UsersIcon = wrapIcon(Users);
 export const ChartBarIcon = wrapIcon(BarChart3);
 export const CogIcon = wrapIcon(Settings);
+export const SettingsIcon = wrapIcon(Settings);
 export const BeakerIcon = wrapIcon(FlaskConical);
 export const SearchIcon = wrapIcon(Search);
 export const BellIcon = wrapIcon(Bell);
@@ -195,6 +198,7 @@ export const ChevronRightIcon = wrapIcon(ChevronRight);
 export const InboxIcon = wrapIcon(Inbox);
 export const CurrencyDollarIcon = wrapIcon(CircleDollarSign);
 export const ArrowTopRightOnSquareIcon = wrapIcon(ExternalLink);
+export const ClipboardIcon = wrapIcon(ClipboardList);
 export const SlackIcon = wrapIcon(Slack);
 export const GlobeIcon = wrapIcon(Globe);
 export const HashtagIcon = wrapIcon(Hash);
