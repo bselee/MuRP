@@ -107,6 +107,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('active');
     const [finalePOStatusFilter, setFinalePOStatusFilter] = useState<string>('all');
+    const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default Z-A (newest first)
+    const [showAllFinaleHistory, setShowAllFinaleHistory] = useState(false); // Default: 90 days only
+    const [hideDropship, setHideDropship] = useState(false);
     
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
@@ -605,6 +608,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <h2 className="text-xl font-semibold text-gray-300">📦 Finale Purchase Orders</h2>
                                 <span className="px-3 py-1 rounded-full text-sm bg-accent-500/20 text-accent-300 border border-accent-500/30 font-medium">
                                     {finalePurchaseOrders.filter(fpo => {
+                                        // Date filter: 90 days unless showing all
+                                        if (!showAllFinaleHistory) {
+                                            const ninetyDaysAgo = new Date();
+                                            ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+                                            const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
+                                            if (!orderDate || orderDate < ninetyDaysAgo) return false;
+                                        }
+                                        // Dropship filter
+                                        if (hideDropship && fpo.publicNotes?.toLowerCase().includes('dropship')) return false;
+                                        // Status filter
                                         if (finalePOStatusFilter === 'all') return true;
                                         if (finalePOStatusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
                                         if (finalePOStatusFilter === 'received') return ['Received', 'RECEIVED', 'Partial', 'PARTIALLY_RECEIVED'].includes(fpo.status);
@@ -612,6 +625,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         return false;
                                     }).length} {finalePOStatusFilter === 'all' ? 'total' : finalePOStatusFilter}
                                 </span>
+                                {!showAllFinaleHistory && (
+                                    <span className="text-xs text-gray-500">(Last 90 days)</span>
+                                )}
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="flex items-center gap-1 bg-gray-800/50 rounded-lg p-1 border border-gray-700">
@@ -656,6 +672,39 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         Received
                                     </Button>
                                 </div>
+                                
+                                {/* Sort Order Toggle */}
+                                <Button
+                                    onClick={() => setFinalePOSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                    className="px-3 py-1.5 text-xs rounded bg-gray-800/50 border border-gray-700 text-gray-300 hover:bg-gray-700 transition-colors"
+                                >
+                                    {finalePOSortOrder === 'asc' ? 'A-Z ↑' : 'Z-A ↓'}
+                                </Button>
+                                
+                                {/* Dropship Filter Toggle */}
+                                <Button
+                                    onClick={() => setHideDropship(!hideDropship)}
+                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                                        hideDropship
+                                            ? 'bg-red-500/20 text-red-300 border border-red-500/50'
+                                            : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                                    }`}
+                                >
+                                    {hideDropship ? '🚫 Dropship Hidden' : 'Show All'}
+                                </Button>
+                                
+                                {/* 90-day / All History Toggle */}
+                                <Button
+                                    onClick={() => setShowAllFinaleHistory(!showAllFinaleHistory)}
+                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                                        showAllFinaleHistory
+                                            ? 'bg-accent-500/20 text-accent-300 border border-accent-500/50'
+                                            : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                                    }`}
+                                >
+                                    {showAllFinaleHistory ? 'All History' : '90 Days'}
+                                </Button>
+                                
                                 <span className="text-xs text-gray-400">
                                     Synced from Finale API
                                 </span>
@@ -665,11 +714,30 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <div className="grid gap-4">
                             {finalePurchaseOrders
                                 .filter(fpo => {
+                                    // Date filter: 90 days unless showing all
+                                    if (!showAllFinaleHistory) {
+                                        const ninetyDaysAgo = new Date();
+                                        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+                                        const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
+                                        if (!orderDate || orderDate < ninetyDaysAgo) return false;
+                                    }
+                                    // Dropship filter - check in notes (publicNotes or privateNotes)
+                                    if (hideDropship) {
+                                        const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
+                                        if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) return false;
+                                    }
+                                    // Status filter
                                     if (finalePOStatusFilter === 'all') return true;
                                     if (finalePOStatusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
                                     if (finalePOStatusFilter === 'received') return ['Received', 'RECEIVED', 'Partial', 'PARTIALLY_RECEIVED'].includes(fpo.status);
                                     if (finalePOStatusFilter === 'pending') return ['Pending', 'DRAFT', 'Draft'].includes(fpo.status);
                                     return false;
+                                })
+                                .sort((a, b) => {
+                                    // Sort by order ID (A-Z or Z-A)
+                                    const aId = a.orderId || '';
+                                    const bId = b.orderId || '';
+                                    return finalePOSortOrder === 'asc' ? aId.localeCompare(bId) : bId.localeCompare(aId);
                                 })
                                 .map((fpo) => {
                                 const isExpanded = expandedFinalePO === fpo.id;

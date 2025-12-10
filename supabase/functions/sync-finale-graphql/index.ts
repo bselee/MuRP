@@ -663,24 +663,32 @@ serve(async (req) => {
     // ==========================================
     try {
       const posStart = Date.now();
-      console.log('[Sync] Fetching Purchase Orders from GraphQL...');
+      console.log('[Sync] Fetching Purchase Orders from GraphQL (current year only)...');
 
       const allPOs: any[] = [];
       let hasMore = true;
       let cursor: string | null = null;
+      
+      // Only sync orders from current year
+      const currentYear = new Date().getFullYear();
+      const yearStart = `${currentYear}-01-01`;
 
       while (hasMore && allPOs.length < 1000) {
         const data = await graphqlQuery(PURCHASE_ORDERS_QUERY, { first: 100, after: cursor });
         const connection = data.orderViewConnection;
-
+        
+        // Filter to current year only
         for (const edge of connection.edges) {
-          allPOs.push(edge.node);
+          const orderDate = edge.node.orderDate;
+          if (orderDate && orderDate >= yearStart) {
+            allPOs.push(edge.node);
+          }
         }
 
         hasMore = connection.pageInfo.hasNextPage;
         cursor = connection.pageInfo.endCursor;
 
-        console.log(`[Sync] Fetched ${allPOs.length} purchase orders...`);
+        console.log(`[Sync] Fetched ${allPOs.length} purchase orders (${currentYear} only)...`);
       }
 
       if (allPOs.length > 0) {
