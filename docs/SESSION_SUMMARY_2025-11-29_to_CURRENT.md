@@ -1,3 +1,347 @@
+### Session: 2025-12-10 (PO Filtering - Year/Date/Sort/Dropship)
+
+**Changes Made:**
+- Modified: `supabase/functions/sync-finale-graphql/index.ts` (+15 lines)
+  - Added current year filter to PO sync (only fetch orders from YYYY-01-01 onwards)
+  - Reduces database size by excluding old historical orders
+  - Logs show year being synced for transparency
+- Modified: `pages/PurchaseOrders.tsx` (+65 lines)
+  - Added 90-day default view with toggle for full history
+  - Added A-Z/Z-A sorting by order ID
+  - Added dropship filter (hides POs with 'dropship', 'drop ship', or 'drop-ship' in notes)
+  - All filters work together (date range + status + dropship + sorting)
+  - UI controls: Sort button, dropship toggle, date range toggle
+  - Real-time count badge updates based on active filters
+
+**Key Decisions:**
+- **Decision:** Sync only current year POs by default
+- **Rationale:** Historical orders beyond 1 year rarely needed, reduces data volume and sync time
+- **Decision:** Default to 90-day view in UI
+- **Rationale:** Recent orders most relevant, user can toggle to see full history if needed
+- **Decision:** Check both publicNotes and privateNotes for dropship keyword
+- **Rationale:** Ensure complete filtering regardless of where dropship info is stored
+- **Decision:** Sort by order ID instead of date
+- **Rationale:** Order IDs often sequential and meaningful (PO-2025-001, etc.)
+
+**Filter Implementation:**
+```typescript
+// Backend: Current year filter
+const currentYear = new Date().getFullYear();
+const yearStart = `${currentYear}-01-01`;
+if (orderDate && orderDate >= yearStart) {
+  allPOs.push(edge.node);
+}
+
+// Frontend: 90-day + dropship + status filters
+.filter(fpo => {
+  // Date: Last 90 days unless showAllFinaleHistory
+  if (!showAllFinaleHistory) {
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    if (!orderDate || orderDate < ninetyDaysAgo) return false;
+  }
+  // Dropship: Check notes for variants
+  if (hideDropship) {
+    const notes = `${fpo.publicNotes} ${fpo.privateNotes}`.toLowerCase();
+    if (notes.includes('dropship') || notes.includes('drop ship')) return false;
+  }
+  // Status filter (existing logic)
+})
+.sort((a, b) => {
+  // A-Z or Z-A by order ID
+  return finalePOSortOrder === 'asc' ? a.orderId.localeCompare(b.orderId) : b.orderId.localeCompare(a.orderId);
+})
+```
+
+**UI Controls Added:**
+- **Sort Toggle:** "A-Z ↑" / "Z-A ↓" button (gray background, border)
+- **Dropship Filter:** "🚫 Dropship Hidden" (red) / "Show All" (gray) button
+- **Date Range:** "90 Days" (gray) / "All History" (accent yellow) button
+- **Count Badge:** Shows filtered count with "(Last 90 days)" indicator when applicable
+
+**User Experience:**
+- Default state: Last 90 days, Z-A sort (newest first), all dropship POs shown
+- Click "A-Z ↑" → Toggles to alphabetical ascending order
+- Click "Show All" → Toggles to "🚫 Dropship Hidden" (red badge)
+- Click "90 Days" → Toggles to "All History" (accent yellow badge)
+- All filters update count badge in real-time
+- Visual feedback: Active filters show with distinct colors
+
+**Deployment:**
+- ✅ Edge function deployed to Supabase (78.06kB bundle)
+- ✅ Build passing (8.11s)
+- ✅ Changes pushed to GitHub (commit `44775b1`)
+- ⏳ Pending: Test in production UI after Vercel deployment
+
+**Testing:**
+- ✅ TypeScript compilation clean
+- ✅ Build successful
+- ⏳ UI testing pending (verify filters work correctly)
+- ⏳ Sync testing pending (confirm year filter works in production)
+
+**Performance Impact:**
+- **Sync:** Reduced data transfer (only current year orders)
+- **UI:** Faster initial render (90 days vs all history)
+- **Database:** Smaller finale_purchase_orders table size over time
+
+**Next Steps:**
+- [ ] Verify Vercel deployment completes
+- [ ] Test UI filters in production (90-day toggle, dropship filter, A-Z sort)
+- [ ] Monitor next PO sync to confirm year filtering works
+- [ ] Consider adding date picker for custom date ranges (future enhancement)
+
+---
+
+### Session: 2025-12-10 (Sales Velocity Calculation Implementation)
+
+**Changes Made:**
+- Created: `supabase/migrations/083_finale_orders_and_velocity.sql` (213 lines)
+  - Table: `finale_orders` with JSONB order_items array structure
+  - Indexes: 7 total (order_id, dates, status, GIN on JSONB, synced_at)
+  - Functions: `calculate_product_sales_period()`, `update_inventory_velocity()`, `update_all_inventory_velocities()`
+  - View: `v_product_sales_summary` for analytics dashboard
+  - RLS Policies: 3 (anon read, authenticated read, service_role full access)
+- Modified: `supabase/functions/sync-finale-data/index.ts` (+140 lines)
+  - Added: `transformOrder()` function to convert Finale orders to database format
+  - Added: Order sync section with pagination (500 per batch, 5000 max)
+  - Added: Velocity calculation call after order upsert completes
+  - Integration: Calls `update_all_inventory_velocities()` RPC after sync
+- Created: `docs/VELOCITY_CALCULATION_IMPLEMENTATION.md` (comprehensive documentation)
+  - Complete architecture documentation
+  - Function reference with examples
+  - Testing and troubleshooting guide
+  - Performance considerations
+
+**Key Decisions:**
+- **Decision:** Use JSONB array for order_items instead of junction table
+- **Rationale:** Flexible schema for variable line items, fast GIN indexed queries, simpler data model
+- **Decision:** Weighted velocity formula: `(30d * 0.5 + 60d * 0.3 + 90d * 0.2) / 30`
+- **Rationale:** Weights recent data (50%) more heavily than historical, smooths seasonal variations
+- **Decision:** Filter orders by status: COMPLETED, SHIPPED, DELIVERED
+- **Rationale:** Only count actually fulfilled orders, exclude cancelled/pending
+- **Decision:** Limit order sync to 5000 recent records
+- **Rationale:** Velocity only uses 90-day window, older orders don't affect calculations
+
+**Database Architecture:**
+- **finale_orders table:** Stores sales orders with JSONB product line items
+- **JSONB structure:** `[{"productId": "SKU", "quantity": N, "unitPrice": X}]`
+- **Indexes:** GIN on order_items for fast JSONB queries, DESC on dates for latest-first sorting
+- **Functions:** 3-layer calculation (period aggregation → single SKU → batch processing)
+- **View:** Aggregates sales by product with rolling windows (30/60/90 days)
+
+**Velocity Calculation Flow:**
+```
+1. Finale orders synced → finale_orders table (JSONB order_items)
+2. calculate_product_sales_period(sku, days) → sums quantities from JSONB
+3. update_inventory_velocity(sku) → calculates weighted average
+4. Updates inventory_items → sales_last_30_days, sales_last_60_days, sales_last_90_days, sales_velocity_consolidated
+5. UI displays → Inventory page velocity column, ConsumptionChart component
+```
+
+**Edge Function Integration:**
+- **Order sync:** Fetches `/salesorder` with pagination, transforms to finale_orders format
+- **JSONB extraction:** Parses orderItemList into order_items array structure
+- **Deduplication:** By finale_order_url to prevent duplicates
+- **Velocity calculation:** Automatic RPC call after successful order upsert
+- **Error handling:** Try/catch blocks with detailed logging, non-blocking failures
+
+**Deployment:**
+- ✅ Migration 083 applied to local database (all objects created)
+- ✅ Edge function deployed to Supabase production (83.42kB bundle)
+- ✅ Build passing (8.07s)
+- ⏳ Pending: First production sync to populate finale_orders table
+
+**Testing:**
+- ✅ TypeScript compilation clean (build successful)
+- ✅ Migration creates all objects (table, 7 indexes, 3 functions, 1 view)
+- ✅ Edge function deploys without errors
+- ⏳ Pending: Trigger sync to test order fetch and velocity calculation
+- ⏳ Pending: Verify UI displays non-zero velocity values
+
+**Problems & Solutions:**
+- **Problem:** Persistent zero values in velocity fields (sales30Days, sales60Days, sales90Days)
+- **Root Cause:** No sales transaction data synced from Finale (only products/vendors/inventory)
+- **Solution:** Created finale_orders table + sync orders + calculate velocity from transaction history
+- **Implementation:** Migration 083 + edge function order sync section + automatic calculation
+
+**Function Signatures:**
+```sql
+calculate_product_sales_period(p_product_id TEXT, p_days INTEGER) RETURNS NUMERIC
+update_inventory_velocity(p_sku TEXT) RETURNS VOID
+update_all_inventory_velocities() RETURNS TABLE (sku TEXT, sales_30d INT, sales_60d INT, sales_90d INT, velocity NUMERIC)
+```
+
+**Performance:**
+- **STABLE function:** calculate_product_sales_period can be cached within transaction
+- **GIN index:** Fast JSONB array queries (productId lookups)
+- **Batch processing:** ~100ms per SKU, 300 items = ~30 seconds (acceptable for cron)
+- **Indexes:** 7 total for fast date/status/JSONB filtering
+
+**Next Steps:**
+- [ ] Trigger production sync (Vercel cron or manual via `/api/trigger-finale-sync`)
+- [ ] Verify finale_orders table populates with order data
+- [ ] Confirm update_all_inventory_velocities() executes successfully
+- [ ] Check inventory_items has updated sales_last_X_days values
+- [ ] Validate UI displays non-zero velocity on Inventory page
+- [ ] Spot-check calculation accuracy against Finale reports
+- [ ] Monitor first sync execution time and performance
+
+**Documentation:**
+- Created: `docs/VELOCITY_CALCULATION_IMPLEMENTATION.md` - Complete implementation guide
+  - Database schema documentation
+  - Function reference with examples
+  - Testing procedures and validation queries
+  - Troubleshooting guide
+  - Performance considerations
+  - Deployment checklist
+
+**Open Questions:**
+- What Finale API endpoint returns sales orders? (`/salesorder` assumed, needs verification)
+- What is the exact order status field name? (`statusId` or `status`?)
+- What date field should be prioritized? (Using ship_date with order_date fallback)
+- Should we archive orders older than 1 year? (Only 90-day window needed for velocity)
+
+---
+
+### Session: 2025-12-09 (UI Fixes - Velocity, Theme, PO Expansion)
+
+**Changes Made:**
+- Fixed: `pages/PurchaseOrders.tsx` - Removed template literal syntax errors (embedded newlines in className)
+- Updated: `components/EnhancedBomCard.tsx` - Added snake_case field fallbacks for velocity display
+  - Now checks both `sales30Days` and `sales_30_days` (similarly for 60/90 day fields)
+- Added: Light/dark theme support for Finale PO cards with useTheme hook
+- Fixed: PO card expansion - added stopPropagation() to onClick handlers
+- Applied: Consistent BOM card styling (slate gradients, amber accents) to PO page
+
+**Key Decisions:**
+- **Decision:** Support both camelCase and snake_case for velocity fields
+- **Rationale:** Database may return either format, need to check both to ensure velocity displays
+- **Decision:** Flatten template literal className conditionals to single lines
+- **Rationale:** JSX/esbuild doesn't accept embedded newlines in template strings (syntax error)
+- **Decision:** Use isDark conditional throughout instead of hardcoded colors
+- **Rationale:** Ensures theme switching works properly for light/dark modes
+
+**Problems & Solutions:**
+- **Problem:** Velocity not showing on BOM cards
+- **Solution:** Added fallback checks for snake_case field names (sales_30_days, sales_60_days, sales_90_days)
+- **Problem:** PO cards won't expand on click (error)
+- **Solution:** Added stopPropagation() to prevent event bubbling
+- **Problem:** Build failing with "Syntax error 'n'" at line 731
+- **Solution:** Removed `\n` from template literals - flattened to single-line conditionals
+
+**Commits:**
+- `4d3941b` - fix(ui): resolve PO card theme syntax errors and add velocity field fallbacks
+
+**Testing:**
+- ✅ Build successful after syntax fix
+- ✅ Template literals properly formatted (single-line)
+- ✅ Theme support implemented for PO cards
+- 🔄 Pending: Verify velocity displays on BOM cards in UI
+- ❌ PO cards still do not expand into full PO document (needs investigation)
+
+**Known Issues:**
+- **PO Card Expansion Not Working**: Added stopPropagation() but cards still don't expand to show full PO details
+  - Likely needs: Expanded state management, conditional rendering of detail sections, or modal implementation
+  - Current behavior: Cards show summary but clicking doesn't reveal line items/full document
+  - Next action: Investigate expansion mechanism and implement proper detail view
+
+**Next Steps:**
+- [ ] Fix PO card expansion - implement proper detail view/modal for full PO document
+- [ ] Test velocity display on BOM cards with real data
+- [ ] Verify theme switching works correctly in production
+- [ ] Complete theme support for Internal PO cards (only Finale cards themed currently)
+
+---
+
+### Session: 2025-12-09 (Auto-Sync Complete, GitHub Push)
+
+**Changes Made:**
+- Created: `auto-sync-finale` edge function - orchestrates both REST and GraphQL syncs
+- Updated: `sync-finale-data` - category-only filter, maxProducts=10000, BOM extraction for all products
+- Created: `sync-finale-graphql` - GraphQL sync with stock levels, cleanup step for inactive/deprecating
+- Created: `docs/FINALE_DATA_SYNC.md` - **AUTHORITATIVE** single-source documentation (600+ lines)
+- Created: `supabase/migrations/080_boms_components_jsonb.sql` - JSONB column for component details
+- Archived: 8 old Finale docs → `docs/archive/2025-12-finale/`
+- Merged: Claude UI flow analysis branch (FilterPresetManager improvements)
+- Archived: UI docs → `docs/archive/2025-12-ui/`
+
+**Key Decisions:**
+- **Decision:** REST API status filter removed
+- **Rationale:** REST returns "PRODUCT_INACTIVE" for all products (different from GraphQL "Active/Inactive")
+- **Decision:** Created auto-sync orchestrator instead of single combined function
+- **Rationale:** Allows independent testing, each function has clear responsibility
+- **Decision:** Single authoritative doc instead of multiple scattered docs
+- **Rationale:** Previous docs were contradictory and confusing
+
+**Database Results:**
+- 954 products (active only, no Deprecating category)
+- 908 vendors
+- 1000 purchase orders
+- 506 BOM components → 90 assemblies
+- 4400 inventory items
+- 1791 items with stock > 0
+
+**Stock Priority:**
+- BuildASoil Shipping (10005) is primary for stock assessment
+- Falls back to: Main (10000) → Grow Depot (10003) → Testing (10059) → Dispensary (10109)
+
+**Commits:**
+- `0906a49` - feat(sync): complete auto-sync orchestrator with comprehensive docs
+
+**Testing:**
+- ✅ All unit tests passing (3/3)
+- ✅ Build successful
+- ✅ Auto-sync tested: 43s total execution
+- ✅ GitHub push successful
+
+**Next Steps:**
+- [ ] Set up pg_cron for scheduled auto-sync (daily at 6 AM)
+- [ ] Implement velocity/usage data for forecasting
+- [ ] Test BOM card display with synced data
+
+---
+
+### Session: 2025-12-08 18:00-19:20 (Finale Data Sync WORKING!)
+
+**Changes Made:**
+- Fixed: `sync-finale-data` edge function - now calls Finale REST API directly
+- Deployed: `api-proxy` edge function (was missing, sync-finale-data originally depended on it)
+- Created: `supabase/migrations/079_finale_anon_read_access.sql` - RLS policy for frontend access
+- Modified: `supabase/functions/sync-finale-data/index.ts` - Complete rewrite (240 lines)
+
+**Key Decisions:**
+- **Decision:** Direct REST API calls instead of routing through api-proxy
+- **Rationale:** Simpler, more reliable, fewer moving parts
+- **Decision:** Added anon read access to finale_* tables
+- **Rationale:** Frontend needs to read inventory data without forcing authentication
+
+**Problems & Solutions:**
+- **Problem 1:** `api-proxy` edge function was not deployed (sync-finale-data depended on it)
+- **Solution:** Deployed api-proxy, but then rewrote sync-finale-data to not need it
+- **Problem 2:** Schema mismatch - tried to insert `active` column that doesn't exist
+- **Solution:** Updated transform to match actual `finale_products` table schema
+- **Problem 3:** Duplicate finale_product_url values causing ON CONFLICT errors
+- **Solution:** Added deduplication via Map before upsert
+- **Problem 4:** RLS blocked anon reads (200 OK but 0 rows)
+- **Solution:** Migration 079 adds anon read policies to finale tables
+
+**Results:**
+- ✅ **100 products synced from Finale to Supabase**
+- ✅ Sample data: BC101 (Bio Char), PU101 (Pumice), etc.
+- ✅ Data readable via frontend with anon key
+- ✅ Tests passing, build clean
+
+**Commits:**
+- `02a9292` - fix(sync): rewrite sync-finale-data to call Finale REST API directly
+
+**Next Steps:**
+- [ ] Sync more than 100 products (pagination limit)
+- [ ] Add vendor sync
+- [ ] Add inventory levels sync (finale_inventory table)
+- [ ] Set up Vercel cron for automatic sync
+
+---
+
 ### Session: 2025-12-08 (Claude UI Work Merge & GitHub Push)
 
 **Changes Made:**

@@ -299,10 +299,13 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   const queuedCount = queueStatus ? Object.keys(queueStatus).length : 0;
   const hasPoDraft = queueStatus ? Object.values(queueStatus).some(entry => entry.status === 'po_created') : false;
   const velocityPerDay = typeof finishedItem?.salesVelocity === 'number' ? finishedItem.salesVelocity : null;
-  const sales30Days = typeof finishedItem?.sales30Days === 'number' ? finishedItem.sales30Days : null;
+  const sales30Days = typeof finishedItem?.sales30Days === 'number' ? finishedItem.sales30Days : 
+    typeof finishedItem?.sales_30_days === 'number' ? finishedItem.sales_30_days : null;
   const avg30PerDay = sales30Days != null ? sales30Days / 30 : null;
-  const avg60PerDay = typeof finishedItem?.sales60Days === 'number' ? finishedItem.sales60Days / 60 : null;
-  const avg90PerDay = typeof finishedItem?.sales90Days === 'number' ? finishedItem.sales90Days / 90 : null;
+  const avg60PerDay = typeof finishedItem?.sales60Days === 'number' ? finishedItem.sales60Days / 60 : 
+    typeof finishedItem?.sales_60_days === 'number' ? finishedItem.sales_60_days / 60 : null;
+  const avg90PerDay = typeof finishedItem?.sales90Days === 'number' ? finishedItem.sales90Days / 90 : 
+    typeof finishedItem?.sales_90_days === 'number' ? finishedItem.sales_90_days / 90 : null;
   const currentVelocity = velocityPerDay ?? avg30PerDay ?? null;
   const trailingVelocity = avg60PerDay ?? avg90PerDay ?? null;
   const velocityTrendRaw = currentVelocity != null && trailingVelocity != null && trailingVelocity !== 0
@@ -899,7 +902,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 
                           {/* Ingredient Details */}
                           <div className="flex-1 min-w-0">
-                            {/* SKU + Name */}
+                            {/* SKU + Description + Name */}
                             <div className="flex items-baseline gap-2 flex-wrap">
                               {onNavigateToInventory ? (
                                 <Button
@@ -913,6 +916,11 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                                 </Button>
                               ) : (
                                 <span className={themeSwap('font-bold font-mono text-sm text-emerald-800', 'font-bold font-mono text-sm text-emerald-300')}>{c.sku}</span>
+                              )}
+                              {componentItem?.description && (
+                                <span className={themeSwap('text-xs text-gray-600 italic', 'text-xs text-gray-400 italic')}>
+                                  {componentItem.description}
+                                </span>
                               )}
                               <span className={themeSwap('text-sm text-gray-800', 'text-sm text-gray-200')}>— {c.name}</span>
                               {nestedBom && (
@@ -962,6 +970,41 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                                 </>
                               )}
                             </div>
+
+                            {/* Velocity / Usage Data */}
+                            {componentItem && (componentItem.salesVelocity || componentItem.sales30Days) && (
+                              <div className="flex items-center gap-3 mt-1 text-[11px]">
+                                {componentItem.salesVelocity && componentItem.salesVelocity > 0 && (
+                                  <span className={themeSwap('text-sky-700', 'text-sky-400')}>
+                                    <TrendingUpIcon className="w-3 h-3 inline mr-1" />
+                                    {componentItem.salesVelocity.toFixed(1)}/day velocity
+                                  </span>
+                                )}
+                                {componentItem.sales30Days && componentItem.sales30Days > 0 && (
+                                  <>
+                                    {componentItem.salesVelocity && <span className={dividerClass}>•</span>}
+                                    <span className={themeSwap('text-gray-600', 'text-gray-400')}>
+                                      {componentItem.sales30Days} sold (30d)
+                                    </span>
+                                  </>
+                                )}
+                                {/* Days of stock estimate */}
+                                {componentItem.salesVelocity && componentItem.salesVelocity > 0 && available > 0 && (
+                                  <>
+                                    <span className={dividerClass}>•</span>
+                                    <span className={`font-semibold ${
+                                      (available / componentItem.salesVelocity) < 7 
+                                        ? themeSwap('text-rose-700', 'text-rose-400')
+                                        : (available / componentItem.salesVelocity) < 14 
+                                          ? themeSwap('text-amber-700', 'text-amber-400')
+                                          : themeSwap('text-emerald-700', 'text-emerald-400')
+                                    }`}>
+                                      ~{Math.round(available / componentItem.salesVelocity)} days stock
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
 

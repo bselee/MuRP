@@ -81,8 +81,8 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
   { key: 'status', label: 'Status', visible: true, sortable: false },
     { key: 'itemType', label: 'Item Type', visible: true, sortable: false },
     { key: 'runway', label: 'Runway vs Lead', visible: true, sortable: true },
-  { key: 'salesVelocity', label: 'Sales Velocity', visible: false, sortable: true },
-  { key: 'sales30Days', label: 'Sales (30d)', visible: false, sortable: true },
+  { key: 'salesVelocity', label: 'Velocity/Day', visible: true, sortable: true },
+  { key: 'sales30Days', label: 'Sales (30d)', visible: true, sortable: true },
   { key: 'sales60Days', label: 'Sales (60d)', visible: false, sortable: true },
   { key: 'sales90Days', label: 'Sales (90d)', visible: false, sortable: true },
   { key: 'unitCost', label: 'Unit Cost', visible: false, sortable: true },
@@ -1417,6 +1417,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     bomFilter,
                     riskFilter,
                 }}
+                availableCategories={filterOptions.categories}
+                availableVendors={filterOptions.vendors.map(vendorId => ({
+                    id: vendorId,
+                    name: getVendorName(vendorId)
+                }))}
                 onSavePreset={handleSavePreset}
                 onDeletePreset={handleDeletePreset}
                 onApplyPreset={handleApplyPreset}

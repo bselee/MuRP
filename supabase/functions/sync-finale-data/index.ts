@@ -124,6 +124,168 @@ function transformProduct(product: any): any {
   };
 }
 
+// Transform Finale product to inventory_items table format (what the app uses)
+function transformToInventoryItem(product: any): any {
+  if (!product.productId) {
+    return null;
+  }
+
+  return {
+    sku: product.productId,
+    name: product.internalName || product.description || product.productId,
+    category: product.category || product.productType || 'Uncategorized',
+    reorder_point: product.reorderPoint ? parseInt(product.reorderPoint) : 0,
+    moq: product.minimumOrderQty ? parseInt(product.minimumOrderQty) : 1,
+    stock: 0, // Will be updated by inventory sync
+    on_order: 0, // Will be updated by PO sync
+    updated_at: new Date().toISOString(),
+  };
+}
+
+// Transform Finale vendor/party to finale_vendors table format
+function transformVendor(party: any): any {
+  const partyUrl = party.partyUrl || party.partyGroupUrl || 
+    (party.partyId ? `/${Deno.env.get('FINALE_ACCOUNT_PATH')}/api/partygroup/${party.partyId}` : null);
+  
+  if (!partyUrl || !party.partyId) {
+    return null;
+  }
+
+  return {
+    finale_party_url: partyUrl,
+    party_id: party.partyId,
+    party_name: party.name || party.partyId,
+    contact_name: party.contactName || null,
+    email: party.email || null,
+    phone: party.phone || null,
+    address_street: party.addressStreet || party.street || null,
+    address_city: party.addressCity || party.city || null,
+    address_state: party.addressState || party.state || null,
+    address_postal_code: party.addressPostalCode || party.postalCode || null,
+    address_country: party.addressCountry || party.country || null,
+    payment_terms: party.paymentTerms || null,
+    default_lead_time_days: party.leadTimeDays ? parseInt(party.leadTimeDays) : null,
+    status: party.status || 'Active',
+    raw_data: party,
+    synced_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+// Transform to legacy vendors table format (what app uses)
+function transformToLegacyVendor(party: any): any {
+  if (!party.partyId && !party.name) {
+    return null;
+  }
+
+  return {
+    name: party.name || party.partyId,
+    contact_emails: party.email ? [party.email] : [],
+    phone: party.phone || '',
+    address: [party.addressStreet, party.addressCity, party.addressState, party.addressPostalCode]
+      .filter(Boolean).join(', ') || '',
+    website: party.website || '',
+    lead_time_days: party.leadTimeDays ? parseInt(party.leadTimeDays) : 7,
+    notes: '',
+    updated_at: new Date().toISOString(),
+  };
+}
+
+// Transform Finale order to finale_orders table format
+function transformOrder(order: any): any {
+  const orderUrl = order.orderUrl || order.orderId
+    ? `/${Deno.env.get('FINALE_ACCOUNT_PATH')}/api/order/${order.orderId}`
+    : null;
+  
+  if (!orderUrl || !order.orderId) {
+    return null;
+  }
+
+  // Extract order items (product IDs and quantities)
+  const orderItems: any[] = [];
+  const orderItemList = order.orderItemList || [];
+  
+  for (const item of orderItemList) {
+    if (item.productId && item.quantity) {
+      orderItems.push({
+        productId: item.productId,
+        quantity: parseFloat(item.quantity) || 0,
+        unitPrice: item.unitPrice ? parseFloat(item.unitPrice) : null,
+        productName: item.productName || item.productId,
+      });
+    }
+  }
+
+  return {
+    finale_order_url: orderUrl,
+    order_id: order.orderId,
+    order_type: order.orderTypeId || 'SALES_ORDER',
+    order_status: order.statusId || order.status || 'UNKNOWN',
+    order_date: order.orderDate || order.createdDate || null,
+    ship_date: order.shipDate || order.shippedDate || null,
+    delivered_date: order.deliveredDate || null,
+    customer_id: order.customerId || order.partyId || null,
+    customer_name: order.customerName || order.partyName || null,
+    ship_to_location: order.shipToLocation || order.destinationFacilityUrl || null,
+    total_amount: order.grandTotal ? parseFloat(order.grandTotal) : null,
+    currency: order.currencyUomId || 'USD',
+    order_items: orderItems,
+    raw_data: order,
+    synced_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+// Extract BOMs from product's productAssocList
+function extractBomsFromProduct(product: any, accountPath: string): any[] {
+  const boms: any[] = [];
+  const productAssocList = product.productAssocList || [];
+  
+  for (const assoc of productAssocList) {
+    // Only process MANUF_COMPONENT type (manufacturing BOMs)
+    if (assoc.productAssocTypeId !== 'MANUF_COMPONENT') {
+      continue;
+    }
+    
+    const items = assoc.productAssocItemList || [];
+    for (const item of items) {
+      if (!item.productId) continue;
+      
+      // Create unique BOM URL for this parent-component pair
+      const bomUrl = `/${accountPath}/api/bom/${product.productId}/${item.productId}`;
+      
+      boms.push({
+        finale_bom_url: bomUrl,
+        bom_id: `${product.productId}-${item.productId}`,
+        
+        // Parent (what we're building)
+        parent_product_url: product.productUrl || `/${accountPath}/api/product/${product.productId}`,
+        parent_name: product.internalName || product.productId,
+        parent_sku: product.productId,
+        
+        // Component (what goes into it)
+        component_product_url: item.productUrl || `/${accountPath}/api/product/${item.productId}`,
+        component_name: item.itemDescription || item.productId,
+        component_sku: item.productId,
+        
+        // Quantities
+        quantity_per: item.quantity || 1,
+        quantity_per_parent: item.quantity || 1,
+        effective_quantity: item.quantity || 1,
+        
+        // Metadata
+        bom_type: 'MANUFACTURING',
+        status: 'Active',
+        raw_data: item,
+        synced_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+  }
+  
+  return boms;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -171,13 +333,14 @@ serve(async (req) => {
       const productsStart = Date.now();
       console.log('[Sync] Fetching products from Finale...');
       
-      // Fetch with pagination (get up to 1000 products)
+      // Fetch with pagination - get all active products (excluding Deprecating category)
       const allProducts: any[] = [];
       let offset = 0;
-      const limit = 100;
+      const limit = 500; // Batch size
       let hasMore = true;
+      const maxProducts = 3000; // ~300 active products expected, buffer for safety
 
-      while (hasMore && offset < 1000) {
+      while (hasMore && allProducts.length < maxProducts) {
         const columnarData = await finaleGet(`/product?limit=${limit}&offset=${offset}`);
         const products = transformColumnarToRows(columnarData);
         
@@ -196,9 +359,25 @@ serve(async (req) => {
 
       console.log(`[Sync] Total products fetched: ${allProducts.length}`);
 
-      if (allProducts.length > 0) {
+      // Filter: NEVER from "Deprecating" category
+      // NOTE: REST API statusId is unreliable (all show as PRODUCT_INACTIVE)
+      // GraphQL has accurate status - use that for filtering active vs inactive
+      const activeProducts = allProducts.filter((p) => {
+        const category = (p.userCategory || p.category || p.productType || '').toLowerCase();
+        
+        // NEVER include Deprecating category
+        if (category.includes('deprecat')) {
+          return false;
+        }
+        
+        return true;
+      });
+
+      console.log(`[Sync] Products after filtering: ${activeProducts.length} (excluded ${allProducts.length - activeProducts.length} deprecating)`);
+
+      if (activeProducts.length > 0) {
         // Transform products to our table format
-        const transformedProducts = allProducts
+        const transformedProducts = activeProducts
           .map((p) => transformProduct(p))
           .filter((p): p is NonNullable<typeof p> => p !== null);
 
@@ -234,6 +413,166 @@ serve(async (req) => {
         });
 
         console.log(`[Sync] ✅ Products: ${deduplicatedProducts.length} items in ${Date.now() - productsStart}ms`);
+
+        // ALSO sync to inventory_items table (what the app actually uses!)
+        const inventoryStart = Date.now();
+        console.log('[Sync] Syncing to inventory_items table for app compatibility...');
+        
+        const inventoryItems = activeProducts
+          .map((p) => transformToInventoryItem(p))
+          .filter((p): p is NonNullable<typeof p> => p !== null);
+        
+        // Deduplicate by SKU
+        const uniqueInventory = new Map<string, typeof inventoryItems[0]>();
+        for (const item of inventoryItems) {
+          uniqueInventory.set(item.sku, item);
+        }
+        const deduplicatedInventory = Array.from(uniqueInventory.values());
+        
+        console.log(`[Sync] Upserting ${deduplicatedInventory.length} items to inventory_items...`);
+        
+        const { error: invError } = await supabase
+          .from('inventory_items')
+          .upsert(deduplicatedInventory, { onConflict: 'sku' });
+        
+        if (invError) {
+          console.error('[Sync] inventory_items upsert error:', JSON.stringify(invError));
+          results.push({
+            dataType: 'inventory_items',
+            success: false,
+            itemCount: 0,
+            duration: Date.now() - inventoryStart,
+            error: invError.message || JSON.stringify(invError),
+          });
+        } else {
+          results.push({
+            dataType: 'inventory_items',
+            success: true,
+            itemCount: deduplicatedInventory.length,
+            duration: Date.now() - inventoryStart,
+          });
+          console.log(`[Sync] ✅ inventory_items: ${deduplicatedInventory.length} items in ${Date.now() - inventoryStart}ms`);
+        }
+
+        // ========================================
+        // EXTRACT AND SYNC BOMs (from active products only)
+        // ========================================
+        const bomsStart = Date.now();
+        console.log('[Sync] Extracting BOMs from active products...');
+        
+        const accountPath = FINALE_ACCOUNT_PATH;
+        const allBoms: any[] = [];
+        
+        for (const product of activeProducts) {
+          const productBoms = extractBomsFromProduct(product, accountPath);
+          allBoms.push(...productBoms);
+        }
+        
+        console.log(`[Sync] Found ${allBoms.length} BOM entries from ${activeProducts.length} active products`);
+        
+        if (allBoms.length > 0) {
+          // Deduplicate by finale_bom_url
+          const uniqueBoms = new Map<string, typeof allBoms[0]>();
+          for (const bom of allBoms) {
+            uniqueBoms.set(bom.finale_bom_url, bom);
+          }
+          const deduplicatedBoms = Array.from(uniqueBoms.values());
+          
+          console.log(`[Sync] Upserting ${deduplicatedBoms.length} BOMs to finale_boms...`);
+          
+          const { error: bomError } = await supabase
+            .from('finale_boms')
+            .upsert(deduplicatedBoms, { onConflict: 'finale_bom_url' });
+          
+          if (bomError) {
+            console.error('[Sync] finale_boms upsert error:', JSON.stringify(bomError));
+            results.push({
+              dataType: 'finale_boms',
+              success: false,
+              itemCount: 0,
+              duration: Date.now() - bomsStart,
+              error: bomError.message || JSON.stringify(bomError),
+            });
+          } else {
+            results.push({
+              dataType: 'finale_boms',
+              success: true,
+              itemCount: deduplicatedBoms.length,
+              duration: Date.now() - bomsStart,
+            });
+            console.log(`[Sync] ✅ finale_boms: ${deduplicatedBoms.length} items in ${Date.now() - bomsStart}ms`);
+            
+            // ========================================
+            // SYNC finale_boms → boms table (app format)
+            // ========================================
+            const bomsAppStart = Date.now();
+            console.log('[Sync] Aggregating BOMs for app display...');
+            
+            // Group components by parent SKU
+            const bomsByParent = new Map<string, any[]>();
+            for (const bom of deduplicatedBoms) {
+              const parentSku = bom.parent_sku;
+              if (!bomsByParent.has(parentSku)) {
+                bomsByParent.set(parentSku, []);
+              }
+              bomsByParent.get(parentSku)!.push(bom);
+            }
+            
+            // Transform to boms table format
+            const appBoms: any[] = [];
+            for (const [parentSku, components] of bomsByParent) {
+              const firstComponent = components[0];
+              const bomComponents = components.map(c => ({
+                sku: c.component_sku,
+                name: c.component_name || c.component_sku,
+                quantity: c.quantity_per || 1,
+                unit: 'each',
+              }));
+              
+              appBoms.push({
+                finished_sku: parentSku,
+                name: firstComponent.parent_name || parentSku,
+                description: `Assembly with ${components.length} components`,
+                category: 'Manufacturing',
+                yield_quantity: 1,
+                components: bomComponents, // JSONB array
+                artwork: [],
+                packaging: {},
+                barcode: '',
+                data_source: 'finale_api',
+                last_sync_at: new Date().toISOString(),
+                sync_status: 'synced',
+                updated_at: new Date().toISOString(),
+              });
+            }
+            
+            if (appBoms.length > 0) {
+              const { error: appBomError } = await supabase
+                .from('boms')
+                .upsert(appBoms, { onConflict: 'finished_sku' });
+              
+              if (appBomError) {
+                console.error('[Sync] boms table upsert error:', appBomError);
+              } else {
+                console.log(`[Sync] ✅ boms (app): ${appBoms.length} assemblies in ${Date.now() - bomsAppStart}ms`);
+                results.push({
+                  dataType: 'boms_app',
+                  success: true,
+                  itemCount: appBoms.length,
+                  duration: Date.now() - bomsAppStart,
+                });
+              }
+            }
+          }
+        } else {
+          results.push({
+            dataType: 'finale_boms',
+            success: true,
+            itemCount: 0,
+            duration: Date.now() - bomsStart,
+            error: 'No BOMs found in products',
+          });
+        }
       } else {
         results.push({
           dataType: 'products',
@@ -250,6 +589,426 @@ serve(async (req) => {
         : (typeof error === 'object' ? JSON.stringify(error) : String(error));
       results.push({
         dataType: 'products',
+        success: false,
+        itemCount: 0,
+        duration: 0,
+        error: errorMessage,
+      });
+    }
+
+    // ========================================
+    // SYNC INVENTORY LEVELS
+    // ========================================
+    try {
+      const inventoryStart = Date.now();
+      console.log('[Sync] Fetching inventory levels from Finale...');
+      
+      // Fetch inventory with pagination
+      const allInventory: any[] = [];
+      let offset = 0;
+      const limit = 500;
+      let hasMore = true;
+      const maxRecords = 10000; // Safety limit
+
+      while (hasMore && allInventory.length < maxRecords) {
+        const columnarData = await finaleGet(`/inventory?limit=${limit}&offset=${offset}`);
+        const inventory = transformColumnarToRows(columnarData);
+        
+        console.log(`[Sync] Fetched ${inventory.length} inventory records at offset ${offset}`);
+        
+        if (inventory.length === 0) {
+          hasMore = false;
+        } else {
+          allInventory.push(...inventory);
+          offset += limit;
+          if (inventory.length < limit) {
+            hasMore = false;
+          }
+        }
+      }
+
+      console.log(`[Sync] Total inventory records fetched: ${allInventory.length}`);
+
+      if (allInventory.length > 0) {
+        // Transform inventory records
+        const transformedInventory = allInventory
+          .map((inv) => {
+            const productUrl = inv.productUrl || (inv.productId ? `/${FINALE_ACCOUNT_PATH}/api/product/${inv.productId}` : null);
+            const facilityUrl = inv.facilityUrl || inv.facilityId;
+            
+            if (!productUrl || !facilityUrl) {
+              return null;
+            }
+
+            return {
+              finale_inventory_url: inv.inventoryUrl || `${productUrl}/inventory/${facilityUrl}`,
+              finale_product_url: productUrl,
+              facility_url: facilityUrl,
+              facility_id: inv.facilityId || facilityUrl,
+              facility_name: inv.facilityName || null,
+              parent_facility_url: inv.parentFacilityUrl || null,
+              quantity_on_hand: inv.quantityOnHand ? parseFloat(inv.quantityOnHand) : 0,
+              quantity_on_order: inv.quantityOnOrder ? parseFloat(inv.quantityOnOrder) : 0,
+              quantity_reserved: inv.quantityReserved ? parseFloat(inv.quantityReserved) : 0,
+              quantity_available: inv.quantityAvailable ? parseFloat(inv.quantityAvailable) : 0,
+              lot_id: inv.lotId || null,
+              lot_expiration_date: inv.lotExpirationDate || null,
+              order_url: inv.orderUrl || null,
+              order_type: inv.orderType || null,
+              normalized_packing_string: inv.normalizedPackingString || null,
+              raw_data: inv,
+              synced_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+          })
+          .filter((inv): inv is NonNullable<typeof inv> => inv !== null);
+
+        console.log(`[Sync] Transformed ${transformedInventory.length} valid inventory records`);
+
+        if (transformedInventory.length > 0) {
+          // Deduplicate by product + facility
+          const uniqueKey = (inv: any) => `${inv.finale_product_url}|||${inv.facility_url}`;
+          const uniqueInventory = new Map<string, typeof transformedInventory[0]>();
+          for (const inv of transformedInventory) {
+            uniqueInventory.set(uniqueKey(inv), inv);
+          }
+          const deduplicatedInventory = Array.from(uniqueInventory.values());
+
+          console.log(`[Sync] Upserting ${deduplicatedInventory.length} inventory records to finale_inventory...`);
+
+          const { error: invError } = await supabase
+            .from('finale_inventory')
+            .upsert(deduplicatedInventory, { 
+              onConflict: 'finale_product_url,facility_url',
+              ignoreDuplicates: false 
+            });
+
+          if (invError) {
+            console.error('[Sync] finale_inventory upsert error:', JSON.stringify(invError));
+            results.push({
+              dataType: 'finale_inventory',
+              success: false,
+              itemCount: 0,
+              duration: Date.now() - inventoryStart,
+              error: invError.message || JSON.stringify(invError),
+            });
+          } else {
+            results.push({
+              dataType: 'finale_inventory',
+              success: true,
+              itemCount: deduplicatedInventory.length,
+              duration: Date.now() - inventoryStart,
+            });
+            console.log(`[Sync] ✅ finale_inventory: ${deduplicatedInventory.length} records in ${Date.now() - inventoryStart}ms`);
+
+            // Update inventory_items with aggregated stock levels
+            try {
+              const stockUpdateStart = Date.now();
+              console.log('[Sync] Updating inventory_items with aggregated stock levels...');
+
+              // Aggregate inventory by product (sum across all facilities)
+              const stockByProduct = new Map<string, { onHand: number; onOrder: number; reserved: number }>();
+              
+              for (const inv of deduplicatedInventory) {
+                // Extract product ID from URL (e.g., "/account/api/product/BC101" -> "BC101")
+                const productId = inv.finale_product_url.split('/').pop() || '';
+                
+                const existing = stockByProduct.get(productId) || { onHand: 0, onOrder: 0, reserved: 0 };
+                stockByProduct.set(productId, {
+                  onHand: existing.onHand + (inv.quantity_on_hand || 0),
+                  onOrder: existing.onOrder + (inv.quantity_on_order || 0),
+                  reserved: existing.reserved + (inv.quantity_reserved || 0),
+                });
+              }
+
+              console.log(`[Sync] Aggregated stock for ${stockByProduct.size} products`);
+
+              // Update inventory_items in batches
+              let updatedCount = 0;
+              for (const [productId, stock] of stockByProduct) {
+                const { error: updateError } = await supabase
+                  .from('inventory_items')
+                  .update({
+                    units_in_stock: Math.floor(stock.onHand),
+                    units_on_order: Math.floor(stock.onOrder),
+                    units_reserved: Math.floor(stock.reserved),
+                    stock: Math.floor(stock.onHand), // Legacy field
+                    on_order: Math.floor(stock.onOrder), // Legacy field
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('sku', productId);
+
+                if (!updateError) {
+                  updatedCount++;
+                }
+              }
+
+              console.log(`[Sync] ✅ Updated stock levels for ${updatedCount}/${stockByProduct.size} inventory items in ${Date.now() - stockUpdateStart}ms`);
+              
+              results.push({
+                dataType: 'inventory_stock_update',
+                success: true,
+                itemCount: updatedCount,
+                duration: Date.now() - stockUpdateStart,
+              });
+            } catch (stockError) {
+              console.error('[Sync] Stock update failed:', stockError);
+              results.push({
+                dataType: 'inventory_stock_update',
+                success: false,
+                itemCount: 0,
+                duration: 0,
+                error: stockError instanceof Error ? stockError.message : String(stockError),
+              });
+            }
+          }
+        }
+      } else {
+        results.push({
+          dataType: 'finale_inventory',
+          success: true,
+          itemCount: 0,
+          duration: Date.now() - inventoryStart,
+          error: 'No inventory records found',
+        });
+      }
+    } catch (error) {
+      console.error('[Sync] Inventory sync failed:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      results.push({
+        dataType: 'finale_inventory',
+        success: false,
+        itemCount: 0,
+        duration: 0,
+        error: errorMessage,
+      });
+    }
+
+    // ========================================
+    // SYNC SALES ORDERS (for velocity calculation)
+    // ========================================
+    try {
+      const ordersStart = Date.now();
+      console.log('[Sync] Fetching sales orders from Finale...');
+      
+      const allOrders: any[] = [];
+      let offset = 0;
+      const limit = 500;
+      let hasMore = true;
+      const maxRecords = 5000; // Limit to recent orders for velocity
+
+      while (hasMore && allOrders.length < maxRecords) {
+        const columnarData = await finaleGet(`/salesorder?limit=${limit}&offset=${offset}`);
+        const orders = transformColumnarToRows(columnarData);
+        
+        console.log(`[Sync] Fetched ${orders.length} orders at offset ${offset}`);
+        
+        if (orders.length === 0) {
+          hasMore = false;
+        } else {
+          allOrders.push(...orders);
+          offset += limit;
+          if (orders.length < limit) {
+            hasMore = false;
+          }
+        }
+      }
+
+      console.log(`[Sync] Total orders fetched: ${allOrders.length}`);
+
+      if (allOrders.length > 0) {
+        // Transform orders
+        const transformedOrders = allOrders
+          .map(transformOrder)
+          .filter((order): order is NonNullable<typeof order> => order !== null);
+
+        console.log(`[Sync] Transformed ${transformedOrders.length} valid orders`);
+
+        if (transformedOrders.length > 0) {
+          // Deduplicate by finale_order_url
+          const uniqueOrders = new Map<string, typeof transformedOrders[0]>();
+          for (const order of transformedOrders) {
+            uniqueOrders.set(order.finale_order_url, order);
+          }
+          const deduplicatedOrders = Array.from(uniqueOrders.values());
+
+          console.log(`[Sync] Upserting ${deduplicatedOrders.length} orders to finale_orders...`);
+
+          const { error: orderError } = await supabase
+            .from('finale_orders')
+            .upsert(deduplicatedOrders, { 
+              onConflict: 'finale_order_url',
+              ignoreDuplicates: false 
+            });
+
+          if (orderError) {
+            console.error('[Sync] finale_orders upsert error:', JSON.stringify(orderError));
+            results.push({
+              dataType: 'finale_orders',
+              success: false,
+              itemCount: 0,
+              duration: Date.now() - ordersStart,
+              error: orderError.message || JSON.stringify(orderError),
+            });
+          } else {
+            results.push({
+              dataType: 'finale_orders',
+              success: true,
+              itemCount: deduplicatedOrders.length,
+              duration: Date.now() - ordersStart,
+            });
+            console.log(`[Sync] ✅ finale_orders: ${deduplicatedOrders.length} records in ${Date.now() - ordersStart}ms`);
+
+            // Calculate velocity for all products
+            try {
+              const velocityStart = Date.now();
+              console.log('[Sync] Calculating sales velocity for all inventory items...');
+
+              const { data: velocityResults, error: velocityError } = await supabase
+                .rpc('update_all_inventory_velocities');
+
+              if (velocityError) {
+                console.error('[Sync] Velocity calculation error:', velocityError);
+                results.push({
+                  dataType: 'velocity_calculation',
+                  success: false,
+                  itemCount: 0,
+                  duration: Date.now() - velocityStart,
+                  error: velocityError.message || JSON.stringify(velocityError),
+                });
+              } else {
+                const itemsUpdated = velocityResults ? velocityResults.length : 0;
+                console.log(`[Sync] ✅ Updated velocity for ${itemsUpdated} items in ${Date.now() - velocityStart}ms`);
+                results.push({
+                  dataType: 'velocity_calculation',
+                  success: true,
+                  itemCount: itemsUpdated,
+                  duration: Date.now() - velocityStart,
+                });
+              }
+            } catch (velocityError) {
+              console.error('[Sync] Velocity calculation failed:', velocityError);
+              results.push({
+                dataType: 'velocity_calculation',
+                success: false,
+                itemCount: 0,
+                duration: 0,
+                error: velocityError instanceof Error ? velocityError.message : String(velocityError),
+              });
+            }
+          }
+        }
+      } else {
+        results.push({
+          dataType: 'finale_orders',
+          success: true,
+          itemCount: 0,
+          duration: Date.now() - ordersStart,
+          error: 'No orders found',
+        });
+      }
+    } catch (error) {
+      console.error('[Sync] Orders sync failed:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      results.push({
+        dataType: 'finale_orders',
+        success: false,
+        itemCount: 0,
+        duration: 0,
+        error: errorMessage,
+      });
+    }
+
+    // ========================================
+    // SYNC VENDORS
+    // ========================================
+    try {
+      const vendorsStart = Date.now();
+      console.log('[Sync] Fetching vendors from Finale...');
+      
+      const columnarVendors = await finaleGet('/partygroup?role=SUPPLIER&limit=500');
+      const allVendors = transformColumnarToRows(columnarVendors);
+      
+      console.log(`[Sync] Fetched ${allVendors.length} vendors`);
+
+      if (allVendors.length > 0) {
+        // Transform to finale_vendors format
+        const transformedVendors = allVendors
+          .map((v) => transformVendor(v))
+          .filter((v): v is NonNullable<typeof v> => v !== null);
+        
+        // Deduplicate by finale_party_url
+        const uniqueVendors = new Map<string, typeof transformedVendors[0]>();
+        for (const vendor of transformedVendors) {
+          uniqueVendors.set(vendor.finale_party_url, vendor);
+        }
+        const deduplicatedVendors = Array.from(uniqueVendors.values());
+        
+        console.log(`[Sync] Upserting ${deduplicatedVendors.length} vendors to finale_vendors...`);
+        
+        const { error: vendorError } = await supabase
+          .from('finale_vendors')
+          .upsert(deduplicatedVendors, { onConflict: 'finale_party_url' });
+        
+        if (vendorError) {
+          console.error('[Sync] finale_vendors upsert error:', JSON.stringify(vendorError));
+          results.push({
+            dataType: 'finale_vendors',
+            success: false,
+            itemCount: 0,
+            duration: Date.now() - vendorsStart,
+            error: vendorError.message || JSON.stringify(vendorError),
+          });
+        } else {
+          results.push({
+            dataType: 'finale_vendors',
+            success: true,
+            itemCount: deduplicatedVendors.length,
+            duration: Date.now() - vendorsStart,
+          });
+          console.log(`[Sync] ✅ finale_vendors: ${deduplicatedVendors.length} items in ${Date.now() - vendorsStart}ms`);
+        }
+
+        // Also sync to legacy vendors table
+        const legacyVendorsStart = Date.now();
+        const legacyVendors = allVendors
+          .map((v) => transformToLegacyVendor(v))
+          .filter((v): v is NonNullable<typeof v> => v !== null);
+        
+        // Deduplicate by name
+        const uniqueLegacyVendors = new Map<string, typeof legacyVendors[0]>();
+        for (const vendor of legacyVendors) {
+          uniqueLegacyVendors.set(vendor.name, vendor);
+        }
+        const deduplicatedLegacyVendors = Array.from(uniqueLegacyVendors.values());
+        
+        const { error: legacyError } = await supabase
+          .from('vendors')
+          .upsert(deduplicatedLegacyVendors, { onConflict: 'name' });
+        
+        if (legacyError) {
+          console.error('[Sync] vendors (legacy) upsert error:', JSON.stringify(legacyError));
+        } else {
+          results.push({
+            dataType: 'vendors',
+            success: true,
+            itemCount: deduplicatedLegacyVendors.length,
+            duration: Date.now() - legacyVendorsStart,
+          });
+          console.log(`[Sync] ✅ vendors (legacy): ${deduplicatedLegacyVendors.length} items`);
+        }
+      }
+    } catch (error) {
+      console.error('[Sync] Vendors sync failed:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      results.push({
+        dataType: 'vendors',
         success: false,
         itemCount: 0,
         duration: 0,

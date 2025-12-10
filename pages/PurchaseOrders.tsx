@@ -1,6 +1,7 @@
 
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTheme } from '../components/ThemeProvider';
 import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge, { formatStatusText } from '@/components/ui/StatusBadge';
@@ -36,9 +37,11 @@ import { runFollowUpAutomation } from '../services/followUpService';
 import { getGoogleGmailService } from '../services/googleGmailService';
 import AutonomousControls from '../components/AutonomousControls';
 import AutonomousApprovals from '../components/AutonomousApprovals';
+import type { FinalePurchaseOrderRecord } from '../types';
 
 interface PurchaseOrdersProps {
     purchaseOrders: PurchaseOrder[];
+    finalePurchaseOrders?: FinalePurchaseOrderRecord[];
     vendors: Vendor[];
     inventory: InventoryItem[];
     onCreatePo: (poDetails: CreatePurchaseOrderInput) => Promise<void> | void;
@@ -78,7 +81,7 @@ type PoDraftConfig = {
 
 const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const { 
-        purchaseOrders, vendors, inventory, onCreatePo, addToast, currentUser, 
+        purchaseOrders, finalePurchaseOrders = [], vendors, inventory, onCreatePo, addToast, currentUser, 
         approvedRequisitions, gmailConnection, onSendEmail, onUpdateTracking,
         requisitions, users, onApproveRequisition, onOpsApproveRequisition, onRejectRequisition, onCreateRequisition,
         onConnectGoogle,
@@ -100,7 +103,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [modalSession, setModalSession] = useState(0);
     const [isRunningFollowUps, setIsRunningFollowUps] = useState(false);
     const [showAllPOs, setShowAllPOs] = useState(false);
+    const [expandedFinalePO, setExpandedFinalePO] = useState<string | null>(null);
+    const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<string>('active');
+    const [finalePOStatusFilter, setFinalePOStatusFilter] = useState<string>('all');
+    const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default Z-A (newest first)
+    const [showAllFinaleHistory, setShowAllFinaleHistory] = useState(false); // Default: 90 days only
+    const [hideDropship, setHideDropship] = useState(false);
     
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme !== 'light';
     const permissions = usePermissions();
     const vendorMap = useMemo(() => new Map(vendors.map(v => [v.id, v])), [vendors]);
     const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
@@ -414,9 +426,27 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         return date;
     }, []);
 
-    // Filter and sort purchase orders - show last 2 weeks by default
+    // Filter and sort purchase orders by status and date
     const sortedPurchaseOrders = useMemo(() => {
-        const sorted = [...purchaseOrders].sort((a, b) => 
+        let filtered = [...purchaseOrders];
+        
+        // Filter by status
+        if (statusFilter === 'active') {
+            filtered = filtered.filter(po => 
+                ['draft', 'pending', 'sent', 'confirmed', 'committed'].includes(po.status.toLowerCase())
+            );
+        } else if (statusFilter === 'committed') {
+            filtered = filtered.filter(po => po.status.toLowerCase() === 'committed');
+        } else if (statusFilter === 'received') {
+            filtered = filtered.filter(po => 
+                ['received', 'partially_received'].includes(po.status.toLowerCase())
+            );
+        } else if (statusFilter === 'cancelled') {
+            filtered = filtered.filter(po => po.status.toLowerCase() === 'cancelled');
+        }
+        // 'all' shows everything
+        
+        const sorted = filtered.sort((a, b) => 
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         
@@ -429,7 +459,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
             const poDate = new Date(po.createdAt);
             return poDate >= twoWeeksAgo;
         });
-    }, [purchaseOrders, showAllPOs, twoWeeksAgo]);
+    }, [purchaseOrders, showAllPOs, twoWeeksAgo, statusFilter]);
 
     // Count of all POs vs filtered
     const totalPOCount = purchaseOrders.length;
@@ -553,79 +583,448 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     />
                 </div>
 
-                <ReorderQueueDashboard
-                    onDraftPOs={canManagePOs ? handleReorderQueueDrafts : undefined}
-                    addToast={addToast}
-                />
-
-                {canManagePOs && (
-                    <div className="bg-accent-900/20 border border-accent-500/30 rounded-lg px-4 py-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between shadow-inner shadow-accent-800/30">
-                        <div>
-                            <p className="text-sm font-semibold text-accent-100">Follow-up Automation</p>
-                            <p className="text-xs text-accent-100/80">
-                                Gmail nudges reuse the original thread so vendors reply with tracking only. Backlog:{' '}
-                                <span className="font-semibold">{followUpBacklog}</span> PO{followUpBacklog === 1 ? '' : 's'} waiting on details.
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <Button
-                                onClick={handleRunFollowUps}
-                                disabled={isRunningFollowUps}
-                                className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500 text-white text-sm font-semibold hover:bg-accent-500 disabled:opacity-60"
-                            >
-                                {isRunningFollowUps ? 'Sending…' : 'Nudge Vendors'}
-                            </Button>
-                            <span className="text-[11px] text-accent-100/70">
-                                Configure templates in Settings → Follow-up Rules.
-                            </span>
-                        </div>
-                    </div>
-                )}
-
-                <div id="po-tracking">
-                    <POTrackingDashboard />
-                </div>
-
-                {isAdminLike && (
-                    <AutonomousControls addToast={addToast} />
+                {(canManagePOs || isAdminLike) && (
+                    <AutomationControlsSection 
+                        canManagePOs={canManagePOs}
+                        isAdminLike={isAdminLike}
+                        followUpBacklog={followUpBacklog}
+                        isRunningFollowUps={isRunningFollowUps}
+                        handleRunFollowUps={handleRunFollowUps}
+                        addToast={addToast}
+                    />
                 )}
 
                 {isAdminLike && (
                     <AutonomousApprovals addToast={addToast} />
                 )}
 
-                <DraftPOReviewSection
-                    onApprove={(orderId) => {
-                        addToast(`Approved ${orderId} - ready to send to vendor`, 'success');
-                    }}
-                    onDiscard={(orderId) => {
-                        addToast(`Discarded ${orderId}`, 'info');
-                    }}
-                    addToast={addToast}
-                />
-
                 {/* VendorResponseWorkbench component removed - was causing ReferenceError */}
 
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
-                    <div className="p-4 bg-gray-800 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-xl font-semibold text-gray-300">Purchase Orders</h2>
-                            <span className="text-sm text-gray-400">
-                                {showAllPOs 
-                                    ? `${totalPOCount} total`
-                                    : `${filteredPOCount} of ${totalPOCount} (last 2 weeks)`
-                                }
-                            </span>
+                {/* Finale Purchase Orders - Current/Open POs from Finale API */}
+                {finalePurchaseOrders.length > 0 && (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-xl font-semibold text-gray-300">📦 Finale Purchase Orders</h2>
+                                <span className="px-3 py-1 rounded-full text-sm bg-accent-500/20 text-accent-300 border border-accent-500/30 font-medium">
+                                    {finalePurchaseOrders.filter(fpo => {
+                                        // Date filter: 90 days unless showing all
+                                        if (!showAllFinaleHistory) {
+                                            const ninetyDaysAgo = new Date();
+                                            ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+                                            const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
+                                            if (!orderDate || orderDate < ninetyDaysAgo) return false;
+                                        }
+                                        // Dropship filter
+                                        if (hideDropship && fpo.publicNotes?.toLowerCase().includes('dropship')) return false;
+                                        // Status filter
+                                        if (finalePOStatusFilter === 'all') return true;
+                                        if (finalePOStatusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
+                                        if (finalePOStatusFilter === 'received') return ['Received', 'RECEIVED', 'Partial', 'PARTIALLY_RECEIVED'].includes(fpo.status);
+                                        if (finalePOStatusFilter === 'pending') return ['Pending', 'DRAFT', 'Draft'].includes(fpo.status);
+                                        return false;
+                                    }).length} {finalePOStatusFilter === 'all' ? 'total' : finalePOStatusFilter}
+                                </span>
+                                {!showAllFinaleHistory && (
+                                    <span className="text-xs text-gray-500">(Last 90 days)</span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1 bg-gray-800/50 rounded-lg p-1 border border-gray-700">
+                                    <Button
+                                        onClick={() => setFinalePOStatusFilter('all')}
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${
+                                            finalePOStatusFilter === 'all'
+                                                ? 'bg-accent-500 text-white'
+                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                        }`}
+                                    >
+                                        All
+                                    </Button>
+                                    <Button
+                                        onClick={() => setFinalePOStatusFilter('committed')}
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${
+                                            finalePOStatusFilter === 'committed'
+                                                ? 'bg-blue-500 text-white'
+                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                        }`}
+                                    >
+                                        Committed
+                                    </Button>
+                                    <Button
+                                        onClick={() => setFinalePOStatusFilter('pending')}
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${
+                                            finalePOStatusFilter === 'pending'
+                                                ? 'bg-amber-500 text-white'
+                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                        }`}
+                                    >
+                                        Pending
+                                    </Button>
+                                    <Button
+                                        onClick={() => setFinalePOStatusFilter('received')}
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${
+                                            finalePOStatusFilter === 'received'
+                                                ? 'bg-green-500 text-white'
+                                                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                        }`}
+                                    >
+                                        Received
+                                    </Button>
+                                </div>
+                                
+                                {/* Sort Order Toggle */}
+                                <Button
+                                    onClick={() => setFinalePOSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                    className="px-3 py-1.5 text-xs rounded bg-gray-800/50 border border-gray-700 text-gray-300 hover:bg-gray-700 transition-colors"
+                                >
+                                    {finalePOSortOrder === 'asc' ? 'A-Z ↑' : 'Z-A ↓'}
+                                </Button>
+                                
+                                {/* Dropship Filter Toggle */}
+                                <Button
+                                    onClick={() => setHideDropship(!hideDropship)}
+                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                                        hideDropship
+                                            ? 'bg-red-500/20 text-red-300 border border-red-500/50'
+                                            : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                                    }`}
+                                >
+                                    {hideDropship ? '🚫 Dropship Hidden' : 'Show All'}
+                                </Button>
+                                
+                                {/* 90-day / All History Toggle */}
+                                <Button
+                                    onClick={() => setShowAllFinaleHistory(!showAllFinaleHistory)}
+                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                                        showAllFinaleHistory
+                                            ? 'bg-accent-500/20 text-accent-300 border border-accent-500/50'
+                                            : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                                    }`}
+                                >
+                                    {showAllFinaleHistory ? 'All History' : '90 Days'}
+                                </Button>
+                                
+                                <span className="text-xs text-gray-400">
+                                    Synced from Finale API
+                                </span>
+                            </div>
                         </div>
-                        <Button
-                            onClick={() => setShowAllPOs(!showAllPOs)}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-gray-300 hover:text-white border border-gray-600 rounded-md hover:bg-gray-700 transition-colors"
-                        >
-                            <CalendarIcon className="w-4 h-4" />
-                            {showAllPOs ? 'Show Last 2 Weeks' : 'Show All POs'}
-                        </Button>
+
+                        <div className="grid gap-4">
+                            {finalePurchaseOrders
+                                .filter(fpo => {
+                                    // Date filter: 90 days unless showing all
+                                    if (!showAllFinaleHistory) {
+                                        const ninetyDaysAgo = new Date();
+                                        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+                                        const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
+                                        if (!orderDate || orderDate < ninetyDaysAgo) return false;
+                                    }
+                                    // Dropship filter - check in notes (publicNotes or privateNotes)
+                                    if (hideDropship) {
+                                        const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
+                                        if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) return false;
+                                    }
+                                    // Status filter
+                                    if (finalePOStatusFilter === 'all') return true;
+                                    if (finalePOStatusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
+                                    if (finalePOStatusFilter === 'received') return ['Received', 'RECEIVED', 'Partial', 'PARTIALLY_RECEIVED'].includes(fpo.status);
+                                    if (finalePOStatusFilter === 'pending') return ['Pending', 'DRAFT', 'Draft'].includes(fpo.status);
+                                    return false;
+                                })
+                                .sort((a, b) => {
+                                    // Sort by order ID (A-Z or Z-A)
+                                    const aId = a.orderId || '';
+                                    const bId = b.orderId || '';
+                                    return finalePOSortOrder === 'asc' ? aId.localeCompare(bId) : bId.localeCompare(aId);
+                                })
+                                .map((fpo) => {
+                                const isExpanded = expandedFinalePO === fpo.id;
+                                return (
+                                    <div 
+                                        key={fpo.id} 
+                                        className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${
+                                            isDark
+                                                ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]'
+                                                : 'border-stone-300/30 bg-gradient-to-br from-white/95 via-stone-100/60 to-white/95 shadow-[0_30px_90px_rgba(15,23,42,0.25)] hover:border-stone-400/50 hover:shadow-[0_32px_110px_rgba(120,113,108,0.3)]'
+                                        }`}
+                                    >
+                                        {/* Card overlay effect */}
+                                        <div className={`pointer-events-none absolute inset-0 ${
+                                            isDark
+                                                ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]'
+                                                : 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.6),rgba(253,244,223,0))]'
+                                        }`} />
+                                        
+                                        {/* Header */}
+                                        <div className={`relative p-2.5 ${
+                                            isDark
+                                                ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70'
+                                                : 'bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90'
+                                        }`}>
+                                            <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${
+                                                isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-amber-200/60'
+                                            }`} />
+                                            <div 
+                                                className="flex items-center justify-between cursor-pointer"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setExpandedFinalePO(isExpanded ? null : fpo.id);
+                                                }}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div>
+                                                        <div className={`text-lg font-semibold font-mono ${
+                                                            isDark ? 'text-amber-400' : 'text-amber-700'
+                                                        }`}>
+                                                            PO #{fpo.orderId}
+                                                        </div>
+                                                        <div className={isDark ? 'text-sm text-gray-400' : 'text-sm text-gray-600'}>
+                                                            {fpo.vendorName || 'Unknown Vendor'}
+                                                        </div>
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                                        fpo.status === 'Submitted' || fpo.status === 'SUBMITTED' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                                                        fpo.status === 'Partial' || fpo.status === 'PARTIALLY_RECEIVED' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                                                        fpo.status === 'Pending' || fpo.status === 'DRAFT' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
+                                                        fpo.status === 'Ordered' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                                                        'bg-accent-500/20 text-accent-300 border border-accent-500/30'
+                                                    }`}>
+                                                        {fpo.status}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-6">
+                                                    <div className="text-right">
+                                                        <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Order Date</div>
+                                                        <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                            {fpo.orderDate ? new Date(fpo.orderDate).toLocaleDateString() : 'N/A'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Expected</div>
+                                                        <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                            {fpo.expectedDate ? new Date(fpo.expectedDate).toLocaleDateString() : 'TBD'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className={`text-2xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                                                            ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                                                        </div>
+                                                        <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
+                                                            {fpo.lineCount || 0} items • {fpo.totalQuantity?.toFixed(0) || 0} units
+                                                        </div>
+                                                    </div>
+                                                    <ChevronDownIcon 
+                                                        className={`w-5 h-5 transition-transform ${isDark ? 'text-gray-400' : 'text-gray-600'} ${isExpanded ? 'rotate-180' : ''}`} 
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Details */}
+                                        {isExpanded && (
+                                            <div className={`relative p-4 space-y-4 border-t backdrop-blur-lg ${
+                                                isDark
+                                                    ? 'border-white/5 bg-slate-950/70'
+                                                    : 'border-amber-900/15 bg-amber-50/80'
+                                            }`}>
+                                                {/* Summary Info */}
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className={`rounded-xl border backdrop-blur-lg p-4 space-y-3 ${
+                                                        isDark
+                                                            ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
+                                                            : 'border-stone-300/25 bg-gradient-to-br from-white/98 via-stone-100/50 to-white/92 shadow-[0_18px_40px_rgba(15,23,42,0.18)]'
+                                                    }`}>
+                                                        <div>
+                                                            <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Vendor Information</div>
+                                                            <div className="text-sm text-gray-200">{fpo.vendorName || 'Unknown'}</div>
+                                                            {fpo.vendorUrl && (
+                                                                <div className="text-xs text-gray-500 font-mono mt-0.5">{fpo.vendorUrl}</div>
+                                                            )}
+                                                        </div>
+                                                        {fpo.facilityId && (
+                                                            <div>
+                                                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Facility</div>
+                                                                <div className="text-sm text-gray-200">{fpo.facilityId}</div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] p-4">
+                                                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Financial Summary</div>
+                                                        <div className="space-y-1 text-sm">
+                                                            <div className="flex justify-between text-gray-300">
+                                                                <span>Subtotal:</span>
+                                                                <span className="font-mono">${fpo.subtotal?.toFixed(2) || '0.00'}</span>
+                                                            </div>
+                                                            {fpo.tax && fpo.tax > 0 && (
+                                                                <div className="flex justify-between text-gray-300">
+                                                                    <span>Tax:</span>
+                                                                    <span className="font-mono">${fpo.tax.toFixed(2)}</span>
+                                                                </div>
+                                                            )}
+                                                            {fpo.shipping && fpo.shipping > 0 && (
+                                                                <div className="flex justify-between text-gray-300">
+                                                                    <span>Shipping:</span>
+                                                                    <span className="font-mono">${fpo.shipping.toFixed(2)}</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="flex justify-between text-amber-400 font-semibold pt-2 border-t border-white/10">
+                                                                <span>Total:</span>
+                                                                <span className="font-mono">${fpo.total?.toFixed(2) || '0.00'}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Notes */}
+                                                {(fpo.publicNotes || fpo.privateNotes) && (
+                                                    <div className="space-y-2">
+                                                        {fpo.publicNotes && (
+                                                            <div>
+                                                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Public Notes</div>
+                                                                <div className="text-sm text-gray-300 bg-slate-950/50 p-3 rounded-lg border border-white/5">
+                                                                    {fpo.publicNotes}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {fpo.privateNotes && (
+                                                            <div>
+                                                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Private Notes</div>
+                                                                <div className="text-sm text-gray-300 bg-slate-950/50 p-3 rounded-lg border border-white/5">
+                                                                    {fpo.privateNotes}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Line Items */}
+                                                {fpo.lineItems && fpo.lineItems.length > 0 && (
+                                                    <div>
+                                                        <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Line Items</div>
+                                                        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] overflow-hidden">
+                                                            <table className="min-w-full">
+                                                                <thead className="bg-slate-900/50">
+                                                                    <tr>
+                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">#</th>
+                                                                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">Product</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Ordered</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Received</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Unit Price</th>
+                                                                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Total</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-white/5">
+                                                                    {fpo.lineItems.map((item: any, idx: number) => (
+                                                                        <tr key={idx} className="hover:bg-slate-900/30">
+                                                                            <td className="px-3 py-2 text-sm text-gray-400">{item.line_number || idx + 1}</td>
+                                                                            <td className="px-3 py-2 text-sm text-gray-300 font-mono">{item.product_id || 'N/A'}</td>
+                                                                            <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_ordered || 0}</td>
+                                                                            <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_received || 0}</td>
+                                                                            <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">${item.unit_price?.toFixed(2) || '0.00'}</td>
+                                                                            <td className="px-3 py-2 text-sm text-amber-400 text-right font-mono font-semibold">${item.line_total?.toFixed(2) || '0.00'}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Metadata */}
+                                                <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs text-gray-500">
+                                                    <div>Finale: <span className="font-mono text-gray-400">{fpo.finaleOrderUrl}</span></div>
+                                                    <div>Modified: {fpo.finaleLastModified ? new Date(fpo.finaleLastModified).toLocaleString() : 'N/A'}</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                    <div className="overflow-x-auto max-h-[calc(100vh-320px)]">
+                )}
+
+                <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)]">
+                    {/* Card overlay effect */}
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]" />
+                    
+                    {/* Header */}
+                    <div className="relative p-4 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70 border-b border-white/5">
+                        <div className="pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20" />
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-xl font-semibold text-amber-400">Internal Purchase Orders</h2>
+                                <span className="px-3 py-1 rounded-full text-sm bg-slate-800/50 text-gray-300 border border-slate-700 font-medium">
+                                    {filteredPOCount} {statusFilter === 'all' ? 'total' : statusFilter}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1 bg-slate-950/50 rounded-lg p-1 border border-slate-800">
+                                    <Button
+                                        onClick={() => setStatusFilter('active')}
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                                            statusFilter === 'active'
+                                                ? 'bg-accent-500 text-white'
+                                                : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        Active
+                                    </Button>
+                                    <Button
+                                        onClick={() => setStatusFilter('committed')}
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                                            statusFilter === 'committed'
+                                                ? 'bg-blue-500 text-white'
+                                                : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        Committed
+                                    </Button>
+                                    <Button
+                                        onClick={() => setStatusFilter('received')}
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                                            statusFilter === 'received'
+                                                ? 'bg-green-500 text-white'
+                                                : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        Received
+                                    </Button>
+                                    <Button
+                                        onClick={() => setStatusFilter('cancelled')}
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                                            statusFilter === 'cancelled'
+                                                ? 'bg-red-500 text-white'
+                                                : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        Cancelled
+                                    </Button>
+                                    <Button
+                                        onClick={() => setStatusFilter('all')}
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${
+                                            statusFilter === 'all'
+                                                ? 'bg-slate-700 text-white'
+                                                : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                        }`}
+                                    >
+                                        All
+                                    </Button>
+                                </div>
+                                <Button
+                                    onClick={() => setShowAllPOs(!showAllPOs)}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs text-gray-300 hover:text-white border border-slate-700 rounded-md hover:bg-slate-800 transition-colors"
+                                >
+                                    <CalendarIcon className="w-4 h-4" />
+                                    {showAllPOs ? 'Last 2 Weeks' : 'All Time'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="relative overflow-x-auto max-h-[calc(100vh-320px)]">
                         {sortedPurchaseOrders.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                                 <div className="bg-gray-700/30 rounded-full p-6 mb-4">
@@ -661,23 +1060,23 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 )}
                             </div>
                         ) : (
-                            <table className="table-density min-w-full divide-y divide-gray-700">
-                                <thead className="bg-gray-800 sticky top-0 z-10">
+                            <table className="min-w-full divide-y divide-slate-800">
+                                <thead className="bg-slate-950/50 sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">PO Number</th>
-                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor</th>
-                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date Created</th>
-                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Expected Date</th>
-                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Tracking</th>
-                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Total</th>
-                                        <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">PO Number</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Vendor</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date Created</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Expected Date</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Tracking</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Total</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-gray-800 divide-y divide-gray-700">
+                                <tbody className="bg-slate-950/30 divide-y divide-slate-800/50">
                                     {sortedPurchaseOrders.map((po) => (
-                                    <tr key={po.id} className="hover:bg-gray-700/50 transition-colors duration-200">
-                                        <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-accent-400">{po.orderId || po.id}</td>
+                                    <tr key={po.id} className="hover:bg-slate-900/50 transition-colors duration-200">
+                                        <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-amber-400">{po.orderId || po.id}</td>
                                         <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
                                             <div className="flex items-center gap-2">
                                                 <span>{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</span>
@@ -875,19 +1274,31 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
     followUpBacklog,
     onFocusRequisitions,
     onFocusTracking,
-}) => (
-    <section className="bg-gray-800/40 border border-gray-700 rounded-2xl p-4 space-y-5 shadow-inner shadow-black/20">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-                <p className="text-lg font-semibold text-white">Purchasing Command Center</p>
-                <p className="text-sm text-gray-400">Approvals, vendor comms, and tracking health at a glance.</p>
+}) => {
+    const [isOpen, setIsOpen] = React.useState(false);
+    
+    return (
+        <section className="bg-gray-800/40 border border-gray-700 rounded-2xl overflow-hidden shadow-inner shadow-black/20">
+            <div 
+                className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between p-4 cursor-pointer hover:bg-gray-800/60 transition-colors"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex items-center gap-3">
+                    <ChevronDownIcon className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    <div>
+                        <p className="text-lg font-semibold text-white">Purchasing Command Center</p>
+                        <p className="text-sm text-gray-400">Approvals, vendor comms, and tracking health at a glance.</p>
+                    </div>
+                </div>
+                <div className="text-xs text-gray-400">
+                    Follow-up backlog:{' '}
+                    <span className="font-semibold text-accent-200">{followUpBacklog}</span>
+                </div>
             </div>
-            <div className="text-xs text-gray-400">
-                Follow-up backlog:{' '}
-                <span className="font-semibold text-accent-200">{followUpBacklog}</span>
-            </div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            
+            {isOpen && (
+                <div className="p-4 pt-0 space-y-5">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map(stat => (
                 <Button
                     key={stat.id}
@@ -984,8 +1395,11 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
                 </div>
             </div>
         </div>
-    </section>
-);
+    </div>
+            )}
+        </section>
+    );
+};
 
 // --- Requisitions Section Component ---
 
@@ -1228,6 +1642,312 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                 </table>
             </div>
         </CollapsibleSection>
+    );
+};
+
+// --- Automation Controls Section Component ---
+interface AutomationControlsSectionProps {
+    canManagePOs: boolean;
+    isAdminLike: boolean;
+    followUpBacklog: number;
+    isRunningFollowUps: boolean;
+    handleRunFollowUps: () => void;
+    addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+}
+
+const AutomationControlsSection: React.FC<AutomationControlsSectionProps> = ({
+    canManagePOs,
+    isAdminLike,
+    followUpBacklog,
+    isRunningFollowUps,
+    handleRunFollowUps,
+    addToast,
+}) => {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const [settings, setSettings] = React.useState<any>(null);
+    const [loading, setLoading] = React.useState(true);
+    const [saving, setSaving] = React.useState(false);
+
+    useEffect(() => {
+        if (isAdminLike) {
+            loadSettings();
+        } else {
+            setLoading(false);
+        }
+    }, [isAdminLike]);
+
+    const loadSettings = async () => {
+        try {
+            const { supabase } = await import('../lib/supabase/client');
+            const { data, error } = await supabase
+                .from('autonomous_po_settings')
+                .select('*')
+                .single();
+
+            if (error && error.code !== 'PGRST116') {
+                throw error;
+            }
+
+            if (data) {
+                setSettings(data);
+            } else {
+                const defaultSettings = {
+                    autonomous_shipping_enabled: false,
+                    autonomous_pricing_enabled: false,
+                    require_approval_for_shipping: true,
+                    require_approval_for_pricing: true,
+                    auto_approve_below_threshold: 100,
+                };
+
+                const { data: newSettings, error: insertError } = await supabase
+                    .from('autonomous_po_settings')
+                    .insert(defaultSettings)
+                    .select()
+                    .single();
+
+                if (insertError) throw insertError;
+                setSettings(newSettings);
+            }
+        } catch (error) {
+            console.error('Error loading autonomous settings:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const updateSetting = async (key: string, value: any) => {
+        if (!settings) return;
+
+        setSaving(true);
+        try {
+            const { supabase } = await import('../lib/supabase/client');
+            const { error } = await supabase
+                .from('autonomous_po_settings')
+                .update({
+                    [key]: value,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', settings.id);
+
+            if (error) throw error;
+
+            setSettings((prev: any) => prev ? { ...prev, [key]: value } : null);
+            addToast('Settings updated', 'success');
+        } catch (error) {
+            console.error('Error updating settings:', error);
+            addToast('Failed to update settings', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="bg-gray-800/40 border border-gray-700 rounded-2xl overflow-hidden shadow-inner shadow-black/20">
+            <div 
+                className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between p-4 cursor-pointer hover:bg-gray-800/60 transition-colors"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex items-center gap-3">
+                    <ChevronDownIcon className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    <div>
+                        <p className="text-lg font-semibold text-white">PO Automation & Controls</p>
+                        <p className="text-sm text-gray-400">
+                            {canManagePOs && `${followUpBacklog} PO${followUpBacklog === 1 ? '' : 's'} awaiting follow-up`}
+                            {canManagePOs && isAdminLike && ' • '}
+                            {isAdminLike && 'Autonomous shipping & pricing updates'}
+                        </p>
+                    </div>
+                </div>
+                {isOpen && saving && (
+                    <div className="flex items-center gap-2 text-sm text-accent-300">
+                        <BotIcon className="w-4 h-4 animate-spin" />
+                        Saving...
+                    </div>
+                )}
+            </div>
+            
+            {isOpen && (
+                <div className="p-4 pt-0 space-y-6 border-t border-gray-700/50">
+                    {/* Follow-up Automation */}
+                    {canManagePOs && (
+                        <div className="space-y-3">
+                            <h3 className="text-base font-semibold text-accent-100">Follow-up Automation</h3>
+                            <p className="text-xs text-gray-400">
+                                Gmail nudges reuse the original thread so vendors reply with tracking only.
+                            </p>
+                            <div className="flex items-center justify-between gap-4 bg-accent-900/20 border border-accent-500/30 rounded-lg p-4">
+                                <div className="flex-1">
+                                    <p className="text-sm text-accent-100">
+                                        <span className="font-semibold">{followUpBacklog}</span> PO{followUpBacklog === 1 ? '' : 's'} waiting on tracking details
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <Button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRunFollowUps();
+                                        }}
+                                        disabled={isRunningFollowUps}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500 text-white text-sm font-semibold hover:bg-accent-600 disabled:opacity-60 transition-colors"
+                                    >
+                                        {isRunningFollowUps ? 'Sending…' : 'Nudge Vendors'}
+                                    </Button>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                Configure templates in Settings → Follow-up Rules.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Autonomous Controls */}
+                    {isAdminLike && !loading && settings && (
+                        <div className="space-y-4 pt-4 border-t border-gray-700/50">
+                            <h3 className="text-base font-semibold text-white">Autonomous PO Controls</h3>
+                            
+                            {/* Shipping Updates */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-white">Shipping Status Updates</h4>
+                                        <p className="text-xs text-gray-400">Automatically update PO status based on carrier tracking</p>
+                                    </div>
+                                    <Button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateSetting('autonomous_shipping_enabled', !settings.autonomous_shipping_enabled);
+                                        }}
+                                        disabled={saving}
+                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                                            settings.autonomous_shipping_enabled
+                                                ? 'bg-accent-500 text-white hover:bg-accent-600'
+                                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                        }`}
+                                    >
+                                        {settings.autonomous_shipping_enabled ? (
+                                            <><CheckCircleIcon className="w-4 h-4 mr-2 inline" /> Enabled</>
+                                        ) : (
+                                            <><XCircleIcon className="w-4 h-4 mr-2 inline" /> Disabled</>
+                                        )}
+                                    </Button>
+                                </div>
+
+                                {settings.autonomous_shipping_enabled && (
+                                    <div className="ml-6 space-y-2">
+                                        <label className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={settings.require_approval_for_shipping}
+                                                onChange={(e) => {
+                                                    e.stopPropagation();
+                                                    updateSetting('require_approval_for_shipping', e.target.checked);
+                                                }}
+                                                disabled={saving}
+                                                className="w-4 h-4 text-accent-500 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+                                            />
+                                            <span className="text-sm text-gray-300">Require approval for autonomous shipping updates</span>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Pricing Updates */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-white">Pricing Updates</h4>
+                                        <p className="text-xs text-gray-400">Automatically update item prices from vendor communications</p>
+                                    </div>
+                                    <Button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateSetting('autonomous_pricing_enabled', !settings.autonomous_pricing_enabled);
+                                        }}
+                                        disabled={saving}
+                                        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                                            settings.autonomous_pricing_enabled
+                                                ? 'bg-accent-500 text-white hover:bg-accent-600'
+                                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                        }`}
+                                    >
+                                        {settings.autonomous_pricing_enabled ? (
+                                            <><CheckCircleIcon className="w-4 h-4 mr-2 inline" /> Enabled</>
+                                        ) : (
+                                            <><XCircleIcon className="w-4 h-4 mr-2 inline" /> Disabled</>
+                                        )}
+                                    </Button>
+                                </div>
+
+                                {settings.autonomous_pricing_enabled && (
+                                    <div className="ml-6 space-y-3">
+                                        <label className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={settings.require_approval_for_pricing}
+                                                onChange={(e) => {
+                                                    e.stopPropagation();
+                                                    updateSetting('require_approval_for_pricing', e.target.checked);
+                                                }}
+                                                disabled={saving}
+                                                className="w-4 h-4 text-accent-500 bg-gray-700 border-gray-600 rounded focus:ring-accent-500"
+                                            />
+                                            <span className="text-sm text-gray-300">Require approval for autonomous pricing updates</span>
+                                        </label>
+
+                                        <div className="flex items-center gap-3">
+                                            <label className="text-sm text-gray-300">Auto-approve changes below:</label>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-accent-400">$</span>
+                                                <input
+                                                    type="number"
+                                                    value={settings.auto_approve_below_threshold}
+                                                    onChange={(e) => {
+                                                        e.stopPropagation();
+                                                        updateSetting('auto_approve_below_threshold', parseFloat(e.target.value) || 0);
+                                                    }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    disabled={saving}
+                                                    className="w-20 px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
+                                                    min="0"
+                                                    step="0.01"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Status Summary */}
+                            <div className="border-t border-gray-700 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div className="space-y-2">
+                                    <p className="text-gray-400">Shipping Automation</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${settings.autonomous_shipping_enabled ? 'bg-green-400' : 'bg-gray-600'}`} />
+                                        <span className={settings.autonomous_shipping_enabled ? 'text-green-300' : 'text-gray-500'}>
+                                            {settings.autonomous_shipping_enabled ? 'Active' : 'Disabled'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <p className="text-gray-400">Pricing Automation</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${settings.autonomous_pricing_enabled ? 'bg-green-400' : 'bg-gray-600'}`} />
+                                        <span className={settings.autonomous_pricing_enabled ? 'text-green-300' : 'text-gray-500'}>
+                                            {settings.autonomous_pricing_enabled ? 'Active' : 'Disabled'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="text-xs text-gray-500">
+                                Last updated: {new Date(settings.updated_at).toLocaleString()}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
     );
 };
 

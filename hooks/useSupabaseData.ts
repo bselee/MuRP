@@ -1585,3 +1585,169 @@ export function useSupabaseComplianceRecords(bomId?: string): UseSupabaseDataRes
 
   return { data, loading, error, refetch: fetchComplianceRecords };
 }
+
+// ============================================================================
+// FINALE PURCHASE ORDERS HOOK
+// ============================================================================
+
+/**
+ * Fetch Finale Purchase Orders from finale_purchase_orders table
+ * Filters to show only non-completed POs (DRAFT, SUBMITTED, PARTIALLY_RECEIVED)
+ * These are the "current" POs that need attention
+ */
+export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: boolean }): UseSupabaseDataResult<any> {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+
+  const fetchFinalePOs = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      let query = supabase
+        .from('finale_purchase_orders')
+        .select('*')
+        .order('order_date', { ascending: false });
+
+      // Show all POs - filtering will be done on frontend
+      // This allows users to see and filter by all statuses including committed
+      // No backend filtering by status
+
+      const { data: pos, error: fetchError } = await query.limit(500);
+
+      if (fetchError) throw fetchError;
+
+      console.log('[useSupabaseFinalePurchaseOrders] Fetched POs:', pos?.length || 0);
+      if (pos && pos.length > 0) {
+        console.log('[useSupabaseFinalePurchaseOrders] Sample PO statuses:', 
+          [...new Set(pos.slice(0, 10).map(p => p.status))]);
+      }
+
+      // Transform database snake_case to camelCase for frontend
+      const transformed = (pos || []).map((po: any) => ({
+        id: po.id,
+        finaleOrderUrl: po.finale_order_url,
+        orderId: po.order_id,
+        orderType: po.order_type,
+        status: po.status,
+        vendorId: po.vendor_id,
+        vendorUrl: po.vendor_url,
+        vendorName: po.vendor_name,
+        facilityUrl: po.facility_url,
+        facilityId: po.facility_id,
+        orderDate: po.order_date,
+        expectedDate: po.expected_date,
+        receivedDate: po.received_date,
+        subtotal: po.subtotal,
+        tax: po.tax,
+        shipping: po.shipping,
+        total: po.total,
+        publicNotes: po.public_notes,
+        privateNotes: po.private_notes,
+        lineItems: po.line_items || [],
+        lineCount: po.line_count,
+        totalQuantity: po.total_quantity,
+        deliveryStatus: po.delivery_status,
+        finaleLastModified: po.finale_last_modified,
+        syncedAt: po.synced_at,
+        createdAt: po.created_at,
+        updatedAt: po.updated_at,
+      }));
+
+      setData(transformed);
+      console.log(`[useSupabaseFinalePurchaseOrders] Loaded ${transformed.length} Finale POs`);
+    } catch (err) {
+      console.error('[useSupabaseFinalePurchaseOrders] Error:', err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch Finale purchase orders'));
+    } finally {
+      setLoading(false);
+    }
+  }, [options?.includeCompleted]);
+
+  useEffect(() => {
+    // Initial fetch
+    fetchFinalePOs();
+
+    // Set up real-time subscription
+    const newChannel = supabase
+      .channel('finale-po-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'finale_purchase_orders',
+        },
+        (payload) => {
+          console.log('[useSupabaseFinalePurchaseOrders] Real-time update:', payload);
+          fetchFinalePOs();
+        }
+      )
+      .subscribe();
+
+    setChannel(newChannel);
+
+    // Cleanup
+    return () => {
+      if (newChannel) {
+        supabase.removeChannel(newChannel);
+      }
+    };
+  }, [fetchFinalePOs]);
+
+  return { data, loading, error, refetch: fetchFinalePOs };
+}
+
+/**
+ * Fetch velocity/usage data for inventory items
+ * Returns recent consumption rates for forecasting
+ */
+export function useSupabaseVelocityData(): UseSupabaseDataResult<any> {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchVelocityData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Try to fetch from mrp_velocity_analysis view
+      const { data: velocityData, error: fetchError } = await supabase
+        .from('mrp_velocity_analysis')
+        .select('*')
+        .limit(1000);
+
+      if (fetchError) {
+        // View might not exist, try direct from finale_stock_history
+        console.warn('[useSupabaseVelocityData] View not available, trying stock history');
+        
+        const { data: historyData, error: historyError } = await supabase
+          .from('finale_stock_history')
+          .select('*')
+          .order('recorded_at', { ascending: false })
+          .limit(1000);
+
+        if (historyError) throw historyError;
+        setData(historyData || []);
+      } else {
+        setData(velocityData || []);
+      }
+
+      console.log(`[useSupabaseVelocityData] Loaded ${data.length} velocity records`);
+    } catch (err) {
+      console.error('[useSupabaseVelocityData] Error:', err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch velocity data'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchVelocityData();
+  }, [fetchVelocityData]);
+
+  return { data, loading, error, refetch: fetchVelocityData };
+}
