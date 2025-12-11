@@ -51,7 +51,7 @@ export function transformVendorRawToParsed(
   try {
     // Extract name (required)
     const name = extractFirst(raw, ['Name', 'name', 'Vendor Name', 'Company Name']);
-    
+
     // Skip vendors without names or with placeholder names
     if (!name || name.trim() === '' || name === '--' || name.toLowerCase() === 'various') {
       return {
@@ -350,10 +350,28 @@ export function transformInventoryRawToParsed(
       };
     }
 
-    // FILTER 1: Active items only (report already filters for PRODUCT_ACTIVE)
-    // The new inventory report (data=product) is pre-filtered in Finale for active products
-    // So we don't need to filter here - trust the report filter
-    const status = extractFirst(raw, ['Status', 'status', 'Product Status', 'State']) || 'active';
+    // FILTER 1: Active items only
+    // Strict check: if status is explicitly present and NOT 'Active', skip it.
+    const statusRaw = extractFirst(raw, ['Status', 'status', 'Product Status', 'State']);
+    if (statusRaw && statusRaw.trim().toLowerCase() !== 'active') {
+      return {
+        success: false,
+        errors: [`FILTER: Skipping inactive item (Status: ${statusRaw}) (SKU: ${sku})`],
+        warnings: [],
+      };
+    }
+    const status = 'active';
+
+    // FILTER 2: Dropshipped items
+    // If "Dropshipped" custom field is yes/true, skip it.
+    const dropshippedRaw = extractFirst(raw, ['Dropshipped', 'dropshipped', 'Drop Ship', 'DropShip', 'custom_dropshipped']);
+    if (dropshippedRaw && (dropshippedRaw.trim().toLowerCase() === 'yes' || dropshippedRaw.trim().toLowerCase() === 'true')) {
+      return {
+        success: false,
+        errors: [`FILTER: Skipping dropshipped item (SKU: ${sku})`],
+        warnings: [],
+      };
+    }
 
     // FILTER 2: Warehouse location (optional - report may not include location)
     // The new master inventory report doesn't have location data since it's data=product not data=productLocation
@@ -382,7 +400,7 @@ export function transformInventoryRawToParsed(
         console.log('[Inventory Transform] Full raw data sample:', raw);
         // Show values for stock-related columns
         const stockCols = ['Units in stock', 'In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'];
-        console.log('[Inventory Transform] Stock column values:', 
+        console.log('[Inventory Transform] Stock column values:',
           Object.fromEntries(stockCols.map(col => [col, raw[col]])));
       }
     } catch (debugError) {
@@ -394,7 +412,7 @@ export function transformInventoryRawToParsed(
       'Units in stock', 'In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'
     ]);
     const stock = Math.floor(parseNumber(stockRaw, 0)); // Round down to integer
-    
+
     // DEBUG: Log stock extraction for first few items
     try {
       if (index !== undefined && index < 3) {
@@ -411,9 +429,9 @@ export function transformInventoryRawToParsed(
     const reserved = Math.floor(parseNumber(reservedRaw, 0));
 
     const remainingRaw = extractFirst(raw, [
-      'Remaining after reservations units BuildASoilShipping', 
-      'Units Remain', 
-      'Available', 
+      'Remaining after reservations units BuildASoilShipping',
+      'Units Remain',
+      'Available',
       'remaining'
     ]);
     const remaining = Math.floor(parseNumber(remainingRaw, 0)); // Allow negative to show over-allocation
@@ -431,8 +449,8 @@ export function transformInventoryRawToParsed(
     // Extract sales velocity (Finale specific)
     const salesVelocityRaw = extractFirst(raw, [
       'BuildASoil sales velocity',
-      'productSalesVelocityConsolidate', 
-      'Sales Velocity', 
+      'productSalesVelocityConsolidate',
+      'Sales Velocity',
       'sales_velocity'
     ]);
     const salesVelocity = parseNumber(salesVelocityRaw, 0);
@@ -725,7 +743,7 @@ export function transformInventoryBatch(
 export function transformBOMRawToParsed(
   raw: Record<string, any>,
   inventoryMap: Map<string, any> = new Map()
-): ParseResult<{finishedSku: string; name: string; component?: BOMComponentParsed; potentialBuildQty?: number; averageCost?: number; category?: string}> {
+): ParseResult<{ finishedSku: string; name: string; component?: BOMComponentParsed; potentialBuildQty?: number; averageCost?: number; category?: string }> {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -746,6 +764,17 @@ export function transformBOMRawToParsed(
       return {
         success: false,
         errors: [`Product Name is required for SKU: ${finishedSku}`],
+        warnings: [],
+      };
+    }
+
+    // FILTER: Parent must be in inventory map (Active Parent Check)
+    // The inventoryMap contains only active items (filtered during inventory sync).
+    // If the parent isn't there, it's either inactive or dropshipped - skip the BOM.
+    if (!inventoryMap.has(finishedSku.toUpperCase().trim())) {
+      return {
+        success: false,
+        errors: [`FILTER: Skipping BOM for inactive/missing parent (SKU: ${finishedSku})`],
         warnings: [],
       };
     }
