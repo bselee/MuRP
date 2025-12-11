@@ -1,3 +1,18 @@
+### Session: 2025-12-11 (Stock Intelligence Dropship Filtering)
+
+**Changes Made:**
+- Modified: `lib/inventory/stockIntelligence.ts`
+  - Exclude dropship inventory from stockout risk calculations by skipping items flagged `isDropship`
+
+**Tests:**
+- npm test (3/3 passing)
+
+**Next Steps:**
+- [ ] Verify Stock Intelligence and Inventory dashboards no longer show dropship SKUs in stockout risk lists
+- [ ] Confirm Finale dropship flag variants are fully captured in `custom_fields`
+
+---
+
 ### Session: 2025-12-11 (Migration Fixes & BOM Testing)
 
 **Changes Made:**

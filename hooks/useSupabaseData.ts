@@ -173,32 +173,53 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
       const items = allItems;
 
       // Transform from snake_case to camelCase (including enhanced fields from migration 003)
-      const transformed: InventoryItem[] = (items || []).map((item: any) => ({
-        sku: item.sku,
-        name: item.name,
-        category: item.category,
-        stock: item.stock,
-        onOrder: item.on_order,
-        reorderPoint: item.reorder_point,
-        vendorId: item.vendor_id,
-        moq: item.moq,
-        safetyStock: item.safety_stock,
-        leadTimeDays: item.lead_time_days,
-        // Enhanced fields
-        description: item.description,
-        status: item.status,
-        unitCost: item.unit_cost,
-        unitPrice: item.unit_price,
-        warehouseLocation: item.warehouse_location,
-        binLocation: item.bin_location,
-        salesVelocity: item.sales_velocity_consolidated,
-        sales30Days: item.sales_last_30_days,
-        sales60Days: item.sales_last_60_days,
-        sales90Days: item.sales_last_90_days,
-        dataSource: item.data_source,
-        lastSyncAt: item.last_sync_at,
-        syncStatus: item.sync_status,
-      }));
+      const transformed: InventoryItem[] = (items || []).map((item: any) => {
+        const customFields = item.custom_fields || {};
+        const dropshipRaw =
+          customFields.dropship ??
+          customFields.Dropship ??
+          customFields.drop_ship ??
+          customFields.dropShip ??
+          customFields['Drop Ship'];
+
+        const isDropship = (() => {
+          if (typeof dropshipRaw === 'boolean') return dropshipRaw;
+          if (typeof dropshipRaw === 'string') {
+            const val = dropshipRaw.trim().toLowerCase();
+            return ['true', 'yes', 'y', '1', 'drop ship', 'dropship'].includes(val);
+          }
+          if (typeof dropshipRaw === 'number') return dropshipRaw === 1;
+          return false;
+        })();
+
+        return {
+          sku: item.sku,
+          name: item.name,
+          category: item.category,
+          stock: item.stock,
+          onOrder: item.on_order,
+          reorderPoint: item.reorder_point,
+          vendorId: item.vendor_id,
+          moq: item.moq,
+          safetyStock: item.safety_stock,
+          leadTimeDays: item.lead_time_days,
+          // Enhanced fields
+          description: item.description,
+          status: item.status,
+          unitCost: item.unit_cost,
+          unitPrice: item.unit_price,
+          warehouseLocation: item.warehouse_location,
+          binLocation: item.bin_location,
+          salesVelocity: item.sales_velocity_consolidated,
+          sales30Days: item.sales_last_30_days,
+          sales60Days: item.sales_last_60_days,
+          sales90Days: item.sales_last_90_days,
+          dataSource: item.data_source,
+          lastSyncAt: item.last_sync_at,
+          syncStatus: item.sync_status,
+          isDropship,
+        };
+      });
 
       setData(transformed);
     } catch (err) {
@@ -807,6 +828,12 @@ export function useSupabasePurchaseOrders(): UseSupabaseDataResult<PurchaseOrder
         .order('order_date', { ascending: false });
 
       if (fetchError) throw fetchError;
+
+      console.log('[useSupabasePurchaseOrders] Raw data from Supabase:', {
+        count: pos?.length || 0,
+        statuses: [...new Set(pos?.map(p => p.status) || [])],
+        sampleIds: pos?.slice(0, 3).map(p => p.order_id || p.id) || [],
+      });
 
       setData((pos || []).map(transformPurchaseOrderRecord));
     } catch (err) {

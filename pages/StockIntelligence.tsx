@@ -63,11 +63,17 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
   const [stockoutRisks, setStockoutRisks] = useState<StockoutRisk[]>([]);
   const [vendorPerformances, setVendorPerformances] = useState<VendorPerformance[]>([]);
 
+  // Finale dropship items should not appear in stock intelligence views
+  const filteredInventory = useMemo(
+    () => inventory.filter(item => !item.isDropship),
+    [inventory],
+  );
+
   // Calculate stockout risks with trend analysis
   const calculateStockoutRisks = useMemo(() => {
     const risks: StockoutRisk[] = [];
 
-    inventory.forEach(item => {
+    filteredInventory.forEach(item => {
       const consumptionDaily = (item.sales30Days || 0) / 30;
 
       if (consumptionDaily === 0) return;
@@ -104,7 +110,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
     });
 
     return risks.sort((a, b) => a.daysUntilStockout - b.daysUntilStockout);
-  }, [inventory]);
+  }, [filteredInventory]);
 
   // Calculate vendor performance metrics
   const calculateVendorPerformance = useMemo(() => {
@@ -299,7 +305,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                 <div className="bg-gray-800/30 rounded-lg p-4">
                   <h4 className="text-sm font-semibold text-gray-300 mb-3">Growing Demand (30d vs 90d)</h4>
                   <div className="space-y-2">
-                    {inventory
+                    {filteredInventory
                       .filter(item => {
                         const trend30 = (item.sales30Days || 0) / 30;
                         const trend90 = (item.sales90Days || 0) / 90;
@@ -321,7 +327,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                 <div className="bg-gray-800/30 rounded-lg p-4">
                   <h4 className="text-sm font-semibold text-gray-300 mb-3">Declining Demand (30d vs 90d)</h4>
                   <div className="space-y-2">
-                    {inventory
+                    {filteredInventory
                       .filter(item => {
                         const trend30 = (item.sales30Days || 0) / 30;
                         const trend90 = (item.sales90Days || 0) / 90;

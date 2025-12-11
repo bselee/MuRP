@@ -294,11 +294,18 @@ export async function generateSOPFromBOM(
 // 📄 PDF GENERATION FOR SOPs
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Declare global jspdf from CDN
+declare const jspdf: any;
+
 /**
  * Generate a PDF version of the SOP for printing and distribution
  */
 export async function generateSOPPdf(sop: StandardOperatingProcedure): Promise<string> {
-  const { jsPDF } = await import('jspdf');
+  // Use CDN-loaded jspdf instead of npm package to avoid version conflicts
+  if (typeof jspdf === 'undefined' || !jspdf?.jsPDF) {
+    throw new Error('jsPDF library not loaded. Please ensure the CDN script is included.');
+  }
+  const { jsPDF } = jspdf;
 
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();

@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MuRP</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- jsPDF for PDF Generation -->
+    <!-- jsPDF for PDF Generation - loaded synchronously in correct order -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        // Ensure jspdf global is available before autotable loads
+        window.jspdf = window.jspdf || window.jsPDF || { jsPDF: null };
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
     <!-- Artwork editing helpers -->
     <script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.min.js"></script>

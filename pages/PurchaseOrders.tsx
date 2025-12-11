@@ -453,7 +453,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         // 'all' shows everything
 
         const sorted = filtered.sort((a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            new Date(b.createdAt || b.orderDate || 0).getTime() - new Date(a.createdAt || a.orderDate || 0).getTime()
         );
 
         if (showAllPOs) {
@@ -462,7 +462,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
         // Filter to POs created in the last 2 weeks
         return sorted.filter(po => {
-            const poDate = new Date(po.createdAt);
+            const poDate = new Date(po.createdAt || po.orderDate);
+            // Handle invalid dates - show them if we can't parse the date
+            if (isNaN(poDate.getTime())) return true;
             return poDate >= twoWeeksAgo;
         });
     }, [purchaseOrders, showAllPOs, twoWeeksAgo, statusFilter]);
@@ -470,6 +472,24 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     // Count of all POs vs filtered
     const totalPOCount = purchaseOrders.length;
     const filteredPOCount = sortedPurchaseOrders.length;
+
+    // Debug logging to understand PO visibility issues
+    useEffect(() => {
+        console.log('[PurchaseOrders] Data summary:', {
+            internalPOs: purchaseOrders.length,
+            finalePOs: finalePurchaseOrders.length,
+            filteredInternalPOs: sortedPurchaseOrders.length,
+            filters: {
+                statusFilter,
+                showAllPOs,
+                showAllFinaleHistory,
+                hideDropship,
+                finalePOStatusFilter,
+            },
+            internalPOStatuses: [...new Set(purchaseOrders.map(po => po.status))],
+            finalePOStatuses: [...new Set(finalePurchaseOrders.map(fpo => fpo.status))],
+        });
+    }, [purchaseOrders, finalePurchaseOrders, sortedPurchaseOrders, statusFilter, showAllPOs, showAllFinaleHistory, hideDropship, finalePOStatusFilter]);
 
     useEffect(() => {
         const unsubscribe = subscribeToPoDrafts(drafts => {
@@ -998,7 +1018,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             <div className="flex items-center gap-3">
                                 <h2 className="text-xl font-semibold text-amber-400">Internal Purchase Orders</h2>
                                 <span className="px-3 py-1 rounded-full text-sm bg-slate-800/50 text-gray-300 border border-slate-700 font-medium">
-                                    {filteredPOCount} {statusFilter === 'all' ? 'total' : statusFilter}
+                                    {filteredPOCount} {statusFilter === 'all' && showAllPOs ? 'total' : statusFilter}
+                                    {totalPOCount !== filteredPOCount && (
+                                        <span className="text-gray-500 ml-1">of {totalPOCount}</span>
+                                    )}
                                 </span>
                             </div>
                             <div className="flex items-center gap-3 flex-wrap">
@@ -1093,13 +1116,26 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <DocumentTextIcon className="w-16 h-16 text-gray-500" />
                                 </div>
                                 <h3 className="text-xl font-semibold text-gray-300 mb-2">
-                                    No Purchase Orders Yet
+                                    {purchaseOrders.length === 0 ? 'No Purchase Orders Yet' : 'No Matching Purchase Orders'}
                                 </h3>
-                                <p className="text-gray-400 mb-6 max-w-md">
+                                <p className="text-gray-400 mb-4 max-w-md">
                                     {purchaseOrders.length === 0
                                         ? "Get started by creating a purchase order manually or importing from your Finale inventory system."
-                                        : "No purchase orders match your current time filter. Try showing all POs."}
+                                        : `${purchaseOrders.length} purchase order${purchaseOrders.length === 1 ? '' : 's'} exist, but none match your current filters.`}
                                 </p>
+                                {purchaseOrders.length > 0 && (
+                                    <div className="text-sm text-gray-500 mb-4 space-y-1">
+                                        <div>Current filters: <span className="text-gray-400">Status = "{statusFilter}"</span>, <span className="text-gray-400">Date = {showAllPOs ? 'All Time' : 'Last 2 Weeks'}</span></div>
+                                        <div className="flex gap-2 justify-center mt-3">
+                                            <Button
+                                                onClick={() => { setStatusFilter('all'); setShowAllPOs(true); }}
+                                                className="px-3 py-1.5 text-xs bg-accent-500 text-white rounded hover:bg-accent-600"
+                                            >
+                                                Clear All Filters
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                                 {purchaseOrders.length === 0 && canManagePOs && (
                                     <div className="flex gap-3">
                                         <Button

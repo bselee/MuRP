@@ -701,6 +701,7 @@ export interface InventoryItem {
   dataSource?: 'manual' | 'csv' | 'api';
   lastSyncAt?: string;
   syncStatus?: 'synced' | 'pending' | 'error';
+  isDropship?: boolean;
 }
 
 export interface Vendor {

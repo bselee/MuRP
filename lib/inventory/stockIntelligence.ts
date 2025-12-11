@@ -29,8 +29,9 @@ const toDays = (start?: string | null, end?: string | null): number | null => {
 
 export const computeStockoutRisks = (inventory: InventoryItem[] = []): StockoutRisk[] => {
   const risks: StockoutRisk[] = [];
+  const filteredInventory = inventory.filter(item => !item.isDropship);
 
-  inventory.forEach(item => {
+  filteredInventory.forEach(item => {
     const sales30 = item.salesLast30Days || 0;
     const sales90 = item.salesLast90Days || 0;
     const dailyConsumption = sales30 > 0 ? sales30 / 30 : 0;
