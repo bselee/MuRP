@@ -897,7 +897,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
           </div>
 
           <div
-            className={`mt-5 rounded-3xl border-2 border-dashed px-6 py-10 text-center transition ${
+            className={`relative mt-5 rounded-3xl border-2 border-dashed px-6 py-10 text-center transition ${
               dragActive ? 'border-[#1D9BF0] bg-[#1D9BF0]/5' : 'border-white/15 bg-gray-800/20'
             }`}
             onDragEnter={handleDrag}
