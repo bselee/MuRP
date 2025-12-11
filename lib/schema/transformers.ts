@@ -350,12 +350,28 @@ export function transformInventoryRawToParsed(
       };
     }
 
-    // FILTER 1: Active items only (report already filters for PRODUCT_ACTIVE)
-    // The new inventory report (data=product) is pre-filtered in Finale for active products
-    // So we don't need to filter here - trust the report filter
-    const status = extractFirst(raw, ['Status', 'status', 'Product Status', 'State']) || 'active';
+    // FILTER 1: Active items only - STRICT ENFORCEMENT
+    // Do NOT trust report filtering - enforce at application level
+    const status = extractFirst(raw, ['Status', 'status', 'Product Status', 'State']) || '';
+    if (status && status.trim().toLowerCase() !== 'active') {
+      return {
+        success: false,
+        errors: [`FILTER: Skipping ${status} item (SKU: ${sku})`],
+        warnings: [],
+      };
+    }
 
-    // FILTER 2: Warehouse location (optional - report may not include location)
+    // FILTER 2: Dropshipped items - EXCLUDE
+    const dropshipped = extractFirst(raw, ['Dropshipped', 'dropshipped', 'Drop Shipped', 'drop_shipped']) || '';
+    if (dropshipped && dropshipped.trim().toLowerCase() === 'yes') {
+      return {
+        success: false,
+        errors: [`FILTER: Skipping dropshipped item (SKU: ${sku})`],
+        warnings: [],
+      };
+    }
+
+    // FILTER 3: Warehouse location (optional - report may not include location)
     // The new master inventory report doesn't have location data since it's data=product not data=productLocation
     // Location filtering is handled by the report configuration in Finale
     const location = extractFirst(raw, ['Location', 'location', 'Warehouse', 'Facility']) || '';
@@ -736,6 +752,17 @@ export function transformBOMRawToParsed(
       return {
         success: false,
         errors: ['Product ID is required'],
+        warnings: [],
+      };
+    }
+
+    // FILTER: Validate parent SKU exists in inventory (only active items)
+    // If inventoryMap is provided and parent SKU not found, skip this BOM
+    // This ensures we don't create BOMs for inactive products
+    if (inventoryMap.size > 0 && !inventoryMap.has(finishedSku.toUpperCase().trim())) {
+      return {
+        success: false,
+        errors: [`FILTER: Skipping BOM for inactive or missing parent SKU: ${finishedSku}`],
         warnings: [],
       };
     }
