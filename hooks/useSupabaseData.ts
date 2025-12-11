@@ -175,22 +175,38 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
       // Transform from snake_case to camelCase (including enhanced fields from migration 003)
       const transformed: InventoryItem[] = (items || []).map((item: any) => {
         const customFields = item.custom_fields || {};
+        
+        // Check all possible dropship field name variations from Finale
         const dropshipRaw =
           customFields.dropship ??
           customFields.Dropship ??
+          customFields.Dropshipped ??
+          customFields.dropshipped ??
           customFields.drop_ship ??
+          customFields.drop_shipped ??
+          customFields.Drop_Ship ??
+          customFields.Drop_Shipped ??
           customFields.dropShip ??
-          customFields['Drop Ship'];
+          customFields.dropShipped ??
+          customFields['Drop Ship'] ??
+          customFields['Drop Shipped'] ??
+          customFields['drop ship'] ??
+          customFields['drop shipped'];
 
         const isDropship = (() => {
           if (typeof dropshipRaw === 'boolean') return dropshipRaw;
           if (typeof dropshipRaw === 'string') {
             const val = dropshipRaw.trim().toLowerCase();
-            return ['true', 'yes', 'y', '1', 'drop ship', 'dropship'].includes(val);
+            return ['true', 'yes', 'y', '1', 'drop ship', 'dropship', 'dropped', 'dropshipped', 'drop shipped'].includes(val);
           }
-          if (typeof dropshipRaw === 'number') return dropshipRaw === 1;
+          if (typeof dropshipRaw === 'number') return dropshipRaw === 1 || dropshipRaw === true;
           return false;
         })();
+
+        // Debug: Log items with dropship flag
+        if (isDropship) {
+          console.log(`[useSupabaseInventory] Dropship detected - SKU: ${item.sku}, raw value:`, dropshipRaw);
+        }
 
         return {
           sku: item.sku,
