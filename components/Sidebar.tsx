@@ -115,7 +115,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
         },
         { page: 'Artwork', icon: <PhotoIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Inventory', icon: <PackageIcon className="w-6 h-6" />, managerAndUp: true },
-        { page: 'Inventory Intelligence', icon: <ChartBarIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Stock Intelligence', icon: <ChartBarIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Agent Command Center', icon: <CpuChipIcon className="w-6 h-6" />, adminOnly: true },
         { page: 'Settings', icon: <CogIcon className="w-6 h-6" />, adminOnly: true },
     ];
@@ -156,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
     };
 
     return (
-        <aside className={`${asideClasses} border-r flex-shrink-0 flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
+        <aside className={`${asideClasses} border-r flex-shrink-0 hidden md:flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
             <div className={`h-16 flex items-center border-b ${sectionBorder} relative ${isCollapsed ? 'justify-center' : 'px-4'}`}>
                 {!isCollapsed && (
                     <>

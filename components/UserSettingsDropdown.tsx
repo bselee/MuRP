@@ -5,7 +5,7 @@ import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 interface UserSettingsDropdownProps {
   user: {
     name: string;
-    avatar: string;
+    avatar?: string | { url?: string; initials?: string; color?: string };
   };
   onSignOut: () => void;
   onOpenSettings: () => void;
@@ -66,6 +66,12 @@ const UserSettingsDropdown: React.FC<UserSettingsDropdownProps> = ({
     }
   };
 
+  const getAvatarSrc = (avatar?: string | { url?: string }): string => {
+    if (!avatar) return `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`;
+    if (typeof avatar === 'string') return avatar;
+    return avatar.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`;
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -79,7 +85,7 @@ const UserSettingsDropdown: React.FC<UserSettingsDropdownProps> = ({
         <div className="relative">
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 p-0.5 shadow-lg ring-2 ring-white dark:ring-gray-800 group-hover:ring-blue-300 dark:group-hover:ring-blue-600 transition-all duration-200">
             <img
-              src={user.avatar}
+              src={getAvatarSrc(user.avatar)}
               alt={`${user.name}'s profile picture`}
               className="w-full h-full rounded-full object-cover"
             />
@@ -111,7 +117,7 @@ const UserSettingsDropdown: React.FC<UserSettingsDropdownProps> = ({
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 p-0.5">
                 <img
-                  src={user.avatar}
+                  src={getAvatarSrc(user.avatar)}
                   alt={`${user.name}'s profile picture`}
                   className="w-full h-full rounded-full object-cover"
                 />

@@ -8,10 +8,21 @@ import type { InventoryItem, BillOfMaterials, Vendor } from '../types';
 const envApiKey = import.meta.env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? (process as any).env?.API_KEY : undefined);
 
 if (!envApiKey) {
-    console.warn('Gemini API key is not configured. Embedding service will not work.');
+  console.warn('Gemini API key is not configured. Embedding service will not work.');
 }
 
-const ai = new GoogleGenAI({ apiKey: envApiKey! });
+let aiInstance: GoogleGenAI | null = null;
+
+function getAI(): GoogleGenAI {
+  if (aiInstance) return aiInstance;
+
+  if (!envApiKey) {
+    throw new Error('Gemini API key is not configured');
+  }
+
+  aiInstance = new GoogleGenAI({ apiKey: envApiKey });
+  return aiInstance;
+}
 
 /**
  * Generate embedding vector for a given text
@@ -23,6 +34,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   }
 
   try {
+    const ai = getAI();
     const response = await ai.models.embedContent({
       model: 'gemini-embedding-001',
       contents: text,

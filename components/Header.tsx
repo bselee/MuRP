@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import type { User } from '../types';
-import { LogoutIcon, MushroomLogo, ChevronDownIcon } from './icons';
+import { } from './icons';
 import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 import { useTheme } from './ThemeProvider';
 
@@ -43,20 +43,18 @@ const Header: React.FC<HeaderProps> = ({
     return (
         <header className={`h-16 backdrop-blur-sm border-b flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0 transition-colors duration-300 ${headerClasses}`}>
             <div className="flex items-center gap-3 min-w-[120px]">
-                {showLogo && (
-                    <h1 className={`text-4xl font-extrabold tracking-wide ${isLight ? 'text-amber-900' : 'text-accent-200'}`}>MuRP</h1>
+                <h1 className={`text-4xl font-extrabold tracking-wide ${isLight ? 'text-amber-900' : 'text-accent-200'} ${showLogo ? '' : 'md:hidden'}`}>MuRP</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+                <span className={`text-xs hidden sm:block ${statusTextClass}`}>
+                    {statusText}
+                </span>
+                {devModeActive && (
+                    <span className={`hidden sm:inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${devBadgeClass}`}>
+                        Dev Mode
+                    </span>
                 )}
             </div>
-                <div className="flex items-center space-x-4">
-                    <span className={`text-xs hidden sm:block ${statusTextClass}`}>
-                        {statusText}
-                    </span>
-                    {devModeActive && (
-                        <span className={`hidden sm:inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${devBadgeClass}`}>
-                            Dev Mode
-                        </span>
-                    )}
-                </div>
         </header>
     );
 };
