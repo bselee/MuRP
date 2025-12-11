@@ -18,7 +18,7 @@ import type {
     POTrackingStatus,
     RequisitionRequestOptions,
 } from '../types';
-import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon } from '../components/icons';
+import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon, Squares2X2Icon, ListBulletIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CreatePoModal from '../components/CreatePoModal';
 import Modal from '../components/Modal';
@@ -115,6 +115,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [showAllFinaleHistory, setShowAllFinaleHistory] = useState(false); // Default: 12 months only
     const [hideDropship, setHideDropship] = useState(true); // Default: hide dropship POs
     const [isAgentSettingsOpen, setIsAgentSettingsOpen] = useState(false);
+    const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
 
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
@@ -657,8 +658,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <h2 className="text-xl font-semibold text-gray-300">📦 Finale Purchase Orders</h2>
-                                <span className="px-3 py-1 rounded-full text-sm bg-accent-500/20 text-accent-300 border border-accent-500/30 font-medium">
+                                <h2 className="text-xl font-semibold text-gray-300">📦 External Purchase Orders</h2>
+                                <StatusBadge variant="primary" className="ml-2">
                                     {finalePurchaseOrders.filter(fpo => {
                                         // Date filter: 12 months unless showing all
                                         if (!showAllFinaleHistory) {
@@ -679,7 +680,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         if (finalePOStatusFilter === 'pending') return ['Pending', 'DRAFT', 'Draft'].includes(fpo.status);
                                         return false;
                                     }).length} {finalePOStatusFilter === 'all' ? 'total' : finalePOStatusFilter}
-                                </span>
+                                </StatusBadge>
                                 {!showAllFinaleHistory && (
                                     <span className="text-xs text-gray-500">(Last 12 months)</span>
                                 )}
@@ -991,17 +992,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     {/* Card overlay effect */}
                     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]" />
 
-                    {/* Header */}
                     <div className="relative p-4 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70 border-b border-white/5">
                         <div className="pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20" />
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
                                 <h2 className="text-xl font-semibold text-amber-400">Internal Purchase Orders</h2>
                                 <span className="px-3 py-1 rounded-full text-sm bg-slate-800/50 text-gray-300 border border-slate-700 font-medium">
                                     {filteredPOCount} {statusFilter === 'all' ? 'total' : statusFilter}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-wrap">
                                 <div className="flex items-center gap-1 bg-slate-950/50 rounded-lg p-1 border border-slate-800">
                                     <Button
                                         onClick={() => setStatusFilter('active')}
@@ -1049,6 +1049,32 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         All
                                     </Button>
                                 </div>
+
+                                <div className="h-6 w-px bg-slate-700 mx-1" />
+
+                                <div className="flex items-center gap-1 bg-slate-950/50 rounded-lg p-1 border border-slate-800">
+                                    <Button
+                                        onClick={() => setViewMode('list')}
+                                        className={`p-1.5 rounded transition-colors ${viewMode === 'list'
+                                            ? 'bg-slate-700 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            }`}
+                                        title="List View"
+                                    >
+                                        <ListBulletIcon className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                        onClick={() => setViewMode('card')}
+                                        className={`p-1.5 rounded transition-colors ${viewMode === 'card'
+                                            ? 'bg-slate-700 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            }`}
+                                        title="Card View"
+                                    >
+                                        <Squares2X2Icon className="w-4 h-4" />
+                                    </Button>
+                                </div>
+
                                 <Button
                                     onClick={() => setShowAllPOs(!showAllPOs)}
                                     className="inline-flex items-center gap-2 px-3 py-1.5 text-xs text-gray-300 hover:text-white border border-slate-700 rounded-md hover:bg-slate-800 transition-colors"
@@ -1095,7 +1121,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     </div>
                                 )}
                             </div>
-                        ) : (
+                        ) : viewMode === 'list' ? (
                             <table className="min-w-full divide-y divide-slate-800">
                                 <thead className="bg-slate-950/50 sticky top-0 z-10">
                                     <tr>
@@ -1198,10 +1224,91 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     ))}
                                 </tbody>
                             </table>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+                                {sortedPurchaseOrders.map((po) => (
+                                    <div
+                                        key={po.id}
+                                        className={`rounded-xl border p-4 space-y-4 transition-all duration-200 ${isDark
+                                            ? 'bg-slate-900/40 border-slate-800 hover:border-slate-700 hover:bg-slate-900/60'
+                                            : 'bg-white border-gray-200 shadow-sm hover:shadow-md'
+                                            }`}
+                                    >
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="text-lg font-mono font-semibold text-amber-400">{po.orderId || po.id}</h3>
+                                                    {po.followUpCount && po.followUpCount > 0 && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/20 text-sky-200 border border-sky-500/40">
+                                                            FU {po.followUpCount}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-gray-300 font-medium">
+                                                    {vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}
+                                                </div>
+                                            </div>
+                                            <StatusBadge status={po.status}>
+                                                {formatStatusText(po.status)}
+                                            </StatusBadge>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 text-sm">
+                                            <div>
+                                                <div className="text-xs text-gray-500 uppercase">Created</div>
+                                                <div className="text-gray-300">{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-xs text-gray-500 uppercase">Expected</div>
+                                                <div className="text-gray-300">{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : '—'}</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-3 border-t border-gray-700/50 flex items-center justify-between">
+                                            <div>
+                                                <div className="text-xs text-gray-500 uppercase">Total</div>
+                                                <div className="text-lg font-bold text-white">${formatPoTotal(po)}</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-xs text-gray-500 uppercase">Items</div>
+                                                <div className="text-gray-300">{po.items?.length || 0} lines</div>
+                                            </div>
+                                        </div>
+
+                                        {po.trackingNumber && (
+                                            <div className="bg-gray-800/50 rounded p-2 text-xs">
+                                                <div className="flex justify-between items-center text-gray-400 mb-1">
+                                                    <span>TRACKING</span>
+                                                    <span>{po.trackingCarrier}</span>
+                                                </div>
+                                                <div className="font-mono text-gray-200 truncate">{po.trackingNumber}</div>
+                                                {po.trackingStatus && (
+                                                    <div className="mt-1 text-accent-300">{formatStatusText(po.trackingStatus)}</div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center justify-end gap-1 pt-2 border-t border-gray-700/50">
+                                            {canManagePOs && (
+                                                <Button onClick={() => handleEditTracking(po)} className="p-2 text-accent-300 hover:bg-slate-800 rounded" title="Update Tracking"><TruckIcon className="w-4 h-4" /></Button>
+                                            )}
+                                            {po.trackingNumber && (
+                                                <Button onClick={() => handleOpenTracking(po)} className="p-2 text-green-300 hover:bg-slate-800 rounded" title="Track"><TruckIcon className="w-4 h-4" /></Button>
+                                            )}
+                                            {canManagePOs && ['shipped', 'in_transit', 'out_for_delivery', 'delivered'].includes(po.trackingStatus || '') && (
+                                                <Button onClick={() => handleReceivePO(po)} className="p-2 text-emerald-400 hover:bg-slate-800 rounded" title="Receive"><CheckCircleIcon className="w-4 h-4" /></Button>
+                                            )}
+                                            <Button onClick={() => handleDownloadPdf(po)} className="p-2 text-gray-400 hover:bg-slate-800 rounded" title="PDF"><FileTextIcon className="w-4 h-4" /></Button>
+                                            <Button onClick={() => handleSendEmailClick(po)} className="p-2 text-gray-400 hover:bg-slate-800 rounded" title="Email"><MailIcon className="w-4 h-4" /></Button>
+                                            <Button onClick={() => handleOpenComm(po)} className="p-2 text-gray-400 hover:bg-slate-800 rounded" title="Thread"><DocumentTextIcon className="w-4 h-4" /></Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
                 </div>
-            </div>
+            </div >
 
             <CreatePoModal
                 key={modalSession}
@@ -1213,30 +1320,34 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 initialData={activePoDraft}
             />
 
-            {selectedPoForEmail && selectedPoForEmail.vendorId && vendorMap.get(selectedPoForEmail.vendorId) && (
-                <EmailComposerModal
-                    isOpen={isEmailModalOpen}
-                    onClose={() => setIsEmailModalOpen(false)}
-                    onSend={handleSendEmail}
-                    purchaseOrder={selectedPoForEmail}
-                    vendor={vendorMap.get(selectedPoForEmail.vendorId)!}
-                    gmailConnection={gmailConnection}
-                    addToast={addToast}
-                    onConnectGoogle={onConnectGoogle}
-                />
-            )}
+            {
+                selectedPoForEmail && selectedPoForEmail.vendorId && vendorMap.get(selectedPoForEmail.vendorId) && (
+                    <EmailComposerModal
+                        isOpen={isEmailModalOpen}
+                        onClose={() => setIsEmailModalOpen(false)}
+                        onSend={handleSendEmail}
+                        purchaseOrder={selectedPoForEmail}
+                        vendor={vendorMap.get(selectedPoForEmail.vendorId)!}
+                        gmailConnection={gmailConnection}
+                        addToast={addToast}
+                        onConnectGoogle={onConnectGoogle}
+                    />
+                )
+            }
 
-            {selectedPoForComm && selectedPoForComm.vendorId && vendorMap.get(selectedPoForComm.vendorId) && (
-                <PoCommunicationModal
-                    isOpen={isCommModalOpen}
-                    onClose={handleCloseComm}
-                    purchaseOrder={selectedPoForComm}
-                    vendor={vendorMap.get(selectedPoForComm.vendorId)!}
-                    gmailConnection={gmailConnection}
-                    addToast={addToast}
-                    onConnectGoogle={onConnectGoogle}
-                />
-            )}
+            {
+                selectedPoForComm && selectedPoForComm.vendorId && vendorMap.get(selectedPoForComm.vendorId) && (
+                    <PoCommunicationModal
+                        isOpen={isCommModalOpen}
+                        onClose={handleCloseComm}
+                        purchaseOrder={selectedPoForComm}
+                        vendor={vendorMap.get(selectedPoForComm.vendorId)!}
+                        gmailConnection={gmailConnection}
+                        addToast={addToast}
+                        onConnectGoogle={onConnectGoogle}
+                    />
+                )
+            }
 
             <UpdateTrackingModal
                 isOpen={isTrackingModalOpen}
@@ -1248,37 +1359,43 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 onSave={handleSaveTracking}
             />
 
-            {isAdminLike && (
-                <GeneratePoModal
-                    isOpen={isGeneratePoModalOpen}
-                    onClose={() => setIsGeneratePoModalOpen(false)}
-                    approvedRequisitions={approvedRequisitions}
-                    inventory={inventory}
-                    vendors={vendors}
-                    onPrepareDrafts={handleRequisitionDrafts}
-                />
-            )}
+            {
+                isAdminLike && (
+                    <GeneratePoModal
+                        isOpen={isGeneratePoModalOpen}
+                        onClose={() => setIsGeneratePoModalOpen(false)}
+                        approvedRequisitions={approvedRequisitions}
+                        inventory={inventory}
+                        vendors={vendors}
+                        onPrepareDrafts={handleRequisitionDrafts}
+                    />
+                )
+            }
 
-            {canSubmitRequisitions && (
-                <CreateRequisitionModal
-                    isOpen={isCreateReqModalOpen}
-                    onClose={() => setIsCreateReqModalOpen(false)}
-                    inventory={inventory}
-                    onCreate={(items, options) => onCreateRequisition(items, options)}
-                    defaultOptions={{ requestType: 'consumable', priority: 'medium' }}
-                />
-            )}
+            {
+                canSubmitRequisitions && (
+                    <CreateRequisitionModal
+                        isOpen={isCreateReqModalOpen}
+                        onClose={() => setIsCreateReqModalOpen(false)}
+                        inventory={inventory}
+                        onCreate={(items, options) => onCreateRequisition(items, options)}
+                        defaultOptions={{ requestType: 'consumable', priority: 'medium' }}
+                    />
+                )
+            }
 
-            {selectedPoForReceive && (
-                <ReceivePurchaseOrderModal
-                    isOpen={!!selectedPoForReceive}
-                    onClose={() => setSelectedPoForReceive(null)}
-                    po={selectedPoForReceive}
-                    inventory={inventory}
-                    onReceive={handleReceiveSubmit}
-                    addToast={addToast}
-                />
-            )}
+            {
+                selectedPoForReceive && (
+                    <ReceivePurchaseOrderModal
+                        isOpen={!!selectedPoForReceive}
+                        onClose={() => setSelectedPoForReceive(null)}
+                        po={selectedPoForReceive}
+                        inventory={inventory}
+                        onReceive={handleReceiveSubmit}
+                        addToast={addToast}
+                    />
+                )
+            }
         </>
     );
 };
@@ -1507,6 +1624,185 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
         req.opsApprovalRequired &&
         req.status === 'OpsPending';
 
+    const columns: Column<InternalRequisition>[] = [
+        {
+            key: 'id',
+            label: 'Req ID',
+            sortable: true,
+            width: 'w-24',
+            render: (req) => <span className="font-medium text-accent-400">{req.id}</span>
+        },
+        {
+            key: 'requester',
+            label: 'Requester',
+            sortable: true,
+            render: (req) => (
+                req.source === 'System' ? (
+                    <div className="flex items-center gap-2" title="Auto-generated by AI Planning Insights based on demand forecast">
+                        <BotIcon className="w-4 h-4 text-accent-400" />
+                        <span className="text-accent-300 font-semibold">AI Generated</span>
+                    </div>
+                ) : (
+                    <span className="text-gray-400">
+                        {req.requesterId ? (userMap.get(req.requesterId) || 'Unknown User') : 'Unassigned'}
+                    </span>
+                )
+            )
+        },
+        {
+            key: 'department',
+            label: 'Department',
+            sortable: true,
+            render: (req) => <span className="text-gray-300">{req.department}</span>
+        },
+        {
+            key: 'priority',
+            label: 'Need / Priority',
+            render: (req) => (
+                <div className="flex flex-col gap-1">
+                    {req.needByDate ? (
+                        <span className="text-xs text-gray-300">
+                            Need by {new Date(req.needByDate).toLocaleDateString()}
+                        </span>
+                    ) : (
+                        <span className="text-xs text-gray-500">Flexible</span>
+                    )}
+                    <div className="flex flex-wrap gap-1">
+                        <StatusBadge variant="secondary" size="sm">
+                            {req.requestType?.replace('_', ' ') || 'consumable'}
+                        </StatusBadge>
+                        <StatusBadge
+                            variant={req.priority === 'high' ? 'danger' : req.priority === 'medium' ? 'warning' : 'success'}
+                            size="sm"
+                        >
+                            {req.priority} priority
+                        </StatusBadge>
+                        {req.alertOnly && (
+                            <StatusBadge variant="info" size="sm">
+                                Alert Only
+                            </StatusBadge>
+                        )}
+                        {req.autoPo && (
+                            <StatusBadge variant="primary" size="sm">
+                                Auto PO
+                            </StatusBadge>
+                        )}
+                    </div>
+                </div>
+            )
+        },
+        {
+            key: 'createdAt',
+            label: 'Date',
+            sortable: true,
+            render: (req) => <span className="text-gray-400">{new Date(req.createdAt).toLocaleDateString()}</span>
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (req) => (
+                <div className="flex flex-col gap-1">
+                    <ReqStatusBadge status={req.status} />
+                    <div className="space-y-1 text-xs text-gray-500">
+                        {req.managerApprovedBy && req.managerApprovedAt && (
+                            <p>
+                                Mgr: {userMap.get(req.managerApprovedBy) ?? req.managerApprovedBy} on{' '}
+                                {new Date(req.managerApprovedAt).toLocaleDateString()}
+                            </p>
+                        )}
+                        {req.opsApprovalRequired && (
+                            <p>
+                                Ops:{' '}
+                                {req.opsApprovedAt
+                                    ? `${userMap.get(req.opsApprovedBy ?? '') ?? 'Ops'} on ${new Date(req.opsApprovedAt).toLocaleDateString()}`
+                                    : 'Pending'}
+                            </p>
+                        )}
+                        {req.forwardedToPurchasingAt && (
+                            <p>
+                                Sent to Purchasing {new Date(req.forwardedToPurchasingAt).toLocaleDateString()}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )
+        },
+        {
+            key: 'items',
+            label: 'Items',
+            render: (req) => (
+                <ul className="space-y-1">
+                    {req.items.map(item => {
+                        const amazonMeta = item.metadata?.amazon;
+                        return (
+                            <li key={`${req.id}-${item.sku}`} className="space-y-0.5" title={item.reason}>
+                                <div className="text-sm text-gray-300">{item.quantity}x {item.name}</div>
+                                {item.externalUrl && (
+                                    <a
+                                        href={item.externalUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-xs text-accent-300 hover:text-accent-200 underline decoration-dotted"
+                                    >
+                                        {item.externalSource === 'amazon' ? 'Amazon link' : 'External link'}
+                                    </a>
+                                )}
+                                {(amazonMeta?.asin || item.metadata?.trackingEmail) && (
+                                    <p className="text-[11px] text-gray-500">
+                                        {amazonMeta?.asin && (
+                                            <>
+                                                ASIN {amazonMeta.asin}
+                                                {amazonMeta.marketplace ? ` • ${amazonMeta.marketplace}` : ''}
+                                            </>
+                                        )}
+                                        {item.metadata?.trackingEmail && (
+                                            <>
+                                                {amazonMeta?.asin ? ' • ' : ''}
+                                                Tracking via {item.metadata.trackingEmail}
+                                            </>
+                                        )}
+                                    </p>
+                                )}
+                            </li>
+                        );
+                    })}
+                </ul>
+            )
+        },
+        {
+            key: 'actions',
+            label: 'Actions',
+            visible: isAdminLike || currentUser.role === 'Manager' || currentUser.department === 'Operations',
+            render: (req) => (
+                <div className="flex gap-2 text-sm justify-end">
+                    {canTakeAction(req) && (
+                        <>
+                            <Button onClick={() => onApprove(req.id)} className="p-2 text-green-400 hover:text-green-300" title="Approve">
+                                <CheckCircleIcon className="w-6 h-6" />
+                            </Button>
+                            <Button onClick={() => onReject(req.id)} className="p-2 text-red-400 hover:text-red-300" title="Reject">
+                                <XCircleIcon className="w-6 h-6" />
+                            </Button>
+                        </>
+                    )}
+                    {!canTakeAction(req) && canOpsTakeAction(req) && (
+                        <>
+                            <Button onClick={() => onOpsApprove(req.id)} className="p-2 text-purple-300 hover:text-purple-100" title="Operations Approve">
+                                <CheckCircleIcon className="w-6 h-6" />
+                            </Button>
+                            <Button onClick={() => onReject(req.id)} className="p-2 text-red-400 hover:text-red-300" title="Reject">
+                                <XCircleIcon className="w-6 h-6" />
+                            </Button>
+                        </>
+                    )}
+                    {!canTakeAction(req) && !canOpsTakeAction(req) && (
+                        <span className="text-xs text-gray-500 self-center">Processed</span>
+                    )}
+                </div>
+            )
+        }
+    ];
+
     return (
         <CollapsibleSection title="Internal Requisitions" icon={<FileTextIcon className="w-5 h-5" />} count={pendingCount} isOpen={isOpen} onToggle={onToggle}>
             <div className="p-4 flex justify-end">
@@ -1516,165 +1812,15 @@ const RequisitionsSection: React.FC<RequisitionsSectionProps> = ({
                     </Button>
                 )}
             </div>
-            <div className="overflow-x-auto">
-                <table className="table-density min-w-full divide-y divide-gray-700">
-                    <thead className="bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10">
-                        <tr>
-                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Req ID</th>
-                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Requester</th>
-                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Department</th>
-                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Need / Priority</th>
-                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
-                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Items</th>
-                            {(isAdminLike || currentUser.role === 'Manager' || currentUser.department === 'Operations') && (
-                                <th className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
-                            )}
-                        </tr>
-                    </thead>
-                    <tbody className="bg-gray-800 divide-y divide-gray-700">
-                        {displayedRequisitions.map(req => (
-                            <tr key={req.id}>
-                                <td className="px-6 py-1 whitespace-nowrap text-sm font-medium text-accent-400">{req.id}</td>
-                                <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">
-                                    {req.source === 'System' ? (
-                                        <div className="flex items-center gap-2" title="Auto-generated by AI Planning Insights based on demand forecast">
-                                            <BotIcon className="w-4 h-4 text-accent-400" />
-                                            <span className="text-accent-300 font-semibold">AI Generated</span>
-                                        </div>
-                                    ) : (req.requesterId ? (userMap.get(req.requesterId) || 'Unknown User') : 'Unassigned')}
-                                </td>
-                                <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">{req.department}</td>
-                                <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-200">
-                                    <div className="flex flex-col gap-1">
-                                        {req.needByDate ? (
-                                            <span className="text-xs text-gray-300">
-                                                Need by {new Date(req.needByDate).toLocaleDateString()}
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs text-gray-500">Flexible</span>
-                                        )}
-                                        <div className="flex flex-wrap gap-1">
-                                            <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-gray-700 text-gray-200">
-                                                {req.requestType?.replace('_', ' ') || 'consumable'}
-                                            </span>
-                                            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide ${req.priority === 'high'
-                                                ? 'bg-rose-500/20 text-rose-200 border border-rose-500/40'
-                                                : req.priority === 'medium'
-                                                    ? 'bg-amber-500/20 text-amber-200 border border-amber-500/30'
-                                                    : 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
-                                                }`}>
-                                                {req.priority} priority
-                                            </span>
-                                            {req.alertOnly && (
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-sky-500/20 text-sky-200 border border-sky-500/30">
-                                                    Alert Only
-                                                </span>
-                                            )}
-                                            {req.autoPo && (
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-accent-500/20 text-accent-200 border border-accent-500/30">
-                                                    Auto PO
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(req.createdAt).toLocaleDateString()}</td>
-                                <td className="px-6 py-1 whitespace-nowrap align-top">
-                                    <ReqStatusBadge status={req.status} />
-                                    <div className="mt-1 space-y-1 text-xs text-gray-500">
-                                        {req.managerApprovedBy && req.managerApprovedAt && (
-                                            <p>
-                                                Mgr: {userMap.get(req.managerApprovedBy) ?? req.managerApprovedBy} on{' '}
-                                                {new Date(req.managerApprovedAt).toLocaleDateString()}
-                                            </p>
-                                        )}
-                                        {req.opsApprovalRequired && (
-                                            <p>
-                                                Ops:{' '}
-                                                {req.opsApprovedAt
-                                                    ? `${userMap.get(req.opsApprovedBy ?? '') ?? 'Ops'} on ${new Date(
-                                                        req.opsApprovedAt,
-                                                    ).toLocaleDateString()}`
-                                                    : 'Pending'}
-                                            </p>
-                                        )}
-                                        {req.forwardedToPurchasingAt && (
-                                            <p>
-                                                Sent to Purchasing {new Date(req.forwardedToPurchasingAt).toLocaleDateString()}
-                                            </p>
-                                        )}
-                                    </div>
-                                </td>
-                                <td className="px-6 py-1 text-sm text-gray-300">
-                                    <ul className="space-y-1">
-                                        {req.items.map(item => {
-                                            const amazonMeta = item.metadata?.amazon;
-                                            return (
-                                                <li key={`${req.id}-${item.sku}`} className="space-y-0.5" title={item.reason}>
-                                                    <div>{item.quantity}x {item.name}</div>
-                                                    {item.externalUrl && (
-                                                        <a
-                                                            href={item.externalUrl}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="text-xs text-accent-300 hover:text-accent-200 underline decoration-dotted"
-                                                        >
-                                                            {item.externalSource === 'amazon' ? 'Amazon link' : 'External link'}
-                                                        </a>
-                                                    )}
-                                                    {(amazonMeta?.asin || item.metadata?.trackingEmail) && (
-                                                        <p className="text-[11px] text-gray-500">
-                                                            {amazonMeta?.asin ? (
-                                                                <>
-                                                                    ASIN {amazonMeta.asin}
-                                                                    {amazonMeta.marketplace ? ` • ${amazonMeta.marketplace}` : ''}
-                                                                </>
-                                                            ) : null}
-                                                            {item.metadata?.trackingEmail && (
-                                                                <>
-                                                                    {amazonMeta?.asin ? ' • ' : ''}
-                                                                    Tracking via {item.metadata.trackingEmail}
-                                                                </>
-                                                            )}
-                                                        </p>
-                                                    )}
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                </td>
-                                {(isAdminLike || currentUser.role === 'Manager' || currentUser.department === 'Operations') && (
-                                    <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
-                                        {canTakeAction(req) && (
-                                            <>
-                                                <Button onClick={() => onApprove(req.id)} className="p-2 text-green-400 hover:text-green-300" title="Approve">
-                                                    <CheckCircleIcon className="w-6 h-6" />
-                                                </Button>
-                                                <Button onClick={() => onReject(req.id)} className="p-2 text-red-400 hover:text-red-300" title="Reject">
-                                                    <XCircleIcon className="w-6 h-6" />
-                                                </Button>
-                                            </>
-                                        )}
-                                        {!canTakeAction(req) && canOpsTakeAction(req) && (
-                                            <>
-                                                <Button onClick={() => onOpsApprove(req.id)} className="p-2 text-purple-300 hover:text-purple-100" title="Operations Approve">
-                                                    <CheckCircleIcon className="w-6 h-6" />
-                                                </Button>
-                                                <Button onClick={() => onReject(req.id)} className="p-2 text-red-400 hover:text-red-300" title="Reject">
-                                                    <XCircleIcon className="w-6 h-6" />
-                                                </Button>
-                                            </>
-                                        )}
-                                        {!canTakeAction(req) && !canOpsTakeAction(req) && (
-                                            <span className="text-xs text-gray-500">Processed</span>
-                                        )}
-                                    </td>
-                                )}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div className="overflow-hidden">
+                <Table
+                    columns={columns}
+                    data={displayedRequisitions}
+                    getRowKey={(req) => req.id}
+                    stickyHeader
+                    hoverable
+                    emptyMessage="No requisitions found"
+                />
             </div>
         </CollapsibleSection>
     );

@@ -42,7 +42,7 @@ const LOGIN_SPOTLIGHTS = [
     id: 'spotlights',
     title: 'Auto feature spotlights',
     description:
-      'MuRP rotates tips for unused features so onboarding stays light-touch and human. Snooze or jump straight to Settings.',
+      'MuRP rotates helpful tips so onboarding stays light-touch and human. Snooze or jump straight to Settings.',
     icon: <SparklesIcon className="h-5 w-5 text-amber-200" />,
     stat: 'Adaptive',
     accent: 'from-amber-500/20 via-pink-500/10 to-transparent',
@@ -50,9 +50,9 @@ const LOGIN_SPOTLIGHTS = [
   {
     id: 'security',
     title: 'Glass-secure workspace',
-    description: 'SOC2-ready controls, MFA reminders, and masked secrets keep purchasing workflows safe without killing the vibe.',
+    description: 'Enterprise-grade controls, secure logging, and masked secrets keep purchasing workflows safe without killing the vibe.',
     icon: <ShieldCheckIcon className="h-5 w-5 text-sky-200" />,
-    stat: 'SOC2 ready',
+    stat: 'Secure',
     accent: 'from-sky-500/20 via-accent-500/10 to-transparent',
   },
   {
@@ -194,7 +194,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
 
   const renderAuthCard = (wrapperClassName = '') => (
     <div
-      className={`rounded-[32px] border border-white/10 bg-gray-950/80 backdrop-blur-2xl p-8 shadow-[0_30px_100px_rgba(1,5,20,0.55)] ${wrapperClassName}`}
+      className={`rounded-2xl border border-white/10 bg-gray-950/80 backdrop-blur-2xl p-8 shadow-[0_30px_100px_rgba(1,5,20,0.55)] ${wrapperClassName}`}
     >
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -203,19 +203,17 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
             {mode === 'login' ? 'Welcome back' : 'Create account'}
           </h2>
         </div>
-        <div className="flex space-x-2 rounded-full bg-gray-800 p-1">
+        <div className="flex space-x-1 rounded-xl bg-gray-800 p-1">
           <Button
-            className={`px-4 py-1 text-sm rounded-full ${
-              mode === 'login' ? 'bg-accent-500 text-white' : 'text-gray-400'
-            }`}
+            className={`px-4 py-1 text-sm rounded-lg transition-all ${mode === 'login' ? 'bg-accent-500 text-white shadow-md' : 'text-gray-400 hover:text-white'
+              }`}
             onClick={() => setMode('login')}
           >
             Login
           </Button>
           <Button
-            className={`px-4 py-1 text-sm rounded-full ${
-              mode === 'signup' ? 'bg-accent-500 text-white' : 'text-gray-400'
-            }`}
+            className={`px-4 py-1 text-sm rounded-lg transition-all ${mode === 'signup' ? 'bg-accent-500 text-white shadow-md' : 'text-gray-400 hover:text-white'
+              }`}
             onClick={() => setMode('signup')}
           >
             Sign Up
@@ -224,43 +222,44 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
       </div>
 
       {godMode && (
-        <div className="rounded-2xl border border-yellow-400/30 bg-yellow-400/10 p-3 text-sm text-yellow-200 mb-6">
-          Dev God Mode enabled — production safeguards bypassed for this session.
+        <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/10 p-3 text-sm text-yellow-200 mb-6 flex items-start gap-2">
+          <ShieldCheckIcon className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <span>Dev God Mode enabled — production safeguards bypassed for this session.</span>
         </div>
       )}
 
       <form onSubmit={mode === 'login' ? handleLogin : handleSignup} className="space-y-4">
         {mode === 'signup' && (
           <div>
-            <label className="text-sm text-gray-400">Full Name</label>
+            <label className="text-sm text-gray-400 ml-1">Full Name</label>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
+              className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-900/50 p-3 text-white focus:border-accent-500 focus:ring-accent-500 transition-all placeholder:text-gray-600"
               placeholder="Jamie Operations"
               required
             />
           </div>
         )}
         <div>
-          <label className="text-sm text-gray-400">Email</label>
+          <label className="text-sm text-gray-400 ml-1">Email</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
+            className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-900/50 p-3 text-white focus:border-accent-500 focus:ring-accent-500 transition-all placeholder:text-gray-600"
             placeholder="you@company.com"
             required
           />
         </div>
         <div>
-          <label className="text-sm text-gray-400">Password</label>
+          <label className="text-sm text-gray-400 ml-1">Password</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
+            className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-900/50 p-3 text-white focus:border-accent-500 focus:ring-accent-500 transition-all placeholder:text-gray-600"
             placeholder="••••••••••"
             required
           />
@@ -268,22 +267,22 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
         {mode === 'signup' && (
           <>
             <div>
-              <label className="text-sm text-gray-400">Confirm Password</label>
+              <label className="text-sm text-gray-400 ml-1">Confirm Password</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
+                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-900/50 p-3 text-white focus:border-accent-500 focus:ring-accent-500 transition-all placeholder:text-gray-600"
                 placeholder="Repeat password"
                 required
               />
             </div>
             <div>
-              <label className="text-sm text-gray-400">Department</label>
+              <label className="text-sm text-gray-400 ml-1">Department</label>
               <select
                 value={department}
                 onChange={(e) => setDepartment(e.target.value as typeof department)}
-                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-800/80 p-3 text-white focus:border-accent-500 focus:ring-accent-500"
+                className="mt-1 w-full rounded-xl border border-gray-700 bg-gray-900/50 p-3 text-white focus:border-accent-500 focus:ring-accent-500 transition-all"
               >
                 <option>Purchasing</option>
                 <option>Operations</option>
@@ -296,8 +295,8 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
           </>
         )}
         {mode === 'login' && (
-          <div className="flex items-center justify-between text-sm text-gray-400">
-            <label className="inline-flex items-center gap-2 cursor-pointer">
+          <div className="flex items-center justify-between text-sm text-gray-400 px-1">
+            <label className="inline-flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
               <input
                 type="checkbox"
                 checked={remember}
@@ -306,7 +305,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
               />
               Remember me
             </label>
-            <Button type="button" onClick={handleResetPassword} className="text-accent-400 hover:text-accent-300">
+            <Button type="button" onClick={handleResetPassword} className="text-accent-400 hover:text-accent-300 text-xs">
               Forgot password?
             </Button>
           </div>
@@ -314,36 +313,42 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
         <Button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-accent-500 py-3 font-semibold text-white shadow-lg shadow-accent-500/30 transition-all hover:bg-accent-500 disabled:bg-gray-700"
+          className="w-full rounded-xl bg-gradient-to-r from-accent-600 to-accent-500 hover:from-accent-500 hover:to-accent-400 py-3 font-bold text-white shadow-lg shadow-accent-900/40 transition-all disabled:opacity-70 disabled:cursor-not-allowed mt-2"
         >
-          {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : 'Create Account'}
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <SparklesIcon className="w-4 h-4 animate-spin" />
+              Processing...
+            </span>
+          ) : mode === 'login' ? 'Sign In' : 'Create Account'}
         </Button>
       </form>
 
-      <p className="text-xs text-gray-500 text-center mt-4">
+      <p className="text-xs text-gray-500 text-center mt-6">
         By continuing you agree to our{' '}
         <button
           type="button"
           onClick={() => setIsTermsModalOpen(true)}
-          className="text-accent-300 hover:text-accent-100 underline decoration-dotted"
+          className="text-accent-400 hover:text-accent-300 hover:underline decoration-dotted"
         >
           Terms of Service
         </button>
         .
       </p>
 
-      <div className="mt-6">
-        <div className="flex items-center gap-2">
-          <span className="w-full border-t border-gray-700" />
-          <span className="text-xs uppercase tracking-widest text-gray-500">or continue with</span>
-          <span className="w-full border-t border-gray-700" />
+      <div className="mt-8">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="h-px w-full bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
+          <span className="text-[10px] uppercase tracking-widest text-gray-500 whitespace-nowrap font-medium">or continue with</span>
+          <span className="h-px w-full bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <Button
             type="button"
-            className="flex items-center justify-between gap-4 rounded-xl border border-gray-700 bg-gray-800/60 p-4 text-white hover:border-accent-500 hover:bg-gray-800 transition-colors text-left"
+            className="group flex items-center justify-between gap-4 rounded-xl border border-gray-700 bg-gray-900/40 p-4 text-white hover:border-accent-500/50 hover:bg-gray-800/60 transition-all text-left relative overflow-hidden"
             onClick={handleGoogleSignIn}
           >
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity transform -skew-x-12 translate-x-full group-hover:translate-x-[-100%] duration-1000" />
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <GmailIcon className="h-5 w-5 text-[#EA4335]" />
@@ -351,22 +356,11 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
                 <GoogleSheetsIcon className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-semibold leading-tight">Sign in with Google Workspace</p>
-                <p className="text-xs text-gray-400">Unlock Gmail, Calendar, Sheets & Docs sync</p>
+                <p className="font-semibold leading-tight group-hover:text-accent-200 transition-colors">Google Workspace</p>
+                <p className="text-[11px] text-gray-500 group-hover:text-gray-400">Sync Gmail, Calendar & Docs</p>
               </div>
             </div>
-            <span className="text-xs uppercase tracking-[0.2em] text-gray-400">SSO</span>
-          </Button>
-          <Button
-            type="button"
-            className="flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-800/60 p-3 text-white hover:border-accent-500 transition-colors opacity-50 cursor-not-allowed"
-            onClick={() => addToast('Microsoft OAuth coming soon.', 'info')}
-            disabled
-          >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 4H11.5V11.5H4V4ZM12.5 4H20V11.5H12.5V4ZM4 12.5H11.5V20H4V12.5ZM12.5 12.5H20V20H12.5V12.5Z" />
-            </svg>
-            Microsoft
+            <span className="text-[10px] uppercase tracking-[0.2em] text-gray-600 group-hover:text-accent-500 font-bold border border-gray-800 group-hover:border-accent-500/30 rounded px-1.5 py-0.5 transition-all">SSO</span>
           </Button>
         </div>
       </div>
@@ -382,7 +376,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
     return (
       <div
         key={plan.id}
-        className={`rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_80px_rgba(3,9,30,0.4)]
+        className={`rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_80px_rgba(3,9,30,0.4)]
         ${plan.ribbon ? 'ring-2 ring-accent-500' : ''}`}
       >
         {plan.ribbon && (
@@ -425,11 +419,10 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
           ))}
         </ul>
         <Button
-          className={`mt-6 w-full rounded-2xl py-3 font-semibold ${
-            plan.id === 'full_ai'
-              ? 'bg-gradient-to-r from-accent-500 to-purple-500 text-white'
-              : 'bg-white/10 text-white hover:bg-white/20'
-          }`}
+          className={`mt-6 w-full rounded-xl py-3 font-semibold ${plan.id === 'full_ai'
+            ? 'bg-gradient-to-r from-accent-500 to-purple-500 text-white shadow-lg shadow-purple-900/20'
+            : 'bg-white/10 text-white hover:bg-white/20'
+            }`}
           onClick={() => void handlePlanCta(plan.id)}
         >
           {showContact
@@ -445,12 +438,12 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
   };
 
   const previewLayout = (
-    <div className="relative min-h-screen bg-[#030712] text-white overflow-hidden">
+    <div className="relative min-h-screen bg-[#030712] text-white overflow-x-hidden">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 right-16 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl" />
-        <div className="absolute bottom-0 left-10 h-80 w-80 rounded-full bg-fuchsia-600/20 blur-3xl" />
+        <div className="absolute -top-32 right-16 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl opacity-50" />
+        <div className="absolute bottom-0 left-10 h-80 w-80 rounded-full bg-fuchsia-600/20 blur-3xl opacity-50" />
       </div>
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-12 space-y-10">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 md:py-12 space-y-10">
         <header className="space-y-6">
           <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.3em] text-emerald-300">
             <span>MuRP pricing preview</span>
@@ -472,10 +465,10 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
                 <span className="rounded-full border border-white/10 px-4 py-1">Enterprise SSO</span>
               </div>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-black/30 p-5 space-y-4 shadow-[0_25px_80px_rgba(2,8,20,0.6)]">
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-5 space-y-4 shadow-[0_25px_80px_rgba(2,8,20,0.6)] backdrop-blur-md">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`rounded-2xl border border-white/10 bg-gradient-to-br ${activeSpotlight.accent} p-3`}>
+                  <div className={`rounded-xl border border-white/10 bg-gradient-to-br ${activeSpotlight.accent} p-3`}>
                     {activeSpotlight.icon}
                   </div>
                   <div>
@@ -492,9 +485,8 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
                     key={spot.id}
                     type="button"
                     onClick={() => setSpotlightIndex(idx)}
-                    className={`h-1.5 flex-1 rounded-full transition-colors ${
-                      idx === spotlightIndex ? 'bg-white' : 'bg-white/20 hover:bg-white/40'
-                    }`}
+                    className={`h-1.5 flex-1 rounded-full transition-colors ${idx === spotlightIndex ? 'bg-white' : 'bg-white/20 hover:bg-white/40'
+                      }`}
                   />
                 ))}
               </div>
@@ -509,18 +501,16 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
                 <button
                   type="button"
                   onClick={() => setBillingInterval('monthly')}
-                  className={`rounded-full px-4 py-1 font-semibold ${
-                    billingInterval === 'monthly' ? 'bg-white text-black' : 'text-gray-300'
-                  }`}
+                  className={`rounded-full px-4 py-1 font-semibold transition-all ${billingInterval === 'monthly' ? 'bg-white text-black shadow-sm' : 'text-gray-300 hover:text-white'
+                    }`}
                 >
                   Monthly
                 </button>
                 <button
                   type="button"
                   onClick={() => setBillingInterval('yearly')}
-                  className={`rounded-full px-4 py-1 font-semibold ${
-                    billingInterval === 'yearly' ? 'bg-white text-black' : 'text-gray-300'
-                  }`}
+                  className={`rounded-full px-4 py-1 font-semibold transition-all ${billingInterval === 'yearly' ? 'bg-white text-black shadow-sm' : 'text-gray-300 hover:text-white'
+                    }`}
                 >
                   Yearly
                 </button>
@@ -534,14 +524,14 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
             </div>
           </section>
           <section className="lg:col-span-2 space-y-6">
-            {renderAuthCard('bg-[#050818]/80 border-white/5 shadow-[0_20px_70px_rgba(3,8,20,0.65)]')}
-            <div className="rounded-3xl border border-white/5 bg-white/5 p-6">
+            {renderAuthCard('bg-[#050818]/60 border-white/5 shadow-[0_20px_70px_rgba(3,8,20,0.65)] sticky top-6')}
+            <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
               <p className="text-sm uppercase tracking-[0.4em] text-gray-300">Why teams switch</p>
-              <ul className="mt-4 space-y-3 text-sm text-gray-100">
+              <ul className="mt-4 space-y-3 text-sm text-gray-100/80">
                 <li>⚡ Auto-generates vendor-ready POs with Gmail threading.</li>
                 <li>🧠 AI compliance copilots catch gaps before regulators do.</li>
                 <li>🛰️ Shopify, Finale, and Google Workspace stay in sync.</li>
-                <li>🛡️ SOC2-ready logging, SSO, and onboarding guardrails.</li>
+                <li>🛡️ Secure logging, SSO, and onboarding guardrails.</li>
               </ul>
             </div>
           </section>
@@ -557,8 +547,8 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
             <p className="text-xs text-gray-400 mt-1">AI Coverage</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
-            <p className="text-2xl font-semibold text-white">SOC2</p>
-            <p className="text-xs text-gray-400 mt-1">Ready Controls</p>
+            <p className="text-2xl font-semibold text-white">Secure</p>
+            <p className="text-xs text-gray-400 mt-1">Access Controls</p>
           </div>
         </section>
       </div>
@@ -566,13 +556,14 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
   );
 
   const legacyLayout = (
-    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#05060d] via-[#0b1020] to-[#111b2e] p-4 overflow-hidden">
+    <div className="relative min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#05060d] via-[#0b1020] to-[#111b2e] p-4 lg:p-8 overflow-y-auto overflow-x-hidden">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 right-16 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl" />
-        <div className="absolute bottom-0 left-10 h-80 w-80 rounded-full bg-fuchsia-600/20 blur-3xl" />
+        <div className="absolute -top-32 right-16 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl opacity-60" />
+        <div className="absolute bottom-0 left-10 h-80 w-80 rounded-full bg-fuchsia-600/10 blur-3xl opacity-60" />
       </div>
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 relative z-10">
-        <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/5 backdrop-blur-2xl p-8 shadow-[0_40px_140px_rgba(2,10,40,0.6)] space-y-8">
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 relative z-10 self-center my-auto">
+        {/* Marketing / Branding Column - Hidden on small mobile to focus on login, visible on larger */}
+        <div className="hidden md:block relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-2xl p-8 shadow-[0_40px_140px_rgba(2,10,40,0.6)] space-y-8">
           <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-accent-500/10 via-fuchsia-500/10 to-cyan-500/10" />
           <div className="relative z-10 space-y-6">
             <div>
@@ -583,28 +574,28 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
                   Manufacturing Resource Portal
                 </span>
               </div>
-              <p className="mt-3 text-gray-300 text-sm">
+              <p className="mt-3 text-gray-300 text-sm leading-relaxed">
                 MuRP is the manufacturing resource portal for purchasing and ops leads—plug into intelligence, BOM visibility, AI copilots, and the tall timeline view without hunting for the brand.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p className="text-2xl font-semibold text-white">#1</p>
                 <p className="text-xs text-gray-400 mt-1">Purchase Assurance</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p className="text-2xl font-semibold text-white">24/7</p>
                 <p className="text-xs text-gray-400 mt-1">AI Coverage</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-2xl font-semibold text-white">SOC2</p>
-                <p className="text-xs text-gray-400 mt-1">Ready Controls</p>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-2xl font-semibold text-white">Secure</p>
+                <p className="text-xs text-gray-400 mt-1">Access Controls</p>
               </div>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-black/30 p-5 space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-5 space-y-4 backdrop-blur-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`rounded-2xl border border-white/10 bg-gradient-to-br ${activeSpotlight.accent} p-3`}>
+                  <div className={`rounded-xl border border-white/10 bg-gradient-to-br ${activeSpotlight.accent} p-3`}>
                     {activeSpotlight.icon}
                   </div>
                   <div>
@@ -621,20 +612,19 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
                     key={spot.id}
                     type="button"
                     onClick={() => setSpotlightIndex(idx)}
-                    className={`h-1.5 flex-1 rounded-full transition-colors ${
-                      idx === spotlightIndex ? 'bg-white' : 'bg-white/20 hover:bg-white/40'
-                    }`}
+                    className={`h-1.5 flex-1 rounded-full transition-colors ${idx === spotlightIndex ? 'bg-white' : 'bg-white/20 hover:bg-white/40'
+                      }`}
                   />
                 ))}
               </div>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-black/20 p-4 space-y-2">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-2">
               <p className="text-xs uppercase tracking-[0.3em] text-gray-400">Up next</p>
               <div className="flex flex-wrap gap-2">
                 {stackedSpotlights.slice(0, 3).map((spot) => (
                   <div
                     key={spot.id}
-                    className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300"
+                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1 text-xs text-gray-300"
                   >
                     {spot.icon}
                     {spot.title}
@@ -644,7 +634,14 @@ const LoginScreen: FC<LoginScreenProps> = ({ addToast }) => {
             </div>
           </div>
         </div>
-        {renderAuthCard()}
+
+        {/* Mobile Header (Visible only on small screens) */}
+        <div className="md:hidden text-center mb-4">
+          <h1 className="text-4xl font-black text-white tracking-tight">MuRP</h1>
+          <p className="text-xs uppercase tracking-[0.3em] text-accent-400 mt-1">Manufacturing Portal</p>
+        </div>
+
+        {renderAuthCard('w-full')}
       </div>
     </div>
   );

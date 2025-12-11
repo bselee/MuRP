@@ -59,6 +59,7 @@ import {
   Package,
   PenSquare,
   Pencil,
+  Play,
   Plus,
   PlusCircle,
   QrCode,
@@ -150,6 +151,7 @@ export const GoogleDocsIcon = wrapIcon(FileText);
 export const KeyIcon = wrapIcon(KeyRound);
 export const ClipboardCopyIcon = wrapIcon(ClipboardCopy);
 export const RefreshIcon = wrapIcon(RefreshCw);
+export const PlayIcon = wrapIcon(Play);
 export const ServerStackIcon = wrapIcon(Server);
 export const LinkIcon = wrapIcon(Link2);
 export const PlusCircleIcon = wrapIcon(PlusCircle);

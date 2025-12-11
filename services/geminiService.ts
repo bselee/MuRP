@@ -1,5 +1,4 @@
 
-
 import { GoogleGenAI } from "@google/genai";
 import type { BillOfMaterials, InventoryItem, Vendor, PurchaseOrder, BOMComponent, WatchlistItem } from '../types';
 import type { Forecast } from './forecastingService';
@@ -10,10 +9,21 @@ import { isComplianceQuestion, routeComplianceQuestion, isMcpServerAvailable } f
 const envApiKey = import.meta.env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? (process as any).env?.API_KEY : undefined);
 
 if (!envApiKey) {
-    console.warn('Gemini API key is not configured. Set VITE_GEMINI_API_KEY in your environment.');
+  console.warn('Gemini API key is not configured. Set VITE_GEMINI_API_KEY in your environment.');
 }
 
-const ai = new GoogleGenAI({ apiKey: envApiKey! });
+let aiInstance: GoogleGenAI | null = null;
+
+function getAI(): GoogleGenAI {
+  if (aiInstance) return aiInstance;
+
+  if (!envApiKey) {
+    throw new Error('Gemini API key is not configured');
+  }
+
+  aiInstance = new GoogleGenAI({ apiKey: envApiKey });
+  return aiInstance;
+}
 
 /**
  * Smart filter to limit data sent to AI API
@@ -118,47 +128,47 @@ Please wait 1 minute before trying again, or upgrade your plan.
 }
 
 export async function callGemini(model: string, prompt: string, isJson = false, imageBase64?: string) {
-    try {
-        let contents: any;
+  try {
+    let contents: any;
 
-        // If image provided, use multimodal format
-        if (imageBase64) {
-            const imagePart = {
-                inlineData: {
-                    mimeType: 'image/png', // Default to PNG, works for most images
-                    data: imageBase64,
-                },
-            };
-            const textPart = { text: prompt };
-            contents = { parts: [imagePart, textPart] };
-        } else {
-            // Text-only
-            contents = prompt;
-        }
-
-        const response = await ai.models.generateContent({
-            model: model,
-            contents: contents,
-        });
-
-        // FIX: Directly access the .text property as per Gemini API guidelines.
-        if (!response.text) {
-            return "I'm sorry, I couldn't generate a response. Please try again.";
-        }
-        return response.text;
-    } catch (error) {
-        console.error("Error calling Gemini API:", error);
-
-        // Check for quota exceeded (429) errors
-        if (error instanceof Error) {
-            const errorStr = error.message || '';
-            if (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED') || errorStr.includes('Quota exceeded')) {
-                return parseQuotaError(error);
-            }
-            return `An error occurred: ${error.message}. Make sure your API key is configured correctly.`;
-        }
-        return "An unknown error occurred while contacting the AI assistant.";
+    // If image provided, use multimodal format
+    if (imageBase64) {
+      const imagePart = {
+        inlineData: {
+          mimeType: 'image/png', // Default to PNG, works for most images
+          data: imageBase64,
+        },
+      };
+      const textPart = { text: prompt };
+      contents = { parts: [imagePart, textPart] };
+    } else {
+      // Text-only
+      contents = prompt;
     }
+
+    const response = await getAI().models.generateContent({
+      model: model,
+      contents: contents,
+    });
+
+    // FIX: Directly access the .text property as per Gemini API guidelines.
+    if (!response.text) {
+      return "I'm sorry, I couldn't generate a response. Please try again.";
+    }
+    return response.text;
+  } catch (error) {
+    console.error("Error calling Gemini API:", error);
+
+    // Check for quota exceeded (429) errors
+    if (error instanceof Error) {
+      const errorStr = error.message || '';
+      if (errorStr.includes('429') || errorStr.includes('RESOURCE_EXHAUSTED') || errorStr.includes('Quota exceeded')) {
+        return parseQuotaError(error);
+      }
+      return `An error occurred: ${error.message}. Make sure your API key is configured correctly.`;
+    }
+    return "An unknown error occurred while contacting the AI assistant.";
+  }
 }
 
 export async function askAboutInventory(
@@ -173,9 +183,9 @@ export async function askAboutInventory(
   // Check if this is a compliance-related question
   if (isComplianceQuestion(question)) {
     console.log('[AI Assistant] Detected compliance question, checking MCP server...');
-    
+
     const mcpAvailable = await isMcpServerAvailable();
-    
+
     if (mcpAvailable) {
       console.log('[AI Assistant] Routing to MCP server tools');
       try {
@@ -185,9 +195,9 @@ export async function askAboutInventory(
           productType: 'soil_amendment', // Default, could be smarter
           targetStates: ['CO', 'CA', 'WA'], // Default, could extract from question
         };
-        
+
         const mcpResponse = await routeComplianceQuestion('current-user', question, context);
-        
+
         // Prepend MCP response with AI explanation
         return `🔍 **Compliance Analysis**\n\n${mcpResponse}\n\n---\n\n💡 *This response was generated using state-by-state regulatory tools. For specific legal advice, consult with a compliance attorney.*`;
       } catch (error) {
@@ -218,10 +228,10 @@ export async function askAboutInventory(
         sufficient: available >= needed
       };
     });
-    
+
     const buildable = componentStatus.every(c => c.sufficient);
     const limitingComponent = componentStatus.find(c => !c.sufficient);
-    
+
     return {
       sku: bom.finishedSku,
       name: bom.name,
@@ -279,7 +289,7 @@ export async function askAboutInventory(
   }
 
   // Get relevant buildability data based on the BOMs in context
-  const relevantBuildability = buildabilityData.filter(b => 
+  const relevantBuildability = buildabilityData.filter(b =>
     relevantBOMs.some(bom => bom.finishedSku === b.sku)
   );
 
@@ -301,102 +311,102 @@ export async function getAiPlanningInsight(
   boms: BillOfMaterials[],
   forecast: Forecast[]
 ): Promise<string> {
-    const finalPrompt = promptTemplate
-        .replace('{{inventory}}', JSON.stringify(inventory, null, 2))
-        .replace('{{boms}}', JSON.stringify(boms, null, 2))
-        .replace('{{forecast}}', JSON.stringify(forecast, null, 2));
+  const finalPrompt = promptTemplate
+    .replace('{{inventory}}', JSON.stringify(inventory, null, 2))
+    .replace('{{boms}}', JSON.stringify(boms, null, 2))
+    .replace('{{forecast}}', JSON.stringify(forecast, null, 2));
 
-    return callGemini(model, finalPrompt);
+  return callGemini(model, finalPrompt);
 }
 
 export async function getRegulatoryAdvice(
-    model: string,
-    promptTemplate: string,
-    productName: string,
-    ingredients: BOMComponent[],
-    state: string,
-    watchlist: WatchlistItem[]
+  model: string,
+  promptTemplate: string,
+  productName: string,
+  ingredients: BOMComponent[],
+  state: string,
+  watchlist: WatchlistItem[]
 ): Promise<string> {
-    const ingredientList = ingredients.map(c => c.name).join(', ');
-    const finalPrompt = promptTemplate
-        .replace('{{productName}}', productName)
-        .replace('{{state}}', state)
-        .replace('{{ingredientList}}', ingredientList)
-        .replace('{{watchlist}}', JSON.stringify(watchlist, null, 2));
+  const ingredientList = ingredients.map(c => c.name).join(', ');
+  const finalPrompt = promptTemplate
+    .replace('{{productName}}', productName)
+    .replace('{{state}}', state)
+    .replace('{{ingredientList}}', ingredientList)
+    .replace('{{watchlist}}', JSON.stringify(watchlist, null, 2));
 
-    try {
-        const response = await ai.models.generateContent({
-            model,
-            contents: finalPrompt,
-            config: {
-                tools: [{ googleSearch: {} }],
-            },
-        });
-        // FIX: Directly access the .text property as per Gemini API guidelines.
-        return response.text ?? "Could not generate regulatory advice at this time.";
-    } catch (error) {
-        console.error("Error calling Gemini API for regulatory advice:", error);
-        return "An error occurred while fetching regulatory information. Please try again.";
-    }
+  try {
+    const response = await getAI().models.generateContent({
+      model,
+      contents: finalPrompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+    // FIX: Directly access the .text property as per Gemini API guidelines.
+    return response.text ?? "Could not generate regulatory advice at this time.";
+  } catch (error) {
+    console.error("Error calling Gemini API for regulatory advice:", error);
+    return "An error occurred while fetching regulatory information. Please try again.";
+  }
 }
 
 export async function draftComplianceLetter(
-    model: string,
-    promptTemplate: string,
-    productName: string,
-    ingredients: BOMComponent[],
-    state: string,
-    complianceAnalysis: string
+  model: string,
+  promptTemplate: string,
+  productName: string,
+  ingredients: BOMComponent[],
+  state: string,
+  complianceAnalysis: string
 ): Promise<string> {
-    const ingredientList = ingredients.map(c => `- ${c.name} (${c.sku})`).join('\n');
-    const finalPrompt = promptTemplate
-        .replace('{{state}}', state)
-        .replace('{{productName}}', productName)
-        .replace('{{ingredientList}}', ingredientList)
-        .replace('{{complianceAnalysis}}', complianceAnalysis);
+  const ingredientList = ingredients.map(c => `- ${c.name} (${c.sku})`).join('\n');
+  const finalPrompt = promptTemplate
+    .replace('{{state}}', state)
+    .replace('{{productName}}', productName)
+    .replace('{{ingredientList}}', ingredientList)
+    .replace('{{complianceAnalysis}}', complianceAnalysis);
 
-    try {
-        const response = await ai.models.generateContent({
-            model,
-            contents: finalPrompt,
-            config: {
-                tools: [{ googleSearch: {} }],
-            },
-        });
-        // FIX: Directly access the .text property as per Gemini API guidelines.
-        return response.text ?? "Could not generate the draft letter at this time.";
-    } catch (error) {
-        console.error("Error calling Gemini API for letter drafting:", error);
-        return "An error occurred while drafting the compliance letter. Please try again.";
-    }
+  try {
+    const response = await getAI().models.generateContent({
+      model,
+      contents: finalPrompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
+    });
+    // FIX: Directly access the .text property as per Gemini API guidelines.
+    return response.text ?? "Could not generate the draft letter at this time.";
+  } catch (error) {
+    console.error("Error calling Gemini API for letter drafting:", error);
+    return "An error occurred while drafting the compliance letter. Please try again.";
+  }
 }
 
 export async function verifyArtworkLabel(
-    model: string, // Expects a multimodal model like 'gemini-2.5-flash-image'
-    promptTemplate: string,
-    artworkImageBase64: string,
-    expectedBarcode: string
+  model: string, // Expects a multimodal model like 'gemini-2.5-flash-image'
+  promptTemplate: string,
+  artworkImageBase64: string,
+  expectedBarcode: string
 ): Promise<string> {
-    const finalPrompt = promptTemplate.replace('{{expectedBarcode}}', expectedBarcode);
-    
-    try {
-        const imagePart = {
-            inlineData: {
-                mimeType: 'image/png',
-                data: artworkImageBase64,
-            },
-        };
-        const textPart = { text: finalPrompt };
+  const finalPrompt = promptTemplate.replace('{{expectedBarcode}}', expectedBarcode);
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image', // Hardcode to a known multimodal model for this specific task
-            contents: { parts: [imagePart, textPart] },
-        });
+  try {
+    const imagePart = {
+      inlineData: {
+        mimeType: 'image/png',
+        data: artworkImageBase64,
+      },
+    };
+    const textPart = { text: finalPrompt };
 
-        // FIX: Directly access the .text property as per Gemini API guidelines.
-        return response.text ?? "Could not analyze the artwork image.";
-    } catch (error) {
-        console.error("Error calling Gemini API for artwork verification:", error);
-        return "An error occurred during image analysis. Please try again.";
-    }
+    const response = await getAI().models.generateContent({
+      model: 'gemini-2.5-flash-image', // Hardcode to a known multimodal model for this specific task
+      contents: { parts: [imagePart, textPart] },
+    });
+
+    // FIX: Directly access the .text property as per Gemini API guidelines.
+    return response.text ?? "Could not analyze the artwork image.";
+  } catch (error) {
+    console.error("Error calling Gemini API for artwork verification:", error);
+    return "An error occurred during image analysis. Please try again.";
+  }
 }

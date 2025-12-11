@@ -1,4 +1,5 @@
 import Button from '@/components/ui/Button';
+import StockoutRiskWidget from '@/components/StockoutRiskWidget';
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * 📊 STOCK INTELLIGENCE DASHBOARD
@@ -271,46 +272,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           {activeTab === 'risks' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Stockout Risk Analysis</h3>
-
-              {stockoutRisks.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">No stockout risks detected</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="table-density min-w-full divide-y divide-gray-700">
-                    <thead className="bg-gray-800/50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">SKU</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Item</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Days Left</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Risk Level</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Trend</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-gray-800 divide-y divide-gray-700">
-                      {stockoutRisks.slice(0, 50).map(risk => (
-                        <tr key={risk.sku} className="hover:bg-gray-700/50">
-                          <td className="px-4 py-1 text-sm text-gray-300">{risk.sku}</td>
-                          <td className="px-4 py-1 text-sm text-white font-medium">{risk.name}</td>
-                          <td className="px-4 py-1 text-sm">
-                            <span className={`font-semibold ${risk.daysUntilStockout <= 0 ? 'text-red-400' :
-                              risk.daysUntilStockout < 7 ? 'text-orange-400' :
-                                'text-gray-300'
-                              }`}>
-                              {risk.daysUntilStockout <= 0 ? 'OUT OF STOCK' : `${risk.daysUntilStockout} days`}
-                            </span>
-                          </td>
-                          <td className="px-4 py-1">
-                            <RiskBadge level={risk.riskLevel} />
-                          </td>
-                          <td className="px-4 py-1">
-                            <TrendIndicator direction={risk.trendDirection} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <StockoutRiskWidget risks={stockoutRisks} />
             </div>
           )}
 
@@ -455,29 +417,6 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
   );
 };
 
-// Helper Components
-const RiskBadge: React.FC<{ level: 'critical' | 'high' | 'medium' | 'low' }> = ({ level }) => {
-  const config = {
-    critical: 'bg-red-500/20 text-red-400 border-red-500/30',
-    high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    low: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  };
 
-  return (
-    <span className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${config[level]}`}>
-      {level.toUpperCase()}
-    </span>
-  );
-};
-
-const TrendIndicator: React.FC<{ direction: 'up' | 'down' | 'stable' }> = ({ direction }) => {
-  if (direction === 'up') {
-    return <span className="text-green-400 font-semibold">↗ Growing</span>;
-  } else if (direction === 'down') {
-    return <span className="text-red-400 font-semibold">↘ Declining</span>;
-  }
-  return <span className="text-gray-400">→ Stable</span>;
-};
 
 export default StockIntelligence;
