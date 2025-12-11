@@ -26,15 +26,15 @@ const AgentCommonWidget: React.FC = () => {
         const loadAlerts = async () => {
             const flagged = await getFlaggedVendors();
             if (flagged.length > 0) {
-                setAlerts(flagged.map(f => `${f.vendor_name}: ${f.issue} (${f.recommendation})`));
-                // Update agent status to alert
+                setAlerts(prev => [...prev, ...flagged.map(f => `${f.vendor_name}: ${f.issue}`)]);
                 setAgents(prev => prev.map(a =>
                     a.id === 'vendor_watchdog'
-                        ? { ...a, status: 'alert', message: `${flagged.length} vendors flagged for review` }
+                        ? { ...a, status: 'alert', message: `${flagged.length} vendors flagged` }
                         : a
                 ));
             }
         };
+
         loadAlerts();
     }, []);
 
@@ -47,21 +47,22 @@ const AgentCommonWidget: React.FC = () => {
         setTimeout(async () => {
             const flagged = await getFlaggedVendors();
 
-            setAgents(prev => prev.map(a => ({
-                ...a,
-                status: flagged.length > 0 && a.id === 'vendor_watchdog' ? 'alert' : 'idle',
-                lastRun: new Date(),
-                message: a.id === 'vendor_watchdog' && flagged.length > 0
-                    ? `${flagged.length} vendors flagged`
-                    : 'Analysis complete. Systems nominal.'
-            })));
+            setAgents(prev => prev.map(a => {
+                if (a.id === 'vendor_watchdog') {
+                    return {
+                        ...a,
+                        status: flagged.length > 0 ? 'alert' : 'idle',
+                        lastRun: new Date(),
+                        message: flagged.length > 0 ? `${flagged.length} vendors flagged` : 'Systems nominal'
+                    };
+                }
+                return { ...a, lastRun: new Date(), status: 'idle', message: 'Analysis complete' };
+            }));
 
-            if (flagged.length > 0) {
-                setAlerts(flagged.map(f => `${f.vendor_name}: ${f.issue} (${f.recommendation})`));
-            } else {
-                setAlerts([]);
-            }
+            const newAlerts = [];
+            if (flagged.length > 0) newAlerts.push(...flagged.map(f => `${f.vendor_name}: ${f.issue}`));
 
+            setAlerts(newAlerts);
             setIsRunning(false);
         }, 1500);
     };

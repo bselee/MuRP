@@ -20,6 +20,7 @@
     "@ai-sdk/gateway": "^2.0.9",
     "@google-cloud/local-auth": "^3.0.1",
     "@google/genai": "^1.27.0",
+    "@octokit/rest": "^22.0.1",
     "@supabase/supabase-js": "^2.81.0",
     "@types/react-big-calendar": "^1.16.3",
     "ai": "^5.0.93",
