@@ -80,7 +80,7 @@ WHERE LOWER(TRIM(status)) != 'active';
 -- CLEANUP 4: Remove orphaned BOMs (parent product no longer exists)
 -- ============================================================================
 DELETE FROM finale_boms
-WHERE finished_sku NOT IN (
+WHERE parent_sku NOT IN (
   SELECT sku FROM finale_products WHERE LOWER(TRIM(status)) = 'active'
 );
 
