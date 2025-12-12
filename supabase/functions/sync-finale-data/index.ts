@@ -359,21 +359,27 @@ serve(async (req) => {
 
       console.log(`[Sync] Total products fetched: ${allProducts.length}`);
 
-      // Filter: NEVER from "Deprecating" category
+      // Filter: NEVER from "Deprecating" category and only Active status
       // NOTE: REST API statusId is unreliable (all show as PRODUCT_INACTIVE)
       // GraphQL has accurate status - use that for filtering active vs inactive
       const activeProducts = allProducts.filter((p) => {
         const category = (p.userCategory || p.category || p.productType || '').toLowerCase();
-        
+
         // NEVER include Deprecating category
         if (category.includes('deprecat')) {
           return false;
         }
-        
+
+        // Only include products with Active status
+        const status = (p.status || '').trim().toLowerCase();
+        if (status && status !== 'active' && status !== 'product_active') {
+          return false;
+        }
+
         return true;
       });
 
-      console.log(`[Sync] Products after filtering: ${activeProducts.length} (excluded ${allProducts.length - activeProducts.length} deprecating)`);
+      console.log(`[Sync] Products after filtering: ${activeProducts.length} active (excluded ${allProducts.length - activeProducts.length} inactive/deprecating)`);
 
       if (activeProducts.length > 0) {
         // Transform products to our table format
@@ -403,6 +409,21 @@ serve(async (req) => {
         if (error) {
           console.error('[Sync] Supabase upsert error:', JSON.stringify(error));
           throw new Error(`Supabase upsert failed: ${error.message || JSON.stringify(error)}`);
+        }
+
+        // Clean up inactive products from finale_products table
+        const activeSKUs = activeProducts.map(p => p.sku).filter(Boolean);
+        if (activeSKUs.length > 0) {
+          const { error: cleanupError } = await supabase
+            .from('finale_products')
+            .delete()
+            .not('sku', 'in', `(${activeSKUs.map(s => `"${s}"`).join(',')})`);
+
+          if (cleanupError) {
+            console.error('[Sync] Failed to clean up inactive products:', cleanupError);
+          } else {
+            console.log(`[Sync] Cleaned up inactive products from finale_products`);
+          }
         }
 
         results.push({
@@ -445,6 +466,22 @@ serve(async (req) => {
             error: invError.message || JSON.stringify(invError),
           });
         } else {
+          // Clean up inactive products from inventory_items table
+          const activeSKUs = activeProducts.map(p => p.sku).filter(Boolean);
+          if (activeSKUs.length > 0) {
+            const { error: invCleanupError } = await supabase
+              .from('inventory_items')
+              .delete()
+              .eq('data_source', 'finale_api')
+              .not('sku', 'in', `(${activeSKUs.map(s => `"${s}"`).join(',')})`);
+
+            if (invCleanupError) {
+              console.error('[Sync] Failed to clean up inactive inventory items:', invCleanupError);
+            } else {
+              console.log(`[Sync] Cleaned up inactive products from inventory_items`);
+            }
+          }
+
           results.push({
             dataType: 'inventory_items',
             success: true,
@@ -479,11 +516,11 @@ serve(async (req) => {
           const deduplicatedBoms = Array.from(uniqueBoms.values());
           
           console.log(`[Sync] Upserting ${deduplicatedBoms.length} BOMs to finale_boms...`);
-          
+
           const { error: bomError } = await supabase
             .from('finale_boms')
             .upsert(deduplicatedBoms, { onConflict: 'finale_bom_url' });
-          
+
           if (bomError) {
             console.error('[Sync] finale_boms upsert error:', JSON.stringify(bomError));
             results.push({
@@ -494,6 +531,19 @@ serve(async (req) => {
               error: bomError.message || JSON.stringify(bomError),
             });
           } else {
+            // Clean up BOMs from inactive products
+            const activeSKUs = activeProducts.map(p => p.sku);
+            const { error: cleanupError } = await supabase
+              .from('finale_boms')
+              .delete()
+              .not('parent_sku', 'in', `(${activeSKUs.map(s => `"${s}"`).join(',')})`);
+
+            if (cleanupError) {
+              console.error('[Sync] Failed to clean up inactive BOMs:', cleanupError);
+            } else {
+              console.log(`[Sync] Cleaned up BOMs from inactive products`);
+            }
+
             results.push({
               dataType: 'finale_boms',
               success: true,
@@ -550,10 +600,24 @@ serve(async (req) => {
               const { error: appBomError } = await supabase
                 .from('boms')
                 .upsert(appBoms, { onConflict: 'finished_sku' });
-              
+
               if (appBomError) {
                 console.error('[Sync] boms table upsert error:', appBomError);
               } else {
+                // Clean up app BOMs from inactive products
+                const activeSKUs = activeProducts.map(p => p.sku);
+                const { error: appCleanupError } = await supabase
+                  .from('boms')
+                  .delete()
+                  .eq('data_source', 'finale_api')
+                  .not('finished_sku', 'in', `(${activeSKUs.map(s => `"${s}"`).join(',')})`);
+
+                if (appCleanupError) {
+                  console.error('[Sync] Failed to clean up inactive app BOMs:', appCleanupError);
+                } else {
+                  console.log(`[Sync] Cleaned up app BOMs from inactive products`);
+                }
+
                 console.log(`[Sync] ✅ boms (app): ${appBoms.length} assemblies in ${Date.now() - bomsAppStart}ms`);
                 results.push({
                   dataType: 'boms_app',

@@ -148,10 +148,12 @@ const AppShell: React.FC = () => {
   const { data: buildOrders, loading: buildOrdersLoading, error: buildOrdersError, refetch: refetchBuildOrders } = useSupabaseBuildOrders();
   const { data: requisitions, loading: requisitionsLoading, error: requisitionsError, refetch: refetchRequisitions } = useSupabaseRequisitions();
   const { data: userProfiles, loading: userProfilesLoading, refetch: refetchUserProfiles } = useSupabaseUserProfiles();
-  // Finale POs - from Finale API sync (shows current non-completed POs)
-  const { data: finalePurchaseOrders, loading: finalePOsLoading, refetch: refetchFinalePOs } = useSupabaseFinalePurchaseOrders();
-
   // UI/Config state (keep in localStorage - not business data)
+  const [showAllFinaleHistory, setShowAllFinaleHistory] = usePersistentState<boolean>('showAllFinaleHistory', false);
+
+  // Finale POs - from Finale API sync (shows current non-completed POs)
+  const { data: finalePurchaseOrders, loading: finalePOsLoading, refetch: refetchFinalePOs } = useSupabaseFinalePurchaseOrders({ includeInactive: showAllFinaleHistory });
+
   const [historicalSales] = usePersistentState<HistoricalSale[]>('historicalSales', mockHistoricalSales);
   const [watchlist] = usePersistentState<WatchlistItem[]>('watchlist', mockWatchlist);
   const [aiConfig, setAiConfig] = usePersistentState<AiConfig>('aiConfig', defaultAiConfig);
@@ -1780,6 +1782,8 @@ const AppShell: React.FC = () => {
           onRejectRequisition={handleRejectRequisition}
           onCreateRequisition={(items, options) => handleCreateRequisition(items, 'Manual', options)}
           onConnectGoogle={handleGmailConnect}
+          showAllFinaleHistory={showAllFinaleHistory}
+          setShowAllFinaleHistory={setShowAllFinaleHistory}
         />;
       case 'Vendors':
         return <Vendors vendors={vendors} />;
