@@ -213,7 +213,11 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     });
     const [filters, setFilters] = useState({ status: '' });
     const [riskFilter, setRiskFilter] = useState<'all' | 'needs-order'>('all');
-    const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
+    const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
+    const [showRecentOnly, setShowRecentOnly] = useState(() => {
+        const saved = localStorage.getItem('inventory-show-recent-only');
+        return saved ? JSON.parse(saved) : true;
+    });
     const [suggestions, setSuggestions] = useState<InventoryItem[]>([]);
     const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -320,6 +324,10 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
             localStorage.removeItem('inventory-active-preset-id');
         }
     }, [activePresetId]);
+
+    useEffect(() => {
+        localStorage.setItem('inventory-show-recent-only', JSON.stringify(showRecentOnly));
+    }, [showRecentOnly]);
 
     // Close dropdowns when clicking outside
     useEffect(() => {
@@ -680,7 +688,19 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
             );
         }
 
+        // Recent only filter - show items updated in last 7 days
+        if (showRecentOnly) {
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            filteredItems = filteredItems.filter(item => {
+                if (!item.lastSyncAt) return false;
+                const updateTime = new Date(item.lastSyncAt);
+                return updateTime >= sevenDaysAgo;
+            });
+        }
+
+        // Sorting logic
         if (sortConfig !== null) {
+            // User has explicitly set a sort
             filteredItems.sort((a, b) => {
                 let aVal: any;
                 let bVal: any;
@@ -703,7 +723,15 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
                 return 0;
             });
+        } else {
+            // Default sort: Recent updates first (most recent at top)
+            filteredItems.sort((a, b) => {
+                const aTime = a.lastSyncAt || '1970-01-01';
+                const bTime = b.lastSyncAt || '1970-01-01';
+                return new Date(bTime).getTime() - new Date(aTime).getTime();
+            });
         }
+
         return filteredItems;
     }, [
         inventory,
@@ -717,9 +745,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         getVendorName,
         demandInsights,
         riskFilter,
-        normalizeCategory,
-        categoryConfig,
-        vendorConfig,
+        showRecentOnly,
+        getCategoryConfig,
+        getVendorConfig,
     ]);
 
     // Filter preset handlers
@@ -1275,6 +1303,23 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         <option value="without-bom">No BOM</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div className="mt-4 flex flex-wrap items-center gap-3">
+                                <Button
+                                    onClick={() => setShowRecentOnly(!showRecentOnly)}
+                                    className={`px-4 py-2 text-sm font-semibold rounded-md border transition-colors ${showRecentOnly
+                                        ? 'bg-blue-500/20 border-blue-400/60 text-blue-200 shadow-lg shadow-blue-900/40'
+                                        : 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600'
+                                        }`}
+                                    title={showRecentOnly ? 'Showing items updated in last 7 days' : 'Showing all items'}
+                                >
+                                    {showRecentOnly ? '📅 Recent (7 days)' : '📚 All Data'}
+                                </Button>
+                                <span className="text-xs text-gray-400">
+                                    {showRecentOnly
+                                        ? 'Showing items synced in the last 7 days'
+                                        : 'Showing all items regardless of sync date'}
+                                </span>
                             </div>
                             {false && <div className="mt-4 flex flex-wrap items-center gap-3">
                                 <Button
