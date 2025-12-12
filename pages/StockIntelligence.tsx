@@ -63,9 +63,17 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
   const [stockoutRisks, setStockoutRisks] = useState<StockoutRisk[]>([]);
   const [vendorPerformances, setVendorPerformances] = useState<VendorPerformance[]>([]);
 
-  // Finale dropship items should not appear in stock intelligence views
+  // Filter out dropship items and inactive items (non-stock)
   const filteredInventory = useMemo(
-    () => inventory.filter(item => !item.isDropship),
+    () => inventory.filter(item => {
+      // Exclude dropship items
+      if (item.isDropship) return false;
+
+      // Exclude inactive items (non-stock items should have status = 'Active')
+      if (item.status && item.status.toLowerCase().trim() !== 'active') return false;
+
+      return true;
+    }),
     [inventory],
   );
 
