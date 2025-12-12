@@ -1690,6 +1690,7 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
         total: po.total,
         publicNotes: po.public_notes,
         privateNotes: po.private_notes,
+        isDropship: po.is_dropship ?? false,
         lineItems: po.line_items || [],
         lineCount: po.line_count,
         totalQuantity: po.total_quantity,
