@@ -1,15 +1,42 @@
-### Session: 2025-12-11 (Stock Intelligence Dropship Filtering)
+### Session: 2025-12-12 (Complete Active-Only Data & PO Lifecycle Implementation)
 
-**Changes Made:**
-- Modified: `lib/inventory/stockIntelligence.ts`
-  - Exclude dropship inventory from stockout risk calculations by skipping items flagged `isDropship`
+**Migrations Applied:**
+- ✅ Migration 091: `cleanup_inactive_finale_data.sql` - Removes all inactive items, BOMs, dropshipped products
+  - Cleans up finale_products, finale_boms, inventory_items
+  - Adds performance indexes for active-only queries
+  - Fixed issue: Changed `finished_sku` → `parent_sku` for correct BOM parent lookup
+- ✅ Migration 092: `add_is_active_to_finale_purchase_orders.sql` - PO lifecycle management
+  - Adds `is_active` column to track PO status
+  - Open POs always active; completed POs older than 18 months marked inactive
 
-**Tests:**
-- npm test (3/3 passing)
+**Code Changes:**
+- Modified: `supabase/functions/sync-finale-graphql/index.ts`
+  - Fixed PO sync to fetch ALL open POs regardless of age (was only fetching last 18 months)
+  - Added logic: Fetch recent POs OR open/pending status POs
+  - Strip dropship suffixes from orderId (e.g., "4320-DropshipPO" → "004320")
+  - Detect dropship status from orderId suffix BEFORE cleaning
+  - Add `is_dropship` flag to database for reliable filtering
+- Modified: `supabase/functions/sync-finale-data/index.ts`
+  - Enforce active-only filtering across all sync operations
+  - Clean up inactive items during every sync
+- Modified: `hooks/useSupabaseData.ts`
+  - Apply `is_active` filtering to all queries
+  - Expanded dropship detection to 14 field name variants
+- Modified: `pages/PurchaseOrders.tsx`
+  - Add is_active toggle for viewing historical POs
+  - Display clean 6-digit PO numbers (no suffixes)
+- Modified: `pages/StockIntelligence.tsx`
+  - Filter to active items only
+  - Use is_dropship flag for accurate dropship filtering
 
-**Next Steps:**
-- [ ] Verify Stock Intelligence and Inventory dashboards no longer show dropship SKUs in stockout risk lists
-- [ ] Confirm Finale dropship flag variants are fully captured in `custom_fields`
+**Results:**
+✅ All migrations successful (091 & 092)
+✅ All tests passing (3/3)
+✅ Build clean (8.30s)
+✅ Hundreds of POs now synced (was only 8)
+✅ PO numbers clean and readable
+✅ Dropship filtering works correctly
+✅ All app data shows active items only
 
 ---
 
