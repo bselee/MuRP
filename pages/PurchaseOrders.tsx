@@ -68,6 +68,8 @@ interface PurchaseOrdersProps {
     onRejectRequisition: (reqId: string) => void;
     onCreateRequisition: (items: RequisitionItem[], options: RequisitionRequestOptions) => void;
     onConnectGoogle: () => Promise<boolean>;
+    showAllFinaleHistory: boolean;
+    setShowAllFinaleHistory: (show: boolean) => void;
 }
 
 type PoDraftConfig = {
@@ -88,7 +90,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         purchaseOrders, finalePurchaseOrders = [], vendors, inventory, onCreatePo, addToast, currentUser,
         approvedRequisitions, gmailConnection, onSendEmail, onUpdateTracking,
         requisitions, users, onApproveRequisition, onOpsApproveRequisition, onRejectRequisition, onCreateRequisition,
-        onConnectGoogle,
+        onConnectGoogle, showAllFinaleHistory, setShowAllFinaleHistory,
     } = props;
 
     const [isCreatePoModalOpen, setIsCreatePoModalOpen] = useState(false);
@@ -112,7 +114,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [statusFilter, setStatusFilter] = useState<string>('active');
     const [finalePOStatusFilter, setFinalePOStatusFilter] = useState<string>('all');
     const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default newest first
-    const [showAllFinaleHistory, setShowAllFinaleHistory] = useState(false); // Default: 12 months only
     const [hideDropship, setHideDropship] = useState(true); // Default: hide dropship POs
     const [isAgentSettingsOpen, setIsAgentSettingsOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
@@ -681,13 +682,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <h2 className="text-xl font-semibold text-gray-300">📦 External Purchase Orders</h2>
                                 <StatusBadge variant="primary" className="ml-2">
                                     {finalePurchaseOrders.filter(fpo => {
-                                        // Date filter: 12 months unless showing all
-                                        if (!showAllFinaleHistory) {
-                                            const twelveMonthsAgo = new Date();
-                                            twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-                                            const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
-                                            if (!orderDate || orderDate < twelveMonthsAgo) return false;
-                                        }
                                         // Dropship filter - check in notes
                                         if (hideDropship) {
                                             const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
@@ -702,7 +696,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     }).length} {finalePOStatusFilter === 'all' ? 'total' : finalePOStatusFilter}
                                 </StatusBadge>
                                 {!showAllFinaleHistory && (
-                                    <span className="text-xs text-gray-500">(Last 12 months)</span>
+                                    <span className="text-xs text-gray-500">(Active only)</span>
+                                )}
+                                {showAllFinaleHistory && (
+                                    <span className="text-xs text-gray-500">(Including inactive)</span>
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
@@ -764,7 +761,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     {hideDropship ? '🚫 Dropship Hidden' : 'Show All'}
                                 </Button>
 
-                                {/* 12-month / All History Toggle */}
+                                {/* Active / All History Toggle */}
                                 <Button
                                     onClick={() => setShowAllFinaleHistory(!showAllFinaleHistory)}
                                     className={`px-3 py-1.5 text-xs rounded transition-colors ${showAllFinaleHistory
@@ -772,7 +769,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
                                         }`}
                                 >
-                                    {showAllFinaleHistory ? 'All History' : '12 Months'}
+                                    {showAllFinaleHistory ? 'All History' : 'Active Only'}
                                 </Button>
 
                                 <span className="text-xs text-gray-400">
@@ -784,13 +781,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <div className="grid gap-4">
                             {finalePurchaseOrders
                                 .filter(fpo => {
-                                    // Date filter: 12 months unless showing all
-                                    if (!showAllFinaleHistory) {
-                                        const twelveMonthsAgo = new Date();
-                                        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-                                        const orderDate = fpo.orderDate ? new Date(fpo.orderDate) : null;
-                                        if (!orderDate || orderDate < twelveMonthsAgo) return false;
-                                    }
                                     // Dropship filter - check in notes (publicNotes or privateNotes)
                                     if (hideDropship) {
                                         const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();

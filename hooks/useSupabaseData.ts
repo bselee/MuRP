@@ -1638,7 +1638,7 @@ export function useSupabaseComplianceRecords(bomId?: string): UseSupabaseDataRes
  * Filters to show only non-completed POs (DRAFT, SUBMITTED, PARTIALLY_RECEIVED)
  * These are the "current" POs that need attention
  */
-export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: boolean }): UseSupabaseDataResult<any> {
+export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: boolean; includeInactive?: boolean }): UseSupabaseDataResult<any> {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -1654,9 +1654,10 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
         .select('*')
         .order('order_date', { ascending: false });
 
-      // Show all POs - filtering will be done on frontend
-      // This allows users to see and filter by all statuses including committed
-      // No backend filtering by status
+      // Filter by is_active unless includeInactive is true
+      if (!options?.includeInactive) {
+        query = query.eq('is_active', true);
+      }
 
       const { data: pos, error: fetchError } = await query.limit(500);
 
@@ -1697,6 +1698,7 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
         syncedAt: po.synced_at,
         createdAt: po.created_at,
         updatedAt: po.updated_at,
+        isActive: po.is_active ?? true,
       }));
 
       setData(transformed);
@@ -1707,7 +1709,7 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
     } finally {
       setLoading(false);
     }
-  }, [options?.includeCompleted]);
+  }, [options?.includeCompleted, options?.includeInactive]);
 
   useEffect(() => {
     // Initial fetch
