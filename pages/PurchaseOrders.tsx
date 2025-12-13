@@ -426,10 +426,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         }
     };
 
-    // Calculate 2 weeks ago for filtering
-    const twoWeeksAgo = useMemo(() => {
+    // Calculate 12 months ago for filtering
+    const twelveMonthsAgo = useMemo(() => {
         const date = new Date();
-        date.setDate(date.getDate() - 14);
+        date.setMonth(date.getMonth() - 12);
         return date;
     }, []);
 
@@ -461,14 +461,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
             return sorted;
         }
 
-        // Filter to POs created in the last 2 weeks
+        // Filter to POs created in the last 12 months
         return sorted.filter(po => {
             const poDate = new Date(po.createdAt || po.orderDate);
             // Handle invalid dates - show them if we can't parse the date
             if (isNaN(poDate.getTime())) return true;
-            return poDate >= twoWeeksAgo;
+            return poDate >= twelveMonthsAgo;
         });
-    }, [purchaseOrders, showAllPOs, twoWeeksAgo, statusFilter]);
+    }, [purchaseOrders, showAllPOs, twelveMonthsAgo, statusFilter]);
 
     // Count of all POs vs filtered
     const totalPOCount = purchaseOrders.length;
@@ -682,10 +682,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <h2 className="text-xl font-semibold text-gray-300">📦 External Purchase Orders</h2>
                                 <StatusBadge variant="primary" className="ml-2">
                                     {finalePurchaseOrders.filter(fpo => {
-                                        // Dropship filter - check in notes
+                                        // Dropship filter - check in notes for ANY variation
                                         if (hideDropship) {
                                             const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
-                                            if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) return false;
+                                            // Catch all dropship variations: dropship, drop-ship, drop ship, dropshippo, etc.
+                                            if (notes.includes('drop') && (notes.includes('ship') || notes.includes('po'))) {
+                                                return false;
+                                            }
                                         }
                                         // Status filter
                                         if (finalePOStatusFilter === 'all') return true;
@@ -781,10 +784,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <div className="grid gap-4">
                             {finalePurchaseOrders
                                 .filter(fpo => {
-                                    // Dropship filter - check in notes (publicNotes or privateNotes)
+                                    // Dropship filter - check in notes for ANY variation (publicNotes or privateNotes)
                                     if (hideDropship) {
                                         const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
-                                        if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) return false;
+                                        // Catch all dropship variations: dropship, drop-ship, drop ship, dropshippo, etc.
+                                        if (notes.includes('drop') && (notes.includes('ship') || notes.includes('po'))) {
+                                            return false;
+                                        }
                                     }
                                     // Status filter
                                     if (finalePOStatusFilter === 'all') return true;
