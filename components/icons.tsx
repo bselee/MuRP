@@ -19,6 +19,7 @@ import {
   Calculator,
   Check,
   CheckCircle,
+    CheckCircle2,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -57,6 +58,7 @@ import {
   Menu,
   MessageCircle,
   Package,
+    Palette,
   PenSquare,
   Pencil,
   Play,
@@ -110,6 +112,7 @@ export const CpuChipIcon = wrapIcon(Cpu);
 
 export const BoxIcon = wrapIcon(Box);
 export const CheckCircleIcon = wrapIcon(CheckCircle);
+export const CheckCircle2Icon = wrapIcon(CheckCircle2);
 export const ShieldCheckIcon = wrapIcon(ShieldCheck);
 export const ExclamationCircleIcon = wrapIcon(AlertCircle);
 export const AlertCircleIcon = ExclamationCircleIcon;
@@ -118,6 +121,7 @@ export const BotIcon = wrapIcon(Bot);
 export const ChevronDownIcon = wrapIcon(ChevronDown);
 export const SendIcon = wrapIcon(Send);
 export const CloseIcon = wrapIcon(X);
+export const PaletteIcon = wrapIcon(Palette);
 export const RefreshCcwIcon = wrapIcon(RefreshCcw);
 
 export const HomeIcon = wrapIcon(Home);
