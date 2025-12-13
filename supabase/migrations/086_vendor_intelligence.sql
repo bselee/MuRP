@@ -75,6 +75,31 @@ CREATE TABLE IF NOT EXISTS vendor_performance_metrics (
   created_at timestamptz DEFAULT now()
 );
 
+-- Add trust_score column if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'trust_score'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics
+    ADD COLUMN trust_score integer CHECK (trust_score >= 0 AND trust_score <= 100);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'trust_score_trend'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics
+    ADD COLUMN trust_score_trend text CHECK (trust_score_trend IN ('improving', 'stable', 'declining'));
+  END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_vendor_performance_vendor ON vendor_performance_metrics(vendor_id);
 CREATE INDEX IF NOT EXISTS idx_vendor_performance_period ON vendor_performance_metrics(period_start, period_end);
 CREATE INDEX IF NOT EXISTS idx_vendor_performance_trust ON vendor_performance_metrics(trust_score DESC);
