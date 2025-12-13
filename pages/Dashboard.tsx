@@ -12,6 +12,7 @@ import RenewalAlertsWidget from '../components/RenewalAlertsWidget';
 import InventoryIntelligencePanel from '../components/InventoryIntelligencePanel';
 import AgentCommandWidget from '@/components/AgentCommandWidget';
 import StockoutRiskWidget from '@/components/StockoutRiskWidget';
+import POArrivalLeaderboard from '@/components/POArrivalLeaderboard';
 import { calculateAllBuildability } from '../services/buildabilityService';
 import { LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, BellIcon, CheckCircleIcon, ChartBarIcon, ClipboardDocumentListIcon, AlertCircleIcon, TrendingUpIcon, DollarSignIcon, UsersIcon, HomeIcon } from '../components/icons';
 
@@ -448,6 +449,11 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                 <div className="col-span-1">
                   <AgentCommandWidget />
                 </div>
+              </div>
+
+              {/* PO Arrival Leaderboard - Shows upcoming deliveries */}
+              <div className="mb-6">
+                <POArrivalLeaderboard />
               </div>
 
               {/* Critical Purchasing Board - Promoted for Visibility */}

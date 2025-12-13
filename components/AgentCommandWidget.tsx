@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import Button from '@/components/ui/Button';
-import { BotIcon, RefreshIcon, PlayIcon, ExclamationCircleIcon } from '@/components/icons';
+import { BotIcon, RefreshIcon, PlayIcon, ExclamationCircleIcon, TruckIcon, DollarSignIcon } from '@/components/icons';
 import { getFlaggedVendors } from '../services/vendorWatchdogAgent';
+import { getPesterAlerts, getInvoiceVariances } from '../services/poIntelligenceAgent';
 
 interface AgentStatus {
     id: string;
@@ -16,26 +17,54 @@ const AgentCommonWidget: React.FC = () => {
     const [agents, setAgents] = useState<AgentStatus[]>([
         { id: 'vendor_watchdog', name: 'Vendor Watchdog', status: 'idle', lastRun: new Date(), message: 'Monitoring 12 active vendors' },
         { id: 'inventory_guardian', name: 'Inventory Guardian', status: 'idle', lastRun: new Date(), message: 'Stock levels analyzed' },
-        { id: 'price_hunter', name: 'Price Hunter', status: 'idle', lastRun: new Date(), message: 'Waiting for triggers' }
+        { id: 'price_hunter', name: 'Price Hunter', status: 'idle', lastRun: new Date(), message: 'Waiting for triggers' },
+        { id: 'po_intelligence', name: 'PO Intelligence', status: 'idle', lastRun: new Date(), message: 'Tracking arrivals & costs' }
     ]);
     const [alerts, setAlerts] = useState<string[]>([]);
     const [isRunning, setIsRunning] = useState(false);
 
     useEffect(() => {
-        // Load initial alerts from watchdog
+        // Load initial alerts from all agents
         const loadAlerts = async () => {
+            const newAlerts: string[] = [];
+
+            // Vendor watchdog alerts
             const flagged = await getFlaggedVendors();
             if (flagged.length > 0) {
-                setAlerts(prev => [...prev, ...flagged.map(f => `${f.vendor_name}: ${f.issue}`)]);
+                newAlerts.push(...flagged.map(f => `${f.vendor_name}: ${f.issue}`));
                 setAgents(prev => prev.map(a =>
                     a.id === 'vendor_watchdog'
                         ? { ...a, status: 'alert', message: `${flagged.length} vendors flagged` }
                         : a
                 ));
             }
+
+            // PO intelligence: pester alerts
+            const pesterAlerts = await getPesterAlerts();
+            if (pesterAlerts.length > 0) {
+                const urgent = pesterAlerts.filter(p => p.priority === 'urgent');
+                newAlerts.push(...urgent.map(p => `PO #${p.po_number}: ${p.reason} (${p.vendor_name})`));
+                setAgents(prev => prev.map(a =>
+                    a.id === 'po_intelligence'
+                        ? { ...a, status: urgent.length > 0 ? 'alert' : 'idle', message: `${pesterAlerts.length} POs need attention` }
+                        : a
+                ));
+            }
+
+            // PO intelligence: invoice variances
+            const variances = await getInvoiceVariances();
+            if (variances.length > 0) {
+                const critical = variances.filter(v => v.severity === 'critical');
+                newAlerts.push(...critical.map(v => `${v.vendor_name}: ${v.variance_type} ($${v.variance_amount.toFixed(2)})`));
+            }
+
+            setAlerts(newAlerts);
         };
 
         loadAlerts();
+        // Refresh every 5 minutes
+        const interval = setInterval(loadAlerts, 5 * 60 * 1000);
+        return () => clearInterval(interval);
     }, []);
 
     const handleInvokeAgents = async () => {
@@ -45,7 +74,27 @@ const AgentCommonWidget: React.FC = () => {
 
         // Mock delay for effect
         setTimeout(async () => {
+            const newAlerts: string[] = [];
+
+            // Vendor watchdog
             const flagged = await getFlaggedVendors();
+            if (flagged.length > 0) {
+                newAlerts.push(...flagged.map(f => `${f.vendor_name}: ${f.issue}`));
+            }
+
+            // PO intelligence: pester alerts
+            const pesterAlerts = await getPesterAlerts();
+            if (pesterAlerts.length > 0) {
+                const urgent = pesterAlerts.filter(p => p.priority === 'urgent');
+                newAlerts.push(...urgent.slice(0, 3).map(p => `PO #${p.po_number}: ${p.reason} (${p.vendor_name})`));
+            }
+
+            // PO intelligence: invoice variances
+            const variances = await getInvoiceVariances();
+            if (variances.length > 0) {
+                const critical = variances.filter(v => v.severity === 'critical');
+                newAlerts.push(...critical.slice(0, 3).map(v => `${v.vendor_name}: ${v.variance_type} ($${v.variance_amount.toFixed(2)})`));
+            }
 
             setAgents(prev => prev.map(a => {
                 if (a.id === 'vendor_watchdog') {
@@ -56,11 +105,19 @@ const AgentCommonWidget: React.FC = () => {
                         message: flagged.length > 0 ? `${flagged.length} vendors flagged` : 'Systems nominal'
                     };
                 }
+                if (a.id === 'po_intelligence') {
+                    const totalIssues = pesterAlerts.length + variances.length;
+                    return {
+                        ...a,
+                        status: totalIssues > 0 ? 'alert' : 'idle',
+                        lastRun: new Date(),
+                        message: totalIssues > 0 
+                            ? `${pesterAlerts.length} POs + ${variances.length} variances` 
+                            : 'All arrivals on track'
+                    };
+                }
                 return { ...a, lastRun: new Date(), status: 'idle', message: 'Analysis complete' };
             }));
-
-            const newAlerts = [];
-            if (flagged.length > 0) newAlerts.push(...flagged.map(f => `${f.vendor_name}: ${f.issue}`));
 
             setAlerts(newAlerts);
             setIsRunning(false);
