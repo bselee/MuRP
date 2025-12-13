@@ -39,9 +39,15 @@ WHERE is_active = true;
 -- ROW LEVEL SECURITY
 -- ============================================================================
 ALTER TABLE agent_configs ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Allow authenticated users to read agent configs" ON agent_configs;
+DROP POLICY IF EXISTS "Allow authenticated users to update agent configs" ON agent_configs;
+
 -- Allow authenticated users to read agent configs
 CREATE POLICY "Allow authenticated users to read agent configs" ON agent_configs FOR
 SELECT TO authenticated USING (true);
+
 -- Allow authenticated users to update agent configs
 CREATE POLICY "Allow authenticated users to update agent configs" ON agent_configs FOR
 UPDATE TO authenticated USING (true) WITH CHECK (true);
