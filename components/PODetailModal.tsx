@@ -13,17 +13,20 @@ import {
   PackageIcon,
   CalendarIcon,
   InboxIcon,
+  ArrowTopRightOnSquareIcon,
 } from './icons';
-import type { PurchaseOrder, FinalePurchaseOrderRecord, Vendor } from '../types';
+import type { PurchaseOrder, FinalePurchaseOrderRecord, Vendor, InventoryItem } from '../types';
 
 interface PODetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   po: PurchaseOrder | FinalePurchaseOrderRecord | null;
   vendors?: Vendor[];
+  inventory?: InventoryItem[];
   onSendEmail?: (poId: string) => void;
   onUpdateTracking?: (poId: string) => void;
   onReceive?: (poId: string) => void;
+  onOpenInventoryDetail?: (sku: string) => void;
 }
 
 const PODetailModal: React.FC<PODetailModalProps> = ({
@@ -31,11 +34,13 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
   onClose,
   po,
   vendors = [],
+  inventory = [],
   onSendEmail,
   onUpdateTracking,
   onReceive,
+  onOpenInventoryDetail,
 }) => {
-  const [activeTab, setActiveTab] = useState<'details' | 'items' | 'timeline'>('details');
+  const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'timeline'>('overview');
   const [shipments, setShipments] = useState<any[]>([]);
 
   useEffect(() => {
@@ -138,24 +143,24 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
           {/* Tabs */}
           <div className="flex gap-2 mt-4">
             <button
-              onClick={() => setActiveTab('details')}
+              onClick={() => setActiveTab('overview')}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'details'
+                activeTab === 'overview'
                   ? 'bg-accent-500/20 text-accent-300 border border-accent-500/50'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}
             >
-              Details
+              Overview
             </button>
             <button
-              onClick={() => setActiveTab('items')}
+              onClick={() => setActiveTab('financial')}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === 'items'
+                activeTab === 'financial'
                   ? 'bg-accent-500/20 text-accent-300 border border-accent-500/50'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800'
               }`}
             >
-              Items ({items.length})
+              Financial & Ancillary
             </button>
             <button
               onClick={() => setActiveTab('timeline')}
@@ -172,35 +177,119 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
 
         {/* Tab Content */}
         <div className="space-y-4">
-          {/* Details Tab */}
-          {activeTab === 'details' && (
+          {/* Overview Tab - Shows items, basic info, and actions */}
+          {activeTab === 'overview' && (
             <div className="space-y-4">
-              {/* Financial Summary */}
+              {/* Items List - Primary Focus */}
               <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <CurrencyDollarIcon className="w-5 h-5 text-green-400" />
-                  Financial Summary
+                  <PackageIcon className="w-5 h-5 text-blue-400" />
+                  Items Ordered ({items.length})
                 </h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-gray-300">
-                    <span>Subtotal:</span>
-                    <span className="font-mono">${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                
+                {items.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    No items found for this purchase order.
                   </div>
-                  {tax > 0 && (
-                    <div className="flex justify-between text-gray-300">
-                      <span>Tax:</span>
-                      <span className="font-mono">${tax.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {shipping > 0 && (
-                    <div className="flex justify-between text-gray-300">
-                      <span>Shipping:</span>
-                      <span className="font-mono">${shipping.toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-white text-lg font-bold pt-3 border-t border-gray-700">
-                    <span>Total:</span>
-                    <span className="font-mono">${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                ) : (
+                  <div className="space-y-3">
+                    {items.map((item: any, idx: number) => {
+                      // Extract SKU from various field names
+                      const sku = item.sku || item.product_url || item.productUrl || item.product_id || '';
+                      
+                      // Find matching inventory item
+                      const invItem = inventory.find(i => 
+                        i.sku === sku || 
+                        i.product_name === (item.productName || item.product_name)
+                      );
+                      
+                      const quantity = item.quantity || item.quantityOrdered || item.quantity_ordered || 0;
+                      const unitPrice = item.unitPrice || item.price || item.unit_price || 0;
+                      const lineTotal = quantity * unitPrice;
+
+                      return (
+                        <div
+                          key={idx}
+                          className="bg-gray-900/60 rounded-lg border border-gray-700 p-4 hover:border-accent-500/50 transition-all"
+                        >
+                          <div className="flex justify-between items-start gap-4">
+                            <div className="flex-1">
+                              <h4 className="text-white font-medium mb-1">
+                                {item.productName || item.product_name || item.description || 'Unknown Product'}
+                              </h4>
+                              
+                              {/* SKU - Clickable */}
+                              {sku && (
+                                <button
+                                  onClick={() => onOpenInventoryDetail?.(sku)}
+                                  className="group inline-flex items-center gap-1 text-xs text-accent-400 hover:text-accent-300 font-mono bg-gray-800 px-2 py-1 rounded border border-accent-500/30 hover:border-accent-500/70 transition-all"
+                                >
+                                  SKU: {sku}
+                                  <ArrowTopRightOnSquareIcon className="w-3 h-3 opacity-50 group-hover:opacity-100" />
+                                </button>
+                              )}
+                              
+                              {/* Inventory Status */}
+                              {invItem && (
+                                <div className="mt-2 flex items-center gap-3 text-xs">
+                                  <span className={`px-2 py-0.5 rounded ${
+                                    (invItem.available_quantity || 0) > 0
+                                      ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                                      : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                  }`}>
+                                    Stock: {invItem.available_quantity || 0}
+                                  </span>
+                                  <span className="text-gray-500">
+                                    On Hand: {invItem.quantity_on_hand || 0}
+                                  </span>
+                                  {invItem.reorder_point && (
+                                    <span className="text-gray-500">
+                                      Reorder: {invItem.reorder_point}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {item.notes && (
+                                <p className="text-sm text-gray-400 mt-2 italic">{item.notes}</p>
+                              )}
+                            </div>
+                            
+                            {/* Quantity & Price */}
+                            <div className="text-right">
+                              <div className="text-white font-mono text-sm">
+                                {quantity} × ${unitPrice.toFixed(2)}
+                              </div>
+                              <div className="text-lg font-bold text-accent-400 font-mono mt-1">
+                                ${lineTotal.toFixed(2)}
+                              </div>
+                              {item.quantityReceived && item.quantityReceived > 0 && (
+                                <div className="text-xs text-green-400 mt-2 flex items-center justify-end gap-1">
+                                  <CheckCircleIcon className="w-3 h-3" />
+                                  {item.quantityReceived} received
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Financial Summary */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
+                  <div className="text-sm text-gray-400 mb-1">Subtotal</div>
+                  <div className="text-2xl font-bold text-white font-mono">
+                    ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
+                  <div className="text-sm text-gray-400 mb-1">Total</div>
+                  <div className="text-2xl font-bold text-accent-400 font-mono">
+                    ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>
@@ -217,7 +306,7 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 {onSendEmail && (
                   <Button
                     onClick={() => onSendEmail(po.id)}
@@ -249,49 +338,63 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
             </div>
           )}
 
-          {/* Items Tab */}
-          {activeTab === 'items' && (
-            <div className="space-y-3">
-              {items.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  No items found for this purchase order.
-                </div>
-              ) : (
-                items.map((item: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="bg-gray-800/50 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="text-white font-medium">
-                          {item.productName || item.product_name || item.description || 'Unknown Product'}
-                        </h4>
-                        {item.productUrl && (
-                          <p className="text-xs text-gray-500 font-mono mt-1">{item.productUrl}</p>
-                        )}
-                        {item.notes && (
-                          <p className="text-sm text-gray-400 mt-2">{item.notes}</p>
-                        )}
-                      </div>
-                      <div className="text-right ml-4">
-                        <div className="text-white font-mono">
-                          {item.quantity || item.quantityOrdered || 0} × ${(item.unitPrice || item.price || 0).toFixed(2)}
-                        </div>
-                        <div className="text-lg font-bold text-accent-400 font-mono">
-                          ${((item.quantity || item.quantityOrdered || 0) * (item.unitPrice || item.price || 0)).toFixed(2)}
-                        </div>
-                        {item.quantityReceived && item.quantityReceived > 0 && (
-                          <div className="text-xs text-green-400 mt-1">
-                            <CheckCircleIcon className="w-3 h-3 inline mr-1" />
-                            {item.quantityReceived} received
-                          </div>
-                        )}
-                      </div>
-                    </div>
+          {/* Financial & Ancillary Tab */}
+          {activeTab === 'financial' && (
+            <div className="space-y-4">
+              {/* Detailed Financial Breakdown */}
+              <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <CurrencyDollarIcon className="w-5 h-5 text-green-400" />
+                  Complete Financial Breakdown
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-gray-300">
+                    <span>Subtotal:</span>
+                    <span className="font-mono">${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
-                ))
-              )}
+                  {tax > 0 && (
+                    <div className="flex justify-between text-gray-300">
+                      <span>Tax:</span>
+                      <span className="font-mono">${tax.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {shipping > 0 && (
+                    <div className="flex justify-between text-gray-300">
+                      <span>Shipping:</span>
+                      <span className="font-mono">${shipping.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-white text-lg font-bold pt-3 border-t border-gray-700">
+                    <span>Total:</span>
+                    <span className="font-mono">${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment & Vendor Info */}
+              <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Ancillary Information</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Payment Terms:</span>
+                    <span className="text-white">{(po as any).paymentTerms || 'Net 30'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Vendor:</span>
+                    <span className="text-white">{vendorName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Order ID:</span>
+                    <span className="text-white font-mono">{poNumber}</span>
+                  </div>
+                  {(po as any).vendorOrderNumber && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Vendor Ref:</span>
+                      <span className="text-white font-mono">{(po as any).vendorOrderNumber}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

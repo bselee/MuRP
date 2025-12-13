@@ -1358,6 +1358,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 onClose={() => setSelectedPoForDetail(null)}
                 po={selectedPoForDetail}
                 vendors={vendors}
+                inventory={inventory}
                 onSendEmail={(poId) => {
                     const po = purchaseOrders.find(p => p.id === poId);
                     if (po) {
@@ -1378,6 +1379,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         handleReceivePO(po);
                         setSelectedPoForDetail(null);
                     }
+                }}
+                onOpenInventoryDetail={(sku) => {
+                    // Navigate to inventory page and filter by SKU
+                    setCurrentPage('Inventory');
+                    // You could also pass SKU via state or URL params
                 }}
             />
         </>
