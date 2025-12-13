@@ -684,11 +684,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             <div className="flex items-center gap-3">
                                 <h2 className="text-xl font-semibold text-gray-300">📦 External Purchase Orders</h2>
                                 <StatusBadge variant="primary" className="ml-2">
-                                    {finalePurchaseOrders.filter(fpo => {
-                                        // Exclude dropship POs - only those with "DropshipPO" in the order ID
-                                        const orderId = (fpo.orderId || '').toLowerCase();
-                                        return !orderId.includes('dropshippo');
-                                    }).length} total
+                                    {finalePurchaseOrders.length} total
                                 </StatusBadge>
                                 {!showAllFinaleHistory && (
                                     <span className="text-xs text-gray-500">(Active only)</span>
@@ -725,11 +721,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                         <div className="grid gap-4">
                             {finalePurchaseOrders
-                                .filter(fpo => {
-                                    // Exclude dropship POs - only those with "DropshipPO" in the order ID
-                                    const orderId = (fpo.orderId || '').toLowerCase();
-                                    return !orderId.includes('dropshippo');
-                                })
                                 .sort((a, b) => {
                                     // Sort by order ID (A-Z or Z-A)
                                     const aId = a.orderId || '';
