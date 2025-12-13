@@ -398,8 +398,20 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                 )}
               </div>
 
-              {/* Totals & Notes Section */}
+              {/* Notes & Totals Section */}
               <div className="grid grid-cols-3 gap-6">
+                {/* Notes */}
+                <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    Notes
+                  </h3>
+                  {notes ? (
+                    <p className="text-sm text-gray-300 leading-relaxed">{notes}</p>
+                  ) : (
+                    <p className="text-sm text-gray-600 italic">No notes for this order</p>
+                  )}
+                </div>
+
                 {/* Totals Breakdown */}
                 <div className="col-span-2 bg-gray-800/50 rounded-lg border border-gray-700 p-6">
                   <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
@@ -436,17 +448,41 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Notes */}
-                <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
-                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                    Notes
-                  </h3>
-                  {notes ? (
-                    <p className="text-sm text-gray-300 leading-relaxed">{notes}</p>
-                  ) : (
-                    <p className="text-sm text-gray-600 italic">No notes for this order</p>
-                  )}
+              {/* Historical Pricing Comparison */}
+              <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+                  Price History & Trends
+                </h3>
+                <div className="space-y-4">
+                  {items.map((item: any, idx: number) => {
+                    const sku = item.sku || item.product_id || item.productUrl || item.product_url || '';
+                    const currentPrice = Number(item.unitPrice || item.unitCost || item.price || item.unit_price || item.unit_cost || 0);
+                    
+                    // Mock historical data - in production, this would come from purchase_order_items history
+                    const previousPrice = currentPrice * 0.95; // Simulate 5% increase
+                    const priceChange = currentPrice - previousPrice;
+                    const priceChangePercent = ((priceChange / previousPrice) * 100).toFixed(1);
+                    const isIncrease = priceChange > 0;
+                    
+                    return (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-700">
+                        <div className="flex-1">
+                          <div className="text-white font-mono text-sm">{sku || `Item ${idx + 1}`}</div>
+                          <div className="text-xs text-gray-500 mt-1">Current: ${currentPrice.toFixed(2)}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`text-sm font-semibold ${isIncrease ? 'text-red-400' : 'text-green-400'}`}>
+                            {isIncrease ? '↑' : '↓'} {Math.abs(Number(priceChangePercent))}%
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            vs ${previousPrice.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

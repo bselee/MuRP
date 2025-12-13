@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import Button from '@/components/ui/Button';
-import { BotIcon, RefreshIcon, PlayIcon, ExclamationCircleIcon, TruckIcon, DollarSignIcon, PackageIcon } from '@/components/icons';
+import { BotIcon, RefreshIcon, PlayIcon, ExclamationCircleIcon, TruckIcon, DollarSignIcon, PackageIcon, ShieldCheckIcon, PaperAirplaneIcon } from '@/components/icons';
 import { getFlaggedVendors } from '../services/vendorWatchdogAgent';
 import { getPesterAlerts, getInvoiceVariances } from '../services/poIntelligenceAgent';
 import { getCriticalStockoutAlerts } from '../services/stockoutPreventionAgent';
@@ -12,15 +12,67 @@ interface AgentStatus {
     status: 'idle' | 'running' | 'alert';
     lastRun: Date;
     message: string;
+    icon?: React.ReactNode;
 }
 
 const AgentCommonWidget: React.FC = () => {
     const [agents, setAgents] = useState<AgentStatus[]>([
-        { id: 'vendor_watchdog', name: 'Vendor Watchdog', status: 'idle', lastRun: new Date(), message: 'Monitoring 12 active vendors' },
-        { id: 'inventory_guardian', name: 'Inventory Guardian', status: 'idle', lastRun: new Date(), message: 'Stock levels analyzed' },
-        { id: 'price_hunter', name: 'Price Hunter', status: 'idle', lastRun: new Date(), message: 'Waiting for triggers' },
-        { id: 'po_intelligence', name: 'PO Intelligence', status: 'idle', lastRun: new Date(), message: 'Tracking arrivals & costs' },
-        { id: 'stockout_prevention', name: 'Stockout Prevention', status: 'idle', lastRun: new Date(), message: 'Monitoring inventory levels' }
+        { 
+            id: 'vendor_watchdog', 
+            name: 'Vendor Watchdog', 
+            status: 'idle', 
+            lastRun: new Date(), 
+            message: 'Monitoring 12 active vendors',
+            icon: <ShieldCheckIcon className="w-4 h-4 text-blue-400" />
+        },
+        { 
+            id: 'inventory_guardian', 
+            name: 'Inventory Guardian', 
+            status: 'idle', 
+            lastRun: new Date(), 
+            message: 'Stock levels analyzed',
+            icon: <PackageIcon className="w-4 h-4 text-green-400" />
+        },
+        { 
+            id: 'price_hunter', 
+            name: 'Price Hunter', 
+            status: 'idle', 
+            lastRun: new Date(), 
+            message: 'Waiting for triggers',
+            icon: <DollarSignIcon className="w-4 h-4 text-yellow-400" />
+        },
+        { 
+            id: 'po_intelligence', 
+            name: 'PO Intelligence', 
+            status: 'idle', 
+            lastRun: new Date(), 
+            message: 'Tracking arrivals & costs',
+            icon: <TruckIcon className="w-4 h-4 text-purple-400" />
+        },
+        { 
+            id: 'stockout_prevention', 
+            name: 'Stockout Prevention', 
+            status: 'idle', 
+            lastRun: new Date(), 
+            message: 'Monitoring inventory levels',
+            icon: <ExclamationCircleIcon className="w-4 h-4 text-red-400" />
+        },
+        { 
+            id: 'air_traffic_controller', 
+            name: 'Air Traffic Controller', 
+            status: 'idle', 
+            lastRun: new Date(), 
+            message: 'Prioritizing PO delays',
+            icon: <PaperAirplaneIcon className="w-4 h-4 text-cyan-400" />
+        },
+        { 
+            id: 'trust_score', 
+            name: 'Trust Score Analyst', 
+            status: 'idle', 
+            lastRun: new Date(), 
+            message: 'Measuring system performance',
+            icon: <BotIcon className="w-4 h-4 text-indigo-400" />
+        }
     ]);
     const [alerts, setAlerts] = useState<string[]>([]);
     const [isRunning, setIsRunning] = useState(false);
@@ -181,6 +233,7 @@ const AgentCommonWidget: React.FC = () => {
                                     agent.status === 'alert' ? 'bg-red-400 animate-ping' :
                                         'bg-green-400'
                                     }`} />
+                                {agent.icon && <div className="flex-shrink-0">{agent.icon}</div>}
                                 <div>
                                     <p className="text-sm font-medium text-gray-200">{agent.name}</p>
                                     <p className="text-xs text-gray-500">{agent.message}</p>
