@@ -232,18 +232,18 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                     Ship To
                   </h3>
                   <div className="space-y-1 text-sm text-gray-300">
-                    {purchaseOrder.ship_to_address ? (
+                    {(po as any).ship_to_address ? (
                       <>
-                        {purchaseOrder.ship_to_address.split('\n').map((line, idx) => (
+                        {(po as any).ship_to_address.split('\n').map((line: string, idx: number) => (
                           <div key={idx} className={idx === 0 ? 'font-semibold text-white' : ''}>
                             {line}
                           </div>
                         ))}
                       </>
-                    ) : purchaseOrder.shipping_address ? (
+                    ) : (po as any).shipping_address ? (
                       <>
-                        {typeof purchaseOrder.shipping_address === 'string' ? (
-                          purchaseOrder.shipping_address.split('\n').map((line, idx) => (
+                        {typeof (po as any).shipping_address === 'string' ? (
+                          (po as any).shipping_address.split('\n').map((line: string, idx: number) => (
                             <div key={idx} className={idx === 0 ? 'font-semibold text-white' : ''}>
                               {line}
                             </div>
@@ -251,13 +251,13 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                         ) : (
                           <>
                             <div className="font-semibold text-white">
-                              {(purchaseOrder.shipping_address as any).name || 'The Gatherers Factory'}
+                              {((po as any).shipping_address as any).name || 'The Gatherers Factory'}
                             </div>
-                            <div>{(purchaseOrder.shipping_address as any).street || '815 Capitola Ave'}</div>
+                            <div>{((po as any).shipping_address as any).street || '815 Capitola Ave'}</div>
                             <div>
-                              {(purchaseOrder.shipping_address as any).city || 'Capitola'}, {(purchaseOrder.shipping_address as any).state || 'CA'} {(purchaseOrder.shipping_address as any).zip || '95010'}
+                              {((po as any).shipping_address as any).city || 'Capitola'}, {((po as any).shipping_address as any).state || 'CA'} {((po as any).shipping_address as any).zip || '95010'}
                             </div>
-                            <div>{(purchaseOrder.shipping_address as any).country || 'United States'}</div>
+                            <div>{((po as any).shipping_address as any).country || 'United States'}</div>
                           </>
                         )}
                       </>
