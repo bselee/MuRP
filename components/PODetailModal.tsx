@@ -232,10 +232,45 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                     Ship To
                   </h3>
                   <div className="space-y-1 text-sm text-gray-300">
-                    <div className="font-semibold text-white">The Gatherers Factory</div>
-                    <div>815 Capitola Ave</div>
-                    <div>Capitola, CA 95010</div>
-                    <div>United States</div>
+                    {purchaseOrder.ship_to_address ? (
+                      <>
+                        {purchaseOrder.ship_to_address.split('\n').map((line, idx) => (
+                          <div key={idx} className={idx === 0 ? 'font-semibold text-white' : ''}>
+                            {line}
+                          </div>
+                        ))}
+                      </>
+                    ) : purchaseOrder.shipping_address ? (
+                      <>
+                        {typeof purchaseOrder.shipping_address === 'string' ? (
+                          purchaseOrder.shipping_address.split('\n').map((line, idx) => (
+                            <div key={idx} className={idx === 0 ? 'font-semibold text-white' : ''}>
+                              {line}
+                            </div>
+                          ))
+                        ) : (
+                          <>
+                            <div className="font-semibold text-white">
+                              {(purchaseOrder.shipping_address as any).name || 'The Gatherers Factory'}
+                            </div>
+                            <div>{(purchaseOrder.shipping_address as any).street || '815 Capitola Ave'}</div>
+                            <div>
+                              {(purchaseOrder.shipping_address as any).city || 'Capitola'}, {(purchaseOrder.shipping_address as any).state || 'CA'} {(purchaseOrder.shipping_address as any).zip || '95010'}
+                            </div>
+                            <div>{(purchaseOrder.shipping_address as any).country || 'United States'}</div>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      /* Fallback to default address only if no data available */
+                      <>
+                        <div className="font-semibold text-white">The Gatherers Factory</div>
+                        <div>815 Capitola Ave</div>
+                        <div>Capitola, CA 95010</div>
+                        <div>United States</div>
+                        <div className="text-xs text-yellow-400 mt-2">⚠️ Default address - no ship-to data on PO</div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
