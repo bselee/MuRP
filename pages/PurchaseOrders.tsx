@@ -108,13 +108,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [pendingPoDrafts, setPendingPoDrafts] = useState<PoDraftConfig[]>([]);
     const [modalSession, setModalSession] = useState(0);
     const [isRunningFollowUps, setIsRunningFollowUps] = useState(false);
-    const [showAllPOs, setShowAllPOs] = useState(false);
+    const [showAllPOs, setShowAllPOs] = useState(true); // Default: show all time
     const [expandedFinalePO, setExpandedFinalePO] = useState<string | null>(null);
     const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
-    const [statusFilter, setStatusFilter] = useState<string>('active');
+    const [statusFilter, setStatusFilter] = useState<string>('all'); // Default: show all statuses
     const [finalePOStatusFilter, setFinalePOStatusFilter] = useState<string>('all');
     const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default newest first
-    const [hideDropship, setHideDropship] = useState(true); // Default: hide dropship POs
+    const [hideDropship, setHideDropship] = useState(false); // Default: show dropship too (user can toggle off)
     const [isAgentSettingsOpen, setIsAgentSettingsOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
 
