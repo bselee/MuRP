@@ -156,10 +156,11 @@ const VENDORS_QUERY = `
 // PURCHASE ORDERS QUERY - Critical for MRP!
 // REST API orderTypeId filter is BROKEN - must use GraphQL!
 // itemList is a connection type, needs edges/node
+// dateRangeWithFutureInput type: { begin: "M/D/YYYY", end: "M/D/YYYY" }
 // ===========================================
 const PURCHASE_ORDERS_QUERY = `
-  query GetPurchaseOrders($first: Int!, $after: String) {
-    orderViewConnection(first: $first, after: $after, type: ["PURCHASE_ORDER"]) {
+  query GetPurchaseOrders($first: Int!, $after: String, $orderDate: dateRangeWithFutureInput) {
+    orderViewConnection(first: $first, after: $after, type: ["PURCHASE_ORDER"], orderDate: $orderDate) {
       edges {
         node {
           orderId
@@ -474,7 +475,18 @@ serve(async (req) => {
   }
 
   try {
-    console.log('[Sync] Starting comprehensive GraphQL sync...');
+    // Parse request body for sync options
+    let syncTypes: string[] = ['vendors', 'products', 'purchase_orders'];
+    try {
+      const body = await req.json();
+      if (body.syncTypes && Array.isArray(body.syncTypes)) {
+        syncTypes = body.syncTypes;
+      }
+    } catch {
+      // No body or invalid JSON, use defaults
+    }
+    
+    console.log(`[Sync] Starting GraphQL sync for: ${syncTypes.join(', ')}...`);
     const startTime = Date.now();
 
     // Validate credentials
@@ -491,6 +503,7 @@ serve(async (req) => {
     // ==========================================
     // 1. SYNC VENDORS FIRST (for foreign keys)
     // ==========================================
+    if (syncTypes.includes('vendors')) {
     try {
       const vendorsStart = Date.now();
       console.log('[Sync] Fetching vendors from GraphQL...');
@@ -557,10 +570,12 @@ serve(async (req) => {
         error: error instanceof Error ? error.message : String(error),
       });
     }
+    } // end vendors
 
     // ==========================================
     // 2. SYNC PRODUCTS (BOMs come from REST API)
     // ==========================================
+    if (syncTypes.includes('products')) {
     try {
       const productsStart = Date.now();
       console.log('[Sync] Fetching products from GraphQL...');
@@ -657,10 +672,12 @@ serve(async (req) => {
         error: errorMessage,
       });
     }
+    } // end products
 
     // ==========================================
     // 3. SYNC PURCHASE ORDERS (The critical one!)
     // ==========================================
+    if (syncTypes.includes('purchase_orders')) {
     try {
       const posStart = Date.now();
       console.log('[Sync] Fetching Purchase Orders from GraphQL (last 24 months)...');
@@ -685,23 +702,33 @@ serve(async (req) => {
         return new Date(year, month, day);
       }
 
+      // Format dates for GraphQL filter (Finale uses M/D/YYYY format)
+      const cutoffDateStr = `${twentyFourMonthsAgo.getMonth() + 1}/${twentyFourMonthsAgo.getDate()}/${twentyFourMonthsAgo.getFullYear()}`;
+      const today = new Date();
+      const todayStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+      
+      console.log(`[Sync] Fetching POs from ${cutoffDateStr} to ${todayStr}`);
+
       while (hasMore && allPOs.length < 5000) {
-        const data = await graphqlQuery(PURCHASE_ORDERS_QUERY, { first: 100, after: cursor });
+        const data = await graphqlQuery(PURCHASE_ORDERS_QUERY, { 
+          first: 100, 
+          after: cursor,
+          orderDate: {
+            begin: cutoffDateStr,
+            end: todayStr
+          }
+        });
         const connection = data.orderViewConnection;
 
-        // Filter to last 24 months only - FIXED: Parse Finale date format correctly
+        // GraphQL filter handles date filtering server-side, so add all returned POs
         for (const edge of connection.edges) {
-          const orderDateStr = edge.node.orderDate;
-          const orderDate = parseFinaleDate(orderDateStr);
-          if (orderDate && orderDate.getTime() >= cutoffDate) {
-            allPOs.push(edge.node);
-          }
+          allPOs.push(edge.node);
         }
 
         hasMore = connection.pageInfo.hasNextPage;
         cursor = connection.pageInfo.endCursor;
 
-        console.log(`[Sync] Fetched ${allPOs.length} purchase orders (since ${twentyFourMonthsAgo.toISOString().split('T')[0]})...`);
+        console.log(`[Sync] Fetched ${allPOs.length} POs from last 24 months...`);
       }
 
       if (allPOs.length > 0) {
@@ -757,6 +784,7 @@ serve(async (req) => {
         error: error instanceof Error ? error.message : String(error),
       });
     }
+    } // end purchase_orders
 
     // ==========================================
     // SUMMARY
