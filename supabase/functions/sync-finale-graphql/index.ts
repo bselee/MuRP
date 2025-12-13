@@ -672,16 +672,28 @@ serve(async (req) => {
       // Sync orders from last 18 months to ensure adequate history
       const eighteenMonthsAgo = new Date();
       eighteenMonthsAgo.setMonth(eighteenMonthsAgo.getMonth() - 18);
-      const cutoffDate = eighteenMonthsAgo.toISOString().split('T')[0];
+      const cutoffDate = eighteenMonthsAgo.getTime();
 
-      while (hasMore && allPOs.length < 1000) {
+      // Helper to parse Finale date format (M/D/YYYY) to Date object
+      function parseFinaleDate(dateStr: string): Date | null {
+        if (!dateStr) return null;
+        const parts = dateStr.split('/');
+        if (parts.length !== 3) return null;
+        const month = parseInt(parts[0]) - 1;
+        const day = parseInt(parts[1]);
+        const year = parseInt(parts[2]);
+        return new Date(year, month, day);
+      }
+
+      while (hasMore && allPOs.length < 5000) {
         const data = await graphqlQuery(PURCHASE_ORDERS_QUERY, { first: 100, after: cursor });
         const connection = data.orderViewConnection;
 
-        // Filter to last 18 months only
+        // Filter to last 18 months only - FIXED: Parse Finale date format correctly
         for (const edge of connection.edges) {
-          const orderDate = edge.node.orderDate;
-          if (orderDate && orderDate >= cutoffDate) {
+          const orderDateStr = edge.node.orderDate;
+          const orderDate = parseFinaleDate(orderDateStr);
+          if (orderDate && orderDate.getTime() >= cutoffDate) {
             allPOs.push(edge.node);
           }
         }
@@ -689,7 +701,7 @@ serve(async (req) => {
         hasMore = connection.pageInfo.hasNextPage;
         cursor = connection.pageInfo.endCursor;
 
-        console.log(`[Sync] Fetched ${allPOs.length} purchase orders (since ${cutoffDate})...`);
+        console.log(`[Sync] Fetched ${allPOs.length} purchase orders (since ${eighteenMonthsAgo.toISOString().split('T')[0]})...`);
       }
 
       if (allPOs.length > 0) {
@@ -707,15 +719,16 @@ serve(async (req) => {
         await batchUpsert(supabase, 'finale_purchase_orders', Array.from(uniquePOs.values()), 'finale_order_url');
 
         // Mark POs older than 18 months as inactive
+        const cutoffDateStr = eighteenMonthsAgo.toISOString().split('T')[0];
         const { error: cleanupError } = await supabase
           .from('finale_purchase_orders')
           .update({ is_active: false })
-          .lt('order_date', cutoffDate);
+          .lt('order_date', cutoffDateStr);
 
         if (cleanupError) {
           console.error('[Sync] Failed to mark old POs as inactive:', cleanupError);
         } else {
-          console.log(`[Sync] Marked POs older than ${cutoffDate} as inactive`);
+          console.log(`[Sync] Marked POs older than ${cutoffDateStr} as inactive`);
         }
 
         results.push({
