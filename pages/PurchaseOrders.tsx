@@ -852,16 +852,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                     <span>Subtotal:</span>
                                                                     <span className="font-mono">${fpo.subtotal?.toFixed(2) || '0.00'}</span>
                                                                 </div>
-                                                                {fpo.tax && fpo.tax > 0 && (
+                                                                {fpo.tax && Number(fpo.tax) > 0 && (
                                                                     <div className="flex justify-between text-gray-300">
                                                                         <span>Tax:</span>
-                                                                        <span className="font-mono">${fpo.tax.toFixed(2)}</span>
+                                                                        <span className="font-mono">${Number(fpo.tax).toFixed(2)}</span>
                                                                     </div>
                                                                 )}
-                                                                {fpo.shipping && fpo.shipping > 0 && (
+                                                                {fpo.shipping && Number(fpo.shipping) > 0 && (
                                                                     <div className="flex justify-between text-gray-300">
                                                                         <span>Shipping:</span>
-                                                                        <span className="font-mono">${fpo.shipping.toFixed(2)}</span>
+                                                                        <span className="font-mono">${Number(fpo.shipping).toFixed(2)}</span>
                                                                     </div>
                                                                 )}
                                                                 <div className="flex justify-between text-amber-400 font-semibold pt-2 border-t border-white/10">

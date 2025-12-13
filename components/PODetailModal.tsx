@@ -76,10 +76,10 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
   const orderDate = (po as any).orderDate || (po as any).order_date || (po as any).createdAt;
   const expectedDate = (po as any).expectedDate || (po as any).expected_date || (po as any).expectedDelivery;
   const status = (po as any).status || 'pending';
-  const total = (po as any).total || (po as any).totalAmount || 0;
-  const subtotal = (po as any).subtotal || total;
-  const tax = (po as any).tax || 0;
-  const shipping = (po as any).shipping || 0;
+  const total = Number((po as any).total || (po as any).totalAmount || 0);
+  const subtotal = Number((po as any).subtotal || total);
+  const tax = Number((po as any).tax || 0);
+  const shipping = Number((po as any).shipping || 0);
   const notes = (po as any).notes || (po as any).internalNotes || '';
 
   // Calculate PO age
