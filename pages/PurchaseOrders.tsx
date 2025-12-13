@@ -474,6 +474,47 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const totalPOCount = purchaseOrders.length;
     const filteredPOCount = sortedPurchaseOrders.length;
 
+    // UNIFIED PO LIST - Combine Internal and Finale POs into one list
+    const unifiedPOs = useMemo(() => {
+        // Add source to internal POs
+        const internalWithSource = sortedPurchaseOrders.map(po => ({
+            ...po,
+            source: 'Internal' as const,
+            displayDate: po.createdAt || po.orderDate,
+        }));
+
+        // Filter and add source to Finale POs
+        const finaleFiltered = finalePurchaseOrders.filter(fpo => {
+            // Dropship filter
+            if (hideDropship) {
+                const searchText = `${fpo.orderId || ''} ${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
+                if (searchText.includes('dropship') || searchText.includes('drop-ship') || searchText.includes('drop ship')) {
+                    return false;
+                }
+            }
+            // Status filter
+            if (statusFilter === 'all') return true;
+            if (statusFilter === 'active') return ['Pending', 'DRAFT', 'Draft', 'Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
+            if (statusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
+            if (statusFilter === 'received') return ['Received', 'RECEIVED', 'Partial', 'PARTIALLY_RECEIVED'].includes(fpo.status);
+            if (statusFilter === 'cancelled') return ['Cancelled', 'CANCELLED'].includes(fpo.status);
+            return false;
+        });
+
+        const finaleWithSource = finaleFiltered.map(fpo => ({
+            ...fpo,
+            source: 'Finale' as const,
+            displayDate: fpo.orderDate,
+        }));
+
+        // Combine and sort by date (newest first)
+        return [...internalWithSource, ...finaleWithSource].sort((a, b) => {
+            const dateA = new Date(a.displayDate || 0).getTime();
+            const dateB = new Date(b.displayDate || 0).getTime();
+            return dateB - dateA;
+        });
+    }, [sortedPurchaseOrders, finalePurchaseOrders, hideDropship, statusFilter]);
+
     // Debug logging to understand PO visibility issues
     useEffect(() => {
         console.log('[PurchaseOrders] Data summary:', {
@@ -674,8 +715,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                 {/* VendorResponseWorkbench component removed - was causing ReferenceError */}
 
-                {/* Finale Purchase Orders - Current/Open POs from Finale API */}
-                {finalePurchaseOrders.length > 0 && (
+                {/* Finale Purchase Orders - DISABLED - Now using unified list */}
+                {false && finalePurchaseOrders.length > 0 && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -1012,12 +1053,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <div className="pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20" />
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                                <h2 className="text-xl font-semibold text-amber-400">Internal Purchase Orders</h2>
+                                <h2 className="text-xl font-semibold text-amber-400">📦 All Purchase Orders</h2>
                                 <span className="px-3 py-1 rounded-full text-sm bg-slate-800/50 text-gray-300 border border-slate-700 font-medium">
-                                    {filteredPOCount} {statusFilter === 'all' && showAllPOs ? 'total' : statusFilter}
-                                    {totalPOCount !== filteredPOCount && (
-                                        <span className="text-gray-500 ml-1">of {totalPOCount}</span>
-                                    )}
+                                    {unifiedPOs.length} {statusFilter === 'all' && showAllPOs ? 'total' : statusFilter}
                                 </span>
                             </div>
                             <div className="flex items-center gap-3 flex-wrap">
@@ -1168,12 +1206,19 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-slate-950/30 divide-y divide-slate-800/50">
-                                    {sortedPurchaseOrders.map((po) => (
+                                    {unifiedPOs.map((po: any) => (
                                         <tr key={po.id} className="hover:bg-slate-900/50 transition-colors duration-200">
-                                            <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-amber-400">{po.orderId || po.id}</td>
+                                            <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-amber-400">
+                                                <div className="flex items-center gap-2">
+                                                    <span>{po.orderId || po.id}</span>
+                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${po.source === 'Finale' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'}`}>
+                                                        {po.source}
+                                                    </span>
+                                                </div>
+                                            </td>
                                             <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
                                                 <div className="flex items-center gap-2">
-                                                    <span>{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</span>
+                                                    <span>{po.source === 'Internal' ? (vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor') : (po.vendorName || 'Unknown Vendor')}</span>
                                                     {po.followUpCount && po.followUpCount > 0 && (
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/20 text-sky-200 border border-sky-500/40">
                                                             FU {po.followUpCount}
@@ -1258,7 +1303,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             </table>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-                                {sortedPurchaseOrders.map((po) => (
+                                {unifiedPOs.map((po: any) => (
                                     <div
                                         key={po.id}
                                         className={`rounded-xl border p-4 space-y-4 transition-all duration-200 ${isDark
@@ -1270,6 +1315,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <h3 className="text-lg font-mono font-semibold text-amber-400">{po.orderId || po.id}</h3>
+                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${po.source === 'Finale' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'}`}>
+                                                        {po.source}
+                                                    </span>
                                                     {po.followUpCount && po.followUpCount > 0 && (
                                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/20 text-sky-200 border border-sky-500/40">
                                                             FU {po.followUpCount}
@@ -1277,7 +1325,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     )}
                                                 </div>
                                                 <div className="text-sm text-gray-300 font-medium">
-                                                    {vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}
+                                                    {po.source === 'Internal' ? (vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor') : (po.vendorName || 'Unknown Vendor')}
                                                 </div>
                                             </div>
                                             <StatusBadge status={po.status}>
