@@ -3,12 +3,24 @@
 -- Part of: MuRP 2.0 Autonomous Agent System - "Vendor Watchdog"
 -- Date: 2025-12-09
 
+-- Drop existing objects to allow schema changes
+DROP VIEW IF EXISTS vendor_scorecard CASCADE;
+DROP VIEW IF EXISTS vendor_quality_alerts CASCADE;
+DROP VIEW IF EXISTS vendor_reliability_dashboard CASCADE;
+DROP VIEW IF EXISTS bulk_order_candidates CASCADE;
+DROP TABLE IF EXISTS vendor_performance_metrics CASCADE;
+DROP TABLE IF EXISTS po_delivery_performance CASCADE;
+DROP TABLE IF EXISTS bulk_opportunity_analysis CASCADE;
+DROP TABLE IF EXISTS po_alert_log CASCADE;
+DROP TABLE IF EXISTS agent_performance_log CASCADE;
+DROP TABLE IF EXISTS alert_priority_rules CASCADE;
+
 -- ============================================================================
 -- VENDOR PERFORMANCE TRACKING
 -- ============================================================================
 
 -- Track actual vs promised performance for each vendor
-CREATE TABLE IF NOT EXISTS vendor_performance_metrics (
+CREATE TABLE vendor_performance_metrics (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   vendor_id uuid REFERENCES vendors(id) ON DELETE CASCADE,
@@ -109,7 +121,7 @@ CREATE INDEX IF NOT EXISTS idx_vendor_performance_trust ON vendor_performance_me
 -- ============================================================================
 
 -- Track each PO's actual delivery performance
-CREATE TABLE IF NOT EXISTS po_delivery_performance (
+CREATE TABLE po_delivery_performance (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   po_id uuid REFERENCES purchase_orders(id) ON DELETE CASCADE,
@@ -162,7 +174,7 @@ CREATE INDEX IF NOT EXISTS idx_po_delivery_date ON po_delivery_performance(actua
 -- ============================================================================
 
 -- Track items eligible for bulk ordering
-CREATE TABLE IF NOT EXISTS bulk_opportunity_analysis (
+CREATE TABLE bulk_opportunity_analysis (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   inventory_sku varchar(50) NOT NULL,
@@ -229,7 +241,7 @@ CREATE INDEX IF NOT EXISTS idx_bulk_opportunity_status ON bulk_opportunity_analy
 -- ============================================================================
 
 -- Track prioritized alerts for PO delays
-CREATE TABLE IF NOT EXISTS po_alert_log (
+CREATE TABLE po_alert_log (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   po_id uuid REFERENCES purchase_orders(id) ON DELETE CASCADE,
@@ -270,7 +282,7 @@ COMMENT ON TABLE po_alert_log IS
 -- ============================================================================
 
 -- Track the agent's autonomous decision performance
-CREATE TABLE IF NOT EXISTS agent_performance_log (
+CREATE TABLE agent_performance_log (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Time Period
@@ -332,7 +344,7 @@ CREATE INDEX IF NOT EXISTS idx_agent_performance_trust ON agent_performance_log(
 -- ============================================================================
 
 -- Track what makes an alert "critical" vs "informational"
-CREATE TABLE IF NOT EXISTS alert_priority_rules (
+CREATE TABLE alert_priority_rules (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
   alert_type text NOT NULL,
@@ -549,15 +561,15 @@ SELECT
   v.id,
   v.name,
   v.lead_time_days as promised_lead_time,
-  vpm.effective_lead_time_days,
-  vpm.on_time_rate,
-  vpm.quality_rate,
-  vpm.response_rate,
-  vpm.trust_score,
-  vpm.trust_score_trend,
-  vpm.total_spend_usd,
-  vpm.recommend_for_critical_orders,
-  vpm.recommend_for_bulk_orders,
+  COALESCE(vpm.effective_lead_time_days, v.lead_time_days) as effective_lead_time_days,
+  COALESCE(vpm.on_time_rate, 0::decimal) as on_time_rate,
+  COALESCE(vpm.quality_rate, 0::decimal) as quality_rate,
+  COALESCE(vpm.response_rate, 0::decimal) as response_rate,
+  COALESCE(vpm.trust_score, 50::decimal) as trust_score,
+  COALESCE(vpm.trust_score_trend, 'stable') as trust_score_trend,
+  COALESCE(vpm.total_spend_usd, 0::decimal) as total_spend_usd,
+  COALESCE(vpm.recommend_for_critical_orders, false) as recommend_for_critical_orders,
+  COALESCE(vpm.recommend_for_bulk_orders, false) as recommend_for_bulk_orders,
   vpm.agent_notes,
   vpm.period_end as metrics_as_of
 FROM vendors v
