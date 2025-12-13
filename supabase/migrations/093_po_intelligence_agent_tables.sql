@@ -10,12 +10,12 @@ CREATE TABLE IF NOT EXISTS po_vendor_communications (
   body text,
   sent_at timestamptz NOT NULL DEFAULT now(),
   response_received_at timestamptz,
-  created_by uuid REFERENCES users(id),
+  created_by uuid,
   metadata jsonb DEFAULT '{}'::jsonb
 );
 
-CREATE INDEX idx_po_vendor_communications_po_id ON po_vendor_communications(po_id);
-CREATE INDEX idx_po_vendor_communications_sent_at ON po_vendor_communications(sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_po_vendor_communications_po_id ON po_vendor_communications(po_id);
+CREATE INDEX IF NOT EXISTS idx_po_vendor_communications_sent_at ON po_vendor_communications(sent_at DESC);
 
 -- Landed cost calculations (combines invoice + shipping + duties)
 CREATE TABLE IF NOT EXISTS po_landed_costs (
@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS po_landed_costs (
   notes text
 );
 
-CREATE INDEX idx_po_landed_costs_po_id ON po_landed_costs(po_id);
-CREATE INDEX idx_po_landed_costs_variance ON po_landed_costs(variance_amount DESC NULLS LAST);
+CREATE INDEX IF NOT EXISTS idx_po_landed_costs_po_id ON po_landed_costs(po_id);
+CREATE INDEX IF NOT EXISTS idx_po_landed_costs_variance ON po_landed_costs(variance_amount DESC NULLS LAST);
 
 -- Update po_invoice_data to include variance flagging timestamp
 ALTER TABLE po_invoice_data
@@ -47,39 +47,37 @@ ALTER TABLE po_vendor_communications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE po_landed_costs ENABLE ROW LEVEL SECURITY;
 
 -- Allow authenticated users to view communications
+DROP POLICY IF EXISTS "Allow authenticated users to view communications" ON po_vendor_communications;
 CREATE POLICY "Allow authenticated users to view communications"
   ON po_vendor_communications
   FOR SELECT
   TO authenticated
   USING (true);
 
--- Allow admins/purchasing to insert communications
-CREATE POLICY "Allow admins/purchasing to insert communications"
+-- Allow authenticated users to insert communications
+DROP POLICY IF EXISTS "Allow authenticated users to insert communications" ON po_vendor_communications;
+CREATE POLICY "Allow authenticated users to insert communications"
   ON po_vendor_communications
   FOR INSERT
   TO authenticated
-  WITH CHECK (
-    auth.uid() IN (SELECT id FROM users WHERE role IN ('Admin', 'Purchasing'))
-  );
+  WITH CHECK (true);
 
 -- Allow authenticated users to view landed costs
+DROP POLICY IF EXISTS "Allow authenticated users to view landed costs" ON po_landed_costs;
 CREATE POLICY "Allow authenticated users to view landed costs"
   ON po_landed_costs
   FOR SELECT
   TO authenticated
   USING (true);
 
--- Allow admins/purchasing to manage landed costs
-CREATE POLICY "Allow admins/purchasing to manage landed costs"
+-- Allow authenticated users to manage landed costs
+DROP POLICY IF EXISTS "Allow authenticated users to manage landed costs" ON po_landed_costs;
+CREATE POLICY "Allow authenticated users to manage landed costs"
   ON po_landed_costs
   FOR ALL
   TO authenticated
-  USING (
-    auth.uid() IN (SELECT id FROM users WHERE role IN ('Admin', 'Purchasing'))
-  )
-  WITH CHECK (
-    auth.uid() IN (SELECT id FROM users WHERE role IN ('Admin', 'Purchasing'))
-  );
+  USING (true)
+  WITH CHECK (true);
 
 -- Trigger to automatically calculate variance percentage
 CREATE OR REPLACE FUNCTION calculate_variance_percentage()
@@ -94,6 +92,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_calculate_variance_percentage ON po_landed_costs;
 CREATE TRIGGER trigger_calculate_variance_percentage
   BEFORE INSERT OR UPDATE ON po_landed_costs
   FOR EACH ROW
