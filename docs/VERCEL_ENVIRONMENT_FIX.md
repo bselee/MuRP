@@ -117,5 +117,17 @@ When deploying to production:
 
 ---
 
-**Commit:** `fix: remove development-scoped VERCEL_OIDC_TOKEN from .env.production`  
-**PR:** #[pending]
+## ⚠️ Security Note
+
+**Current State:** The `.env.production` file is committed to the repository and contains sensitive credentials (Supabase keys, database passwords). 
+
+**Recommendation:** For improved security, consider:
+1. Moving sensitive credentials to Vercel Dashboard → Environment Variables
+2. Keeping only non-sensitive configuration in `.env.production`
+3. Adding `.env.production` to `.gitignore` and providing `.env.production.example` instead
+
+This would follow security best practices and prevent accidental credential exposure.
+
+---
+
+**Commit:** `fix: remove development-scoped VERCEL_OIDC_TOKEN from .env.production`
