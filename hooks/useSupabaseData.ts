@@ -1659,11 +1659,7 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
         query = query.eq('is_active', true);
       }
 
-      // Filter by date range - only last 12 months
-      const twelveMonthsAgo = new Date();
-      twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-      query = query.gte('order_date', twelveMonthsAgo.toISOString());
-
+      // No date filtering at database level - let frontend handle it
       const { data: pos, error: fetchError } = await query.limit(500);
 
       if (fetchError) throw fetchError;
