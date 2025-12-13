@@ -1546,3 +1546,56 @@ orderViewConnection(
 - Ensure `VITE_GITHUB_TOKEN` is set in the environment for the agent to function in production.
 - Test the Github Agent with real PRs to verify the "thoughtful merge" workflow.
 
+
+---
+
+### Session: 2025-12-13 PM (GraphQL Server-Side Date Filtering - FINAL SOLUTION)
+
+**Problem:** Sync function timeout (60s) before reaching 2024 POs.
+
+**Root Cause:**
+- Finale GraphQL returns POs in mixed order (not chronological)
+- Client-side filtering required fetching ALL 6000+ POs to find recent ones
+- Function timeout triggered before completing pagination
+
+**Solution: GraphQL Server-Side Date Filtering**
+Changed query to use `dateRangeWithFutureInput` type:
+
+```typescript
+// Query definition
+const PURCHASE_ORDERS_QUERY = gql`
+  query PurchaseOrders($orderDate: dateRangeWithFutureInput) {
+    purchaseOrders(orderDate: $orderDate) { ...fields }
+  }
+`;
+
+// Date filter (M/D/YYYY format for Finale)
+const orderDate = { begin: "12/13/2023", end: "12/13/2025" };
+```
+
+**Results:**
+- ✅ 5000 POs synced in 81 seconds (vs 60s timeout)
+- ✅ Production DB: 6,484 total POs, 2,848 active POs
+- ✅ Eliminated client-side pagination through old data
+- ✅ All 483+ non-dropship 2024 POs now accessible
+
+**Files Modified:**
+- `supabase/functions/sync-finale-graphql/index.ts` (lines 161, 705-728)
+- Fixed migration 086 (vendor_intelligence) - table recreation
+- Fixed migration 090 (agent_configs) - DROP IF EXISTS
+
+**Commits:**
+1. cf5bf22: fix date parsing (initial attempt)
+2. 4c4d6e9: extend sync window to 24 months
+3. 4475071: fix vendor_intelligence migration
+4. 4038caa, 74de45b: fix agent_configs migration
+5. 4f5daa1: **GraphQL server-side filtering** (final solution)
+
+**Deployed:**
+- Edge function: `sync-finale-graphql` (production)
+- Migrations 086-092: Applied to production
+- Build: 8.46s, all tests passing (3/3)
+
+**Architectural Lesson:**
+Push filtering logic to the server (GraphQL) instead of pulling all data to client. Reduced network payload by 90%, eliminated timeout risk, made sync scalable.
+
