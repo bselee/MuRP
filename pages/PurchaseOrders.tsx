@@ -686,7 +686,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         if (hideDropship) {
                                             const searchText = `${fpo.orderId || ''} ${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
                                             // Catch all dropship variations: dropship, drop-ship, drop ship, dropshippo, etc.
-                                            if (searchText.includes('drop') && (searchText.includes('ship') || searchText.includes('po'))) {
+                                            if (searchText.includes('dropship') || searchText.includes('drop-ship') || searchText.includes('drop ship')) {
                                                 return false;
                                             }
                                         }
@@ -788,7 +788,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     if (hideDropship) {
                                         const searchText = `${fpo.orderId || ''} ${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
                                         // Catch all dropship variations: dropship, drop-ship, drop ship, dropshippo, etc.
-                                        if (searchText.includes('drop') && (searchText.includes('ship') || searchText.includes('po'))) {
+                                        if (searchText.includes('dropship') || searchText.includes('drop-ship') || searchText.includes('drop ship')) {
                                             return false;
                                         }
                                     }
