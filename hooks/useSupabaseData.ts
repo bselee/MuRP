@@ -1678,10 +1678,10 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
       let filteredPOs = pos || [];
       if (options?.excludeDropship) {
         filteredPOs = filteredPOs.filter((po: any) => {
-          const notes = `${po.public_notes || ''} ${po.private_notes || ''}`.toLowerCase();
-          // Catch all dropship variations: dropship, drop-ship, drop ship, dropshippo, etc.
-          // If notes contain "drop" AND ("ship" OR "po"), filter it out
-          return !(notes.includes('drop') && (notes.includes('ship') || notes.includes('po')));
+          const searchText = `${po.order_id || ''} ${po.public_notes || ''} ${po.private_notes || ''}`.toLowerCase();
+          // Catch all dropship variations in ORDER ID, notes, etc: dropship, drop-ship, drop ship, dropshippo, etc.
+          // If ANY field contains "drop" AND ("ship" OR "po"), filter it out
+          return !(searchText.includes('drop') && (searchText.includes('ship') || searchText.includes('po')));
         });
         console.log('[useSupabaseFinalePurchaseOrders] After dropship filter:', filteredPOs.length);
       }

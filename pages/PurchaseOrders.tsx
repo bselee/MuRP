@@ -682,11 +682,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <h2 className="text-xl font-semibold text-gray-300">📦 External Purchase Orders</h2>
                                 <StatusBadge variant="primary" className="ml-2">
                                     {finalePurchaseOrders.filter(fpo => {
-                                        // Dropship filter - check in notes for ANY variation
+                                        // Dropship filter - check in ORDER ID, notes, and all text fields
                                         if (hideDropship) {
-                                            const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
+                                            const searchText = `${fpo.orderId || ''} ${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
                                             // Catch all dropship variations: dropship, drop-ship, drop ship, dropshippo, etc.
-                                            if (notes.includes('drop') && (notes.includes('ship') || notes.includes('po'))) {
+                                            if (searchText.includes('drop') && (searchText.includes('ship') || searchText.includes('po'))) {
                                                 return false;
                                             }
                                         }
@@ -784,11 +784,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <div className="grid gap-4">
                             {finalePurchaseOrders
                                 .filter(fpo => {
-                                    // Dropship filter - check in notes for ANY variation (publicNotes or privateNotes)
+                                    // Dropship filter - check in ORDER ID, notes, and all text fields (catches everything!)
                                     if (hideDropship) {
-                                        const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
+                                        const searchText = `${fpo.orderId || ''} ${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
                                         // Catch all dropship variations: dropship, drop-ship, drop ship, dropshippo, etc.
-                                        if (notes.includes('drop') && (notes.includes('ship') || notes.includes('po'))) {
+                                        if (searchText.includes('drop') && (searchText.includes('ship') || searchText.includes('po'))) {
                                             return false;
                                         }
                                     }
