@@ -71,8 +71,13 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
 
   // Extract common fields with fallbacks
   const poNumber = (po as any).orderId || (po as any).order_id || 'N/A';
-  const vendorName = (po as any).vendorName || (po as any).vendor_name || 
-    vendors.find(v => v.id === (po as any).vendorId)?.name || 'Unknown Vendor';
+  const vendorId = (po as any).vendorId || (po as any).vendor_id;
+  const vendorData = vendors.find(v => v.id === vendorId);
+  const vendorName = (po as any).vendorName || (po as any).vendor_name || vendorData?.name || 'Unknown Vendor';
+  const vendorEmail = vendorData?.email || (po as any).vendor_email || '';
+  const vendorPhone = vendorData?.phone || (po as any).vendor_phone || '';
+  const vendorAddress = vendorData?.address || (po as any).vendor_address || '';
+  
   const orderDate = (po as any).orderDate || (po as any).order_date || (po as any).createdAt;
   const expectedDate = (po as any).expectedDate || (po as any).expected_date || (po as any).expectedDelivery;
   const status = (po as any).status || 'pending';
@@ -186,10 +191,55 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
         </div>
 
         {/* Tab Content */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Overview Tab - Shows items, basic info, and actions */}
           {activeTab === 'overview' && (
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Vendor & Shipping Info Row */}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Vendor Information */}
+                <div className="bg-gray-800/30 rounded-lg border border-gray-700 p-4">
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    Vendor Information
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="text-white font-semibold text-lg">{vendorName}</div>
+                    {vendorEmail && (
+                      <div className="text-sm text-gray-300">
+                        <a href={`mailto:${vendorEmail}`} className="hover:text-accent-400 transition-colors">
+                          {vendorEmail}
+                        </a>
+                      </div>
+                    )}
+                    {vendorPhone && (
+                      <div className="text-sm text-gray-300">
+                        <a href={`tel:${vendorPhone}`} className="hover:text-accent-400 transition-colors">
+                          {vendorPhone}
+                        </a>
+                      </div>
+                    )}
+                    {vendorAddress && (
+                      <div className="text-sm text-gray-400 mt-2">
+                        {vendorAddress}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Ship To Address */}
+                <div className="bg-gray-800/30 rounded-lg border border-gray-700 p-4">
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    Ship To
+                  </h3>
+                  <div className="space-y-1 text-sm text-gray-300">
+                    <div className="font-semibold text-white">The Gatherers Factory</div>
+                    <div>815 Capitola Ave</div>
+                    <div>Capitola, CA 95010</div>
+                    <div>United States</div>
+                  </div>
+                </div>
+              </div>
+
               {/* Items List - Primary Focus */}
               <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -231,8 +281,9 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                           // Extract SKU from various field names (Finale uses productUrl, internal uses sku)
                           const sku = item.sku || item.product_id || item.productUrl || item.product_url || '';
                           
-                          // Extract product name from all possible fields
-                          const productName = item.productName || item.product_name || item.description || item.name || 'Unknown Product';
+                          // Extract product name - use SKU if no name available
+                          const rawProductName = item.productName || item.product_name || item.description || item.name || '';
+                          const productName = rawProductName || sku || `Item ${idx + 1}`;
                           
                           // Find matching inventory item
                           const invItem = inventory.find(i => 
@@ -256,26 +307,28 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                               className="hover:bg-gray-800/30 transition-colors"
                             >
                               {/* Line Number */}
-                              <td className="py-3 px-4 text-sm text-gray-500 font-mono">
+                              <td className="py-4 px-4 text-base text-gray-500 font-mono">
                                 {idx + 1}
                               </td>
                               
                               {/* Item & SKU */}
-                              <td className="py-3 px-4">
-                                <div className="flex flex-col gap-1">
-                                  <div className="text-white font-medium">
-                                    {productName}
-                                  </div>
+                              <td className="py-4 px-4">
+                                <div className="flex flex-col gap-2">
                                   {sku && (
                                     <button
                                       onClick={() => onOpenInventoryDetail?.(sku)}
-                                      className="group inline-flex items-center gap-1 text-xs text-accent-400 hover:text-accent-300 font-mono w-fit"
+                                      className="group inline-flex items-center gap-2 text-sm text-accent-400 hover:text-accent-300 font-mono w-fit"
                                     >
-                                      <span className="bg-gray-800 px-2 py-0.5 rounded border border-accent-500/30 group-hover:border-accent-500/70 transition-all">
+                                      <span className="bg-gray-800 px-3 py-1 rounded-md border border-accent-500/30 group-hover:border-accent-500/70 transition-all font-semibold">
                                         {sku}
                                       </span>
-                                      <ArrowTopRightOnSquareIcon className="w-3 h-3 opacity-50 group-hover:opacity-100" />
+                                      <ArrowTopRightOnSquareIcon className="w-4 h-4 opacity-50 group-hover:opacity-100" />
                                     </button>
+                                  )}
+                                  {rawProductName && (
+                                    <div className="text-gray-300 text-sm">
+                                      {rawProductName}
+                                    </div>
                                   )}
                                   {item.notes && (
                                     <p className="text-xs text-gray-500 italic mt-1">{item.notes}</p>
@@ -284,11 +337,11 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                               </td>
 
                               {/* Inventory Status */}
-                              <td className="py-3 px-4">
+                              <td className="py-4 px-4">
                                 {invItem ? (
                                   <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2">
-                                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                      <span className={`px-2.5 py-1 rounded text-sm font-medium ${
                                         stockLevel > 0
                                           ? 'bg-green-500/20 text-green-300 border border-green-500/30'
                                           : 'bg-red-500/20 text-red-300 border border-red-500/30'
@@ -304,14 +357,14 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                                     </div>
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-gray-600">-</span>
+                                  <span className="text-sm text-gray-600">-</span>
                                 )}
                               </td>
 
                               {/* Quantity */}
-                              <td className="py-3 px-4 text-right">
+                              <td className="py-4 px-4 text-right">
                                 <div className="flex flex-col items-end gap-1">
-                                  <span className="text-white font-mono font-semibold">
+                                  <span className="text-white font-mono font-bold text-lg">
                                     {quantity}
                                   </span>
                                   {item.quantityReceived && item.quantityReceived > 0 && (
@@ -324,15 +377,15 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                               </td>
 
                               {/* Unit Price */}
-                              <td className="py-3 px-4 text-right">
-                                <span className="text-white font-mono">
+                              <td className="py-4 px-4 text-right">
+                                <span className="text-white font-mono text-base">
                                   ${unitPrice.toFixed(2)}
                                 </span>
                               </td>
 
                               {/* Line Total */}
-                              <td className="py-3 px-4 text-right">
-                                <span className="text-accent-400 font-mono font-semibold text-lg">
+                              <td className="py-4 px-4 text-right">
+                                <span className="text-accent-400 font-mono font-bold text-xl">
                                   ${lineTotal.toFixed(2)}
                                 </span>
                               </td>
@@ -345,24 +398,60 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                 )}
               </div>
 
-              {/* Quick Financial Summary */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-                  <div className="text-sm text-gray-400 mb-1">Subtotal</div>
-                  <div className="text-2xl font-bold text-white font-mono">
-                    ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {/* Totals & Notes Section */}
+              <div className="grid grid-cols-3 gap-6">
+                {/* Totals Breakdown */}
+                <div className="col-span-2 bg-gray-800/50 rounded-lg border border-gray-700 p-6">
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+                    Order Totals
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center pb-3 border-b border-gray-700">
+                      <span className="text-gray-300">Subtotal</span>
+                      <span className="text-white font-mono text-lg font-semibold">
+                        ${subtotal.toFixed(2)}
+                      </span>
+                    </div>
+                    {shipping > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300">Shipping</span>
+                        <span className="text-white font-mono">
+                          ${shipping.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    {tax > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300">Tax</span>
+                        <span className="text-white font-mono">
+                          ${tax.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center pt-3 border-t border-gray-700">
+                      <span className="text-white font-semibold text-lg">Total</span>
+                      <span className="text-accent-400 font-mono text-2xl font-bold">
+                        ${total.toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-4">
-                  <div className="text-sm text-gray-400 mb-1">Total</div>
-                  <div className="text-2xl font-bold text-accent-400 font-mono">
-                    ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
+
+                {/* Notes */}
+                <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
+                  <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                    Notes
+                  </h3>
+                  {notes ? (
+                    <p className="text-sm text-gray-300 leading-relaxed">{notes}</p>
+                  ) : (
+                    <p className="text-sm text-gray-600 italic">No notes for this order</p>
+                  )}
                 </div>
               </div>
 
-              {/* Notes */}
-              {notes && (
+              {/* Notes - Old Format - Remove */}
+              {false && notes && (
                 <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
                   <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
                     <DocumentTextIcon className="w-5 h-5 text-blue-400" />
