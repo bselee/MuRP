@@ -64,6 +64,10 @@ export interface PesterAlert {
 export async function getArrivalPredictions(): Promise<POArrivalPrediction[]> {
   try {
     // Get active POs from finale_purchase_orders
+    // Filter: only recent orders (last 90 days) and exclude DropshipPo records
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    
     const { data: pos, error } = await supabase
       .from('finale_purchase_orders')
       .select(`
@@ -78,6 +82,8 @@ export async function getArrivalPredictions(): Promise<POArrivalPrediction[]> {
       `)
       .eq('is_active', true)
       .or('status.eq.Submitted,status.eq.Ordered,status.eq.Partial')
+      .gte('order_date', ninetyDaysAgo.toISOString())
+      .not('order_id', 'ilike', '%DropshipPo%')
       .order('expected_date', { ascending: true });
 
     if (error) throw error;

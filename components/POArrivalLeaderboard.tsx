@@ -147,7 +147,7 @@ export default function POArrivalLeaderboard() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-gray-900">
-                      PO #{pred.po_number}
+                      {pred.po_number}
                     </span>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusBadge(pred.status)}`}>
                       {pred.status.replace('_', ' ')}

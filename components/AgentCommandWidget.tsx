@@ -510,7 +510,7 @@ const AgentCommandWidget: React.FC = () => {
                     Run Analysis
                 </Button>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 max-h-[600px] overflow-y-auto">
                 {/* Agent List */}
                 <div className="divide-y divide-gray-800">
                     {agents.map(agent => {
