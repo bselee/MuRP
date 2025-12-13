@@ -30,8 +30,9 @@ const AgentCommonWidget: React.FC = () => {
         const loadAlerts = async () => {
             const newAlerts: string[] = [];
 
-            // Vendor watchdog alerts
-            const flagged = await getFlaggedVendors();
+            try {
+                // Vendor watchdog alerts
+                const flagged = await getFlaggedVendors();
             if (flagged.length > 0) {
                 newAlerts.push(...flagged.map(f => `${f.vendor_name}: ${f.issue}`));
                 setAgents(prev => prev.map(a =>
@@ -73,7 +74,16 @@ const AgentCommonWidget: React.FC = () => {
                 ));
             }
 
-            setAlerts(newAlerts);
+                setAlerts(newAlerts);
+            } catch (error) {
+                console.error('[AgentCommandWidget] Error loading alerts:', error);
+                // Set safe fallback state
+                setAgents(prev => prev.map(a => ({
+                    ...a,
+                    status: 'idle',
+                    message: 'Monitoring active'
+                })));
+            }
         };
 
         loadAlerts();

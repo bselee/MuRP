@@ -86,8 +86,18 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
   const poAge = orderDate ? Math.floor((Date.now() - new Date(orderDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
   const isOverdue = poAge > 90;
 
-  // Get items
-  const items = (po as any).items || (po as any).line_items || [];
+  // Get items - handle all possible field names from different PO sources
+  const items = (po as any).items || (po as any).line_items || (po as any).lineItems || (po as any).purchase_order_items || [];
+  
+  console.log('[PODetailModal] PO items debug:', {
+    poId: poNumber,
+    hasItems: (po as any).items !== undefined,
+    hasLineItems: (po as any).line_items !== undefined,
+    hasLineItemsCamel: (po as any).lineItems !== undefined,
+    hasPurchaseOrderItems: (po as any).purchase_order_items !== undefined,
+    itemsCount: items.length,
+    firstItem: items[0]
+  });
 
   return (
     <Modal
@@ -194,18 +204,24 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                 ) : (
                   <div className="space-y-3">
                     {items.map((item: any, idx: number) => {
-                      // Extract SKU from various field names
-                      const sku = item.sku || item.product_url || item.productUrl || item.product_id || '';
+                      // Extract SKU from various field names (Finale uses productUrl, internal uses sku)
+                      const sku = item.sku || item.product_id || item.productUrl || item.product_url || '';
+                      
+                      // Extract product name from all possible fields
+                      const productName = item.productName || item.product_name || item.description || item.name || 'Unknown Product';
                       
                       // Find matching inventory item
                       const invItem = inventory.find(i => 
                         i.sku === sku || 
-                        i.product_name === (item.productName || item.product_name)
+                        i.product_name === productName ||
+                        i.name === productName
                       );
                       
-                      const quantity = item.quantity || item.quantityOrdered || item.quantity_ordered || 0;
-                      const unitPrice = item.unitPrice || item.price || item.unit_price || 0;
-                      const lineTotal = quantity * unitPrice;
+                      // Handle different quantity field names
+                      const quantity = item.quantity || item.qty || item.quantityOrdered || item.quantity_ordered || item.qty_ordered || 0;
+                      // Handle different price field names
+                      const unitPrice = item.unitPrice || item.unitCost || item.price || item.unit_price || item.unit_cost || 0;
+                      const lineTotal = item.lineTotal || item.line_total || (quantity * unitPrice);
 
                       return (
                         <div
@@ -215,7 +231,7 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                           <div className="flex justify-between items-start gap-4">
                             <div className="flex-1">
                               <h4 className="text-white font-medium mb-1">
-                                {item.productName || item.product_name || item.description || 'Unknown Product'}
+                                {productName}
                               </h4>
                               
                               {/* SKU - Clickable */}
