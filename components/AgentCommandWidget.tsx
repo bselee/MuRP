@@ -514,7 +514,6 @@ const AgentCommandWidget: React.FC = () => {
                 {/* Agent List */}
                 <div className="divide-y divide-gray-800">
                     {agents.map(agent => {
-                        const StatusIcon = agent.icon;
                         const isExpanded = expandedAgent === agent.id;
                         return (
                             <div key={agent.id} className="bg-gray-800/30">
@@ -526,9 +525,9 @@ const AgentCommandWidget: React.FC = () => {
                                             agent.status === 'success' ? 'bg-green-400' :
                                             'bg-gray-500'
                                         }`} />
-                                        {StatusIcon && (
-                                            <div className={`p-2 rounded-lg ${agent.color}`}>
-                                                <StatusIcon className="h-4 w-4 text-white" />
+                                        {agent.icon && (
+                                            <div className="p-2 rounded-lg bg-gray-700">
+                                                {agent.icon}
                                             </div>
                                         )}
                                         <div className="flex-1">
