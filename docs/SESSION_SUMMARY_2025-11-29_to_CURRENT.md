@@ -1,3 +1,48 @@
+### Session: 2025-12-13 (Critical PO Date Parsing Fix)
+
+**Root Cause Found:**
+The sync function was incorrectly comparing dates as strings, causing ALL recent POs to be filtered out during sync.
+
+**The Bug:**
+```typescript
+// Finale API returns dates as M/D/YYYY (e.g., '1/30/2024')
+// Code was comparing against ISO format YYYY-MM-DD
+const cutoffDate = '2024-01-01';
+if (orderDate && orderDate >= cutoffDate) { // STRING comparison!
+  allPOs.push(edge.node);
+}
+// '1/30/2024' >= '2024-01-01' returns FALSE (because "1" < "2")
+```
+
+**The Fix:**
+- Added `parseFinaleDate()` helper to convert M/D/YYYY to Date objects
+- Changed date comparison to use proper Date timestamps
+- Increased PO limit from 1000 to 5000 to capture more history
+
+**Verification:**
+- Tested Finale GraphQL API directly
+- Found 483 non-dropship POs in first 500 records from 2024-2025
+- All vendors like "Colorado Worm Company", "Berger", "Amazon" have real POs
+- Data EXISTS in Finale, the sync was just incorrectly filtering it out
+
+**Code Changes:**
+- Modified: `supabase/functions/sync-finale-graphql/index.ts`
+  - Added parseFinaleDate() function for M/D/YYYY → Date conversion
+  - Fixed date comparison to use timestamps instead of strings
+  - Increased PO fetch limit to 5000
+
+**Deployed:**
+- Edge function deployed: `supabase functions deploy sync-finale-graphql`
+- Git commit: cf5bf22 "fix(sync): fix Finale date parsing for PO sync"
+- Pushed to main branch
+
+**Next Steps:**
+- Trigger sync and verify POs appear in database
+- Check UI shows the hundreds of non-dropship POs
+- May need to adjust date format in database storage (order_date column)
+
+---
+
 ### Session: 2025-12-12 (Complete Active-Only Data & PO Lifecycle Implementation)
 
 **Migrations Applied:**
