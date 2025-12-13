@@ -152,7 +152,10 @@ const AppShell: React.FC = () => {
   const [showAllFinaleHistory, setShowAllFinaleHistory] = usePersistentState<boolean>('showAllFinaleHistory', false);
 
   // Finale POs - from Finale API sync (shows current non-completed POs)
-  const { data: finalePurchaseOrders, loading: finalePOsLoading, refetch: refetchFinalePOs } = useSupabaseFinalePurchaseOrders({ includeInactive: showAllFinaleHistory });
+  const { data: finalePurchaseOrders, loading: finalePOsLoading, refetch: refetchFinalePOs } = useSupabaseFinalePurchaseOrders({
+    includeInactive: showAllFinaleHistory,
+    excludeDropship: false  // Fetch all, let frontend filter handle dropship filtering
+  });
 
   const [historicalSales] = usePersistentState<HistoricalSale[]>('historicalSales', mockHistoricalSales);
   const [watchlist] = usePersistentState<WatchlistItem[]>('watchlist', mockWatchlist);

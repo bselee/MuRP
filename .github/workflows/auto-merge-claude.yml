@@ -1,0 +1,42 @@
+name: Auto-merge Claude PRs
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    # Only run for PRs from claude/merge-to-main branches
+    if: startsWith(github.head_ref, 'claude/merge-to-main-')
+
+    steps:
+      - name: Check PR source
+        run: |
+          echo "PR from: ${{ github.head_ref }}"
+          echo "PR to: ${{ github.base_ref }}"
+
+      - name: Auto-approve PR
+        uses: hmarr/auto-approve-action@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge
+        run: |
+          gh pr merge --auto --squash "${{ github.event.pull_request.number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🤖 Auto-merging this PR from Claude Code session. This will deploy to production once checks pass.'
+            })
