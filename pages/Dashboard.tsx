@@ -13,6 +13,7 @@ import InventoryIntelligencePanel from '../components/InventoryIntelligencePanel
 import AgentCommandWidget from '@/components/AgentCommandWidget';
 import StockoutRiskWidget from '@/components/StockoutRiskWidget';
 import POArrivalLeaderboard from '@/components/POArrivalLeaderboard';
+import CriticalStockoutWidget from '@/components/CriticalStockoutWidget';
 import { calculateAllBuildability } from '../services/buildabilityService';
 import { LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, BellIcon, CheckCircleIcon, ChartBarIcon, ClipboardDocumentListIcon, AlertCircleIcon, TrendingUpIcon, DollarSignIcon, UsersIcon, HomeIcon } from '../components/icons';
 
@@ -512,6 +513,9 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                   </h2>
                   <p className="text-gray-400 mt-1">Advanced analytics and predictive insights for inventory management</p>
                 </div>
+
+                {/* Critical Stockout Prevention Widget */}
+                <CriticalStockoutWidget />
 
                 {/* Key Metrics Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

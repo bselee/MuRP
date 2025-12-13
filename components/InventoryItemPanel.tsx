@@ -11,6 +11,7 @@ import { Separator } from './ui/separator';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { supabase } from '../lib/supabase';
 import { Edit, Save, X, DollarSign, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import ProductReorderIntelligence from './ProductReorderIntelligence';
 
 interface InventoryItemPanelProps {
   sku: string;
@@ -273,8 +274,9 @@ export default function InventoryItemPanel({ sku, onClose }: InventoryItemPanelP
 
       <CardContent>
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="reorder">Reorder Analytics</TabsTrigger>
             <TabsTrigger value="pricing">Pricing</TabsTrigger>
             <TabsTrigger value="proposals">Proposals</TabsTrigger>
             <TabsTrigger value="mappings">Vendor Mappings</TabsTrigger>
@@ -359,6 +361,13 @@ export default function InventoryItemPanel({ sku, onClose }: InventoryItemPanelP
                 </div>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="reorder" className="space-y-6">
+            <ProductReorderIntelligence
+              sku={inventoryItem.sku}
+              productName={inventoryItem.name}
+            />
           </TabsContent>
 
           <TabsContent value="pricing" className="space-y-6">

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import Button from '@/components/ui/Button';
-import { BotIcon, RefreshIcon, PlayIcon, ExclamationCircleIcon, TruckIcon, DollarSignIcon } from '@/components/icons';
+import { BotIcon, RefreshIcon, PlayIcon, ExclamationCircleIcon, TruckIcon, DollarSignIcon, PackageIcon } from '@/components/icons';
 import { getFlaggedVendors } from '../services/vendorWatchdogAgent';
 import { getPesterAlerts, getInvoiceVariances } from '../services/poIntelligenceAgent';
+import { getCriticalStockoutAlerts } from '../services/stockoutPreventionAgent';
 
 interface AgentStatus {
     id: string;
@@ -18,7 +19,8 @@ const AgentCommonWidget: React.FC = () => {
         { id: 'vendor_watchdog', name: 'Vendor Watchdog', status: 'idle', lastRun: new Date(), message: 'Monitoring 12 active vendors' },
         { id: 'inventory_guardian', name: 'Inventory Guardian', status: 'idle', lastRun: new Date(), message: 'Stock levels analyzed' },
         { id: 'price_hunter', name: 'Price Hunter', status: 'idle', lastRun: new Date(), message: 'Waiting for triggers' },
-        { id: 'po_intelligence', name: 'PO Intelligence', status: 'idle', lastRun: new Date(), message: 'Tracking arrivals & costs' }
+        { id: 'po_intelligence', name: 'PO Intelligence', status: 'idle', lastRun: new Date(), message: 'Tracking arrivals & costs' },
+        { id: 'stockout_prevention', name: 'Stockout Prevention', status: 'idle', lastRun: new Date(), message: 'Monitoring inventory levels' }
     ]);
     const [alerts, setAlerts] = useState<string[]>([]);
     const [isRunning, setIsRunning] = useState(false);
@@ -56,6 +58,19 @@ const AgentCommonWidget: React.FC = () => {
             if (variances.length > 0) {
                 const critical = variances.filter(v => v.severity === 'critical');
                 newAlerts.push(...critical.map(v => `${v.vendor_name}: ${v.variance_type} ($${v.variance_amount.toFixed(2)})`));
+            }
+
+            // Stockout prevention: critical alerts
+            const stockoutAlerts = await getCriticalStockoutAlerts();
+            if (stockoutAlerts.length > 0) {
+                const critical = stockoutAlerts.filter(a => a.severity === 'CRITICAL');
+                const high = stockoutAlerts.filter(a => a.severity === 'HIGH');
+                newAlerts.push(...critical.slice(0, 3).map(a => `${a.product_name}: ${a.message}`));
+                setAgents(prev => prev.map(a =>
+                    a.id === 'stockout_prevention'
+                        ? { ...a, status: critical.length > 0 ? 'alert' : 'idle', message: `${critical.length} critical, ${high.length} high priority` }
+                        : a
+                ));
             }
 
             setAlerts(newAlerts);
