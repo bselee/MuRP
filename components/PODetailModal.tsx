@@ -218,10 +218,10 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                       );
                       
                       // Handle different quantity field names
-                      const quantity = item.quantity || item.qty || item.quantityOrdered || item.quantity_ordered || item.qty_ordered || 0;
+                      const quantity = Number(item.quantity || item.qty || item.quantityOrdered || item.quantity_ordered || item.qty_ordered || 0);
                       // Handle different price field names
-                      const unitPrice = item.unitPrice || item.unitCost || item.price || item.unit_price || item.unit_cost || 0;
-                      const lineTotal = item.lineTotal || item.line_total || (quantity * unitPrice);
+                      const unitPrice = Number(item.unitPrice || item.unitCost || item.price || item.unit_price || item.unit_cost || 0);
+                      const lineTotal = Number(item.lineTotal || item.line_total || (quantity * unitPrice));
 
                       return (
                         <div
