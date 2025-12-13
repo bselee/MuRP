@@ -202,94 +202,145 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                     No items found for this purchase order.
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {items.map((item: any, idx: number) => {
-                      // Extract SKU from various field names (Finale uses productUrl, internal uses sku)
-                      const sku = item.sku || item.product_id || item.productUrl || item.product_url || '';
-                      
-                      // Extract product name from all possible fields
-                      const productName = item.productName || item.product_name || item.description || item.name || 'Unknown Product';
-                      
-                      // Find matching inventory item
-                      const invItem = inventory.find(i => 
-                        i.sku === sku || 
-                        i.product_name === productName ||
-                        i.name === productName
-                      );
-                      
-                      // Handle different quantity field names
-                      const quantity = Number(item.quantity || item.qty || item.quantityOrdered || item.quantity_ordered || item.qty_ordered || 0);
-                      // Handle different price field names
-                      const unitPrice = Number(item.unitPrice || item.unitCost || item.price || item.unit_price || item.unit_cost || 0);
-                      const lineTotal = Number(item.lineTotal || item.line_total || (quantity * unitPrice));
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-gray-700 bg-gray-800/50">
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                            #
+                          </th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                            Item / SKU
+                          </th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                            Inventory Status
+                          </th>
+                          <th className="text-right py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                            Qty
+                          </th>
+                          <th className="text-right py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                            Unit Price
+                          </th>
+                          <th className="text-right py-3 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                            Line Total
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {items.map((item: any, idx: number) => {
+                          // Extract SKU from various field names (Finale uses productUrl, internal uses sku)
+                          const sku = item.sku || item.product_id || item.productUrl || item.product_url || '';
+                          
+                          // Extract product name from all possible fields
+                          const productName = item.productName || item.product_name || item.description || item.name || 'Unknown Product';
+                          
+                          // Find matching inventory item
+                          const invItem = inventory.find(i => 
+                            i.sku === sku || 
+                            i.product_name === productName ||
+                            i.name === productName
+                          );
+                          
+                          // Handle different quantity field names
+                          const quantity = Number(item.quantity || item.qty || item.quantityOrdered || item.quantity_ordered || item.qty_ordered || 0);
+                          // Handle different price field names
+                          const unitPrice = Number(item.unitPrice || item.unitCost || item.price || item.unit_price || item.unit_cost || 0);
+                          const lineTotal = Number(item.lineTotal || item.line_total || (quantity * unitPrice));
 
-                      return (
-                        <div
-                          key={idx}
-                          className="bg-gray-900/60 rounded-lg border border-gray-700 p-4 hover:border-accent-500/50 transition-all"
-                        >
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="flex-1">
-                              <h4 className="text-white font-medium mb-1">
-                                {productName}
-                              </h4>
+                          const stockLevel = invItem?.available_quantity || 0;
+                          const onHand = invItem?.quantity_on_hand || 0;
+
+                          return (
+                            <tr 
+                              key={idx} 
+                              className="hover:bg-gray-800/30 transition-colors"
+                            >
+                              {/* Line Number */}
+                              <td className="py-3 px-4 text-sm text-gray-500 font-mono">
+                                {idx + 1}
+                              </td>
                               
-                              {/* SKU - Clickable */}
-                              {sku && (
-                                <button
-                                  onClick={() => onOpenInventoryDetail?.(sku)}
-                                  className="group inline-flex items-center gap-1 text-xs text-accent-400 hover:text-accent-300 font-mono bg-gray-800 px-2 py-1 rounded border border-accent-500/30 hover:border-accent-500/70 transition-all"
-                                >
-                                  SKU: {sku}
-                                  <ArrowTopRightOnSquareIcon className="w-3 h-3 opacity-50 group-hover:opacity-100" />
-                                </button>
-                              )}
-                              
-                              {/* Inventory Status */}
-                              {invItem && (
-                                <div className="mt-2 flex items-center gap-3 text-xs">
-                                  <span className={`px-2 py-0.5 rounded ${
-                                    (invItem.available_quantity || 0) > 0
-                                      ? 'bg-green-500/20 text-green-300 border border-green-500/30'
-                                      : 'bg-red-500/20 text-red-300 border border-red-500/30'
-                                  }`}>
-                                    Stock: {invItem.available_quantity || 0}
-                                  </span>
-                                  <span className="text-gray-500">
-                                    On Hand: {invItem.quantity_on_hand || 0}
-                                  </span>
-                                  {invItem.reorder_point && (
-                                    <span className="text-gray-500">
-                                      Reorder: {invItem.reorder_point}
-                                    </span>
+                              {/* Item & SKU */}
+                              <td className="py-3 px-4">
+                                <div className="flex flex-col gap-1">
+                                  <div className="text-white font-medium">
+                                    {productName}
+                                  </div>
+                                  {sku && (
+                                    <button
+                                      onClick={() => onOpenInventoryDetail?.(sku)}
+                                      className="group inline-flex items-center gap-1 text-xs text-accent-400 hover:text-accent-300 font-mono w-fit"
+                                    >
+                                      <span className="bg-gray-800 px-2 py-0.5 rounded border border-accent-500/30 group-hover:border-accent-500/70 transition-all">
+                                        {sku}
+                                      </span>
+                                      <ArrowTopRightOnSquareIcon className="w-3 h-3 opacity-50 group-hover:opacity-100" />
+                                    </button>
+                                  )}
+                                  {item.notes && (
+                                    <p className="text-xs text-gray-500 italic mt-1">{item.notes}</p>
                                   )}
                                 </div>
-                              )}
-                              
-                              {item.notes && (
-                                <p className="text-sm text-gray-400 mt-2 italic">{item.notes}</p>
-                              )}
-                            </div>
-                            
-                            {/* Quantity & Price */}
-                            <div className="text-right">
-                              <div className="text-white font-mono text-sm">
-                                {quantity} × ${unitPrice.toFixed(2)}
-                              </div>
-                              <div className="text-lg font-bold text-accent-400 font-mono mt-1">
-                                ${lineTotal.toFixed(2)}
-                              </div>
-                              {item.quantityReceived && item.quantityReceived > 0 && (
-                                <div className="text-xs text-green-400 mt-2 flex items-center justify-end gap-1">
-                                  <CheckCircleIcon className="w-3 h-3" />
-                                  {item.quantityReceived} received
+                              </td>
+
+                              {/* Inventory Status */}
+                              <td className="py-3 px-4">
+                                {invItem ? (
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                        stockLevel > 0
+                                          ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                                          : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                      }`}>
+                                        {stockLevel > 0 ? `${stockLevel} in stock` : 'Out of stock'}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      On Hand: <span className="font-mono">{onHand}</span>
+                                      {invItem.reorder_point && (
+                                        <> • Reorder: <span className="font-mono">{invItem.reorder_point}</span></>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-gray-600">-</span>
+                                )}
+                              </td>
+
+                              {/* Quantity */}
+                              <td className="py-3 px-4 text-right">
+                                <div className="flex flex-col items-end gap-1">
+                                  <span className="text-white font-mono font-semibold">
+                                    {quantity}
+                                  </span>
+                                  {item.quantityReceived && item.quantityReceived > 0 && (
+                                    <div className="text-xs text-green-400 flex items-center gap-1">
+                                      <CheckCircleIcon className="w-3 h-3" />
+                                      {item.quantityReceived} received
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                              </td>
+
+                              {/* Unit Price */}
+                              <td className="py-3 px-4 text-right">
+                                <span className="text-white font-mono">
+                                  ${unitPrice.toFixed(2)}
+                                </span>
+                              </td>
+
+                              {/* Line Total */}
+                              <td className="py-3 px-4 text-right">
+                                <span className="text-accent-400 font-mono font-semibold text-lg">
+                                  ${lineTotal.toFixed(2)}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
