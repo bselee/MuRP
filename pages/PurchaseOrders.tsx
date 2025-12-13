@@ -41,6 +41,7 @@ import AutonomousApprovals from '../components/AutonomousApprovals';
 import AlertFeedComponent from '../components/AlertFeedComponent';
 import TrustScoreDashboard from '../components/TrustScoreDashboard';
 import VendorScorecardComponent from '../components/VendorScorecardComponent';
+import PODetailModal from '../components/PODetailModal';
 import type { FinalePurchaseOrderRecord } from '../types';
 
 interface PurchaseOrdersProps {
@@ -104,6 +105,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [selectedPoForTracking, setSelectedPoForTracking] = useState<PurchaseOrder | null>(null);
     const [selectedPoForComm, setSelectedPoForComm] = useState<PurchaseOrder | null>(null);
     const [selectedPoForReceive, setSelectedPoForReceive] = useState<PurchaseOrder | null>(null);
+    const [selectedPoForDetail, setSelectedPoForDetail] = useState<PurchaseOrder | FinalePurchaseOrderRecord | null>(null);
     const [activePoDraft, setActivePoDraft] = useState<PoDraftConfig | undefined>(undefined);
     const [pendingPoDrafts, setPendingPoDrafts] = useState<PoDraftConfig[]>([]);
     const [modalSession, setModalSession] = useState(0);
@@ -114,12 +116,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [isAgentSettingsOpen, setIsAgentSettingsOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
 
-    // Date filter with localStorage persistence
+    // Date filter with localStorage persistence - default to 90 days (PO lifecycle limit)
     const [dateFilter, setDateFilter] = useState<'all' | '30days' | '90days' | '12months'>(() => {
         if (typeof window !== 'undefined') {
-            return (localStorage.getItem('po-date-filter') as any) || 'all';
+            return (localStorage.getItem('po-date-filter') as any) || '90days';
         }
-        return 'all';
+        return '90days';
     });
 
     // Save date filter to localStorage when it changes
@@ -759,8 +761,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 >
                                                     <div className="flex items-center gap-4">
                                                         <div>
-                                                            <div className={`text-lg font-semibold font-mono ${isDark ? 'text-amber-400' : 'text-amber-700'
-                                                                }`}>
+                                                            <div 
+                                                                className={`text-lg font-semibold font-mono cursor-pointer hover:underline ${isDark ? 'text-amber-400 hover:text-amber-300' : 'text-amber-700 hover:text-amber-600'}`}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedPoForDetail(fpo);
+                                                                }}
+                                                                title="Click to view full PO details"
+                                                            >
                                                                 PO #{fpo.orderId}
                                                             </div>
                                                             <div className={isDark ? 'text-sm text-gray-400' : 'text-sm text-gray-600'}>
@@ -790,7 +798,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <div className={`text-2xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                                                            <div 
+                                                                className={`text-2xl font-bold cursor-pointer hover:scale-105 transition-transform ${isDark ? 'text-amber-400 hover:text-amber-300' : 'text-amber-700 hover:text-amber-600'}`}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedPoForDetail(fpo);
+                                                                }}
+                                                                title="Click to view full PO details"
+                                                            >
                                                                 ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                                                             </div>
                                                             <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
@@ -1336,6 +1351,35 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     />
                 )
             }
+
+            {/* PO Detail Modal */}
+            <PODetailModal
+                isOpen={!!selectedPoForDetail}
+                onClose={() => setSelectedPoForDetail(null)}
+                po={selectedPoForDetail}
+                vendors={vendors}
+                onSendEmail={(poId) => {
+                    const po = purchaseOrders.find(p => p.id === poId);
+                    if (po) {
+                        handleOpenEmail(po);
+                        setSelectedPoForDetail(null);
+                    }
+                }}
+                onUpdateTracking={(poId) => {
+                    const po = purchaseOrders.find(p => p.id === poId);
+                    if (po) {
+                        handleEditTracking(po);
+                        setSelectedPoForDetail(null);
+                    }
+                }}
+                onReceive={(poId) => {
+                    const po = purchaseOrders.find(p => p.id === poId);
+                    if (po) {
+                        handleReceivePO(po);
+                        setSelectedPoForDetail(null);
+                    }
+                }}
+            />
         </>
     );
 };
