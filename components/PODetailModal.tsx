@@ -81,18 +81,29 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
   const orderDate = (po as any).orderDate || (po as any).order_date || (po as any).createdAt;
   const expectedDate = (po as any).expectedDate || (po as any).expected_date || (po as any).expectedDelivery;
   const status = (po as any).status || 'pending';
-  const total = Number((po as any).total || (po as any).totalAmount || 0);
-  const subtotal = Number((po as any).subtotal || total);
+  // Get items first to calculate subtotal if needed
+  const rawItems = (po as any).items || (po as any).line_items || (po as any).lineItems || (po as any).purchase_order_items || [];
+  
+  // Calculate subtotal from line items if not directly provided
+  const calculatedSubtotal = rawItems.reduce((sum: number, item: any) => {
+    const qty = Number(item.quantity || item.qty || item.quantityOrdered || item.quantity_ordered || 0);
+    const price = Number(item.unitPrice || item.unitCost || item.price || item.unit_price || item.unit_cost || 0);
+    const lineTotal = Number(item.lineTotal || item.line_total || (qty * price));
+    return sum + lineTotal;
+  }, 0);
+  
+  const subtotal = Number((po as any).subtotal || calculatedSubtotal || 0);
   const tax = Number((po as any).tax || 0);
-  const shipping = Number((po as any).shipping || 0);
-  const notes = (po as any).notes || (po as any).internalNotes || '';
+  const shipping = Number((po as any).shipping || (po as any).shippingCost || 0);
+  const total = Number((po as any).total || (po as any).totalAmount || (subtotal + tax + shipping));
+  const notes = (po as any).notes || (po as any).internalNotes || (po as any).publicNotes || (po as any).privateNotes || '';
 
   // Calculate PO age
   const poAge = orderDate ? Math.floor((Date.now() - new Date(orderDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
   const isOverdue = poAge > 90;
 
-  // Get items - handle all possible field names from different PO sources
-  const items = (po as any).items || (po as any).line_items || (po as any).lineItems || (po as any).purchase_order_items || [];
+  // Use rawItems already defined above
+  const items = rawItems;
   
   console.log('[PODetailModal] PO items debug:', {
     poId: poNumber,
@@ -313,19 +324,31 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                       </thead>
                       <tbody className="divide-y divide-gray-800">
                         {items.map((item: any, idx: number) => {
-                          // Extract SKU from various field names (Finale uses productUrl, internal uses sku)
-                          const sku = item.sku || item.product_id || item.productUrl || item.product_url || '';
+                          // Extract SKU from various field names (Finale uses productUrl which has format like "product/SKU")
+                          let sku = item.sku || item.product_id || '';
+                          // Extract SKU from Finale productUrl (format: "product/SKU-123")
+                          if (!sku && (item.productUrl || item.product_url)) {
+                            const urlPath = item.productUrl || item.product_url;
+                            sku = urlPath.replace(/^.*\/product\//, '').replace(/^product\//, '');
+                          }
                           
                           // Extract product name - use SKU if no name available
                           const rawProductName = item.productName || item.product_name || item.description || item.name || '';
                           const productName = rawProductName || sku || `Item ${idx + 1}`;
                           
-                          // Find matching inventory item
-                          const invItem = inventory.find(i => 
-                            i.sku === sku || 
-                            i.product_name === productName ||
-                            i.name === productName
-                          );
+                          // Find matching inventory item - try multiple matching strategies
+                          const invItem = inventory.find(i => {
+                            if (!sku) return false;
+                            // Direct SKU match
+                            if (i.sku === sku) return true;
+                            // Case-insensitive match
+                            if (i.sku?.toLowerCase() === sku.toLowerCase()) return true;
+                            // Partial match (item SKU contains or is contained in PO SKU)
+                            if (i.sku && (i.sku.includes(sku) || sku.includes(i.sku))) return true;
+                            // Name match as fallback
+                            if (productName && (i.product_name === productName || i.name === productName)) return true;
+                            return false;
+                          });
                           
                           // Handle different quantity field names
                           const quantity = Number(item.quantity || item.qty || item.quantityOrdered || item.quantity_ordered || item.qty_ordered || 0);
@@ -381,18 +404,23 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                                           ? 'bg-green-500/20 text-green-300 border border-green-500/30'
                                           : 'bg-red-500/20 text-red-300 border border-red-500/30'
                                       }`}>
-                                        {stockLevel > 0 ? `${stockLevel} in stock` : 'Out of stock'}
+                                        {stockLevel > 0 ? `${stockLevel} avail` : 'Out of stock'}
                                       </span>
                                     </div>
                                     <div className="text-xs text-gray-500">
                                       On Hand: <span className="font-mono">{onHand}</span>
                                       {invItem.reorder_point && (
-                                        <> • Reorder: <span className="font-mono">{invItem.reorder_point}</span></>
+                                        <> • ROP: <span className="font-mono">{invItem.reorder_point}</span></>
                                       )}
                                     </div>
                                   </div>
                                 ) : (
-                                  <span className="text-sm text-gray-600">-</span>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="px-2.5 py-1 rounded text-sm font-medium bg-gray-700/50 text-gray-400 border border-gray-600">
+                                      Pending
+                                    </span>
+                                    <span className="text-xs text-gray-600">Not yet in inventory</span>
+                                  </div>
                                 )}
                               </td>
 
@@ -454,31 +482,27 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
                   </h3>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center pb-3 border-b border-gray-700">
-                      <span className="text-gray-300">Subtotal</span>
+                      <span className="text-gray-300">Subtotal ({items.length} items)</span>
                       <span className="text-white font-mono text-lg font-semibold">
-                        ${subtotal.toFixed(2)}
+                        ${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
-                    {shipping > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-300">Shipping</span>
-                        <span className="text-white font-mono">
-                          ${shipping.toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                    {tax > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-300">Tax</span>
-                        <span className="text-white font-mono">
-                          ${tax.toFixed(2)}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300">Shipping</span>
+                      <span className={`font-mono ${shipping > 0 ? 'text-white' : 'text-gray-500'}`}>
+                        {shipping > 0 ? `$${shipping.toFixed(2)}` : '—'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300">Tax</span>
+                      <span className={`font-mono ${tax > 0 ? 'text-white' : 'text-gray-500'}`}>
+                        {tax > 0 ? `$${tax.toFixed(2)}` : '—'}
+                      </span>
+                    </div>
                     <div className="flex justify-between items-center pt-3 border-t border-gray-700">
                       <span className="text-white font-semibold text-lg">Total</span>
                       <span className="text-accent-400 font-mono text-2xl font-bold">
-                        ${total.toFixed(2)}
+                        ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
@@ -488,37 +512,75 @@ const PODetailModal: React.FC<PODetailModalProps> = ({
               {/* Historical Pricing Comparison */}
               <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
                 <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
-                  Price History & Trends
+                  Price Analysis
                 </h3>
-                <div className="space-y-4">
-                  {items.map((item: any, idx: number) => {
-                    const sku = item.sku || item.product_id || item.productUrl || item.product_url || '';
-                    const currentPrice = Number(item.unitPrice || item.unitCost || item.price || item.unit_price || item.unit_cost || 0);
-                    
-                    // Mock historical data - in production, this would come from purchase_order_items history
-                    const previousPrice = currentPrice * 0.95; // Simulate 5% increase
-                    const priceChange = currentPrice - previousPrice;
-                    const priceChangePercent = ((priceChange / previousPrice) * 100).toFixed(1);
-                    const isIncrease = priceChange > 0;
-                    
-                    return (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-700">
-                        <div className="flex-1">
-                          <div className="text-white font-mono text-sm">{sku || `Item ${idx + 1}`}</div>
-                          <div className="text-xs text-gray-500 mt-1">Current: ${currentPrice.toFixed(2)}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className={`text-sm font-semibold ${isIncrease ? 'text-red-400' : 'text-green-400'}`}>
-                            {isIncrease ? '↑' : '↓'} {Math.abs(Number(priceChangePercent))}%
+                {items.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">No items to analyze</div>
+                ) : (
+                  <div className="space-y-3">
+                    {items.slice(0, 5).map((item: any, idx: number) => {
+                      // Extract SKU properly
+                      let itemSku = item.sku || item.product_id || '';
+                      if (!itemSku && (item.productUrl || item.product_url)) {
+                        const urlPath = item.productUrl || item.product_url;
+                        itemSku = urlPath.replace(/^.*\/product\//, '').replace(/^product\//, '');
+                      }
+                      const displaySku = itemSku || `Line ${idx + 1}`;
+                      
+                      const currentPrice = Number(item.unitPrice || item.unitCost || item.price || item.unit_price || item.unit_cost || 0);
+                      const qty = Number(item.quantity || item.qty || item.quantityOrdered || item.quantity_ordered || 0);
+                      const lineTotal = currentPrice * qty;
+                      
+                      // Find matching inventory to get cost comparison
+                      const matchingInv = inventory.find(i => {
+                        if (!itemSku) return false;
+                        return i.sku === itemSku || i.sku?.toLowerCase() === itemSku.toLowerCase();
+                      });
+                      
+                      // Use real inventory cost if available, otherwise show as "new item"
+                      const lastCost = matchingInv?.unit_cost || matchingInv?.cost;
+                      const hasPriceHistory = lastCost !== undefined && lastCost !== null && lastCost > 0;
+                      const priceChange = hasPriceHistory ? currentPrice - lastCost : 0;
+                      const priceChangePercent = hasPriceHistory && lastCost > 0 ? ((priceChange / lastCost) * 100) : 0;
+                      const isIncrease = priceChange > 0;
+                      const isDecrease = priceChange < 0;
+                      
+                      return (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-700">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-white font-mono text-sm truncate" title={displaySku}>{displaySku}</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {qty} × ${currentPrice.toFixed(2)} = <span className="text-accent-400">${lineTotal.toFixed(2)}</span>
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            vs ${previousPrice.toFixed(2)}
+                          <div className="text-right ml-4">
+                            {hasPriceHistory ? (
+                              <>
+                                <div className={`text-sm font-semibold ${
+                                  isIncrease ? 'text-red-400' : isDecrease ? 'text-green-400' : 'text-gray-400'
+                                }`}>
+                                  {isIncrease ? '↑' : isDecrease ? '↓' : '='} {Math.abs(priceChangePercent).toFixed(1)}%
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  vs last ${lastCost.toFixed(2)}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-xs text-gray-500">
+                                <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded">New item</span>
+                              </div>
+                            )}
                           </div>
                         </div>
+                      );
+                    })}
+                    {items.length > 5 && (
+                      <div className="text-center text-sm text-gray-500 pt-2">
+                        + {items.length - 5} more items
                       </div>
-                    );
-                  })}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Notes - Old Format - Remove */}
