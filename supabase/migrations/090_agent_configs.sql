@@ -102,6 +102,9 @@ CREATE OR REPLACE FUNCTION update_agent_configs_updated_at() RETURNS TRIGGER AS 
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS agent_configs_updated_at ON agent_configs;
+
 CREATE TRIGGER agent_configs_updated_at BEFORE
 UPDATE ON agent_configs FOR EACH ROW EXECUTE FUNCTION update_agent_configs_updated_at();
 -- ============================================================================
