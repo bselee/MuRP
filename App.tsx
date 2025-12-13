@@ -151,10 +151,10 @@ const AppShell: React.FC = () => {
   // UI/Config state (keep in localStorage - not business data)
   const [showAllFinaleHistory, setShowAllFinaleHistory] = usePersistentState<boolean>('showAllFinaleHistory', false);
 
-  // Finale POs - from Finale API sync (shows current non-completed POs, excluding dropship)
+  // Finale POs - from Finale API sync (shows current non-completed POs)
   const { data: finalePurchaseOrders, loading: finalePOsLoading, refetch: refetchFinalePOs } = useSupabaseFinalePurchaseOrders({
     includeInactive: showAllFinaleHistory,
-    excludeDropship: true  // Always exclude dropship POs from the database query
+    excludeDropship: false  // Fetch all, let frontend filter handle dropship filtering
   });
 
   const [historicalSales] = usePersistentState<HistoricalSale[]>('historicalSales', mockHistoricalSales);
