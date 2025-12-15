@@ -97,12 +97,34 @@ export async function validatePendingLabels(
       // Get state regulations
       const regulations = await getStateRegulations(destinationState);
 
-      // Check for required warnings
+      // Get extracted text from compliance_checks if available
+      const { data: complianceCheck } = await supabase
+        .from('compliance_checks')
+        .select('extracted_text, extracted_warnings, extracted_claims')
+        .eq('artwork_id', label.id)
+        .order('check_date', { ascending: false })
+        .limit(1)
+        .single();
+
+      // Combine extracted text for searching
+      const extractedTextContent = complianceCheck?.extracted_text 
+        ? JSON.stringify(complianceCheck.extracted_text).toLowerCase()
+        : '';
+      const extractedWarnings: string[] = complianceCheck?.extracted_warnings || [];
+      const extractedClaims: string[] = complianceCheck?.extracted_claims || [];
+      const allExtractedText = [
+        extractedTextContent,
+        ...extractedWarnings.map(w => w.toLowerCase()),
+        ...extractedClaims.map(c => c.toLowerCase()),
+        label.filename.toLowerCase(),
+      ].join(' ');
+
+      // Check for required warnings using actual extracted text
       const requiredWarnings = regulations.required_warnings || [];
       for (const warning of requiredWarnings) {
-        // TODO: Use OCR to extract text from label.file_url
-        // For now, we'll simulate compliance check
-        const hasWarning = Math.random() > 0.3; // Simulated - replace with real OCR
+        // Search for warning text (fuzzy match on key terms)
+        const warningTerms = warning.toLowerCase().split(' ').filter((w: string) => w.length > 3);
+        const hasWarning = warningTerms.some((term: string) => allExtractedText.includes(term));
 
         if (!hasWarning) {
           const severity: 'CRITICAL' | 'WARNING' = warning.toLowerCase().includes('prop 65')
@@ -125,7 +147,8 @@ export async function validatePendingLabels(
 
       // Check for Prop 65 (California specific)
       if (destinationState === 'CA') {
-        const hasProp65 = Math.random() > 0.2; // Simulated
+        const prop65Keywords = ['prop 65', 'proposition 65', 'known to the state of california', 'cause cancer'];
+        const hasProp65 = prop65Keywords.some(keyword => allExtractedText.includes(keyword));
         if (!hasProp65) {
           issues.push({
             label_id: label.id,
@@ -142,7 +165,8 @@ export async function validatePendingLabels(
       }
 
       // Check for THC content disclosure
-      const hasThc = Math.random() > 0.1; // Simulated
+      const thcKeywords = ['thc', 'tetrahydrocannabinol', 'total thc', 'thc:'];
+      const hasThc = thcKeywords.some(keyword => allExtractedText.includes(keyword));
       if (!hasThc) {
         issues.push({
           label_id: label.id,
@@ -158,7 +182,8 @@ export async function validatePendingLabels(
       }
 
       // Check for batch/lot number
-      const hasBatch = Math.random() > 0.15; // Simulated
+      const batchKeywords = ['batch', 'lot', 'batch:', 'lot:', 'batch #', 'lot #'];
+      const hasBatch = batchKeywords.some(keyword => allExtractedText.includes(keyword));
       if (!hasBatch) {
         issues.push({
           label_id: label.id,

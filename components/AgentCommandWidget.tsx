@@ -13,6 +13,9 @@ import { getPesterAlerts, getInvoiceVariances } from '../services/poIntelligence
 import { getCriticalStockoutAlerts } from '../services/stockoutPreventionAgent';
 import { getStuckApprovals, shouldAutoApprove } from '../services/artworkApprovalAgent';
 import { validatePendingLabels, getComplianceSummary } from '../services/complianceValidationAgent';
+import { runInventoryGuardianAgent } from '../services/inventoryGuardianAgent';
+import { runPriceHunterAgent } from '../services/priceHunterAgent';
+import { startAgentRun, completeAgentRun } from '../services/agentUsageService';
 
 interface AgentStatus {
     id: string;
@@ -225,19 +228,26 @@ const AgentCommandWidget: React.FC = () => {
             a.id === agentId ? { ...a, status: 'running', message: 'Running analysis...', output: [] } : a
         ));
 
-        // Simulate agent execution with real data where available
+        // Start tracking this agent run
+        const runId = await startAgentRun(agentId, 'manual');
+
+        // Execute agent with real data
         setTimeout(async () => {
             const output: string[] = [];
             let status: 'success' | 'alert' | 'idle' = 'success';
             let message = 'Analysis complete';
+            let itemsProcessed = 0;
+            let alertsGenerated = 0;
 
             try {
                 if (agentId === 'vendor_watchdog') {
                     const flagged = await getFlaggedVendors();
-                    output.push(`✓ Analyzed ${flagged.length + 8} vendors`);
+                    itemsProcessed = flagged.length + 8;
+                    output.push(`✓ Analyzed ${itemsProcessed} vendors`);
                     if (flagged.length > 0) {
                         status = 'alert';
                         message = `${flagged.length} vendors flagged`;
+                        alertsGenerated = flagged.length;
                         flagged.forEach(v => output.push(`⚠ ${v.vendor_name}: ${v.issue}`));
                     } else {
                         output.push(`✓ All vendors performing within parameters`);
@@ -405,6 +415,45 @@ const AgentCommandWidget: React.FC = () => {
                     }
                 }
                 
+                else if (agentId === 'inventory_guardian') {
+                    // Run Inventory Guardian Agent
+                    const result = await runInventoryGuardianAgent();
+                    output.push(...result.output);
+                    
+                    const summary = result.summary;
+                    const criticalCount = summary.alerts.filter(a => a.severity === 'CRITICAL').length;
+                    
+                    if (criticalCount > 0) {
+                        status = 'alert';
+                        message = `${criticalCount} critical stock alerts`;
+                    } else if (summary.total_alerts > 0) {
+                        status = 'success';
+                        message = `${summary.total_alerts} stock items need attention`;
+                    } else {
+                        status = 'success';
+                        message = 'All stock levels healthy';
+                    }
+                }
+                
+                else if (agentId === 'price_hunter') {
+                    // Run Price Hunter Agent
+                    const result = await runPriceHunterAgent();
+                    output.push(...result.output);
+                    
+                    const summary = result.summary;
+                    
+                    if (summary.price_increases > 0) {
+                        status = 'alert';
+                        message = `${summary.price_increases} price increases detected`;
+                    } else if (summary.opportunities_found > 0) {
+                        status = 'success';
+                        message = `$${summary.total_potential_savings.toFixed(2)} potential savings found`;
+                    } else {
+                        status = 'success';
+                        message = 'Prices stable across vendors';
+                    }
+                }
+                
                 else {
                     // Mock output for agents without live data yet
                     output.push(`✓ Initialized ${agentId} agent`);
@@ -412,10 +461,30 @@ const AgentCommandWidget: React.FC = () => {
                     output.push(`✓ Analysis complete - all systems nominal`);
                 }
 
+                // Complete the run tracking with success
+                if (runId) {
+                    await completeAgentRun(runId, {
+                        status: 'completed',
+                        items_processed: itemsProcessed,
+                        alerts_generated: alertsGenerated,
+                        output_log: output,
+                        result_summary: { status, message },
+                    });
+                }
+
             } catch (error) {
                 status = 'alert';
                 message = 'Error during analysis';
                 output.push(`❌ Error: ${(error as Error).message}`);
+
+                // Complete the run tracking with failure
+                if (runId) {
+                    await completeAgentRun(runId, {
+                        status: 'failed',
+                        error_message: (error as Error).message,
+                        output_log: output,
+                    });
+                }
             }
 
             setAgents(prev => prev.map(a =>

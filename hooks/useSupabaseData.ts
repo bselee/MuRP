@@ -148,12 +148,13 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
       const rangeSize = 1000; // Fetch in chunks of 1000
       let hasMore = true;
 
-      console.log('[useSupabaseInventory] Starting pagination fetch...');
+      console.log('[useSupabaseInventory] Starting pagination fetch (active items only)...');
 
       while (hasMore) {
         const { data: chunk, error: fetchError, count } = await supabase
           .from('inventory_items')
           .select('*', { count: 'exact' })
+          .eq('is_active', true)  // CRITICAL: Only fetch active items
           .range(rangeStart, rangeStart + rangeSize - 1)
           .order('name');
 
@@ -163,13 +164,13 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
           allItems = allItems.concat(chunk);
           rangeStart += rangeSize;
           hasMore = chunk.length === rangeSize; // Continue if we got a full chunk
-          console.log(`[useSupabaseInventory] Fetched ${chunk.length} items (total so far: ${allItems.length})`);
+          console.log(`[useSupabaseInventory] Fetched ${chunk.length} active items (total so far: ${allItems.length})`);
         } else {
           hasMore = false;
         }
       }
 
-      console.log(`[useSupabaseInventory] ✅ FINAL COUNT: ${allItems.length} inventory items fetched`);
+      console.log(`[useSupabaseInventory] ✅ FINAL COUNT: ${allItems.length} active inventory items fetched`);
       const items = allItems;
 
       // Transform from snake_case to camelCase (including enhanced fields from migration 003)
@@ -373,11 +374,19 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
       let vendors: any[] | null = null;
       let fetchError: any = null;
 
-      // Try vendor_details view first
-      const viewRes = await supabase.from('vendor_details' as any).select('*').order('name');
+      // Try vendor_details view first (with active filter)
+      const viewRes = await supabase
+        .from('vendor_details' as any)
+        .select('*')
+        .eq('is_active', true)  // CRITICAL: Only fetch active vendors
+        .order('name');
       if (viewRes.error) {
-        // Fallback to vendors table
-        const tableRes = await supabase.from('vendors').select('*').order('name');
+        // Fallback to vendors table with active filter
+        const tableRes = await supabase
+          .from('vendors')
+          .select('*')
+          .eq('is_active', true)  // CRITICAL: Only fetch active vendors
+          .order('name');
         vendors = tableRes.data as any[] | null;
         fetchError = tableRes.error;
       } else {
@@ -543,6 +552,7 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       const { data: boms, error: fetchError } = await supabase
         .from('boms')
         .select('*')
+        .eq('is_active', true)  // CRITICAL: Only fetch active BOMs
         .order('name');
 
       if (fetchError) throw fetchError;
