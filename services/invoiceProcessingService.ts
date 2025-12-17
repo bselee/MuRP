@@ -363,10 +363,11 @@ export async function getAPEmailSettings(): Promise<{ email: string; enabled: bo
  * Map vendor SKU to internal SKU
  */
 export async function mapVendorSkuToInternal(vendorSku: string, vendorId: string): Promise<string | null> {
-  // First try direct SKU match
+  // First try direct SKU match (ACTIVE ITEMS ONLY)
   const { data: item, error } = await supabase
     .from('inventory_items')
     .select('sku')
+    .eq('is_active', true)  // CRITICAL: Only match active items
     .eq('vendor_id', vendorId)
     .or(`supplier_sku.eq.${vendorSku},sku.eq.${vendorSku}`)
     .maybeSingle();
@@ -397,10 +398,11 @@ export async function getSkuMappingSuggestions(invoiceItems: InvoiceLineItem[], 
         alternatives: []
       });
     } else {
-      // Try fuzzy matching on description
+      // Try fuzzy matching on description (ACTIVE ITEMS ONLY)
       const { data: candidates, error } = await supabase
         .from('inventory_items')
         .select('sku, name')
+        .eq('is_active', true)  // CRITICAL: Only match active items
         .eq('vendor_id', vendorId)
         .ilike('name', `%${item.description.split(' ').slice(0, 3).join(' ')}%`)
         .limit(3);

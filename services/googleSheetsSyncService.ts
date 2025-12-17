@@ -213,10 +213,11 @@ export class GoogleSheetsSyncService {
     try {
       console.log('[GoogleSheetsSyncService] Exporting inventory to Google Sheets...');
 
-      // Fetch inventory from database
+      // Fetch ACTIVE inventory from database only
       const { data: inventory, error } = await supabase
         .from('inventory_items')
         .select('*')
+        .eq('is_active', true)  // CRITICAL: Only export active items
         .order('sku');
 
       if (error) {

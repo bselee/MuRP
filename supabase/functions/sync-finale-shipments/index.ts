@@ -303,10 +303,11 @@ async function updateVelocityMetrics(supabase: any): Promise<SyncResult> {
       }
     }
     
-    // Count items with velocity data
+    // Count ACTIVE items with velocity data
     const { count } = await supabase
       .from('inventory_items')
       .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)  // CRITICAL: Only count active items
       .gt('sales_velocity', 0);
     
     result.itemCount = count || 0;
