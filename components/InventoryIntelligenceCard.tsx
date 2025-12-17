@@ -13,25 +13,33 @@ import React, { useMemo } from 'react';
 import { AlertTriangle, TrendingDown, TrendingUp, Calendar, Clock, Package, ShoppingCart } from 'lucide-react';
 
 interface InventoryItem {
-  id: string;
+  id?: string;
   sku: string;
   name: string;
   stock: number;
-  on_order: number;
-  reserved: number;
-  min_stock: number;
-  order_point: number;
-  moq: number;
-  cost: number;
-  price: number;
-  default_vendor_id: string | null;
-  
-  // Historical data (would come from sales/usage tracking)
+  onOrder?: number;
+  on_order?: number; // Legacy snake_case support
+  reserved?: number;
+  reorderPoint?: number;
+  order_point?: number; // Legacy snake_case support
+  moq?: number;
+  unitCost?: number;
+  cost?: number; // Legacy snake_case support
+  unitPrice?: number;
+  price?: number; // Legacy snake_case support
+  vendorId?: string | null;
+  default_vendor_id?: string | null; // Legacy snake_case support
+
+  // Historical data from analytics
   last_30_days_sold?: number;
   last_90_days_sold?: number;
   avg_build_consumption?: number;
   last_received_date?: string;
   supplier_lead_time_days?: number;
+  // Additional analytics fields
+  daily_consumption_rate?: number;
+  days_of_stock_remaining?: number;
+  reorder_status?: string;
 }
 
 interface InventoryMetrics {
@@ -55,14 +63,17 @@ function calculateInventoryMetrics(item: InventoryItem): InventoryMetrics {
   const last30DaysSold = item.last_30_days_sold || 0;
   const last90DaysSold = item.last_90_days_sold || 0;
   const consumption90Day = last90DaysSold;
-  
-  // Daily velocity (30-day average)
-  const dailyVelocity = last30DaysSold / 30;
-  
-  // Days until stockout
-  const daysOfStockLeft = dailyVelocity > 0 
+
+  // Use pre-calculated daily rate if available, otherwise calculate from 30-day sales
+  const dailyVelocity = item.daily_consumption_rate ?? (last30DaysSold / 30);
+
+  // Use pre-calculated days remaining if available, otherwise calculate
+  const daysOfStockLeft = item.days_of_stock_remaining ?? (dailyVelocity > 0
     ? Math.floor(remaining / dailyVelocity)
-    : 999;
+    : 999);
+
+  // Get on_order from either camelCase or snake_case
+  const onOrder = item.onOrder ?? item.on_order ?? 0;
   
   // Supplier lead time
   const supplierLeadTime = item.supplier_lead_time_days || 26; // Default from image
@@ -73,24 +84,43 @@ function calculateInventoryMetrics(item: InventoryItem): InventoryMetrics {
     ? new Date(Date.now() + purchaseDeadlineDays * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
     : null;
   
-  // Urgency level
+  // Map reorder_status from analytics to urgency, or calculate from deadline
   let urgency: 'CRITICAL' | 'SOON' | 'OK' | 'GOOD';
-  if (purchaseDeadlineDays <= 0) {
-    urgency = 'CRITICAL';
-  } else if (purchaseDeadlineDays <= 7) {
-    urgency = 'SOON';
-  } else if (purchaseDeadlineDays <= 30) {
-    urgency = 'OK';
+  if (item.reorder_status) {
+    // Use pre-calculated status from analytics
+    switch (item.reorder_status) {
+      case 'OUT_OF_STOCK':
+      case 'CRITICAL':
+        urgency = 'CRITICAL';
+        break;
+      case 'REORDER_NOW':
+        urgency = 'SOON';
+        break;
+      case 'REORDER_SOON':
+        urgency = 'OK';
+        break;
+      default:
+        urgency = 'GOOD';
+    }
   } else {
-    urgency = 'GOOD';
+    // Calculate from deadline
+    if (purchaseDeadlineDays <= 0) {
+      urgency = 'CRITICAL';
+    } else if (purchaseDeadlineDays <= 7) {
+      urgency = 'SOON';
+    } else if (purchaseDeadlineDays <= 30) {
+      urgency = 'OK';
+    } else {
+      urgency = 'GOOD';
+    }
   }
-  
+
   // Recommended reorder quantity (cover lead time + buffer)
   const recommendedReorderQty = Math.max(
     item.moq || 0,
     Math.ceil(dailyVelocity * (supplierLeadTime + 14)) // Lead time + 2 week buffer
   );
-  
+
   return {
     remaining,
     last30DaysSold,
@@ -99,7 +129,7 @@ function calculateInventoryMetrics(item: InventoryItem): InventoryMetrics {
     daysOfStockLeft,
     consumption90Day,
     avgBuildConsumption: item.avg_build_consumption !== undefined ? item.avg_build_consumption : 'Purchased Only',
-    onOrder: item.on_order,
+    onOrder,
     recommendedReorderQty,
     urgency,
     purchaseAgainBy,
