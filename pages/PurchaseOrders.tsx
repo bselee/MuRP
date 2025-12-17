@@ -41,7 +41,6 @@ import AutonomousApprovals from '../components/AutonomousApprovals';
 import AlertFeedComponent from '../components/AlertFeedComponent';
 import TrustScoreDashboard from '../components/TrustScoreDashboard';
 import VendorScorecardComponent from '../components/VendorScorecardComponent';
-import PODetailModal from '../components/PODetailModal';
 import type { FinalePurchaseOrderRecord } from '../types';
 
 interface PurchaseOrdersProps {
@@ -105,31 +104,19 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [selectedPoForTracking, setSelectedPoForTracking] = useState<PurchaseOrder | null>(null);
     const [selectedPoForComm, setSelectedPoForComm] = useState<PurchaseOrder | null>(null);
     const [selectedPoForReceive, setSelectedPoForReceive] = useState<PurchaseOrder | null>(null);
-    const [selectedPoForDetail, setSelectedPoForDetail] = useState<PurchaseOrder | FinalePurchaseOrderRecord | null>(null);
     const [activePoDraft, setActivePoDraft] = useState<PoDraftConfig | undefined>(undefined);
     const [pendingPoDrafts, setPendingPoDrafts] = useState<PoDraftConfig[]>([]);
     const [modalSession, setModalSession] = useState(0);
     const [isRunningFollowUps, setIsRunningFollowUps] = useState(false);
+    const [showAllPOs, setShowAllPOs] = useState(false);
     const [expandedFinalePO, setExpandedFinalePO] = useState<string | null>(null);
     const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<string>('active');
+    const [finalePOStatusFilter, setFinalePOStatusFilter] = useState<string>('all');
     const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default newest first
+    const [hideDropship, setHideDropship] = useState(true); // Default: hide dropship POs
     const [isAgentSettingsOpen, setIsAgentSettingsOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
-
-    // Date filter with localStorage persistence - default to 90 days (PO lifecycle limit)
-    const [dateFilter, setDateFilter] = useState<'all' | '30days' | '90days' | '12months'>(() => {
-        if (typeof window !== 'undefined') {
-            return (localStorage.getItem('po-date-filter') as any) || '90days';
-        }
-        return '90days';
-    });
-
-    // Save date filter to localStorage when it changes
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('po-date-filter', dateFilter);
-        }
-    }, [dateFilter]);
 
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
@@ -190,6 +177,35 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 .slice(0, 4),
         [purchaseOrders]
     );
+
+    // One-time cleanup helper for removing pre-2025 POs
+    const cleanupOldPOs = useCallback(async () => {
+        if (!window.confirm('Delete ALL purchase orders before 2025-01-01? This cannot be undone.')) {
+            return;
+        }
+        try {
+            // Import supabase client
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabase = createClient(
+                import.meta.env.VITE_SUPABASE_URL,
+                import.meta.env.VITE_SUPABASE_ANON_KEY
+            );
+            const { error } = await supabase
+                .from('finale_purchase_orders')
+                .delete()
+                .lt('order_date', '2025-01-01T00:00:00Z');
+            if (error) {
+                addToast(`Cleanup failed: ${error.message}`, 'error');
+                console.error('Delete error:', error);
+            } else {
+                addToast('✅ Old POs deleted! Refresh page to see changes.', 'success');
+                window.location.reload();
+            }
+        } catch (err) {
+            addToast('Cleanup error', 'error');
+            console.error(err);
+        }
+    }, [addToast]);
 
     const isAdminLike = permissions.isAdminLike;
     const showCommandCenter = permissions.isPurchasing || permissions.isOperations || isAdminLike;
@@ -439,44 +455,49 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         }
     };
 
-    // Filter and sort purchase orders by date only
+    // Calculate 2 weeks ago for filtering
+    const twoWeeksAgo = useMemo(() => {
+        const date = new Date();
+        date.setDate(date.getDate() - 14);
+        return date;
+    }, []);
+
+    // Filter and sort purchase orders by status and date
     const sortedPurchaseOrders = useMemo(() => {
         let filtered = [...purchaseOrders];
 
-        // Exclude dropship POs - only those with "DropshipPO" in the order ID
-        filtered = filtered.filter(po => {
-            const orderId = (po.orderId || '').toLowerCase();
-            return !orderId.includes('dropshippo');
-        });
+        // Filter by status
+        if (statusFilter === 'active') {
+            filtered = filtered.filter(po =>
+                ['draft', 'pending', 'sent', 'confirmed', 'committed'].includes(po.status.toLowerCase())
+            );
+        } else if (statusFilter === 'committed') {
+            filtered = filtered.filter(po => po.status.toLowerCase() === 'committed');
+        } else if (statusFilter === 'received') {
+            filtered = filtered.filter(po =>
+                ['received', 'partial'].includes(po.status.toLowerCase())
+            );
+        } else if (statusFilter === 'cancelled') {
+            filtered = filtered.filter(po => po.status.toLowerCase() === 'cancelled');
+        }
+        // 'all' shows everything
 
-        // Sort by date (newest first)
         const sorted = filtered.sort((a, b) =>
             new Date(b.createdAt || b.orderDate || 0).getTime() - new Date(a.createdAt || a.orderDate || 0).getTime()
         );
 
-        // Apply date range filter
-        if (dateFilter === 'all') {
+        if (showAllPOs) {
             return sorted;
         }
 
-        const now = new Date();
-        let cutoffDate = new Date();
-
-        if (dateFilter === '30days') {
-            cutoffDate.setDate(now.getDate() - 30);
-        } else if (dateFilter === '90days') {
-            cutoffDate.setDate(now.getDate() - 90);
-        } else if (dateFilter === '12months') {
-            cutoffDate.setMonth(now.getMonth() - 12);
-        }
-
+        // Filter to POs created in the last 2 weeks
         return sorted.filter(po => {
             const poDate = new Date(po.createdAt || po.orderDate);
             // Handle invalid dates - show them if we can't parse the date
             if (isNaN(poDate.getTime())) return true;
-            return poDate >= cutoffDate;
+            return poDate >= twoWeeksAgo;
         });
-    }, [purchaseOrders, dateFilter]);
+    }, [purchaseOrders, showAllPOs, twoWeeksAgo, statusFilter]);
 
     // Count of all POs vs filtered
     const totalPOCount = purchaseOrders.length;
@@ -489,13 +510,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
             finalePOs: finalePurchaseOrders.length,
             filteredInternalPOs: sortedPurchaseOrders.length,
             filters: {
-                dateFilter,
+                statusFilter,
+                showAllPOs,
                 showAllFinaleHistory,
+                hideDropship,
+                finalePOStatusFilter,
             },
             internalPOStatuses: [...new Set(purchaseOrders.map(po => po.status))],
             finalePOStatuses: [...new Set(finalePurchaseOrders.map(fpo => fpo.status))],
         });
-    }, [purchaseOrders, finalePurchaseOrders, sortedPurchaseOrders, dateFilter, showAllFinaleHistory]);
+    }, [purchaseOrders, finalePurchaseOrders, sortedPurchaseOrders, statusFilter, showAllPOs, showAllFinaleHistory, hideDropship, finalePOStatusFilter]);
 
     useEffect(() => {
         const unsubscribe = subscribeToPoDrafts(drafts => {
@@ -686,7 +710,19 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             <div className="flex items-center gap-3">
                                 <h2 className="text-xl font-semibold text-gray-300">📦 External Purchase Orders</h2>
                                 <StatusBadge variant="primary" className="ml-2">
-                                    {finalePurchaseOrders.length} total
+                                    {finalePurchaseOrders.filter(fpo => {
+                                        // Dropship filter - check in notes
+                                        if (hideDropship) {
+                                            const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
+                                            if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) return false;
+                                        }
+                                        // Status filter
+                                        if (finalePOStatusFilter === 'all') return true;
+                                        if (finalePOStatusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
+                                        if (finalePOStatusFilter === 'received') return ['Received', 'RECEIVED', 'Partial', 'PARTIALLY_RECEIVED'].includes(fpo.status);
+                                        if (finalePOStatusFilter === 'pending') return ['Pending', 'DRAFT', 'Draft'].includes(fpo.status);
+                                        return false;
+                                    }).length} {finalePOStatusFilter === 'all' ? 'total' : finalePOStatusFilter}
                                 </StatusBadge>
                                 {!showAllFinaleHistory && (
                                     <span className="text-xs text-gray-500">(Active only)</span>
@@ -696,12 +732,62 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1 bg-gray-800/50 rounded-lg p-1 border border-gray-700">
+                                    <Button
+                                        onClick={() => setFinalePOStatusFilter('all')}
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'all'
+                                            ? 'bg-accent-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                            }`}
+                                    >
+                                        All
+                                    </Button>
+                                    <Button
+                                        onClick={() => setFinalePOStatusFilter('committed')}
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'committed'
+                                            ? 'bg-blue-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                            }`}
+                                    >
+                                        Committed
+                                    </Button>
+                                    <Button
+                                        onClick={() => setFinalePOStatusFilter('pending')}
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'pending'
+                                            ? 'bg-amber-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                            }`}
+                                    >
+                                        Pending
+                                    </Button>
+                                    <Button
+                                        onClick={() => setFinalePOStatusFilter('received')}
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${finalePOStatusFilter === 'received'
+                                            ? 'bg-green-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                                            }`}
+                                    >
+                                        Received
+                                    </Button>
+                                </div>
+
                                 {/* Sort Order Toggle */}
                                 <Button
                                     onClick={() => setFinalePOSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                                     className="px-3 py-1.5 text-xs rounded bg-gray-800/50 border border-gray-700 text-gray-300 hover:bg-gray-700 transition-colors"
                                 >
                                     {finalePOSortOrder === 'asc' ? 'A-Z ↑' : 'Z-A ↓'}
+                                </Button>
+
+                                {/* Dropship Filter Toggle */}
+                                <Button
+                                    onClick={() => setHideDropship(!hideDropship)}
+                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${hideDropship
+                                        ? 'bg-red-500/20 text-red-300 border border-red-500/50'
+                                        : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                                        }`}
+                                >
+                                    {hideDropship ? '🚫 Dropship Hidden' : 'Show All'}
                                 </Button>
 
                                 {/* Active / All History Toggle */}
@@ -715,6 +801,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     {showAllFinaleHistory ? 'All History' : 'Active Only'}
                                 </Button>
 
+                                {/* Cleanup button (admin only) */}
+                                {isAdminLike && (
+                                    <Button
+                                        onClick={cleanupOldPOs}
+                                        className="px-3 py-1.5 text-xs rounded bg-red-900/40 text-red-300 border border-red-700 hover:bg-red-900/60 transition-colors"
+                                    >
+                                        🧹 Clean Pre-2025
+                                    </Button>
+                                )}
+
                                 <span className="text-xs text-gray-400">
                                     Synced from Finale API
                                 </span>
@@ -723,6 +819,19 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                         <div className="grid gap-4">
                             {finalePurchaseOrders
+                                .filter(fpo => {
+                                    // Dropship filter - check in notes (publicNotes or privateNotes)
+                                    if (hideDropship) {
+                                        const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
+                                        if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) return false;
+                                    }
+                                    // Status filter
+                                    if (finalePOStatusFilter === 'all') return true;
+                                    if (finalePOStatusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
+                                    if (finalePOStatusFilter === 'received') return ['Received', 'RECEIVED', 'Partial', 'PARTIALLY_RECEIVED'].includes(fpo.status);
+                                    if (finalePOStatusFilter === 'pending') return ['Pending', 'DRAFT', 'Draft'].includes(fpo.status);
+                                    return false;
+                                })
                                 .sort((a, b) => {
                                     // Sort by order ID (A-Z or Z-A)
                                     const aId = a.orderId || '';
@@ -761,14 +870,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 >
                                                     <div className="flex items-center gap-4">
                                                         <div>
-                                                            <div 
-                                                                className={`text-lg font-semibold font-mono cursor-pointer hover:underline ${isDark ? 'text-amber-400 hover:text-amber-300' : 'text-amber-700 hover:text-amber-600'}`}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setSelectedPoForDetail(fpo);
-                                                                }}
-                                                                title="Click to view full PO details"
-                                                            >
+                                                            <div className={`text-lg font-semibold font-mono ${isDark ? 'text-amber-400' : 'text-amber-700'
+                                                                }`}>
                                                                 PO #{fpo.orderId}
                                                             </div>
                                                             <div className={isDark ? 'text-sm text-gray-400' : 'text-sm text-gray-600'}>
@@ -798,14 +901,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <div 
-                                                                className={`text-2xl font-bold cursor-pointer hover:scale-105 transition-transform ${isDark ? 'text-amber-400 hover:text-amber-300' : 'text-amber-700 hover:text-amber-600'}`}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setSelectedPoForDetail(fpo);
-                                                                }}
-                                                                title="Click to view full PO details"
-                                                            >
+                                                            <div className={`text-2xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
                                                                 ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                                                             </div>
                                                             <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
@@ -852,16 +948,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                     <span>Subtotal:</span>
                                                                     <span className="font-mono">${fpo.subtotal?.toFixed(2) || '0.00'}</span>
                                                                 </div>
-                                                                {fpo.tax && Number(fpo.tax) > 0 && (
+                                                                {fpo.tax && fpo.tax > 0 && (
                                                                     <div className="flex justify-between text-gray-300">
                                                                         <span>Tax:</span>
-                                                                        <span className="font-mono">${Number(fpo.tax).toFixed(2)}</span>
+                                                                        <span className="font-mono">${fpo.tax.toFixed(2)}</span>
                                                                     </div>
                                                                 )}
-                                                                {fpo.shipping && Number(fpo.shipping) > 0 && (
+                                                                {fpo.shipping && fpo.shipping > 0 && (
                                                                     <div className="flex justify-between text-gray-300">
                                                                         <span>Shipping:</span>
-                                                                        <span className="font-mono">${Number(fpo.shipping).toFixed(2)}</span>
+                                                                        <span className="font-mono">${fpo.shipping.toFixed(2)}</span>
                                                                     </div>
                                                                 )}
                                                                 <div className="flex justify-between text-amber-400 font-semibold pt-2 border-t border-white/10">
@@ -951,50 +1047,58 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             <div className="flex items-center gap-3">
                                 <h2 className="text-xl font-semibold text-amber-400">Internal Purchase Orders</h2>
                                 <span className="px-3 py-1 rounded-full text-sm bg-slate-800/50 text-gray-300 border border-slate-700 font-medium">
-                                    {filteredPOCount} total
+                                    {filteredPOCount} {statusFilter === 'all' && showAllPOs ? 'total' : statusFilter}
                                     {totalPOCount !== filteredPOCount && (
                                         <span className="text-gray-500 ml-1">of {totalPOCount}</span>
                                     )}
                                 </span>
                             </div>
                             <div className="flex items-center gap-3 flex-wrap">
-                                {/* Date Range Filter */}
                                 <div className="flex items-center gap-1 bg-slate-950/50 rounded-lg p-1 border border-slate-800">
                                     <Button
-                                        onClick={() => setDateFilter('all')}
-                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === 'all'
+                                        onClick={() => setStatusFilter('active')}
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'active'
                                             ? 'bg-accent-500 text-white'
                                             : 'text-gray-400 hover:text-white hover:bg-slate-800'
                                             }`}
                                     >
-                                        All Time
+                                        Active
                                     </Button>
                                     <Button
-                                        onClick={() => setDateFilter('30days')}
-                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === '30days'
+                                        onClick={() => setStatusFilter('committed')}
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'committed'
                                             ? 'bg-blue-500 text-white'
                                             : 'text-gray-400 hover:text-white hover:bg-slate-800'
                                             }`}
                                     >
-                                        30 Days
+                                        Committed
                                     </Button>
                                     <Button
-                                        onClick={() => setDateFilter('90days')}
-                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === '90days'
-                                            ? 'bg-purple-500 text-white'
-                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
-                                            }`}
-                                    >
-                                        90 Days
-                                    </Button>
-                                    <Button
-                                        onClick={() => setDateFilter('12months')}
-                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === '12months'
+                                        onClick={() => setStatusFilter('received')}
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'received'
                                             ? 'bg-green-500 text-white'
                                             : 'text-gray-400 hover:text-white hover:bg-slate-800'
                                             }`}
                                     >
-                                        12 Months
+                                        Received
+                                    </Button>
+                                    <Button
+                                        onClick={() => setStatusFilter('cancelled')}
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'cancelled'
+                                            ? 'bg-red-500 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            }`}
+                                    >
+                                        Cancelled
+                                    </Button>
+                                    <Button
+                                        onClick={() => setStatusFilter('all')}
+                                        className={`px-3 py-1.5 text-xs rounded transition-colors ${statusFilter === 'all'
+                                            ? 'bg-slate-700 text-white'
+                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            }`}
+                                    >
+                                        All
                                     </Button>
                                 </div>
 
@@ -1022,6 +1126,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         <Squares2X2Icon className="w-4 h-4" />
                                     </Button>
                                 </div>
+
+                                <Button
+                                    onClick={() => setShowAllPOs(!showAllPOs)}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs text-gray-300 hover:text-white border border-slate-700 rounded-md hover:bg-slate-800 transition-colors"
+                                >
+                                    <CalendarIcon className="w-4 h-4" />
+                                    {showAllPOs ? 'Last 2 Weeks' : 'All Time'}
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -1042,17 +1154,15 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 </p>
                                 {purchaseOrders.length > 0 && (
                                     <div className="text-sm text-gray-500 mb-4 space-y-1">
-                                        <div>Current filter: <span className="text-gray-400">Date = {dateFilter === 'all' ? 'All Time' : dateFilter === '30days' ? 'Last 30 Days' : dateFilter === '90days' ? 'Last 90 Days' : 'Last 12 Months'}</span></div>
-                                        {dateFilter !== 'all' && (
-                                            <div className="flex gap-2 justify-center mt-3">
-                                                <Button
-                                                    onClick={() => setDateFilter('all')}
-                                                    className="px-3 py-1.5 text-xs bg-accent-500 text-white rounded hover:bg-accent-600"
-                                                >
-                                                    Show All Time
-                                                </Button>
-                                            </div>
-                                        )}
+                                        <div>Current filters: <span className="text-gray-400">Status = "{statusFilter}"</span>, <span className="text-gray-400">Date = {showAllPOs ? 'All Time' : 'Last 2 Weeks'}</span></div>
+                                        <div className="flex gap-2 justify-center mt-3">
+                                            <Button
+                                                onClick={() => { setStatusFilter('all'); setShowAllPOs(true); }}
+                                                className="px-3 py-1.5 text-xs bg-accent-500 text-white rounded hover:bg-accent-600"
+                                            >
+                                                Clear All Filters
+                                            </Button>
+                                        </div>
                                     </div>
                                 )}
                                 {purchaseOrders.length === 0 && canManagePOs && (
@@ -1351,41 +1461,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     />
                 )
             }
-
-            {/* PO Detail Modal */}
-            <PODetailModal
-                isOpen={!!selectedPoForDetail}
-                onClose={() => setSelectedPoForDetail(null)}
-                po={selectedPoForDetail}
-                vendors={vendors}
-                inventory={inventory}
-                onSendEmail={(poId) => {
-                    const po = purchaseOrders.find(p => p.id === poId);
-                    if (po) {
-                        handleOpenEmail(po);
-                        setSelectedPoForDetail(null);
-                    }
-                }}
-                onUpdateTracking={(poId) => {
-                    const po = purchaseOrders.find(p => p.id === poId);
-                    if (po) {
-                        handleEditTracking(po);
-                        setSelectedPoForDetail(null);
-                    }
-                }}
-                onReceive={(poId) => {
-                    const po = purchaseOrders.find(p => p.id === poId);
-                    if (po) {
-                        handleReceivePO(po);
-                        setSelectedPoForDetail(null);
-                    }
-                }}
-                onOpenInventoryDetail={(sku) => {
-                    // Navigate to inventory page and filter by SKU
-                    setCurrentPage('Inventory');
-                    // You could also pass SKU via state or URL params
-                }}
-            />
         </>
     );
 };

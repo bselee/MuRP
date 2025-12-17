@@ -148,13 +148,12 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
       const rangeSize = 1000; // Fetch in chunks of 1000
       let hasMore = true;
 
-      console.log('[useSupabaseInventory] Starting pagination fetch (active items only)...');
+      console.log('[useSupabaseInventory] Starting pagination fetch...');
 
       while (hasMore) {
         const { data: chunk, error: fetchError, count } = await supabase
           .from('inventory_items')
           .select('*', { count: 'exact' })
-          .eq('is_active', true)  // CRITICAL: Only fetch active items
           .range(rangeStart, rangeStart + rangeSize - 1)
           .order('name');
 
@@ -164,13 +163,13 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
           allItems = allItems.concat(chunk);
           rangeStart += rangeSize;
           hasMore = chunk.length === rangeSize; // Continue if we got a full chunk
-          console.log(`[useSupabaseInventory] Fetched ${chunk.length} active items (total so far: ${allItems.length})`);
+          console.log(`[useSupabaseInventory] Fetched ${chunk.length} items (total so far: ${allItems.length})`);
         } else {
           hasMore = false;
         }
       }
 
-      console.log(`[useSupabaseInventory] ✅ FINAL COUNT: ${allItems.length} active inventory items fetched`);
+      console.log(`[useSupabaseInventory] ✅ FINAL COUNT: ${allItems.length} inventory items fetched`);
       const items = allItems;
 
       // Transform from snake_case to camelCase (including enhanced fields from migration 003)
@@ -374,19 +373,11 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
       let vendors: any[] | null = null;
       let fetchError: any = null;
 
-      // Try vendor_details view first (with active filter)
-      const viewRes = await supabase
-        .from('vendor_details' as any)
-        .select('*')
-        .eq('is_active', true)  // CRITICAL: Only fetch active vendors
-        .order('name');
+      // Try vendor_details view first
+      const viewRes = await supabase.from('vendor_details' as any).select('*').order('name');
       if (viewRes.error) {
-        // Fallback to vendors table with active filter
-        const tableRes = await supabase
-          .from('vendors')
-          .select('*')
-          .eq('is_active', true)  // CRITICAL: Only fetch active vendors
-          .order('name');
+        // Fallback to vendors table
+        const tableRes = await supabase.from('vendors').select('*').order('name');
         vendors = tableRes.data as any[] | null;
         fetchError = tableRes.error;
       } else {
@@ -552,7 +543,6 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       const { data: boms, error: fetchError } = await supabase
         .from('boms')
         .select('*')
-        .eq('is_active', true)  // CRITICAL: Only fetch active BOMs
         .order('name');
 
       if (fetchError) throw fetchError;
@@ -1648,7 +1638,7 @@ export function useSupabaseComplianceRecords(bomId?: string): UseSupabaseDataRes
  * Filters to show only non-completed POs (DRAFT, SUBMITTED, PARTIALLY_RECEIVED)
  * These are the "current" POs that need attention
  */
-export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: boolean; includeInactive?: boolean; excludeDropship?: boolean }): UseSupabaseDataResult<any> {
+export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: boolean; includeInactive?: boolean }): UseSupabaseDataResult<any> {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -1669,34 +1659,18 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
         query = query.eq('is_active', true);
       }
 
-      // Filter by date range - only last 12 months
-      const twelveMonthsAgo = new Date();
-      twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-      query = query.gte('order_date', twelveMonthsAgo.toISOString());
-
       const { data: pos, error: fetchError } = await query.limit(500);
 
       if (fetchError) throw fetchError;
 
       console.log('[useSupabaseFinalePurchaseOrders] Fetched POs:', pos?.length || 0);
       if (pos && pos.length > 0) {
-        console.log('[useSupabaseFinalePurchaseOrders] Sample PO statuses:',
+        console.log('[useSupabaseFinalePurchaseOrders] Sample PO statuses:', 
           [...new Set(pos.slice(0, 10).map(p => p.status))]);
       }
 
-      // Filter out dropship POs if excludeDropship option is enabled
-      let filteredPOs = pos || [];
-      if (options?.excludeDropship) {
-        filteredPOs = filteredPOs.filter((po: any) => {
-          const searchText = `${po.order_id || ''} ${po.public_notes || ''} ${po.private_notes || ''}`.toLowerCase();
-          // Catch all dropship variations in ORDER ID, notes, etc: dropship, drop-ship, drop ship, dropshippo, etc.
-          return !(searchText.includes('dropship') || searchText.includes('drop-ship') || searchText.includes('drop ship'));
-        });
-        console.log('[useSupabaseFinalePurchaseOrders] After dropship filter:', filteredPOs.length);
-      }
-
       // Transform database snake_case to camelCase for frontend
-      const transformed = filteredPOs.map((po: any) => ({
+      const transformed = (pos || []).map((po: any) => ({
         id: po.id,
         finaleOrderUrl: po.finale_order_url,
         orderId: po.order_id,
@@ -1735,7 +1709,7 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
     } finally {
       setLoading(false);
     }
-  }, [options?.includeCompleted, options?.includeInactive, options?.excludeDropship]);
+  }, [options?.includeCompleted, options?.includeInactive]);
 
   useEffect(() => {
     // Initial fetch
