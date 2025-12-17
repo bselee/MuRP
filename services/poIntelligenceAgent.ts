@@ -88,10 +88,11 @@ export async function getArrivalPredictions(): Promise<POArrivalPrediction[]> {
 
     if (error) throw error;
 
-    // Get inventory to check stock levels
+    // Get ACTIVE inventory to check stock levels
     const { data: inventory } = await supabase
       .from('inventory_items')
-      .select('sku, product_name, available_quantity, reorder_point');
+      .select('sku, product_name, available_quantity, reorder_point')
+      .eq('is_active', true);  // CRITICAL: Only fetch active items
 
     const inventoryMap = new Map(inventory?.map(i => [i.sku, i]) || []);
 

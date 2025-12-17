@@ -94,7 +94,7 @@ export async function runInventoryHealthCheck(
   const alerts: StockLevelAlert[] = [];
 
   try {
-    // Get all inventory items with their analytics
+    // Get all ACTIVE inventory items with their analytics
     const { data: inventory, error } = await supabase
       .from('inventory_items')
       .select(`
@@ -111,6 +111,7 @@ export async function runInventoryHealthCheck(
         avg_daily_consumption,
         lead_time_days
       `)
+      .eq('is_active', true)  // CRITICAL: Only fetch active items
       .order('available_quantity', { ascending: true });
 
     if (error) throw error;
@@ -247,10 +248,11 @@ export async function analyzeVelocityChanges(
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Get inventory items
+    // Get ACTIVE inventory items only
     const { data: inventory } = await supabase
       .from('inventory_items')
-      .select('sku, product_name, name');
+      .select('sku, product_name, name')
+      .eq('is_active', true);  // CRITICAL: Only fetch active items
 
     if (!inventory) return [];
 
@@ -338,6 +340,7 @@ export async function getReorderPointRecommendations(): Promise<Array<{
   }> = [];
 
   try {
+    // Get ACTIVE inventory items only
     const { data: inventory } = await supabase
       .from('inventory_items')
       .select(`
@@ -347,7 +350,8 @@ export async function getReorderPointRecommendations(): Promise<Array<{
         reorder_point,
         avg_daily_consumption,
         lead_time_days
-      `);
+      `)
+      .eq('is_active', true);  // CRITICAL: Only fetch active items
 
     if (!inventory) return [];
 
