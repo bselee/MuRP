@@ -178,35 +178,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         [purchaseOrders]
     );
 
-    // One-time cleanup helper for removing pre-2025 POs
-    const cleanupOldPOs = useCallback(async () => {
-        if (!window.confirm('Delete ALL purchase orders before 2025-01-01? This cannot be undone.')) {
-            return;
-        }
-        try {
-            // Import supabase client
-            const { createClient } = await import('@supabase/supabase-js');
-            const supabase = createClient(
-                import.meta.env.VITE_SUPABASE_URL,
-                import.meta.env.VITE_SUPABASE_ANON_KEY
-            );
-            const { error } = await supabase
-                .from('finale_purchase_orders')
-                .delete()
-                .lt('order_date', '2025-01-01T00:00:00Z');
-            if (error) {
-                addToast(`Cleanup failed: ${error.message}`, 'error');
-                console.error('Delete error:', error);
-            } else {
-                addToast('✅ Old POs deleted! Refresh page to see changes.', 'success');
-                window.location.reload();
-            }
-        } catch (err) {
-            addToast('Cleanup error', 'error');
-            console.error(err);
-        }
-    }, [addToast]);
-
     const isAdminLike = permissions.isAdminLike;
     const showCommandCenter = permissions.isPurchasing || permissions.isOperations || isAdminLike;
 
@@ -800,16 +771,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 >
                                     {showAllFinaleHistory ? 'All History' : 'Active Only'}
                                 </Button>
-
-                                {/* Cleanup button (admin only) */}
-                                {isAdminLike && (
-                                    <Button
-                                        onClick={cleanupOldPOs}
-                                        className="px-3 py-1.5 text-xs rounded bg-red-900/40 text-red-300 border border-red-700 hover:bg-red-900/60 transition-colors"
-                                    >
-                                        🧹 Clean Pre-2025
-                                    </Button>
-                                )}
 
                                 <span className="text-xs text-gray-400">
                                     Synced from Finale API
