@@ -49,6 +49,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 ## 📚 Documentation
 
 ### Getting Started
+- **[📡 Data Connections Guide](DATA_CONNECTIONS_GUIDE.md)** - ⭐ **START HERE** - All ways to connect your data (Finale API, Google Sheets, CSV, Manual)
+- **[Finale Data Sync](docs/FINALE_DATA_SYNC.md)** - Authoritative guide for Finale Inventory integration
+- **[Google Sheets Integration](GOOGLE_SHEETS_INTEGRATION.md)** - Import/export with Google Sheets
 - **[Supabase Deployment Guide](SUPABASE_DEPLOYMENT_GUIDE.md)** - 🚀 Deploy database migrations
 - **[Migration Conventions](docs/MIGRATION_CONVENTIONS.md)** - 📏 Numbering scheme & workflow for new Supabase migrations
 - **[API Ingestion Setup Guide](API_INGESTION_SETUP.md)** - Complete setup for secure API integration
@@ -57,6 +60,8 @@ View your app in AI Studio: https://ai.studio/apps/drive/1K8TR2Yc9tBjelTjM7_v6uJ
 - **[Usage Examples](USAGE_EXAMPLES.md)** - Code examples for all services
 
 ### Architecture & Schema
+- **[Critical Architecture](docs/CRITICAL_ARCHITECTURE.md)** - 🆕 Complete system architecture (91 migrations, 85+ services, 4-layer schema)
+- **[Data Acquisition Analysis](docs/DATA_ACQUISITION_ANALYSIS.md)** - 🆕 Data flow issues & unified pipeline recommendations
 - **[Schema Architecture](SCHEMA_ARCHITECTURE.md)** - 4-layer schema design (Raw → Parsed → Database → Display)
 - **[Backend Documentation](backend_documentation.md)** - Backend API specification
 
