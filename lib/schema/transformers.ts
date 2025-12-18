@@ -35,6 +35,84 @@ import {
 } from './index';
 
 // ============================================================================
+// FINALE INTERNAL NOTES PARSER
+// ============================================================================
+
+/**
+ * Parse Finale's Internal Notes field to extract consumption data
+ *
+ * Internal Notes format from Finale:
+ * Product ID: CWP09
+ * Daily Consumption: 0.49368954444444446
+ * 30 Day Consumption: 14.810686333333335
+ * 90 Day Consumption: 44.432059
+ * Supplier Lead Time: 90
+ * etc.
+ */
+export interface FinaleInternalNotesData {
+  dailyConsumption: number;
+  consumption30Day: number;
+  consumption90Day: number;
+  supplierLeadTimeDays: number;
+  estimatedDaysOfStock: number | null;
+  suggestedQtyToOrder: number | null;
+  reservedForDraftBuilds: number | null;
+}
+
+export function parseFinaleInternalNotes(notes: string | null | undefined): FinaleInternalNotesData {
+  const result: FinaleInternalNotesData = {
+    dailyConsumption: 0,
+    consumption30Day: 0,
+    consumption90Day: 0,
+    supplierLeadTimeDays: 14, // Default
+    estimatedDaysOfStock: null,
+    suggestedQtyToOrder: null,
+    reservedForDraftBuilds: null,
+  };
+
+  if (!notes || typeof notes !== 'string') {
+    return result;
+  }
+
+  // Parse line by line looking for key: value pairs
+  const lines = notes.split('\n');
+  for (const line of lines) {
+    const colonIndex = line.indexOf(':');
+    if (colonIndex === -1) continue;
+
+    const key = line.substring(0, colonIndex).trim();
+    const value = line.substring(colonIndex + 1).trim();
+    const numValue = parseFloat(value);
+
+    switch (key) {
+      case 'Daily Consumption':
+        if (!isNaN(numValue)) result.dailyConsumption = numValue;
+        break;
+      case '30 Day Consumption':
+        if (!isNaN(numValue)) result.consumption30Day = numValue;
+        break;
+      case '90 Day Consumption':
+        if (!isNaN(numValue)) result.consumption90Day = numValue;
+        break;
+      case 'Supplier Lead Time':
+        if (!isNaN(numValue)) result.supplierLeadTimeDays = Math.round(numValue);
+        break;
+      case 'Estimated Days Of Stock Left':
+        if (!isNaN(numValue)) result.estimatedDaysOfStock = numValue;
+        break;
+      case 'Suggested Qty To Order':
+        if (!isNaN(numValue)) result.suggestedQtyToOrder = numValue;
+        break;
+      case 'Reserved For Draft Builds':
+        if (!isNaN(numValue)) result.reservedForDraftBuilds = numValue;
+        break;
+    }
+  }
+
+  return result;
+}
+
+// ============================================================================
 // VENDOR TRANSFORMERS
 // ============================================================================
 
@@ -505,6 +583,10 @@ export function transformInventoryRawToParsed(
     // Extract notes
     const notes = extractFirst(raw, ['Notes', 'notes', 'Description', 'Comments', 'Remarks']) || '';
 
+    // Extract and parse Finale Internal Notes for consumption data
+    const internalNotes = extractFirst(raw, ['Internal notes', 'Internal Notes', 'internal_notes']) || '';
+    const finaleData = parseFinaleInternalNotes(internalNotes);
+
     // Build parsed inventory object with enhanced fields
     const parsed: InventoryParsed = {
       sku,
@@ -523,6 +605,13 @@ export function transformInventoryRawToParsed(
       sales30Days,
       sales60Days,
       sales90Days,
+      // Consumption data from Finale Internal Notes
+      dailyConsumption: finaleData.dailyConsumption,
+      consumption30Day: finaleData.consumption30Day,
+      consumption90Day: finaleData.consumption90Day,
+      avgBuildConsumption: finaleData.reservedForDraftBuilds, // Use draft builds as proxy for avg consumption
+      supplierLeadTimeDays: finaleData.supplierLeadTimeDays,
+      lastReceivedAt: null, // Will be populated from PO sync
       vendorId,
       vendorName,
       moq,
@@ -597,6 +686,13 @@ export function transformInventoryParsedToDatabase(
       data_source: 'csv',
       last_sync_at: new Date().toISOString(),
       sync_status: 'synced',
+      // Consumption fields from Finale Internal Notes (migration 099)
+      daily_consumption: parsed.dailyConsumption,
+      consumption_30day: parsed.consumption30Day,
+      consumption_90day: parsed.consumption90Day,
+      avg_build_consumption: parsed.avgBuildConsumption,
+      supplier_lead_time_days: parsed.supplierLeadTimeDays,
+      last_received_at: parsed.lastReceivedAt,
     };
 
     // Validate against Database schema (relaxed - some fields optional)

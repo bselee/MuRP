@@ -10,6 +10,7 @@ import { Activity, Database, TrendingUp, AlertCircle, CheckCircle, Package } fro
 import InventoryIntelligenceCard, { InventoryIntelligenceList } from '../components/InventoryIntelligenceCard';
 import { useSupabaseInventory } from '../hooks/useSupabaseData';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { getReorderAnalytics, type ReorderAnalytics } from '../services/reorderIntelligenceService';
 
 interface DataFlowStatus {
   inventory: { total: number; active: number; synced: boolean };
@@ -21,6 +22,8 @@ export default function InventoryIntelligence() {
   const { data: inventory, loading, error } = useSupabaseInventory();
   const [dataFlow, setDataFlow] = useState<DataFlowStatus | null>(null);
   const [showAllItems, setShowAllItems] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<ReorderAnalytics[]>([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   
   // Check data flow status
   useEffect(() => {
@@ -85,21 +88,52 @@ export default function InventoryIntelligence() {
     
     checkDataFlow();
   }, []);
+
+  // Fetch real analytics data from product_reorder_analytics view
+  useEffect(() => {
+    async function fetchAnalytics() {
+      try {
+        setAnalyticsLoading(true);
+        // Fetch all analytics (or filter for critical/low_stock items)
+        const analytics = await getReorderAnalytics('all');
+        setAnalyticsData(analytics);
+      } catch (err) {
+        console.error('[InventoryIntelligence] Failed to fetch analytics:', err);
+      } finally {
+        setAnalyticsLoading(false);
+      }
+    }
+    fetchAnalytics();
+  }, []);
+
+  // Merge inventory data with real analytics data
+  const enrichedInventory = inventory?.map(item => {
+    // Find matching analytics for this SKU
+    const analytics = analyticsData.find(a => a.sku === item.sku);
+
+    return {
+      ...item,
+      // Use real analytics data if available, fallback to inventory fields
+      last_30_days_sold: analytics?.consumed_last_30_days ?? item.sales30Days ?? 0,
+      last_90_days_sold: analytics?.consumed_last_90_days ?? item.sales90Days ?? 0,
+      avg_build_consumption: analytics ? analytics.avg_consumption_qty : undefined,
+      last_received_date: analytics?.last_received_at
+        ? new Date(analytics.last_received_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })
+        : undefined,
+      supplier_lead_time_days: analytics?.avg_lead_time_days ?? item.leadTimeDays ?? 14,
+      // Additional analytics fields
+      daily_consumption_rate: analytics?.daily_consumption_rate ?? 0,
+      days_of_stock_remaining: analytics?.days_of_stock_remaining ?? 999,
+      reorder_status: analytics?.reorder_status ?? 'OK',
+    };
+  }) || [];
   
-  // Mock historical data for demonstration (in production, this comes from sales tracking)
-  const enrichedInventory = inventory?.map(item => ({
-    ...item,
-    last_30_days_sold: Math.floor(Math.random() * 50) + 10, // Mock data
-    last_90_days_sold: Math.floor(Math.random() * 150) + 30, // Mock data
-    avg_build_consumption: item.moq > 0 ? Math.floor(Math.random() * 5) : undefined,
-    last_received_date: '10/6/2025', // Mock data
-    supplier_lead_time_days: 26, // Mock data
-  })) || [];
-  
-  // Filter for items that need attention (low stock, high urgency)
-  const criticalItems = enrichedInventory.slice(0, 5); // Show top 5 for demo
-  
-  if (loading) {
+  // Filter for items that need attention based on real reorder status
+  const criticalItems = enrichedInventory
+    .filter(item => ['OUT_OF_STOCK', 'CRITICAL', 'REORDER_NOW', 'REORDER_SOON'].includes(item.reorder_status || ''))
+    .sort((a, b) => (a.days_of_stock_remaining || 999) - (b.days_of_stock_remaining || 999));
+
+  if (loading || analyticsLoading) {
     return (
       <div className="min-h-screen bg-gray-950 text-white p-8">
         <div className="flex items-center justify-center h-64">
@@ -241,23 +275,58 @@ export default function InventoryIntelligence() {
           {criticalItems.length > 0 && (
             <div className="mb-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold">Items Requiring Attention</h2>
+                <h2 className="text-2xl font-bold">
+                  Items Requiring Attention ({criticalItems.length})
+                </h2>
                 <button
                   onClick={() => setShowAllItems(!showAllItems)}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
                 >
-                  {showAllItems ? 'Show Top 5' : `Show All ${enrichedInventory.length} Items`}
+                  {showAllItems ? `Show Critical (${criticalItems.length})` : `Show All (${enrichedInventory.length})`}
                 </button>
               </div>
-              
-              <InventoryIntelligenceList 
+
+              <InventoryIntelligenceList
                 items={showAllItems ? enrichedInventory : criticalItems}
               />
             </div>
           )}
           
+          {/* No Critical Items State */}
+          {criticalItems.length === 0 && enrichedInventory.length > 0 && !showAllItems && (
+            <div className="bg-green-900/20 rounded-lg p-12 text-center border border-green-500/30">
+              <CheckCircle className="mx-auto mb-4 text-green-500" size={64} />
+              <h2 className="text-2xl font-bold mb-2 text-green-400">All Stock Levels Healthy</h2>
+              <p className="text-gray-400 mb-6">
+                No items currently need attention. {enrichedInventory.length} items in inventory.
+              </p>
+              <button
+                onClick={() => setShowAllItems(true)}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+              >
+                View All Items
+              </button>
+            </div>
+          )}
+
+          {/* Show all items when toggled even if no critical items */}
+          {criticalItems.length === 0 && showAllItems && enrichedInventory.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">All Inventory Items ({enrichedInventory.length})</h2>
+                <button
+                  onClick={() => setShowAllItems(false)}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  Hide
+                </button>
+              </div>
+              <InventoryIntelligenceList items={enrichedInventory} />
+            </div>
+          )}
+
           {/* No Data State */}
-          {criticalItems.length === 0 && (
+          {enrichedInventory.length === 0 && (
             <div className="bg-gray-900 rounded-lg p-12 text-center border border-gray-800">
               <Database className="mx-auto mb-4 text-gray-600" size={64} />
               <h2 className="text-2xl font-bold mb-2">No Inventory Data</h2>
@@ -275,36 +344,40 @@ export default function InventoryIntelligence() {
             </div>
           )}
           
-          {/* Data Flow Proof */}
+          {/* Data Sources */}
           <div className="mt-8 bg-gray-900 rounded-lg p-6 border border-gray-800">
-            <h3 className="text-xl font-bold mb-4">📊 Data Flow Proof</h3>
+            <h3 className="text-xl font-bold mb-4">📊 Data Sources</h3>
             <div className="space-y-2 text-sm font-mono">
               <div className="flex items-center gap-2">
                 <CheckCircle className="text-green-400" size={16} />
-                <span>✅ Finale REST API → Professional sync service</span>
+                <span>inventory_items → Base stock data</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="text-green-400" size={16} />
-                <span>✅ Delta sync with timestamp tracking</span>
+                <span>product_reorder_analytics → Consumption metrics</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="text-green-400" size={16} />
-                <span>✅ Supabase database storage</span>
+                <span>product_purchase_log → Last received dates</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="text-green-400" size={16} />
-                <span>✅ React hooks data fetching</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="text-green-400" size={16} />
-                <span>✅ UI rendering with intelligence metrics</span>
+                <span>product_consumption_log → Usage tracking</span>
               </div>
             </div>
-            
-            {dataFlow && dataFlow.inventory.total > 0 && (
+
+            {analyticsData.length > 0 && (
               <div className="mt-4 p-4 bg-green-900/20 border border-green-500 rounded">
                 <p className="text-green-400 font-semibold">
-                  ✅ Data Flow Confirmed: {dataFlow.inventory.total} inventory items flowing from Finale → Database → UI
+                  ✅ Analytics Active: {analyticsData.length} products with consumption data
+                </p>
+              </div>
+            )}
+
+            {dataFlow && dataFlow.inventory.total > 0 && (
+              <div className="mt-2 p-4 bg-blue-900/20 border border-blue-500 rounded">
+                <p className="text-blue-400 font-semibold">
+                  ✅ Inventory Synced: {dataFlow.inventory.active} active items from Finale
                 </p>
               </div>
             )}
