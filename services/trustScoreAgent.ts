@@ -68,6 +68,7 @@ export async function recordDailyPerformance(): Promise<void> {
     const { data: actualStockouts } = await supabase
       .from('inventory_items')
       .select('sku')
+      .eq('is_active', true)  // CRITICAL: Only count active items
       .eq('stock', 0)
       .gte('record_last_updated', today);
 
@@ -98,9 +99,11 @@ export async function recordDailyPerformance(): Promise<void> {
     const totalDeliveries = deliveriesToday?.length || 0;
 
     // 4. Calculate capital efficiency (Days Sales of Inventory)
+    // Only count ACTIVE items for capital efficiency metrics
     const { data: inventoryValue } = await supabase
       .from('inventory_items')
-      .select('stock, unit_cost, sales_last_30_days');
+      .select('stock, unit_cost, sales_last_30_days')
+      .eq('is_active', true);  // CRITICAL: Only fetch active items
 
     const totalValue = inventoryValue?.reduce((sum, item) =>
       sum + (item.stock * item.unit_cost), 0) || 0;

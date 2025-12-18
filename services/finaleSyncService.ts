@@ -621,10 +621,11 @@ export class FinaleSyncService {
         return [];
       }
 
-      // Get inventory items for component enrichment
+      // Get ACTIVE inventory items for component enrichment
       const { data: inventoryItems, error: invError } = await supabase
         .from('inventory_items')
-        .select('*');
+        .select('*')
+        .eq('is_active', true);  // CRITICAL: Only use active items for BOM components
 
       if (invError) {
         console.error('[FinaleSyncService] Error fetching inventory for BOM enrichment:', invError);

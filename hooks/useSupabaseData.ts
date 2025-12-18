@@ -1297,10 +1297,11 @@ export function useSupabaseLowStock(): UseSupabaseDataResult<InventoryItem> {
       setLoading(true);
       setError(null);
 
-      // Fetch items where stock <= reorder_point
+      // Fetch items where stock <= reorder_point (ACTIVE ITEMS ONLY)
       const { data: items, error: fetchError } = await supabase
         .from('inventory_items')
         .select('*')
+        .eq('is_active', true)  // CRITICAL: Only fetch active items
         .order('stock');
 
       if (fetchError) throw fetchError;
