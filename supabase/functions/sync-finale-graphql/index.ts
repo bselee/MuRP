@@ -405,6 +405,21 @@ function transformBom(parentProduct: any, bomItem: any): any {
 function transformPurchaseOrder(node: any): any {
   if (!node.orderId || !node.orderUrl) return null;
 
+  // Detect dropship POs by checking orderId and notes BEFORE cleaning
+  const dropshipSuffixes = ['-DropshipPO', '-Dropship', 'DropshipPO', 'Dropship'];
+  const hasDropshipInId = dropshipSuffixes.some(suffix => node.orderId.includes(suffix));
+  const notes = `${node.publicNotes || ''} ${node.privateNotes || ''}`.toLowerCase();
+  const hasDropshipInNotes = notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship');
+  const isDropship = hasDropshipInId || hasDropshipInNotes;
+
+  // Clean orderId - remove dropship suffixes for display
+  let cleanOrderId = node.orderId;
+  for (const suffix of dropshipSuffixes) {
+    if (cleanOrderId.includes(suffix)) {
+      cleanOrderId = cleanOrderId.replace(suffix, '');
+    }
+  }
+
   // Transform line items from connection structure
   const itemEdges = node.itemList?.edges || [];
   const lineItems = itemEdges.map((edge: any) => {
@@ -422,7 +437,7 @@ function transformPurchaseOrder(node: any): any {
 
   return {
     finale_order_url: node.orderUrl,
-    order_id: node.orderId,
+    order_id: cleanOrderId,
     order_type: node.type || 'PURCHASE_ORDER',
     status: node.status || 'UNKNOWN',
     vendor_url: node.supplier?.partyUrl || null,
@@ -434,6 +449,7 @@ function transformPurchaseOrder(node: any): any {
     total: node.total ? parseFloat(node.total) : null,
     public_notes: node.publicNotes || null,
     private_notes: node.privateNotes || null,
+    is_dropship: isDropship,
     line_items: lineItems,
     line_count: lineItems.length,
     total_quantity: node.totalUnits || 0,
@@ -720,7 +736,7 @@ serve(async (req) => {
         });
         const connection = data.orderViewConnection;
 
-        // GraphQL filter handles date filtering server-side, so add all returned POs
+        // GraphQL filter handles date filtering server-side, so add all returned POs.
         for (const edge of connection.edges) {
           allPOs.push(edge.node);
         }
@@ -745,17 +761,18 @@ serve(async (req) => {
 
         await batchUpsert(supabase, 'finale_purchase_orders', Array.from(uniquePOs.values()), 'finale_order_url');
 
-        // Mark POs older than 24 months as inactive
-        const cutoffDateStr = twentyFourMonthsAgo.toISOString().split('T')[0];
+        // Mark POs older than 24 months as inactive.
+        // Use an ISO date string so it compares correctly against the DB column.
+        const cutoffDateIso = twentyFourMonthsAgo.toISOString().split('T')[0];
         const { error: cleanupError } = await supabase
           .from('finale_purchase_orders')
           .update({ is_active: false })
-          .lt('order_date', cutoffDateStr);
+          .lt('order_date', cutoffDateIso);
 
         if (cleanupError) {
-          console.error('[Sync] Failed to mark old POs as inactive:', cleanupError);
+          console.error('[Sync] Failed to mark old completed POs as inactive:', cleanupError);
         } else {
-          console.log(`[Sync] Marked POs older than ${cutoffDateStr} as inactive`);
+          console.log(`[Sync] Marked POs older than ${cutoffDateIso} as inactive`);
         }
 
         results.push({

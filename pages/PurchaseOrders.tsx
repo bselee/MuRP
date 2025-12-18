@@ -683,11 +683,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <h2 className="text-xl font-semibold text-gray-300">📦 External Purchase Orders</h2>
                                 <StatusBadge variant="primary" className="ml-2">
                                     {finalePurchaseOrders.filter(fpo => {
-                                        // Dropship filter - check in notes
-                                        if (hideDropship) {
-                                            const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
-                                            if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) return false;
-                                        }
+                                        // Dropship filter - use is_dropship flag
+                                        if (hideDropship && (fpo as any).isDropship) return false;
+
                                         // Status filter
                                         if (finalePOStatusFilter === 'all') return true;
                                         if (finalePOStatusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
@@ -782,11 +780,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <div className="grid gap-4">
                             {finalePurchaseOrders
                                 .filter(fpo => {
-                                    // Dropship filter - check in notes (publicNotes or privateNotes)
-                                    if (hideDropship) {
-                                        const notes = `${fpo.publicNotes || ''} ${(fpo as any).privateNotes || ''}`.toLowerCase();
-                                        if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) return false;
-                                    }
+                                    // Dropship filter - use is_dropship flag
+                                    if (hideDropship && (fpo as any).isDropship) return false;
+
                                     // Status filter
                                     if (finalePOStatusFilter === 'all') return true;
                                     if (finalePOStatusFilter === 'committed') return ['Submitted', 'SUBMITTED', 'Ordered'].includes(fpo.status);
