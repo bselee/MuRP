@@ -12,6 +12,8 @@ import RenewalAlertsWidget from '../components/RenewalAlertsWidget';
 import InventoryIntelligencePanel from '../components/InventoryIntelligencePanel';
 import AgentCommandWidget from '@/components/AgentCommandWidget';
 import StockoutRiskWidget from '@/components/StockoutRiskWidget';
+import POArrivalLeaderboard from '@/components/POArrivalLeaderboard';
+import CriticalStockoutWidget from '@/components/CriticalStockoutWidget';
 import { calculateAllBuildability } from '../services/buildabilityService';
 import { LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, BellIcon, CheckCircleIcon, ChartBarIcon, ClipboardDocumentListIcon, AlertCircleIcon, TrendingUpIcon, DollarSignIcon, UsersIcon, HomeIcon } from '../components/icons';
 
@@ -450,6 +452,11 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                 </div>
               </div>
 
+              {/* PO Arrival Leaderboard - Shows upcoming deliveries */}
+              <div className="mb-6">
+                <POArrivalLeaderboard />
+              </div>
+
               {/* Critical Purchasing Board - Promoted for Visibility */}
               {stockoutRisks.some(r => r.riskLevel === 'critical' || r.riskLevel === 'high') && (
                 <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -506,6 +513,9 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                   </h2>
                   <p className="text-gray-400 mt-1">Advanced analytics and predictive insights for inventory management</p>
                 </div>
+
+                {/* Critical Stockout Prevention Widget */}
+                <CriticalStockoutWidget />
 
                 {/* Key Metrics Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

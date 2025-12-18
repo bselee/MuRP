@@ -307,6 +307,24 @@ const AppShell: React.FC = () => {
     }).catch((error) => {
       console.error('[App] Failed to initialize Finale auto-sync:', error);
     });
+
+    // Run automatic cleanup of pre-2025 POs in the background (non-blocking)
+    (async () => {
+      try {
+        const { error } = await supabase
+          .from('finale_purchase_orders')
+          .delete()
+          .lt('order_date', '2025-01-01T00:00:00Z');
+        
+        if (error) {
+          console.warn('[App] Background cleanup warning:', error);
+        } else {
+          console.log('[App] ✅ Cleaned up pre-2025 purchase orders automatically');
+        }
+      } catch (err) {
+        console.error('[App] Background cleanup error:', err);
+      }
+    })();
   }, [currentUser?.id, isE2ETestMode]);
 
   // Expose debug functions to window for console testing

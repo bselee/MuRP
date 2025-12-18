@@ -39,9 +39,15 @@ WHERE is_active = true;
 -- ROW LEVEL SECURITY
 -- ============================================================================
 ALTER TABLE agent_configs ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Allow authenticated users to read agent configs" ON agent_configs;
+DROP POLICY IF EXISTS "Allow authenticated users to update agent configs" ON agent_configs;
+
 -- Allow authenticated users to read agent configs
 CREATE POLICY "Allow authenticated users to read agent configs" ON agent_configs FOR
 SELECT TO authenticated USING (true);
+
 -- Allow authenticated users to update agent configs
 CREATE POLICY "Allow authenticated users to update agent configs" ON agent_configs FOR
 UPDATE TO authenticated USING (true) WITH CHECK (true);
@@ -96,6 +102,9 @@ CREATE OR REPLACE FUNCTION update_agent_configs_updated_at() RETURNS TRIGGER AS 
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS agent_configs_updated_at ON agent_configs;
+
 CREATE TRIGGER agent_configs_updated_at BEFORE
 UPDATE ON agent_configs FOR EACH ROW EXECUTE FUNCTION update_agent_configs_updated_at();
 -- ============================================================================
