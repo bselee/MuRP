@@ -44,41 +44,58 @@ export default async function handler(
       });
     }
 
-    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/sync-finale-data`;
-
-    console.log('[Cron] Calling edge function:', edgeFunctionUrl);
+    const headers = {
+      'Authorization': `Bearer ${supabaseAnonKey}`,
+      'Content-Type': 'application/json',
+    };
 
     const startTime = Date.now();
-    const response = await fetch(edgeFunctionUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${supabaseAnonKey}`,
-        'Content-Type': 'application/json',
-      },
-    });
+
+    const restUrl = `${supabaseUrl}/functions/v1/sync-finale-data`;
+    const poUrl = `${supabaseUrl}/functions/v1/sync-finale-graphql`;
+
+    console.log('[Cron] Calling edge functions:', { restUrl, poUrl });
+
+    const [restResponse, poResponse] = await Promise.all([
+      fetch(restUrl, { method: 'POST', headers }),
+      fetch(poUrl, { method: 'POST', headers }),
+    ]);
 
     const duration = Date.now() - startTime;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Cron] Edge function failed:', response.status, errorText);
-      return res.status(response.status).json({
-        error: 'Edge function failed',
-        status: response.status,
-        details: errorText,
+    const restText = await restResponse.text();
+    const poText = await poResponse.text();
+
+    if (!restResponse.ok || !poResponse.ok) {
+      console.error('[Cron] One or more edge functions failed:', {
+        rest: { status: restResponse.status, body: restText },
+        purchaseOrders: { status: poResponse.status, body: poText },
+      });
+      return res.status(500).json({
+        error: 'One or more edge functions failed',
         duration,
+        rest: { status: restResponse.status, body: restText },
+        purchaseOrders: { status: poResponse.status, body: poText },
       });
     }
 
-    const result = await response.json();
-    console.log('[Cron] ✅ Sync completed:', JSON.stringify(result, null, 2));
+    const restResult = safeJsonParse(restText);
+    const poResult = safeJsonParse(poText);
+
+    console.log('[Cron] ✅ Sync completed:', {
+      rest: restResult,
+      purchaseOrders: poResult,
+    });
 
     return res.status(200).json({
       success: true,
       message: 'Finale sync triggered successfully',
       duration,
       timestamp: new Date().toISOString(),
-      syncResult: result,
+      results: {
+        rest: restResult,
+        purchaseOrders: poResult,
+      },
     });
 
   } catch (error) {
@@ -88,5 +105,13 @@ export default async function handler(
       message: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
     });
+  }
+}
+
+function safeJsonParse(input: string): any {
+  try {
+    return JSON.parse(input);
+  } catch {
+    return input;
   }
 }

@@ -43,7 +43,9 @@ const Header: React.FC<HeaderProps> = ({
     return (
         <header className={`h-16 backdrop-blur-sm border-b flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0 transition-colors duration-300 ${headerClasses}`}>
             <div className="flex items-center gap-3 min-w-[120px]">
-                <h1 className={`text-4xl font-extrabold tracking-wide ${isLight ? 'text-amber-900' : 'text-accent-200'} ${showLogo ? '' : 'md:hidden'}`}>MuRP</h1>
+                <div className={`text-4xl font-extrabold tracking-wide ${isLight ? 'text-amber-900' : 'text-accent-200'} ${showLogo ? '' : 'md:hidden'}`}>
+                    MuRP
+                </div>
             </div>
             <div className="flex items-center space-x-4">
                 <span className={`text-xs hidden sm:block ${statusTextClass}`}>

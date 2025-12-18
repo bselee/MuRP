@@ -7,7 +7,7 @@ test.describe('Company Email Policy', () => {
     });
     await page.goto('/settings?e2e=1');
 
-    const sectionToggle = page.getByRole('button', { name: /Email Sender Policy/i });
+    const sectionToggle = page.getByRole('button', { name: /Email Configuration/i });
     await sectionToggle.click();
 
     const fromInput = page.getByLabel('Company from address');

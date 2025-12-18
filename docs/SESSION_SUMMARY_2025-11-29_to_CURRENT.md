@@ -338,6 +338,38 @@ update_all_inventory_velocities() RETURNS TABLE (sku TEXT, sales_30d INT, sales_
   - Current behavior: Cards show summary but clicking doesn't reveal line items/full document
   - Next action: Investigate expansion mechanism and implement proper detail view
 
+---
+
+### Session: 2025-12-18 (UI Disconnect Triage - POs + E2E)
+
+**Goal:** Track down “UI not reflecting data” issues and stabilize tests.
+
+**Changes Made:**
+- Modified: `components/Header.tsx`
+  - Changed the header brand mark from an `<h1>` to a non-heading element to avoid duplicate `<h1>` on pages.
+  - Fixes Playwright strict-mode failures where `locator('h1')` matched both the app brand and the page title.
+- Modified: `pages/PurchaseOrders.tsx`
+  - Internal POs: In the default “last 2 weeks” view, hide records with invalid/unparseable dates (prevents legacy/unknown-date records from leaking into the default UI).
+  - Finale POs: Sort toggle now reflects date ordering (“Newest ↓” / “Oldest ↑”) and sorting is based on PO order date (with orderId fallback), matching the intent of “newest first”.
+
+**Notes / Findings:**
+- `hooks/useSupabaseData.ts` `useSupabaseFinalePurchaseOrders()` already filters to current year via `.gte('order_date', `${YYYY}-01-01`)` and orders by `order_date DESC`.
+  - If older years appear in UI, they may be coming from:
+    - internal `purchaseOrders` list (not Finale) and/or
+    - UI filtering allowing invalid/missing dates.
+
+**Tests:**
+- ✅ `npm test` passing
+- ✅ `npm run build` passing
+- ✅ `npm run e2e -- e2e/vendors.spec.ts` passing after fixing duplicate `<h1>`
+- ❌ `npm run e2e` still has 1 failing test:
+  - `e2e/email-policy.spec.ts` timing out waiting for the “Email Sender Policy” toggle
+
+**Next Steps:**
+- [ ] Fix `e2e/email-policy.spec.ts` selector/route assumptions so it’s stable.
+- [ ] Verify PO “current year only” behavior in production by confirming whether old records are internal POs vs Finale POs.
+
+
 **Next Steps:**
 - [ ] Fix PO card expansion - implement proper detail view/modal for full PO document
 - [ ] Test velocity display on BOM cards with real data

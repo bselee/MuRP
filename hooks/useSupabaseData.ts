@@ -1638,7 +1638,11 @@ export function useSupabaseComplianceRecords(bomId?: string): UseSupabaseDataRes
  * Filters to show only non-completed POs (DRAFT, SUBMITTED, PARTIALLY_RECEIVED)
  * These are the "current" POs that need attention
  */
-export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: boolean; includeInactive?: boolean }): UseSupabaseDataResult<any> {
+export function useSupabaseFinalePurchaseOrders(options?: {
+  includeCompleted?: boolean;
+  includeInactive?: boolean;
+  year?: number;
+}): UseSupabaseDataResult<any> {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -1649,14 +1653,24 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
       setLoading(true);
       setError(null);
 
+      const targetYear = options?.year ?? new Date().getFullYear();
+      const startOfYear = `${targetYear}-01-01`;
+
       let query = supabase
         .from('finale_purchase_orders')
         .select('*')
+        .gte('order_date', startOfYear)
         .order('order_date', { ascending: false });
 
       // Filter by is_active unless includeInactive is true
       if (!options?.includeInactive) {
         query = query.eq('is_active', true);
+      }
+
+      // Filter out completed statuses unless explicitly requested
+      if (!options?.includeCompleted) {
+        // Keep this conservative: only exclude clearly completed/closed statuses
+        query = query.not('status', 'in', '("Received","RECEIVED","Closed","CLOSED","Cancelled","CANCELLED")');
       }
 
       const { data: pos, error: fetchError } = await query.limit(500);
@@ -1709,7 +1723,7 @@ export function useSupabaseFinalePurchaseOrders(options?: { includeCompleted?: b
     } finally {
       setLoading(false);
     }
-  }, [options?.includeCompleted, options?.includeInactive]);
+  }, [options?.includeCompleted, options?.includeInactive, options?.year]);
 
   useEffect(() => {
     // Initial fetch

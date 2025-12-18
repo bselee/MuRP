@@ -464,8 +464,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         // Filter to POs created in the last 2 weeks
         return sorted.filter(po => {
             const poDate = new Date(po.createdAt || po.orderDate);
-            // Handle invalid dates - show them if we can't parse the date
-            if (isNaN(poDate.getTime())) return true;
+            // If we can't parse the date, hide in the default (last 2 weeks) view
+            // so unknown-date legacy records don't leak into the UI.
+            if (isNaN(poDate.getTime())) return false;
             return poDate >= twoWeeksAgo;
         });
     }, [purchaseOrders, showAllPOs, twoWeeksAgo, statusFilter]);
@@ -747,7 +748,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     onClick={() => setFinalePOSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                                     className="px-3 py-1.5 text-xs rounded bg-gray-800/50 border border-gray-700 text-gray-300 hover:bg-gray-700 transition-colors"
                                 >
-                                    {finalePOSortOrder === 'asc' ? 'A-Z ↑' : 'Z-A ↓'}
+                                    {finalePOSortOrder === 'asc' ? 'Oldest ↑' : 'Newest ↓'}
                                 </Button>
 
                                 {/* Dropship Filter Toggle */}
@@ -794,7 +795,18 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     return false;
                                 })
                                 .sort((a, b) => {
-                                    // Sort by order ID (A-Z or Z-A)
+                                    // Primary sort: order date (newest/oldest)
+                                    const aDate = new Date((a as any).orderDate ?? (a as any).order_date ?? 0).getTime();
+                                    const bDate = new Date((b as any).orderDate ?? (b as any).order_date ?? 0).getTime();
+
+                                    const aHasDate = Number.isFinite(aDate) && aDate > 0;
+                                    const bHasDate = Number.isFinite(bDate) && bDate > 0;
+
+                                    if (aHasDate && bHasDate) {
+                                        return finalePOSortOrder === 'asc' ? aDate - bDate : bDate - aDate;
+                                    }
+
+                                    // Fallback: order ID
                                     const aId = a.orderId || '';
                                     const bId = b.orderId || '';
                                     return finalePOSortOrder === 'asc' ? aId.localeCompare(bId) : bId.localeCompare(aId);

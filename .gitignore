@@ -28,3 +28,7 @@ dist-ssr
 # Playwright console test scripts
 scripts/playwright-console.js
 scripts/playwright-console.mjs
+
+# Playwright artifacts
+test-results/
+playwright-report/

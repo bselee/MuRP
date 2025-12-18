@@ -11,7 +11,7 @@
  * Or set up a Vercel cron job in vercel.json:
  *   "crons": [{
  *     "path": "/api/sync-finale",
- *     "schedule": "0 */4 * * *"  // Every 4 hours
+ *     "schedule": "0 *\/4 * * *"  // Every 4 hours
  *   }]
  */
 
