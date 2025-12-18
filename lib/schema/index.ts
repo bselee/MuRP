@@ -208,7 +208,15 @@ export const InventoryParsedSchema = z.object({
   sales30Days: z.number().default(0),
   sales60Days: z.number().default(0),
   sales90Days: z.number().default(0),
-  
+
+  // Consumption data (from Finale Internal Notes)
+  dailyConsumption: z.number().default(0),
+  consumption30Day: z.number().default(0),
+  consumption90Day: z.number().default(0),
+  avgBuildConsumption: z.number().nullable().default(null),
+  supplierLeadTimeDays: z.number().int().default(14),
+  lastReceivedAt: z.string().nullable().default(null),
+
   // Vendor info
   vendorId: z.string().default(''),
   vendorName: z.string().default(''),
@@ -269,7 +277,15 @@ export const InventoryDatabaseSchema = z.object({
   data_source: z.string().optional(),
   last_sync_at: z.string().optional(),
   sync_status: z.string().optional(),
-  
+
+  // Consumption fields (from migration 099 - Finale Internal Notes)
+  daily_consumption: z.number().optional(),
+  consumption_30day: z.number().optional(),
+  consumption_90day: z.number().optional(),
+  avg_build_consumption: z.number().nullable().optional(),
+  supplier_lead_time_days: z.number().optional(),
+  last_received_at: z.string().nullable().optional(),
+
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
