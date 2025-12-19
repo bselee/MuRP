@@ -958,26 +958,26 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     {/* Card overlay effect */}
                     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]" />
 
-                    <div className="relative p-4 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70 border-b border-white/5">
-                        <div className="pointer-events-none absolute inset-x-10 top-0 h-2 opacity-70 blur-2xl bg-white/20" />
+                    <div className={`relative p-4 border-b ${isDark ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70 border-white/5' : 'bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90 border-amber-900/15'}`}>
+                        <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-amber-200/60'}`} />
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                                <h2 className="text-xl font-semibold text-amber-400">Internal Purchase Orders</h2>
-                                <span className="px-3 py-1 rounded-full text-sm bg-slate-800/50 text-gray-300 border border-slate-700 font-medium">
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Internal Purchase Orders</h2>
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDark ? 'bg-slate-800/50 text-gray-300 border border-slate-700' : 'bg-amber-100 text-amber-800 border border-amber-300'}`}>
                                     {filteredPOCount} total
                                     {totalPOCount !== filteredPOCount && (
-                                        <span className="text-gray-500 ml-1">of {totalPOCount}</span>
+                                        <span className={isDark ? 'text-gray-500 ml-1' : 'text-amber-600 ml-1'}>of {totalPOCount}</span>
                                     )}
                                 </span>
                             </div>
                             <div className="flex items-center gap-3 flex-wrap">
                                 {/* Date Range Filter */}
-                                <div className="flex items-center gap-1 bg-slate-950/50 rounded-lg p-1 border border-slate-800">
+                                <div className={`flex items-center gap-1 rounded-lg p-1 border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-white/80 border-amber-200'}`}>
                                     <Button
                                         onClick={() => setDateFilter('all')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === 'all'
                                             ? 'bg-accent-500 text-white'
-                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
                                             }`}
                                     >
                                         All Time
@@ -986,7 +986,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         onClick={() => setDateFilter('30days')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === '30days'
                                             ? 'bg-blue-500 text-white'
-                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
                                             }`}
                                     >
                                         30 Days
@@ -995,7 +995,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         onClick={() => setDateFilter('90days')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === '90days'
                                             ? 'bg-purple-500 text-white'
-                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
                                             }`}
                                     >
                                         90 Days
@@ -1004,21 +1004,21 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         onClick={() => setDateFilter('12months')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === '12months'
                                             ? 'bg-green-500 text-white'
-                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
                                             }`}
                                     >
                                         12 Months
                                     </Button>
                                 </div>
 
-                                <div className="h-6 w-px bg-slate-700 mx-1" />
+                                <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-700' : 'bg-amber-200'}`} />
 
-                                <div className="flex items-center gap-1 bg-slate-950/50 rounded-lg p-1 border border-slate-800">
+                                <div className={`flex items-center gap-1 rounded-lg p-1 border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-white/80 border-amber-200'}`}>
                                     <Button
                                         onClick={() => setViewMode('list')}
                                         className={`p-1.5 rounded transition-colors ${viewMode === 'list'
-                                            ? 'bg-slate-700 text-white'
-                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            ? isDark ? 'bg-slate-700 text-white' : 'bg-amber-200 text-amber-900'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
                                             }`}
                                         title="List View"
                                     >
@@ -1027,8 +1027,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setViewMode('card')}
                                         className={`p-1.5 rounded transition-colors ${viewMode === 'card'
-                                            ? 'bg-slate-700 text-white'
-                                            : 'text-gray-400 hover:text-white hover:bg-slate-800'
+                                            ? isDark ? 'bg-slate-700 text-white' : 'bg-amber-200 text-amber-900'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
                                             }`}
                                         title="Card View"
                                     >
@@ -1090,24 +1090,24 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 )}
                             </div>
                         ) : viewMode === 'list' ? (
-                            <table className="min-w-full divide-y divide-slate-800">
-                                <thead className="bg-slate-950/50 sticky top-0 z-10">
+                            <table className={`min-w-full divide-y ${isDark ? 'divide-slate-800' : 'divide-amber-200'}`}>
+                                <thead className={`sticky top-0 z-10 ${isDark ? 'bg-slate-950/50' : 'bg-amber-50/90'}`}>
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">PO Number</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Vendor</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date Created</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Expected Date</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Tracking</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Total</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>PO Number</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Vendor</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Status</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Date Created</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Expected Date</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Tracking</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Total</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-slate-950/30 divide-y divide-slate-800/50">
+                                <tbody className={`divide-y ${isDark ? 'bg-slate-950/30 divide-slate-800/50' : 'bg-white/80 divide-amber-100'}`}>
                                     {sortedPurchaseOrders.map((po) => (
-                                        <tr key={po.id} className="hover:bg-slate-900/50 transition-colors duration-200 cursor-pointer" onClick={() => handleViewPODetail(po)}>
-                                            <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-amber-400">{po.orderId || po.id}</td>
-                                            <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
+                                        <tr key={po.id} className={`transition-colors duration-200 cursor-pointer ${isDark ? 'hover:bg-slate-900/50' : 'hover:bg-amber-50'}`} onClick={() => handleViewPODetail(po)}>
+                                            <td className={`px-6 py-3 whitespace-nowrap text-sm font-medium ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>{po.orderId || po.id}</td>
+                                            <td className={`px-6 py-1 whitespace-nowrap text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                 <div className="flex items-center gap-2">
                                                     <span>{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</span>
                                                     {po.followUpCount && po.followUpCount > 0 && (
@@ -1122,9 +1122,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     {formatStatusText(po.status)}
                                                 </StatusBadge>
                                             </td>
-                                            <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</td>
-                                            <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-400">{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : 'N/A'}</td>
-                                            <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
+                                            <td className={`px-6 py-1 whitespace-nowrap text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</td>
+                                            <td className={`px-6 py-1 whitespace-nowrap text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : 'N/A'}</td>
+                                            <td className={`px-6 py-1 whitespace-nowrap text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                 {po.trackingNumber ? (
                                                     <div className="flex flex-col">
                                                         <span className="font-mono text-sm">{po.trackingNumber}</span>
@@ -1149,7 +1149,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     <span className="text-xs text-gray-500">No tracking</span>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-1 whitespace-nowrap text-sm text-white font-semibold">${formatPoTotal(po)}</td>
+                                            <td className={`px-6 py-1 whitespace-nowrap text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>${formatPoTotal(po)}</td>
                                             <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2" onClick={(e) => e.stopPropagation()}>
                                                 {canManagePOs && (
                                                     <Button
@@ -1206,14 +1206,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         <div className="flex items-start justify-between">
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <h3 className="text-lg font-mono font-semibold text-amber-400">{po.orderId || po.id}</h3>
+                                                    <h3 className={`text-lg font-mono font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>{po.orderId || po.id}</h3>
                                                     {po.followUpCount && po.followUpCount > 0 && (
                                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/20 text-sky-200 border border-sky-500/40">
                                                             FU {po.followUpCount}
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="text-sm text-gray-300 font-medium">
+                                                <div className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                     {vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}
                                                 </div>
                                             </div>
@@ -1224,52 +1224,52 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                                         <div className="grid grid-cols-2 gap-2 text-sm">
                                             <div>
-                                                <div className="text-xs text-gray-500 uppercase">Created</div>
-                                                <div className="text-gray-300">{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</div>
+                                                <div className={`text-xs uppercase ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Created</div>
+                                                <div className={isDark ? 'text-gray-300' : 'text-gray-700'}>{new Date(po.orderDate || po.createdAt).toLocaleDateString()}</div>
                                             </div>
                                             <div>
-                                                <div className="text-xs text-gray-500 uppercase">Expected</div>
-                                                <div className="text-gray-300">{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : '—'}</div>
+                                                <div className={`text-xs uppercase ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Expected</div>
+                                                <div className={isDark ? 'text-gray-300' : 'text-gray-700'}>{po.estimatedReceiveDate ? new Date(po.estimatedReceiveDate).toLocaleDateString() : '—'}</div>
                                             </div>
                                         </div>
 
-                                        <div className="pt-3 border-t border-gray-700/50 flex items-center justify-between">
+                                        <div className={`pt-3 border-t flex items-center justify-between ${isDark ? 'border-gray-700/50' : 'border-amber-200'}`}>
                                             <div>
-                                                <div className="text-xs text-gray-500 uppercase">Total</div>
-                                                <div className="text-lg font-bold text-white">${formatPoTotal(po)}</div>
+                                                <div className={`text-xs uppercase ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Total</div>
+                                                <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>${formatPoTotal(po)}</div>
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-xs text-gray-500 uppercase">Items</div>
-                                                <div className="text-gray-300">{po.items?.length || 0} lines</div>
+                                                <div className={`text-xs uppercase ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Items</div>
+                                                <div className={isDark ? 'text-gray-300' : 'text-gray-700'}>{po.items?.length || 0} lines</div>
                                             </div>
                                         </div>
 
                                         {po.trackingNumber && (
-                                            <div className="bg-gray-800/50 rounded p-2 text-xs">
-                                                <div className="flex justify-between items-center text-gray-400 mb-1">
+                                            <div className={`rounded p-2 text-xs ${isDark ? 'bg-gray-800/50' : 'bg-amber-50 border border-amber-200'}`}>
+                                                <div className={`flex justify-between items-center mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                                                     <span>TRACKING</span>
                                                     <span>{po.trackingCarrier}</span>
                                                 </div>
-                                                <div className="font-mono text-gray-200 truncate">{po.trackingNumber}</div>
+                                                <div className={`font-mono truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{po.trackingNumber}</div>
                                                 {po.trackingStatus && (
                                                     <div className="mt-1 text-accent-300">{formatStatusText(po.trackingStatus)}</div>
                                                 )}
                                             </div>
                                         )}
 
-                                        <div className="flex items-center justify-end gap-1 pt-2 border-t border-gray-700/50" onClick={(e) => e.stopPropagation()}>
+                                        <div className={`flex items-center justify-end gap-1 pt-2 border-t ${isDark ? 'border-gray-700/50' : 'border-amber-200'}`} onClick={(e) => e.stopPropagation()}>
                                             {canManagePOs && (
-                                                <Button onClick={() => handleEditTracking(po)} className="p-2 text-accent-300 hover:bg-slate-800 rounded" title="Update Tracking"><TruckIcon className="w-4 h-4" /></Button>
+                                                <Button onClick={() => handleEditTracking(po)} className={`p-2 text-accent-300 rounded ${isDark ? 'hover:bg-slate-800' : 'hover:bg-amber-100'}`} title="Update Tracking"><TruckIcon className="w-4 h-4" /></Button>
                                             )}
                                             {po.trackingNumber && (
-                                                <Button onClick={() => handleOpenTracking(po)} className="p-2 text-green-300 hover:bg-slate-800 rounded" title="Track"><TruckIcon className="w-4 h-4" /></Button>
+                                                <Button onClick={() => handleOpenTracking(po)} className={`p-2 text-green-300 rounded ${isDark ? 'hover:bg-slate-800' : 'hover:bg-amber-100'}`} title="Track"><TruckIcon className="w-4 h-4" /></Button>
                                             )}
                                             {canManagePOs && ['shipped', 'in_transit', 'out_for_delivery', 'delivered'].includes(po.trackingStatus || '') && (
-                                                <Button onClick={() => handleReceivePO(po)} className="p-2 text-emerald-400 hover:bg-slate-800 rounded" title="Receive"><CheckCircleIcon className="w-4 h-4" /></Button>
+                                                <Button onClick={() => handleReceivePO(po)} className={`p-2 text-emerald-400 rounded ${isDark ? 'hover:bg-slate-800' : 'hover:bg-amber-100'}`} title="Receive"><CheckCircleIcon className="w-4 h-4" /></Button>
                                             )}
-                                            <Button onClick={() => handleDownloadPdf(po)} className="p-2 text-gray-400 hover:bg-slate-800 rounded" title="PDF"><FileTextIcon className="w-4 h-4" /></Button>
-                                            <Button onClick={() => handleSendEmailClick(po)} className="p-2 text-gray-400 hover:bg-slate-800 rounded" title="Email"><MailIcon className="w-4 h-4" /></Button>
-                                            <Button onClick={() => handleOpenComm(po)} className="p-2 text-gray-400 hover:bg-slate-800 rounded" title="Thread"><DocumentTextIcon className="w-4 h-4" /></Button>
+                                            <Button onClick={() => handleDownloadPdf(po)} className={`p-2 rounded ${isDark ? 'text-gray-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-amber-100'}`} title="PDF"><FileTextIcon className="w-4 h-4" /></Button>
+                                            <Button onClick={() => handleSendEmailClick(po)} className={`p-2 rounded ${isDark ? 'text-gray-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-amber-100'}`} title="Email"><MailIcon className="w-4 h-4" /></Button>
+                                            <Button onClick={() => handleOpenComm(po)} className={`p-2 rounded ${isDark ? 'text-gray-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-amber-100'}`} title="Thread"><DocumentTextIcon className="w-4 h-4" /></Button>
                                         </div>
                                     </div>
                                 ))}
