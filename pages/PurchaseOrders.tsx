@@ -26,6 +26,7 @@ import EmailComposerModal from '../components/EmailComposerModal';
 import GeneratePoModal from '../components/GeneratePoModal';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
 import PoCommunicationModal from '../components/PoCommunicationModal';
+import PODetailModal from '../components/PODetailModal';
 import ReorderQueueDashboard, { ReorderQueueVendorGroup } from '../components/ReorderQueueDashboard';
 import DraftPOReviewSection from '../components/DraftPOReviewSection';
 import POTrackingDashboard from '../components/POTrackingDashboard';
@@ -104,6 +105,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [selectedPoForTracking, setSelectedPoForTracking] = useState<PurchaseOrder | null>(null);
     const [selectedPoForComm, setSelectedPoForComm] = useState<PurchaseOrder | null>(null);
     const [selectedPoForReceive, setSelectedPoForReceive] = useState<PurchaseOrder | null>(null);
+    const [selectedPoForDetail, setSelectedPoForDetail] = useState<PurchaseOrder | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [activePoDraft, setActivePoDraft] = useState<PoDraftConfig | undefined>(undefined);
     const [pendingPoDrafts, setPendingPoDrafts] = useState<PoDraftConfig[]>([]);
     const [modalSession, setModalSession] = useState(0);
@@ -406,6 +409,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
     const handleReceivePO = (po: PurchaseOrder) => {
         setSelectedPoForReceive(po);
+    };
+
+    const handleViewPODetail = (po: PurchaseOrder) => {
+        setSelectedPoForDetail(po);
+        setIsDetailModalOpen(true);
     };
 
     const handleReceiveSubmit = async (poId: string, receivedItems: any[], notes?: string) => {
@@ -1097,7 +1105,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 </thead>
                                 <tbody className="bg-slate-950/30 divide-y divide-slate-800/50">
                                     {sortedPurchaseOrders.map((po) => (
-                                        <tr key={po.id} className="hover:bg-slate-900/50 transition-colors duration-200">
+                                        <tr key={po.id} className="hover:bg-slate-900/50 transition-colors duration-200 cursor-pointer" onClick={() => handleViewPODetail(po)}>
                                             <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-amber-400">{po.orderId || po.id}</td>
                                             <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
                                                 <div className="flex items-center gap-2">
@@ -1142,7 +1150,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 )}
                                             </td>
                                             <td className="px-6 py-1 whitespace-nowrap text-sm text-white font-semibold">${formatPoTotal(po)}</td>
-                                            <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2">
+                                            <td className="px-6 py-1 whitespace-nowrap text-sm space-x-2" onClick={(e) => e.stopPropagation()}>
                                                 {canManagePOs && (
                                                     <Button
                                                         onClick={() => handleEditTracking(po)}
@@ -1189,7 +1197,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 {sortedPurchaseOrders.map((po) => (
                                     <div
                                         key={po.id}
-                                        className={`rounded-xl border p-4 space-y-4 transition-all duration-200 ${isDark
+                                        onClick={() => handleViewPODetail(po)}
+                                        className={`rounded-xl border p-4 space-y-4 transition-all duration-200 cursor-pointer ${isDark
                                             ? 'bg-slate-900/40 border-slate-800 hover:border-slate-700 hover:bg-slate-900/60'
                                             : 'bg-white border-gray-200 shadow-sm hover:shadow-md'
                                             }`}
@@ -1248,7 +1257,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             </div>
                                         )}
 
-                                        <div className="flex items-center justify-end gap-1 pt-2 border-t border-gray-700/50">
+                                        <div className="flex items-center justify-end gap-1 pt-2 border-t border-gray-700/50" onClick={(e) => e.stopPropagation()}>
                                             {canManagePOs && (
                                                 <Button onClick={() => handleEditTracking(po)} className="p-2 text-accent-300 hover:bg-slate-800 rounded" title="Update Tracking"><TruckIcon className="w-4 h-4" /></Button>
                                             )}
@@ -1356,6 +1365,39 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     />
                 )
             }
+
+            {/* PO Detail Modal - Opens when clicking on a PO row/card */}
+            <PODetailModal
+                isOpen={isDetailModalOpen}
+                onClose={() => {
+                    setIsDetailModalOpen(false);
+                    setSelectedPoForDetail(null);
+                }}
+                po={selectedPoForDetail}
+                vendors={vendors}
+                inventory={inventory}
+                onSendEmail={(poId) => {
+                    const po = purchaseOrders.find(p => p.id === poId);
+                    if (po) {
+                        setIsDetailModalOpen(false);
+                        handleSendEmailClick(po);
+                    }
+                }}
+                onUpdateTracking={(poId) => {
+                    const po = purchaseOrders.find(p => p.id === poId);
+                    if (po) {
+                        setIsDetailModalOpen(false);
+                        handleEditTracking(po);
+                    }
+                }}
+                onReceive={(poId) => {
+                    const po = purchaseOrders.find(p => p.id === poId);
+                    if (po) {
+                        setIsDetailModalOpen(false);
+                        handleReceivePO(po);
+                    }
+                }}
+            />
         </>
     );
 };
