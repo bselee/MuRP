@@ -1,0 +1,439 @@
+-- Migration 101: Email Tracking Agent
+--
+-- Seeds the Email Tracking Agent as a first-class agent in the system.
+-- This agent is responsible for monitoring email inboxes, correlating
+-- emails to POs, and feeding intelligence back to prevent stockouts.
+--
+-- Part of: Email Tracking Agent Expansion
+-- Goal: NEVER BE OUT OF STOCK
+
+-- ============================================================================
+-- SEED EMAIL TRACKING AGENT
+-- ============================================================================
+
+INSERT INTO agent_configs (
+    agent_identifier,
+    display_name,
+    description,
+    autonomy_level,
+    is_active,
+    trust_score,
+    parameters,
+    system_prompt
+) VALUES (
+    'email_tracking',
+    'Email Tracking Agent',
+    'Monitors purchasing email inbox(es), correlates vendor emails to POs, extracts tracking/ETA information, and feeds intelligence to inventory planning. The front-line agent in preventing stockouts.',
+    'assist',
+    true,
+    0.80,
+    jsonb_build_object(
+        -- Polling configuration
+        'poll_interval_minutes', 5,
+        'max_emails_per_poll', 50,
+
+        -- AI processing
+        'ai_enabled', true,
+        'ai_confidence_threshold', 0.65,
+        'ai_max_daily_cost_usd', 5.00,
+
+        -- Auto-update settings
+        'auto_update_po_status', true,
+        'auto_update_tracking', true,
+        'auto_correlate_vendors', true,
+
+        -- Alerting thresholds
+        'alert_on_delay_days', 2,
+        'alert_on_backorder', true,
+        'alert_on_price_change', true,
+        'escalate_critical_to_human', true,
+
+        -- Pester settings (follow-up on overdue POs)
+        'pester_enabled', true,
+        'pester_after_days', 3,
+        'pester_max_attempts', 3,
+        'pester_interval_days', 2,
+
+        -- Thread intelligence
+        'summarize_threads', true,
+        'extract_action_items', true,
+        'track_sentiment', true,
+
+        -- Integration flags
+        'feed_to_inventory_guardian', true,
+        'feed_to_vendor_watchdog', true,
+        'feed_to_air_traffic_controller', true
+    ),
+    'You are the Email Tracking Agent, the vigilant guardian of MuRP''s supply chain communication.
+
+YOUR MISSION: NEVER LET STOCK RUN OUT.
+
+You monitor all vendor email communications, extract critical intelligence, and ensure the right people know about issues BEFORE they cause stockouts.
+
+RESPONSIBILITIES:
+1. Monitor dedicated purchasing email inbox(es) in real-time
+2. Correlate incoming emails to Purchase Orders with high accuracy
+3. Extract tracking numbers, carriers, ETAs, and status updates
+4. Identify delays, backorders, and issues that threaten inventory
+5. Feed intelligence to other agents (Inventory Guardian, Vendor Watchdog)
+6. Escalate critical issues to humans when needed
+
+CORRELATION PRIORITY:
+1. Thread history (if email is part of existing PO thread)
+2. Subject line PO number match (PO-XXXX, PO #XXXX)
+3. Sender domain to vendor mapping
+4. AI inference from email content
+
+EXTRACTION TARGETS:
+- Tracking numbers and carriers
+- Expected delivery dates (ETAs)
+- Confirmation of orders
+- Backorder notices
+- Delay notifications
+- Price changes
+- Invoice and pricelist attachments
+
+URGENCY CLASSIFICATION:
+- CRITICAL: Stockout imminent, backorder on critical item
+- HIGH: Delay on low-stock item, price increase > 10%
+- NORMAL: Standard updates, confirmations
+- LOW: Thank you messages, general correspondence
+
+You operate in ASSIST mode: You can auto-update tracking info and PO status when confidence is high (>0.85), but escalate uncertain situations and critical decisions to humans.
+
+Remember: Every email could contain the signal that prevents a stockout. Be thorough, be accurate, be fast.'
+) ON CONFLICT (agent_identifier) DO UPDATE SET
+    display_name = EXCLUDED.display_name,
+    description = EXCLUDED.description,
+    parameters = EXCLUDED.parameters,
+    system_prompt = EXCLUDED.system_prompt,
+    updated_at = now();
+
+-- ============================================================================
+-- ADD EMAIL TRACKING SPECIFIC COLUMNS TO AGENT CONFIGS
+-- ============================================================================
+
+-- Add columns for email-specific agent metrics
+ALTER TABLE agent_configs
+ADD COLUMN IF NOT EXISTS emails_processed INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS emails_correlated INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS tracking_extractions INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS alerts_generated INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS stockouts_prevented INTEGER DEFAULT 0;
+
+COMMENT ON COLUMN agent_configs.emails_processed IS
+    'Number of emails processed by this agent (Email Tracking Agent)';
+COMMENT ON COLUMN agent_configs.emails_correlated IS
+    'Number of emails successfully correlated to POs';
+COMMENT ON COLUMN agent_configs.tracking_extractions IS
+    'Number of tracking numbers successfully extracted';
+COMMENT ON COLUMN agent_configs.alerts_generated IS
+    'Number of alerts generated by this agent';
+COMMENT ON COLUMN agent_configs.stockouts_prevented IS
+    'Estimated number of stockouts prevented by timely alerts';
+
+-- ============================================================================
+-- EMAIL TRACKING AGENT RUNS TABLE
+-- ============================================================================
+-- Track each execution of the email tracking agent
+
+CREATE TABLE IF NOT EXISTS email_tracking_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- Run identity
+    run_type TEXT NOT NULL CHECK (run_type IN ('poll', 'webhook', 'manual', 'scheduled')),
+    inbox_config_id UUID REFERENCES email_inbox_configs(id),
+
+    -- Timing
+    started_at TIMESTAMPTZ DEFAULT now(),
+    completed_at TIMESTAMPTZ,
+    duration_ms INTEGER,
+
+    -- Processing stats
+    emails_fetched INTEGER DEFAULT 0,
+    emails_processed INTEGER DEFAULT 0,
+    emails_skipped INTEGER DEFAULT 0,
+    emails_errored INTEGER DEFAULT 0,
+
+    -- Correlation stats
+    threads_created INTEGER DEFAULT 0,
+    threads_updated INTEGER DEFAULT 0,
+    pos_correlated INTEGER DEFAULT 0,
+    vendors_matched INTEGER DEFAULT 0,
+
+    -- Extraction stats
+    tracking_numbers_found INTEGER DEFAULT 0,
+    etas_extracted INTEGER DEFAULT 0,
+    invoices_detected INTEGER DEFAULT 0,
+    delays_detected INTEGER DEFAULT 0,
+    backorders_detected INTEGER DEFAULT 0,
+
+    -- AI usage
+    ai_calls_made INTEGER DEFAULT 0,
+    ai_tokens_used INTEGER DEFAULT 0,
+    ai_cost_usd DECIMAL(10,4) DEFAULT 0,
+
+    -- Alerts generated
+    alerts_critical INTEGER DEFAULT 0,
+    alerts_high INTEGER DEFAULT 0,
+    alerts_normal INTEGER DEFAULT 0,
+
+    -- Status
+    status TEXT DEFAULT 'running' CHECK (status IN ('running', 'completed', 'failed', 'partial')),
+    error_message TEXT,
+    error_details JSONB,
+
+    -- Metadata
+    gmail_history_id_start TEXT,
+    gmail_history_id_end TEXT,
+    run_metadata JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_tracking_runs_status ON email_tracking_runs(status, started_at);
+CREATE INDEX IF NOT EXISTS idx_email_tracking_runs_inbox ON email_tracking_runs(inbox_config_id, started_at);
+
+-- ============================================================================
+-- EMAIL TRACKING ALERTS TABLE
+-- ============================================================================
+-- Alerts generated by the email tracking agent
+
+CREATE TABLE IF NOT EXISTS email_tracking_alerts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    -- Source
+    thread_id UUID REFERENCES email_threads(id),
+    message_id TEXT,
+    po_id UUID REFERENCES purchase_orders(id),
+    vendor_id UUID REFERENCES vendors(id),
+    run_id UUID REFERENCES email_tracking_runs(id),
+
+    -- Alert details
+    alert_type TEXT NOT NULL CHECK (alert_type IN (
+        'delay_detected',
+        'backorder_notice',
+        'stockout_risk',
+        'eta_changed',
+        'tracking_exception',
+        'price_change',
+        'invoice_variance',
+        'response_required',
+        'vendor_non_responsive',
+        'critical_item_delayed'
+    )),
+    severity TEXT NOT NULL CHECK (severity IN ('critical', 'high', 'medium', 'low')),
+    title TEXT NOT NULL,
+    description TEXT,
+
+    -- Context
+    affected_skus TEXT[],
+    affected_items JSONB,                                  -- [{sku, name, qty, stock_days_remaining}]
+    original_eta DATE,
+    new_eta DATE,
+    days_impact INTEGER,                                   -- How many days delayed
+    stockout_risk_date DATE,                              -- When we'll run out if not resolved
+
+    -- Routing
+    routed_to_agent TEXT,                                  -- Which agent should handle
+    requires_human BOOLEAN DEFAULT false,
+    assigned_to UUID REFERENCES auth.users(id),
+
+    -- Resolution
+    status TEXT DEFAULT 'open' CHECK (status IN ('open', 'acknowledged', 'in_progress', 'resolved', 'dismissed')),
+    acknowledged_at TIMESTAMPTZ,
+    acknowledged_by UUID REFERENCES auth.users(id),
+    resolved_at TIMESTAMPTZ,
+    resolved_by UUID REFERENCES auth.users(id),
+    resolution_notes TEXT,
+    resolution_action TEXT,
+
+    -- Metadata
+    source_data JSONB,                                     -- Original extracted data that triggered alert
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_alerts_status ON email_tracking_alerts(status, severity);
+CREATE INDEX IF NOT EXISTS idx_email_alerts_po ON email_tracking_alerts(po_id) WHERE po_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_email_alerts_type ON email_tracking_alerts(alert_type, created_at);
+CREATE INDEX IF NOT EXISTS idx_email_alerts_open ON email_tracking_alerts(status, severity, created_at)
+    WHERE status = 'open';
+
+-- ============================================================================
+-- ROW LEVEL SECURITY
+-- ============================================================================
+
+ALTER TABLE email_tracking_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_tracking_alerts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated users to read email tracking runs" ON email_tracking_runs;
+DROP POLICY IF EXISTS "Allow authenticated users to manage email tracking runs" ON email_tracking_runs;
+DROP POLICY IF EXISTS "Allow authenticated users to read email tracking alerts" ON email_tracking_alerts;
+DROP POLICY IF EXISTS "Allow authenticated users to manage email tracking alerts" ON email_tracking_alerts;
+
+CREATE POLICY "Allow authenticated users to read email tracking runs"
+    ON email_tracking_runs FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Allow authenticated users to manage email tracking runs"
+    ON email_tracking_runs FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow authenticated users to read email tracking alerts"
+    ON email_tracking_alerts FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Allow authenticated users to manage email tracking alerts"
+    ON email_tracking_alerts FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- ============================================================================
+-- FUNCTIONS
+-- ============================================================================
+
+-- Function to create an email tracking alert
+CREATE OR REPLACE FUNCTION create_email_tracking_alert(
+    p_alert_type TEXT,
+    p_severity TEXT,
+    p_title TEXT,
+    p_description TEXT DEFAULT NULL,
+    p_thread_id UUID DEFAULT NULL,
+    p_po_id UUID DEFAULT NULL,
+    p_vendor_id UUID DEFAULT NULL,
+    p_affected_skus TEXT[] DEFAULT NULL,
+    p_original_eta DATE DEFAULT NULL,
+    p_new_eta DATE DEFAULT NULL,
+    p_stockout_risk_date DATE DEFAULT NULL,
+    p_requires_human BOOLEAN DEFAULT false,
+    p_route_to_agent TEXT DEFAULT NULL,
+    p_source_data JSONB DEFAULT NULL
+) RETURNS UUID AS $$
+DECLARE
+    v_alert_id UUID;
+    v_days_impact INTEGER;
+BEGIN
+    -- Calculate days impact if ETAs provided
+    IF p_original_eta IS NOT NULL AND p_new_eta IS NOT NULL THEN
+        v_days_impact := p_new_eta - p_original_eta;
+    END IF;
+
+    INSERT INTO email_tracking_alerts (
+        alert_type,
+        severity,
+        title,
+        description,
+        thread_id,
+        po_id,
+        vendor_id,
+        affected_skus,
+        original_eta,
+        new_eta,
+        days_impact,
+        stockout_risk_date,
+        requires_human,
+        routed_to_agent,
+        source_data
+    ) VALUES (
+        p_alert_type,
+        p_severity,
+        p_title,
+        p_description,
+        p_thread_id,
+        p_po_id,
+        p_vendor_id,
+        p_affected_skus,
+        p_original_eta,
+        p_new_eta,
+        v_days_impact,
+        p_stockout_risk_date,
+        p_requires_human,
+        p_route_to_agent,
+        p_source_data
+    )
+    RETURNING id INTO v_alert_id;
+
+    -- Update agent stats
+    UPDATE agent_configs
+    SET alerts_generated = COALESCE(alerts_generated, 0) + 1,
+        updated_at = now()
+    WHERE agent_identifier = 'email_tracking';
+
+    RETURN v_alert_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to get open alerts summary
+CREATE OR REPLACE FUNCTION get_email_alert_summary()
+RETURNS TABLE (
+    total_open INTEGER,
+    critical_count INTEGER,
+    high_count INTEGER,
+    medium_count INTEGER,
+    low_count INTEGER,
+    oldest_unacknowledged TIMESTAMPTZ,
+    top_alert_types JSONB
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        COUNT(*)::INTEGER as total_open,
+        COUNT(*) FILTER (WHERE severity = 'critical')::INTEGER as critical_count,
+        COUNT(*) FILTER (WHERE severity = 'high')::INTEGER as high_count,
+        COUNT(*) FILTER (WHERE severity = 'medium')::INTEGER as medium_count,
+        COUNT(*) FILTER (WHERE severity = 'low')::INTEGER as low_count,
+        MIN(created_at) FILTER (WHERE acknowledged_at IS NULL) as oldest_unacknowledged,
+        (SELECT jsonb_agg(jsonb_build_object('type', alert_type, 'count', cnt))
+         FROM (
+             SELECT alert_type, COUNT(*) as cnt
+             FROM email_tracking_alerts
+             WHERE status = 'open'
+             GROUP BY alert_type
+             ORDER BY cnt DESC
+             LIMIT 5
+         ) top_types
+        ) as top_alert_types
+    FROM email_tracking_alerts
+    WHERE status = 'open';
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- VIEW: Agent Dashboard Stats
+-- ============================================================================
+
+CREATE OR REPLACE VIEW email_tracking_agent_stats AS
+SELECT
+    ac.agent_identifier,
+    ac.display_name,
+    ac.is_active,
+    ac.trust_score,
+    ac.autonomy_level,
+    ac.emails_processed,
+    ac.emails_correlated,
+    ac.tracking_extractions,
+    ac.alerts_generated,
+    ac.stockouts_prevented,
+    CASE
+        WHEN ac.emails_processed > 0
+        THEN ROUND((ac.emails_correlated::DECIMAL / ac.emails_processed) * 100, 1)
+        ELSE 0
+    END as correlation_rate,
+    (SELECT COUNT(*) FROM email_inbox_configs WHERE is_active = true) as active_inboxes,
+    (SELECT COUNT(*) FROM email_threads WHERE is_resolved = false) as open_threads,
+    (SELECT COUNT(*) FROM email_tracking_alerts WHERE status = 'open') as open_alerts,
+    (SELECT COUNT(*) FROM email_tracking_alerts WHERE status = 'open' AND severity = 'critical') as critical_alerts,
+    (SELECT MAX(completed_at) FROM email_tracking_runs WHERE status = 'completed') as last_successful_run,
+    (SELECT AVG(duration_ms) FROM email_tracking_runs WHERE status = 'completed' AND started_at > now() - INTERVAL '24 hours') as avg_run_duration_ms
+FROM agent_configs ac
+WHERE ac.agent_identifier = 'email_tracking';
+
+-- ============================================================================
+-- COMMENTS
+-- ============================================================================
+
+COMMENT ON TABLE email_tracking_runs IS
+    'Audit log of Email Tracking Agent executions with processing statistics';
+
+COMMENT ON TABLE email_tracking_alerts IS
+    'Alerts generated by the Email Tracking Agent for human attention or agent routing';
+
+COMMENT ON FUNCTION create_email_tracking_alert IS
+    'Creates a new alert and updates agent statistics';
+
+COMMENT ON VIEW email_tracking_agent_stats IS
+    'Dashboard statistics for the Email Tracking Agent';
