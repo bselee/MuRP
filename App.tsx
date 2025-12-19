@@ -25,7 +25,8 @@ import ManualLabelScanner from './components/ManualLabelScanner';
 import QuickRequestDrawer from './components/QuickRequestDrawer';
 // Feature discovery popup removed - annoying and not needed
 // import FeatureSpotlightReminder from './components/FeatureSpotlightReminder';
-import OnboardingChecklist from './components/OnboardingChecklist';
+// OnboardingChecklist (Guided Launch) removed - feature disabled
+// import OnboardingChecklist from './components/OnboardingChecklist';
 import LoadingOverlay from './components/LoadingOverlay';
 import ProductPage from './pages/ProductPage';
 import { AgentCommandCenter } from './components/admin/AgentCommandCenter';
@@ -98,7 +99,6 @@ import type {
   RequisitionRequestOptions,
   QuickRequestDefaults,
   BomRevisionRequestOptions,
-  GuidedLaunchState,
   ArtworkShareEvent,
   CompanyEmailSettings,
 } from './types';
@@ -126,7 +126,7 @@ export type ToastInfo = {
   type: 'success' | 'error' | 'info';
 };
 
-const CHECKLIST_DISMISS_SNOOZE_MS = 6 * 60 * 60 * 1000; // 6 hours
+// CHECKLIST_DISMISS_SNOOZE_MS removed - Guided Launch feature disabled
 
 const AppShell: React.FC = () => {
   const { user: currentUser, loading: authLoading, signOut: authSignOut, refreshProfile } = useAuth();
@@ -188,8 +188,7 @@ const AppShell: React.FC = () => {
   const notificationsPrimedRef = useRef(false);
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
   const [quickRequestDefaults, setQuickRequestDefaults] = useState<QuickRequestDefaults | null>(null);
-  const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(false);
-  const [guidedLaunchState, setGuidedLaunchState] = useState<GuidedLaunchState | null>(null);
+  // Guided Launch feature removed
   const [isShipmentReviewModalOpen, setIsShipmentReviewModalOpen] = useState(false);
   const [shipmentReviewPoId, setShipmentReviewPoId] = useState<string | null>(null);
 
@@ -317,92 +316,8 @@ const AppShell: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (!currentUser?.guidedLaunchState) {
-      setGuidedLaunchState(null);
-      return;
-    }
-    setGuidedLaunchState(currentUser.guidedLaunchState);
-  }, [currentUser?.guidedLaunchState]);
-
-  const persistGuidedLaunchState = useCallback(
-    async (update: Partial<GuidedLaunchState>) => {
-      if (!currentUser?.id) return;
-
-      const next: GuidedLaunchState = {
-        completed: update.completed ?? guidedLaunchState?.completed ?? false,
-        snoozeUntil: update.snoozeUntil ?? guidedLaunchState?.snoozeUntil ?? null,
-        updatedAt: new Date().toISOString(),
-      };
-
-      setGuidedLaunchState(next);
-
-      if (isE2ETestMode) {
-        return;
-      }
-
-      try {
-        const metadata = {
-          ...(currentUser.metadata ?? {}),
-          guided_launch: next,
-        };
-
-        await supabase
-          .from('user_profiles')
-          .update({ metadata })
-          .eq('id', currentUser.id);
-      } catch (error) {
-        console.error('[App] Failed to persist guided launch state:', error);
-      }
-    },
-    [currentUser, guidedLaunchState, isE2ETestMode],
-  );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!currentUser?.id || !currentUser.onboardingComplete || isE2ETestMode) {
-      setShowOnboardingChecklist(false);
-      return;
-    }
-    if (!guidedLaunchState) {
-      setShowOnboardingChecklist(true);
-      return;
-    }
-    if (guidedLaunchState.completed) {
-      setShowOnboardingChecklist(false);
-      return;
-    }
-    const snoozeUntil = guidedLaunchState.snoozeUntil ? new Date(guidedLaunchState.snoozeUntil).getTime() : null;
-    if (snoozeUntil && snoozeUntil > Date.now()) {
-      setShowOnboardingChecklist(false);
-      return;
-    }
-    setShowOnboardingChecklist(true);
-  }, [currentUser, guidedLaunchState, isE2ETestMode]);
-
-  const handleChecklistComplete = useCallback(() => {
-    persistGuidedLaunchState({ completed: true, snoozeUntil: null });
-    setShowOnboardingChecklist(false);
-  }, [persistGuidedLaunchState]);
-
-  const handleChecklistSnooze = useCallback(
-    (durationMs: number) => {
-      persistGuidedLaunchState({
-        completed: false,
-        snoozeUntil: new Date(Date.now() + durationMs).toISOString(),
-      });
-      setShowOnboardingChecklist(false);
-    },
-    [persistGuidedLaunchState],
-  );
-
-  const handleChecklistDismiss = useCallback(() => {
-    persistGuidedLaunchState({
-      completed: false,
-      snoozeUntil: new Date(Date.now() + CHECKLIST_DISMISS_SNOOZE_MS).toISOString(),
-    });
-    setShowOnboardingChecklist(false);
-  }, [persistGuidedLaunchState]);
+  // Guided Launch feature removed - all state, callbacks, and effects related to guidedLaunchState
+  // and showOnboardingChecklist have been removed
 
   useEffect(() => {
     if (!currentUser) {
@@ -2069,18 +1984,7 @@ const AppShell: React.FC = () => {
         onSubmit={handleQuickRequestSubmit}
       />
 
-      {showOnboardingChecklist && currentUser && (
-        <OnboardingChecklist
-          user={currentUser}
-          onClose={handleChecklistDismiss}
-          onComplete={handleChecklistComplete}
-          onSnooze={handleChecklistSnooze}
-          navigateTo={(pageName) => {
-            navigateToPage(pageName as Page);
-            handleChecklistDismiss();
-          }}
-        />
-      )}
+      {/* OnboardingChecklist (Guided Launch) removed - feature disabled */}
 
       {/* Feature discovery popup removed - annoying and not needed */}
       {/* {!showOnboardingChecklist && (

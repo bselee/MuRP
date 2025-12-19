@@ -1115,11 +1115,7 @@ export interface BuildOrder {
     assignedUserId?: string; // Who is responsible for the build
 }
 
-export interface GuidedLaunchState {
-    completed?: boolean;
-    snoozeUntil?: string | null;
-    updatedAt?: string;
-}
+// GuidedLaunchState interface removed - feature disabled
 
 export interface User {
     id: string;
@@ -1129,7 +1125,7 @@ export interface User {
     department: 'Purchasing' | 'Operations' | 'MFG 1' | 'MFG 2' | 'Fulfillment' | 'SHP/RCV';
     onboardingComplete?: boolean;
     metadata?: Record<string, unknown> | null;
-    guidedLaunchState?: GuidedLaunchState | null;
+    // guidedLaunchState removed - feature disabled
 
     // User personalization
     avatar?: {
