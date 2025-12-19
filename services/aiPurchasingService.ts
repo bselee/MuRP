@@ -27,9 +27,6 @@
 
 import { callAI, type AIRequest, type AIResponse } from './aiProviderService';
 import { supabase } from '../lib/supabase/client';
-import {
-  logAgentAction,
-} from './classificationContextService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 Type Definitions
@@ -115,21 +112,9 @@ export async function detectInventoryAnomalies(): Promise<AnomalyDetectionResult
   const startTime = Date.now();
 
   try {
-    // Log agent action start
-    await logAgentAction(
-      'ai-purchasing',
-      null,
-      'anomaly_detection_started',
-      'Using stock_intelligence_items view for filtering',
-      null,
-      {}
-    );
-
-    // 1️⃣ Fetch inventory data from stock_intelligence_items view
-    // This view pre-filters: excludes dropship, consignment, made-to-order, discontinued
-    let items: any[] = [];
-    const { data: viewItems, error: viewError } = await supabase
-      .from('stock_intelligence_items')
+    // 1️⃣ Fetch active inventory data
+    const { data: rawItems, error } = await supabase
+      .from('inventory_items')
       .select(`
         sku,
         name,
@@ -137,66 +122,40 @@ export async function detectInventoryAnomalies(): Promise<AnomalyDetectionResult
         reorder_point,
         sales_last_30_days,
         sales_last_90_days,
-        daily_velocity,
+        sales_velocity_consolidated,
         vendor_id,
-        item_flow_type
+        category,
+        status
       `)
       .order('sales_last_30_days', { ascending: false })
-      .limit(500); // Analyze top 500 active items
+      .limit(1000);
 
-    if (!viewError && viewItems) {
-      items = viewItems;
-    } else {
-      // Fallback: If view doesn't exist, use basic filtering
-      console.warn('[AIPurchasing] stock_intelligence_items view not available, using fallback');
-      const { data: fallbackItems, error: fallbackError } = await supabase
-        .from('inventory_items')
-        .select(`
-          sku,
-          name,
-          description,
-          stock,
-          reorder_point,
-          sales_last_30_days,
-          sales_last_90_days,
-          sales_velocity_consolidated,
-          vendor_id
-        `)
-        .eq('status', 'active')
-        .or('is_dropship.is.null,is_dropship.eq.false')
-        .or('item_flow_type.is.null,item_flow_type.eq.standard')
-        .or('stock_intel_exclude.is.null,stock_intel_exclude.eq.false')
-        .order('sales_last_30_days', { ascending: false })
-        .limit(500);
+    if (error) throw error;
 
-      if (fallbackError) throw fallbackError;
-      items = fallbackItems || [];
-    }
+    // Filter out dropship/inactive items in memory
+    const items = (rawItems || []).filter(item => {
+      const category = (item.category || '').toLowerCase().trim();
+      if (['dropship', 'drop ship', 'ds', 'deprecating', 'deprecated', 'discontinued'].includes(category)) return false;
+      const name = (item.name || '').toLowerCase();
+      if (name.includes('dropship') || name.includes('drop ship')) return false;
+      const status = (item.status || 'active').toLowerCase().trim();
+      if (status !== 'active') return false;
+      return true;
+    }).slice(0, 500);
 
     // 2️⃣ Prepare summary data for AI
-    const inventorySummary = items?.map(item => ({
+    const inventorySummary = items.map(item => ({
       sku: item.sku,
       name: item.name,
       current_stock: item.stock || 0,
       reorder_point: item.reorder_point || 0,
       sales_30d: item.sales_last_30_days || 0,
       sales_90d: item.sales_last_90_days || 0,
-      velocity: item.daily_velocity || item.sales_velocity_consolidated || 0,
+      velocity: item.sales_velocity_consolidated || 0,
       days_of_stock: item.sales_last_30_days > 0
         ? Math.round((item.stock / (item.sales_last_30_days / 30)))
-        : 999,
-      flow_type: item.item_flow_type || 'standard'
-    })) || [];
-
-    // Log items being analyzed
-    await logAgentAction(
-      'ai-purchasing',
-      null,
-      'anomaly_detection_items_prepared',
-      null,
-      null,
-      { items_count: inventorySummary.length }
-    );
+        : 999
+    }));
 
     // 3️⃣ Call AI with Claude Haiku (cheap model for classification/detection)
     const response = await callAI({

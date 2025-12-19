@@ -63,53 +63,41 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
   const [stockoutRisks, setStockoutRisks] = useState<StockoutRisk[]>([]);
   const [vendorPerformances, setVendorPerformances] = useState<VendorPerformance[]>([]);
 
-  // Filter out items based on classification settings
-  // CRITICAL: Stock Intelligence respects per-item overrides and global rules
-  const filteredInventory = useMemo(
-    () => inventory.filter((item: any) => {
-      // PRIORITY 1: Per-item override takes highest precedence
-      if (item.stockIntelOverride === true || item.stock_intel_override === true) {
-        // When override is active, use the per-item exclude setting directly
-        const isExcluded = item.stockIntelExclude === true || item.stock_intel_exclude === true;
-        return !isExcluded;
-      }
+  // Filter out dropship/excluded items from Stock Intelligence
+  // Simple, robust filtering that won't break if columns don't exist
+  const filteredInventory = useMemo(() => {
+    if (!inventory || inventory.length === 0) {
+      console.log('[StockIntelligence] No inventory data received');
+      return [];
+    }
 
-      // PRIORITY 2: Check per-item manual exclusion
-      if (item.stockIntelExclude === true || item.stock_intel_exclude === true) {
-        return false;
-      }
+    console.log(`[StockIntelligence] Filtering ${inventory.length} items...`);
 
-      // PRIORITY 3: Check item flow type (dropship, consignment, made_to_order excluded)
-      const flowType = (item.itemFlowType || item.item_flow_type || 'standard').toLowerCase();
-      if (['dropship', 'consignment', 'made_to_order', 'discontinued'].includes(flowType)) {
-        return false;
-      }
-
-      // FILTER 4: Exclude dropship items (explicit flag - belt and suspenders)
+    const filtered = inventory.filter((item: any) => {
+      // Skip items explicitly marked as dropship
       if (item.isDropship === true) return false;
 
-      // FILTER 5: Exclude dropship items by category
+      // Skip items with dropship category
       const category = (item.category || '').toLowerCase().trim();
-      if (['dropship', 'drop ship', 'dropshipped', 'drop shipped', 'ds', 'drop-ship'].includes(category)) {
-        return false;
-      }
+      if (['dropship', 'drop ship', 'ds'].includes(category)) return false;
 
-      // FILTER 6: Exclude dropship items by name pattern
+      // Skip items with dropship in name
       const name = (item.name || '').toLowerCase();
-      if (name.includes('dropship') || name.includes('drop ship') || name.includes('drop-ship')) {
-        return false;
-      }
+      if (name.includes('dropship') || name.includes('drop ship')) return false;
 
-      // FILTER 7: Exclude inactive items
-      if (item.status && item.status.toLowerCase().trim() !== 'active') return false;
-
-      // FILTER 8: Exclude Deprecating/Deprecated category items
+      // Skip deprecated/discontinued categories
       if (['deprecating', 'deprecated', 'discontinued'].includes(category)) return false;
 
+      // Skip inactive items (but allow items with no status - treat as active)
+      const status = (item.status || 'active').toLowerCase().trim();
+      if (status !== 'active') return false;
+
       return true;
-    }),
-    [inventory],
-  );
+    });
+
+    console.log(`[StockIntelligence] After filtering: ${filtered.length} items (excluded ${inventory.length - filtered.length})`);
+    return filtered;
+  }, [inventory]);
 
   // Calculate stockout risks with trend analysis
   const calculateStockoutRisks = useMemo(() => {

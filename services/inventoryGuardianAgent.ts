@@ -21,14 +21,6 @@
  */
 
 import { supabase } from '../lib/supabase/client';
-import {
-  getItemClassification,
-  shouldIncludeInStockIntel,
-  shouldTriggerReorderAlerts,
-  logAgentAction,
-  getCriticalRules,
-  type ItemClassificationContext,
-} from './classificationContextService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 Types
@@ -102,16 +94,10 @@ export async function runInventoryHealthCheck(
   const alerts: StockLevelAlert[] = [];
 
   try {
-    // Get all items visible in Stock Intelligence (respects classification rules)
-    // Uses stock_intelligence_items view which pre-filters:
-    // - Dropship items (excluded)
-    // - Consignment items (excluded)
-    // - Made-to-order items (excluded)
-    // - Discontinued items (excluded)
-    // - Manually excluded items (excluded)
-    // - Items with stock_intel_override that are included
-    const { data: inventory, error } = await supabase
-      .from('stock_intelligence_items')  // USE VIEW - respects all classification rules
+    // Fetch active inventory items, then filter in-memory for dropship
+    // This approach is robust and doesn't depend on migrations being applied
+    const { data: rawInventory, error } = await supabase
+      .from('inventory_items')
       .select(`
         id,
         sku,
@@ -119,51 +105,44 @@ export async function runInventoryHealthCheck(
         name,
         available_quantity,
         quantity_on_hand,
+        stock,
         reorder_point,
         max_stock_level,
         unit_cost,
         cost,
         avg_daily_consumption,
         lead_time_days,
-        item_flow_type,
-        stock_intel_exclude,
-        is_dropship
+        category,
+        status,
+        custom_fields
       `)
-      .order('available_quantity', { ascending: true });
+      .order('stock', { ascending: true });
 
-    if (error) {
-      // Fallback: If view doesn't exist yet, use old query with basic filters
-      console.warn('[InventoryGuardian] stock_intelligence_items view not available, using fallback');
-      const { data: fallbackInventory, error: fallbackError } = await supabase
-        .from('inventory_items')
-        .select(`
-          id, sku, product_name, name, available_quantity, quantity_on_hand,
-          reorder_point, max_stock_level, unit_cost, cost, avg_daily_consumption, lead_time_days
-        `)
-        .eq('is_active', true)
-        .or('is_dropship.is.null,is_dropship.eq.false')
-        .or('item_flow_type.is.null,item_flow_type.eq.standard')
-        .or('stock_intel_exclude.is.null,stock_intel_exclude.eq.false');
+    if (error) throw error;
+    if (!rawInventory || rawInventory.length === 0) return getEmptySummary();
 
-      if (fallbackError) throw fallbackError;
-      if (!fallbackInventory) return getEmptySummary();
+    // Filter out dropship/excluded items in memory (robust - works without migrations)
+    const inventory = rawInventory.filter(item => {
+      // Check category for dropship
+      const category = (item.category || '').toLowerCase().trim();
+      if (['dropship', 'drop ship', 'ds', 'deprecating', 'deprecated', 'discontinued'].includes(category)) {
+        return false;
+      }
+      // Check name for dropship
+      const name = (item.name || '').toLowerCase();
+      if (name.includes('dropship') || name.includes('drop ship')) {
+        return false;
+      }
+      // Check status (allow null/undefined - treat as active)
+      const status = (item.status || 'active').toLowerCase().trim();
+      if (status !== 'active') return false;
 
-      // Process fallback inventory
-      return processInventoryForHealthCheck(fallbackInventory, cfg);
-    }
+      return true;
+    });
 
-    if (!inventory) return getEmptySummary();
+    if (inventory.length === 0) return getEmptySummary();
 
-    // Log agent action for SOP tracking
-    await logAgentAction(
-      'inventory-guardian',
-      null,
-      'health_check_started',
-      'Only processing items visible in Stock Intelligence',
-      null,
-      { items_to_process: inventory.length }
-    );
-
+    console.log(`[InventoryGuardian] Processing ${inventory.length} items (filtered from ${rawInventory.length})`);
     return processInventoryForHealthCheck(inventory, cfg);
   } catch (error) {
     console.error('[InventoryGuardian] Health check failed:', error);

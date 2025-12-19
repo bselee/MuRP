@@ -25,12 +25,6 @@ import {
   getProductReorderAnalytics,
   calculateOptimalOrderQuantity
 } from './reorderIntelligenceService';
-import {
-  getItemsClassification,
-  shouldTriggerReorderAlerts,
-  logAgentAction,
-  type ItemClassificationContext,
-} from './classificationContextService';
 
 export interface StockoutAlert {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
@@ -91,7 +85,6 @@ export interface PurchaseRecommendation {
 
 /**
  * Get all critical stockout alerts requiring immediate attention
- * IMPORTANT: Only processes items where shouldTriggerReorderAlerts is true
  */
 export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
   const alerts: StockoutAlert[] = [];
@@ -99,44 +92,7 @@ export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
   // Get all products with reorder status indicating issues
   const criticalProducts = await getReorderAnalytics(['OUT_OF_STOCK', 'CRITICAL', 'REORDER_NOW']);
 
-  // Log agent action start
-  await logAgentAction(
-    'stockout-prevention',
-    null,
-    'critical_alerts_scan_started',
-    'Only processing items that should trigger reorder alerts',
-    null,
-    { total_critical_products: criticalProducts.length }
-  );
-
-  // Get classification context for all critical products
-  const skus = criticalProducts.map(p => p.sku);
-  const classifications = await getItemsClassification(skus);
-
-  let skippedCount = 0;
-  let processedCount = 0;
-
   for (const product of criticalProducts) {
-    // Check classification - skip items that shouldn't trigger alerts
-    const context = classifications.get(product.sku);
-    if (!shouldTriggerReorderAlerts(context)) {
-      skippedCount++;
-      // Log why this item was skipped
-      if (context) {
-        await logAgentAction(
-          'stockout-prevention',
-          product.sku,
-          'skipped_item',
-          `Flow type ${context.flowType} does not trigger reorder alerts`,
-          null,
-          { flowType: context.flowType, reason: context.stockIntelExclusionReason }
-        );
-      }
-      continue;
-    }
-
-    processedCount++;
-
     const alert: StockoutAlert = {
       severity: product.reorder_status === 'OUT_OF_STOCK' ? 'CRITICAL' :
                 product.reorder_status === 'CRITICAL' ? 'HIGH' : 'MEDIUM',
@@ -150,11 +106,10 @@ export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
       recommended_order_qty: Math.ceil(calculateOptimalOrderQuantity(product)),
       estimated_cost: Math.ceil(calculateOptimalOrderQuantity(product)) * product.avg_unit_cost,
     };
-
     alerts.push(alert);
   }
 
-  // Check for consumption spikes (>50% increase in last 7 days vs 30-day avg)
+  // Check for consumption spikes
   const consumptionSpikes = await detectConsumptionSpikes();
   alerts.push(...consumptionSpikes);
 
@@ -162,18 +117,7 @@ export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
   const leadTimeAlerts = await detectLeadTimeVariances();
   alerts.push(...leadTimeAlerts);
 
-  // Log completion
-  await logAgentAction(
-    'stockout-prevention',
-    null,
-    'critical_alerts_scan_completed',
-    null,
-    null,
-    { processed: processedCount, skipped: skippedCount, alerts_generated: alerts.length }
-  );
-
   return alerts.sort((a, b) => {
-    // Sort by severity, then days until stockout
     const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2 };
     if (severityOrder[a.severity] !== severityOrder[b.severity]) {
       return severityOrder[a.severity] - severityOrder[b.severity];
@@ -321,35 +265,12 @@ export async function analyzeLeadTimeTrends(): Promise<LeadTimeIntelligence[]> {
 
 /**
  * Generate comprehensive purchase recommendations
- * IMPORTANT: Only generates recommendations for items that should trigger reorder alerts
  */
 export async function generatePurchaseRecommendations(): Promise<PurchaseRecommendation[]> {
   const recommendations: PurchaseRecommendation[] = [];
-
-  // Get critical and reorder_now products
   const products = await getReorderAnalytics(['OUT_OF_STOCK', 'CRITICAL', 'REORDER_NOW']);
 
-  // Get classification context for filtering
-  const skus = products.map(p => p.sku);
-  const classifications = await getItemsClassification(skus);
-
-  // Log start
-  await logAgentAction(
-    'stockout-prevention',
-    null,
-    'purchase_recommendations_started',
-    'Filtering products by classification',
-    null,
-    { total_products: products.length }
-  );
-
   for (const product of products) {
-    // Skip items that shouldn't trigger reorder alerts
-    const context = classifications.get(product.sku);
-    if (!shouldTriggerReorderAlerts(context)) {
-      continue;
-    }
-
     const urgency: PurchaseRecommendation['urgency'] =
       product.reorder_status === 'OUT_OF_STOCK' ? 'IMMEDIATE' :
       product.days_of_stock_remaining < 7 ? 'IMMEDIATE' :
@@ -357,8 +278,6 @@ export async function generatePurchaseRecommendations(): Promise<PurchaseRecomme
       'THIS_MONTH';
 
     const recommendedQty = Math.ceil(calculateOptimalOrderQuantity(product));
-
-    // Calculate order-by date (today + days remaining - lead time - 2 day buffer)
     const daysUntilOrderNeeded = Math.max(0,
       product.days_of_stock_remaining - product.avg_lead_time_days - 2
     );
@@ -366,22 +285,14 @@ export async function generatePurchaseRecommendations(): Promise<PurchaseRecomme
     orderByDate.setDate(orderByDate.getDate() + daysUntilOrderNeeded);
 
     const notes: string[] = [];
-
     if (product.reorder_status === 'OUT_OF_STOCK') {
       notes.push('⚠️ CURRENTLY OUT OF STOCK - Production may be blocked');
     }
-
     if (product.days_of_stock_remaining < product.avg_lead_time_days) {
       notes.push('⏰ Stock will run out before typical delivery');
     }
-
     if (product.daily_consumption_rate > product.consumed_last_30_days / 30 * 1.5) {
       notes.push('📈 Consumption rate increasing - consider ordering extra buffer');
-    }
-
-    // Add flow type context note if special order
-    if (context?.flowType === 'special_order') {
-      notes.push('📋 Special Order item - verify customer commitment before ordering');
     }
 
     recommendations.push({
@@ -397,16 +308,6 @@ export async function generatePurchaseRecommendations(): Promise<PurchaseRecomme
       notes,
     });
   }
-
-  // Log completion
-  await logAgentAction(
-    'stockout-prevention',
-    null,
-    'purchase_recommendations_completed',
-    null,
-    null,
-    { recommendations_generated: recommendations.length }
-  );
 
   return recommendations.sort((a, b) => {
     const urgencyOrder = { IMMEDIATE: 0, THIS_WEEK: 1, THIS_MONTH: 2 };
