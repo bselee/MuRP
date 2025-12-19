@@ -21,6 +21,14 @@
  */
 
 import { supabase } from '../lib/supabase/client';
+import {
+  getItemClassification,
+  shouldIncludeInStockIntel,
+  shouldTriggerReorderAlerts,
+  logAgentAction,
+  getCriticalRules,
+  type ItemClassificationContext,
+} from './classificationContextService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 Types
@@ -94,9 +102,16 @@ export async function runInventoryHealthCheck(
   const alerts: StockLevelAlert[] = [];
 
   try {
-    // Get all ACTIVE inventory items with their analytics
+    // Get all items visible in Stock Intelligence (respects classification rules)
+    // Uses stock_intelligence_items view which pre-filters:
+    // - Dropship items (excluded)
+    // - Consignment items (excluded)
+    // - Made-to-order items (excluded)
+    // - Discontinued items (excluded)
+    // - Manually excluded items (excluded)
+    // - Items with stock_intel_override that are included
     const { data: inventory, error } = await supabase
-      .from('inventory_items')
+      .from('stock_intelligence_items')  // USE VIEW - respects all classification rules
       .select(`
         id,
         sku,
@@ -109,121 +124,47 @@ export async function runInventoryHealthCheck(
         unit_cost,
         cost,
         avg_daily_consumption,
-        lead_time_days
+        lead_time_days,
+        item_flow_type,
+        stock_intel_exclude,
+        is_dropship
       `)
-      .eq('is_active', true)  // CRITICAL: Only fetch active items
       .order('available_quantity', { ascending: true });
 
-    if (error) throw error;
-    if (!inventory) return getEmptySummary();
+    if (error) {
+      // Fallback: If view doesn't exist yet, use old query with basic filters
+      console.warn('[InventoryGuardian] stock_intelligence_items view not available, using fallback');
+      const { data: fallbackInventory, error: fallbackError } = await supabase
+        .from('inventory_items')
+        .select(`
+          id, sku, product_name, name, available_quantity, quantity_on_hand,
+          reorder_point, max_stock_level, unit_cost, cost, avg_daily_consumption, lead_time_days
+        `)
+        .eq('is_active', true)
+        .or('is_dropship.is.null,is_dropship.eq.false')
+        .or('item_flow_type.is.null,item_flow_type.eq.standard')
+        .or('stock_intel_exclude.is.null,stock_intel_exclude.eq.false');
 
-    let healthyCount = 0;
-    let warningCount = 0;
-    let criticalCount = 0;
-    let outOfStockCount = 0;
-    let totalValue = 0;
-    let atRiskValue = 0;
+      if (fallbackError) throw fallbackError;
+      if (!fallbackInventory) return getEmptySummary();
 
-    for (const item of inventory) {
-      const stock = item.available_quantity || item.quantity_on_hand || 0;
-      const reorderPoint = item.reorder_point || 0;
-      const dailyConsumption = item.avg_daily_consumption || 0;
-      const leadTime = item.lead_time_days || 14;
-      const unitCost = item.unit_cost || item.cost || 0;
-      const productName = item.product_name || item.name || item.sku;
-
-      // Calculate days of stock
-      const daysOfStock = dailyConsumption > 0 
-        ? Math.floor(stock / dailyConsumption) 
-        : (stock > 0 ? 999 : 0);
-
-      // Calculate item value
-      const itemValue = stock * unitCost;
-      totalValue += itemValue;
-
-      // Determine status
-      if (stock === 0) {
-        outOfStockCount++;
-        atRiskValue += (reorderPoint * unitCost); // Value needed to reach reorder point
-        
-        alerts.push({
-          severity: 'CRITICAL',
-          sku: item.sku,
-          product_name: productName,
-          current_stock: stock,
-          reorder_point: reorderPoint,
-          days_of_stock: 0,
-          daily_consumption: dailyConsumption,
-          lead_time_days: leadTime,
-          message: `OUT OF STOCK: ${productName} (${item.sku})`,
-          recommended_action: 'Place emergency order immediately',
-          recommended_order_qty: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold),
-          estimated_cost: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold) * unitCost,
-          order_by_date: new Date(), // Order NOW
-        });
-      } else if (daysOfStock <= cfg.critical_days_threshold || stock <= reorderPoint) {
-        criticalCount++;
-        atRiskValue += itemValue;
-
-        const orderByDate = new Date();
-        orderByDate.setDate(orderByDate.getDate() + Math.max(0, daysOfStock - leadTime));
-
-        alerts.push({
-          severity: 'CRITICAL',
-          sku: item.sku,
-          product_name: productName,
-          current_stock: stock,
-          reorder_point: reorderPoint,
-          days_of_stock: daysOfStock,
-          daily_consumption: dailyConsumption,
-          lead_time_days: leadTime,
-          message: `CRITICAL: ${productName} has only ${daysOfStock} days of stock (${stock} units)`,
-          recommended_action: daysOfStock < leadTime 
-            ? 'Place emergency order - will stockout before delivery'
-            : 'Order now to prevent stockout',
-          recommended_order_qty: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold),
-          estimated_cost: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold) * unitCost,
-          order_by_date: orderByDate,
-        });
-      } else if (daysOfStock <= leadTime * 1.5) {
-        warningCount++;
-
-        const orderByDate = new Date();
-        orderByDate.setDate(orderByDate.getDate() + Math.max(0, daysOfStock - leadTime));
-
-        alerts.push({
-          severity: 'WARNING',
-          sku: item.sku,
-          product_name: productName,
-          current_stock: stock,
-          reorder_point: reorderPoint,
-          days_of_stock: daysOfStock,
-          daily_consumption: dailyConsumption,
-          lead_time_days: leadTime,
-          message: `WARNING: ${productName} approaching reorder point (${daysOfStock} days remaining)`,
-          recommended_action: 'Plan reorder within the week',
-          recommended_order_qty: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold),
-          estimated_cost: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold) * unitCost,
-          order_by_date: orderByDate,
-        });
-      } else {
-        healthyCount++;
-      }
+      // Process fallback inventory
+      return processInventoryForHealthCheck(fallbackInventory, cfg);
     }
 
-    return {
-      total_skus: inventory.length,
-      healthy_skus: healthyCount,
-      warning_skus: warningCount,
-      critical_skus: criticalCount,
-      out_of_stock_skus: outOfStockCount,
-      total_inventory_value: totalValue,
-      at_risk_value: atRiskValue,
-      alerts: alerts.sort((a, b) => {
-        const severityOrder = { CRITICAL: 0, WARNING: 1, INFO: 2 };
-        return severityOrder[a.severity] - severityOrder[b.severity];
-      }),
-    };
+    if (!inventory) return getEmptySummary();
+
+    // Log agent action for SOP tracking
+    await logAgentAction(
+      'inventory-guardian',
+      null,
+      'health_check_started',
+      'Only processing items visible in Stock Intelligence',
+      null,
+      { items_to_process: inventory.length }
+    );
+
+    return processInventoryForHealthCheck(inventory, cfg);
   } catch (error) {
     console.error('[InventoryGuardian] Health check failed:', error);
     return getEmptySummary();
@@ -435,6 +376,124 @@ export async function runInventoryGuardianAgent(
 // ═══════════════════════════════════════════════════════════════════════════
 // 🛠️ Helper Functions
 // ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Process inventory items and generate health summary with alerts
+ * Extracted to avoid code duplication between view and fallback queries
+ */
+function processInventoryForHealthCheck(
+  inventory: any[],
+  cfg: InventoryGuardianConfig
+): StockHealthSummary {
+  const alerts: StockLevelAlert[] = [];
+  let healthyCount = 0;
+  let warningCount = 0;
+  let criticalCount = 0;
+  let outOfStockCount = 0;
+  let totalValue = 0;
+  let atRiskValue = 0;
+
+  for (const item of inventory) {
+    const stock = item.available_quantity || item.quantity_on_hand || 0;
+    const reorderPoint = item.reorder_point || 0;
+    const dailyConsumption = item.avg_daily_consumption || 0;
+    const leadTime = item.lead_time_days || 14;
+    const unitCost = item.unit_cost || item.cost || 0;
+    const productName = item.product_name || item.name || item.sku;
+
+    // Calculate days of stock
+    const daysOfStock = dailyConsumption > 0
+      ? Math.floor(stock / dailyConsumption)
+      : (stock > 0 ? 999 : 0);
+
+    // Calculate item value
+    const itemValue = stock * unitCost;
+    totalValue += itemValue;
+
+    // Determine status
+    if (stock === 0) {
+      outOfStockCount++;
+      atRiskValue += (reorderPoint * unitCost); // Value needed to reach reorder point
+
+      alerts.push({
+        severity: 'CRITICAL',
+        sku: item.sku,
+        product_name: productName,
+        current_stock: stock,
+        reorder_point: reorderPoint,
+        days_of_stock: 0,
+        daily_consumption: dailyConsumption,
+        lead_time_days: leadTime,
+        message: `OUT OF STOCK: ${productName} (${item.sku})`,
+        recommended_action: 'Place emergency order immediately',
+        recommended_order_qty: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold),
+        estimated_cost: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold) * unitCost,
+        order_by_date: new Date(), // Order NOW
+      });
+    } else if (daysOfStock <= cfg.critical_days_threshold || stock <= reorderPoint) {
+      criticalCount++;
+      atRiskValue += itemValue;
+
+      const orderByDate = new Date();
+      orderByDate.setDate(orderByDate.getDate() + Math.max(0, daysOfStock - leadTime));
+
+      alerts.push({
+        severity: 'CRITICAL',
+        sku: item.sku,
+        product_name: productName,
+        current_stock: stock,
+        reorder_point: reorderPoint,
+        days_of_stock: daysOfStock,
+        daily_consumption: dailyConsumption,
+        lead_time_days: leadTime,
+        message: `CRITICAL: ${productName} has only ${daysOfStock} days of stock (${stock} units)`,
+        recommended_action: daysOfStock < leadTime
+          ? 'Place emergency order - will stockout before delivery'
+          : 'Order now to prevent stockout',
+        recommended_order_qty: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold),
+        estimated_cost: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold) * unitCost,
+        order_by_date: orderByDate,
+      });
+    } else if (daysOfStock <= leadTime * 1.5) {
+      warningCount++;
+
+      const orderByDate = new Date();
+      orderByDate.setDate(orderByDate.getDate() + Math.max(0, daysOfStock - leadTime));
+
+      alerts.push({
+        severity: 'WARNING',
+        sku: item.sku,
+        product_name: productName,
+        current_stock: stock,
+        reorder_point: reorderPoint,
+        days_of_stock: daysOfStock,
+        daily_consumption: dailyConsumption,
+        lead_time_days: leadTime,
+        message: `WARNING: ${productName} approaching reorder point (${daysOfStock} days remaining)`,
+        recommended_action: 'Plan reorder within the week',
+        recommended_order_qty: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold),
+        estimated_cost: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold) * unitCost,
+        order_by_date: orderByDate,
+      });
+    } else {
+      healthyCount++;
+    }
+  }
+
+  return {
+    total_skus: inventory.length,
+    healthy_skus: healthyCount,
+    warning_skus: warningCount,
+    critical_skus: criticalCount,
+    out_of_stock_skus: outOfStockCount,
+    total_inventory_value: totalValue,
+    at_risk_value: atRiskValue,
+    alerts: alerts.sort((a, b) => {
+      const severityOrder = { CRITICAL: 0, WARNING: 1, INFO: 2 };
+      return severityOrder[a.severity] - severityOrder[b.severity];
+    }),
+  };
+}
 
 function calculateOrderQty(
   reorderPoint: number,

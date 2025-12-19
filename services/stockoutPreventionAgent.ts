@@ -1,7 +1,7 @@
 /**
  * Stockout Prevention Agent
  * AI-driven proactive monitoring to prevent stockouts and production blocking
- * 
+ *
  * Key Responsibilities:
  * - Monitor critical stock levels across all SKUs
  * - Identify BOM-blocking scenarios (missing components for builds)
@@ -9,14 +9,28 @@
  * - Predict stockouts based on consumption velocity changes
  * - Generate proactive purchase recommendations
  * - Alert on vendor performance issues affecting supply
+ *
+ * IMPORTANT: This agent respects item classification context.
+ * - Dropship items: NOT processed (have separate vendor workflow)
+ * - Consignment items: NOT processed (vendor manages stock)
+ * - Made-to-order items: NOT processed (no inventory to reorder)
+ * - Discontinued items: NOT processed (no reorders)
+ * - Standard items: PROCESSED (normal reorder alerts)
+ * - Special order items: Processed only if shouldTriggerReorderAlerts is true
  */
 
 import { supabase } from '@/lib/supabase/client';
-import { 
-  getReorderAnalytics, 
+import {
+  getReorderAnalytics,
   getProductReorderAnalytics,
-  calculateOptimalOrderQuantity 
+  calculateOptimalOrderQuantity
 } from './reorderIntelligenceService';
+import {
+  getItemsClassification,
+  shouldTriggerReorderAlerts,
+  logAgentAction,
+  type ItemClassificationContext,
+} from './classificationContextService';
 
 export interface StockoutAlert {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
@@ -77,6 +91,7 @@ export interface PurchaseRecommendation {
 
 /**
  * Get all critical stockout alerts requiring immediate attention
+ * IMPORTANT: Only processes items where shouldTriggerReorderAlerts is true
  */
 export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
   const alerts: StockoutAlert[] = [];
@@ -84,9 +99,46 @@ export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
   // Get all products with reorder status indicating issues
   const criticalProducts = await getReorderAnalytics(['OUT_OF_STOCK', 'CRITICAL', 'REORDER_NOW']);
 
+  // Log agent action start
+  await logAgentAction(
+    'stockout-prevention',
+    null,
+    'critical_alerts_scan_started',
+    'Only processing items that should trigger reorder alerts',
+    null,
+    { total_critical_products: criticalProducts.length }
+  );
+
+  // Get classification context for all critical products
+  const skus = criticalProducts.map(p => p.sku);
+  const classifications = await getItemsClassification(skus);
+
+  let skippedCount = 0;
+  let processedCount = 0;
+
   for (const product of criticalProducts) {
+    // Check classification - skip items that shouldn't trigger alerts
+    const context = classifications.get(product.sku);
+    if (!shouldTriggerReorderAlerts(context)) {
+      skippedCount++;
+      // Log why this item was skipped
+      if (context) {
+        await logAgentAction(
+          'stockout-prevention',
+          product.sku,
+          'skipped_item',
+          `Flow type ${context.flowType} does not trigger reorder alerts`,
+          null,
+          { flowType: context.flowType, reason: context.stockIntelExclusionReason }
+        );
+      }
+      continue;
+    }
+
+    processedCount++;
+
     const alert: StockoutAlert = {
-      severity: product.reorder_status === 'OUT_OF_STOCK' ? 'CRITICAL' : 
+      severity: product.reorder_status === 'OUT_OF_STOCK' ? 'CRITICAL' :
                 product.reorder_status === 'CRITICAL' ? 'HIGH' : 'MEDIUM',
       sku: product.sku,
       product_name: product.product_name,
@@ -109,6 +161,16 @@ export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
   // Check for lead time variances
   const leadTimeAlerts = await detectLeadTimeVariances();
   alerts.push(...leadTimeAlerts);
+
+  // Log completion
+  await logAgentAction(
+    'stockout-prevention',
+    null,
+    'critical_alerts_scan_completed',
+    null,
+    null,
+    { processed: processedCount, skipped: skippedCount, alerts_generated: alerts.length }
+  );
 
   return alerts.sort((a, b) => {
     // Sort by severity, then days until stockout
@@ -259,6 +321,7 @@ export async function analyzeLeadTimeTrends(): Promise<LeadTimeIntelligence[]> {
 
 /**
  * Generate comprehensive purchase recommendations
+ * IMPORTANT: Only generates recommendations for items that should trigger reorder alerts
  */
 export async function generatePurchaseRecommendations(): Promise<PurchaseRecommendation[]> {
   const recommendations: PurchaseRecommendation[] = [];
@@ -266,8 +329,28 @@ export async function generatePurchaseRecommendations(): Promise<PurchaseRecomme
   // Get critical and reorder_now products
   const products = await getReorderAnalytics(['OUT_OF_STOCK', 'CRITICAL', 'REORDER_NOW']);
 
+  // Get classification context for filtering
+  const skus = products.map(p => p.sku);
+  const classifications = await getItemsClassification(skus);
+
+  // Log start
+  await logAgentAction(
+    'stockout-prevention',
+    null,
+    'purchase_recommendations_started',
+    'Filtering products by classification',
+    null,
+    { total_products: products.length }
+  );
+
   for (const product of products) {
-    const urgency: PurchaseRecommendation['urgency'] = 
+    // Skip items that shouldn't trigger reorder alerts
+    const context = classifications.get(product.sku);
+    if (!shouldTriggerReorderAlerts(context)) {
+      continue;
+    }
+
+    const urgency: PurchaseRecommendation['urgency'] =
       product.reorder_status === 'OUT_OF_STOCK' ? 'IMMEDIATE' :
       product.days_of_stock_remaining < 7 ? 'IMMEDIATE' :
       product.days_of_stock_remaining < 14 ? 'THIS_WEEK' :
@@ -276,24 +359,29 @@ export async function generatePurchaseRecommendations(): Promise<PurchaseRecomme
     const recommendedQty = Math.ceil(calculateOptimalOrderQuantity(product));
 
     // Calculate order-by date (today + days remaining - lead time - 2 day buffer)
-    const daysUntilOrderNeeded = Math.max(0, 
+    const daysUntilOrderNeeded = Math.max(0,
       product.days_of_stock_remaining - product.avg_lead_time_days - 2
     );
     const orderByDate = new Date();
     orderByDate.setDate(orderByDate.getDate() + daysUntilOrderNeeded);
 
     const notes: string[] = [];
-    
+
     if (product.reorder_status === 'OUT_OF_STOCK') {
       notes.push('⚠️ CURRENTLY OUT OF STOCK - Production may be blocked');
     }
-    
+
     if (product.days_of_stock_remaining < product.avg_lead_time_days) {
       notes.push('⏰ Stock will run out before typical delivery');
     }
 
     if (product.daily_consumption_rate > product.consumed_last_30_days / 30 * 1.5) {
       notes.push('📈 Consumption rate increasing - consider ordering extra buffer');
+    }
+
+    // Add flow type context note if special order
+    if (context?.flowType === 'special_order') {
+      notes.push('📋 Special Order item - verify customer commitment before ordering');
     }
 
     recommendations.push({
@@ -309,6 +397,16 @@ export async function generatePurchaseRecommendations(): Promise<PurchaseRecomme
       notes,
     });
   }
+
+  // Log completion
+  await logAgentAction(
+    'stockout-prevention',
+    null,
+    'purchase_recommendations_completed',
+    null,
+    null,
+    { recommendations_generated: recommendations.length }
+  );
 
   return recommendations.sort((a, b) => {
     const urgencyOrder = { IMMEDIATE: 0, THIS_WEEK: 1, THIS_MONTH: 2 };
