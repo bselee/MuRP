@@ -58,6 +58,8 @@ export async function getRigorousPurchasingAdvice() {
       name,
       stock,
       on_order,
+      category,
+      is_dropship,
       sku_purchasing_parameters!inner (
         calculated_reorder_point,
         calculated_safety_stock,
@@ -66,7 +68,9 @@ export async function getRigorousPurchasingAdvice() {
         z_score
       )
     `)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .neq('category', 'Deprecating')
+        .or('is_dropship.is.null,is_dropship.eq.false');
 
     if (error) throw error;
 
@@ -75,6 +79,14 @@ export async function getRigorousPurchasingAdvice() {
         .filter((item: any) => {
             const params = item.sku_purchasing_parameters;
             if (!params || !params.calculated_reorder_point) return false;
+
+            // Additional safety filter for Deprecating category (case-insensitive)
+            const category = (item.category || '').toLowerCase().trim();
+            if (category === 'deprecating' || category === 'deprecated') return false;
+
+            // Additional safety filter for dropship items
+            if (item.is_dropship === true) return false;
+
             // Trigger if Available (Stock + OnOrder) < ROP
             // Or just Stock < ROP? Usually ROP is compared to "Inventory Position" (Stock + OnOrder - Backorders)
             return (item.stock + (item.on_order || 0)) < params.calculated_reorder_point;

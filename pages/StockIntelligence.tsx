@@ -63,7 +63,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
   const [stockoutRisks, setStockoutRisks] = useState<StockoutRisk[]>([]);
   const [vendorPerformances, setVendorPerformances] = useState<VendorPerformance[]>([]);
 
-  // Filter out dropship items and inactive items (non-stock)
+  // Filter out dropship items, inactive items, and deprecating category
   const filteredInventory = useMemo(
     () => inventory.filter(item => {
       // Exclude dropship items
@@ -71,6 +71,10 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
 
       // Exclude inactive items (non-stock items should have status = 'Active')
       if (item.status && item.status.toLowerCase().trim() !== 'active') return false;
+
+      // Exclude Deprecating category items (case-insensitive)
+      const category = (item.category || '').toLowerCase().trim();
+      if (category === 'deprecating' || category === 'deprecated') return false;
 
       return true;
     }),

@@ -182,6 +182,55 @@ await generateAIResponse(messages, 'compliance', 'full-ai');
 
 **Never** instantiate `GoogleGenerativeAI` directly - always use `aiGatewayService.ts` to respect tier limits and enable automatic fallbacks.
 
+### Stock Intelligence & Forecasting System (CRITICAL)
+
+The Stock Intelligence system provides data-driven purchasing guidance. **All data must be real - no placeholder values.**
+
+**Key Services:**
+- `services/purchasingForecastingService.ts` - ROP calculations, purchasing advice
+- `services/forecastingService.ts` - Trend analysis, seasonal pattern detection
+- `services/stockoutPreventionAgent.ts` - Proactive stockout alerts
+
+**Data Filtering Rules (ENFORCED):**
+All stock intelligence queries MUST exclude:
+1. **Deprecating category items** - `category !== 'Deprecating'`
+2. **Dropship-only items** - `is_dropship !== true`
+3. **Inactive items** - `status === 'active'`
+
+```typescript
+// CORRECT - purchasingForecastingService.ts
+const { data } = await supabase
+  .from('inventory_items')
+  .select('sku, name, stock, on_order, category, is_dropship, ...')
+  .eq('status', 'active')
+  .neq('category', 'Deprecating')
+  .or('is_dropship.is.null,is_dropship.eq.false');
+```
+
+**Real-Time Metrics (NO PLACEHOLDERS):**
+- **Vendor Reliability**: Calculated from `purchase_orders` on-time delivery rate
+- **Forecast Accuracy**: Calculated from `forecasts` table (1 - MAPE)
+- **Inventory Turnover**: Calculated from `inventory_velocity_summary` view
+
+**Trend Calculation:**
+```typescript
+// 30-day vs 90-day velocity comparison
+const trend30 = (item.sales30Days || 0) / 30;
+const trend90 = (item.sales90Days || 0) / 90;
+const trendDirection = trend30 > trend90 * 1.15 ? 'up' :
+                       trend30 < trend90 * 0.85 ? 'down' : 'stable';
+```
+
+**Data Sources:**
+- Sales velocity: `finale_stock_history` → `inventory_velocity_summary`
+- ROP/Safety Stock: `sku_purchasing_parameters` table (Z-score methodology)
+- Forecast accuracy: `forecasts` table (predicted vs actual)
+
+**Key Components:**
+- `pages/StockIntelligence.tsx` - Main dashboard with 6 tabs
+- `components/PurchasingGuidanceDashboard.tsx` - KPI cards and replenishment advice
+- `components/StockoutRiskWidget.tsx` - Risk visualization
+
 ## Key Integrations
 
 ### Finale Inventory API

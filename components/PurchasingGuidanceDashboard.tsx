@@ -10,7 +10,8 @@ export default function PurchasingGuidanceDashboard() {
     const [metrics, setMetrics] = useState<any>({
         accuracy: null,
         riskItems: 0,
-        vendorPerf: 92 // Placeholder until we link the vendor logic
+        vendorReliability: null,
+        inventoryTurnover: null
     });
 
     const [agentInsights, setAgentInsights] = useState<{
@@ -59,11 +60,58 @@ export default function PurchasingGuidanceDashboard() {
                 ? forecasts.reduce((acc: number, f: any) => acc + (f.error_pct || 0), 0) / forecasts.length
                 : null;
 
-            setMetrics(prev => ({
-                ...prev,
+            // 3. Calculate real Vendor Reliability from PO data
+            let vendorReliability: number | null = null;
+            try {
+                const { data: poData, error: poError } = await supabase
+                    .from('purchase_orders')
+                    .select('status, expected_date, received_at')
+                    .in('status', ['received', 'Fulfilled', 'partial']);
+
+                if (!poError && poData && poData.length > 0) {
+                    const completedPOs = poData.length;
+                    const onTimePOs = poData.filter(po => {
+                        if (!po.expected_date || !po.received_at) return false;
+                        return new Date(po.received_at) <= new Date(po.expected_date);
+                    }).length;
+                    vendorReliability = completedPOs > 0 ? (onTimePOs / completedPOs) * 100 : null;
+                }
+            } catch (err) {
+                console.warn('Could not calculate vendor reliability:', err);
+            }
+
+            // 4. Calculate Inventory Turnover from velocity data
+            // Turnover approximation based on average velocity across inventory
+            let inventoryTurnover: number | null = null;
+            try {
+                const { data: velocityData, error: velocityError } = await supabase
+                    .from('inventory_velocity_summary')
+                    .select('sales_velocity, stock')
+                    .gt('stock', 0);
+
+                if (!velocityError && velocityData && velocityData.length > 0) {
+                    // Calculate weighted average turnover (annual velocity / avg stock)
+                    const totalVelocity = velocityData.reduce((sum: number, item: { sales_velocity: number | null }) =>
+                        sum + (item.sales_velocity || 0), 0);
+                    const totalStock = velocityData.reduce((sum: number, item: { stock: number | null }) =>
+                        sum + (item.stock || 0), 0);
+
+                    if (totalStock > 0) {
+                        // Annualized turnover: (daily velocity * 365) / avg stock
+                        inventoryTurnover = (totalVelocity * 365) / totalStock;
+                    }
+                }
+            } catch (err) {
+                // View may not exist or query failed, that's okay
+                console.debug('Velocity summary not available:', err);
+            }
+
+            setMetrics({
                 accuracy: accuracy ? (100 - accuracy).toFixed(1) : 'N/A', // 100 - MAPE = Accuracy
-                riskItems: adviceData.length
-            }));
+                riskItems: adviceData.length,
+                vendorReliability: vendorReliability !== null ? vendorReliability.toFixed(1) : 'N/A',
+                inventoryTurnover: inventoryTurnover !== null ? inventoryTurnover.toFixed(1) : 'N/A'
+            });
 
         } catch (err) {
             console.error('Failed to load purchasing guidance', err);
@@ -105,19 +153,19 @@ export default function PurchasingGuidanceDashboard() {
                     title="Forecast Accuracy"
                     value={metrics.accuracy}
                     unit="%"
-                    trend="positive"
+                    trend={metrics.accuracy === 'N/A' ? 'neutral' : 'positive'}
                     desc="1 - MAPE (Last 90 Days)"
                 />
                 <KPICard
                     title="Vendor Reliability"
-                    value="92.4"
+                    value={metrics.vendorReliability}
                     unit="%"
-                    trend="positive"
-                    desc="On-Time In-Full Rate"
+                    trend={metrics.vendorReliability === 'N/A' ? 'neutral' : (parseFloat(metrics.vendorReliability) >= 80 ? 'positive' : 'critical')}
+                    desc="On-Time Delivery Rate"
                 />
                 <KPICard
                     title="Capital Efficiency"
-                    value="4.2"
+                    value={metrics.inventoryTurnover}
                     unit="Turns"
                     trend="neutral"
                     desc="Inventory Turnover Rate"
