@@ -38,6 +38,7 @@ import UserPersonalizationPanel from '../components/UserPersonalizationPanel';
 import SOPSettingsPanel from '../components/SOPSettingsPanel';
 import BOMApprovalSettingsPanel from '../components/BOMApprovalSettingsPanel';
 import VendorsManagementPanel from '../components/VendorsManagementPanel';
+import EmailTrackingSettingsPanel from '../components/EmailTrackingSettingsPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -91,6 +92,7 @@ const Settings: React.FC<SettingsProps> = ({
 
     // Operations & Purchasing
     const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
+    const [isEmailTrackingOpen, setIsEmailTrackingOpen] = useState(false);
     const [isVendorAdminOpen, setIsVendorAdminOpen] = useState(false);
     const [isBomManagementOpen, setIsBomManagementOpen] = useState(false);
     const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
@@ -384,6 +386,22 @@ Thank you!`
                   </span>
                 </div>
                 <FollowUpSettingsPanel addToast={addToast} />
+              </CollapsibleSection>
+            )}
+
+            {isOpsAdmin && (
+              <CollapsibleSection
+                title="Email Tracking & Inbox Monitoring"
+                icon={<MailIcon className="w-6 h-6 text-emerald-400" />}
+                isOpen={isEmailTrackingOpen}
+                onToggle={() => setIsEmailTrackingOpen(!isEmailTrackingOpen)}
+              >
+                <div className="mb-2">
+                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
+                    Admin Only
+                  </span>
+                </div>
+                <EmailTrackingSettingsPanel addToast={addToast} />
               </CollapsibleSection>
             )}
 
