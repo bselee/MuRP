@@ -1,3 +1,74 @@
+### Session: 2025-12-20 (Comprehensive Theme Compliance & Compliance Module)
+
+**Summary:** Major UI/UX fixes for light/dark mode consistency across Purchase Orders, Inventory, and Projects pages. Added new Compliance module with Regulatory Q&A, Document Analysis, and State Contact Management.
+
+**Changes Made:**
+- Modified: `pages/PurchaseOrders.tsx` (+extensive)
+  - Fixed `formatPoTotal()` to handle string values and NaN robustly
+  - Replaced inline Finale PO status pill with `<StatusBadge>` component
+  - Fixed 50+ hardcoded dark mode styles to use `isDark ?` conditionals
+  - Modal section headers, empty state, Finale PO expanded details all theme-aware
+  - Line items table, metadata, financial summary properly themed
+
+- Modified: `components/ui/StatusBadge.tsx`
+  - Added traffic light color mappings:
+    - `committed`, `submitted`, `ordered` → `warning` (yellow)
+    - `canceled`, `cancelled`, `error` → `danger` (red)
+    - `complete`, `completed`, `fulfilled`, `received` → `success` (green)
+
+- Modified: `pages/Inventory.tsx`
+  - Added useTheme hook for theme awareness
+  - Fixed filters panel, dropdowns, search suggestions
+  - Fixed category/vendor management modals
+  - Fixed table cells, tooltips, demand breakdown popups
+
+- Modified: `pages/ProjectsPage.tsx`
+  - Fixed view toggle buttons for light/dark mode
+  - Fixed project cards, tags, action buttons
+
+- Modified: `pages/Vendors.tsx` - Added useTheme hook
+
+- Modified: `pages/StockIntelligence.tsx`
+  - Integrated agent alerts for consistent summary card counts
+  - Uses `getCriticalStockoutAlerts()` for dashboard figures
+
+- Modified: `services/stockoutPreventionAgent.ts`
+  - Added `AlertFilterOptions` interface for fine-grained control
+  - Added flow_type, reorder_method, category metadata to alerts
+  - New `shouldIncludeInAlerts()` helper function
+
+- Modified: `services/regulatoryDataService.ts` (+550 lines)
+  - Added `searchStateContactInfo()`, `updateStateContactInfo()`
+  - Added `upsertStateRegulatorySource()` for manual source input
+  - Added `askRegulatoryQuestion()`, `getFrequentlyAskedQuestions()` for Q&A
+  - Added `analyzeComplianceDocument()`, `batchAnalyzeDocuments()`
+
+- Created: `pages/Compliance.tsx` (NEW PAGE)
+  - 5 tabs: Sources, Contacts, Documents, Q&A, Analysis
+  - Quick state selector for priority states
+
+- Created: `components/compliance/RegulatoryQAPanel.tsx`
+  - AI-powered regulatory Q&A with citations
+  - FAQ support with category filtering
+
+- Created: `components/compliance/StateContactManager.tsx`
+  - View/edit state agency contact info
+  - Web search for contact updates
+
+- Created: `components/compliance/DocumentAnalysisPanel.tsx`
+  - Analyze compliance documents for deadlines/actions
+  - Extract state references, regulation citations
+
+**Commit:** `b3d2903` - fix(ui): comprehensive light/dark theme compliance across pages
+
+**Tests:**
+- ✅ Unit tests: 3/3 passing
+- ✅ Build: Clean (8.71s)
+
+**Files Changed:** 17 files, +2149 insertions, -214 deletions
+
+---
+
 ### Session: 2025-12-19 (Internal PO Theme Support & Issue Triage)
 
 **Changes Made:**
