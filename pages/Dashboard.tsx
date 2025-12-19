@@ -225,13 +225,44 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
         (avgActualLeadTime > 0 && vendor.leadTimeDays ? Math.min(100, (vendor.leadTimeDays / avgActualLeadTime) * 100) * 0.4 : 0)
       );
 
+      // Calculate cost stability from price variance across POs
+      const allPrices: Map<string, number[]> = new Map();
+      vendorPOs.forEach((po: any) => {
+        if (!po.items || !Array.isArray(po.items)) return;
+        po.items.forEach((item: any) => {
+          const sku = item.sku || item.productSku || item.product_sku;
+          const price = Number(item.unitPrice || item.unit_price || item.unitCost || item.unit_cost || 0);
+          if (sku && price > 0) {
+            const prices = allPrices.get(sku) || [];
+            prices.push(price);
+            allPrices.set(sku, prices);
+          }
+        });
+      });
+
+      let totalVariation = 0;
+      let skuCount = 0;
+      allPrices.forEach((prices) => {
+        if (prices.length < 2) return;
+        const mean = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+        if (mean === 0) return;
+        const variance = prices.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / prices.length;
+        const stdDev = Math.sqrt(variance);
+        const cv = (stdDev / mean) * 100;
+        totalVariation += cv;
+        skuCount++;
+      });
+
+      const avgVariation = skuCount > 0 ? totalVariation / skuCount : 0;
+      const costStability = Math.max(0, Math.min(100, 100 - avgVariation));
+
       performances.push({
         vendorId: vendor.id,
         vendorName: vendor.name,
         onTimeDeliveryRate: onTimeRate,
         averageLeadTimeActual: avgActualLeadTime,
         averageLeadTimeEstimated: vendor.leadTimeDays || 0,
-        costStability: 0,
+        costStability: Number(costStability.toFixed(1)),
         reliabilityScore,
       });
     });
