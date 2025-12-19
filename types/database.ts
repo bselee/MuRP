@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -5238,7 +5233,6 @@ export type Database = {
           currency: string | null
           extracted_at: string | null
           extraction_method: string | null
-          flagged_at: string | null
           forwarded_at: string | null
           forwarded_to_ap: boolean | null
           id: string
@@ -5259,7 +5253,6 @@ export type Database = {
           tax_amount: number | null
           total_amount: number | null
           updated_at: string | null
-          variance_notes: string | null
           vendor_address: string | null
           vendor_contact: string | null
           vendor_name: string | null
@@ -5272,7 +5265,6 @@ export type Database = {
           currency?: string | null
           extracted_at?: string | null
           extraction_method?: string | null
-          flagged_at?: string | null
           forwarded_at?: string | null
           forwarded_to_ap?: boolean | null
           id?: string
@@ -5293,7 +5285,6 @@ export type Database = {
           tax_amount?: number | null
           total_amount?: number | null
           updated_at?: string | null
-          variance_notes?: string | null
           vendor_address?: string | null
           vendor_contact?: string | null
           vendor_name?: string | null
@@ -5306,7 +5297,6 @@ export type Database = {
           currency?: string | null
           extracted_at?: string | null
           extraction_method?: string | null
-          flagged_at?: string | null
           forwarded_at?: string | null
           forwarded_to_ap?: boolean | null
           id?: string
@@ -5327,7 +5317,6 @@ export type Database = {
           tax_amount?: number | null
           total_amount?: number | null
           updated_at?: string | null
-          variance_notes?: string | null
           vendor_address?: string | null
           vendor_contact?: string | null
           vendor_name?: string | null
@@ -5487,83 +5476,6 @@ export type Database = {
             columns: ["po_item_id"]
             isOneToOne: false
             referencedRelation: "purchase_order_items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      po_landed_costs: {
-        Row: {
-          actual_total: number
-          calculated_at: string
-          duty_fees: number
-          id: string
-          landed_cost_total: number | null
-          notes: string | null
-          original_total: number
-          other_fees: number
-          po_id: string | null
-          shipping_cost: number
-          tax_amount: number
-          variance_amount: number | null
-          variance_percentage: number | null
-        }
-        Insert: {
-          actual_total?: number
-          calculated_at?: string
-          duty_fees?: number
-          id?: string
-          landed_cost_total?: number | null
-          notes?: string | null
-          original_total?: number
-          other_fees?: number
-          po_id?: string | null
-          shipping_cost?: number
-          tax_amount?: number
-          variance_amount?: number | null
-          variance_percentage?: number | null
-        }
-        Update: {
-          actual_total?: number
-          calculated_at?: string
-          duty_fees?: number
-          id?: string
-          landed_cost_total?: number | null
-          notes?: string | null
-          original_total?: number
-          other_fees?: number
-          po_id?: string | null
-          shipping_cost?: number
-          tax_amount?: number
-          variance_amount?: number | null
-          variance_percentage?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "po_landed_costs_po_id_fkey"
-            columns: ["po_id"]
-            isOneToOne: true
-            referencedRelation: "active_purchase_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "po_landed_costs_po_id_fkey"
-            columns: ["po_id"]
-            isOneToOne: true
-            referencedRelation: "ai_suggested_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "po_landed_costs_po_id_fkey"
-            columns: ["po_id"]
-            isOneToOne: true
-            referencedRelation: "po_tracking_overview"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "po_landed_costs_po_id_fkey"
-            columns: ["po_id"]
-            isOneToOne: true
-            referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -6467,45 +6379,6 @@ export type Database = {
           },
         ]
       }
-      product_consumption_log: {
-        Row: {
-          consumed_at: string
-          consumption_type: string
-          created_at: string
-          id: string
-          notes: string | null
-          product_name: string | null
-          quantity_consumed: number
-          sku: string
-          source_reference: string | null
-          source_type: string | null
-        }
-        Insert: {
-          consumed_at?: string
-          consumption_type: string
-          created_at?: string
-          id?: string
-          notes?: string | null
-          product_name?: string | null
-          quantity_consumed: number
-          sku: string
-          source_reference?: string | null
-          source_type?: string | null
-        }
-        Update: {
-          consumed_at?: string
-          consumption_type?: string
-          created_at?: string
-          id?: string
-          notes?: string | null
-          product_name?: string | null
-          quantity_consumed?: number
-          sku?: string
-          source_reference?: string | null
-          source_type?: string | null
-        }
-        Relationships: []
-      }
       product_data_sheets: {
         Row: {
           ai_model_used: string | null
@@ -6725,13 +6598,6 @@ export type Database = {
             referencedColumns: ["sku"]
           },
           {
-            foreignKeyName: "product_pricing_internal_sku_fkey"
-            columns: ["internal_sku"]
-            isOneToOne: false
-            referencedRelation: "product_reorder_analytics"
-            referencedColumns: ["sku"]
-          },
-          {
             foreignKeyName: "product_pricing_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
@@ -6778,121 +6644,6 @@ export type Database = {
             columns: ["vendor_sku_mapping_id"]
             isOneToOne: false
             referencedRelation: "vendor_sku_mappings"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      product_purchase_log: {
-        Row: {
-          created_at: string
-          id: string
-          lead_time_days: number | null
-          ordered_at: string | null
-          po_id: string | null
-          po_number: string | null
-          product_name: string | null
-          quantity_purchased: number
-          received_at: string | null
-          sku: string
-          total_cost: number | null
-          unit_cost: number | null
-          vendor_id: string | null
-          vendor_name: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          lead_time_days?: number | null
-          ordered_at?: string | null
-          po_id?: string | null
-          po_number?: string | null
-          product_name?: string | null
-          quantity_purchased: number
-          received_at?: string | null
-          sku: string
-          total_cost?: number | null
-          unit_cost?: number | null
-          vendor_id?: string | null
-          vendor_name?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          lead_time_days?: number | null
-          ordered_at?: string | null
-          po_id?: string | null
-          po_number?: string | null
-          product_name?: string | null
-          quantity_purchased?: number
-          received_at?: string | null
-          sku?: string
-          total_cost?: number | null
-          unit_cost?: number | null
-          vendor_id?: string | null
-          vendor_name?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_purchase_log_po_id_fkey"
-            columns: ["po_id"]
-            isOneToOne: false
-            referencedRelation: "active_purchase_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_purchase_log_po_id_fkey"
-            columns: ["po_id"]
-            isOneToOne: false
-            referencedRelation: "ai_suggested_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_purchase_log_po_id_fkey"
-            columns: ["po_id"]
-            isOneToOne: false
-            referencedRelation: "po_tracking_overview"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_purchase_log_po_id_fkey"
-            columns: ["po_id"]
-            isOneToOne: false
-            referencedRelation: "purchase_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_purchase_log_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendor_automation_summary"
-            referencedColumns: ["vendor_id"]
-          },
-          {
-            foreignKeyName: "product_purchase_log_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendor_details"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_purchase_log_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendor_lead_time_analysis"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_purchase_log_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendor_scorecard"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "product_purchase_log_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -11586,13 +11337,6 @@ export type Database = {
             referencedColumns: ["sku"]
           },
           {
-            foreignKeyName: "vendor_sku_mappings_internal_sku_fkey"
-            columns: ["internal_sku"]
-            isOneToOne: false
-            referencedRelation: "product_reorder_analytics"
-            referencedColumns: ["sku"]
-          },
-          {
             foreignKeyName: "vendor_sku_mappings_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
@@ -12554,13 +12298,6 @@ export type Database = {
             referencedColumns: ["sku"]
           },
           {
-            foreignKeyName: "product_pricing_internal_sku_fkey"
-            columns: ["internal_sku"]
-            isOneToOne: false
-            referencedRelation: "product_reorder_analytics"
-            referencedColumns: ["sku"]
-          },
-          {
             foreignKeyName: "product_pricing_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
@@ -12680,43 +12417,7 @@ export type Database = {
             referencedRelation: "inventory_velocity_summary"
             referencedColumns: ["sku"]
           },
-          {
-            foreignKeyName: "product_pricing_internal_sku_fkey"
-            columns: ["internal_sku"]
-            isOneToOne: false
-            referencedRelation: "product_reorder_analytics"
-            referencedColumns: ["sku"]
-          },
         ]
-      }
-      product_reorder_analytics: {
-        Row: {
-          available_quantity: number | null
-          avg_consumption_qty: number | null
-          avg_lead_time_days: number | null
-          avg_unit_cost: number | null
-          consumed_last_30_days: number | null
-          consumed_last_90_days: number | null
-          consumption_count: number | null
-          daily_consumption_rate: number | null
-          days_of_stock_remaining: number | null
-          last_consumed_at: string | null
-          last_received_at: string | null
-          max_lead_time_days: number | null
-          max_stock_level: number | null
-          min_lead_time_days: number | null
-          product_name: string | null
-          purchase_count: number | null
-          quantity_on_hand: number | null
-          reorder_point: number | null
-          reorder_status: string | null
-          sku: string | null
-          suggested_max_stock: number | null
-          suggested_reorder_point: number | null
-          total_consumed_qty: number | null
-          total_purchased_qty: number | null
-        }
-        Relationships: []
       }
       shopify_sales_summary: {
         Row: {
@@ -14236,3 +13937,4 @@ export const Constants = {
     },
   },
 } as const
+
