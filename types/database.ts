@@ -7,70 +7,86 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
       agent_configs: {
         Row: {
           agent_identifier: string
+          alerts_generated: number | null
           autonomy_level: string
+          avg_duration_ms: number | null
           created_at: string | null
           description: string | null
           display_name: string
+          emails_correlated: number | null
+          emails_processed: number | null
+          failed_runs: number | null
           id: string
           is_active: boolean | null
+          last_run_at: string | null
           parameters: Json | null
+          stockouts_prevented: number | null
+          successful_runs: number | null
           system_prompt: string | null
+          total_cost: number | null
+          total_runs: number | null
+          total_tokens_used: number | null
+          tracking_extractions: number | null
           trust_score: number | null
           updated_at: string | null
         }
         Insert: {
           agent_identifier: string
+          alerts_generated?: number | null
           autonomy_level?: string
+          avg_duration_ms?: number | null
           created_at?: string | null
           description?: string | null
           display_name: string
+          emails_correlated?: number | null
+          emails_processed?: number | null
+          failed_runs?: number | null
           id?: string
           is_active?: boolean | null
+          last_run_at?: string | null
           parameters?: Json | null
+          stockouts_prevented?: number | null
+          successful_runs?: number | null
           system_prompt?: string | null
+          total_cost?: number | null
+          total_runs?: number | null
+          total_tokens_used?: number | null
+          tracking_extractions?: number | null
           trust_score?: number | null
           updated_at?: string | null
         }
         Update: {
           agent_identifier?: string
+          alerts_generated?: number | null
           autonomy_level?: string
+          avg_duration_ms?: number | null
           created_at?: string | null
           description?: string | null
           display_name?: string
+          emails_correlated?: number | null
+          emails_processed?: number | null
+          failed_runs?: number | null
           id?: string
           is_active?: boolean | null
+          last_run_at?: string | null
           parameters?: Json | null
+          stockouts_prevented?: number | null
+          successful_runs?: number | null
           system_prompt?: string | null
+          total_cost?: number | null
+          total_runs?: number | null
+          total_tokens_used?: number | null
+          tracking_extractions?: number | null
           trust_score?: number | null
           updated_at?: string | null
         }
@@ -153,6 +169,91 @@ export type Database = {
           touchless_po_rate?: number | null
         }
         Relationships: []
+      }
+      agent_run_history: {
+        Row: {
+          actions_taken: number | null
+          agent_identifier: string
+          ai_calls_made: number | null
+          alerts_generated: number | null
+          completed_at: string | null
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          estimated_cost: number | null
+          id: string
+          items_processed: number | null
+          output_log: string[] | null
+          result_summary: Json | null
+          started_at: string
+          status: string
+          tokens_used: number | null
+          trigger_type: string | null
+          triggered_by: string | null
+        }
+        Insert: {
+          actions_taken?: number | null
+          agent_identifier: string
+          ai_calls_made?: number | null
+          alerts_generated?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          estimated_cost?: number | null
+          id?: string
+          items_processed?: number | null
+          output_log?: string[] | null
+          result_summary?: Json | null
+          started_at?: string
+          status?: string
+          tokens_used?: number | null
+          trigger_type?: string | null
+          triggered_by?: string | null
+        }
+        Update: {
+          actions_taken?: number | null
+          agent_identifier?: string
+          ai_calls_made?: number | null
+          alerts_generated?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          estimated_cost?: number | null
+          id?: string
+          items_processed?: number | null
+          output_log?: string[] | null
+          result_summary?: Json | null
+          started_at?: string
+          status?: string
+          tokens_used?: number | null
+          trigger_type?: string | null
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_run_history_agent_identifier_fkey"
+            columns: ["agent_identifier"]
+            isOneToOne: false
+            referencedRelation: "agent_configs"
+            referencedColumns: ["agent_identifier"]
+          },
+          {
+            foreignKeyName: "agent_run_history_agent_identifier_fkey"
+            columns: ["agent_identifier"]
+            isOneToOne: false
+            referencedRelation: "agent_usage_summary"
+            referencedColumns: ["agent_identifier"]
+          },
+          {
+            foreignKeyName: "agent_run_history_agent_identifier_fkey"
+            columns: ["agent_identifier"]
+            isOneToOne: false
+            referencedRelation: "email_tracking_agent_stats"
+            referencedColumns: ["agent_identifier"]
+          },
+        ]
       }
       ai_anomaly_logs: {
         Row: {
@@ -285,6 +386,13 @@ export type Database = {
           vendor_name?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_consolidation_opportunities_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_consolidation_opportunities_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -1308,6 +1416,13 @@ export type Database = {
             foreignKeyName: "bom_artwork_assets_bom_id_fkey"
             columns: ["bom_id"]
             isOneToOne: false
+            referencedRelation: "active_boms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_artwork_assets_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
             referencedRelation: "boms"
             referencedColumns: ["id"]
           },
@@ -1356,6 +1471,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bom_components_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "active_boms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bom_components_bom_id_fkey"
             columns: ["bom_id"]
@@ -1446,6 +1568,13 @@ export type Database = {
             foreignKeyName: "bom_revisions_bom_id_fkey"
             columns: ["bom_id"]
             isOneToOne: false
+            referencedRelation: "active_boms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_revisions_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
             referencedRelation: "boms"
             referencedColumns: ["id"]
           },
@@ -1502,6 +1631,7 @@ export type Database = {
           expiring_registrations_count: number | null
           finished_sku: string | null
           id: string
+          is_active: boolean | null
           labor_cost_per_hour: number | null
           last_approved_at: string | null
           last_approved_by: string | null
@@ -1540,6 +1670,7 @@ export type Database = {
           expiring_registrations_count?: number | null
           finished_sku?: string | null
           id?: string
+          is_active?: boolean | null
           labor_cost_per_hour?: number | null
           last_approved_at?: string | null
           last_approved_by?: string | null
@@ -1578,6 +1709,7 @@ export type Database = {
           expiring_registrations_count?: number | null
           finished_sku?: string | null
           id?: string
+          is_active?: boolean | null
           labor_cost_per_hour?: number | null
           last_approved_at?: string | null
           last_approved_by?: string | null
@@ -1686,6 +1818,20 @@ export type Database = {
             foreignKeyName: "build_order_material_requirements_inventory_item_id_fkey"
             columns: ["inventory_item_id"]
             isOneToOne: false
+            referencedRelation: "active_inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "build_order_material_requirements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "dropship_workflow_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "build_order_material_requirements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
             referencedRelation: "inventory_details"
             referencedColumns: ["id"]
           },
@@ -1694,6 +1840,13 @@ export type Database = {
             columns: ["inventory_item_id"]
             isOneToOne: false
             referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "build_order_material_requirements_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_intelligence_items"
             referencedColumns: ["id"]
           },
         ]
@@ -1736,6 +1889,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "build_orders_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "active_boms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "build_orders_bom_id_fkey"
             columns: ["bom_id"]
@@ -1846,6 +2006,13 @@ export type Database = {
             foreignKeyName: "bulk_opportunity_analysis_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bulk_opportunity_analysis_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendor_automation_summary"
             referencedColumns: ["vendor_id"]
           },
@@ -1935,6 +2102,106 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      compliance_alerts: {
+        Row: {
+          action_deadline: string | null
+          action_required: string | null
+          affected_bom_ids: string[] | null
+          affected_skus: string[] | null
+          alert_type: string
+          applicable_states: string[] | null
+          created_at: string | null
+          created_by: string | null
+          document_id: string | null
+          id: string
+          item_state_id: string | null
+          message: string
+          notification_recipients: string[] | null
+          notification_sent: boolean | null
+          notification_sent_at: string | null
+          regulation_id: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          snoozed_until: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          action_deadline?: string | null
+          action_required?: string | null
+          affected_bom_ids?: string[] | null
+          affected_skus?: string[] | null
+          alert_type: string
+          applicable_states?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          document_id?: string | null
+          id?: string
+          item_state_id?: string | null
+          message: string
+          notification_recipients?: string[] | null
+          notification_sent?: boolean | null
+          notification_sent_at?: string | null
+          regulation_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          snoozed_until?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          action_deadline?: string | null
+          action_required?: string | null
+          affected_bom_ids?: string[] | null
+          affected_skus?: string[] | null
+          alert_type?: string
+          applicable_states?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          document_id?: string | null
+          id?: string
+          item_state_id?: string | null
+          message?: string
+          notification_recipients?: string[] | null
+          notification_sent?: boolean | null
+          notification_sent_at?: string | null
+          regulation_id?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          snoozed_until?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_alerts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_alerts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_alerts_item_state_id_fkey"
+            columns: ["item_state_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_item_states"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       compliance_checks: {
         Row: {
@@ -2066,6 +2333,404 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      compliance_document_reviews: {
+        Row: {
+          attachment_urls: string[] | null
+          comments: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          document_id: string
+          due_date: string | null
+          id: string
+          requested_at: string | null
+          requested_changes: string[] | null
+          review_status: string
+          review_type: string
+          reviewer_email: string | null
+          reviewer_name: string
+          reviewer_organization: string | null
+          reviewer_role: string | null
+        }
+        Insert: {
+          attachment_urls?: string[] | null
+          comments?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          document_id: string
+          due_date?: string | null
+          id?: string
+          requested_at?: string | null
+          requested_changes?: string[] | null
+          review_status?: string
+          review_type: string
+          reviewer_email?: string | null
+          reviewer_name: string
+          reviewer_organization?: string | null
+          reviewer_role?: string | null
+        }
+        Update: {
+          attachment_urls?: string[] | null
+          comments?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          document_id?: string
+          due_date?: string | null
+          id?: string
+          requested_at?: string | null
+          requested_changes?: string[] | null
+          review_status?: string
+          review_type?: string
+          reviewer_email?: string | null
+          reviewer_name?: string
+          reviewer_organization?: string | null
+          reviewer_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_document_reviews_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_document_reviews_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_document_versions: {
+        Row: {
+          change_summary: string | null
+          change_type: string | null
+          created_at: string | null
+          created_by: string | null
+          document_id: string
+          file_hash: string | null
+          file_name: string
+          file_path: string | null
+          file_size: number | null
+          file_url: string | null
+          id: string
+          status_at_version:
+            | Database["public"]["Enums"]["compliance_document_status"]
+            | null
+          version_number: number
+        }
+        Insert: {
+          change_summary?: string | null
+          change_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          document_id: string
+          file_hash?: string | null
+          file_name: string
+          file_path?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          status_at_version?:
+            | Database["public"]["Enums"]["compliance_document_status"]
+            | null
+          version_number: number
+        }
+        Update: {
+          change_summary?: string | null
+          change_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          document_id?: string
+          file_hash?: string | null
+          file_name?: string
+          file_path?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          status_at_version?:
+            | Database["public"]["Enums"]["compliance_document_status"]
+            | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_documents: {
+        Row: {
+          agency_contact_email: string | null
+          agency_contact_phone: string | null
+          agency_name: string | null
+          applicable_states: string[] | null
+          created_at: string | null
+          created_by: string | null
+          custom_fields: Json | null
+          description: string | null
+          document_name: string
+          document_number: string | null
+          document_type: Database["public"]["Enums"]["compliance_document_type"]
+          effective_date: string | null
+          expiration_date: string | null
+          extracted_data: Json | null
+          extracted_text: string | null
+          extraction_date: string | null
+          extraction_method: string | null
+          file_hash: string | null
+          file_mime_type: string | null
+          file_name: string
+          file_path: string | null
+          file_size: number | null
+          file_url: string | null
+          id: string
+          internal_notes: string | null
+          is_national: boolean | null
+          jurisdiction_level: string | null
+          keywords: string[] | null
+          notes: string | null
+          owned_by: string | null
+          regulation_code: string | null
+          regulatory_category: string | null
+          renewal_reminder_days: number | null
+          search_vector: unknown
+          status: Database["public"]["Enums"]["compliance_document_status"]
+          status_changed_at: string | null
+          status_changed_by: string | null
+          status_notes: string | null
+          superseded_by_id: string | null
+          supersedes_id: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+          updated_at: string | null
+          updated_by: string | null
+          uploaded_by: string | null
+          version: number | null
+        }
+        Insert: {
+          agency_contact_email?: string | null
+          agency_contact_phone?: string | null
+          agency_name?: string | null
+          applicable_states?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          custom_fields?: Json | null
+          description?: string | null
+          document_name: string
+          document_number?: string | null
+          document_type?: Database["public"]["Enums"]["compliance_document_type"]
+          effective_date?: string | null
+          expiration_date?: string | null
+          extracted_data?: Json | null
+          extracted_text?: string | null
+          extraction_date?: string | null
+          extraction_method?: string | null
+          file_hash?: string | null
+          file_mime_type?: string | null
+          file_name: string
+          file_path?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          internal_notes?: string | null
+          is_national?: boolean | null
+          jurisdiction_level?: string | null
+          keywords?: string[] | null
+          notes?: string | null
+          owned_by?: string | null
+          regulation_code?: string | null
+          regulatory_category?: string | null
+          renewal_reminder_days?: number | null
+          search_vector?: unknown
+          status?: Database["public"]["Enums"]["compliance_document_status"]
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          status_notes?: string | null
+          superseded_by_id?: string | null
+          supersedes_id?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Update: {
+          agency_contact_email?: string | null
+          agency_contact_phone?: string | null
+          agency_name?: string | null
+          applicable_states?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          custom_fields?: Json | null
+          description?: string | null
+          document_name?: string
+          document_number?: string | null
+          document_type?: Database["public"]["Enums"]["compliance_document_type"]
+          effective_date?: string | null
+          expiration_date?: string | null
+          extracted_data?: Json | null
+          extracted_text?: string | null
+          extraction_date?: string | null
+          extraction_method?: string | null
+          file_hash?: string | null
+          file_mime_type?: string | null
+          file_name?: string
+          file_path?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          internal_notes?: string | null
+          is_national?: boolean | null
+          jurisdiction_level?: string | null
+          keywords?: string[] | null
+          notes?: string | null
+          owned_by?: string | null
+          regulation_code?: string | null
+          regulatory_category?: string | null
+          renewal_reminder_days?: number | null
+          search_vector?: unknown
+          status?: Database["public"]["Enums"]["compliance_document_status"]
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          status_notes?: string | null
+          superseded_by_id?: string | null
+          supersedes_id?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_documents_superseded_by_id_fkey"
+            columns: ["superseded_by_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_documents_superseded_by_id_fkey"
+            columns: ["superseded_by_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_documents_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_documents_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_item_states: {
+        Row: {
+          bom_id: string | null
+          compliance_status: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          is_registered: boolean | null
+          last_assessment_by: string | null
+          last_assessment_date: string | null
+          market_priority: number | null
+          next_review_date: string | null
+          product_group: string | null
+          prohibited_claims: string[] | null
+          registration_date: string | null
+          registration_expiry: string | null
+          registration_fee_paid: number | null
+          registration_number: string | null
+          required_warnings: string[] | null
+          sku: string | null
+          special_requirements: string[] | null
+          state_code: string
+          state_specific_notes: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          bom_id?: string | null
+          compliance_status?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_registered?: boolean | null
+          last_assessment_by?: string | null
+          last_assessment_date?: string | null
+          market_priority?: number | null
+          next_review_date?: string | null
+          product_group?: string | null
+          prohibited_claims?: string[] | null
+          registration_date?: string | null
+          registration_expiry?: string | null
+          registration_fee_paid?: number | null
+          registration_number?: string | null
+          required_warnings?: string[] | null
+          sku?: string | null
+          special_requirements?: string[] | null
+          state_code: string
+          state_specific_notes?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          bom_id?: string | null
+          compliance_status?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_registered?: boolean | null
+          last_assessment_by?: string | null
+          last_assessment_date?: string | null
+          market_priority?: number | null
+          next_review_date?: string | null
+          product_group?: string | null
+          prohibited_claims?: string[] | null
+          registration_date?: string | null
+          registration_expiry?: string | null
+          registration_fee_paid?: number | null
+          registration_number?: string | null
+          required_warnings?: string[] | null
+          sku?: string | null
+          special_requirements?: string[] | null
+          state_code?: string
+          state_specific_notes?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       compliance_records: {
         Row: {
@@ -2213,6 +2878,13 @@ export type Database = {
           urgent_alert_sent?: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_compliance_bom_id"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "active_boms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_compliance_bom_id"
             columns: ["bom_id"]
@@ -2428,6 +3100,141 @@ export type Database = {
           },
         ]
       }
+      email_inbox_configs: {
+        Row: {
+          ai_confidence_threshold: number | null
+          ai_parsing_enabled: boolean | null
+          auto_correlate_vendors: boolean | null
+          consecutive_errors: number | null
+          correlation_success_rate: number | null
+          created_at: string | null
+          created_by: string | null
+          daily_ai_cost_reset_at: string | null
+          daily_ai_cost_usd: number | null
+          description: string | null
+          display_name: string | null
+          email_address: string
+          exclude_senders: string[] | null
+          gmail_client_id: string | null
+          gmail_client_secret_ref: string | null
+          gmail_refresh_token_ref: string | null
+          gmail_user: string | null
+          gmail_watch_expiration: string | null
+          gmail_watch_resource_id: string | null
+          id: string
+          inbox_name: string
+          include_only_domains: string[] | null
+          is_active: boolean | null
+          keyword_filters: string[] | null
+          last_email_at: string | null
+          last_error: string | null
+          last_error_at: string | null
+          last_history_id: string | null
+          last_poll_at: string | null
+          max_daily_ai_cost_usd: number | null
+          max_emails_per_hour: number | null
+          next_poll_at: string | null
+          poll_enabled: boolean | null
+          poll_interval_minutes: number | null
+          status: string | null
+          total_emails_matched: number | null
+          total_emails_processed: number | null
+          total_pos_correlated: number | null
+          updated_at: string | null
+          updated_by: string | null
+          vendor_domain_cache: Json | null
+          webhook_url: string | null
+        }
+        Insert: {
+          ai_confidence_threshold?: number | null
+          ai_parsing_enabled?: boolean | null
+          auto_correlate_vendors?: boolean | null
+          consecutive_errors?: number | null
+          correlation_success_rate?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          daily_ai_cost_reset_at?: string | null
+          daily_ai_cost_usd?: number | null
+          description?: string | null
+          display_name?: string | null
+          email_address: string
+          exclude_senders?: string[] | null
+          gmail_client_id?: string | null
+          gmail_client_secret_ref?: string | null
+          gmail_refresh_token_ref?: string | null
+          gmail_user?: string | null
+          gmail_watch_expiration?: string | null
+          gmail_watch_resource_id?: string | null
+          id?: string
+          inbox_name: string
+          include_only_domains?: string[] | null
+          is_active?: boolean | null
+          keyword_filters?: string[] | null
+          last_email_at?: string | null
+          last_error?: string | null
+          last_error_at?: string | null
+          last_history_id?: string | null
+          last_poll_at?: string | null
+          max_daily_ai_cost_usd?: number | null
+          max_emails_per_hour?: number | null
+          next_poll_at?: string | null
+          poll_enabled?: boolean | null
+          poll_interval_minutes?: number | null
+          status?: string | null
+          total_emails_matched?: number | null
+          total_emails_processed?: number | null
+          total_pos_correlated?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+          vendor_domain_cache?: Json | null
+          webhook_url?: string | null
+        }
+        Update: {
+          ai_confidence_threshold?: number | null
+          ai_parsing_enabled?: boolean | null
+          auto_correlate_vendors?: boolean | null
+          consecutive_errors?: number | null
+          correlation_success_rate?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          daily_ai_cost_reset_at?: string | null
+          daily_ai_cost_usd?: number | null
+          description?: string | null
+          display_name?: string | null
+          email_address?: string
+          exclude_senders?: string[] | null
+          gmail_client_id?: string | null
+          gmail_client_secret_ref?: string | null
+          gmail_refresh_token_ref?: string | null
+          gmail_user?: string | null
+          gmail_watch_expiration?: string | null
+          gmail_watch_resource_id?: string | null
+          id?: string
+          inbox_name?: string
+          include_only_domains?: string[] | null
+          is_active?: boolean | null
+          keyword_filters?: string[] | null
+          last_email_at?: string | null
+          last_error?: string | null
+          last_error_at?: string | null
+          last_history_id?: string | null
+          last_poll_at?: string | null
+          max_daily_ai_cost_usd?: number | null
+          max_emails_per_hour?: number | null
+          next_poll_at?: string | null
+          poll_enabled?: boolean | null
+          poll_interval_minutes?: number | null
+          status?: string | null
+          total_emails_matched?: number | null
+          total_emails_processed?: number | null
+          total_pos_correlated?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+          vendor_domain_cache?: Json | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           ai_generated: boolean | null
@@ -2482,6 +3289,13 @@ export type Database = {
             foreignKeyName: "email_templates_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_templates_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendor_automation_summary"
             referencedColumns: ["vendor_id"]
           },
@@ -2511,6 +3325,670 @@ export type Database = {
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_thread_messages: {
+        Row: {
+          ai_confidence: number | null
+          ai_cost_usd: number | null
+          ai_extracted: boolean | null
+          attachment_count: number | null
+          attachments: Json | null
+          body_hash: string | null
+          body_preview: string | null
+          cc_emails: string[] | null
+          created_at: string | null
+          direction: string
+          extracted_carrier: string | null
+          extracted_data: Json | null
+          extracted_eta: string | null
+          extracted_status: string | null
+          extracted_tracking_number: string | null
+          gmail_message_id: string
+          has_attachments: boolean | null
+          id: string
+          is_backorder_notice: boolean | null
+          is_confirmation: boolean | null
+          is_delay_notice: boolean | null
+          mentions_price_change: boolean | null
+          processed_at: string | null
+          processing_error: string | null
+          processing_status: string | null
+          received_at: string | null
+          recipient_emails: string[] | null
+          response_category: string | null
+          routed_to_agent: string | null
+          sender_email: string
+          sent_at: string | null
+          subject: string | null
+          thread_id: string | null
+        }
+        Insert: {
+          ai_confidence?: number | null
+          ai_cost_usd?: number | null
+          ai_extracted?: boolean | null
+          attachment_count?: number | null
+          attachments?: Json | null
+          body_hash?: string | null
+          body_preview?: string | null
+          cc_emails?: string[] | null
+          created_at?: string | null
+          direction: string
+          extracted_carrier?: string | null
+          extracted_data?: Json | null
+          extracted_eta?: string | null
+          extracted_status?: string | null
+          extracted_tracking_number?: string | null
+          gmail_message_id: string
+          has_attachments?: boolean | null
+          id?: string
+          is_backorder_notice?: boolean | null
+          is_confirmation?: boolean | null
+          is_delay_notice?: boolean | null
+          mentions_price_change?: boolean | null
+          processed_at?: string | null
+          processing_error?: string | null
+          processing_status?: string | null
+          received_at?: string | null
+          recipient_emails?: string[] | null
+          response_category?: string | null
+          routed_to_agent?: string | null
+          sender_email: string
+          sent_at?: string | null
+          subject?: string | null
+          thread_id?: string | null
+        }
+        Update: {
+          ai_confidence?: number | null
+          ai_cost_usd?: number | null
+          ai_extracted?: boolean | null
+          attachment_count?: number | null
+          attachments?: Json | null
+          body_hash?: string | null
+          body_preview?: string | null
+          cc_emails?: string[] | null
+          created_at?: string | null
+          direction?: string
+          extracted_carrier?: string | null
+          extracted_data?: Json | null
+          extracted_eta?: string | null
+          extracted_status?: string | null
+          extracted_tracking_number?: string | null
+          gmail_message_id?: string
+          has_attachments?: boolean | null
+          id?: string
+          is_backorder_notice?: boolean | null
+          is_confirmation?: boolean | null
+          is_delay_notice?: boolean | null
+          mentions_price_change?: boolean | null
+          processed_at?: string | null
+          processing_error?: string | null
+          processing_status?: string | null
+          received_at?: string | null
+          recipient_emails?: string[] | null
+          response_category?: string | null
+          routed_to_agent?: string | null
+          sender_email?: string
+          sent_at?: string | null
+          subject?: string | null
+          thread_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_thread_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "email_thread_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_thread_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "email_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_threads: {
+        Row: {
+          action_items: Json | null
+          awaiting_info: string | null
+          carriers: string[] | null
+          correlation_confidence: number | null
+          correlation_details: Json | null
+          correlation_method: string | null
+          created_at: string | null
+          escalated: boolean | null
+          escalated_at: string | null
+          escalated_to: string | null
+          eta_confidence: string | null
+          eta_source: string | null
+          first_message_at: string | null
+          gmail_thread_id: string
+          has_invoice: boolean | null
+          has_packing_slip: boolean | null
+          has_pricelist: boolean | null
+          has_tracking_info: boolean | null
+          id: string
+          inbound_count: number | null
+          inbox_config_id: string | null
+          invoice_message_id: string | null
+          is_resolved: boolean | null
+          key_amounts: Json | null
+          key_dates: Json | null
+          last_action_item: string | null
+          last_inbound_at: string | null
+          last_message_at: string | null
+          last_outbound_at: string | null
+          latest_eta: string | null
+          latest_tracking_status: string | null
+          message_count: number | null
+          outbound_count: number | null
+          participants: string[] | null
+          po_id: string | null
+          pricelist_message_id: string | null
+          primary_vendor_email: string | null
+          requires_response: boolean | null
+          resolution_notes: string | null
+          resolution_type: string | null
+          resolved_at: string | null
+          response_due_by: string | null
+          sentiment: string | null
+          subject: string | null
+          summary_updated_at: string | null
+          thread_summary: string | null
+          timeline: Json | null
+          tracking_numbers: string[] | null
+          updated_at: string | null
+          urgency_level: string | null
+          urgency_reason: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          action_items?: Json | null
+          awaiting_info?: string | null
+          carriers?: string[] | null
+          correlation_confidence?: number | null
+          correlation_details?: Json | null
+          correlation_method?: string | null
+          created_at?: string | null
+          escalated?: boolean | null
+          escalated_at?: string | null
+          escalated_to?: string | null
+          eta_confidence?: string | null
+          eta_source?: string | null
+          first_message_at?: string | null
+          gmail_thread_id: string
+          has_invoice?: boolean | null
+          has_packing_slip?: boolean | null
+          has_pricelist?: boolean | null
+          has_tracking_info?: boolean | null
+          id?: string
+          inbound_count?: number | null
+          inbox_config_id?: string | null
+          invoice_message_id?: string | null
+          is_resolved?: boolean | null
+          key_amounts?: Json | null
+          key_dates?: Json | null
+          last_action_item?: string | null
+          last_inbound_at?: string | null
+          last_message_at?: string | null
+          last_outbound_at?: string | null
+          latest_eta?: string | null
+          latest_tracking_status?: string | null
+          message_count?: number | null
+          outbound_count?: number | null
+          participants?: string[] | null
+          po_id?: string | null
+          pricelist_message_id?: string | null
+          primary_vendor_email?: string | null
+          requires_response?: boolean | null
+          resolution_notes?: string | null
+          resolution_type?: string | null
+          resolved_at?: string | null
+          response_due_by?: string | null
+          sentiment?: string | null
+          subject?: string | null
+          summary_updated_at?: string | null
+          thread_summary?: string | null
+          timeline?: Json | null
+          tracking_numbers?: string[] | null
+          updated_at?: string | null
+          urgency_level?: string | null
+          urgency_reason?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          action_items?: Json | null
+          awaiting_info?: string | null
+          carriers?: string[] | null
+          correlation_confidence?: number | null
+          correlation_details?: Json | null
+          correlation_method?: string | null
+          created_at?: string | null
+          escalated?: boolean | null
+          escalated_at?: string | null
+          escalated_to?: string | null
+          eta_confidence?: string | null
+          eta_source?: string | null
+          first_message_at?: string | null
+          gmail_thread_id?: string
+          has_invoice?: boolean | null
+          has_packing_slip?: boolean | null
+          has_pricelist?: boolean | null
+          has_tracking_info?: boolean | null
+          id?: string
+          inbound_count?: number | null
+          inbox_config_id?: string | null
+          invoice_message_id?: string | null
+          is_resolved?: boolean | null
+          key_amounts?: Json | null
+          key_dates?: Json | null
+          last_action_item?: string | null
+          last_inbound_at?: string | null
+          last_message_at?: string | null
+          last_outbound_at?: string | null
+          latest_eta?: string | null
+          latest_tracking_status?: string | null
+          message_count?: number | null
+          outbound_count?: number | null
+          participants?: string[] | null
+          po_id?: string | null
+          pricelist_message_id?: string | null
+          primary_vendor_email?: string | null
+          requires_response?: boolean | null
+          resolution_notes?: string | null
+          resolution_type?: string | null
+          resolved_at?: string | null
+          response_due_by?: string | null
+          sentiment?: string | null
+          subject?: string | null
+          summary_updated_at?: string | null
+          thread_summary?: string | null
+          timeline?: Json | null
+          tracking_numbers?: string[] | null
+          updated_at?: string | null
+          urgency_level?: string | null
+          urgency_reason?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_threads_inbox_config_id_fkey"
+            columns: ["inbox_config_id"]
+            isOneToOne: false
+            referencedRelation: "email_inbox_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "active_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "ai_suggested_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "po_tracking_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_automation_summary"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_scorecard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_tracking_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          affected_items: Json | null
+          affected_skus: string[] | null
+          alert_type: string
+          assigned_to: string | null
+          created_at: string | null
+          days_impact: number | null
+          description: string | null
+          id: string
+          message_id: string | null
+          new_eta: string | null
+          original_eta: string | null
+          po_id: string | null
+          requires_human: boolean | null
+          resolution_action: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          routed_to_agent: string | null
+          run_id: string | null
+          severity: string
+          source_data: Json | null
+          status: string | null
+          stockout_risk_date: string | null
+          thread_id: string | null
+          title: string
+          updated_at: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          affected_items?: Json | null
+          affected_skus?: string[] | null
+          alert_type: string
+          assigned_to?: string | null
+          created_at?: string | null
+          days_impact?: number | null
+          description?: string | null
+          id?: string
+          message_id?: string | null
+          new_eta?: string | null
+          original_eta?: string | null
+          po_id?: string | null
+          requires_human?: boolean | null
+          resolution_action?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          routed_to_agent?: string | null
+          run_id?: string | null
+          severity: string
+          source_data?: Json | null
+          status?: string | null
+          stockout_risk_date?: string | null
+          thread_id?: string | null
+          title: string
+          updated_at?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          affected_items?: Json | null
+          affected_skus?: string[] | null
+          alert_type?: string
+          assigned_to?: string | null
+          created_at?: string | null
+          days_impact?: number | null
+          description?: string | null
+          id?: string
+          message_id?: string | null
+          new_eta?: string | null
+          original_eta?: string | null
+          po_id?: string | null
+          requires_human?: boolean | null
+          resolution_action?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          routed_to_agent?: string | null
+          run_id?: string | null
+          severity?: string
+          source_data?: Json | null
+          status?: string | null
+          stockout_risk_date?: string | null
+          thread_id?: string | null
+          title?: string
+          updated_at?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_tracking_alerts_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "active_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "ai_suggested_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "po_tracking_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "email_tracking_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "email_thread_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "email_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_automation_summary"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_scorecard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tracking_alerts_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_tracking_runs: {
+        Row: {
+          ai_calls_made: number | null
+          ai_cost_usd: number | null
+          ai_tokens_used: number | null
+          alerts_critical: number | null
+          alerts_high: number | null
+          alerts_normal: number | null
+          backorders_detected: number | null
+          completed_at: string | null
+          delays_detected: number | null
+          duration_ms: number | null
+          emails_errored: number | null
+          emails_fetched: number | null
+          emails_processed: number | null
+          emails_skipped: number | null
+          error_details: Json | null
+          error_message: string | null
+          etas_extracted: number | null
+          gmail_history_id_end: string | null
+          gmail_history_id_start: string | null
+          id: string
+          inbox_config_id: string | null
+          invoices_detected: number | null
+          pos_correlated: number | null
+          run_metadata: Json | null
+          run_type: string
+          started_at: string | null
+          status: string | null
+          threads_created: number | null
+          threads_updated: number | null
+          tracking_numbers_found: number | null
+          vendors_matched: number | null
+        }
+        Insert: {
+          ai_calls_made?: number | null
+          ai_cost_usd?: number | null
+          ai_tokens_used?: number | null
+          alerts_critical?: number | null
+          alerts_high?: number | null
+          alerts_normal?: number | null
+          backorders_detected?: number | null
+          completed_at?: string | null
+          delays_detected?: number | null
+          duration_ms?: number | null
+          emails_errored?: number | null
+          emails_fetched?: number | null
+          emails_processed?: number | null
+          emails_skipped?: number | null
+          error_details?: Json | null
+          error_message?: string | null
+          etas_extracted?: number | null
+          gmail_history_id_end?: string | null
+          gmail_history_id_start?: string | null
+          id?: string
+          inbox_config_id?: string | null
+          invoices_detected?: number | null
+          pos_correlated?: number | null
+          run_metadata?: Json | null
+          run_type: string
+          started_at?: string | null
+          status?: string | null
+          threads_created?: number | null
+          threads_updated?: number | null
+          tracking_numbers_found?: number | null
+          vendors_matched?: number | null
+        }
+        Update: {
+          ai_calls_made?: number | null
+          ai_cost_usd?: number | null
+          ai_tokens_used?: number | null
+          alerts_critical?: number | null
+          alerts_high?: number | null
+          alerts_normal?: number | null
+          backorders_detected?: number | null
+          completed_at?: string | null
+          delays_detected?: number | null
+          duration_ms?: number | null
+          emails_errored?: number | null
+          emails_fetched?: number | null
+          emails_processed?: number | null
+          emails_skipped?: number | null
+          error_details?: Json | null
+          error_message?: string | null
+          etas_extracted?: number | null
+          gmail_history_id_end?: string | null
+          gmail_history_id_start?: string | null
+          id?: string
+          inbox_config_id?: string | null
+          invoices_detected?: number | null
+          pos_correlated?: number | null
+          run_metadata?: Json | null
+          run_type?: string
+          started_at?: string | null
+          status?: string | null
+          threads_created?: number | null
+          threads_updated?: number | null
+          tracking_numbers_found?: number | null
+          vendors_matched?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_tracking_runs_inbox_config_id_fkey"
+            columns: ["inbox_config_id"]
+            isOneToOne: false
+            referencedRelation: "email_inbox_configs"
             referencedColumns: ["id"]
           },
         ]
@@ -2724,6 +4202,13 @@ export type Database = {
             foreignKeyName: "finale_boms_component_product_id_fkey"
             columns: ["component_product_id"]
             isOneToOne: false
+            referencedRelation: "active_finale_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_boms_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
             referencedRelation: "finale_products"
             referencedColumns: ["id"]
           },
@@ -2740,6 +4225,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "mrp_velocity_analysis"
             referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "finale_boms_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "active_finale_products"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "finale_boms_parent_product_id_fkey"
@@ -2929,6 +4421,13 @@ export type Database = {
             foreignKeyName: "finale_inventory_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "active_finale_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_inventory_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "finale_products"
             referencedColumns: ["id"]
           },
@@ -3075,6 +4574,13 @@ export type Database = {
             columns: ["po_id"]
             isOneToOne: false
             referencedRelation: "finale_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_po_line_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "active_finale_products"
             referencedColumns: ["id"]
           },
           {
@@ -3230,6 +4736,7 @@ export type Database = {
           tax: number | null
           total: number | null
           total_quantity: number | null
+          tracking_status: string | null
           updated_at: string | null
           user_field_data: Json | null
           vendor_id: string | null
@@ -3263,6 +4770,7 @@ export type Database = {
           tax?: number | null
           total?: number | null
           total_quantity?: number | null
+          tracking_status?: string | null
           updated_at?: string | null
           user_field_data?: Json | null
           vendor_id?: string | null
@@ -3296,6 +4804,7 @@ export type Database = {
           tax?: number | null
           total?: number | null
           total_quantity?: number | null
+          tracking_status?: string | null
           updated_at?: string | null
           user_field_data?: Json | null
           vendor_id?: string | null
@@ -3303,6 +4812,13 @@ export type Database = {
           vendor_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "finale_purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_finale_vendors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "finale_purchase_orders_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -3384,6 +4900,13 @@ export type Database = {
           user_field_data?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "finale_stock_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "active_finale_products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "finale_stock_history_product_id_fkey"
             columns: ["product_id"]
@@ -3889,6 +5412,9 @@ export type Database = {
           finale_last_modified: string | null
           finale_product_id: string | null
           id: string
+          is_active: boolean | null
+          is_dropship: boolean | null
+          item_flow_type: string | null
           last_purchase_date: string | null
           last_sync_at: string | null
           lot_tracking: boolean | null
@@ -3896,6 +5422,7 @@ export type Database = {
           name: string
           on_order: number | null
           qty_to_order: number | null
+          reorder_method: string | null
           reorder_point: number | null
           reorder_variance: number | null
           sales_30_days: number | null
@@ -3909,6 +5436,9 @@ export type Database = {
           sku: string
           status: string | null
           stock: number | null
+          stock_intel_exclude: boolean | null
+          stock_intel_exclusion_reason: string | null
+          stock_intel_override: boolean | null
           supplier_sku: string | null
           sync_errors: string | null
           sync_status: string | null
@@ -3938,6 +5468,9 @@ export type Database = {
           finale_last_modified?: string | null
           finale_product_id?: string | null
           id?: string
+          is_active?: boolean | null
+          is_dropship?: boolean | null
+          item_flow_type?: string | null
           last_purchase_date?: string | null
           last_sync_at?: string | null
           lot_tracking?: boolean | null
@@ -3945,6 +5478,7 @@ export type Database = {
           name: string
           on_order?: number | null
           qty_to_order?: number | null
+          reorder_method?: string | null
           reorder_point?: number | null
           reorder_variance?: number | null
           sales_30_days?: number | null
@@ -3958,6 +5492,9 @@ export type Database = {
           sku: string
           status?: string | null
           stock?: number | null
+          stock_intel_exclude?: boolean | null
+          stock_intel_exclusion_reason?: string | null
+          stock_intel_override?: boolean | null
           supplier_sku?: string | null
           sync_errors?: string | null
           sync_status?: string | null
@@ -3987,6 +5524,9 @@ export type Database = {
           finale_last_modified?: string | null
           finale_product_id?: string | null
           id?: string
+          is_active?: boolean | null
+          is_dropship?: boolean | null
+          item_flow_type?: string | null
           last_purchase_date?: string | null
           last_sync_at?: string | null
           lot_tracking?: boolean | null
@@ -3994,6 +5534,7 @@ export type Database = {
           name?: string
           on_order?: number | null
           qty_to_order?: number | null
+          reorder_method?: string | null
           reorder_point?: number | null
           reorder_variance?: number | null
           sales_30_days?: number | null
@@ -4007,6 +5548,9 @@ export type Database = {
           sku?: string
           status?: string | null
           stock?: number | null
+          stock_intel_exclude?: boolean | null
+          stock_intel_exclusion_reason?: string | null
+          stock_intel_override?: boolean | null
           supplier_sku?: string | null
           sync_errors?: string | null
           sync_status?: string | null
@@ -4024,6 +5568,13 @@ export type Database = {
           weight_unit?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_items_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -4234,6 +5785,13 @@ export type Database = {
           verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_labels_bom_id"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "active_boms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_labels_bom_id"
             columns: ["bom_id"]
@@ -4764,6 +6322,13 @@ export type Database = {
             foreignKeyName: "pdf_templates_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdf_templates_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendor_automation_summary"
             referencedColumns: ["vendor_id"]
           },
@@ -4965,6 +6530,13 @@ export type Database = {
             columns: ["po_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_delivery_performance_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
             referencedColumns: ["id"]
           },
           {
@@ -5233,6 +6805,7 @@ export type Database = {
           currency: string | null
           extracted_at: string | null
           extraction_method: string | null
+          flagged_at: string | null
           forwarded_at: string | null
           forwarded_to_ap: boolean | null
           id: string
@@ -5253,6 +6826,7 @@ export type Database = {
           tax_amount: number | null
           total_amount: number | null
           updated_at: string | null
+          variance_notes: string | null
           vendor_address: string | null
           vendor_contact: string | null
           vendor_name: string | null
@@ -5265,6 +6839,7 @@ export type Database = {
           currency?: string | null
           extracted_at?: string | null
           extraction_method?: string | null
+          flagged_at?: string | null
           forwarded_at?: string | null
           forwarded_to_ap?: boolean | null
           id?: string
@@ -5285,6 +6860,7 @@ export type Database = {
           tax_amount?: number | null
           total_amount?: number | null
           updated_at?: string | null
+          variance_notes?: string | null
           vendor_address?: string | null
           vendor_contact?: string | null
           vendor_name?: string | null
@@ -5297,6 +6873,7 @@ export type Database = {
           currency?: string | null
           extracted_at?: string | null
           extraction_method?: string | null
+          flagged_at?: string | null
           forwarded_at?: string | null
           forwarded_to_ap?: boolean | null
           id?: string
@@ -5317,6 +6894,7 @@ export type Database = {
           tax_amount?: number | null
           total_amount?: number | null
           updated_at?: string | null
+          variance_notes?: string | null
           vendor_address?: string | null
           vendor_contact?: string | null
           vendor_name?: string | null
@@ -5480,6 +7058,83 @@ export type Database = {
           },
         ]
       }
+      po_landed_costs: {
+        Row: {
+          actual_total: number
+          calculated_at: string
+          duty_fees: number
+          id: string
+          landed_cost_total: number | null
+          notes: string | null
+          original_total: number
+          other_fees: number
+          po_id: string | null
+          shipping_cost: number
+          tax_amount: number
+          variance_amount: number | null
+          variance_percentage: number | null
+        }
+        Insert: {
+          actual_total?: number
+          calculated_at?: string
+          duty_fees?: number
+          id?: string
+          landed_cost_total?: number | null
+          notes?: string | null
+          original_total?: number
+          other_fees?: number
+          po_id?: string | null
+          shipping_cost?: number
+          tax_amount?: number
+          variance_amount?: number | null
+          variance_percentage?: number | null
+        }
+        Update: {
+          actual_total?: number
+          calculated_at?: string
+          duty_fees?: number
+          id?: string
+          landed_cost_total?: number | null
+          notes?: string | null
+          original_total?: number
+          other_fees?: number
+          po_id?: string | null
+          shipping_cost?: number
+          tax_amount?: number
+          variance_amount?: number | null
+          variance_percentage?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_landed_costs_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: true
+            referencedRelation: "active_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_landed_costs_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: true
+            referencedRelation: "ai_suggested_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_landed_costs_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: true
+            referencedRelation: "po_tracking_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_landed_costs_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: true
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       po_patterns: {
         Row: {
           confidence_score: number | null
@@ -5518,6 +7173,13 @@ export type Database = {
           vendor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "po_patterns_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "po_patterns_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -5795,6 +7457,13 @@ export type Database = {
             columns: ["po_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "po_status_history_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
             referencedColumns: ["id"]
           },
           {
@@ -6379,6 +8048,117 @@ export type Database = {
           },
         ]
       }
+      product_compliance_documents: {
+        Row: {
+          applicable_states: string[] | null
+          bom_id: string | null
+          created_at: string | null
+          created_by: string | null
+          document_id: string
+          effective_date: string | null
+          expiration_date: string | null
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          priority: number | null
+          product_group: string | null
+          relationship_type: string
+          sku: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          applicable_states?: string[] | null
+          bom_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          document_id: string
+          effective_date?: string | null
+          expiration_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          priority?: number | null
+          product_group?: string | null
+          relationship_type?: string
+          sku?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          applicable_states?: string[] | null
+          bom_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          document_id?: string
+          effective_date?: string | null
+          expiration_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          priority?: number | null
+          product_group?: string | null
+          relationship_type?: string
+          sku?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_compliance_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_compliance_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents_overview"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_consumption_log: {
+        Row: {
+          consumed_at: string
+          consumption_type: string
+          created_at: string
+          id: string
+          notes: string | null
+          product_name: string | null
+          quantity_consumed: number
+          sku: string
+          source_reference: string | null
+          source_type: string | null
+        }
+        Insert: {
+          consumed_at?: string
+          consumption_type: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_name?: string | null
+          quantity_consumed: number
+          sku: string
+          source_reference?: string | null
+          source_type?: string | null
+        }
+        Update: {
+          consumed_at?: string
+          consumption_type?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          product_name?: string | null
+          quantity_consumed?: number
+          sku?: string
+          source_reference?: string | null
+          source_type?: string | null
+        }
+        Relationships: []
+      }
       product_data_sheets: {
         Row: {
           ai_model_used: string | null
@@ -6471,6 +8251,13 @@ export type Database = {
           version?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_pds_bom_id"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "active_boms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_pds_bom_id"
             columns: ["bom_id"]
@@ -6573,6 +8360,27 @@ export type Database = {
             foreignKeyName: "product_pricing_internal_sku_fkey"
             columns: ["internal_sku"]
             isOneToOne: false
+            referencedRelation: "active_inventory_items"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "agent_classification_context"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "dropship_workflow_items"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
             referencedRelation: "inventory_details"
             referencedColumns: ["sku"]
           },
@@ -6596,6 +8404,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory_velocity_summary"
             referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "product_reorder_analytics"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "stock_intelligence_items"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "product_pricing_vendor_id_fkey"
@@ -6644,6 +8473,128 @@ export type Database = {
             columns: ["vendor_sku_mapping_id"]
             isOneToOne: false
             referencedRelation: "vendor_sku_mappings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_purchase_log: {
+        Row: {
+          created_at: string
+          id: string
+          lead_time_days: number | null
+          ordered_at: string | null
+          po_id: string | null
+          po_number: string | null
+          product_name: string | null
+          quantity_purchased: number
+          received_at: string | null
+          sku: string
+          total_cost: number | null
+          unit_cost: number | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_time_days?: number | null
+          ordered_at?: string | null
+          po_id?: string | null
+          po_number?: string | null
+          product_name?: string | null
+          quantity_purchased: number
+          received_at?: string | null
+          sku: string
+          total_cost?: number | null
+          unit_cost?: number | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_time_days?: number | null
+          ordered_at?: string | null
+          po_id?: string | null
+          po_number?: string | null
+          product_name?: string | null
+          quantity_purchased?: number
+          received_at?: string | null
+          sku?: string
+          total_cost?: number | null
+          unit_cost?: number | null
+          vendor_id?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_purchase_log_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "active_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_purchase_log_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "ai_suggested_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_purchase_log_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "po_tracking_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_purchase_log_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_purchase_log_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_purchase_log_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_automation_summary"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "product_purchase_log_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_purchase_log_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_purchase_log_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_scorecard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_purchase_log_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -7121,6 +9072,13 @@ export type Database = {
             foreignKeyName: "purchase_orders_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendor_automation_summary"
             referencedColumns: ["vendor_id"]
           },
@@ -7484,6 +9442,13 @@ export type Database = {
             columns: ["po_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_queue_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
             referencedColumns: ["id"]
           },
           {
@@ -9227,6 +11192,231 @@ export type Database = {
           },
         ]
       }
+      state_regulatory_sources: {
+        Row: {
+          agency_acronym: string | null
+          agency_division: string | null
+          agency_name: string
+          base_url: string
+          certification_required: string[] | null
+          contact_email: string | null
+          contact_fax: string | null
+          contact_phone: string | null
+          contact_url: string | null
+          created_at: string | null
+          created_by: string | null
+          data_completeness: number | null
+          effective_chapters: string[] | null
+          enforcement_level: string | null
+          faq_url: string | null
+          fee_schedule_url: string | null
+          forms_url: string | null
+          id: string
+          inspection_frequency: string | null
+          is_active: boolean | null
+          labeling_requirements: Json | null
+          last_scrape_status: string | null
+          last_scraped_at: string | null
+          last_verified_at: string | null
+          last_verified_by: string | null
+          mailing_address: string | null
+          notes: string | null
+          penalty_info: string | null
+          physical_address: string | null
+          primary_regulations: string[] | null
+          primary_statutes: string[] | null
+          prohibited_claims: string[] | null
+          registration_annual_fee: number | null
+          registration_fee_per_product: number | null
+          registration_required: boolean | null
+          registration_url: string | null
+          regulations_url: string | null
+          regulatory_domain: string
+          required_statements: string[] | null
+          scrape_enabled: boolean | null
+          scrape_frequency: string | null
+          scrape_selectors: Json | null
+          source_name: string
+          source_type: string
+          state_code: string
+          state_name: string
+          testing_frequency: string | null
+          testing_required: boolean | null
+          updated_at: string | null
+          updated_by: string | null
+          verification_notes: string | null
+        }
+        Insert: {
+          agency_acronym?: string | null
+          agency_division?: string | null
+          agency_name: string
+          base_url: string
+          certification_required?: string[] | null
+          contact_email?: string | null
+          contact_fax?: string | null
+          contact_phone?: string | null
+          contact_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_completeness?: number | null
+          effective_chapters?: string[] | null
+          enforcement_level?: string | null
+          faq_url?: string | null
+          fee_schedule_url?: string | null
+          forms_url?: string | null
+          id?: string
+          inspection_frequency?: string | null
+          is_active?: boolean | null
+          labeling_requirements?: Json | null
+          last_scrape_status?: string | null
+          last_scraped_at?: string | null
+          last_verified_at?: string | null
+          last_verified_by?: string | null
+          mailing_address?: string | null
+          notes?: string | null
+          penalty_info?: string | null
+          physical_address?: string | null
+          primary_regulations?: string[] | null
+          primary_statutes?: string[] | null
+          prohibited_claims?: string[] | null
+          registration_annual_fee?: number | null
+          registration_fee_per_product?: number | null
+          registration_required?: boolean | null
+          registration_url?: string | null
+          regulations_url?: string | null
+          regulatory_domain: string
+          required_statements?: string[] | null
+          scrape_enabled?: boolean | null
+          scrape_frequency?: string | null
+          scrape_selectors?: Json | null
+          source_name: string
+          source_type: string
+          state_code: string
+          state_name: string
+          testing_frequency?: string | null
+          testing_required?: boolean | null
+          updated_at?: string | null
+          updated_by?: string | null
+          verification_notes?: string | null
+        }
+        Update: {
+          agency_acronym?: string | null
+          agency_division?: string | null
+          agency_name?: string
+          base_url?: string
+          certification_required?: string[] | null
+          contact_email?: string | null
+          contact_fax?: string | null
+          contact_phone?: string | null
+          contact_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_completeness?: number | null
+          effective_chapters?: string[] | null
+          enforcement_level?: string | null
+          faq_url?: string | null
+          fee_schedule_url?: string | null
+          forms_url?: string | null
+          id?: string
+          inspection_frequency?: string | null
+          is_active?: boolean | null
+          labeling_requirements?: Json | null
+          last_scrape_status?: string | null
+          last_scraped_at?: string | null
+          last_verified_at?: string | null
+          last_verified_by?: string | null
+          mailing_address?: string | null
+          notes?: string | null
+          penalty_info?: string | null
+          physical_address?: string | null
+          primary_regulations?: string[] | null
+          primary_statutes?: string[] | null
+          prohibited_claims?: string[] | null
+          registration_annual_fee?: number | null
+          registration_fee_per_product?: number | null
+          registration_required?: boolean | null
+          registration_url?: string | null
+          regulations_url?: string | null
+          regulatory_domain?: string
+          required_statements?: string[] | null
+          scrape_enabled?: boolean | null
+          scrape_frequency?: string | null
+          scrape_selectors?: Json | null
+          source_name?: string
+          source_type?: string
+          state_code?: string
+          state_name?: string
+          testing_frequency?: string | null
+          testing_required?: boolean | null
+          updated_at?: string | null
+          updated_by?: string | null
+          verification_notes?: string | null
+        }
+        Relationships: []
+      }
+      stock_intel_exclusion_log: {
+        Row: {
+          action: string
+          changed_at: string | null
+          changed_by: string | null
+          id: string
+          new_value: Json | null
+          previous_value: Json | null
+          reason: string | null
+          sku: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_value?: Json | null
+          previous_value?: Json | null
+          reason?: string | null
+          sku: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_value?: Json | null
+          previous_value?: Json | null
+          reason?: string | null
+          sku?: string
+        }
+        Relationships: []
+      }
+      stock_intel_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       subscription_events: {
         Row: {
           created_at: string
@@ -10407,6 +12597,13 @@ export type Database = {
             foreignKeyName: "vendor_confidence_history_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_confidence_history_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendor_automation_summary"
             referencedColumns: ["vendor_id"]
           },
@@ -10506,6 +12703,13 @@ export type Database = {
             foreignKeyName: "vendor_confidence_profiles_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: true
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_confidence_profiles_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
             referencedRelation: "vendor_automation_summary"
             referencedColumns: ["vendor_id"]
           },
@@ -10534,6 +12738,85 @@ export type Database = {
             foreignKeyName: "vendor_confidence_profiles_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: true
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_email_domains: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          domain: string
+          id: string
+          last_matched_at: string | null
+          match_count: number | null
+          source: string | null
+          updated_at: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          domain: string
+          id?: string
+          last_matched_at?: string | null
+          match_count?: number | null
+          source?: string | null
+          updated_at?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          domain?: string
+          id?: string
+          last_matched_at?: string | null
+          match_count?: number | null
+          source?: string | null
+          updated_at?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_email_domains_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_email_domains_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_automation_summary"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "vendor_email_domains_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_email_domains_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_email_domains_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_scorecard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_email_domains_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
@@ -10610,6 +12893,13 @@ export type Database = {
             columns: ["po_id"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_followup_events_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
             referencedColumns: ["id"]
           },
           {
@@ -10728,6 +13018,13 @@ export type Database = {
             foreignKeyName: "vendor_interaction_events_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_interaction_events_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendor_automation_summary"
             referencedColumns: ["vendor_id"]
           },
@@ -10829,6 +13126,13 @@ export type Database = {
           vendor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "vendor_lead_time_metrics_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: true
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vendor_lead_time_metrics_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -10974,6 +13278,13 @@ export type Database = {
             foreignKeyName: "vendor_performance_metrics_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_performance_metrics_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendor_automation_summary"
             referencedColumns: ["vendor_id"]
           },
@@ -11089,6 +13400,13 @@ export type Database = {
             columns: ["previous_version_id"]
             isOneToOne: false
             referencedRelation: "vendor_pricelists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_pricelists_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
             referencedColumns: ["id"]
           },
           {
@@ -11312,6 +13630,27 @@ export type Database = {
             foreignKeyName: "vendor_sku_mappings_internal_sku_fkey"
             columns: ["internal_sku"]
             isOneToOne: false
+            referencedRelation: "active_inventory_items"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "vendor_sku_mappings_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "agent_classification_context"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "vendor_sku_mappings_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "dropship_workflow_items"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "vendor_sku_mappings_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
             referencedRelation: "inventory_details"
             referencedColumns: ["sku"]
           },
@@ -11335,6 +13674,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory_velocity_summary"
             referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "vendor_sku_mappings_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "product_reorder_analytics"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "vendor_sku_mappings_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "stock_intelligence_items"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "vendor_sku_mappings_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "vendor_sku_mappings_vendor_id_fkey"
@@ -11388,6 +13748,7 @@ export type Database = {
           created_at: string | null
           data_source: string | null
           id: string
+          is_active: boolean | null
           is_recurring_vendor: boolean | null
           last_sync_at: string | null
           lead_time_days: number | null
@@ -11414,6 +13775,7 @@ export type Database = {
           created_at?: string | null
           data_source?: string | null
           id?: string
+          is_active?: boolean | null
           is_recurring_vendor?: boolean | null
           last_sync_at?: string | null
           lead_time_days?: number | null
@@ -11440,6 +13802,7 @@ export type Database = {
           created_at?: string | null
           data_source?: string | null
           id?: string
+          is_active?: boolean | null
           is_recurring_vendor?: boolean | null
           last_sync_at?: string | null
           lead_time_days?: number | null
@@ -11534,6 +13897,689 @@ export type Database = {
       }
     }
     Views: {
+      active_boms: {
+        Row: {
+          artwork: Json | null
+          barcode: string | null
+          build_time_minutes: number | null
+          category: string | null
+          compliance_last_checked: string | null
+          compliance_notes: string | null
+          compliance_status: string | null
+          components: Json | null
+          created_at: string | null
+          data_source: string | null
+          description: string | null
+          expiring_registrations_count: number | null
+          finished_sku: string | null
+          id: string | null
+          is_active: boolean | null
+          labor_cost_per_hour: number | null
+          last_approved_at: string | null
+          last_approved_by: string | null
+          last_sync_at: string | null
+          name: string | null
+          packaging: Json | null
+          primary_data_sheet_id: string | null
+          primary_label_id: string | null
+          regulatory_category: string | null
+          revision_approved_at: string | null
+          revision_approved_by: string | null
+          revision_number: number | null
+          revision_requested_at: string | null
+          revision_requested_by: string | null
+          revision_reviewer_id: string | null
+          revision_status: string | null
+          revision_summary: string | null
+          sync_status: string | null
+          target_states: string[] | null
+          total_state_registrations: number | null
+          updated_at: string | null
+          yield_quantity: number | null
+        }
+        Insert: {
+          artwork?: Json | null
+          barcode?: string | null
+          build_time_minutes?: number | null
+          category?: string | null
+          compliance_last_checked?: string | null
+          compliance_notes?: string | null
+          compliance_status?: string | null
+          components?: Json | null
+          created_at?: string | null
+          data_source?: string | null
+          description?: string | null
+          expiring_registrations_count?: number | null
+          finished_sku?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          labor_cost_per_hour?: number | null
+          last_approved_at?: string | null
+          last_approved_by?: string | null
+          last_sync_at?: string | null
+          name?: string | null
+          packaging?: Json | null
+          primary_data_sheet_id?: string | null
+          primary_label_id?: string | null
+          regulatory_category?: string | null
+          revision_approved_at?: string | null
+          revision_approved_by?: string | null
+          revision_number?: number | null
+          revision_requested_at?: string | null
+          revision_requested_by?: string | null
+          revision_reviewer_id?: string | null
+          revision_status?: string | null
+          revision_summary?: string | null
+          sync_status?: string | null
+          target_states?: string[] | null
+          total_state_registrations?: number | null
+          updated_at?: string | null
+          yield_quantity?: number | null
+        }
+        Update: {
+          artwork?: Json | null
+          barcode?: string | null
+          build_time_minutes?: number | null
+          category?: string | null
+          compliance_last_checked?: string | null
+          compliance_notes?: string | null
+          compliance_status?: string | null
+          components?: Json | null
+          created_at?: string | null
+          data_source?: string | null
+          description?: string | null
+          expiring_registrations_count?: number | null
+          finished_sku?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          labor_cost_per_hour?: number | null
+          last_approved_at?: string | null
+          last_approved_by?: string | null
+          last_sync_at?: string | null
+          name?: string | null
+          packaging?: Json | null
+          primary_data_sheet_id?: string | null
+          primary_label_id?: string | null
+          regulatory_category?: string | null
+          revision_approved_at?: string | null
+          revision_approved_by?: string | null
+          revision_number?: number | null
+          revision_requested_at?: string | null
+          revision_requested_by?: string | null
+          revision_reviewer_id?: string | null
+          revision_status?: string | null
+          revision_summary?: string | null
+          sync_status?: string | null
+          target_states?: string[] | null
+          total_state_registrations?: number | null
+          updated_at?: string | null
+          yield_quantity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boms_last_approved_by_fkey"
+            columns: ["last_approved_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boms_primary_data_sheet_id_fkey"
+            columns: ["primary_data_sheet_id"]
+            isOneToOne: false
+            referencedRelation: "product_data_sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boms_primary_label_id_fkey"
+            columns: ["primary_label_id"]
+            isOneToOne: false
+            referencedRelation: "labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boms_revision_approved_by_fkey"
+            columns: ["revision_approved_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boms_revision_requested_by_fkey"
+            columns: ["revision_requested_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boms_revision_reviewer_id_fkey"
+            columns: ["revision_reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      active_finale_boms: {
+        Row: {
+          bom_id: string | null
+          bom_type: string | null
+          component_cost: number | null
+          component_name: string | null
+          component_product_id: string | null
+          component_product_url: string | null
+          component_sku: string | null
+          created_at: string | null
+          effective_quantity: number | null
+          finale_bom_url: string | null
+          id: string | null
+          parent_name: string | null
+          parent_product_id: string | null
+          parent_product_url: string | null
+          parent_sku: string | null
+          quantity_per: number | null
+          quantity_per_parent: number | null
+          raw_data: Json | null
+          status: string | null
+          synced_at: string | null
+          updated_at: string | null
+          user_field_data: Json | null
+        }
+        Insert: {
+          bom_id?: string | null
+          bom_type?: string | null
+          component_cost?: number | null
+          component_name?: string | null
+          component_product_id?: string | null
+          component_product_url?: string | null
+          component_sku?: string | null
+          created_at?: string | null
+          effective_quantity?: number | null
+          finale_bom_url?: string | null
+          id?: string | null
+          parent_name?: string | null
+          parent_product_id?: string | null
+          parent_product_url?: string | null
+          parent_sku?: string | null
+          quantity_per?: number | null
+          quantity_per_parent?: number | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Update: {
+          bom_id?: string | null
+          bom_type?: string | null
+          component_cost?: number | null
+          component_name?: string | null
+          component_product_id?: string | null
+          component_product_url?: string | null
+          component_sku?: string | null
+          created_at?: string | null
+          effective_quantity?: number | null
+          finale_bom_url?: string | null
+          id?: string | null
+          parent_name?: string | null
+          parent_product_id?: string | null
+          parent_product_url?: string | null
+          parent_sku?: string | null
+          quantity_per?: number | null
+          quantity_per_parent?: number | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finale_boms_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "active_finale_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_boms_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "finale_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_boms_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_reorder_recommendations"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "finale_boms_component_product_id_fkey"
+            columns: ["component_product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_velocity_analysis"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "finale_boms_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "active_finale_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_boms_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "finale_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finale_boms_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_reorder_recommendations"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "finale_boms_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "mrp_velocity_analysis"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
+      active_finale_products: {
+        Row: {
+          bom_url: string | null
+          created_at: string | null
+          custom_category: string | null
+          custom_department: string | null
+          custom_lead_time: number | null
+          custom_max_stock: number | null
+          custom_min_stock: number | null
+          custom_vendor_sku: string | null
+          description: string | null
+          finale_last_modified: string | null
+          finale_product_url: string | null
+          id: string | null
+          internal_name: string | null
+          is_assembly: boolean | null
+          lead_time_days: number | null
+          minimum_order_qty: number | null
+          primary_supplier_id: string | null
+          primary_supplier_url: string | null
+          product_id: string | null
+          product_type: string | null
+          raw_data: Json | null
+          reorder_point: number | null
+          reorder_quantity: number | null
+          sku: string | null
+          status: string | null
+          synced_at: string | null
+          unit_cost: number | null
+          unit_price: number | null
+          upc: string | null
+          updated_at: string | null
+          user_field_data: Json | null
+        }
+        Insert: {
+          bom_url?: string | null
+          created_at?: string | null
+          custom_category?: string | null
+          custom_department?: string | null
+          custom_lead_time?: number | null
+          custom_max_stock?: number | null
+          custom_min_stock?: number | null
+          custom_vendor_sku?: string | null
+          description?: string | null
+          finale_last_modified?: string | null
+          finale_product_url?: string | null
+          id?: string | null
+          internal_name?: string | null
+          is_assembly?: boolean | null
+          lead_time_days?: number | null
+          minimum_order_qty?: number | null
+          primary_supplier_id?: string | null
+          primary_supplier_url?: string | null
+          product_id?: string | null
+          product_type?: string | null
+          raw_data?: Json | null
+          reorder_point?: number | null
+          reorder_quantity?: number | null
+          sku?: string | null
+          status?: string | null
+          synced_at?: string | null
+          unit_cost?: number | null
+          unit_price?: number | null
+          upc?: string | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Update: {
+          bom_url?: string | null
+          created_at?: string | null
+          custom_category?: string | null
+          custom_department?: string | null
+          custom_lead_time?: number | null
+          custom_max_stock?: number | null
+          custom_min_stock?: number | null
+          custom_vendor_sku?: string | null
+          description?: string | null
+          finale_last_modified?: string | null
+          finale_product_url?: string | null
+          id?: string | null
+          internal_name?: string | null
+          is_assembly?: boolean | null
+          lead_time_days?: number | null
+          minimum_order_qty?: number | null
+          primary_supplier_id?: string | null
+          primary_supplier_url?: string | null
+          product_id?: string | null
+          product_type?: string | null
+          raw_data?: Json | null
+          reorder_point?: number | null
+          reorder_quantity?: number | null
+          sku?: string | null
+          status?: string | null
+          synced_at?: string | null
+          unit_cost?: number | null
+          unit_price?: number | null
+          upc?: string | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Relationships: []
+      }
+      active_finale_vendors: {
+        Row: {
+          address_city: string | null
+          address_country: string | null
+          address_postal_code: string | null
+          address_state: string | null
+          address_street: string | null
+          avg_lead_time_days: number | null
+          contact_name: string | null
+          created_at: string | null
+          custom_account_number: string | null
+          custom_vendor_code: string | null
+          default_lead_time_days: number | null
+          email: string | null
+          finale_party_url: string | null
+          id: string | null
+          minimum_order_amount: number | null
+          on_time_delivery_pct: number | null
+          party_id: string | null
+          party_name: string | null
+          payment_terms: string | null
+          phone: string | null
+          raw_data: Json | null
+          status: string | null
+          synced_at: string | null
+          total_orders: number | null
+          total_spend: number | null
+          updated_at: string | null
+          user_field_data: Json | null
+        }
+        Insert: {
+          address_city?: string | null
+          address_country?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          avg_lead_time_days?: number | null
+          contact_name?: string | null
+          created_at?: string | null
+          custom_account_number?: string | null
+          custom_vendor_code?: string | null
+          default_lead_time_days?: number | null
+          email?: string | null
+          finale_party_url?: string | null
+          id?: string | null
+          minimum_order_amount?: number | null
+          on_time_delivery_pct?: number | null
+          party_id?: string | null
+          party_name?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          total_orders?: number | null
+          total_spend?: number | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Update: {
+          address_city?: string | null
+          address_country?: string | null
+          address_postal_code?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          avg_lead_time_days?: number | null
+          contact_name?: string | null
+          created_at?: string | null
+          custom_account_number?: string | null
+          custom_vendor_code?: string | null
+          default_lead_time_days?: number | null
+          email?: string | null
+          finale_party_url?: string | null
+          id?: string | null
+          minimum_order_amount?: number | null
+          on_time_delivery_pct?: number | null
+          party_id?: string | null
+          party_name?: string | null
+          payment_terms?: string | null
+          phone?: string | null
+          raw_data?: Json | null
+          status?: string | null
+          synced_at?: string | null
+          total_orders?: number | null
+          total_spend?: number | null
+          updated_at?: string | null
+          user_field_data?: Json | null
+        }
+        Relationships: []
+      }
+      active_inventory_items: {
+        Row: {
+          bin_location: string | null
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          custom_fields: Json | null
+          data_source: string | null
+          description: string | null
+          dimensions: string | null
+          facility_id: string | null
+          finale_last_modified: string | null
+          finale_product_id: string | null
+          id: string | null
+          is_active: boolean | null
+          last_purchase_date: string | null
+          last_sync_at: string | null
+          lot_tracking: boolean | null
+          moq: number | null
+          name: string | null
+          on_order: number | null
+          qty_to_order: number | null
+          reorder_point: number | null
+          reorder_variance: number | null
+          sales_30_days: number | null
+          sales_60_days: number | null
+          sales_90_days: number | null
+          sales_last_30_days: number | null
+          sales_last_60_days: number | null
+          sales_last_90_days: number | null
+          sales_velocity: number | null
+          sales_velocity_consolidated: number | null
+          sku: string | null
+          status: string | null
+          stock: number | null
+          supplier_sku: string | null
+          sync_errors: string | null
+          sync_status: string | null
+          unit_cost: number | null
+          unit_price: number | null
+          units_available: number | null
+          units_in_stock: number | null
+          units_on_order: number | null
+          units_reserved: number | null
+          upc: string | null
+          updated_at: string | null
+          vendor_id: string | null
+          warehouse_location: string | null
+          weight: number | null
+          weight_unit: string | null
+        }
+        Insert: {
+          bin_location?: string | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          custom_fields?: Json | null
+          data_source?: string | null
+          description?: string | null
+          dimensions?: string | null
+          facility_id?: string | null
+          finale_last_modified?: string | null
+          finale_product_id?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          last_purchase_date?: string | null
+          last_sync_at?: string | null
+          lot_tracking?: boolean | null
+          moq?: number | null
+          name?: string | null
+          on_order?: number | null
+          qty_to_order?: number | null
+          reorder_point?: number | null
+          reorder_variance?: number | null
+          sales_30_days?: number | null
+          sales_60_days?: number | null
+          sales_90_days?: number | null
+          sales_last_30_days?: number | null
+          sales_last_60_days?: number | null
+          sales_last_90_days?: number | null
+          sales_velocity?: number | null
+          sales_velocity_consolidated?: number | null
+          sku?: string | null
+          status?: string | null
+          stock?: number | null
+          supplier_sku?: string | null
+          sync_errors?: string | null
+          sync_status?: string | null
+          unit_cost?: number | null
+          unit_price?: number | null
+          units_available?: number | null
+          units_in_stock?: number | null
+          units_on_order?: number | null
+          units_reserved?: number | null
+          upc?: string | null
+          updated_at?: string | null
+          vendor_id?: string | null
+          warehouse_location?: string | null
+          weight?: number | null
+          weight_unit?: string | null
+        }
+        Update: {
+          bin_location?: string | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          custom_fields?: Json | null
+          data_source?: string | null
+          description?: string | null
+          dimensions?: string | null
+          facility_id?: string | null
+          finale_last_modified?: string | null
+          finale_product_id?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          last_purchase_date?: string | null
+          last_sync_at?: string | null
+          lot_tracking?: boolean | null
+          moq?: number | null
+          name?: string | null
+          on_order?: number | null
+          qty_to_order?: number | null
+          reorder_point?: number | null
+          reorder_variance?: number | null
+          sales_30_days?: number | null
+          sales_60_days?: number | null
+          sales_90_days?: number | null
+          sales_last_30_days?: number | null
+          sales_last_60_days?: number | null
+          sales_last_90_days?: number | null
+          sales_velocity?: number | null
+          sales_velocity_consolidated?: number | null
+          sku?: string | null
+          status?: string | null
+          stock?: number | null
+          supplier_sku?: string | null
+          sync_errors?: string | null
+          sync_status?: string | null
+          unit_cost?: number | null
+          unit_price?: number | null
+          units_available?: number | null
+          units_in_stock?: number | null
+          units_on_order?: number | null
+          units_reserved?: number | null
+          upc?: string | null
+          updated_at?: string | null
+          vendor_id?: string | null
+          warehouse_location?: string | null
+          weight?: number | null
+          weight_unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_automation_summary"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_scorecard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       active_invoice_reviews: {
         Row: {
           confidence_score: number | null
@@ -11596,6 +14642,213 @@ export type Database = {
         }
         Relationships: []
       }
+      active_vendors: {
+        Row: {
+          address: string | null
+          address_line1: string | null
+          address_line2: string | null
+          auto_po_enabled: boolean | null
+          auto_po_threshold: string | null
+          auto_send_email: boolean | null
+          automation_notes: string | null
+          city: string | null
+          contact_emails: string[] | null
+          country: string | null
+          created_at: string | null
+          data_source: string | null
+          id: string | null
+          is_active: boolean | null
+          is_recurring_vendor: boolean | null
+          last_sync_at: string | null
+          lead_time_days: number | null
+          name: string | null
+          notes: string | null
+          phone: string | null
+          postal_code: string | null
+          state: string | null
+          sync_status: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
+          auto_po_enabled?: boolean | null
+          auto_po_threshold?: string | null
+          auto_send_email?: boolean | null
+          automation_notes?: string | null
+          city?: string | null
+          contact_emails?: string[] | null
+          country?: string | null
+          created_at?: string | null
+          data_source?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_recurring_vendor?: boolean | null
+          last_sync_at?: string | null
+          lead_time_days?: number | null
+          name?: string | null
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          sync_status?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
+          auto_po_enabled?: boolean | null
+          auto_po_threshold?: string | null
+          auto_send_email?: boolean | null
+          automation_notes?: string | null
+          city?: string | null
+          contact_emails?: string[] | null
+          country?: string | null
+          created_at?: string | null
+          data_source?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_recurring_vendor?: boolean | null
+          last_sync_at?: string | null
+          lead_time_days?: number | null
+          name?: string | null
+          notes?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          sync_status?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      agent_classification_context: {
+        Row: {
+          agent_instruction_summary: string | null
+          category: string | null
+          current_stock: number | null
+          daily_velocity: number | null
+          flow_type: string | null
+          is_dropship: boolean | null
+          moq: number | null
+          name: string | null
+          on_order: number | null
+          reorder_method: string | null
+          reorder_point: number | null
+          should_trigger_reorder_alerts: boolean | null
+          sku: string | null
+          status: string | null
+          stock_intel_exclude: boolean | null
+          stock_intel_exclusion_reason: string | null
+          stock_intel_override: boolean | null
+          visible_in_stock_intel: boolean | null
+        }
+        Insert: {
+          agent_instruction_summary?: never
+          category?: string | null
+          current_stock?: number | null
+          daily_velocity?: number | null
+          flow_type?: never
+          is_dropship?: boolean | null
+          moq?: number | null
+          name?: string | null
+          on_order?: number | null
+          reorder_method?: string | null
+          reorder_point?: number | null
+          should_trigger_reorder_alerts?: never
+          sku?: string | null
+          status?: string | null
+          stock_intel_exclude?: boolean | null
+          stock_intel_exclusion_reason?: string | null
+          stock_intel_override?: boolean | null
+          visible_in_stock_intel?: never
+        }
+        Update: {
+          agent_instruction_summary?: never
+          category?: string | null
+          current_stock?: number | null
+          daily_velocity?: number | null
+          flow_type?: never
+          is_dropship?: boolean | null
+          moq?: number | null
+          name?: string | null
+          on_order?: number | null
+          reorder_method?: string | null
+          reorder_point?: number | null
+          should_trigger_reorder_alerts?: never
+          sku?: string | null
+          status?: string | null
+          stock_intel_exclude?: boolean | null
+          stock_intel_exclusion_reason?: string | null
+          stock_intel_override?: boolean | null
+          visible_in_stock_intel?: never
+        }
+        Relationships: []
+      }
+      agent_usage_summary: {
+        Row: {
+          agent_identifier: string | null
+          autonomy_level: string | null
+          avg_duration_ms: number | null
+          cost_last_24h: number | null
+          cost_last_7d: number | null
+          display_name: string | null
+          failed_runs: number | null
+          is_active: boolean | null
+          last_run_at: string | null
+          runs_last_24h: number | null
+          runs_last_7d: number | null
+          success_rate_pct: number | null
+          successful_runs: number | null
+          total_cost: number | null
+          total_runs: number | null
+          total_tokens_used: number | null
+          trust_score: number | null
+        }
+        Insert: {
+          agent_identifier?: string | null
+          autonomy_level?: string | null
+          avg_duration_ms?: number | null
+          cost_last_24h?: never
+          cost_last_7d?: never
+          display_name?: string | null
+          failed_runs?: number | null
+          is_active?: boolean | null
+          last_run_at?: string | null
+          runs_last_24h?: never
+          runs_last_7d?: never
+          success_rate_pct?: never
+          successful_runs?: number | null
+          total_cost?: number | null
+          total_runs?: number | null
+          total_tokens_used?: number | null
+          trust_score?: number | null
+        }
+        Update: {
+          agent_identifier?: string | null
+          autonomy_level?: string | null
+          avg_duration_ms?: number | null
+          cost_last_24h?: never
+          cost_last_7d?: never
+          display_name?: string | null
+          failed_runs?: number | null
+          is_active?: boolean | null
+          last_run_at?: string | null
+          runs_last_24h?: never
+          runs_last_7d?: never
+          success_rate_pct?: never
+          successful_runs?: number | null
+          total_cost?: number | null
+          total_runs?: number | null
+          total_tokens_used?: number | null
+          trust_score?: number | null
+        }
+        Relationships: []
+      }
       ai_active_insights: {
         Row: {
           insight_type: string | null
@@ -11648,6 +14901,13 @@ export type Database = {
           vendor_name: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchase_orders_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -11734,6 +14994,27 @@ export type Database = {
           },
         ]
       }
+      compliance_alerts_dashboard: {
+        Row: {
+          action_deadline: string | null
+          action_required: string | null
+          affected_skus: string[] | null
+          alert_type: string | null
+          applicable_states: string[] | null
+          created_at: string | null
+          document_name: string | null
+          document_number: string | null
+          document_type:
+            | Database["public"]["Enums"]["compliance_document_type"]
+            | null
+          id: string | null
+          message: string | null
+          severity: string | null
+          status: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
       compliance_dashboard: {
         Row: {
           bom_id: string | null
@@ -11750,6 +15031,87 @@ export type Database = {
         }
         Relationships: []
       }
+      compliance_documents_overview: {
+        Row: {
+          active_alerts_count: number | null
+          agency_name: string | null
+          applicable_states: string[] | null
+          created_at: string | null
+          days_until_expiry: number | null
+          document_name: string | null
+          document_number: string | null
+          document_type:
+            | Database["public"]["Enums"]["compliance_document_type"]
+            | null
+          effective_date: string | null
+          expiration_date: string | null
+          file_url: string | null
+          id: string | null
+          is_national: boolean | null
+          linked_products_count: number | null
+          pending_reviews_count: number | null
+          regulatory_category: string | null
+          status:
+            | Database["public"]["Enums"]["compliance_document_status"]
+            | null
+          tags: string[] | null
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          active_alerts_count?: never
+          agency_name?: string | null
+          applicable_states?: string[] | null
+          created_at?: string | null
+          days_until_expiry?: never
+          document_name?: string | null
+          document_number?: string | null
+          document_type?:
+            | Database["public"]["Enums"]["compliance_document_type"]
+            | null
+          effective_date?: string | null
+          expiration_date?: string | null
+          file_url?: string | null
+          id?: string | null
+          is_national?: boolean | null
+          linked_products_count?: never
+          pending_reviews_count?: never
+          regulatory_category?: string | null
+          status?:
+            | Database["public"]["Enums"]["compliance_document_status"]
+            | null
+          tags?: string[] | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          active_alerts_count?: never
+          agency_name?: string | null
+          applicable_states?: string[] | null
+          created_at?: string | null
+          days_until_expiry?: never
+          document_name?: string | null
+          document_number?: string | null
+          document_type?:
+            | Database["public"]["Enums"]["compliance_document_type"]
+            | null
+          effective_date?: string | null
+          expiration_date?: string | null
+          file_url?: string | null
+          id?: string | null
+          is_national?: boolean | null
+          linked_products_count?: never
+          pending_reviews_count?: never
+          regulatory_category?: string | null
+          status?:
+            | Database["public"]["Enums"]["compliance_document_status"]
+            | null
+          tags?: string[] | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: []
+      }
       compliance_overview_by_state: {
         Row: {
           compliant_boms: number | null
@@ -11758,6 +15120,372 @@ export type Database = {
           state: string | null
           total_boms: number | null
           unchecked_boms: number | null
+        }
+        Relationships: []
+      }
+      dropship_workflow_items: {
+        Row: {
+          bin_location: string | null
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          custom_fields: Json | null
+          data_source: string | null
+          description: string | null
+          dimensions: string | null
+          facility_id: string | null
+          finale_last_modified: string | null
+          finale_product_id: string | null
+          id: string | null
+          is_active: boolean | null
+          is_dropship: boolean | null
+          item_flow_type: string | null
+          last_purchase_date: string | null
+          last_sync_at: string | null
+          lot_tracking: boolean | null
+          moq: number | null
+          name: string | null
+          on_order: number | null
+          qty_to_order: number | null
+          reorder_point: number | null
+          reorder_variance: number | null
+          sales_30_days: number | null
+          sales_60_days: number | null
+          sales_90_days: number | null
+          sales_last_30_days: number | null
+          sales_last_60_days: number | null
+          sales_last_90_days: number | null
+          sales_velocity: number | null
+          sales_velocity_consolidated: number | null
+          sku: string | null
+          status: string | null
+          stock: number | null
+          stock_intel_exclude: boolean | null
+          stock_intel_exclusion_reason: string | null
+          stock_intel_override: boolean | null
+          supplier_sku: string | null
+          sync_errors: string | null
+          sync_status: string | null
+          unit_cost: number | null
+          unit_price: number | null
+          units_available: number | null
+          units_in_stock: number | null
+          units_on_order: number | null
+          units_reserved: number | null
+          upc: string | null
+          updated_at: string | null
+          vendor_id: string | null
+          warehouse_location: string | null
+          weight: number | null
+          weight_unit: string | null
+        }
+        Insert: {
+          bin_location?: string | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          custom_fields?: Json | null
+          data_source?: string | null
+          description?: string | null
+          dimensions?: string | null
+          facility_id?: string | null
+          finale_last_modified?: string | null
+          finale_product_id?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_dropship?: boolean | null
+          item_flow_type?: string | null
+          last_purchase_date?: string | null
+          last_sync_at?: string | null
+          lot_tracking?: boolean | null
+          moq?: number | null
+          name?: string | null
+          on_order?: number | null
+          qty_to_order?: number | null
+          reorder_point?: number | null
+          reorder_variance?: number | null
+          sales_30_days?: number | null
+          sales_60_days?: number | null
+          sales_90_days?: number | null
+          sales_last_30_days?: number | null
+          sales_last_60_days?: number | null
+          sales_last_90_days?: number | null
+          sales_velocity?: number | null
+          sales_velocity_consolidated?: number | null
+          sku?: string | null
+          status?: string | null
+          stock?: number | null
+          stock_intel_exclude?: boolean | null
+          stock_intel_exclusion_reason?: string | null
+          stock_intel_override?: boolean | null
+          supplier_sku?: string | null
+          sync_errors?: string | null
+          sync_status?: string | null
+          unit_cost?: number | null
+          unit_price?: number | null
+          units_available?: number | null
+          units_in_stock?: number | null
+          units_on_order?: number | null
+          units_reserved?: number | null
+          upc?: string | null
+          updated_at?: string | null
+          vendor_id?: string | null
+          warehouse_location?: string | null
+          weight?: number | null
+          weight_unit?: string | null
+        }
+        Update: {
+          bin_location?: string | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          custom_fields?: Json | null
+          data_source?: string | null
+          description?: string | null
+          dimensions?: string | null
+          facility_id?: string | null
+          finale_last_modified?: string | null
+          finale_product_id?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_dropship?: boolean | null
+          item_flow_type?: string | null
+          last_purchase_date?: string | null
+          last_sync_at?: string | null
+          lot_tracking?: boolean | null
+          moq?: number | null
+          name?: string | null
+          on_order?: number | null
+          qty_to_order?: number | null
+          reorder_point?: number | null
+          reorder_variance?: number | null
+          sales_30_days?: number | null
+          sales_60_days?: number | null
+          sales_90_days?: number | null
+          sales_last_30_days?: number | null
+          sales_last_60_days?: number | null
+          sales_last_90_days?: number | null
+          sales_velocity?: number | null
+          sales_velocity_consolidated?: number | null
+          sku?: string | null
+          status?: string | null
+          stock?: number | null
+          stock_intel_exclude?: boolean | null
+          stock_intel_exclusion_reason?: string | null
+          stock_intel_override?: boolean | null
+          supplier_sku?: string | null
+          sync_errors?: string | null
+          sync_status?: string | null
+          unit_cost?: number | null
+          unit_price?: number | null
+          units_available?: number | null
+          units_in_stock?: number | null
+          units_on_order?: number | null
+          units_reserved?: number | null
+          upc?: string | null
+          updated_at?: string | null
+          vendor_id?: string | null
+          warehouse_location?: string | null
+          weight?: number | null
+          weight_unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_automation_summary"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_scorecard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_thread_summary: {
+        Row: {
+          correlation_confidence: number | null
+          gmail_thread_id: string | null
+          has_invoice: boolean | null
+          has_tracking_info: boolean | null
+          id: string | null
+          is_resolved: boolean | null
+          last_message_at: string | null
+          latest_eta: string | null
+          latest_tracking_status: string | null
+          message_count: number | null
+          po_id: string | null
+          po_number: string | null
+          requires_response: boolean | null
+          subject: string | null
+          thread_status: string | null
+          thread_summary: string | null
+          urgency_level: string | null
+          vendor_id: string | null
+          vendor_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_threads_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "active_purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "ai_suggested_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "po_tracking_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_automation_summary"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_scorecard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_tracking_agent_stats: {
+        Row: {
+          active_inboxes: number | null
+          agent_identifier: string | null
+          alerts_generated: number | null
+          autonomy_level: string | null
+          avg_run_duration_ms: number | null
+          correlation_rate: number | null
+          critical_alerts: number | null
+          display_name: string | null
+          emails_correlated: number | null
+          emails_processed: number | null
+          is_active: boolean | null
+          last_successful_run: string | null
+          open_alerts: number | null
+          open_threads: number | null
+          stockouts_prevented: number | null
+          tracking_extractions: number | null
+          trust_score: number | null
+        }
+        Insert: {
+          active_inboxes?: never
+          agent_identifier?: string | null
+          alerts_generated?: number | null
+          autonomy_level?: string | null
+          avg_run_duration_ms?: never
+          correlation_rate?: never
+          critical_alerts?: never
+          display_name?: string | null
+          emails_correlated?: number | null
+          emails_processed?: number | null
+          is_active?: boolean | null
+          last_successful_run?: never
+          open_alerts?: never
+          open_threads?: never
+          stockouts_prevented?: number | null
+          tracking_extractions?: number | null
+          trust_score?: number | null
+        }
+        Update: {
+          active_inboxes?: never
+          agent_identifier?: string | null
+          alerts_generated?: number | null
+          autonomy_level?: string | null
+          avg_run_duration_ms?: never
+          correlation_rate?: never
+          critical_alerts?: never
+          display_name?: string | null
+          emails_correlated?: number | null
+          emails_processed?: number | null
+          is_active?: boolean | null
+          last_successful_run?: never
+          open_alerts?: never
+          open_threads?: never
+          stockouts_prevented?: number | null
+          tracking_extractions?: number | null
+          trust_score?: number | null
         }
         Relationships: []
       }
@@ -11812,6 +15540,13 @@ export type Database = {
           weight_unit: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_items_vendor_id_fkey"
             columns: ["vendor_id"]
@@ -12202,6 +15937,13 @@ export type Database = {
             foreignKeyName: "purchase_orders_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
             referencedRelation: "vendor_automation_summary"
             referencedColumns: ["vendor_id"]
           },
@@ -12273,6 +16015,27 @@ export type Database = {
             foreignKeyName: "product_pricing_internal_sku_fkey"
             columns: ["internal_sku"]
             isOneToOne: false
+            referencedRelation: "active_inventory_items"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "agent_classification_context"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "dropship_workflow_items"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
             referencedRelation: "inventory_details"
             referencedColumns: ["sku"]
           },
@@ -12296,6 +16059,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "inventory_velocity_summary"
             referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "product_reorder_analytics"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "stock_intelligence_items"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "product_pricing_vendor_id_fkey"
@@ -12393,6 +16177,27 @@ export type Database = {
             foreignKeyName: "product_pricing_internal_sku_fkey"
             columns: ["internal_sku"]
             isOneToOne: false
+            referencedRelation: "active_inventory_items"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "agent_classification_context"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "dropship_workflow_items"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
             referencedRelation: "inventory_details"
             referencedColumns: ["sku"]
           },
@@ -12417,7 +16222,89 @@ export type Database = {
             referencedRelation: "inventory_velocity_summary"
             referencedColumns: ["sku"]
           },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "product_reorder_analytics"
+            referencedColumns: ["sku"]
+          },
+          {
+            foreignKeyName: "product_pricing_internal_sku_fkey"
+            columns: ["internal_sku"]
+            isOneToOne: false
+            referencedRelation: "stock_intelligence_items"
+            referencedColumns: ["sku"]
+          },
         ]
+      }
+      product_compliance_overview: {
+        Row: {
+          active_states: string[] | null
+          attention_needed_states: number | null
+          bom_id: string | null
+          compliant_states: number | null
+          last_assessment: string | null
+          next_expiring_registration: string | null
+          non_compliant_states: number | null
+          product_group: string | null
+          product_identifier: string | null
+          registered_states: number | null
+          sku: string | null
+          total_states: number | null
+        }
+        Relationships: []
+      }
+      product_reorder_analytics: {
+        Row: {
+          available_quantity: number | null
+          avg_consumption_qty: number | null
+          avg_lead_time_days: number | null
+          avg_unit_cost: number | null
+          consumed_last_30_days: number | null
+          consumed_last_90_days: number | null
+          consumption_count: number | null
+          daily_consumption_rate: number | null
+          days_of_stock_remaining: number | null
+          last_consumed_at: string | null
+          last_received_at: string | null
+          max_lead_time_days: number | null
+          max_stock_level: number | null
+          min_lead_time_days: number | null
+          product_name: string | null
+          purchase_count: number | null
+          quantity_on_hand: number | null
+          reorder_point: number | null
+          reorder_status: string | null
+          sku: string | null
+          suggested_max_stock: number | null
+          suggested_reorder_point: number | null
+          total_consumed_qty: number | null
+          total_purchased_qty: number | null
+        }
+        Relationships: []
+      }
+      regulatory_sources_overview: {
+        Row: {
+          agency_acronym: string | null
+          base_url: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          data_completeness: number | null
+          enforcement_level: string | null
+          last_scrape_status: string | null
+          last_scraped_at: string | null
+          registration_annual_fee: number | null
+          registration_required: boolean | null
+          registration_url: string | null
+          regulations_url: string | null
+          regulatory_domain: string | null
+          state_code: string | null
+          state_name: string | null
+          strictness_level: string | null
+          strictness_score: number | null
+        }
+        Relationships: []
       }
       shopify_sales_summary: {
         Row: {
@@ -12431,6 +16318,259 @@ export type Database = {
           unique_customers: number | null
         }
         Relationships: []
+      }
+      state_compliance_matrix: {
+        Row: {
+          active_alerts: number | null
+          active_products: number | null
+          compliant_products: number | null
+          document_count: number | null
+          registered_products: number | null
+          registration_required: boolean | null
+          state_code: string | null
+          state_name: string | null
+          strictness_level: string | null
+          strictness_score: number | null
+        }
+        Insert: {
+          active_alerts?: never
+          active_products?: never
+          compliant_products?: never
+          document_count?: never
+          registered_products?: never
+          registration_required?: boolean | null
+          state_code?: string | null
+          state_name?: string | null
+          strictness_level?: string | null
+          strictness_score?: number | null
+        }
+        Update: {
+          active_alerts?: never
+          active_products?: never
+          compliant_products?: never
+          document_count?: never
+          registered_products?: never
+          registration_required?: boolean | null
+          state_code?: string | null
+          state_name?: string | null
+          strictness_level?: string | null
+          strictness_score?: number | null
+        }
+        Relationships: []
+      }
+      stock_intelligence_items: {
+        Row: {
+          bin_location: string | null
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          custom_fields: Json | null
+          data_source: string | null
+          description: string | null
+          dimensions: string | null
+          facility_id: string | null
+          finale_last_modified: string | null
+          finale_product_id: string | null
+          id: string | null
+          is_active: boolean | null
+          is_dropship: boolean | null
+          item_flow_type: string | null
+          last_purchase_date: string | null
+          last_sync_at: string | null
+          lot_tracking: boolean | null
+          moq: number | null
+          name: string | null
+          on_order: number | null
+          qty_to_order: number | null
+          reorder_method: string | null
+          reorder_point: number | null
+          reorder_variance: number | null
+          sales_30_days: number | null
+          sales_60_days: number | null
+          sales_90_days: number | null
+          sales_last_30_days: number | null
+          sales_last_60_days: number | null
+          sales_last_90_days: number | null
+          sales_velocity: number | null
+          sales_velocity_consolidated: number | null
+          sku: string | null
+          status: string | null
+          stock: number | null
+          stock_intel_exclude: boolean | null
+          stock_intel_exclusion_reason: string | null
+          stock_intel_override: boolean | null
+          supplier_sku: string | null
+          sync_errors: string | null
+          sync_status: string | null
+          unit_cost: number | null
+          unit_price: number | null
+          units_available: number | null
+          units_in_stock: number | null
+          units_on_order: number | null
+          units_reserved: number | null
+          upc: string | null
+          updated_at: string | null
+          vendor_id: string | null
+          warehouse_location: string | null
+          weight: number | null
+          weight_unit: string | null
+        }
+        Insert: {
+          bin_location?: string | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          custom_fields?: Json | null
+          data_source?: string | null
+          description?: string | null
+          dimensions?: string | null
+          facility_id?: string | null
+          finale_last_modified?: string | null
+          finale_product_id?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_dropship?: boolean | null
+          item_flow_type?: string | null
+          last_purchase_date?: string | null
+          last_sync_at?: string | null
+          lot_tracking?: boolean | null
+          moq?: number | null
+          name?: string | null
+          on_order?: number | null
+          qty_to_order?: number | null
+          reorder_method?: string | null
+          reorder_point?: number | null
+          reorder_variance?: number | null
+          sales_30_days?: number | null
+          sales_60_days?: number | null
+          sales_90_days?: number | null
+          sales_last_30_days?: number | null
+          sales_last_60_days?: number | null
+          sales_last_90_days?: number | null
+          sales_velocity?: number | null
+          sales_velocity_consolidated?: number | null
+          sku?: string | null
+          status?: string | null
+          stock?: number | null
+          stock_intel_exclude?: boolean | null
+          stock_intel_exclusion_reason?: string | null
+          stock_intel_override?: boolean | null
+          supplier_sku?: string | null
+          sync_errors?: string | null
+          sync_status?: string | null
+          unit_cost?: number | null
+          unit_price?: number | null
+          units_available?: number | null
+          units_in_stock?: number | null
+          units_on_order?: number | null
+          units_reserved?: number | null
+          upc?: string | null
+          updated_at?: string | null
+          vendor_id?: string | null
+          warehouse_location?: string | null
+          weight?: number | null
+          weight_unit?: string | null
+        }
+        Update: {
+          bin_location?: string | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          custom_fields?: Json | null
+          data_source?: string | null
+          description?: string | null
+          dimensions?: string | null
+          facility_id?: string | null
+          finale_last_modified?: string | null
+          finale_product_id?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          is_dropship?: boolean | null
+          item_flow_type?: string | null
+          last_purchase_date?: string | null
+          last_sync_at?: string | null
+          lot_tracking?: boolean | null
+          moq?: number | null
+          name?: string | null
+          on_order?: number | null
+          qty_to_order?: number | null
+          reorder_method?: string | null
+          reorder_point?: number | null
+          reorder_variance?: number | null
+          sales_30_days?: number | null
+          sales_60_days?: number | null
+          sales_90_days?: number | null
+          sales_last_30_days?: number | null
+          sales_last_60_days?: number | null
+          sales_last_90_days?: number | null
+          sales_velocity?: number | null
+          sales_velocity_consolidated?: number | null
+          sku?: string | null
+          status?: string | null
+          stock?: number | null
+          stock_intel_exclude?: boolean | null
+          stock_intel_exclusion_reason?: string | null
+          stock_intel_override?: boolean | null
+          supplier_sku?: string | null
+          sync_errors?: string | null
+          sync_status?: string | null
+          unit_cost?: number | null
+          unit_price?: number | null
+          units_available?: number | null
+          units_in_stock?: number | null
+          units_on_order?: number | null
+          units_reserved?: number | null
+          upc?: string | null
+          updated_at?: string | null
+          vendor_id?: string | null
+          warehouse_location?: string | null
+          weight?: number | null
+          weight_unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "active_vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_automation_summary"
+            referencedColumns: ["vendor_id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_lead_time_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_scorecard"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sync_dashboard: {
         Row: {
@@ -12680,6 +16820,15 @@ export type Database = {
       }
     }
     Functions: {
+      add_thread_timeline_event: {
+        Args: {
+          p_details?: Json
+          p_event: string
+          p_message_id?: string
+          p_thread_id: string
+        }
+        Returns: undefined
+      }
       approve_ai_suggested_po: {
         Args: { p_po_id: string; p_user_id: string }
         Returns: {
@@ -12991,9 +17140,38 @@ export type Database = {
         }
         Returns: boolean
       }
+      correlate_thread_to_po: {
+        Args: {
+          p_confidence: number
+          p_details?: Json
+          p_method: string
+          p_po_id: string
+          p_thread_id: string
+        }
+        Returns: undefined
+      }
       count_open_tickets_for_user: {
         Args: { user_id: string }
         Returns: number
+      }
+      create_email_tracking_alert: {
+        Args: {
+          p_affected_skus?: string[]
+          p_alert_type: string
+          p_description?: string
+          p_new_eta?: string
+          p_original_eta?: string
+          p_po_id?: string
+          p_requires_human?: boolean
+          p_route_to_agent?: string
+          p_severity: string
+          p_source_data?: Json
+          p_stockout_risk_date?: string
+          p_thread_id?: string
+          p_title: string
+          p_vendor_id?: string
+        }
+        Returns: string
       }
       create_notification_with_prefs: {
         Args: {
@@ -13050,6 +17228,15 @@ export type Database = {
           tier: string
         }[]
       }
+      find_or_create_email_thread: {
+        Args: {
+          p_gmail_thread_id: string
+          p_inbox_config_id?: string
+          p_subject?: string
+        }
+        Returns: string
+      }
+      generate_expiration_alerts: { Args: never; Returns: number }
       generate_sop_learning_insights: {
         Args: { sop_id_param: string }
         Returns: {
@@ -13194,6 +17381,18 @@ export type Database = {
           version: number
         }[]
       }
+      get_email_alert_summary: {
+        Args: never
+        Returns: {
+          critical_count: number
+          high_count: number
+          low_count: number
+          medium_count: number
+          oldest_unacknowledged: string
+          top_alert_types: Json
+          total_open: number
+        }[]
+      }
       get_expired_compliance: {
         Args: never
         Returns: {
@@ -13204,6 +17403,19 @@ export type Database = {
           id: string
           registration_number: string
           state_name: string
+        }[]
+      }
+      get_expiring_documents: {
+        Args: { p_days_ahead?: number; p_state_code?: string }
+        Returns: {
+          affected_products: Json
+          applicable_states: string[]
+          days_until_expiry: number
+          document_id: string
+          document_name: string
+          document_number: string
+          document_type: Database["public"]["Enums"]["compliance_document_type"]
+          expiration_date: string
         }[]
       }
       get_labels_by_bom: {
@@ -13326,6 +17538,41 @@ export type Database = {
           total_products: number
         }[]
       }
+      get_product_compliance_documents: {
+        Args: {
+          p_bom_id?: string
+          p_document_type?: string
+          p_sku?: string
+          p_state_code?: string
+        }
+        Returns: {
+          agency_name: string
+          applicable_states: string[]
+          document_id: string
+          document_name: string
+          document_number: string
+          document_type: Database["public"]["Enums"]["compliance_document_type"]
+          effective_date: string
+          expiration_date: string
+          file_url: string
+          relationship_type: string
+          status: Database["public"]["Enums"]["compliance_document_status"]
+        }[]
+      }
+      get_product_compliance_summary: {
+        Args: { p_bom_id?: string; p_sku?: string }
+        Returns: {
+          alerts_count: number
+          compliance_status: string
+          document_count: number
+          is_registered: boolean
+          last_assessment: string
+          missing_document_types: string[]
+          registration_expiry: string
+          state_code: string
+          state_name: string
+        }[]
+      }
       get_product_purchase_history: {
         Args: { p_months_back?: number; p_product_id: string }
         Returns: {
@@ -13381,6 +17628,26 @@ export type Database = {
           total_usage: number
         }[]
       }
+      get_state_regulatory_sources: {
+        Args: { p_regulatory_domain?: string; p_state_codes: string[] }
+        Returns: {
+          agency_acronym: string
+          agency_name: string
+          base_url: string
+          contact_email: string
+          contact_phone: string
+          enforcement_level: string
+          labeling_requirements: Json
+          registration_fee: number
+          registration_required: boolean
+          registration_url: string
+          regulations_url: string
+          regulatory_domain: string
+          required_statements: string[]
+          state_code: string
+          state_name: string
+        }[]
+      }
       get_sync_health: {
         Args: never
         Returns: {
@@ -13419,6 +17686,22 @@ export type Database = {
       get_template_strictness_from_score: {
         Args: { score: number }
         Returns: string
+      }
+      get_threads_requiring_attention: {
+        Args: never
+        Returns: {
+          action_needed: string
+          days_waiting: number
+          last_message_at: string
+          po_id: string
+          po_number: string
+          requires_response: boolean
+          response_due_by: string
+          subject: string
+          thread_id: string
+          urgency_level: string
+          vendor_name: string
+        }[]
       }
       get_unread_notification_count: {
         Args: { user_id: string }
@@ -13460,6 +17743,15 @@ export type Database = {
         Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
+      is_stock_intel_visible: { Args: { p_sku: string }; Returns: boolean }
+      learn_vendor_email_domain: {
+        Args: {
+          p_confidence?: number
+          p_sender_email: string
+          p_vendor_id: string
+        }
+        Returns: string
+      }
       list_backups:
         | {
             Args: { p_source_table: string }
@@ -13480,6 +17772,14 @@ export type Database = {
               items_count: number
             }[]
           }
+      lookup_vendor_by_email_domain: {
+        Args: { p_sender_email: string }
+        Returns: {
+          confidence: number
+          vendor_id: string
+          vendor_name: string
+        }[]
+      }
       mark_stale_insights: { Args: never; Returns: number }
       mark_sync_complete: {
         Args: { records_count?: number; sync_type: string }
@@ -13655,6 +17955,10 @@ export type Database = {
         }[]
       }
       should_run_sync: { Args: { sync_type: string }; Returns: boolean }
+      should_trigger_reorder_alert: {
+        Args: { p_sku: string }
+        Returns: boolean
+      }
       trigger_auto_sync: { Args: { sync_type?: string }; Returns: Json }
       trigger_empty_data_rollback: {
         Args: {
@@ -13714,6 +18018,31 @@ export type Database = {
       }
     }
     Enums: {
+      compliance_document_status:
+        | "draft"
+        | "pending_review"
+        | "pending_approval"
+        | "approved"
+        | "expired"
+        | "superseded"
+        | "rejected"
+        | "archived"
+      compliance_document_type:
+        | "artwork"
+        | "label_proof"
+        | "certificate"
+        | "registration"
+        | "test_report"
+        | "statute"
+        | "guidance"
+        | "letter"
+        | "sds"
+        | "specification"
+        | "approval"
+        | "amendment"
+        | "renewal"
+        | "audit_report"
+        | "other"
       pricelist_source: "upload" | "email" | "google_docs" | "api"
       pricelist_status: "pending" | "extracted" | "error"
       vendor_communication_status:
@@ -13882,11 +18211,35 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
+      compliance_document_status: [
+        "draft",
+        "pending_review",
+        "pending_approval",
+        "approved",
+        "expired",
+        "superseded",
+        "rejected",
+        "archived",
+      ],
+      compliance_document_type: [
+        "artwork",
+        "label_proof",
+        "certificate",
+        "registration",
+        "test_report",
+        "statute",
+        "guidance",
+        "letter",
+        "sds",
+        "specification",
+        "approval",
+        "amendment",
+        "renewal",
+        "audit_report",
+        "other",
+      ],
       pricelist_source: ["upload", "email", "google_docs", "api"],
       pricelist_status: ["pending", "extracted", "error"],
       vendor_communication_status: [
@@ -13937,4 +18290,3 @@ export const Constants = {
     },
   },
 } as const
-

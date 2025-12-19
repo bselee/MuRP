@@ -188,7 +188,6 @@ SELECT
   i.on_order,
   i.reorder_point,
   i.moq,
-  i.lead_time_days,
   i.sales_velocity_consolidated as daily_velocity,
   -- SOP context for agent
   sop.display_name as flow_type_display,

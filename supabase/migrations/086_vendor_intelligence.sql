@@ -100,6 +100,202 @@ BEGIN
   END IF;
 END $$;
 
+-- Add effective_lead_time_days column if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'effective_lead_time_days'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics
+    ADD COLUMN effective_lead_time_days integer;
+  END IF;
+END $$;
+
+-- Add all required base columns for generated columns
+DO $$
+BEGIN
+  -- Add total_orders if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'total_orders'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN total_orders integer DEFAULT 0;
+  END IF;
+
+  -- Add on_time_deliveries if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'on_time_deliveries'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN on_time_deliveries integer DEFAULT 0;
+  END IF;
+
+  -- Add late_deliveries if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'late_deliveries'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN late_deliveries integer DEFAULT 0;
+  END IF;
+
+  -- Add early_deliveries if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'early_deliveries'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN early_deliveries integer DEFAULT 0;
+  END IF;
+
+  -- Add orders_with_issues if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'orders_with_issues'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN orders_with_issues integer DEFAULT 0;
+  END IF;
+
+  -- Add total_items_received if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'total_items_received'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN total_items_received integer DEFAULT 0;
+  END IF;
+
+  -- Add items_rejected if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'items_rejected'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN items_rejected integer DEFAULT 0;
+  END IF;
+
+  -- Add emails_sent if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'emails_sent'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN emails_sent integer DEFAULT 0;
+  END IF;
+
+  -- Add emails_responded if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'emails_responded'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN emails_responded integer DEFAULT 0;
+  END IF;
+
+  -- Add avg_response_time_hours if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'avg_response_time_hours'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN avg_response_time_hours decimal(5,2);
+  END IF;
+
+  -- Add total_spend_usd if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'total_spend_usd'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN total_spend_usd decimal(12,2) DEFAULT 0;
+  END IF;
+
+  -- Add avg_order_value_usd if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'avg_order_value_usd'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN avg_order_value_usd decimal(10,2);
+  END IF;
+
+  -- Add lead_time_variance if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'lead_time_variance'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN lead_time_variance decimal(5,2);
+  END IF;
+
+  -- Add recommend columns if missing
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'recommend_for_critical_orders'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN recommend_for_critical_orders boolean DEFAULT true;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'recommend_for_bulk_orders'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN recommend_for_bulk_orders boolean DEFAULT true;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'agent_notes'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN agent_notes text;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'last_updated'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN last_updated timestamptz DEFAULT now();
+  END IF;
+END $$;
+
+-- Add computed columns as regular columns (since GENERATED ALWAYS AS can't be added later)
+-- on_time_rate - compute on read via view
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'on_time_rate'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN on_time_rate decimal(5,2) DEFAULT 0;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'quality_rate'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN quality_rate decimal(5,2) DEFAULT 0;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'vendor_performance_metrics'
+    AND column_name = 'response_rate'
+  ) THEN
+    ALTER TABLE vendor_performance_metrics ADD COLUMN response_rate decimal(5,2) DEFAULT 0;
+  END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_vendor_performance_vendor ON vendor_performance_metrics(vendor_id);
 CREATE INDEX IF NOT EXISTS idx_vendor_performance_period ON vendor_performance_metrics(period_start, period_end);
 CREATE INDEX IF NOT EXISTS idx_vendor_performance_trust ON vendor_performance_metrics(trust_score DESC);

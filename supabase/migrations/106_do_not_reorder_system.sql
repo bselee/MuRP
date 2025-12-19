@@ -129,7 +129,6 @@ WHERE
   reorder_method = 'default'
   AND stock_intel_exclude = false
   AND COALESCE(reorder_point, 0) = 0
-  AND COALESCE(min_stock, 0) = 0
   AND stock > 0  -- Has stock, so not a new/placeholder item
   AND item_flow_type = 'standard';  -- Not already categorized as special
 
@@ -253,6 +252,9 @@ CREATE TRIGGER trg_log_reorder_method_change
 -- PHASE 9: Update agent_classification_context view to include reorder_method
 -- ============================================================================
 
+-- Drop existing view first to handle column changes
+DROP VIEW IF EXISTS agent_classification_context CASCADE;
+
 CREATE OR REPLACE VIEW agent_classification_context AS
 SELECT
   i.sku,
@@ -269,16 +271,7 @@ SELECT
   i.on_order,
   i.reorder_point,
   i.moq,
-  i.lead_time_days,
   i.sales_velocity_consolidated as daily_velocity,
-  -- SOP context for agent
-  sop.display_name as flow_type_display,
-  sop.sop_summary,
-  sop.sop_rules,
-  sop.agent_actions,
-  sop.include_in_stock_intel as sop_includes_in_stock_intel,
-  sop.triggers_reorder_alerts as sop_triggers_reorder,
-  sop.automation_level,
   -- Derived fields for agent decision-making
   -- Now includes reorder_method = 'do_not_reorder' check
   CASE
@@ -308,8 +301,7 @@ SELECT
     WHEN i.item_flow_type = 'discontinued' THEN 'DO NOT reorder, sell through remaining, suggest clearance'
     ELSE 'Unknown flow type - treat as standard with caution'
   END as agent_instruction_summary
-FROM inventory_items i
-LEFT JOIN item_flow_sops sop ON sop.flow_type = COALESCE(i.item_flow_type, 'standard');
+FROM inventory_items i;
 
 COMMENT ON VIEW agent_classification_context IS 'Agent-friendly view of item classification with SOP context - includes reorder_method for Finale Do Not Reorder detection';
 
