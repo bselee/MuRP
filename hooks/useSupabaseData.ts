@@ -193,20 +193,33 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
           customFields['drop ship'] ??
           customFields['drop shipped'];
 
+        // PRIORITY 1: Use database is_dropship column (most reliable after migration 102)
+        // PRIORITY 2: Fall back to parsing custom_fields for backward compatibility
         const isDropship = (() => {
+          // Check database column first (set by migration 102)
+          if (typeof item.is_dropship === 'boolean') return item.is_dropship;
+
+          // Fall back to custom_fields parsing
           if (typeof dropshipRaw === 'boolean') return dropshipRaw;
           if (typeof dropshipRaw === 'string') {
             const val = dropshipRaw.trim().toLowerCase();
             return ['true', 'yes', 'y', '1', 'drop ship', 'dropship', 'dropped', 'dropshipped', 'drop shipped'].includes(val);
           }
           if (typeof dropshipRaw === 'number') return dropshipRaw === 1 || dropshipRaw === true;
+
+          // Also check category and name for dropship indicators
+          const category = (item.category || '').toLowerCase().trim();
+          if (['dropship', 'drop ship', 'dropshipped', 'drop shipped', 'ds', 'drop-ship'].includes(category)) {
+            return true;
+          }
+
+          const name = (item.name || '').toLowerCase();
+          if (name.includes('dropship') || name.includes('drop ship') || name.includes('drop-ship')) {
+            return true;
+          }
+
           return false;
         })();
-
-        // Debug: Log items with dropship flag
-        if (isDropship) {
-          console.log(`[useSupabaseInventory] Dropship detected - SKU: ${item.sku}, raw value:`, dropshipRaw);
-        }
 
         return {
           sku: item.sku,

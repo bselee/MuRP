@@ -191,20 +191,46 @@ The Stock Intelligence system provides data-driven purchasing guidance. **All da
 - `services/forecastingService.ts` - Trend analysis, seasonal pattern detection
 - `services/stockoutPreventionAgent.ts` - Proactive stockout alerts
 
-**Data Filtering Rules (ENFORCED):**
-All stock intelligence queries MUST exclude:
-1. **Deprecating category items** - `category !== 'Deprecating'`
-2. **Dropship-only items** - `is_dropship !== true`
-3. **Inactive items** - `status === 'active'`
+**Data Filtering Rules (CRITICAL - Never Show Dropship Items):**
+Stock Intelligence should NEVER show dropship items to avoid confusing humans. Use layered filtering:
 
+1. **Database-level filtering** (most reliable after migration 102):
+   - `is_dropship = false` column on `inventory_items`
+   - `stock_intelligence_items` view pre-filters all excluded items
+
+2. **Application-level filtering** (belt and suspenders):
 ```typescript
-// CORRECT - purchasingForecastingService.ts
+// 5-layer filter applied in all Stock Intelligence views
+const isExcludedItem = (item: InventoryItem): boolean => {
+  // FILTER 1: Explicit dropship flag
+  if (item.isDropship === true) return true;
+
+  // FILTER 2: Dropship category (ds, drop ship, dropshipped, etc.)
+  const category = (item.category || '').toLowerCase().trim();
+  if (['dropship', 'drop ship', 'dropshipped', 'ds', 'drop-ship'].includes(category)) return true;
+
+  // FILTER 3: Dropship in name pattern
+  const name = (item.name || '').toLowerCase();
+  if (name.includes('dropship') || name.includes('drop ship')) return true;
+
+  // FILTER 4: Inactive items
+  if (item.status && item.status.toLowerCase() !== 'active') return true;
+
+  // FILTER 5: Deprecating/Deprecated/Discontinued categories
+  if (['deprecating', 'deprecated', 'discontinued'].includes(category)) return true;
+
+  return false;
+};
+```
+
+**Supabase Query Pattern:**
+```typescript
 const { data } = await supabase
   .from('inventory_items')
   .select('sku, name, stock, on_order, category, is_dropship, ...')
   .eq('status', 'active')
-  .neq('category', 'Deprecating')
-  .or('is_dropship.is.null,is_dropship.eq.false');
+  .eq('is_dropship', false)  // Migration 102 adds this column
+  .not('category', 'ilike', '%deprecat%');
 ```
 
 **Real-Time Metrics (NO PLACEHOLDERS):**

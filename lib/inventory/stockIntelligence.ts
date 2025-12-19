@@ -27,9 +27,35 @@ const toDays = (start?: string | null, end?: string | null): number | null => {
   return Math.floor(diffMs / (1000 * 60 * 60 * 24));
 };
 
+// Helper to check if item should be excluded from stock intelligence
+const isExcludedItem = (item: InventoryItem): boolean => {
+  // FILTER 1: Exclude dropship items (explicit flag)
+  if (item.isDropship === true) return true;
+
+  // FILTER 2: Exclude dropship items by category
+  const category = (item.category || '').toLowerCase().trim();
+  if (['dropship', 'drop ship', 'dropshipped', 'drop shipped', 'ds', 'drop-ship'].includes(category)) {
+    return true;
+  }
+
+  // FILTER 3: Exclude dropship items by name pattern
+  const name = (item.name || '').toLowerCase();
+  if (name.includes('dropship') || name.includes('drop ship') || name.includes('drop-ship')) {
+    return true;
+  }
+
+  // FILTER 4: Exclude inactive items
+  if (item.status && item.status.toLowerCase().trim() !== 'active') return true;
+
+  // FILTER 5: Exclude Deprecating/Deprecated category items
+  if (['deprecating', 'deprecated', 'discontinued'].includes(category)) return true;
+
+  return false;
+};
+
 export const computeStockoutRisks = (inventory: InventoryItem[] = []): StockoutRisk[] => {
   const risks: StockoutRisk[] = [];
-  const filteredInventory = inventory.filter(item => !item.isDropship);
+  const filteredInventory = inventory.filter(item => !isExcludedItem(item));
 
   filteredInventory.forEach(item => {
     const sales30 = item.salesLast30Days || 0;

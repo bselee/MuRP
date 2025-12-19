@@ -64,17 +64,29 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
   const [vendorPerformances, setVendorPerformances] = useState<VendorPerformance[]>([]);
 
   // Filter out dropship items, inactive items, and deprecating category
+  // CRITICAL: Stock Intelligence should NEVER show dropship items to avoid confusing humans
   const filteredInventory = useMemo(
     () => inventory.filter(item => {
-      // Exclude dropship items
-      if (item.isDropship) return false;
+      // FILTER 1: Exclude dropship items (explicit flag)
+      if (item.isDropship === true) return false;
 
-      // Exclude inactive items (non-stock items should have status = 'Active')
+      // FILTER 2: Exclude dropship items by category (belt and suspenders)
+      const category = (item.category || '').toLowerCase().trim();
+      if (['dropship', 'drop ship', 'dropshipped', 'drop shipped', 'ds', 'drop-ship'].includes(category)) {
+        return false;
+      }
+
+      // FILTER 3: Exclude dropship items by name pattern (common naming convention)
+      const name = (item.name || '').toLowerCase();
+      if (name.includes('dropship') || name.includes('drop ship') || name.includes('drop-ship')) {
+        return false;
+      }
+
+      // FILTER 4: Exclude inactive items
       if (item.status && item.status.toLowerCase().trim() !== 'active') return false;
 
-      // Exclude Deprecating category items (case-insensitive)
-      const category = (item.category || '').toLowerCase().trim();
-      if (category === 'deprecating' || category === 'deprecated') return false;
+      // FILTER 5: Exclude Deprecating/Deprecated category items
+      if (['deprecating', 'deprecated', 'discontinued'].includes(category)) return false;
 
       return true;
     }),

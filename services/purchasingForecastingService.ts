@@ -75,20 +75,31 @@ export async function getRigorousPurchasingAdvice() {
     if (error) throw error;
 
     // Filter in JS for now (or could create a view)
+    // CRITICAL: Stock Intelligence should NEVER show dropship items to avoid confusing humans
     return data
         .filter((item: any) => {
             const params = item.sku_purchasing_parameters;
             if (!params || !params.calculated_reorder_point) return false;
 
-            // Additional safety filter for Deprecating category (case-insensitive)
-            const category = (item.category || '').toLowerCase().trim();
-            if (category === 'deprecating' || category === 'deprecated') return false;
-
-            // Additional safety filter for dropship items
+            // FILTER 1: Exclude dropship items (explicit flag from database)
             if (item.is_dropship === true) return false;
 
+            // FILTER 2: Exclude dropship items by category
+            const category = (item.category || '').toLowerCase().trim();
+            if (['dropship', 'drop ship', 'dropshipped', 'drop shipped', 'ds', 'drop-ship'].includes(category)) {
+                return false;
+            }
+
+            // FILTER 3: Exclude dropship items by name pattern
+            const name = (item.name || '').toLowerCase();
+            if (name.includes('dropship') || name.includes('drop ship') || name.includes('drop-ship')) {
+                return false;
+            }
+
+            // FILTER 4: Exclude Deprecating/Deprecated category (case-insensitive)
+            if (['deprecating', 'deprecated', 'discontinued'].includes(category)) return false;
+
             // Trigger if Available (Stock + OnOrder) < ROP
-            // Or just Stock < ROP? Usually ROP is compared to "Inventory Position" (Stock + OnOrder - Backorders)
             return (item.stock + (item.on_order || 0)) < params.calculated_reorder_point;
         })
         .map((item: any) => {
