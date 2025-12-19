@@ -820,7 +820,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                 ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                                                             </div>
                                                             <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
-                                                                {fpo.lineCount || 0} items • {fpo.totalQuantity?.toFixed(0) || 0} units
+                                                                {fpo.lineCount || 0} items • {Math.round(Number(fpo.totalQuantity) || 0)} units
                                                             </div>
                                                         </div>
                                                         <ChevronDownIcon
@@ -861,7 +861,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                             <div className="space-y-1 text-sm">
                                                                 <div className="flex justify-between text-gray-300">
                                                                     <span>Subtotal:</span>
-                                                                    <span className="font-mono">${fpo.subtotal?.toFixed(2) || '0.00'}</span>
+                                                                    <span className="font-mono">${Number(fpo.subtotal || 0).toFixed(2)}</span>
                                                                 </div>
                                                                 {fpo.tax && Number(fpo.tax) > 0 && (
                                                                     <div className="flex justify-between text-gray-300">
@@ -877,7 +877,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                 )}
                                                                 <div className="flex justify-between text-amber-400 font-semibold pt-2 border-t border-white/10">
                                                                     <span>Total:</span>
-                                                                    <span className="font-mono">${fpo.total?.toFixed(2) || '0.00'}</span>
+                                                                    <span className="font-mono">${Number(fpo.total || 0).toFixed(2)}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -928,8 +928,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                                 <td className="px-3 py-2 text-sm text-gray-300 font-mono">{item.product_id || 'N/A'}</td>
                                                                                 <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_ordered || 0}</td>
                                                                                 <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_received || 0}</td>
-                                                                                <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">${item.unit_price?.toFixed(2) || '0.00'}</td>
-                                                                                <td className="px-3 py-2 text-sm text-amber-400 text-right font-mono font-semibold">${item.line_total?.toFixed(2) || '0.00'}</td>
+                                                                                <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">${Number(item.unit_price || 0).toFixed(2)}</td>
+                                                                                <td className="px-3 py-2 text-sm text-amber-400 text-right font-mono font-semibold">${Number(item.line_total || 0).toFixed(2)}</td>
                                                                             </tr>
                                                                         ))}
                                                                     </tbody>
