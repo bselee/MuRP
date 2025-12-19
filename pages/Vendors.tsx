@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useTheme } from '../components/ThemeProvider';
 import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import SearchBar from '@/components/ui/SearchBar';
@@ -14,6 +15,8 @@ interface VendorsProps {
 }
 
 const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
+    const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme !== 'light';
     const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
     const [automationModalOpen, setAutomationModalOpen] = useState(false);
     const [isVendorManagementOpen, setIsVendorManagementOpen] = useState(false);

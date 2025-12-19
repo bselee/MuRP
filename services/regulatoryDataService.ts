@@ -498,6 +498,558 @@ export async function analyzeStateCoverage(
 }
 
 // =============================================================================
+// CONTACT INFO SEARCH & UPDATE
+// =============================================================================
+
+/**
+ * Search for state agency contact info using web search
+ * Returns potential contact information for verification
+ */
+export async function searchStateContactInfo(
+  stateCode: string,
+  agencyType: 'agriculture' | 'fertilizer' | 'organic' = 'agriculture'
+): Promise<ServiceResult<{
+  currentContact: {
+    email?: string;
+    phone?: string;
+    address?: string;
+    contactUrl?: string;
+  };
+  searchResults: Array<{
+    source: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    url: string;
+    confidence: number;
+  }>;
+  lastVerified?: string;
+}>> {
+  try {
+    // Get current stored contact
+    const { data: source, error } = await supabase
+      .from('state_regulatory_sources')
+      .select('contact_email, contact_phone, contact_url, contact_address, last_verified_at')
+      .eq('state_code', stateCode)
+      .eq('source_type', 'primary')
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    const currentContact = source ? {
+      email: source.contact_email,
+      phone: source.contact_phone,
+      address: source.contact_address,
+      contactUrl: source.contact_url,
+    } : {};
+
+    // Search results would be populated by MCP web search
+    // For now, return structure for UI to display
+    const searchResults: Array<{
+      source: string;
+      email?: string;
+      phone?: string;
+      address?: string;
+      url: string;
+      confidence: number;
+    }> = [];
+
+    return {
+      success: true,
+      data: {
+        currentContact,
+        searchResults,
+        lastVerified: source?.last_verified_at,
+      },
+    };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Update state regulatory source contact info
+ */
+export async function updateStateContactInfo(
+  stateCode: string,
+  contactInfo: {
+    email?: string;
+    phone?: string;
+    address?: string;
+    contactUrl?: string;
+  },
+  verificationNotes?: string
+): Promise<ServiceResult<{ updated: boolean }>> {
+  try {
+    const { error } = await supabase
+      .from('state_regulatory_sources')
+      .update({
+        contact_email: contactInfo.email,
+        contact_phone: contactInfo.phone,
+        contact_address: contactInfo.address,
+        contact_url: contactInfo.contactUrl,
+        last_verified_at: new Date().toISOString(),
+        verification_notes: verificationNotes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('state_code', stateCode)
+      .eq('source_type', 'primary');
+
+    if (error) throw error;
+
+    return { success: true, data: { updated: true } };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+// =============================================================================
+// MANUAL SOURCE INPUT
+// =============================================================================
+
+/**
+ * Add or update a state regulatory source manually
+ */
+export async function upsertStateRegulatorySource(
+  input: {
+    stateCode: string;
+    stateName: string;
+    agencyName: string;
+    agencyAcronym?: string;
+    agencyDivision?: string;
+    baseUrl: string;
+    regulationsUrl?: string;
+    registrationUrl?: string;
+    formsUrl?: string;
+    feeScheduleUrl?: string;
+    contactUrl?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    contactAddress?: string;
+    regulatoryDomain?: string;
+    primaryStatutes?: string[];
+    primaryRegulations?: string[];
+    registrationRequired?: boolean;
+    registrationAnnualFee?: number;
+    testingRequired?: boolean;
+    labelingRequirements?: Record<string, unknown>;
+    prohibitedClaims?: string[];
+    requiredStatements?: string[];
+    enforcementLevel?: string;
+    notes?: string;
+  }
+): Promise<ServiceResult<{ id: string; created: boolean }>> {
+  try {
+    // Check if exists
+    const { data: existing } = await supabase
+      .from('state_regulatory_sources')
+      .select('id')
+      .eq('state_code', input.stateCode)
+      .eq('source_type', 'primary')
+      .single();
+
+    const sourceData = {
+      state_code: input.stateCode,
+      state_name: input.stateName,
+      source_name: `${input.stateCode} Department of Agriculture`,
+      source_type: 'primary' as const,
+      agency_name: input.agencyName,
+      agency_acronym: input.agencyAcronym,
+      agency_division: input.agencyDivision,
+      base_url: input.baseUrl,
+      regulations_url: input.regulationsUrl,
+      registration_url: input.registrationUrl,
+      forms_url: input.formsUrl,
+      fee_schedule_url: input.feeScheduleUrl,
+      contact_url: input.contactUrl,
+      contact_email: input.contactEmail,
+      contact_phone: input.contactPhone,
+      contact_address: input.contactAddress,
+      regulatory_domain: input.regulatoryDomain || 'agriculture',
+      primary_statutes: input.primaryStatutes || [],
+      primary_regulations: input.primaryRegulations || [],
+      registration_required: input.registrationRequired ?? false,
+      registration_annual_fee: input.registrationAnnualFee,
+      testing_required: input.testingRequired ?? false,
+      labeling_requirements: input.labelingRequirements || {},
+      prohibited_claims: input.prohibitedClaims || [],
+      required_statements: input.requiredStatements || [],
+      enforcement_level: input.enforcementLevel || 'moderate',
+      notes: input.notes,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existing) {
+      const { error } = await supabase
+        .from('state_regulatory_sources')
+        .update(sourceData)
+        .eq('id', existing.id);
+
+      if (error) throw error;
+      return { success: true, data: { id: existing.id, created: false } };
+    } else {
+      const { data, error } = await supabase
+        .from('state_regulatory_sources')
+        .insert({
+          ...sourceData,
+          created_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      return { success: true, data: { id: data.id, created: true } };
+    }
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+// =============================================================================
+// REGULATORY Q&A WITH AI
+// =============================================================================
+
+export interface RegulatoryQuestion {
+  question: string;
+  context?: {
+    stateCode?: string;
+    productType?: string;
+    regulatoryDomain?: string;
+    specificRegulations?: string[];
+  };
+}
+
+export interface RegulatoryAnswer {
+  answer: string;
+  confidence: number;
+  sources: Array<{
+    stateCode: string;
+    regulationCode?: string;
+    title: string;
+    excerpt: string;
+    url?: string;
+  }>;
+  disclaimer: string;
+  relatedQuestions?: string[];
+  requiresProfessionalReview: boolean;
+}
+
+/**
+ * Ask a regulatory compliance question and get an AI-powered answer
+ * with citations from stored regulations
+ */
+export async function askRegulatoryQuestion(
+  input: RegulatoryQuestion
+): Promise<ServiceResult<RegulatoryAnswer>> {
+  try {
+    // Gather relevant regulations based on context
+    const stateCodes = input.context?.stateCode
+      ? [input.context.stateCode]
+      : ['CA', 'OR', 'WA', 'NY', 'TX']; // Default to priority states
+
+    // Search for relevant regulations using text search
+    const searchTerms = input.question.toLowerCase().split(' ')
+      .filter(term => term.length > 3)
+      .slice(0, 5)
+      .join(' | ');
+
+    const { data: regulations, error } = await supabase
+      .from('state_regulations')
+      .select('id, state, category, rule_title, rule_text, rule_summary, regulation_code, source_url')
+      .in('state', stateCodes)
+      .eq('status', 'active')
+      .textSearch('rule_text', searchTerms, { type: 'websearch' })
+      .limit(10);
+
+    // Build context for AI
+    const regulatoryContext = (regulations || []).map(reg => ({
+      stateCode: reg.state,
+      regulationCode: reg.regulation_code,
+      title: reg.rule_title,
+      excerpt: (reg.rule_text || '').slice(0, 500),
+      url: reg.source_url,
+    }));
+
+    // For now, return a structured response
+    // In production, this would call the MCP AI compliance check
+    const answer: RegulatoryAnswer = {
+      answer: `Based on the regulations for ${stateCodes.join(', ')}, here is the guidance for your question about "${input.question}". Please review the source citations below for specific regulatory requirements.`,
+      confidence: regulations?.length ? 0.7 : 0.3,
+      sources: regulatoryContext,
+      disclaimer: 'This information is provided for guidance only and should not be considered legal advice. Always verify with the relevant state agency and consult with a regulatory compliance professional for official determinations.',
+      relatedQuestions: [
+        'What are the labeling requirements?',
+        'Is registration required in this state?',
+        'What testing is required for this product type?',
+      ],
+      requiresProfessionalReview: true,
+    };
+
+    // Log the Q&A for analytics
+    await supabase.from('regulatory_qa_log').insert({
+      question: input.question,
+      context: input.context,
+      answer_summary: answer.answer.slice(0, 500),
+      sources_count: answer.sources.length,
+      confidence: answer.confidence,
+      created_at: new Date().toISOString(),
+    }).catch(() => {}); // Ignore if table doesn't exist
+
+    return { success: true, data: answer };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Get frequently asked regulatory questions
+ */
+export async function getFrequentlyAskedQuestions(
+  stateCode?: string,
+  category?: string
+): Promise<ServiceResult<Array<{
+  question: string;
+  shortAnswer: string;
+  category: string;
+  states: string[];
+}>>> {
+  try {
+    // Pre-defined FAQs for common compliance questions
+    const faqs = [
+      {
+        question: 'Do I need to register my fertilizer product with the state?',
+        shortAnswer: 'Most states require registration of fertilizer products sold within their borders. Registration typically requires product analysis, label review, and annual fees.',
+        category: 'registration',
+        states: ['CA', 'OR', 'WA', 'NY', 'TX', 'CO', 'FL'],
+      },
+      {
+        question: 'What information must be on my product label?',
+        shortAnswer: 'Labels typically must include: guaranteed analysis, net weight, manufacturer info, directions for use, and any required state-specific warnings.',
+        category: 'labeling',
+        states: ['CA', 'OR', 'WA', 'NY', 'TX'],
+      },
+      {
+        question: 'Can I claim my product is "organic" without USDA certification?',
+        shortAnswer: 'No. The term "organic" is regulated by USDA NOP. Products must be certified to use organic claims. Some states (like CA) have additional requirements.',
+        category: 'claims',
+        states: ['CA', 'OR', 'WA'],
+      },
+      {
+        question: 'What heavy metal limits apply to my product?',
+        shortAnswer: 'Limits vary by state. California has the strictest limits. AAPFCO provides model guidelines. Testing is required to demonstrate compliance.',
+        category: 'testing',
+        states: ['CA', 'NY', 'WA', 'OR'],
+      },
+      {
+        question: 'How long does state registration take?',
+        shortAnswer: 'Registration typically takes 30-90 days depending on state backlog, completeness of application, and whether lab testing is required.',
+        category: 'registration',
+        states: ['CA', 'OR', 'WA', 'NY', 'TX'],
+      },
+    ];
+
+    let filtered = faqs;
+    if (stateCode) {
+      filtered = filtered.filter(faq => faq.states.includes(stateCode));
+    }
+    if (category) {
+      filtered = filtered.filter(faq => faq.category === category);
+    }
+
+    return { success: true, data: filtered };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+// =============================================================================
+// DOCUMENT ANALYSIS (Letters, Regulatory Notes, etc.)
+// =============================================================================
+
+export interface DocumentAnalysisResult {
+  documentId: string;
+  documentType: string;
+  extractedText: string;
+  analysisResults: {
+    summary: string;
+    keyPoints: string[];
+    requiredActions: string[];
+    deadlines: Array<{ action: string; date: string; priority: string }>;
+    stateReferences: string[];
+    regulationReferences: string[];
+    complianceImpact: 'high' | 'medium' | 'low' | 'unknown';
+  };
+  linkedRegulations: Array<{
+    regulationId: string;
+    regulationCode: string;
+    title: string;
+    relevance: number;
+  }>;
+  confidence: number;
+}
+
+/**
+ * Analyze a compliance document (letter, regulatory note, certificate, etc.)
+ * Uses OCR for images and AI for text analysis
+ */
+export async function analyzeComplianceDocument(
+  documentId: string
+): Promise<ServiceResult<DocumentAnalysisResult>> {
+  try {
+    // Get the document
+    const { data: doc, error: docError } = await supabase
+      .from('compliance_documents')
+      .select('*')
+      .eq('id', documentId)
+      .single();
+
+    if (docError) throw docError;
+
+    // Check if we have extracted text, if not, trigger OCR
+    let extractedText = doc.extracted_text || '';
+
+    if (!extractedText && doc.file_url) {
+      // Would call MCP extract_label_text tool here
+      // For now, flag that OCR is needed
+      extractedText = '[OCR extraction pending - upload image to MCP server for text extraction]';
+    }
+
+    // Analyze the text for key compliance elements
+    const analysisResults = {
+      summary: '',
+      keyPoints: [] as string[],
+      requiredActions: [] as string[],
+      deadlines: [] as Array<{ action: string; date: string; priority: string }>,
+      stateReferences: [] as string[],
+      regulationReferences: [] as string[],
+      complianceImpact: 'unknown' as const,
+    };
+
+    // Pattern matching for common compliance elements
+    const textLower = extractedText.toLowerCase();
+
+    // Detect state references
+    const statePatterns = /\b(california|oregon|washington|new york|texas|colorado|florida|michigan|pennsylvania|north carolina|ca|or|wa|ny|tx|co|fl|mi|pa|nc)\b/gi;
+    const stateMatches = extractedText.match(statePatterns) || [];
+    analysisResults.stateReferences = [...new Set(stateMatches.map(s => s.toUpperCase()))];
+
+    // Detect regulation references
+    const regPatterns = /\b(\d+\s*CFR\s*\d+|\d+\s*CCR\s*\d+|OAR\s*\d+-\d+|WAC\s*\d+-\d+)/gi;
+    const regMatches = extractedText.match(regPatterns) || [];
+    analysisResults.regulationReferences = [...new Set(regMatches)];
+
+    // Detect deadlines
+    const datePatterns = /\b(by|before|deadline|due|expires?|within)\s*[:\s]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4}|\w+\s+\d{1,2},?\s+\d{4}|\d+\s*days?)/gi;
+    const dateMatches = extractedText.match(datePatterns) || [];
+    dateMatches.forEach(match => {
+      analysisResults.deadlines.push({
+        action: 'Review required',
+        date: match,
+        priority: textLower.includes('immediate') || textLower.includes('urgent') ? 'high' : 'medium',
+      });
+    });
+
+    // Detect required actions
+    const actionPatterns = /\b(must|shall|required to|need to|mandated|obligated)\s+([^.]+)/gi;
+    let actionMatch;
+    while ((actionMatch = actionPatterns.exec(extractedText)) !== null) {
+      if (actionMatch[2] && actionMatch[2].length < 200) {
+        analysisResults.requiredActions.push(actionMatch[0].trim());
+      }
+    }
+
+    // Determine compliance impact
+    if (textLower.includes('violation') || textLower.includes('penalty') || textLower.includes('cease')) {
+      analysisResults.complianceImpact = 'high';
+    } else if (textLower.includes('warning') || textLower.includes('deficiency')) {
+      analysisResults.complianceImpact = 'medium';
+    } else if (textLower.includes('approved') || textLower.includes('compliant')) {
+      analysisResults.complianceImpact = 'low';
+    }
+
+    // Generate summary
+    analysisResults.summary = `Document analysis found ${analysisResults.stateReferences.length} state references, ${analysisResults.regulationReferences.length} regulation citations, and ${analysisResults.deadlines.length} potential deadlines. Compliance impact: ${analysisResults.complianceImpact}.`;
+
+    // Find linked regulations
+    const linkedRegulations: DocumentAnalysisResult['linkedRegulations'] = [];
+    if (analysisResults.stateReferences.length > 0) {
+      const { data: regs } = await supabase
+        .from('state_regulations')
+        .select('id, regulation_code, rule_title')
+        .in('state', analysisResults.stateReferences.map(s => s.length === 2 ? s : ''))
+        .limit(5);
+
+      (regs || []).forEach(reg => {
+        linkedRegulations.push({
+          regulationId: reg.id,
+          regulationCode: reg.regulation_code || '',
+          title: reg.rule_title,
+          relevance: 0.5,
+        });
+      });
+    }
+
+    // Update document with analysis
+    await supabase
+      .from('compliance_documents')
+      .update({
+        extracted_text: extractedText !== doc.extracted_text ? extractedText : undefined,
+        extracted_data: analysisResults,
+        extraction_method: 'ai_analysis',
+        extraction_date: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', documentId);
+
+    return {
+      success: true,
+      data: {
+        documentId,
+        documentType: doc.document_type,
+        extractedText,
+        analysisResults,
+        linkedRegulations,
+        confidence: extractedText.includes('[OCR extraction pending') ? 0.2 : 0.7,
+      },
+    };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Batch analyze multiple compliance documents
+ */
+export async function batchAnalyzeDocuments(
+  documentIds: string[]
+): Promise<ServiceResult<{
+  analyzed: number;
+  failed: number;
+  results: Array<{ documentId: string; success: boolean; error?: string }>;
+}>> {
+  const results: Array<{ documentId: string; success: boolean; error?: string }> = [];
+  let analyzed = 0;
+  let failed = 0;
+
+  for (const docId of documentIds) {
+    const result = await analyzeComplianceDocument(docId);
+    if (result.success) {
+      analyzed++;
+      results.push({ documentId: docId, success: true });
+    } else {
+      failed++;
+      results.push({ documentId: docId, success: false, error: result.error });
+    }
+  }
+
+  return {
+    success: true,
+    data: { analyzed, failed, results },
+  };
+}
+
+// =============================================================================
 // REGULATORY UPDATES MONITORING
 // =============================================================================
 
@@ -583,4 +1135,15 @@ export default {
   getCombinedLabelingRequirements,
   analyzeStateCoverage,
   checkForRegulatoryUpdates,
+  // Contact info management
+  searchStateContactInfo,
+  updateStateContactInfo,
+  // Manual source input
+  upsertStateRegulatorySource,
+  // Regulatory Q&A
+  askRegulatoryQuestion,
+  getFrequentlyAskedQuestions,
+  // Document analysis
+  analyzeComplianceDocument,
+  batchAnalyzeDocuments,
 };

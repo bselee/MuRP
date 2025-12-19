@@ -772,17 +772,33 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                         )}
 
                         {activeScanTab === 'compliance' && DAM_TIER_LIMITS[damTier].compliance && (
-                            <div className="bg-gray-900/30 rounded-lg p-6">
+                            <div className="bg-gray-900/30 rounded-lg p-6 space-y-6">
                                 <div className="text-center mb-6">
                                     <DocumentTextIcon className="w-12 h-12 text-green-400 mx-auto mb-3" />
-                                    <h3 className="text-xl font-semibold text-white mb-2">Compliance Dashboard</h3>
-                                    <p className="text-gray-400">Comprehensive regulatory compliance monitoring across all your products and artwork.</p>
+                                    <h3 className="text-xl font-semibold text-white mb-2">Product Compliance</h3>
+                                    <p className="text-gray-400">Scan your BOMs and artwork for regulatory compliance issues.</p>
                                 </div>
+
+                                {/* Link to full Compliance page */}
+                                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 mb-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h4 className="font-medium text-gray-200">Need full regulatory research?</h4>
+                                            <p className="text-sm text-gray-400">Access state sources, Q&A, documents, and letter analysis</p>
+                                        </div>
+                                        <a
+                                            href="/compliance"
+                                            className="px-4 py-2 bg-accent-600 hover:bg-accent-500 text-white rounded-lg text-sm font-medium transition-colors"
+                                        >
+                                            Open Compliance Center
+                                        </a>
+                                    </div>
+                                </div>
+
                                 <ComplianceDashboard
                                     boms={effectiveBoms}
                                     watchlist={watchlist}
                                     onViewDetails={(bom, status) => {
-                                        // Handle viewing compliance details for a specific BOM
                                         addToast(`Viewing compliance details for ${bom.name}`, 'info');
                                     }}
                                 />

@@ -4,7 +4,7 @@ import React from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MuRPLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, UsersIcon, ChartBarIcon, CpuChipIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MuRPLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, UsersIcon, ChartBarIcon, CpuChipIcon, ShieldCheckIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
 import UserSettingsDropdown from './UserSettingsDropdown';
@@ -116,6 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
         { page: 'Artwork', icon: <PhotoIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Inventory', icon: <PackageIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Stock Intelligence', icon: <ChartBarIcon className="w-6 h-6" />, managerAndUp: true },
+        { page: 'Compliance', icon: <ShieldCheckIcon className="w-6 h-6" />, managerAndUp: true },
         { page: 'Agent Command Center', icon: <CpuChipIcon className="w-6 h-6" />, adminOnly: true },
         { page: 'Settings', icon: <CogIcon className="w-6 h-6" />, adminOnly: true },
     ];

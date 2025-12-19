@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useTheme } from '../components/ThemeProvider';
 import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import type { 
@@ -71,6 +72,10 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
   users,
   addToast,
 }) => {
+  // Theme
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== 'light';
+  
   // Data hooks
   const { data: projects, loading: loadingProjects, refetch: refetchProjects } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -279,11 +284,13 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
         actions={
           <div className="flex items-center gap-3">
           {/* View Toggle */}
-          <div className="flex bg-gray-800 rounded-lg p-1 flex-wrap gap-1">
+          <div className={`flex ${isDark ? 'bg-gray-800' : 'bg-amber-100'} rounded-lg p-1 flex-wrap gap-1`}>
             <button
               onClick={() => { setViewMode('projects'); setSelectedProjectId(null); }}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'projects' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+                viewMode === 'projects' 
+                  ? isDark ? 'bg-gray-700 text-white' : 'bg-white text-amber-900 shadow'
+                  : isDark ? 'text-gray-400 hover:text-white' : 'text-amber-700 hover:text-amber-900'
               }`}
               title="Projects"
             >
@@ -293,7 +300,9 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
             <button
               onClick={() => setViewMode('list')}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'list' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+                viewMode === 'list' 
+                  ? isDark ? 'bg-gray-700 text-white' : 'bg-white text-amber-900 shadow'
+                  : isDark ? 'text-gray-400 hover:text-white' : 'text-amber-700 hover:text-amber-900'
               }`}
               title="Owner → Delegate View"
             >
@@ -303,7 +312,9 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
             <button
               onClick={() => setViewMode('my-tickets')}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'my-tickets' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+                viewMode === 'my-tickets' 
+                  ? isDark ? 'bg-gray-700 text-white' : 'bg-white text-amber-900 shadow'
+                  : isDark ? 'text-gray-400 hover:text-white' : 'text-amber-700 hover:text-amber-900'
               }`}
               title="My Tickets"
             >
@@ -336,7 +347,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
             <div className="col-span-full text-center py-12">
               <FolderIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-white mb-2">No Projects Yet</h3>
-              <p className="text-gray-400 mb-4">Create your first project to start organizing work.</p>
+              <p className={`${isDark ? 'text-gray-400' : 'text-amber-700'} mb-4`}>Create your first project to start organizing work.</p>
               <Button
                 onClick={() => setIsCreateProjectOpen(true)}
                 className="bg-accent-500 hover:bg-accent-500 text-white px-4 py-2 rounded-lg"
@@ -352,15 +363,15 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
               return (
                 <div
                   key={project.id}
-                  className="bg-gray-800/50 border border-gray-700 rounded-xl p-5 hover:border-accent-500/50 hover:bg-gray-800/70 transition-all group"
+                  className={`${isDark ? 'bg-gray-800/50 border-gray-700 hover:bg-gray-800/70' : 'bg-white border-amber-200 hover:bg-amber-50'} border rounded-xl p-5 hover:border-accent-500/50 transition-all group`}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="text-lg font-semibold text-white group-hover:text-accent-300 transition-colors">
+                      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'} group-hover:text-accent-300 transition-colors`}>
                         {project.name}
                       </h3>
                       {project.code && (
-                        <span className="text-xs text-gray-500 font-mono">{project.code}</span>
+                        <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-amber-600'} font-mono`}>{project.code}</span>
                       )}
                     </div>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -374,30 +385,30 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   </div>
 
                   {project.description && (
-                    <p className="text-sm text-gray-400 mb-3 line-clamp-2">{project.description}</p>
+                    <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-amber-700'} mb-3 line-clamp-2`}>{project.description}</p>
                   )}
 
                   {/* Owner info */}
                   <div className="space-y-1 mb-3">
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>
                       <UserIcon className="w-4 h-4" />
                       <span>{owner?.name || 'Owner unknown'}</span>
                     </div>
                     {delegate && (
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <div className={`flex items-center gap-2 text-xs ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>
                         <ChevronRightIcon className="w-3 h-3" />
                         <span>Delegate: {delegate.name}</span>
                       </div>
                     )}
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className={`flex items-center gap-2 text-xs ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>
                       <CalendarDaysIcon className="w-3 h-3" />
                       <span>{formatDateDisplay(project.startDate)} → {formatDateDisplay(project.targetEndDate)}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4 text-sm mb-4">
-                    <span className="text-gray-500">
-                      <span className="text-white font-medium">{stats.total}</span> tickets
+                    <span className={isDark ? 'text-gray-500' : 'text-amber-600'}>
+                      <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{stats.total}</span> tickets
                     </span>
                     <span className="text-emerald-400">
                       <CheckCircleIcon className="w-4 h-4 inline mr-1" />
@@ -410,17 +421,17 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   </div>
 
                   {/* View options */}
-                  <div className="flex gap-2 border-t border-gray-700 pt-3">
+                  <div className={`flex gap-2 border-t ${isDark ? 'border-gray-700' : 'border-amber-200'} pt-3`}>
                     <button
                       onClick={() => handleSelectProject(project)}
-                      className="flex-1 px-3 py-1.5 bg-gray-700/50 hover:bg-gray-700 rounded-lg text-sm text-gray-300 hover:text-white transition-colors flex items-center justify-center gap-1"
+                      className={`flex-1 px-3 py-1.5 ${isDark ? 'bg-gray-700/50 hover:bg-gray-700 text-gray-300 hover:text-white' : 'bg-amber-100 hover:bg-amber-200 text-amber-800 hover:text-amber-900'} rounded-lg text-sm transition-colors flex items-center justify-center gap-1`}
                     >
                       <ViewColumnsIcon className="w-4 h-4" />
                       Kanban
                     </button>
                     <button
                       onClick={() => { setSelectedProjectId(project.id); setViewMode('timeline'); }}
-                      className="flex-1 px-3 py-1.5 bg-gray-700/50 hover:bg-gray-700 rounded-lg text-sm text-gray-300 hover:text-white transition-colors flex items-center justify-center gap-1"
+                      className={`flex-1 px-3 py-1.5 ${isDark ? 'bg-gray-700/50 hover:bg-gray-700 text-gray-300 hover:text-white' : 'bg-amber-100 hover:bg-amber-200 text-amber-800 hover:text-amber-900'} rounded-lg text-sm transition-colors flex items-center justify-center gap-1`}
                     >
                       <CalendarDaysIcon className="w-4 h-4" />
                       Timeline
@@ -430,7 +441,7 @@ const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   {project.tags && project.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-3">
                       {project.tags.map(tag => (
-                        <span key={tag} className="px-2 py-0.5 bg-gray-700 text-gray-300 rounded text-xs">
+                        <span key={tag} className={`px-2 py-0.5 ${isDark ? 'bg-gray-700 text-gray-300' : 'bg-amber-100 text-amber-800'} rounded text-xs`}>
                           {tag}
                         </span>
                       ))}

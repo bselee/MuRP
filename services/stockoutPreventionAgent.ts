@@ -46,6 +46,37 @@ export interface StockoutAlert {
   blocking_builds?: string[]; // Build orders that will be blocked
   consumption_change_pct?: number; // % change in consumption rate
   lead_time_variance_days?: number; // Days longer than expected
+  flow_type?: string; // Item flow type for filtering
+  reorder_method?: string; // Reorder method from Finale
+  category?: string; // Category for grouping
+}
+
+/**
+ * Options for fine-grained control over alert filtering
+ */
+export interface AlertFilterOptions {
+  /** Include dropship items (default: false) */
+  includeDropship?: boolean;
+  /** Include consignment items (default: false) */
+  includeConsignment?: boolean;
+  /** Include made-to-order items (default: false) */
+  includeMadeToOrder?: boolean;
+  /** Include discontinued items (default: false) */
+  includeDiscontinued?: boolean;
+  /** Include special order items (default: false) */
+  includeSpecialOrder?: boolean;
+  /** Include items marked "do not reorder" (default: false) */
+  includeDoNotReorder?: boolean;
+  /** Bypass classification filtering entirely - show ALL low stock items (default: false) */
+  bypassClassificationFilter?: boolean;
+  /** Filter by specific categories */
+  categories?: string[];
+  /** Minimum days of stock to show (default: 0 - show all) */
+  minDaysOfStock?: number;
+  /** Maximum days of stock to show (default: 999 - show all) */
+  maxDaysOfStock?: number;
+  /** Only show items with stock below this level */
+  maxStockLevel?: number;
 }
 
 export interface BOMBlockingAnalysis {
@@ -90,10 +121,60 @@ export interface PurchaseRecommendation {
 }
 
 /**
- * Get all critical stockout alerts requiring immediate attention
- * IMPORTANT: Only processes items where shouldTriggerReorderAlerts is true
+ * Helper function to determine if an item should be included in alerts
+ * based on its classification context and the provided filter options
  */
-export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
+function shouldIncludeInAlerts(
+  context: ItemClassificationContext | undefined,
+  options: AlertFilterOptions
+): boolean {
+  // If bypassing classification filter, include everything
+  if (options.bypassClassificationFilter) {
+    return true;
+  }
+  
+  // If no context, use default behavior (exclude unknown items)
+  if (!context) {
+    return false;
+  }
+  
+  const flowType = context.flowType;
+  const reorderMethod = context.reorderMethod;
+  
+  // Check reorder method first
+  if (reorderMethod === 'do_not_reorder' && !options.includeDoNotReorder) {
+    return false;
+  }
+  
+  // Check flow type specific inclusions
+  switch (flowType) {
+    case 'dropship':
+      return !!options.includeDropship;
+    case 'consignment':
+      return !!options.includeConsignment;
+    case 'made_to_order':
+      return !!options.includeMadeToOrder;
+    case 'discontinued':
+      return !!options.includeDiscontinued;
+    case 'special_order':
+      return !!options.includeSpecialOrder;
+    case 'standard':
+      // Standard items use the default shouldTriggerReorderAlerts logic
+      return shouldTriggerReorderAlerts(context);
+    default:
+      // Unknown flow types - treat as standard
+      return shouldTriggerReorderAlerts(context);
+  }
+}
+
+/**
+ * Get all critical stockout alerts requiring immediate attention
+ * IMPORTANT: By default, only processes items where shouldTriggerReorderAlerts is true
+ * 
+ * @param options - Fine-grained filter options to customize which items are included
+ * @returns Array of StockoutAlert objects sorted by severity
+ */
+export async function getCriticalStockoutAlerts(options: AlertFilterOptions = {}): Promise<StockoutAlert[]> {
   const alerts: StockoutAlert[] = [];
 
   // Get all products with reorder status indicating issues
@@ -104,9 +185,11 @@ export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
     'stockout-prevention',
     null,
     'critical_alerts_scan_started',
-    'Only processing items that should trigger reorder alerts',
+    options.bypassClassificationFilter 
+      ? 'Processing ALL items (classification filter bypassed)'
+      : 'Only processing items that should trigger reorder alerts',
     null,
-    { total_critical_products: criticalProducts.length }
+    { total_critical_products: criticalProducts.length, filter_options: options }
   );
 
   // Get classification context for all critical products
@@ -117,12 +200,15 @@ export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
   let processedCount = 0;
 
   for (const product of criticalProducts) {
-    // Check classification - skip items that shouldn't trigger alerts
     const context = classifications.get(product.sku);
-    if (!shouldTriggerReorderAlerts(context)) {
+    
+    // Apply fine-grained filtering
+    const shouldInclude = shouldIncludeInAlerts(context, options);
+    
+    if (!shouldInclude) {
       skippedCount++;
-      // Log why this item was skipped
-      if (context) {
+      // Log why this item was skipped (only if context exists and not bypassed)
+      if (context && !options.bypassClassificationFilter) {
         await logAgentAction(
           'stockout-prevention',
           product.sku,
@@ -133,6 +219,26 @@ export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
         );
       }
       continue;
+    }
+
+    // Apply additional numeric filters
+    if (options.minDaysOfStock !== undefined && product.days_of_stock_remaining < options.minDaysOfStock) {
+      continue;
+    }
+    if (options.maxDaysOfStock !== undefined && product.days_of_stock_remaining > options.maxDaysOfStock) {
+      continue;
+    }
+    if (options.maxStockLevel !== undefined && product.available_quantity > options.maxStockLevel) {
+      continue;
+    }
+    
+    // Category filter
+    if (options.categories && options.categories.length > 0) {
+      const itemCategory = context?.category?.toLowerCase() || '';
+      const matchesCategory = options.categories.some(c => itemCategory.includes(c.toLowerCase()));
+      if (!matchesCategory) {
+        continue;
+      }
     }
 
     processedCount++;
@@ -149,6 +255,10 @@ export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
       recommended_action: generateRecommendedAction(product),
       recommended_order_qty: Math.ceil(calculateOptimalOrderQuantity(product)),
       estimated_cost: Math.ceil(calculateOptimalOrderQuantity(product)) * product.avg_unit_cost,
+      // Additional metadata for fine-grained display
+      flow_type: context?.flowType || 'standard',
+      reorder_method: context?.reorderMethod || 'default',
+      category: context?.category || undefined,
     };
 
     alerts.push(alert);

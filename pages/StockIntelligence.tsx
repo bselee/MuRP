@@ -29,6 +29,7 @@ import {
   ClipboardIcon
 } from '../components/icons';
 import { usePermissions } from '../hooks/usePermissions';
+import { getCriticalStockoutAlerts, type StockoutAlert } from '../services/stockoutPreventionAgent';
 
 interface StockIntelligenceProps {
   inventory: InventoryItem[];
@@ -62,6 +63,8 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
   const [loading, setLoading] = useState(true);
   const [stockoutRisks, setStockoutRisks] = useState<StockoutRisk[]>([]);
   const [vendorPerformances, setVendorPerformances] = useState<VendorPerformance[]>([]);
+  // Agent alerts - used for consistent summary cards that match the widget
+  const [agentAlerts, setAgentAlerts] = useState<StockoutAlert[]>([]);
 
   // Filter out items based on classification settings
   // CRITICAL: Stock Intelligence respects per-item overrides, reorder_method, and global rules
@@ -257,7 +260,11 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
   useEffect(() => {
     setStockoutRisks(calculateStockoutRisks);
     setVendorPerformances(calculateVendorPerformance);
-    setLoading(false);
+    // Fetch agent alerts for consistent summary cards
+    getCriticalStockoutAlerts().then(alerts => {
+      setAgentAlerts(alerts);
+      setLoading(false);
+    });
   }, [calculateStockoutRisks, calculateVendorPerformance]);
 
   if (!permissions.canViewInventory) {
@@ -271,8 +278,8 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
     );
   }
 
-  const criticalRisks = stockoutRisks.filter(r => r.riskLevel === 'critical');
-  const highRisks = stockoutRisks.filter(r => r.riskLevel === 'high');
+  const criticalRisks = agentAlerts.filter(a => a.severity === 'CRITICAL');
+  const highRisks = agentAlerts.filter(a => a.severity === 'HIGH');
 
   return (
     <div className="p-6 space-y-6">

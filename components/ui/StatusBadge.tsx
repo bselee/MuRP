@@ -131,10 +131,10 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
 export const getVariantForStatus = (status: string): BadgeVariant => {
   const normalizedStatus = status.toLowerCase().replace(/[_-\s]/g, '');
 
-  // Success states (green)
+  // Success states (green) - traffic light COMPLETE
   if ([
     'completed', 'approved', 'received', 'fulfilled', 'confirmed',
-    'active', 'instock', 'delivered', 'invoicereceived'
+    'active', 'instock', 'delivered', 'invoicereceived', 'complete'
   ].includes(normalizedStatus)) {
     return 'success';
   }
@@ -147,10 +147,10 @@ export const getVariantForStatus = (status: string): BadgeVariant => {
     return 'warning';
   }
 
-  // Danger states (red)
+  // Danger states (red) - traffic light CANCELED/ERROR
   if ([
-    'cancelled', 'rejected', 'failed', 'outofstock',
-    'expired', 'overdue', 'exception', 'critical'
+    'cancelled', 'canceled', 'rejected', 'failed', 'outofstock',
+    'expired', 'overdue', 'exception', 'critical', 'error'
   ].includes(normalizedStatus)) {
     return 'danger';
   }
@@ -165,9 +165,9 @@ export const getVariantForStatus = (status: string): BadgeVariant => {
     return 'processing';
   }
 
-  // Info states (cyan)
-  if (['committed', 'submitted'].includes(normalizedStatus)) {
-    return 'info';
+  // Committed states (yellow/warning - traffic light)
+  if (['committed', 'submitted', 'ordered'].includes(normalizedStatus)) {
+    return 'warning';
   }
 
   // Primary/Draft states (accent blue)

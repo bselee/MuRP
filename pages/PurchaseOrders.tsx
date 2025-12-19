@@ -313,8 +313,23 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     };
 
     const formatPoTotal = (po: PurchaseOrder) => {
-        const total = typeof po.total === 'number' ? po.total : po.items.reduce((sum, item) => sum + (item.lineTotal ?? item.quantity * (item.price ?? 0)), 0);
-        return total.toFixed(2);
+        // First try using the pre-calculated total if it's a valid number
+        const directTotal = Number(po.total);
+        if (!isNaN(directTotal) && directTotal > 0) {
+            return directTotal.toFixed(2);
+        }
+        
+        // Fall back to calculating from line items
+        const calculatedTotal = po.items.reduce((sum, item) => {
+            const lineTotal = Number(item.lineTotal);
+            if (!isNaN(lineTotal)) return sum + lineTotal;
+            
+            const qty = Number(item.quantity) || 0;
+            const price = Number(item.price) || 0;
+            return sum + (qty * price);
+        }, 0);
+        
+        return calculatedTotal.toFixed(2);
     };
 
     const handleDownloadPdf = (po: PurchaseOrder) => {
@@ -556,10 +571,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setIsAgentSettingsOpen(true)}
                                         variant="secondary"
-                                        className="p-2 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 w-10 h-10 flex items-center justify-center rounded-lg shadow-sm"
+                                        className={`p-2 border w-10 h-10 flex items-center justify-center rounded-lg shadow-sm ${isDark 
+                                            ? 'border-gray-600 hover:border-gray-500 hover:bg-gray-700' 
+                                            : 'border-amber-300 hover:border-amber-400 hover:bg-amber-100'}`}
                                         aria-label="Agent Command Center & Settings"
                                     >
-                                        <SettingsIcon className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                                        <SettingsIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-amber-600'}`} />
                                     </Button>
                                 )}
                             </div>
@@ -595,7 +612,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="space-y-8 p-1">
                         {showCommandCenter && (
                             <section>
-                                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Purchasing Overview</h3>
+                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Purchasing Overview</h3>
                                 <PurchasingCommandCenter
                                     stats={[
                                         {
@@ -643,7 +660,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                         {(canManagePOs || isAdminLike) && (
                             <section>
-                                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Automation Controls</h3>
+                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Automation Controls</h3>
                                 <AutomationControlsSection
                                     canManagePOs={canManagePOs}
                                     isAdminLike={isAdminLike}
@@ -657,22 +674,22 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                         {isAdminLike && (
                             <section>
-                                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Autonomous Signing</h3>
+                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Autonomous Signing</h3>
                                 <AutonomousApprovals addToast={addToast} />
                             </section>
                         )}
 
                         {isAdminLike && (
                             <section>
-                                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">System Intelligence</h3>
+                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>System Intelligence</h3>
                                 <div className="space-y-6">
                                     <TrustScoreDashboard />
                                     <div>
-                                        <h4 className="text-xs font-semibold text-gray-500 mb-2">ACTIVE ALERTS</h4>
+                                        <h4 className={`text-xs font-semibold mb-2 ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>ACTIVE ALERTS</h4>
                                         <AlertFeedComponent limit={20} showResolved={false} />
                                     </div>
                                     <div>
-                                        <h4 className="text-xs font-semibold text-gray-500 mb-2">VENDOR INTELLIGENCE</h4>
+                                        <h4 className={`text-xs font-semibold mb-2 ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>VENDOR INTELLIGENCE</h4>
                                         <VendorScorecardComponent limit={10} />
                                     </div>
                                 </div>
@@ -688,7 +705,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <h2 className="text-xl font-semibold text-gray-300">📦 External Purchase Orders</h2>
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>📦 External Purchase Orders</h2>
                                 <StatusBadge variant="primary" className="ml-2">
                                     {finalePurchaseOrders.filter(fpo => {
                                         // Exclude dropship POs - only those with "DropshipPO" in the order ID
@@ -697,17 +714,19 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     }).length} total
                                 </StatusBadge>
                                 {!showAllFinaleHistory && (
-                                    <span className="text-xs text-gray-500">(Active only)</span>
+                                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>(Active only)</span>
                                 )}
                                 {showAllFinaleHistory && (
-                                    <span className="text-xs text-gray-500">(Including inactive)</span>
+                                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>(Including inactive)</span>
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
                                 {/* Sort Order Toggle */}
                                 <Button
                                     onClick={() => setFinalePOSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                                    className="px-3 py-1.5 text-xs rounded bg-gray-800/50 border border-gray-700 text-gray-300 hover:bg-gray-700 transition-colors"
+                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${isDark 
+                                        ? 'bg-gray-800/50 border border-gray-700 text-gray-300 hover:bg-gray-700' 
+                                        : 'bg-white/80 border border-amber-200 text-amber-800 hover:bg-amber-100'}`}
                                 >
                                     {finalePOSortOrder === 'asc' ? 'Oldest ↑' : 'Newest ↓'}
                                 </Button>
@@ -717,13 +736,15 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     onClick={() => setShowAllFinaleHistory(!showAllFinaleHistory)}
                                     className={`px-3 py-1.5 text-xs rounded transition-colors ${showAllFinaleHistory
                                         ? 'bg-accent-500/20 text-accent-300 border border-accent-500/50'
-                                        : 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                                        : isDark 
+                                            ? 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                                            : 'bg-white/80 text-amber-700 border border-amber-200 hover:bg-amber-100'
                                         }`}
                                 >
                                     {showAllFinaleHistory ? 'All History' : 'Active Only'}
                                 </Button>
 
-                                <span className="text-xs text-gray-400">
+                                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>
                                     Synced from Finale API
                                 </span>
                             </div>
@@ -793,14 +814,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                 {fpo.vendorName || 'Unknown Vendor'}
                                                             </div>
                                                         </div>
-                                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${fpo.status === 'Submitted' || fpo.status === 'SUBMITTED' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
-                                                            fpo.status === 'Partial' || fpo.status === 'PARTIALLY_RECEIVED' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
-                                                                fpo.status === 'Pending' || fpo.status === 'DRAFT' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' :
-                                                                    fpo.status === 'Ordered' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
-                                                                        'bg-accent-500/20 text-accent-300 border border-accent-500/30'
-                                                            }`}>
-                                                            {fpo.status}
-                                                        </span>
+                                                        <StatusBadge status={fpo.status} size="sm">
+                                                            {formatStatusText(fpo.status)}
+                                                        </StatusBadge>
                                                     </div>
                                                     <div className="flex items-center gap-6">
                                                         <div className="text-right">
@@ -840,42 +856,44 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className={`rounded-xl border backdrop-blur-lg p-4 space-y-3 ${isDark
                                                             ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
-                                                            : 'border-stone-300/25 bg-gradient-to-br from-white/98 via-stone-100/50 to-white/92 shadow-[0_18px_40px_rgba(15,23,42,0.18)]'
+                                                            : 'border-amber-200 bg-gradient-to-br from-white via-amber-50/30 to-white shadow-amber-100/50'
                                                             }`}>
                                                             <div>
-                                                                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Vendor Information</div>
-                                                                <div className="text-sm text-gray-200">{fpo.vendorName || 'Unknown'}</div>
+                                                                <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Vendor Information</div>
+                                                                <div className={`text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{fpo.vendorName || 'Unknown'}</div>
                                                                 {fpo.vendorUrl && (
-                                                                    <div className="text-xs text-gray-500 font-mono mt-0.5">{fpo.vendorUrl}</div>
+                                                                    <div className={`text-xs font-mono mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{fpo.vendorUrl}</div>
                                                                 )}
                                                             </div>
                                                             {fpo.facilityId && (
                                                                 <div>
-                                                                    <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Facility</div>
-                                                                    <div className="text-sm text-gray-200">{fpo.facilityId}</div>
+                                                                    <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Facility</div>
+                                                                    <div className={`text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{fpo.facilityId}</div>
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] p-4">
-                                                            <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Financial Summary</div>
+                                                        <div className={`rounded-xl border backdrop-blur-lg p-4 ${isDark 
+                                                            ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
+                                                            : 'border-amber-200 bg-gradient-to-br from-white via-amber-50/30 to-white shadow-amber-100/50'}`}>
+                                                            <div className={`text-xs uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Financial Summary</div>
                                                             <div className="space-y-1 text-sm">
-                                                                <div className="flex justify-between text-gray-300">
+                                                                <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                                     <span>Subtotal:</span>
                                                                     <span className="font-mono">${Number(fpo.subtotal || 0).toFixed(2)}</span>
                                                                 </div>
                                                                 {fpo.tax && Number(fpo.tax) > 0 && (
-                                                                    <div className="flex justify-between text-gray-300">
+                                                                    <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                                         <span>Tax:</span>
                                                                         <span className="font-mono">${Number(fpo.tax).toFixed(2)}</span>
                                                                     </div>
                                                                 )}
                                                                 {fpo.shipping && Number(fpo.shipping) > 0 && (
-                                                                    <div className="flex justify-between text-gray-300">
+                                                                    <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                                         <span>Shipping:</span>
                                                                         <span className="font-mono">${Number(fpo.shipping).toFixed(2)}</span>
                                                                     </div>
                                                                 )}
-                                                                <div className="flex justify-between text-amber-400 font-semibold pt-2 border-t border-white/10">
+                                                                <div className={`flex justify-between font-semibold pt-2 border-t ${isDark ? 'text-amber-400 border-white/10' : 'text-amber-700 border-amber-200'}`}>
                                                                     <span>Total:</span>
                                                                     <span className="font-mono">${Number(fpo.total || 0).toFixed(2)}</span>
                                                                 </div>
@@ -888,16 +906,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                         <div className="space-y-2">
                                                             {fpo.publicNotes && (
                                                                 <div>
-                                                                    <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Public Notes</div>
-                                                                    <div className="text-sm text-gray-300 bg-slate-950/50 p-3 rounded-lg border border-white/5">
+                                                                    <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Public Notes</div>
+                                                                    <div className={`text-sm p-3 rounded-lg border ${isDark ? 'text-gray-300 bg-slate-950/50 border-white/5' : 'text-gray-700 bg-amber-50/50 border-amber-200'}`}>
                                                                         {fpo.publicNotes}
                                                                     </div>
                                                                 </div>
                                                             )}
                                                             {fpo.privateNotes && (
                                                                 <div>
-                                                                    <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Private Notes</div>
-                                                                    <div className="text-sm text-gray-300 bg-slate-950/50 p-3 rounded-lg border border-white/5">
+                                                                    <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Private Notes</div>
+                                                                    <div className={`text-sm p-3 rounded-lg border ${isDark ? 'text-gray-300 bg-slate-950/50 border-white/5' : 'text-gray-700 bg-amber-50/50 border-amber-200'}`}>
                                                                         {fpo.privateNotes}
                                                                     </div>
                                                                 </div>
@@ -908,28 +926,30 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     {/* Line Items */}
                                                     {fpo.lineItems && fpo.lineItems.length > 0 && (
                                                         <div>
-                                                            <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Line Items</div>
-                                                            <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 backdrop-blur-lg shadow-[0_12px_30px_rgba(2,6,23,0.45)] overflow-hidden">
+                                                            <div className={`text-xs uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Line Items</div>
+                                                            <div className={`rounded-xl border backdrop-blur-lg overflow-hidden ${isDark 
+                                                                ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
+                                                                : 'border-amber-200 bg-white shadow-amber-100/50'}`}>
                                                                 <table className="min-w-full">
-                                                                    <thead className="bg-slate-900/50">
+                                                                    <thead className={isDark ? 'bg-slate-900/50' : 'bg-amber-50'}>
                                                                         <tr>
-                                                                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">#</th>
-                                                                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase">Product</th>
-                                                                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Ordered</th>
-                                                                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Received</th>
-                                                                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Unit Price</th>
-                                                                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase">Total</th>
+                                                                            <th className={`px-3 py-2 text-left text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>#</th>
+                                                                            <th className={`px-3 py-2 text-left text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Product</th>
+                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Ordered</th>
+                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Received</th>
+                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Unit Price</th>
+                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Total</th>
                                                                         </tr>
                                                                     </thead>
-                                                                    <tbody className="divide-y divide-white/5">
+                                                                    <tbody className={`divide-y ${isDark ? 'divide-white/5' : 'divide-amber-100'}`}>
                                                                         {fpo.lineItems.map((item: any, idx: number) => (
-                                                                            <tr key={idx} className="hover:bg-slate-900/30">
-                                                                                <td className="px-3 py-2 text-sm text-gray-400">{item.line_number || idx + 1}</td>
-                                                                                <td className="px-3 py-2 text-sm text-gray-300 font-mono">{item.product_id || 'N/A'}</td>
-                                                                                <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_ordered || 0}</td>
-                                                                                <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">{item.quantity_received || 0}</td>
-                                                                                <td className="px-3 py-2 text-sm text-gray-300 text-right font-mono">${Number(item.unit_price || 0).toFixed(2)}</td>
-                                                                                <td className="px-3 py-2 text-sm text-amber-400 text-right font-mono font-semibold">${Number(item.line_total || 0).toFixed(2)}</td>
+                                                                            <tr key={idx} className={isDark ? 'hover:bg-slate-900/30' : 'hover:bg-amber-50/50'}>
+                                                                                <td className={`px-3 py-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.line_number || idx + 1}</td>
+                                                                                <td className={`px-3 py-2 text-sm font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.product_id || 'N/A'}</td>
+                                                                                <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.quantity_ordered || 0}</td>
+                                                                                <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.quantity_received || 0}</td>
+                                                                                <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>${Number(item.unit_price || 0).toFixed(2)}</td>
+                                                                                <td className={`px-3 py-2 text-sm text-right font-mono font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>${Number(item.line_total || 0).toFixed(2)}</td>
                                                                             </tr>
                                                                         ))}
                                                                     </tbody>
@@ -939,8 +959,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     )}
 
                                                     {/* Metadata */}
-                                                    <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs text-gray-500">
-                                                        <div>Finale: <span className="font-mono text-gray-400">{fpo.finaleOrderUrl}</span></div>
+                                                    <div className={`flex items-center justify-between pt-3 border-t text-xs ${isDark ? 'border-white/5 text-gray-500' : 'border-amber-200 text-gray-500'}`}>
+                                                        <div>Finale: <span className={`font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{fpo.finaleOrderUrl}</span></div>
                                                         <div>Modified: {fpo.finaleLastModified ? new Date(fpo.finaleLastModified).toLocaleString() : 'N/A'}</div>
                                                     </div>
                                                 </div>
@@ -952,9 +972,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     </div>
                 )}
 
-                <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)]">
+                <div className={`relative overflow-hidden rounded-2xl border shadow-lg ${isDark 
+                    ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)]'
+                    : 'border-amber-200 bg-gradient-to-br from-white via-amber-50/50 to-white shadow-amber-200/30'}`}>
                     {/* Card overlay effect */}
-                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]" />
+                    <div className={`pointer-events-none absolute inset-0 ${isDark ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]' : 'bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.1),rgba(255,255,255,0))]'}`} />
 
                     <div className={`relative p-4 border-b ${isDark ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70 border-white/5' : 'bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90 border-amber-900/15'}`}>
                         <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-amber-200/60'}`} />
@@ -1040,20 +1062,20 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="relative overflow-x-auto max-h-[calc(100vh-320px)]">
                         {sortedPurchaseOrders.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-                                <div className="bg-gray-700/30 rounded-full p-6 mb-4">
-                                    <DocumentTextIcon className="w-16 h-16 text-gray-500" />
+                                <div className={`rounded-full p-6 mb-4 ${isDark ? 'bg-gray-700/30' : 'bg-amber-100'}`}>
+                                    <DocumentTextIcon className={`w-16 h-16 ${isDark ? 'text-gray-500' : 'text-amber-400'}`} />
                                 </div>
-                                <h3 className="text-xl font-semibold text-gray-300 mb-2">
+                                <h3 className={`text-xl font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>
                                     {purchaseOrders.length === 0 ? 'No Purchase Orders Yet' : 'No Matching Purchase Orders'}
                                 </h3>
-                                <p className="text-gray-400 mb-4 max-w-md">
+                                <p className={`mb-4 max-w-md ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>
                                     {purchaseOrders.length === 0
                                         ? "Get started by creating a purchase order manually or importing from your Finale inventory system."
                                         : `${purchaseOrders.length} purchase order${purchaseOrders.length === 1 ? '' : 's'} exist, but none match your current filters.`}
                                 </p>
                                 {purchaseOrders.length > 0 && (
-                                    <div className="text-sm text-gray-500 mb-4 space-y-1">
-                                        <div>Current filter: <span className="text-gray-400">Date = {dateFilter === 'all' ? 'All Time' : dateFilter === '30days' ? 'Last 30 Days' : dateFilter === '90days' ? 'Last 90 Days' : 'Last 12 Months'}</span></div>
+                                    <div className={`text-sm mb-4 space-y-1 ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>
+                                        <div>Current filter: <span className={isDark ? 'text-gray-400' : 'text-amber-700'}>Date = {dateFilter === 'all' ? 'All Time' : dateFilter === '30days' ? 'Last 30 Days' : dateFilter === '90days' ? 'Last 90 Days' : 'Last 12 Months'}</span></div>
                                         {dateFilter !== 'all' && (
                                             <div className="flex gap-2 justify-center mt-3">
                                                 <Button
@@ -1079,7 +1101,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             onClick={async () => {
                                                 addToast('💡 To import from Finale, configure API credentials in Settings → Finale Integration', 'info');
                                             }}
-                                            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 text-gray-300 rounded-md hover:bg-gray-600 transition-colors font-medium border border-gray-600"
+                                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium border ${isDark 
+                                                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' 
+                                                : 'bg-white text-amber-800 hover:bg-amber-50 border-amber-300'}`}
                                         >
                                             <FileTextIcon className="w-5 h-5" />
                                             Import from Finale

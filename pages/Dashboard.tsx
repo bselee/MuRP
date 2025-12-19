@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
+import { useTheme } from '../components/ThemeProvider';
 import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -54,6 +55,8 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = (props) => {
   const { inventory, boms, requisitions, users, currentUser, setCurrentPage } = props;
   const isOpsAdmin = currentUser.role === 'Admin' || currentUser.department === 'Operations';
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== 'light';
 
   const [openSections, setOpenSections] = useState({
     production: false,
@@ -449,9 +452,9 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
       />
 
       {/* Tabs */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
+      <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-amber-200'} backdrop-blur-sm rounded-lg border overflow-hidden`}>
         <Tabs defaultValue="dashboard">
-          <div className="border-b border-gray-700 p-2">
+          <div className={`border-b ${isDark ? 'border-gray-700' : 'border-amber-200'} p-2`}>
             <TabsList className="grid grid-cols-2 w-full sm:w-[400px]">
               <TabsTrigger value="dashboard" className="flex items-center justify-center gap-2">
                 <HomeIcon className="w-4 h-4" />
@@ -542,7 +545,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                     <ChartBarIcon className="w-6 h-6 text-accent-400" />
                     Stock Intelligence
                   </h2>
-                  <p className="text-gray-400 mt-1">Advanced analytics and predictive insights for inventory management</p>
+                  <p className={`${isDark ? 'text-gray-400' : 'text-amber-700'} mt-1`}>Advanced analytics and predictive insights for inventory management</p>
                 </div>
 
                 {/* Critical Stockout Prevention Widget */}
@@ -550,30 +553,30 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
 
                 {/* Key Metrics Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+                  <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-amber-200'} backdrop-blur-sm rounded-lg border p-4`}>
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-gray-400">Critical Risks</p>
+                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Critical Risks</p>
                         <p className="text-2xl font-bold text-red-400">{stockoutRisks.filter(r => r.riskLevel === 'critical').length}</p>
                       </div>
                       <AlertCircleIcon className="w-8 h-8 text-red-400/50" />
                     </div>
                   </div>
 
-                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+                  <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-amber-200'} backdrop-blur-sm rounded-lg border p-4`}>
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-gray-400">High Priority</p>
+                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>High Priority</p>
                         <p className="text-2xl font-bold text-orange-400">{stockoutRisks.filter(r => r.riskLevel === 'high').length}</p>
                       </div>
                       <AlertCircleIcon className="w-8 h-8 text-orange-400/50" />
                     </div>
                   </div>
 
-                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+                  <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-amber-200'} backdrop-blur-sm rounded-lg border p-4`}>
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-gray-400">Trending Up</p>
+                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Trending Up</p>
                         <p className="text-2xl font-bold text-green-400">
                           {stockoutRisks.filter(r => r.trendDirection === 'up').length}
                         </p>
@@ -582,10 +585,10 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                     </div>
                   </div>
 
-                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+                  <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-amber-200'} backdrop-blur-sm rounded-lg border p-4`}>
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-gray-400">Active Vendors</p>
+                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Active Vendors</p>
                         <p className="text-2xl font-bold text-accent-400">{vendorPerformances.length}</p>
                       </div>
                       <UsersIcon className="w-8 h-8 text-accent-400/50" />
@@ -594,7 +597,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                 </div>
 
                 {/* Intelligence Tabs */}
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
+                <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-amber-200'} backdrop-blur-sm rounded-lg border overflow-hidden`}>
                   <Tabs defaultValue="risks">
                     <div className="border-b border-gray-700 p-2">
                       <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full">

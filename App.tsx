@@ -30,6 +30,7 @@ import QuickRequestDrawer from './components/QuickRequestDrawer';
 import LoadingOverlay from './components/LoadingOverlay';
 import ProductPage from './pages/ProductPage';
 import { AgentCommandCenter } from './components/admin/AgentCommandCenter';
+import Compliance from './pages/Compliance';
 // import BuildBlockerModal from './components/BuildBlockerModal';
 import { supabase } from './lib/supabase/client';
 import { ThemeProvider, useTheme } from './components/ThemeProvider';
@@ -118,7 +119,7 @@ import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amaz
 import { initializeFinaleAutoSync } from './services/finaleAutoSync';
 import { triggerPOSync } from './services/purchaseOrderSyncService';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page' | 'Agent Command Center';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page' | 'Agent Command Center' | 'Compliance';
 
 export type ToastInfo = {
   id: number;
@@ -216,6 +217,7 @@ const AppShell: React.FC = () => {
       'Label Scanner': '/label-scanner',
       'Product Page': '/product',
       'Agent Command Center': '/admin/agents',
+      'Compliance': '/compliance',
     };
 
     const path = pageToPath[nextPage] || '/';
@@ -414,6 +416,7 @@ const AppShell: React.FC = () => {
         '/projects': 'Projects',
         '/product': 'Product Page',
         '/admin/agents': 'Agent Command Center',
+        '/compliance': 'Compliance',
       };
       const initialPage = pathToPage[path] ?? 'Dashboard';
       setCurrentPage(initialPage);
@@ -434,6 +437,7 @@ const AppShell: React.FC = () => {
         'Label Scanner': '/label-scanner',
         'Product Page': '/product',
         'Agent Command Center': '/admin/agents',
+        'Compliance': '/compliance',
       };
       const initialPath = pageToPath[initialPage] || '/';
       window.history.replaceState({ page: initialPage }, '', initialPath + search);
@@ -1841,6 +1845,8 @@ const AppShell: React.FC = () => {
           companyEmailSettings={companyEmailSettings}
           onUpdateCompanyEmailSettings={setCompanyEmailSettings}
         />;
+      case 'Compliance':
+        return <Compliance />;
       default:
         return <Dashboard
           inventory={inventory}
