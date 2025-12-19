@@ -3,9 +3,8 @@ import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor, CompanyEmailSettings } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, LightBulbIcon, SparklesIcon, BellIcon, ClipboardCopyIcon, TrashIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, SparklesIcon, BellIcon, ClipboardCopyIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
-import UserManagementPanel from '../components/UserManagementPanel';
 import AdminUsersPanel from '../components/AdminUsersPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
 import APIIntegrationsPanel from '../components/APIIntegrationsPanel';
@@ -30,285 +29,258 @@ import TwoFactorSettings from '../components/TwoFactorSettings';
 import { isFeatureEnabled } from '../lib/featureFlags';
 import TermsOfServiceModal from '../components/TermsOfServiceModal';
 import ComponentSwapSettingsPanel from '../components/ComponentSwapSettingsPanel';
-import DelegationSettingsPanel from '../components/DelegationSettingsPanel';
 import BillingPanel from '../components/BillingPanel';
 import NotificationPreferencesPanel from '../components/NotificationPreferencesPanel';
-import RolePermissionMatrix from '../components/RolePermissionMatrix';
-import UserPersonalizationPanel from '../components/UserPersonalizationPanel';
 import SOPSettingsPanel from '../components/SOPSettingsPanel';
 import BOMApprovalSettingsPanel from '../components/BOMApprovalSettingsPanel';
-import VendorsManagementPanel from '../components/VendorsManagementPanel';
 
 interface SettingsProps {
-    currentUser: User;
-    aiConfig: AiConfig;
-    setAiConfig: (config: AiConfig) => void;
-    aiSettings: AiSettings;
-    onUpdateAiSettings: (settings: AiSettings) => void;
-    gmailConnection: GmailConnection;
-    onGmailConnect: () => void;
-    onGmailDisconnect: () => void;
-    apiKey: string | null;
-    onGenerateApiKey: () => void;
-    onRevokeApiKey: () => void;
-    addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
-    setCurrentPage: (page: Page) => void;
-    externalConnections: ExternalConnection[];
-    onSetExternalConnections: (connections: ExternalConnection[]) => void;
-    users: User[];
-    onInviteUser: (email: string, role: User['role'], department: User['department']) => void;
-    onUpdateUser: (updatedUser: User) => void;
-    onDeleteUser: (userId: string) => void;
-    inventory: InventoryItem[];
-    boms: BillOfMaterials[];
-    vendors: Vendor[];
-    companyEmailSettings: CompanyEmailSettings;
-    onUpdateCompanyEmailSettings: (settings: CompanyEmailSettings) => void;
+  currentUser: User;
+  aiConfig: AiConfig;
+  setAiConfig: (config: AiConfig) => void;
+  aiSettings: AiSettings;
+  onUpdateAiSettings: (settings: AiSettings) => void;
+  gmailConnection: GmailConnection;
+  onGmailConnect: () => void;
+  onGmailDisconnect: () => void;
+  apiKey: string | null;
+  onGenerateApiKey: () => void;
+  onRevokeApiKey: () => void;
+  addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  setCurrentPage: (page: Page) => void;
+  externalConnections: ExternalConnection[];
+  onSetExternalConnections: (connections: ExternalConnection[]) => void;
+  users: User[];
+  onInviteUser: (email: string, role: User['role'], department: User['department']) => void;
+  onUpdateUser: (updatedUser: User) => void;
+  onDeleteUser: (userId: string) => void;
+  inventory: InventoryItem[];
+  boms: BillOfMaterials[];
+  vendors: Vendor[];
+  companyEmailSettings: CompanyEmailSettings;
+  onUpdateCompanyEmailSettings: (settings: CompanyEmailSettings) => void;
 }
 
 const Settings: React.FC<SettingsProps> = ({
-    currentUser, aiConfig, setAiConfig, aiSettings, onUpdateAiSettings,
-    gmailConnection, onGmailConnect, onGmailDisconnect,
-    apiKey, onGenerateApiKey, onRevokeApiKey, addToast,
-    setCurrentPage, externalConnections, onSetExternalConnections,
-    users, onInviteUser, onUpdateUser, onDeleteUser,
-    inventory, boms, vendors,
-    companyEmailSettings, onUpdateCompanyEmailSettings
+  currentUser, aiConfig, setAiConfig, aiSettings, onUpdateAiSettings,
+  gmailConnection, onGmailConnect, onGmailDisconnect,
+  apiKey, onGenerateApiKey, onRevokeApiKey, addToast,
+  setCurrentPage, externalConnections, onSetExternalConnections,
+  users, onInviteUser, onUpdateUser, onDeleteUser,
+  inventory, boms, vendors,
+  companyEmailSettings, onUpdateCompanyEmailSettings
 }) => {
-    // Collapsible section states - organized by new structure
-    // Account & Profile (default open)
-    const [isUserPersonalizationOpen, setIsUserPersonalizationOpen] = useState(true);
+  // Section open states - simplified structure
+  const [isAccountOpen, setIsAccountOpen] = useState(true);
+  const [isBillingOpen, setIsBillingOpen] = useState(false);
+  const [isTeamOpen, setIsTeamOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(true);
+  const [isOperationsOpen, setIsOperationsOpen] = useState(false);
+  const [isBomOpen, setIsBomOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSopOpen, setIsSopOpen] = useState(false);
+  const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
+  const [isAiOpen, setIsAiOpen] = useState(false);
+  const [isShopifyOpen, setIsShopifyOpen] = useState(false);
+  const [isMcpOpen, setIsMcpOpen] = useState(false);
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
 
-    // Company & Team
-    const [isBillingOpen, setIsBillingOpen] = useState(false);
-    const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
-    const [isRoleMatrixOpen, setIsRoleMatrixOpen] = useState(false);
-    const [isDelegationSettingsOpen, setIsDelegationSettingsOpen] = useState(false);
-    const [isNotificationPrefsOpen, setIsNotificationPrefsOpen] = useState(false);
+  // Modals
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
 
-    // Data & Integrations (default open)
-    const [isDataIntegrationsOpen, setIsDataIntegrationsOpen] = useState(true);
+  // Local state
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [emailPolicyDraft, setEmailPolicyDraft] = useState<CompanyEmailSettings>(companyEmailSettings);
 
-    // Operations & Purchasing
-    const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
-    const [isVendorAdminOpen, setIsVendorAdminOpen] = useState(false);
-    const [isBomManagementOpen, setIsBomManagementOpen] = useState(false);
-    const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
-    const [isSopSettingsOpen, setIsSopSettingsOpen] = useState(false);
+  useEffect(() => {
+    setEmailPolicyDraft(companyEmailSettings);
+  }, [companyEmailSettings]);
 
-    // Communication
-    const [isEmailConfigOpen, setIsEmailConfigOpen] = useState(false);
-    const [isDocumentTemplatesOpen, setIsDocumentTemplatesOpen] = useState(false);
+  const { godMode, setGodMode, session } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const { rowDensity, setRowDensity, fontScale, setFontScale } = useUserPreferences();
 
-    // AI & Automation
-    const [isAiConfigOpen, setIsAiConfigOpen] = useState(false);
+  const isOpsAdmin = currentUser.role === 'Admin' || currentUser.department === 'Operations';
 
-    // Sales Channels
-    const [isShopifyPanelOpen, setIsShopifyPanelOpen] = useState(false);
+  const handleSaveEmailPolicy = () => {
+    if (emailPolicyDraft.enforceCompanySender && !emailPolicyDraft.fromAddress.trim()) {
+      addToast('Enter a company sender email before enforcing policy.', 'error');
+      return;
+    }
+    onUpdateCompanyEmailSettings({
+      ...emailPolicyDraft,
+      fromAddress: emailPolicyDraft.fromAddress.trim(),
+    });
+    addToast('Company email policy updated.', 'success');
+  };
 
-    // Advanced & Support
-    const [isMcpServerOpen, setIsMcpServerOpen] = useState(false);
-    const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
-    const [isSupportOpen, setIsSupportOpen] = useState(false);
-
-    // Modals
-    const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
-
-    // Local state
-    const [showApiKey, setShowApiKey] = useState(false);
-    const [emailPolicyDraft, setEmailPolicyDraft] = useState<CompanyEmailSettings>(companyEmailSettings);
-
-    useEffect(() => {
-      setEmailPolicyDraft(companyEmailSettings);
-    }, [companyEmailSettings]);
-
-    const { godMode, setGodMode, session } = useAuth();
-
-    const helpTicketSubject = encodeURIComponent('MuRP Help Ticket');
-    const helpTicketBody = encodeURIComponent(
-      `Support team,
-
-We need assistance with:
-- Environment (prod / staging / dev):
-- Module (AfterShip, Finale sync, compliance, etc.):
-- Impact summary:
-- Owners/approvers looped in:
-
-Reference Terms: ${termsUrl}
-
-Thank you!`
-    );
-    const helpTicketMailto = `mailto:support@murp.app?subject=${helpTicketSubject}&body=${helpTicketBody}`;
-
-    const isOpsAdmin = currentUser.role === 'Admin' || currentUser.department === 'Operations';
-
-    const supportPlaybook = [
-      {
-        title: 'Plant Owners & Ops Leads',
-        notes: [
-          'Track regulatory acknowledgements for every facility before enabling AI output.',
-          'Document any production hold or recall inside the help ticket — ties back to ToS §16.',
-          'Share build IDs when escalating so deletion / retention windows (ToS §14) are clear.',
-        ],
-      },
-      {
-        title: 'Developers & Integrators',
-        notes: [
-          'Keep API keys rotated and scoped; reference the API docs tab when inviting vendors.',
-          'Log AfterShip / Finale sync failures with timestamps so support can replay jobs.',
-          'Attach Supabase run IDs or log excerpts to speed up RCA for compliance tooling.',
-        ],
-      },
-    ];
-
-    const handleSaveEmailPolicy = () => {
-      if (emailPolicyDraft.enforceCompanySender && !emailPolicyDraft.fromAddress.trim()) {
-        addToast('Enter a company sender email before enforcing policy.', 'error');
-        return;
-      }
-      onUpdateCompanyEmailSettings({
-        ...emailPolicyDraft,
-        fromAddress: emailPolicyDraft.fromAddress.trim(),
-      });
-      addToast('Company email policy updated.', 'success');
-    };
-
+  // Consistent card styling used across all sections
+  const cardClass = "bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700";
+  const labelClass = "text-xs font-semibold text-gray-400 uppercase tracking-wide";
+  const inputClass = "w-full bg-gray-900/60 border border-gray-700 rounded-lg p-3 text-white text-sm focus:border-accent-400 focus:ring-1 focus:ring-accent-400 transition-colors";
+  const selectClass = "w-full bg-gray-900/60 border border-gray-700 rounded-lg p-3 text-white text-sm focus:border-accent-400 focus:ring-1 focus:ring-accent-400 transition-colors";
 
   return (
     <>
-        <div className="space-y-8 max-w-4xl mx-auto">
-          <PageHeader
-            title="Settings"
-            description="Manage your account, company, and system configuration"
-            icon={<ShieldCheckIcon className="w-6 h-6" />}
-          />
+      <div className="space-y-8 max-w-4xl mx-auto">
+        <PageHeader
+          title="Settings"
+          description="Manage your account, integrations, and system configuration"
+          icon={<ShieldCheckIcon className="w-6 h-6" />}
+        />
 
-          {/* ============================================================ */}
-          {/* ACCOUNT & PROFILE */}
-          {/* ============================================================ */}
+        {/* ============================================================ */}
+        {/* ACCOUNT */}
+        {/* ============================================================ */}
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <UsersIcon className="w-5 h-5 text-accent-400" />
+            Account
+          </h2>
+
+          <CollapsibleSection
+            title="Profile & Display"
+            icon={<UsersIcon className="w-5 h-5 text-blue-400" />}
+            isOpen={isAccountOpen}
+            onToggle={() => setIsAccountOpen(!isAccountOpen)}
+          >
+            <div className="space-y-6">
+              {/* Profile Info */}
+              <div className={cardClass}>
+                <h3 className="text-base font-semibold text-white mb-4">Your Profile</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className={labelClass}>Name</label>
+                    <p className="mt-1 text-white">{currentUser.name}</p>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Email</label>
+                    <p className="mt-1 text-white">{currentUser.email}</p>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Role</label>
+                    <p className="mt-1 text-white">{currentUser.role}</p>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Department</label>
+                    <p className="mt-1 text-white">{currentUser.department}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Display Preferences */}
+              <div className={cardClass}>
+                <h3 className="text-base font-semibold text-white mb-4">Display Preferences</h3>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className={labelClass}>Theme</label>
+                    <select
+                      value={theme}
+                      onChange={(e) => setTheme(e.target.value as ThemePreference)}
+                      className={selectClass}
+                    >
+                      <option value="system">System</option>
+                      <option value="dark">Dark</option>
+                      <option value="light">Light</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Row Density</label>
+                    <select
+                      value={rowDensity}
+                      onChange={(e) => setRowDensity(e.target.value as RowDensity)}
+                      className={selectClass}
+                    >
+                      <option value="compact">Compact</option>
+                      <option value="normal">Normal</option>
+                      <option value="comfortable">Comfortable</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Font Scale</label>
+                    <select
+                      value={fontScale}
+                      onChange={(e) => setFontScale(e.target.value as FontScale)}
+                      className={selectClass}
+                    >
+                      <option value="small">Small</option>
+                      <option value="normal">Normal</option>
+                      <option value="large">Large</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Two-Factor Auth */}
+              {isFeatureEnabled('two_factor') && (
+                <div className={cardClass}>
+                  <h3 className="text-base font-semibold text-white mb-4">Security</h3>
+                  <TwoFactorSettings userId={currentUser.id} addToast={addToast} />
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Billing & Subscription"
+            icon={<SparklesIcon className="w-5 h-5 text-amber-400" />}
+            isOpen={isBillingOpen}
+            onToggle={() => setIsBillingOpen(!isBillingOpen)}
+          >
+            <BillingPanel currentUser={currentUser} addToast={addToast} />
+          </CollapsibleSection>
+        </section>
+
+        {/* ============================================================ */}
+        {/* TEAM (Admin Only) */}
+        {/* ============================================================ */}
+        {isOpsAdmin && (
           <section>
-            <h2 className="text-2xl font-bold text-white mt-8 mb-4">Account & Profile</h2>
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <ShieldCheckIcon className="w-5 h-5 text-accent-400" />
+              Team Management
+              <span className="text-xs font-medium text-amber-300 bg-amber-900/30 px-2 py-0.5 rounded-full">Admin</span>
+            </h2>
 
             <CollapsibleSection
-              title="User Personalization"
-              icon={<UsersIcon className="w-6 h-6 text-green-400" />}
-              isOpen={isUserPersonalizationOpen}
-              onToggle={() => setIsUserPersonalizationOpen(!isUserPersonalizationOpen)}
+              title="Users & Roles"
+              icon={<UsersIcon className="w-5 h-5 text-accent-400" />}
+              isOpen={isTeamOpen}
+              onToggle={() => setIsTeamOpen(!isTeamOpen)}
             >
-              <UserPersonalizationPanel
-                currentUser={currentUser}
-                onUpdateUser={onUpdateUser}
-                addToast={addToast}
-              />
+              <AdminUsersPanel currentUserId={currentUser.id} />
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              title="Notification Preferences"
+              icon={<BellIcon className="w-5 h-5 text-orange-400" />}
+              isOpen={isNotificationsOpen}
+              onToggle={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            >
+              <NotificationPreferencesPanel addToast={addToast} />
             </CollapsibleSection>
           </section>
+        )}
 
-          {/* ============================================================ */}
-          {/* COMPANY & TEAM */}
-          {/* ============================================================ */}
-          <section>
-            <h2 className="text-2xl font-bold text-white mt-8 mb-4">Company & Team</h2>
+        {/* ============================================================ */}
+        {/* DATA & INTEGRATIONS */}
+        {/* ============================================================ */}
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <LinkIcon className="w-5 h-5 text-accent-400" />
+            Integrations
+          </h2>
 
-            <CollapsibleSection
-              title="Billing & Subscription"
-              icon={<SparklesIcon className="w-6 h-6 text-accent-300" />}
-              isOpen={isBillingOpen}
-              onToggle={() => setIsBillingOpen(!isBillingOpen)}
-            >
-              <BillingPanel currentUser={currentUser} addToast={addToast} />
-            </CollapsibleSection>
-
-            {(isOpsAdmin || currentUser.role === 'Manager') && (
-              <CollapsibleSection
-                title="User Management"
-                icon={<UsersIcon className="w-6 h-6 text-accent-400" />}
-                isOpen={isUserManagementOpen}
-                onToggle={() => setIsUserManagementOpen(!isUserManagementOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin/Manager Only
-                  </span>
-                </div>
-                <UserManagementPanel
-                  currentUser={currentUser}
-                  users={users}
-                  onInviteUser={onInviteUser}
-                  onUpdateUser={onUpdateUser}
-                  onDeleteUser={onDeleteUser}
-                />
-              </CollapsibleSection>
-            )}
-
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="User Roles & Permissions"
-                icon={<ShieldCheckIcon className="w-6 h-6 text-accent-400" />}
-                isOpen={isUserManagementOpen}
-                onToggle={() => setIsUserManagementOpen(!isUserManagementOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <AdminUsersPanel currentUserId={currentUser.id} />
-              </CollapsibleSection>
-            )}            <CollapsibleSection
-              title="Role Permissions Overview"
-              icon={<ShieldCheckIcon className="w-6 h-6 text-accent-300" />}
-              isOpen={isRoleMatrixOpen}
-              onToggle={() => setIsRoleMatrixOpen(!isRoleMatrixOpen)}
-            >
-              <RolePermissionMatrix />
-            </CollapsibleSection>
-
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Task Delegation"
-                icon={<UsersIcon className="w-6 h-6 text-purple-400" />}
-                isOpen={isDelegationSettingsOpen}
-                onToggle={() => setIsDelegationSettingsOpen(!isDelegationSettingsOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <DelegationSettingsPanel addToast={addToast} />
-              </CollapsibleSection>
-            )}
-
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Notification Preferences"
-                icon={<BellIcon className="w-6 h-6 text-orange-400" />}
-                isOpen={isNotificationPrefsOpen}
-                onToggle={() => setIsNotificationPrefsOpen(!isNotificationPrefsOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <NotificationPreferencesPanel addToast={addToast} />
-              </CollapsibleSection>
-            )}
-          </section>
-
-          {/* ============================================================ */}
-          {/* DATA & INTEGRATIONS */}
-          {/* ============================================================ */}
-          <section>
-            <h2 className="text-2xl font-bold text-white mt-8 mb-4">Data & Integrations</h2>
-
-            <CollapsibleSection
-              title="Google Workspace & Finale Inventory"
-              icon={<LinkIcon className="w-6 h-6 text-blue-400" />}
-              isOpen={isDataIntegrationsOpen}
-              onToggle={() => setIsDataIntegrationsOpen(!isDataIntegrationsOpen)}
-            >
-            <div className="space-y-8">
+          <CollapsibleSection
+            title="Google Workspace & Finale"
+            icon={<LinkIcon className="w-5 h-5 text-blue-400" />}
+            isOpen={isIntegrationsOpen}
+            onToggle={() => setIsIntegrationsOpen(!isIntegrationsOpen)}
+          >
+            <div className="space-y-6">
               <DataPipelineGuide
                 defaultCollapsed
                 items={[
@@ -347,9 +319,7 @@ Thank you!`
                   },
                 ]}
               />
-              <div id="google-data-panel-root">
-                <GoogleDataPanel userId={currentUser.id} gmailConnection={gmailConnection} addToast={addToast} />
-              </div>
+              <GoogleDataPanel userId={currentUser.id} gmailConnection={gmailConnection} addToast={addToast} />
               <APIIntegrationsPanel
                 apiKey={apiKey}
                 onGenerateApiKey={onGenerateApiKey}
@@ -363,137 +333,126 @@ Thank you!`
               />
             </div>
           </CollapsibleSection>
-          </section>
 
-          {/* ============================================================ */}
-          {/* OPERATIONS & PURCHASING */}
-          {/* ============================================================ */}
-          <section>
-            <h2 className="text-2xl font-bold text-white mt-8 mb-4">Operations & Purchasing</h2>
-
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Purchase Order Automation"
-                icon={<MailIcon className="w-6 h-6 text-sky-400" />}
-                isOpen={isFollowUpOpen}
-                onToggle={() => setIsFollowUpOpen(!isFollowUpOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <FollowUpSettingsPanel addToast={addToast} />
-              </CollapsibleSection>
-            )}
-
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Vendor Management"
-                icon={<UsersIcon className="w-6 h-6 text-sky-400" />}
-                isOpen={isVendorAdminOpen}
-                onToggle={() => setIsVendorAdminOpen(!isVendorAdminOpen)}
-              >
-                <div className="mb-4">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <VendorsManagementPanel vendors={vendors} addToast={addToast} />
-              </CollapsibleSection>
-            )}
-
+          {isFeatureEnabled('shopify') && (
             <CollapsibleSection
-              title="BOM Management"
-              icon={<SparklesIcon className="w-6 h-6 text-amber-300" />}
-              isOpen={isBomManagementOpen}
-              onToggle={() => setIsBomManagementOpen(!isBomManagementOpen)}
+              title="Shopify Integration"
+              icon={<ServerStackIcon className="w-5 h-5 text-emerald-400" />}
+              isOpen={isShopifyOpen}
+              onToggle={() => setIsShopifyOpen(!isShopifyOpen)}
             >
-              <div className="space-y-6">
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
-                  <h3 className="text-lg font-semibold text-white mb-4">Component Swap Suggestions</h3>
-                  <ComponentSwapSettingsPanel addToast={addToast} />
-                </div>
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
-                  <h3 className="text-lg font-semibold text-white mb-4">BOM Approval Workflow</h3>
-                  <BOMApprovalSettingsPanel addToast={addToast} />
-                </div>
+              <ShopifyIntegrationPanel currentUser={currentUser} inventory={inventory} boms={boms} />
+            </CollapsibleSection>
+          )}
+        </section>
+
+        {/* ============================================================ */}
+        {/* OPERATIONS */}
+        {/* ============================================================ */}
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <ClipboardCopyIcon className="w-5 h-5 text-accent-400" />
+            Operations
+          </h2>
+
+          {isOpsAdmin && (
+            <CollapsibleSection
+              title="Purchase Order Automation"
+              icon={<MailIcon className="w-5 h-5 text-sky-400" />}
+              isOpen={isOperationsOpen}
+              onToggle={() => setIsOperationsOpen(!isOperationsOpen)}
+            >
+              <FollowUpSettingsPanel addToast={addToast} />
+            </CollapsibleSection>
+          )}
+
+          <CollapsibleSection
+            title="BOM Settings"
+            icon={<SparklesIcon className="w-5 h-5 text-amber-400" />}
+            isOpen={isBomOpen}
+            onToggle={() => setIsBomOpen(!isBomOpen)}
+          >
+            <div className="space-y-6">
+              <div className={cardClass}>
+                <h3 className="text-base font-semibold text-white mb-4">Component Swap Suggestions</h3>
+                <ComponentSwapSettingsPanel addToast={addToast} />
               </div>
-            </CollapsibleSection>
+              <div className={cardClass}>
+                <h3 className="text-base font-semibold text-white mb-4">BOM Approval Workflow</h3>
+                <BOMApprovalSettingsPanel addToast={addToast} />
+              </div>
+            </div>
+          </CollapsibleSection>
 
+          <CollapsibleSection
+            title="Inventory Search"
+            icon={<SearchIcon className="w-5 h-5 text-amber-400" />}
+            isOpen={isSearchOpen}
+            onToggle={() => setIsSearchOpen(!isSearchOpen)}
+          >
+            <SemanticSearchSettings
+              inventory={inventory}
+              boms={boms}
+              vendors={vendors}
+              addToast={addToast}
+            />
+          </CollapsibleSection>
+
+          {(isOpsAdmin || currentUser.role === 'Manager') && (
             <CollapsibleSection
-              title="Inventory Search & Indexing"
-              icon={<SearchIcon className="w-6 h-6 text-amber-400" />}
-              isOpen={isSemanticSearchOpen}
-              onToggle={() => setIsSemanticSearchOpen(!isSemanticSearchOpen)}
+              title="SOPs & Job Descriptions"
+              icon={<ClipboardCopyIcon className="w-5 h-5 text-sky-400" />}
+              isOpen={isSopOpen}
+              onToggle={() => setIsSopOpen(!isSopOpen)}
             >
-              <SemanticSearchSettings
-                inventory={inventory}
-                boms={boms}
-                vendors={vendors}
-                addToast={addToast}
-              />
+              <SOPSettingsPanel addToast={addToast} />
             </CollapsibleSection>
+          )}
+        </section>
 
-            {(isOpsAdmin || currentUser.role === 'Manager') && (
-              <CollapsibleSection
-                title="SOPs & Job Descriptions"
-                icon={<ClipboardCopyIcon className="w-6 h-6 text-sky-400" />}
-                isOpen={isSopSettingsOpen}
-                onToggle={() => setIsSopSettingsOpen(!isSopSettingsOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin/Manager Only
-                  </span>
-                </div>
-                <SOPSettingsPanel addToast={addToast} />
-              </CollapsibleSection>
-            )}
-          </section>
+        {/* ============================================================ */}
+        {/* COMMUNICATION */}
+        {/* ============================================================ */}
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <MailIcon className="w-5 h-5 text-accent-400" />
+            Communication
+          </h2>
 
-          {/* ============================================================ */}
-          {/* COMMUNICATION */}
-          {/* ============================================================ */}
-          <section>
-            <h2 className="text-2xl font-bold text-white mt-8 mb-4">Communication</h2>
-
-            <CollapsibleSection
-              title="Email Configuration"
-              icon={<MailIcon className="w-6 h-6 text-emerald-300" />}
-              isOpen={isEmailConfigOpen}
-              onToggle={() => setIsEmailConfigOpen(!isEmailConfigOpen)}
-            >
+          <CollapsibleSection
+            title="Email Policy"
+            icon={<MailIcon className="w-5 h-5 text-emerald-400" />}
+            isOpen={isEmailOpen}
+            onToggle={() => setIsEmailOpen(!isEmailOpen)}
+          >
             <div className="space-y-6">
               <p className="text-sm text-gray-400">
-                Define a company-wide sender address (e.g., <span className="text-gray-200 font-mono">purchasing@yourdomain.com</span>) for all
-                automated compliance and artwork emails. When enforcement is enabled, users will send via this channel unless the policy is disabled.
+                Define a company-wide sender address for automated compliance and artwork emails.
               </p>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase">Company From Address</label>
+                  <label className={labelClass}>Company From Address</label>
                   <input
                     type="email"
                     value={emailPolicyDraft.fromAddress}
                     onChange={e => setEmailPolicyDraft(prev => ({ ...prev, fromAddress: e.target.value }))}
                     placeholder="purchasing@yourdomain.com"
                     aria-label="Company from address"
-                    className="w-full bg-gray-900/60 border border-gray-700 rounded-md p-3 text-sm text-white focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                    className={inputClass}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Used as the visible sender on enforced emails.</p>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase">Delivery Provider</label>
+                  <label className={labelClass}>Delivery Provider</label>
                   <div className="mt-2 space-y-2">
                     {[
-                      { value: 'resend' as const, label: 'Resend (recommended)', description: 'Send through the built-in Resend integration.' },
-                      { value: 'gmail' as const, label: 'Workspace Gmail', description: 'Require each user to connect Google Workspace before sending.' },
+                      { value: 'resend' as const, label: 'Resend', description: 'Built-in email delivery' },
+                      { value: 'gmail' as const, label: 'Workspace Gmail', description: 'Route through Google Workspace' },
                     ].map(option => (
                       <label
                         key={option.value}
-                        className={`flex items-start gap-3 p-3 border rounded-md cursor-pointer ${
-                          emailPolicyDraft.provider === option.value ? 'border-emerald-400 bg-emerald-400/5' : 'border-gray-700 bg-gray-900/40'
+                        className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                          emailPolicyDraft.provider === option.value ? 'border-accent-400 bg-accent-400/5' : 'border-gray-700 bg-gray-900/40 hover:border-gray-600'
                         }`}
                       >
                         <input
@@ -501,313 +460,196 @@ Thank you!`
                           name="email-provider"
                           checked={emailPolicyDraft.provider === option.value}
                           onChange={() => setEmailPolicyDraft(prev => ({ ...prev, provider: option.value }))}
-                          aria-label={option.label}
-                          className="mt-1 text-emerald-400 focus:ring-emerald-400"
+                          className="mt-1 text-accent-400 focus:ring-accent-400"
                         />
                         <span className="text-sm text-gray-200">
-                          <span className="font-semibold">{option.label}</span>
+                          <span className="font-medium">{option.label}</span>
                           <span className="block text-xs text-gray-400">{option.description}</span>
                         </span>
                       </label>
                     ))}
                   </div>
-                  {emailPolicyDraft.provider === 'gmail' && (
-                    <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-500/5 p-3 text-xs text-sky-100">
-                      {emailPolicyDraft.workspaceMailbox?.email ? (
-                        <>
-                          Workspace mailbox <span className="font-semibold text-white">{emailPolicyDraft.workspaceMailbox.email}</span> connected
-                          by {emailPolicyDraft.workspaceMailbox.connectedBy || 'an admin'} on{' '}
-                          {emailPolicyDraft.workspaceMailbox.connectedAt
-                            ? new Date(emailPolicyDraft.workspaceMailbox.connectedAt).toLocaleString()
-                            : '—'}
-                          .
-                        </>
-                      ) : gmailConnection.isConnected ? (
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <span>Use your current Workspace login ({gmailConnection.email ?? 'unknown'}) as the managed mailbox.</span>
-                          <Button
-                            onClick={() =>
-                              setEmailPolicyDraft(prev => ({
-                                ...prev,
-                                workspaceMailbox: {
-                                  email: gmailConnection.email || prev.fromAddress || '',
-                                  connectedBy: currentUser.name || currentUser.email,
-                                  connectedAt: new Date().toISOString(),
-                                },
-                              }))
-                            }
-                            className="bg-sky-500 hover:bg-sky-400 text-white px-3 py-1.5 rounded-md"
-                          >
-                            Assign Workspace Mailbox
-                          </Button>
-                        </div>
-                      ) : (
-                        <span>
-                          Connect Google Workspace (top of Integrations) with the account you want to dedicate, then assign it here.
-                        </span>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between bg-gray-900/40 border border-gray-800 rounded-lg p-4">
+              <div className="flex items-center justify-between p-4 bg-gray-900/40 border border-gray-700 rounded-lg">
                 <div>
-                  <p className="text-sm text-gray-200 font-semibold">Enforce company sender on Artwork emails</p>
-                  <p className="text-xs text-gray-400">
-                    Users will no longer send from personal accounts. Messages route through the selected channel and are logged for audit.
-                  </p>
+                  <p className="text-sm text-gray-200 font-medium">Enforce company sender</p>
+                  <p className="text-xs text-gray-400">All artwork emails route through the selected channel</p>
                 </div>
-                <label className="inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     checked={emailPolicyDraft.enforceCompanySender}
                     onChange={e => setEmailPolicyDraft(prev => ({ ...prev, enforceCompanySender: e.target.checked }))}
-                    aria-label="Enforce company sender on artwork emails"
                     className="sr-only peer"
                   />
-                  <div className="w-12 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-400 rounded-full peer peer-checked:bg-emerald-500 transition-all"></div>
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-400 rounded-full peer peer-checked:bg-accent-500 transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
                 </label>
               </div>
 
               <div className="flex justify-end gap-3">
                 <Button
                   onClick={() => setEmailPolicyDraft(companyEmailSettings)}
-                  className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
+                  variant="ghost"
                 >
                   Reset
                 </Button>
-                <Button
-                  onClick={handleSaveEmailPolicy}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md"
-                >
+                <Button onClick={handleSaveEmailPolicy}>
                   Save Policy
                 </Button>
               </div>
             </div>
           </CollapsibleSection>
 
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Document Templates"
-                icon={<DocumentTextIcon className="w-6 h-6 text-yellow-400" />}
-                isOpen={isDocumentTemplatesOpen}
-                onToggle={() => setIsDocumentTemplatesOpen(!isDocumentTemplatesOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <div id="document-templates-panel">
-                  <DocumentTemplatesPanel addToast={addToast} />
-                </div>
-              </CollapsibleSection>
-            )}
-          </section>
-
-          {/* ============================================================ */}
-          {/* AI & AUTOMATION */}
-          {/* ============================================================ */}
-          <section>
-            <h2 className="text-2xl font-bold text-white mt-8 mb-4">AI & Automation</h2>
-
+          {isOpsAdmin && (
             <CollapsibleSection
-              title="AI Assistant & Provider"
-              icon={<BotIcon className="w-6 h-6 text-purple-400" />}
-              isOpen={isAiConfigOpen}
-              onToggle={() => setIsAiConfigOpen(!isAiConfigOpen)}
+              title="Document Templates"
+              icon={<DocumentTextIcon className="w-5 h-5 text-yellow-400" />}
+              isOpen={isTemplatesOpen}
+              onToggle={() => setIsTemplatesOpen(!isTemplatesOpen)}
             >
-              <div className="space-y-6">
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
-                  <h3 className="text-lg font-semibold text-white mb-4">AI Assistant Behavior</h3>
-                  <AiSettingsPanel aiSettings={aiSettings} onUpdateSettings={onUpdateAiSettings} />
-                </div>
-
-                {isOpsAdmin && (
-                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
-                    <div className="mb-4">
-                      <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                        Admin Only
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-semibold text-white mb-4">Provider & Model Settings</h3>
-                    <p className="text-sm text-gray-400 mb-4">Configure AI provider, models, and advanced parameters</p>
-                    <AIProviderPanel
-                      aiConfig={aiConfig}
-                      onUpdateAiConfig={setAiConfig}
-                      addToast={addToast}
-                    />
-                  </div>
-                )}
-              </div>
+              <DocumentTemplatesPanel addToast={addToast} />
             </CollapsibleSection>
-          </section>
+          )}
+        </section>
 
-          {/* ============================================================ */}
-          {/* SALES CHANNELS */}
-          {/* ============================================================ */}
-          {isFeatureEnabled('shopify') && (
-            <section>
-              <h2 className="text-2xl font-bold text-white mt-8 mb-4">Sales Channels</h2>
+        {/* ============================================================ */}
+        {/* AI & SYSTEM */}
+        {/* ============================================================ */}
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <BotIcon className="w-5 h-5 text-accent-400" />
+            AI & System
+          </h2>
 
-              <CollapsibleSection
-                title="Shopify Integration"
-                icon={<ServerStackIcon className="w-6 h-6 text-emerald-300" />}
-                isOpen={isShopifyPanelOpen}
-                onToggle={() => setIsShopifyPanelOpen(!isShopifyPanelOpen)}
-              >
-                <ShopifyIntegrationPanel currentUser={currentUser} inventory={inventory} boms={boms} />
-              </CollapsibleSection>
-            </section>
+          <CollapsibleSection
+            title="AI Assistant"
+            icon={<BotIcon className="w-5 h-5 text-purple-400" />}
+            isOpen={isAiOpen}
+            onToggle={() => setIsAiOpen(!isAiOpen)}
+          >
+            <div className="space-y-6">
+              <div className={cardClass}>
+                <h3 className="text-base font-semibold text-white mb-4">Assistant Behavior</h3>
+                <AiSettingsPanel aiSettings={aiSettings} onUpdateSettings={onUpdateAiSettings} />
+              </div>
+
+              {isOpsAdmin && (
+                <div className={cardClass}>
+                  <h3 className="text-base font-semibold text-white mb-4">Provider & Model</h3>
+                  <p className="text-sm text-gray-400 mb-4">Configure AI provider, models, and parameters</p>
+                  <AIProviderPanel
+                    aiConfig={aiConfig}
+                    onUpdateAiConfig={setAiConfig}
+                    addToast={addToast}
+                  />
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
+
+          {isOpsAdmin && (
+            <CollapsibleSection
+              title="MCP Server (Compliance)"
+              icon={<ServerStackIcon className="w-5 h-5 text-cyan-400" />}
+              isOpen={isMcpOpen}
+              onToggle={() => setIsMcpOpen(!isMcpOpen)}
+            >
+              <MCPServerPanel />
+            </CollapsibleSection>
           )}
 
-          {/* ============================================================ */}
-          {/* ADVANCED & SUPPORT */}
-          {/* ============================================================ */}
-          <section>
-            <h2 className="text-2xl font-bold text-white mt-8 mb-4">Advanced & Support</h2>
-
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="MCP Server Configuration"
-                icon={<ServerStackIcon className="w-6 h-6 text-cyan-400" />}
-                isOpen={isMcpServerOpen}
-                onToggle={() => setIsMcpServerOpen(!isMcpServerOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <MCPServerPanel />
-              </CollapsibleSection>
-            )}
-
-            {isDevelopment() && isOpsAdmin && (
-              <CollapsibleSection
-                title="Developer Tools"
-                icon={<KeyIcon className="w-6 h-6 text-amber-300" />}
-                isOpen={isDevToolsOpen}
-                onToggle={() => setIsDevToolsOpen(!isDevToolsOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-red-200 bg-red-900/30 border border-red-700/50 rounded">
-                    Dev Only
-                  </span>
-                </div>
-                <div className="space-y-4">
-                  <div className="bg-gray-800/60 rounded-xl border border-gray-700 p-4 text-sm text-gray-300">
-                    <p><span className="text-gray-400">Session User:</span> {session?.user?.email ?? 'None'}</p>
-                    <p><span className="text-gray-400">User ID:</span> {session?.user?.id ?? 'N/A'}</p>
-                    <p><span className="text-gray-400">God Mode:</span> {godMode ? 'Enabled' : 'Disabled'}</p>
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl border border-gray-700 bg-gray-900/60 p-4">
-                    <div>
-                      <p className="text-white font-semibold">Dev God Mode</p>
-                      <p className="text-xs text-gray-400">Bypasses auth and RLS (local only).</p>
-                    </div>
-                    <Button
-                      className={`px-4 py-2 rounded-lg font-semibold ${godMode ? 'bg-red-500/20 text-red-200 border border-red-400/40' : 'bg-gray-700 text-gray-200'}`}
-                      onClick={() => setGodMode(!godMode)}
-                    >
-                      {godMode ? 'Disable' : 'Enable'}
-                    </Button>
-                  </div>
-                </div>
-              </CollapsibleSection>
-            )}
-
+          {isDevelopment() && isOpsAdmin && (
             <CollapsibleSection
-              title="Help & Compliance"
-              icon={<ShieldCheckIcon className="w-6 h-6 text-emerald-400" />}
-              isOpen={isSupportOpen}
-              onToggle={() => setIsSupportOpen(!isSupportOpen)}
+              title="Developer Tools"
+              icon={<KeyIcon className="w-5 h-5 text-red-400" />}
+              isOpen={isDevToolsOpen}
+              onToggle={() => setIsDevToolsOpen(!isDevToolsOpen)}
             >
+              <div className="space-y-4">
+                <div className={cardClass}>
+                  <p className="text-sm text-gray-300"><span className="text-gray-500">Session:</span> {session?.user?.email ?? 'None'}</p>
+                  <p className="text-sm text-gray-300"><span className="text-gray-500">User ID:</span> {session?.user?.id ?? 'N/A'}</p>
+                  <p className="text-sm text-gray-300"><span className="text-gray-500">God Mode:</span> {godMode ? 'Enabled' : 'Disabled'}</p>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-gray-900/60 border border-gray-700 rounded-xl">
+                  <div>
+                    <p className="text-white font-medium">Dev God Mode</p>
+                    <p className="text-xs text-gray-400">Bypasses auth and RLS (local only)</p>
+                  </div>
+                  <Button
+                    variant={godMode ? 'danger' : 'ghost'}
+                    onClick={() => setGodMode(!godMode)}
+                  >
+                    {godMode ? 'Disable' : 'Enable'}
+                  </Button>
+                </div>
+              </div>
+            </CollapsibleSection>
+          )}
+        </section>
+
+        {/* ============================================================ */}
+        {/* HELP & COMPLIANCE */}
+        {/* ============================================================ */}
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <ShieldCheckIcon className="w-5 h-5 text-accent-400" />
+            Help & Compliance
+          </h2>
+
+          <CollapsibleSection
+            title="Terms & Support"
+            icon={<ShieldCheckIcon className="w-5 h-5 text-emerald-400" />}
+            isOpen={isSupportOpen}
+            onToggle={() => setIsSupportOpen(!isSupportOpen)}
+          >
             <div className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-5">
-                  <h3 className="text-lg font-semibold text-white">Terms & Controls</h3>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Keep auditors, plant owners, and investors aligned with the current Terms (v1.0, Nov 20 2025). Versioned in git for full traceability.
+                <div className={cardClass}>
+                  <h3 className="text-base font-semibold text-white mb-2">Terms of Service</h3>
+                  <p className="text-sm text-gray-400 mb-3">
+                    Review data retention, compliance responsibilities, and AI output disclaimers.
                   </p>
-                  <ul className="mt-3 space-y-1 text-sm text-gray-300 list-disc list-inside">
-                    <li>Section 14 covers data retention + deletion requests.</li>
-                    <li>Section 16 clarifies compliance responsibilities.</li>
-                    <li>Section 12 reminds teams AI output is not legal advice.</li>
-                  </ul>
                   <button
                     type="button"
                     onClick={() => setIsTermsModalOpen(true)}
-                    className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-accent-300 hover:text-accent-100 underline decoration-dotted"
+                    className="text-sm font-medium text-accent-300 hover:text-accent-200 underline decoration-dotted"
                   >
-                    View Terms of Service &rarr;
+                    View Terms &rarr;
                   </button>
                 </div>
-                <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-5 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">Help Desk Workflow</h3>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Send everything to{' '}
-                      <a href="mailto:support@murp.app" className="text-accent-300 hover:text-accent-100 underline decoration-dotted">
-                        support@murp.app
-                      </a>{' '}
-                      with logs, impact, and stakeholders copied. We turn this into a tracked ticket internally.
-                    </p>
-                    <p className="text-sm text-gray-400 mt-3">
-                      Include environment, modules affected (Finale, AfterShip, MCP), and which owners/devs have already approved changes.
-                    </p>
-                  </div>
+                <div className={cardClass}>
+                  <h3 className="text-base font-semibold text-white mb-2">Get Help</h3>
+                  <p className="text-sm text-gray-400 mb-3">
+                    Contact <a href="mailto:support@murp.app" className="text-accent-300 hover:text-accent-200">support@murp.app</a> with logs, impact, and stakeholders.
+                  </p>
                   <Button
-                    type="button"
-                    className="mt-4 inline-flex items-center justify-center rounded-md bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-600"
-                    onClick={() => {
-                      if (typeof window !== 'undefined') {
-                        window.open(helpTicketMailto, '_blank');
-                      }
-                    }}
+                    onClick={() => window.open(`mailto:support@murp.app?subject=${encodeURIComponent('MuRP Help Ticket')}&body=${encodeURIComponent('Environment:\nModule:\nIssue:\n')}`, '_blank')}
                   >
-                    Create Help Ticket
+                    Create Ticket
                   </Button>
                 </div>
               </div>
 
-              <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-5">
-                <h3 className="text-lg font-semibold text-white">Support Playbook</h3>
-                <p className="text-sm text-gray-400 mt-1">What each audience should include when escalating.</p>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {supportPlaybook.map((group) => (
-                    <div key={group.title} className="rounded-lg border border-gray-700/70 bg-gray-900/40 p-4">
-                      <p className="text-sm font-semibold text-white">{group.title}</p>
-                      <ul className="mt-2 space-y-1 text-sm text-gray-300 list-disc list-inside">
-                        {group.notes.map((note) => (
-                          <li key={note}>{note}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-5">
-                <h3 className="text-lg font-semibold text-white">Compliance Agreement</h3>
-                <p className="text-sm text-gray-400 mt-1">
-                  Capture acknowledgements that MuRP&apos;s regulatory intel is advisory only and must be verified by qualified counsel before shipping product.
+              <div className={cardClass}>
+                <h3 className="text-base font-semibold text-white mb-4">Compliance Agreement</h3>
+                <p className="text-sm text-gray-400 mb-4">
+                  Acknowledge that MuRP's regulatory intel is advisory only and must be verified by qualified counsel.
                 </p>
-                <div className="mt-4">
-                  <RegulatoryAgreementPanel
-                    currentUser={currentUser}
-                    onUpdateUser={onUpdateUser}
-                    addToast={addToast}
-                  />
-                </div>
+                <RegulatoryAgreementPanel
+                  currentUser={currentUser}
+                  onUpdateUser={onUpdateUser}
+                  addToast={addToast}
+                />
               </div>
             </div>
           </CollapsibleSection>
-          </section>
+        </section>
+      </div>
 
-        </div>
-        <TermsOfServiceModal isOpen={isTermsModalOpen} onClose={() => setIsTermsModalOpen(false)} />
+      <TermsOfServiceModal isOpen={isTermsModalOpen} onClose={() => setIsTermsModalOpen(false)} />
     </>
   );
 };

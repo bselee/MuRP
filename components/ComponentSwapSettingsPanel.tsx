@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
 import type { ComponentSwapRule } from '../types';
 import {
+  ArrowsRightLeftIcon,
   InformationCircleIcon,
   PlusIcon,
   SparklesIcon,
