@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from './ui/alert';
 import { Separator } from './ui/separator';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { supabase } from '../lib/supabase';
-import { Edit, Save, X, DollarSign, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Edit, Save, X, DollarSign, TrendingUp, AlertTriangle, CheckCircle, Settings, Eye, EyeOff, Package } from 'lucide-react';
 import ProductReorderIntelligence from './ProductReorderIntelligence';
 
 interface InventoryItemPanelProps {
@@ -274,8 +274,9 @@ export default function InventoryItemPanel({ sku, onClose }: InventoryItemPanelP
 
       <CardContent>
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="classification">Classification</TabsTrigger>
             <TabsTrigger value="reorder">Reorder Analytics</TabsTrigger>
             <TabsTrigger value="pricing">Pricing</TabsTrigger>
             <TabsTrigger value="proposals">Proposals</TabsTrigger>
@@ -358,6 +359,266 @@ export default function InventoryItemPanel({ sku, onClose }: InventoryItemPanelP
                     <div className="text-2xl font-bold text-purple-600">{inventoryItem.moq || 0}</div>
                     <div className="text-sm text-purple-600">MOQ</div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="classification" className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              {/* Item Flow Type */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Item Flow Type
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Define how this item is procured and fulfilled. This affects which workflows and dashboards include this item.
+                </p>
+
+                <div className="space-y-2">
+                  <Label htmlFor="item_flow_type">Flow Type</Label>
+                  <Select
+                    value={editForm.item_flow_type || inventoryItem.item_flow_type || 'standard'}
+                    onValueChange={async (value) => {
+                      try {
+                        const { error } = await supabase
+                          .from('inventory_items')
+                          .update({
+                            item_flow_type: value,
+                            is_dropship: value === 'dropship',
+                            updated_at: new Date().toISOString()
+                          })
+                          .eq('sku', sku);
+
+                        if (!error) {
+                          setInventoryItem({ ...inventoryItem, item_flow_type: value, is_dropship: value === 'dropship' });
+                          setEditForm({ ...editForm, item_flow_type: value });
+                        }
+                      } catch (err) {
+                        console.error('Failed to update flow type:', err);
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="item_flow_type">
+                      <SelectValue placeholder="Select flow type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          Standard (Stock & Reorder)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="dropship">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                          Dropship (Direct from Vendor)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="special_order">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                          Special Order (Customer Request)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="consignment">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                          Consignment (Vendor Owned)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="made_to_order">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                          Made to Order (Production)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="discontinued">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                          Discontinued (No Reorder)
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Flow type descriptions */}
+                <div className="bg-muted/50 rounded-lg p-4 text-sm space-y-2">
+                  <div className="font-medium">Flow Type Behaviors:</div>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li><strong>Standard:</strong> Appears in Stock Intelligence, triggers reorder alerts</li>
+                    <li><strong>Dropship:</strong> Excluded from Stock Intelligence, has separate workflow</li>
+                    <li><strong>Special Order:</strong> Excluded from reorder alerts, customer-driven</li>
+                    <li><strong>Consignment:</strong> Vendor-owned inventory, different accounting</li>
+                    <li><strong>Made to Order:</strong> Production-driven, no stock maintained</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Stock Intelligence Settings */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Stock Intelligence Settings
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Control whether this item appears in Stock Intelligence dashboards and alerts.
+                </p>
+
+                {/* Current visibility status */}
+                <div className={`p-4 rounded-lg border ${
+                  inventoryItem.stock_intel_exclude || inventoryItem.item_flow_type === 'dropship'
+                    ? 'bg-amber-50 border-amber-200'
+                    : 'bg-green-50 border-green-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    {inventoryItem.stock_intel_exclude || inventoryItem.item_flow_type === 'dropship' ? (
+                      <>
+                        <EyeOff className="h-5 w-5 text-amber-600" />
+                        <span className="font-medium text-amber-800">Excluded from Stock Intelligence</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-5 w-5 text-green-600" />
+                        <span className="font-medium text-green-800">Visible in Stock Intelligence</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Manual exclusion toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="stock_intel_exclude">Manually Exclude from Stock Intelligence</Label>
+                    <Button
+                      variant={inventoryItem.stock_intel_exclude ? 'destructive' : 'outline'}
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const newValue = !inventoryItem.stock_intel_exclude;
+                          const { error } = await supabase
+                            .from('inventory_items')
+                            .update({
+                              stock_intel_exclude: newValue,
+                              stock_intel_exclusion_reason: newValue ? 'Manually excluded' : null,
+                              updated_at: new Date().toISOString()
+                            })
+                            .eq('sku', sku);
+
+                          if (!error) {
+                            setInventoryItem({ ...inventoryItem, stock_intel_exclude: newValue });
+                          }
+                        } catch (err) {
+                          console.error('Failed to update exclusion:', err);
+                        }
+                      }}
+                    >
+                      {inventoryItem.stock_intel_exclude ? (
+                        <>
+                          <EyeOff className="h-4 w-4 mr-1" />
+                          Excluded
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-4 w-4 mr-1" />
+                          Include
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Manually exclude this item from Stock Intelligence dashboards, regardless of other settings.
+                  </p>
+                </div>
+
+                {/* Override global rules */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="stock_intel_override">Override Global Rules</Label>
+                    <Button
+                      variant={inventoryItem.stock_intel_override ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const newValue = !inventoryItem.stock_intel_override;
+                          const { error } = await supabase
+                            .from('inventory_items')
+                            .update({
+                              stock_intel_override: newValue,
+                              updated_at: new Date().toISOString()
+                            })
+                            .eq('sku', sku);
+
+                          if (!error) {
+                            setInventoryItem({ ...inventoryItem, stock_intel_override: newValue });
+                          }
+                        } catch (err) {
+                          console.error('Failed to update override:', err);
+                        }
+                      }}
+                    >
+                      {inventoryItem.stock_intel_override ? 'Override Active' : 'Use Global Rules'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    When enabled, this item's per-item settings take priority over global category/flow type rules.
+                  </p>
+                </div>
+
+                {/* Exclusion reason */}
+                {inventoryItem.stock_intel_exclude && (
+                  <div className="space-y-2">
+                    <Label htmlFor="exclusion_reason">Exclusion Reason</Label>
+                    <Input
+                      id="exclusion_reason"
+                      placeholder="Why is this item excluded?"
+                      value={editForm.stock_intel_exclusion_reason || inventoryItem.stock_intel_exclusion_reason || ''}
+                      onChange={(e) => setEditForm({ ...editForm, stock_intel_exclusion_reason: e.target.value })}
+                      onBlur={async () => {
+                        if (editForm.stock_intel_exclusion_reason !== inventoryItem.stock_intel_exclusion_reason) {
+                          try {
+                            await supabase
+                              .from('inventory_items')
+                              .update({
+                                stock_intel_exclusion_reason: editForm.stock_intel_exclusion_reason,
+                                updated_at: new Date().toISOString()
+                              })
+                              .eq('sku', sku);
+                            setInventoryItem({ ...inventoryItem, stock_intel_exclusion_reason: editForm.stock_intel_exclusion_reason });
+                          } catch (err) {
+                            console.error('Failed to update reason:', err);
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator className="my-6" />
+
+            {/* Quick reference for current item status */}
+            <div className="bg-muted/30 rounded-lg p-4">
+              <h4 className="font-medium mb-3">Current Classification Summary</h4>
+              <div className="grid grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Flow Type:</span>
+                  <div className="font-medium capitalize">{inventoryItem.item_flow_type || 'standard'}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Is Dropship:</span>
+                  <div className="font-medium">{inventoryItem.is_dropship ? 'Yes' : 'No'}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Manual Exclude:</span>
+                  <div className="font-medium">{inventoryItem.stock_intel_exclude ? 'Yes' : 'No'}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Override Global:</span>
+                  <div className="font-medium">{inventoryItem.stock_intel_override ? 'Yes' : 'No'}</div>
                 </div>
               </div>
             </div>

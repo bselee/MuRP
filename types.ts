@@ -702,6 +702,11 @@ export interface InventoryItem {
   lastSyncAt?: string;
   syncStatus?: 'synced' | 'pending' | 'error';
   isDropship?: boolean;
+  // Classification fields (from migration 103)
+  itemFlowType?: 'standard' | 'dropship' | 'special_order' | 'consignment' | 'made_to_order' | 'discontinued';
+  stockIntelExclude?: boolean;
+  stockIntelExclusionReason?: string;
+  stockIntelOverride?: boolean;
 }
 
 export interface Vendor {

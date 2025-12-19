@@ -247,6 +247,11 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
           lastSyncAt: item.last_sync_at,
           syncStatus: item.sync_status,
           isDropship,
+          // Classification fields (from migration 103)
+          itemFlowType: item.item_flow_type || 'standard',
+          stockIntelExclude: item.stock_intel_exclude || false,
+          stockIntelExclusionReason: item.stock_intel_exclusion_reason,
+          stockIntelOverride: item.stock_intel_override || false,
         };
       });
 
