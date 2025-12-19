@@ -64,7 +64,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
   const [vendorPerformances, setVendorPerformances] = useState<VendorPerformance[]>([]);
 
   // Filter out items based on classification settings
-  // CRITICAL: Stock Intelligence respects per-item overrides and global rules
+  // CRITICAL: Stock Intelligence respects per-item overrides, reorder_method, and global rules
   const filteredInventory = useMemo(
     () => inventory.filter((item: any) => {
       // PRIORITY 1: Per-item override takes highest precedence
@@ -79,32 +79,51 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
         return false;
       }
 
-      // PRIORITY 3: Check item flow type (dropship, consignment, made_to_order excluded)
+      // PRIORITY 3: Exclude "Do Not Reorder" items (from Finale)
+      const reorderMethod = (item.reorderMethod || item.reorder_method || 'default').toLowerCase();
+      if (reorderMethod === 'do_not_reorder') {
+        return false;
+      }
+
+      // PRIORITY 4: Check item flow type (dropship, consignment, made_to_order excluded)
       const flowType = (item.itemFlowType || item.item_flow_type || 'standard').toLowerCase();
       if (['dropship', 'consignment', 'made_to_order', 'discontinued'].includes(flowType)) {
         return false;
       }
 
-      // FILTER 4: Exclude dropship items (explicit flag - belt and suspenders)
-      if (item.isDropship === true) return false;
+      // FILTER 5: Exclude dropship items (explicit flag - belt and suspenders)
+      if (item.isDropship === true || item.is_dropship === true) return false;
 
-      // FILTER 5: Exclude dropship items by category
+      // FILTER 6: Exclude dropship items by category
       const category = (item.category || '').toLowerCase().trim();
       if (['dropship', 'drop ship', 'dropshipped', 'drop shipped', 'ds', 'drop-ship'].includes(category)) {
         return false;
       }
 
-      // FILTER 6: Exclude dropship items by name pattern
+      // FILTER 7: Exclude dropship items by name pattern
       const name = (item.name || '').toLowerCase();
       if (name.includes('dropship') || name.includes('drop ship') || name.includes('drop-ship')) {
         return false;
       }
 
-      // FILTER 7: Exclude inactive items
+      // FILTER 8: Exclude inactive items
       if (item.status && item.status.toLowerCase().trim() !== 'active') return false;
 
-      // FILTER 8: Exclude Deprecating/Deprecated category items
+      // FILTER 9: Exclude Deprecating/Deprecated category items
       if (['deprecating', 'deprecated', 'discontinued'].includes(category)) return false;
+
+      // FILTER 10: Exclude non-reorderable categories (books, clothing, samples, etc.)
+      if (['books', 'book', 'clothing', 'apparel', 'shirts', 'hats', 'merchandise', 'merch',
+           'promotional', 'promo', 'samples', 'sample', 'giveaway', 'giveaways', 'gift cards'].includes(category)) {
+        return false;
+      }
+
+      // FILTER 11: Exclude items with zero reorder point AND zero stock (likely placeholder/mock data)
+      const reorderPoint = item.reorderPoint || item.reorder_point || item.minStock || item.min_stock || 0;
+      const stock = item.stock || 0;
+      if (reorderPoint === 0 && stock === 0) {
+        return false;
+      }
 
       return true;
     }),

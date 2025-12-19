@@ -51,7 +51,8 @@ export async function updateSkuPurchasingParameters(sku: string) {
 export async function getRigorousPurchasingAdvice() {
     // Get items where Current Stock < Calculated ROP
     // We need to join inventory_items with sku_purchasing_parameters
-    const { data, error } = await supabase
+    // Build query with filters - exclude do_not_reorder items at DB level
+    const query = supabase
         .from('inventory_items')
         .select(`
       sku,
@@ -60,6 +61,7 @@ export async function getRigorousPurchasingAdvice() {
       on_order,
       category,
       is_dropship,
+      reorder_method,
       sku_purchasing_parameters!inner (
         calculated_reorder_point,
         calculated_safety_stock,
@@ -72,10 +74,12 @@ export async function getRigorousPurchasingAdvice() {
         .neq('category', 'Deprecating')
         .or('is_dropship.is.null,is_dropship.eq.false');
 
+    const { data, error } = await query;
+
     if (error) throw error;
 
     // Filter in JS for now (or could create a view)
-    // CRITICAL: Stock Intelligence should NEVER show dropship items to avoid confusing humans
+    // CRITICAL: Stock Intelligence should NEVER show dropship or do_not_reorder items
     return data
         .filter((item: any) => {
             const params = item.sku_purchasing_parameters;
@@ -84,20 +88,29 @@ export async function getRigorousPurchasingAdvice() {
             // FILTER 1: Exclude dropship items (explicit flag from database)
             if (item.is_dropship === true) return false;
 
-            // FILTER 2: Exclude dropship items by category
+            // FILTER 2: Exclude "Do Not Reorder" items (from Finale reorder method)
+            if (item.reorder_method === 'do_not_reorder') return false;
+
+            // FILTER 3: Exclude dropship items by category
             const category = (item.category || '').toLowerCase().trim();
             if (['dropship', 'drop ship', 'dropshipped', 'drop shipped', 'ds', 'drop-ship'].includes(category)) {
                 return false;
             }
 
-            // FILTER 3: Exclude dropship items by name pattern
+            // FILTER 4: Exclude dropship items by name pattern
             const name = (item.name || '').toLowerCase();
             if (name.includes('dropship') || name.includes('drop ship') || name.includes('drop-ship')) {
                 return false;
             }
 
-            // FILTER 4: Exclude Deprecating/Deprecated category (case-insensitive)
+            // FILTER 5: Exclude Deprecating/Deprecated category (case-insensitive)
             if (['deprecating', 'deprecated', 'discontinued'].includes(category)) return false;
+
+            // FILTER 6: Exclude non-reorderable categories (books, clothing, samples, etc.)
+            if (['books', 'book', 'clothing', 'apparel', 'shirts', 'hats', 'merchandise', 'merch',
+                 'promotional', 'promo', 'samples', 'sample', 'giveaway', 'gift cards'].includes(category)) {
+                return false;
+            }
 
             // Trigger if Available (Stock + OnOrder) < ROP
             return (item.stock + (item.on_order || 0)) < params.calculated_reorder_point;

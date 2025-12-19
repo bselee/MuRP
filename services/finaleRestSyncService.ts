@@ -545,6 +545,8 @@ export class FinaleRestSyncService {
       finale_product_id: p.productId,
       finale_last_modified: p.lastUpdatedDate || p.lastModified, // API returns lastUpdatedDate
       custom_fields: p.customFields || {},
+      // Extract reorder_method from Finale custom fields
+      reorder_method: this.extractReorderMethod(p.customFields),
       updated_at: new Date().toISOString(),
     }));
     
@@ -571,7 +573,48 @@ export class FinaleRestSyncService {
     
     console.log(`[FinaleRestSync] Saved ${dbProducts.length} products to database`);
   }
-  
+
+  /**
+   * Extract reorder method from Finale custom fields
+   * Detects if item is marked as "Do Not Reorder" in Finale
+   */
+  private extractReorderMethod(customFields?: Record<string, any>): string {
+    if (!customFields) return 'default';
+
+    // Check various possible field names Finale might use
+    const methodValue = (
+      customFields['reorderCalculationMethod'] ||
+      customFields['reorder_calculation_method'] ||
+      customFields['reorderMethod'] ||
+      customFields['reorder_method'] ||
+      customFields['ReorderMethod'] ||
+      customFields['Reorder Method'] ||
+      ''
+    ).toString().toLowerCase().trim();
+
+    // Detect "Do Not Reorder" - the key value we care about
+    if (
+      methodValue === 'do not reorder' ||
+      methodValue === 'do_not_reorder' ||
+      methodValue === 'donotreorder' ||
+      methodValue === 'none' ||
+      methodValue === 'no reorder' ||
+      methodValue === 'no_reorder'
+    ) {
+      return 'do_not_reorder';
+    }
+
+    // For tracking purposes, detect other methods but we don't filter on these
+    if (methodValue.includes('velocity') || methodValue === 'sales_velocity') {
+      return 'sales_velocity';
+    }
+    if (methodValue === 'manual' || methodValue.includes('manual')) {
+      return 'manual';
+    }
+
+    return 'default';
+  }
+
   /**
    * Save purchase orders to Supabase with line items
    */

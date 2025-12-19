@@ -37,6 +37,7 @@ import { supabase } from '@/lib/supabase/client';
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type FlowType = 'standard' | 'dropship' | 'special_order' | 'consignment' | 'made_to_order' | 'discontinued';
+export type ReorderMethod = 'default' | 'manual' | 'sales_velocity' | 'do_not_reorder' | 'unknown';
 
 export interface ItemClassificationContext {
   sku: string;
@@ -45,6 +46,7 @@ export interface ItemClassificationContext {
   status: string | null;
   flowType: FlowType;
   isDropship: boolean;
+  reorderMethod: ReorderMethod;
 
   // Stock Intelligence settings
   stockIntelExclude: boolean;
@@ -487,6 +489,7 @@ function transformContextFromDB(data: any): ItemClassificationContext {
     status: data.status,
     flowType: data.flow_type || 'standard',
     isDropship: data.is_dropship || false,
+    reorderMethod: data.reorder_method || 'default',
     stockIntelExclude: data.stock_intel_exclude || false,
     stockIntelExclusionReason: data.stock_intel_exclusion_reason,
     stockIntelOverride: data.stock_intel_override || false,
