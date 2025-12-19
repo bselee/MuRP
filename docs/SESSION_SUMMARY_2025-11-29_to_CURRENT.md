@@ -1,3 +1,31 @@
+### Session: 2025-12-19 (Internal PO Theme Support & Issue Triage)
+
+**Changes Made:**
+- Modified: `pages/PurchaseOrders.tsx` (+55 lines changed)
+  - Added complete light/dark theme support for Internal PO section
+  - Header: gradient backgrounds, ribbon effects, title colors (amber-400/700)
+  - Date filter buttons: proper hover states for both themes
+  - View mode toggles: active/inactive styling for both themes
+  - Table view: themed headers, row hovers, cell text colors
+  - Card view: borders, backgrounds, tracking sections, action buttons
+  - All using `isDark` conditional from ThemeProvider
+
+**Issues Triaged:**
+- ✅ PO Card Expansion: Already working for Finale POs (click to expand details)
+- ✅ Velocity Display: EnhancedBomCard already handles both camelCase and snake_case field fallbacks
+- ✅ Email Policy E2E: Both tests passing (2/2 green)
+- ✅ Internal PO Theme: Now complete with this session's changes
+
+**Commit:** `aa6193d` - feat(ui): add light/dark theme support for Internal PO section
+
+**Tests:**
+- ✅ Unit tests: 3/3 passing
+- ✅ Schema transformers: 9/9 passing
+- ✅ Build: Clean (8.52s)
+- ✅ E2E email-policy: 2/2 passing
+
+---
+
 ### Session: 2025-12-12 (Complete Active-Only Data & PO Lifecycle Implementation)
 
 **Migrations Applied:**
