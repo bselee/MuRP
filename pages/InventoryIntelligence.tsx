@@ -11,6 +11,7 @@ import InventoryIntelligenceCard, { InventoryIntelligenceList } from '../compone
 import { useSupabaseInventory } from '../hooks/useSupabaseData';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { getReorderAnalytics, type ReorderAnalytics } from '../services/reorderIntelligenceService';
+import { supabase } from '../lib/supabase/client';
 
 interface DataFlowStatus {
   inventory: { total: number; active: number; synced: boolean };
@@ -29,12 +30,6 @@ export default function InventoryIntelligence() {
   useEffect(() => {
     async function checkDataFlow() {
       try {
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(
-          import.meta.env.VITE_SUPABASE_URL,
-          import.meta.env.VITE_SUPABASE_ANON_KEY
-        );
-        
         // Get inventory stats
         const { data: invCount } = await supabase
           .from('inventory')
