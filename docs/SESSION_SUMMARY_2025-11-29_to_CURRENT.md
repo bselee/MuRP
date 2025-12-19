@@ -369,6 +369,22 @@ update_all_inventory_velocities() RETURNS TABLE (sku TEXT, sales_30d INT, sales_
 - [ ] Fix `e2e/email-policy.spec.ts` selector/route assumptions so it’s stable.
 - [ ] Verify PO “current year only” behavior in production by confirming whether old records are internal POs vs Finale POs.
 
+---
+
+### Session: 2025-12-19 (Claude Branch Consolidation)
+
+**Changes Made:**
+- Merged all `origin/claude/*` branches into `main`, resolving conflicts in:
+  - `supabase/functions/sync-finale-graphql/index.ts` (kept server-side 24-month PO fetch; fixed cutoff variable typing/name)
+  - `hooks/useSupabaseData.ts` (kept current-year + non-completed filtering for Finale POs)
+  - `pages/PurchaseOrders.tsx` (kept dateFilter-based internal PO filtering; ensured legacy invalid dates don’t leak into date-scoped views)
+- Added `.gitignore` entries for Playwright artifacts and removed tracked `test-results/.last-run.json`.
+
+**Validation:**
+- ✅ `npm test` passing
+- ✅ `npm run e2e` passing (49/49)
+- ✅ Pushed `main` to origin
+
 
 **Next Steps:**
 - [ ] Fix PO card expansion - implement proper detail view/modal for full PO document
@@ -1532,4 +1548,31 @@ orderViewConnection(
 **Next Steps:**
 - Ensure `VITE_GITHUB_TOKEN` is set in the environment for the agent to function in production.
 - Test the Github Agent with real PRs to verify the "thoughtful merge" workflow.
+
+---
+
+### Session: 2025-12-19 (Merge Remaining Claude Preview + Deploy)
+
+**Git State & Merge:**
+- Identified only one remaining unmerged Claude branch: `origin/claude/expand-email-tracking-agent-HuioE`
+- Merge initially blocked due to staged local changes overlapping the branch; resolved by validating + committing changes, then re-merging (branch was already up-to-date after commit)
+
+**Changes Committed:**
+- Commit: `256f443` - `feat(email): add inbox polling and tracking migrations`
+- Added:
+  - `services/emailInboxManager.ts`
+  - `supabase/functions/email-inbox-poller/index.ts`
+  - `supabase/migrations/099_email_inbox_configs.sql`
+  - `supabase/migrations/100_email_thread_intelligence.sql`
+  - `supabase/migrations/101_email_tracking_agent.sql`
+
+**Verification:**
+- `npm test` passed
+- `npm run build` succeeded
+
+**GitHub:**
+- Pushed `main` to `origin/main`
+
+**Vercel Deployment:**
+- Production deployed successfully: https://murp-oidyn9iv1-will-selees-projects.vercel.app
 
