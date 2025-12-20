@@ -36,6 +36,7 @@ import { supabase } from '../lib/supabase/client';
 import { fetchComponentSwapRules, mapComponentSwaps } from '../services/componentSwapService';
 import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
 import { useLimitingSKUOnOrder } from '../hooks/useLimitingSKUOnOrder';
+import { useTheme } from '../components/ThemeProvider';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability' | 'category' | 'velocity' | 'runway';
@@ -121,6 +122,7 @@ const BOMs: React.FC<BOMsProps> = ({
   onQuickRequest,
   onNavigateToPurchaseOrders
 }) => {
+  const { isDark } = useTheme();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -899,8 +901,8 @@ const BOMs: React.FC<BOMsProps> = ({
   if (!canViewBoms) {
     return (
       <div className="p-8 text-center space-y-3">
-        <h1 className="text-2xl font-semibold text-white">BOM Access Restricted</h1>
-        <p className="text-gray-400 text-sm">
+        <h1 className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>BOM Access Restricted</h1>
+        <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>
           Your account does not currently have permission to manage bills of materials. Please contact an administrator if you need access.
         </p>
       </div>
@@ -976,8 +978,8 @@ const BOMs: React.FC<BOMsProps> = ({
           isOpen={isAlertsOpen}
           onToggle={() => setIsAlertsOpen(!isAlertsOpen)}
         >
-          <div className="bg-red-900/20 border-2 border-red-700 rounded-lg p-4">
-            <p className="text-gray-300 text-sm mb-3">
+          <div className={`${isDark ? 'bg-red-900/20 border-red-700' : 'bg-red-50 border-red-300'} border-2 rounded-lg p-4`}>
+            <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-sm mb-3`}>
               {criticalBoms.length} product{criticalBoms.length > 1 ? 's' : ''} cannot be built and have zero inventory
             </p>
             <div className="flex flex-wrap gap-2">
@@ -1013,23 +1015,23 @@ const BOMs: React.FC<BOMsProps> = ({
         isOpen={isFiltersOpen}
         onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
       >
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-4">
+        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-lg p-4 ${!isDark ? 'border border-gray-200 shadow-sm' : ''}`}>
           <div className="flex flex-col lg:flex-row gap-4">
           {/* Search Bar */}
           <div className="flex-1">
             <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
               <input
                 type="text"
                 placeholder="Search by SKU, name, category, or component..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent"
+                className={`w-full pl-10 pr-4 py-2.5 ${isDark ? 'bg-gray-900 border-gray-700 text-white placeholder-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400'} border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent`}
               />
               {searchQuery && (
                 <Button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                  className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1066,7 +1068,7 @@ const BOMs: React.FC<BOMsProps> = ({
             <div ref={categoryDropdownRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-20'}`}>
               <Button
                 onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                className={`min-w-[160px] bg-gray-700 text-white rounded-xl px-4 py-2.5 focus:ring-accent-500 focus:border-accent-500 border-gray-600 text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
+                className={`min-w-[160px] ${isDark ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'} rounded-xl px-4 py-2.5 focus:ring-accent-500 focus:border-accent-500 border text-left flex justify-between items-center relative ${selectedCategories.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
               >
                 {selectedCategories.size > 0 && (
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent-500 rounded-full"></span>
@@ -1081,17 +1083,17 @@ const BOMs: React.FC<BOMsProps> = ({
                 <ChevronDownIcon className="w-4 h-4 ml-2" />
               </Button>
               {isCategoryDropdownOpen && (
-                <div className="absolute z-[100] w-full mt-1 border-2 border-gray-500 rounded-md shadow-2xl max-h-80 overflow-hidden bg-gray-900">
-                  <div className="sticky top-0 p-2 border-b border-gray-600 flex gap-2 bg-gray-900">
+                <div className={`absolute z-[100] w-full mt-1 border-2 ${isDark ? 'border-gray-500 bg-gray-900' : 'border-gray-300 bg-white'} rounded-md shadow-2xl max-h-80 overflow-hidden`}>
+                  <div className={`sticky top-0 p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-gray-200 bg-gray-50'} flex gap-2`}>
                     <Button
                       onClick={selectAllCategories}
-                      className="text-xs text-accent-400 hover:text-accent-300 px-2 py-1 bg-gray-600 rounded"
+                      className={`text-xs text-accent-400 hover:text-accent-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-gray-200'} rounded`}
                     >
                       Select All
                     </Button>
                     <Button
                       onClick={clearAllCategories}
-                      className="text-xs text-gray-400 hover:text-white px-2 py-1 bg-gray-600 rounded"
+                      className={`text-xs ${isDark ? 'text-gray-400 hover:text-white bg-gray-600' : 'text-gray-600 hover:text-gray-900 bg-gray-200'} px-2 py-1 rounded`}
                     >
                       Clear
                     </Button>
@@ -1100,40 +1102,40 @@ const BOMs: React.FC<BOMsProps> = ({
                         setIsCategoryDropdownOpen(false);
                         setIsCategoryManagementOpen(true);
                       }}
-                      className="ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 bg-gray-600 rounded flex items-center gap-1"
+                      className={`ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-gray-200'} rounded flex items-center gap-1`}
                     >
                       <AdjustmentsHorizontalIcon className="w-3 h-3" />
                       Manage
                     </Button>
                   </div>
-                  <div className="sticky top-[52px] p-2 border-b border-gray-600 bg-gray-900">
+                  <div className={`sticky top-[52px] p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
                     <input
                       type="text"
                       value={categorySearchTerm}
                       onChange={(e) => setCategorySearchTerm(e.target.value)}
                       placeholder="Search categories..."
-                      className="w-full bg-gray-800 text-white text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border border-gray-600"
+                      className={`w-full ${isDark ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'} text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border`}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </div>
                   <div className="max-h-60 overflow-auto">
                     {filteredCategories.length === 0 ? (
-                      <div className="p-3 text-center text-gray-400 text-sm">No categories found</div>
+                      <div className={`p-3 text-center ${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>No categories found</div>
                     ) : (
                       filteredCategories.map(category => {
                         const label = categoryLabelMap.get(category) || formatCategoryLabel(category);
                         return (
                           <label
                             key={category}
-                            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer bg-gray-900"
+                            className={`flex items-center p-2 ${isDark ? 'hover:bg-gray-700 bg-gray-900' : 'hover:bg-gray-100 bg-white'} cursor-pointer`}
                           >
                             <input
                               type="checkbox"
                               checked={selectedCategories.has(category)}
                               onChange={() => toggleCategory(category)}
-                              className="w-4 h-4 mr-2 rounded border-gray-500 text-accent-500 focus:ring-accent-500"
+                              className={`w-4 h-4 mr-2 rounded ${isDark ? 'border-gray-500' : 'border-gray-400'} text-accent-500 focus:ring-accent-500`}
                             />
-                            <span className="text-sm text-white" title={category}>{label}</span>
+                            <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`} title={category}>{label}</span>
                           </label>
                         );
                       })
@@ -1171,13 +1173,13 @@ const BOMs: React.FC<BOMsProps> = ({
             </select>
 
             {/* View Mode Toggle */}
-            <div className="flex bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+            <div className={`flex ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-300'} border rounded-lg overflow-hidden`}>
               <Button
                 onClick={() => setViewMode('card')}
                 className={`px-3 py-2.5 transition-colors ${
                   viewMode === 'card'
                     ? 'bg-accent-500 text-white'
-                    : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800'
+                    : isDark ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
                 title="Card view"
               >
@@ -1185,10 +1187,10 @@ const BOMs: React.FC<BOMsProps> = ({
               </Button>
               <Button
                 onClick={() => setViewMode('table')}
-                className={`px-3 py-2.5 transition-colors border-l border-gray-700 ${
+                className={`px-3 py-2.5 transition-colors border-l ${isDark ? 'border-gray-700' : 'border-gray-300'} ${
                   viewMode === 'table'
                     ? 'bg-accent-500 text-white'
-                    : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800'
+                    : isDark ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
                 title="Table view"
               >
@@ -1199,7 +1201,7 @@ const BOMs: React.FC<BOMsProps> = ({
           </div>
 
         {/* Results Count */}
-        <div className="mt-3 text-sm text-gray-400">
+        <div className={`mt-3 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
           Showing {processedBoms.length} of {filteredBoms.length} BOMs
           {searchQuery && <span> matching "{searchQuery}"</span>}
         </div>
@@ -1208,9 +1210,9 @@ const BOMs: React.FC<BOMsProps> = ({
 
       {/* BOM Cards/Table */}
       {processedBoms.length === 0 ? (
-            <div className="bg-gray-800/30 rounded-lg border-2 border-dashed border-gray-700 p-12 text-center">
-              <h3 className="text-lg font-medium text-gray-400 mb-2">No BOMs found</h3>
-              <p className="text-sm text-gray-500">
+            <div className={`${isDark ? 'bg-gray-800/30 border-gray-700' : 'bg-gray-50 border-gray-300'} rounded-lg border-2 border-dashed p-12 text-center`}>
+              <h3 className={`text-lg font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'} mb-2`}>No BOMs found</h3>
+              <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
                 Try adjusting your search or filters
               </p>
             </div>
@@ -1221,7 +1223,7 @@ const BOMs: React.FC<BOMsProps> = ({
                   {groupBy !== 'none' && (
                     <h3 className="text-lg font-semibold text-white mb-3 px-2 flex items-center gap-2">
                       {groupName}
-                      <span className="text-sm font-normal text-gray-400">({boms.length})</span>
+                      <span className={`text-sm font-normal ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>({boms.length})</span>
                     </h3>
                   )}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1238,35 +1240,35 @@ const BOMs: React.FC<BOMsProps> = ({
               ))}
             </div>
           ) : (
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
+            <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} backdrop-blur-sm rounded-lg border overflow-hidden`}>
               <div className="overflow-x-auto">
-                <table className="table-density min-w-full divide-y divide-gray-700">
-                  <thead className="bg-gray-900">
+                <table className={`table-density min-w-full divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                  <thead className={isDark ? 'bg-gray-900' : 'bg-gray-50'}>
                     <tr>
-                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      <th className={`px-6 py-2 text-left text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wider`}>
                         SKU
                       </th>
-                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      <th className={`px-6 py-2 text-left text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wider`}>
                         Product Name
                       </th>
-                      <th className="px-6 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      <th className={`px-6 py-2 text-left text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wider`}>
                         Category
                       </th>
-                      <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      <th className={`px-6 py-2 text-right text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wider`}>
                         Inventory
                       </th>
-                      <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      <th className={`px-6 py-2 text-right text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wider`}>
                         Can Build
                       </th>
-                      <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      <th className={`px-6 py-2 text-right text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wider`}>
                         Components
                       </th>
-                      <th className="px-6 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      <th className={`px-6 py-2 text-right text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wider`}>
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-700">
+                  <tbody className={`divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
                     {processedBoms.map(bom => {
                       const finishedStock = inventoryMap.get(bom.finishedSku)?.stock || 0;
                       const buildability = calculateBuildability(bom);
@@ -1277,38 +1279,38 @@ const BOMs: React.FC<BOMsProps> = ({
                           ref={(el) => {
                             if (el) bomRefs.current.set(bom.id, el);
                           }}
-                          className="hover:bg-gray-800/50 transition-colors"
+                          className={`${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} transition-colors`}
                         >
                           <td className="px-6 py-1 whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               <Button
                                 onClick={() => onNavigateToInventory?.(bom.finishedSku)}
-                                className="text-sm font-bold font-mono text-white hover:text-accent-400 transition-colors underline decoration-dotted decoration-gray-600 hover:decoration-accent-400"
+                                className={`text-sm font-bold font-mono ${isDark ? 'text-white' : 'text-gray-900'} hover:text-accent-400 transition-colors underline decoration-dotted ${isDark ? 'decoration-gray-600' : 'decoration-gray-400'} hover:decoration-accent-400`}
                               >
                                 {bom.finishedSku}
                               </Button>
                             </div>
                           </td>
                           <td className="px-6 py-1">
-                            <div className="text-sm text-white">{bom.name}</div>
+                            <div className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{bom.name}</div>
                           </td>
                           <td className="px-6 py-1 whitespace-nowrap">
-                            <span className="px-2 py-1 text-xs rounded bg-gray-700 text-gray-300 border border-gray-600">
+                            <span className={`px-2 py-1 text-xs rounded ${isDark ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-100 text-gray-700 border-gray-300'} border`}>
                               {bom.category || 'N/A'}
                             </span>
                           </td>
                           <td className="px-6 py-1 whitespace-nowrap text-right">
-                            <span className={`text-sm font-bold ${finishedStock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <span className={`text-sm font-bold ${finishedStock > 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-red-400' : 'text-red-600')}`}>
                               {finishedStock}
                             </span>
                           </td>
                           <td className="px-6 py-1 whitespace-nowrap text-right">
-                            <span className={`text-sm font-bold ${buildability.maxBuildable > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <span className={`text-sm font-bold ${buildability.maxBuildable > 0 ? (isDark ? 'text-green-400' : 'text-green-600') : (isDark ? 'text-red-400' : 'text-red-600')}`}>
                               {buildability.maxBuildable}
                             </span>
                           </td>
                           <td className="px-6 py-1 whitespace-nowrap text-right">
-                            <span className="text-sm text-gray-300">{bom.components.length}</span>
+                            <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{bom.components.length}</span>
                           </td>
                           <td className="px-6 py-1 whitespace-nowrap text-right">
                             <div className="flex items-center justify-end gap-2">

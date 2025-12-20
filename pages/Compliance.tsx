@@ -16,6 +16,7 @@ import RegulatorySourcesPanel from '@/components/compliance/RegulatorySourcesPan
 import StateContactManager from '@/components/compliance/StateContactManager';
 import RegulatoryQAPanel from '@/components/compliance/RegulatoryQAPanel';
 import DocumentAnalysisPanel from '@/components/compliance/DocumentAnalysisPanel';
+import { useTheme } from '../components/ThemeProvider';
 
 type TabId = 'sources' | 'contacts' | 'documents' | 'qa' | 'analysis';
 
@@ -34,6 +35,7 @@ const TABS: TabConfig[] = [
 ];
 
 export default function Compliance() {
+  const { isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<TabId>('sources');
   const [selectedStates, setSelectedStates] = useState<string[]>(['CA', 'OR', 'WA', 'NY', 'TX', 'NM']);
 
@@ -54,10 +56,10 @@ export default function Compliance() {
       />
 
       {/* Quick State Selector */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
+      <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} backdrop-blur-sm rounded-xl p-4 border`}>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-medium text-gray-300">Priority States</h3>
-          <span className="text-xs text-gray-500">{selectedStates.length} selected</span>
+          <h3 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Priority States</h3>
+          <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{selectedStates.length} selected</span>
         </div>
         <div className="flex flex-wrap gap-2">
           {['CA', 'OR', 'WA', 'NY', 'TX', 'NM', 'CO', 'FL', 'MI', 'PA'].map(state => (
@@ -67,7 +69,7 @@ export default function Compliance() {
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 selectedStates.includes(state)
                   ? 'bg-accent-600 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                  : isDark ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
               {state}
@@ -77,7 +79,7 @@ export default function Compliance() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-700">
+      <div className={`border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         <nav className="flex gap-1 -mb-px">
           {TABS.map(tab => (
             <button
@@ -86,7 +88,7 @@ export default function Compliance() {
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'border-accent-500 text-accent-400'
-                  : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
+                  : isDark ? 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
               {tab.label}
@@ -96,12 +98,12 @@ export default function Compliance() {
       </div>
 
       {/* Tab Description */}
-      <p className="text-sm text-gray-500">
+      <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
         {TABS.find(t => t.id === activeTab)?.description}
       </p>
 
       {/* Tab Content */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+      <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} backdrop-blur-sm rounded-xl p-6 border`}>
         {activeTab === 'sources' && (
           <RegulatorySourcesPanel
             selectedStates={selectedStates}
