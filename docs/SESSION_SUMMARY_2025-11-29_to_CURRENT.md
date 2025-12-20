@@ -1,99 +1,25 @@
-### Session: 2025-12-20 (Comprehensive Theme Compliance & Compliance Module)
+### Session: 2025-12-14 (Light/Dark Theme Compliance - Phase 2)
 
-**Summary:** Major UI/UX fixes for light/dark mode consistency across Purchase Orders, Inventory, and Projects pages. Added new Compliance module with Regulatory Q&A, Document Analysis, and State Contact Management.
+**Theme Fixes Applied:**
+- ✅ pages/BOMs.tsx: Added `useTheme` hook, fixed 40+ hardcoded colors
+  - Table rows, category badges, SKU links now theme-aware
+  - Access denied and critical alerts sections converted
+- ✅ pages/Production.tsx: Already theme-aware (22 isDark refs)
+- ✅ pages/StockIntelligence.tsx: Added `useTheme` hook, converted 36 gray colors
+  - Key metrics cards, tab navigation, trend panels all themed
+  - Vendor performance scoring section fully converted
+- ✅ pages/Compliance.tsx: Added `useTheme` hook, converted 7 gray colors
+  - State selector, tab navigation, content panel all themed
 
-**Changes Made:**
-- Modified: `pages/PurchaseOrders.tsx` (+extensive)
-  - Fixed `formatPoTotal()` to handle string values and NaN robustly
-  - Replaced inline Finale PO status pill with `<StatusBadge>` component
-  - Fixed 50+ hardcoded dark mode styles to use `isDark ?` conditionals
-  - Modal section headers, empty state, Finale PO expanded details all theme-aware
-  - Line items table, metadata, financial summary properly themed
+**Theme Coverage Status:**
+- ✅ Theme-aware (have isDark): BOMs, Compliance, Dashboard, Inventory, Production, ProjectsPage, PurchaseOrders, StockIntelligence
+- ⏳ Need theme work: Analytics, Artwork, Settings, MRP, InventoryIntelligence, Users
+- 🎨 LoginScreen: Intentionally dark-only (splash screen design)
 
-- Modified: `components/ui/StatusBadge.tsx`
-  - Added traffic light color mappings:
-    - `committed`, `submitted`, `ordered` → `warning` (yellow)
-    - `canceled`, `cancelled`, `error` → `danger` (red)
-    - `complete`, `completed`, `fulfilled`, `received` → `success` (green)
-
-- Modified: `pages/Inventory.tsx`
-  - Added useTheme hook for theme awareness
-  - Fixed filters panel, dropdowns, search suggestions
-  - Fixed category/vendor management modals
-  - Fixed table cells, tooltips, demand breakdown popups
-
-- Modified: `pages/ProjectsPage.tsx`
-  - Fixed view toggle buttons for light/dark mode
-  - Fixed project cards, tags, action buttons
-
-- Modified: `pages/Vendors.tsx` - Added useTheme hook
-
-- Modified: `pages/StockIntelligence.tsx`
-  - Integrated agent alerts for consistent summary card counts
-  - Uses `getCriticalStockoutAlerts()` for dashboard figures
-
-- Modified: `services/stockoutPreventionAgent.ts`
-  - Added `AlertFilterOptions` interface for fine-grained control
-  - Added flow_type, reorder_method, category metadata to alerts
-  - New `shouldIncludeInAlerts()` helper function
-
-- Modified: `services/regulatoryDataService.ts` (+550 lines)
-  - Added `searchStateContactInfo()`, `updateStateContactInfo()`
-  - Added `upsertStateRegulatorySource()` for manual source input
-  - Added `askRegulatoryQuestion()`, `getFrequentlyAskedQuestions()` for Q&A
-  - Added `analyzeComplianceDocument()`, `batchAnalyzeDocuments()`
-
-- Created: `pages/Compliance.tsx` (NEW PAGE)
-  - 5 tabs: Sources, Contacts, Documents, Q&A, Analysis
-  - Quick state selector for priority states
-
-- Created: `components/compliance/RegulatoryQAPanel.tsx`
-  - AI-powered regulatory Q&A with citations
-  - FAQ support with category filtering
-
-- Created: `components/compliance/StateContactManager.tsx`
-  - View/edit state agency contact info
-  - Web search for contact updates
-
-- Created: `components/compliance/DocumentAnalysisPanel.tsx`
-  - Analyze compliance documents for deadlines/actions
-  - Extract state references, regulation citations
-
-**Commit:** `b3d2903` - fix(ui): comprehensive light/dark theme compliance across pages
-
-**Tests:**
-- ✅ Unit tests: 3/3 passing
-- ✅ Build: Clean (8.71s)
-
-**Files Changed:** 17 files, +2149 insertions, -214 deletions
-
----
-
-### Session: 2025-12-19 (Internal PO Theme Support & Issue Triage)
-
-**Changes Made:**
-- Modified: `pages/PurchaseOrders.tsx` (+55 lines changed)
-  - Added complete light/dark theme support for Internal PO section
-  - Header: gradient backgrounds, ribbon effects, title colors (amber-400/700)
-  - Date filter buttons: proper hover states for both themes
-  - View mode toggles: active/inactive styling for both themes
-  - Table view: themed headers, row hovers, cell text colors
-  - Card view: borders, backgrounds, tracking sections, action buttons
-  - All using `isDark` conditional from ThemeProvider
-
-**Issues Triaged:**
-- ✅ PO Card Expansion: Already working for Finale POs (click to expand details)
-- ✅ Velocity Display: EnhancedBomCard already handles both camelCase and snake_case field fallbacks
-- ✅ Email Policy E2E: Both tests passing (2/2 green)
-- ✅ Internal PO Theme: Now complete with this session's changes
-
-**Commit:** `aa6193d` - feat(ui): add light/dark theme support for Internal PO section
-
-**Tests:**
-- ✅ Unit tests: 3/3 passing
-- ✅ Schema transformers: 9/9 passing
-- ✅ Build: Clean (8.52s)
-- ✅ E2E email-policy: 2/2 passing
+**Verification:**
+✅ Build successful (8.66s)
+✅ All tests passing (3/3)
+✅ Pushed commit 450011c to main
 
 ---
 
