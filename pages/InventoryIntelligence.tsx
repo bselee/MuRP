@@ -12,6 +12,7 @@ import { useSupabaseInventory } from '../hooks/useSupabaseData';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { getReorderAnalytics, type ReorderAnalytics } from '../services/reorderIntelligenceService';
 import { supabase } from '../lib/supabase/client';
+import { useTheme } from '../components/ThemeProvider';
 
 interface DataFlowStatus {
   inventory: { total: number; active: number; synced: boolean };
@@ -20,6 +21,7 @@ interface DataFlowStatus {
 }
 
 export default function InventoryIntelligence() {
+  const { isDark } = useTheme();
   const { data: inventory, loading, error } = useSupabaseInventory();
   const [dataFlow, setDataFlow] = useState<DataFlowStatus | null>(null);
   const [showAllItems, setShowAllItems] = useState(false);
@@ -130,7 +132,7 @@ export default function InventoryIntelligence() {
 
   if (loading || analyticsLoading) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white p-8">
+      <div className={`min-h-screen ${isDark ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} p-8`}>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           <span className="ml-4 text-xl">Loading inventory intelligence...</span>
@@ -141,10 +143,10 @@ export default function InventoryIntelligence() {
   
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white p-8">
-        <div className="bg-red-900/20 border border-red-500 rounded-lg p-6">
-          <h2 className="text-xl font-bold text-red-400 mb-2">Error Loading Data</h2>
-          <p className="text-gray-300">{error.message}</p>
+      <div className={`min-h-screen ${isDark ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} p-8`}>
+        <div className={`${isDark ? 'bg-red-900/20 border-red-500' : 'bg-red-50 border-red-300'} border rounded-lg p-6`}>
+          <h2 className={`text-xl font-bold ${isDark ? 'text-red-400' : 'text-red-600'} mb-2`}>Error Loading Data</h2>
+          <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>{error.message}</p>
         </div>
       </div>
     );
@@ -152,39 +154,39 @@ export default function InventoryIntelligence() {
   
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-950 text-white p-8">
+      <div className={`min-h-screen ${isDark ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} p-8`}>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-2">Inventory Intelligence Dashboard</h1>
-            <p className="text-gray-400">Real-time reorder management with predictive analytics</p>
+            <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>Real-time reorder management with predictive analytics</p>
           </div>
           
           {/* Data Flow Status */}
           {dataFlow && (
             <div className="grid grid-cols-4 gap-4 mb-8">
               {/* Inventory Status */}
-              <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+              <div className={`${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'} rounded-lg p-6 border`}>
                 <div className="flex items-center gap-3 mb-4">
                   <Database className="text-blue-400" size={24} />
                   <h3 className="text-lg font-semibold">Inventory Data</h3>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Total Items:</span>
+                    <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Total Items:</span>
                     <span className="text-2xl font-bold">{dataFlow.inventory.total}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Active:</span>
-                    <span className="text-xl font-bold text-green-400">{dataFlow.inventory.active}</span>
+                    <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Active:</span>
+                    <span className={`text-xl font-bold ${isDark ? 'text-green-400' : 'text-green-600'}`}>{dataFlow.inventory.active}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-3">
                     {dataFlow.inventory.synced ? (
-                      <CheckCircle className="text-green-400" size={16} />
+                      <CheckCircle className={isDark ? 'text-green-400' : 'text-green-600'} size={16} />
                     ) : (
                       <AlertCircle className="text-yellow-400" size={16} />
                     )}
-                    <span className="text-sm text-gray-400">
+                    <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                       {dataFlow.inventory.synced ? 'Synced' : 'No data'}
                     </span>
                   </div>
@@ -192,27 +194,27 @@ export default function InventoryIntelligence() {
               </div>
               
               {/* Purchase Orders Status */}
-              <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+              <div className={`${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'} rounded-lg p-6 border`}>
                 <div className="flex items-center gap-3 mb-4">
                   <Package className="text-purple-400" size={24} />
                   <h3 className="text-lg font-semibold">Purchase Orders</h3>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Total POs:</span>
+                    <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Total POs:</span>
                     <span className="text-2xl font-bold">{dataFlow.purchaseOrders.total}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Last 30 days:</span>
-                    <span className="text-xl font-bold text-purple-400">{dataFlow.purchaseOrders.recent}</span>
+                    <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Last 30 days:</span>
+                    <span className={`text-xl font-bold ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>{dataFlow.purchaseOrders.recent}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-3">
                     {dataFlow.purchaseOrders.synced ? (
-                      <CheckCircle className="text-green-400" size={16} />
+                      <CheckCircle className={isDark ? 'text-green-400' : 'text-green-600'} size={16} />
                     ) : (
                       <AlertCircle className="text-yellow-400" size={16} />
                     )}
-                    <span className="text-sm text-gray-400">
+                    <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                       {dataFlow.purchaseOrders.synced ? 'Synced' : 'No data'}
                     </span>
                   </div>
@@ -220,45 +222,45 @@ export default function InventoryIntelligence() {
               </div>
               
               {/* Last Sync Status */}
-              <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+              <div className={`${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'} rounded-lg p-6 border`}>
                 <div className="flex items-center gap-3 mb-4">
-                  <Activity className="text-green-400" size={24} />
+                  <Activity className={isDark ? 'text-green-400' : 'text-green-600'} size={24} />
                   <h3 className="text-lg font-semibold">Last Sync</h3>
                 </div>
                 {dataFlow.lastSync ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Source:</span>
+                      <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Source:</span>
                       <span className="text-sm font-mono">{dataFlow.lastSync.source}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Records:</span>
-                      <span className="text-xl font-bold text-green-400">{dataFlow.lastSync.records}</span>
+                      <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>Records:</span>
+                      <span className={`text-xl font-bold ${isDark ? 'text-green-400' : 'text-green-600'}`}>{dataFlow.lastSync.records}</span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-3">{dataFlow.lastSync.timestamp}</div>
+                    <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-3`}>{dataFlow.lastSync.timestamp}</div>
                   </div>
                 ) : (
-                  <div className="text-gray-500">No sync data available</div>
+                  <div className={isDark ? 'text-gray-500' : 'text-gray-400'}>No sync data available</div>
                 )}
               </div>
               
               {/* Data Flow Indicator */}
-              <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+              <div className={`${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'} rounded-lg p-6 border`}>
                 <div className="flex items-center gap-3 mb-4">
                   <TrendingUp className="text-yellow-400" size={24} />
                   <h3 className="text-lg font-semibold">Data Flow</h3>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
+                    <div className={`w-3 h-3 rounded-full ${isDark ? 'bg-green-400' : 'bg-green-500'} animate-pulse`}></div>
                     <span className="text-sm">Finale API</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
+                    <div className={`w-3 h-3 rounded-full ${isDark ? 'bg-green-400' : 'bg-green-500'} animate-pulse`}></div>
                     <span className="text-sm">Supabase DB</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
+                    <div className={`w-3 h-3 rounded-full ${isDark ? 'bg-green-400' : 'bg-green-500'} animate-pulse`}></div>
                     <span className="text-sm">UI Display</span>
                   </div>
                 </div>
@@ -275,7 +277,7 @@ export default function InventoryIntelligence() {
                 </h2>
                 <button
                   onClick={() => setShowAllItems(!showAllItems)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white"
                 >
                   {showAllItems ? `Show Critical (${criticalItems.length})` : `Show All (${enrichedInventory.length})`}
                 </button>
@@ -289,15 +291,15 @@ export default function InventoryIntelligence() {
           
           {/* No Critical Items State */}
           {criticalItems.length === 0 && enrichedInventory.length > 0 && !showAllItems && (
-            <div className="bg-green-900/20 rounded-lg p-12 text-center border border-green-500/30">
-              <CheckCircle className="mx-auto mb-4 text-green-500" size={64} />
-              <h2 className="text-2xl font-bold mb-2 text-green-400">All Stock Levels Healthy</h2>
-              <p className="text-gray-400 mb-6">
+            <div className={`${isDark ? 'bg-green-900/20 border-green-500/30' : 'bg-green-50 border-green-300'} rounded-lg p-12 text-center border`}>
+              <CheckCircle className={`mx-auto mb-4 ${isDark ? 'text-green-500' : 'text-green-600'}`} size={64} />
+              <h2 className={`text-2xl font-bold mb-2 ${isDark ? 'text-green-400' : 'text-green-600'}`}>All Stock Levels Healthy</h2>
+              <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mb-6`}>
                 No items currently need attention. {enrichedInventory.length} items in inventory.
               </p>
               <button
                 onClick={() => setShowAllItems(true)}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-white"
               >
                 View All Items
               </button>
@@ -311,7 +313,7 @@ export default function InventoryIntelligence() {
                 <h2 className="text-2xl font-bold">All Inventory Items ({enrichedInventory.length})</h2>
                 <button
                   onClick={() => setShowAllItems(false)}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors"
+                  className={`px-4 py-2 ${isDark ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'} rounded-lg transition-colors`}
                 >
                   Hide
                 </button>
@@ -322,15 +324,15 @@ export default function InventoryIntelligence() {
 
           {/* No Data State */}
           {enrichedInventory.length === 0 && (
-            <div className="bg-gray-900 rounded-lg p-12 text-center border border-gray-800">
-              <Database className="mx-auto mb-4 text-gray-600" size={64} />
+            <div className={`${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'} rounded-lg p-12 text-center border`}>
+              <Database className={isDark ? 'mx-auto mb-4 text-gray-600' : 'mx-auto mb-4 text-gray-400'} size={64} />
               <h2 className="text-2xl font-bold mb-2">No Inventory Data</h2>
-              <p className="text-gray-400 mb-6">
+              <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} mb-6`}>
                 Inventory data will appear here once synced from Finale API.
               </p>
-              <div className="text-sm text-gray-500">
+              <div className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                 <p>Make sure Finale credentials are configured in environment variables:</p>
-                <code className="block mt-2 bg-gray-950 p-2 rounded">
+                <code className={`block mt-2 ${isDark ? 'bg-gray-950' : 'bg-gray-100'} p-2 rounded`}>
                   VITE_FINALE_API_KEY<br/>
                   VITE_FINALE_API_SECRET<br/>
                   VITE_FINALE_ACCOUNT_PATH
@@ -340,11 +342,11 @@ export default function InventoryIntelligence() {
           )}
           
           {/* Data Sources */}
-          <div className="mt-8 bg-gray-900 rounded-lg p-6 border border-gray-800">
+          <div className={`mt-8 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'} rounded-lg p-6 border`}>
             <h3 className="text-xl font-bold mb-4">📊 Data Sources</h3>
             <div className="space-y-2 text-sm font-mono">
               <div className="flex items-center gap-2">
-                <CheckCircle className="text-green-400" size={16} />
+                <CheckCircle className={isDark ? 'text-green-400' : 'text-green-600'} size={16} />
                 <span>inventory_items → Base stock data</span>
               </div>
               <div className="flex items-center gap-2">

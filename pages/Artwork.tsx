@@ -16,6 +16,7 @@ import { loadState, saveState } from '../services/storageService';
 import { fileToBase64, scanLabelImage } from '../services/labelScanningService';
 import SupportTicketModal from '../components/SupportTicketModal';
 import ComplianceDashboard from '../components/ComplianceDashboard';
+import { useTheme } from '../components/ThemeProvider';
 
 type ArtworkWithProduct = Artwork & {
     productName: string;
@@ -103,6 +104,7 @@ interface ArtworkPageProps {
 }
 
 const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onAddArtwork, onCreatePoFromArtwork, onUpdateArtwork, initialFilter, onClearFilter, watchlist, aiConfig, artworkFolders, onCreateArtworkFolder, currentUser, gmailConnection, addToast, artworkShareHistory, onRecordArtworkShare, onConnectGoogle, companyEmailSettings }) => {
+    const { isDark } = useTheme();
     const [isScanModalOpen, setIsScanModalOpen] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isBatchVerificationModalOpen, setIsBatchVerificationModalOpen] = useState(false);
@@ -441,7 +443,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
     };
 
     const FolderButton: React.FC<{folderId: string | null, name: string}> = ({folderId, name}) => (
-        <Button onClick={() => setSelectedFolderId(folderId)} className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${selectedFolderId === folderId ? 'bg-accent-500 text-white font-semibold' : 'text-gray-300 hover:bg-gray-700'}`}>
+        <Button onClick={() => setSelectedFolderId(folderId)} className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${selectedFolderId === folderId ? 'bg-accent-500 text-white font-semibold' : isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-200'}`}>
             {name}
         </Button>
     );
@@ -664,15 +666,15 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
         <>
             {/* Integrated Scanning Interface */}
             {isScanningInterfaceOpen && (
-                <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6 mb-6">
+                <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} rounded-lg border p-6 mb-6`}>
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <SparklesIcon className="w-6 h-6 text-accent-400" />
-                            <h2 className="text-2xl font-bold text-white">Scanning System</h2>
+                            <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Scanning System</h2>
                         </div>
                         <Button
                             onClick={() => setIsScanningInterfaceOpen(false)}
-                            className="text-gray-400 hover:text-white transition-colors"
+                            className={`${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'} transition-colors`}
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -695,7 +697,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                 className={`flex-shrink-0 px-4 py-3 rounded-lg border transition-all duration-200 ${
                                     activeScanTab === tab.id
                                         ? 'bg-accent-500 border-accent-500 text-white shadow-lg'
-                                        : 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-600/50 hover:border-gray-500'
+                                        : isDark ? 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-600/50 hover:border-gray-500' : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200 hover:border-gray-400'
                                 }`}
                             >
                                 <div className="flex items-center gap-2 mb-1">
@@ -710,24 +712,24 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                     {/* Tab Content */}
                     <div className="min-h-[600px]">
                         {activeScanTab === 'manual' && (
-                            <div className="bg-gray-900/30 rounded-lg p-6">
+                            <div className={`${isDark ? 'bg-gray-900/30' : 'bg-gray-50'} rounded-lg p-6`}>
                                 <div className="text-center mb-6">
                                     <QrCodeIcon className="w-12 h-12 text-accent-400 mx-auto mb-3" />
-                                    <h3 className="text-xl font-semibold text-white mb-2">Manual Label Scanner</h3>
-                                    <p className="text-gray-400">Upload and scan product labels with AI extraction. No BOM required.</p>
+                                    <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>Manual Label Scanner</h3>
+                                    <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>Upload and scan product labels with AI extraction. No BOM required.</p>
                                 </div>
                                 <div className="text-center py-8">
-                                    <p className="text-gray-500 mb-4">Manual label scanner component coming soon.</p>
+                                    <p className={`${isDark ? 'text-gray-500' : 'text-gray-400'} mb-4`}>Manual label scanner component coming soon.</p>
                                 </div>
                             </div>
                         )}
 
                         {activeScanTab === 'regulatory' && (
-                            <div className="bg-gray-900/30 rounded-lg p-6">
+                            <div className={`${isDark ? 'bg-gray-900/30' : 'bg-gray-50'} rounded-lg p-6`}>
                                 <div className="text-center mb-6">
                                     <SparklesIcon className="w-12 h-12 text-green-400 mx-auto mb-3" />
-                                    <h3 className="text-xl font-semibold text-white mb-2">Regulatory Compliance Scanner</h3>
-                                    <p className="text-gray-400">AI-powered regulatory scanning for state-specific compliance requirements.</p>
+                                    <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>Regulatory Compliance Scanner</h3>
+                                    <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>AI-powered regulatory scanning for state-specific compliance requirements.</p>
                                 </div>
                                 {selectedArtworkForScan ? (
                                     <RegulatoryScanModal
@@ -741,9 +743,9 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                     />
                                 ) : (
                                     <div className="text-center py-12">
-                                        <DocumentTextIcon className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                                        <h4 className="text-lg font-semibold text-gray-400 mb-2">Select Artwork to Scan</h4>
-                                        <p className="text-gray-500 mb-4">Choose an artwork file from the library above to begin regulatory compliance scanning.</p>
+                                        <DocumentTextIcon className={`w-16 h-16 ${isDark ? 'text-gray-600' : 'text-gray-400'} mx-auto mb-4`} />
+                                        <h4 className={`text-lg font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-2`}>Select Artwork to Scan</h4>
+                                        <p className={`${isDark ? 'text-gray-500' : 'text-gray-400'} mb-4`}>Choose an artwork file from the library above to begin regulatory compliance scanning.</p>
                                         <Button
                                             onClick={() => setIsScanningInterfaceOpen(false)}
                                             className="bg-accent-500 hover:bg-accent-600 text-white px-6 py-2 rounded-lg"
@@ -756,11 +758,11 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                         )}
 
                         {activeScanTab === 'batch' && (
-                            <div className="bg-gray-900/30 rounded-lg p-6">
+                            <div className={`${isDark ? 'bg-gray-900/30' : 'bg-gray-50'} rounded-lg p-6`}>
                                 <div className="text-center mb-6">
                                     <DocumentDuplicateIcon className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-                                    <h3 className="text-xl font-semibold text-white mb-2">Batch Artwork Verification</h3>
-                                    <p className="text-gray-400">Upload and verify multiple artwork files simultaneously with AI analysis.</p>
+                                    <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>Batch Artwork Verification</h3>
+                                    <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>Upload and verify multiple artwork files simultaneously with AI analysis.</p>
                                 </div>
                                 <BatchArtworkVerificationModal
                                     isOpen={true}
@@ -772,19 +774,19 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                         )}
 
                         {activeScanTab === 'compliance' && DAM_TIER_LIMITS[damTier].compliance && (
-                            <div className="bg-gray-900/30 rounded-lg p-6 space-y-6">
+                            <div className={`${isDark ? 'bg-gray-900/30' : 'bg-gray-50'} rounded-lg p-6 space-y-6`}>
                                 <div className="text-center mb-6">
                                     <DocumentTextIcon className="w-12 h-12 text-green-400 mx-auto mb-3" />
-                                    <h3 className="text-xl font-semibold text-white mb-2">Product Compliance</h3>
-                                    <p className="text-gray-400">Scan your BOMs and artwork for regulatory compliance issues.</p>
+                                    <h3 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>Product Compliance</h3>
+                                    <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>Scan your BOMs and artwork for regulatory compliance issues.</p>
                                 </div>
 
                                 {/* Link to full Compliance page */}
-                                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 mb-4">
+                                <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} border rounded-lg p-4 mb-4`}>
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <h4 className="font-medium text-gray-200">Need full regulatory research?</h4>
-                                            <p className="text-sm text-gray-400">Access state sources, Q&A, documents, and letter analysis</p>
+                                            <h4 className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>Need full regulatory research?</h4>
+                                            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Access state sources, Q&A, documents, and letter analysis</p>
                                         </div>
                                         <a
                                             href="/compliance"
@@ -810,12 +812,12 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
 
             <div className="flex gap-6 h-full">
                 {/* Folder Sidebar */}
-                <aside className={`${isSidebarCollapsed ? 'w-12' : 'w-64'} bg-gray-800/50 p-4 rounded-lg border border-gray-700 flex-shrink-0 flex flex-col transition-all duration-300`} style={{ minHeight: '600px' }}>
+                <aside className={`${isSidebarCollapsed ? 'w-12' : 'w-64'} ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} p-4 rounded-lg border flex-shrink-0 flex flex-col transition-all duration-300`} style={{ minHeight: '600px' }}>
                     <div className="flex items-center justify-between mb-4">
-                        {!isSidebarCollapsed && <h2 className="text-lg font-semibold text-white">Folders</h2>}
+                        {!isSidebarCollapsed && <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Folders</h2>}
                         <Button
                             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                            className="text-gray-400 hover:text-white transition-colors p-1"
+                            className={`${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'} transition-colors p-1`}
                             title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                         >
                             <svg className={`w-5 h-5 transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -838,17 +840,17 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                             value={newFolderName}
                                             onChange={e => setNewFolderName(e.target.value)}
                                             placeholder="New folder name..."
-                                            className="w-full bg-gray-700 p-2 rounded-md text-sm"
+                                            className={`w-full ${isDark ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-gray-100 text-gray-900 placeholder-gray-500 border border-gray-300'} p-2 rounded-md text-sm`}
                                             autoFocus
                                             onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
                                         />
                                         <div className="flex gap-2">
                                             <Button onClick={handleCreateFolder} className="flex-1 bg-accent-500 text-white font-semibold py-1 px-2 text-sm rounded-md">Create</Button>
-                                            <Button onClick={() => setIsCreatingFolder(false)} className="flex-1 bg-gray-600 text-white font-semibold py-1 px-2 text-sm rounded-md">Cancel</Button>
+                                            <Button onClick={() => setIsCreatingFolder(false)} className={`flex-1 ${isDark ? 'bg-gray-600' : 'bg-gray-300'} text-white font-semibold py-1 px-2 text-sm rounded-md`}>Cancel</Button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <Button onClick={() => setIsCreatingFolder(true)} className="w-full flex items-center justify-center gap-2 text-sm bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-3 rounded-md transition-colors">
+                                    <Button onClick={() => setIsCreatingFolder(true)} className={`w-full flex items-center justify-center gap-2 text-sm ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'} font-semibold py-2 px-3 rounded-md transition-colors`}>
                                         <PlusCircleIcon className="w-5 h-5" />
                                         Create Folder
                                     </Button>
@@ -920,8 +922,8 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                         }
                     />
                     <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="h-5 w-5 text-gray-400" /></div>
-                        <input type="text" placeholder="Search by filename, product name, or SKU..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-gray-800/50 border border-gray-700 text-white placeholder-gray-400 rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full" />
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className={`h-5 w-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} /></div>
+                        <input type="text" placeholder="Search by filename, product name, or SKU..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className={`${isDark ? 'bg-gray-800/50 border-gray-700 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 shadow-sm'} border rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full`} />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {processedArtwork.map(art => (
@@ -937,6 +939,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                 isSelected={selectedArtworkForDetails?.id === art.id}
                                 onEdit={() => setArtworkBeingEdited(art)}
                                 onShare={() => handleShareClick(art)}
+                                isDark={isDark}
                             />
                         ))}
                     </div>
@@ -944,12 +947,12 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
 
                 {/* Details Panel - Right Side */}
                 {selectedArtworkForDetails && (
-                    <aside className="w-80 bg-gray-800/50 p-6 rounded-lg border border-gray-700 flex-shrink-0 overflow-auto" style={{ maxHeight: '90vh' }}>
+                    <aside className={`w-80 ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} p-6 rounded-lg border flex-shrink-0 overflow-auto`} style={{ maxHeight: '90vh' }}>
                         <div className="flex justify-between items-start mb-4">
-                            <h2 className="text-lg font-semibold text-white">Artwork Details</h2>
+                            <h2 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Artwork Details</h2>
                             <Button
                                 onClick={() => setSelectedArtworkForDetails(null)}
-                                className="text-gray-400 hover:text-white transition-colors"
+                                className={`${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'} transition-colors`}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -958,7 +961,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                         </div>
 
                         {/* Preview */}
-                        <div className="mb-6 bg-gray-900 rounded-lg p-4 flex items-center justify-center aspect-square">
+                        <div className={`mb-6 ${isDark ? 'bg-gray-900' : 'bg-gray-100'} rounded-lg p-4 flex items-center justify-center aspect-square`}>
                             {selectedArtworkForDetails.url ? (
                                 <img
                                     src={selectedArtworkForDetails.url}
@@ -967,42 +970,44 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                                 />
                             ) : (
-                                <PhotoIcon className="w-20 h-20 text-gray-600" />
+                                <PhotoIcon className={`w-20 h-20 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
                             )}
                         </div>
 
                         {/* File Information */}
                         <div className="space-y-4">
                             <div>
-                                <label className="text-xs text-gray-500 uppercase tracking-wide">File Name</label>
-                                <p className="text-sm text-white mt-1 break-words">{selectedArtworkForDetails.fileName}</p>
+                                <label className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} uppercase tracking-wide`}>File Name</label>
+                                <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mt-1 break-words`}>{selectedArtworkForDetails.fileName}</p>
                             </div>
 
                             <div>
-                                <label className="text-xs text-gray-500 uppercase tracking-wide">Product</label>
-                                <p className="text-sm text-white mt-1">{selectedArtworkForDetails.productName}</p>
+                                <label className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} uppercase tracking-wide`}>Product</label>
+                                <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mt-1`}>{selectedArtworkForDetails.productName}</p>
                                 <p className="text-xs text-accent-400 mt-0.5">{selectedArtworkForDetails.productSku}</p>
                             </div>
 
                             <div>
-                                <label className="text-xs text-gray-500 uppercase tracking-wide">Revision</label>
-                                <p className="text-sm text-white mt-1">Rev {selectedArtworkForDetails.revision}</p>
+                                <label className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} uppercase tracking-wide`}>Revision</label>
+                                <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mt-1`}>Rev {selectedArtworkForDetails.revision}</p>
                             </div>
 
                             {selectedArtworkForDetails.fileType && (
                                 <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Type</label>
-                                    <p className="text-sm text-white mt-1 capitalize">{selectedArtworkForDetails.fileType}</p>
+                                    <label className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} uppercase tracking-wide`}>Type</label>
+                                    <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mt-1 capitalize`}>{selectedArtworkForDetails.fileType}</p>
                                 </div>
                             )}
 
                             {selectedArtworkForDetails.status && (
                                 <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Status</label>
+                                    <label className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} uppercase tracking-wide`}>Status</label>
                                     <span className={`inline-block mt-1 px-2 py-1 text-xs rounded-full ${
-                                        selectedArtworkForDetails.status === 'approved' ? 'bg-green-900/30 text-green-300 border border-green-700' :
-                                        selectedArtworkForDetails.status === 'draft' ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-700' :
-                                        'bg-gray-700 text-gray-300 border border-gray-600'
+                                        selectedArtworkForDetails.status === 'approved' 
+                                            ? isDark ? 'bg-green-900/30 text-green-300 border border-green-700' : 'bg-green-100 text-green-700 border border-green-300'
+                                            : selectedArtworkForDetails.status === 'draft' 
+                                                ? isDark ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-700' : 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                                                : isDark ? 'bg-gray-700 text-gray-300 border border-gray-600' : 'bg-gray-200 text-gray-600 border border-gray-300'
                                     }`}>
                                         {selectedArtworkForDetails.status}
                                     </span>
@@ -1011,94 +1016,94 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
 
                             {selectedArtworkForDetails.barcode && (
                                 <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Barcode</label>
-                                    <p className="text-sm text-white mt-1 font-mono">{selectedArtworkForDetails.barcode}</p>
+                                    <label className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} uppercase tracking-wide`}>Barcode</label>
+                                    <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mt-1 font-mono`}>{selectedArtworkForDetails.barcode}</p>
                                 </div>
                             )}
 
                             {selectedArtworkForDetails.verified && (
                                 <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Verification</label>
+                                    <label className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} uppercase tracking-wide`}>Verification</label>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <CheckCircleIcon className="w-4 h-4 text-green-400" />
-                                        <span className="text-sm text-green-300">Verified</span>
+                                        <CheckCircleIcon className={`w-4 h-4 ${isDark ? 'text-green-400' : 'text-green-500'}`} />
+                                        <span className={`text-sm ${isDark ? 'text-green-300' : 'text-green-600'}`}>Verified</span>
                                     </div>
                                     {selectedArtworkForDetails.verifiedBy && (
-                                        <p className="text-xs text-gray-400 mt-1">By {selectedArtworkForDetails.verifiedBy}</p>
+                                        <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>By {selectedArtworkForDetails.verifiedBy}</p>
                                     )}
                                 </div>
                             )}
 
                             {selectedArtworkForDetails.fileSize && (
                                 <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wide">File Size</label>
-                                    <p className="text-sm text-white mt-1">{(selectedArtworkForDetails.fileSize / 1024 / 1024).toFixed(2)} MB</p>
+                                    <label className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} uppercase tracking-wide`}>File Size</label>
+                                    <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mt-1`}>{(selectedArtworkForDetails.fileSize / 1024 / 1024).toFixed(2)} MB</p>
                                 </div>
                             )}
 
                             {selectedArtworkForDetails.uploadedAt && (
                                 <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Uploaded</label>
-                                    <p className="text-sm text-white mt-1">{new Date(selectedArtworkForDetails.uploadedAt).toLocaleDateString()}</p>
+                                    <label className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} uppercase tracking-wide`}>Uploaded</label>
+                                    <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mt-1`}>{new Date(selectedArtworkForDetails.uploadedAt).toLocaleDateString()}</p>
                                 </div>
                             )}
 
                             {selectedArtworkForDetails.notes && (
                                 <div>
-                                    <label className="text-xs text-gray-500 uppercase tracking-wide">Notes</label>
-                                    <p className="text-sm text-white mt-1 whitespace-pre-wrap">{selectedArtworkForDetails.notes}</p>
+                                    <label className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} uppercase tracking-wide`}>Notes</label>
+                                    <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mt-1 whitespace-pre-wrap`}>{selectedArtworkForDetails.notes}</p>
                                 </div>
                             )}
                         </div>
 
-                        <div className="mt-6 pt-4 border-t border-gray-700 space-y-3">
-                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Metadata Editor</h3>
+                        <div className={`mt-6 pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} space-y-3`}>
+                            <h3 className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wide`}>Metadata Editor</h3>
                             <div>
-                                <label className="text-xs text-gray-400">Display Name</label>
+                                <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Display Name</label>
                                 <input
                                     type="text"
                                     value={metadataDraft.fileName}
                                     onChange={e => handleMetadataChange('fileName', e.target.value)}
-                                    className="mt-1 w-full bg-gray-900/60 text-white text-sm rounded-md p-2 border border-gray-700 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
+                                    className={`mt-1 w-full ${isDark ? 'bg-gray-900/60 text-white border-gray-700' : 'bg-gray-50 text-gray-900 border-gray-300'} text-sm rounded-md p-2 border focus:border-accent-500 focus:ring-1 focus:ring-accent-500`}
                                 />
                             </div>
                             <div>
-                                <label className="text-xs text-gray-400">Notes</label>
+                                <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Notes</label>
                                 <textarea
                                     value={metadataDraft.notes}
                                     onChange={e => handleMetadataChange('notes', e.target.value)}
                                     rows={3}
-                                    className="mt-1 w-full bg-gray-900/60 text-white text-sm rounded-md p-2 border border-gray-700 focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
+                                    className={`mt-1 w-full ${isDark ? 'bg-gray-900/60 text-white border-gray-700' : 'bg-gray-50 text-gray-900 border-gray-300'} text-sm rounded-md p-2 border focus:border-accent-500 focus:ring-1 focus:ring-accent-500`}
                                 />
                             </div>
                             <Button
                                 onClick={handleMetadataSave}
                                 disabled={!metadataDirty || isSavingMetadata}
-                                className="w-full bg-accent-500 hover:bg-accent-600 disabled:bg-gray-700 disabled:text-gray-400 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                                className={`w-full bg-accent-500 hover:bg-accent-600 ${isDark ? 'disabled:bg-gray-700 disabled:text-gray-400' : 'disabled:bg-gray-200 disabled:text-gray-400'} text-white font-semibold py-2 px-4 rounded-md transition-colors`}
                             >
                                 {isSavingMetadata ? 'Saving...' : 'Save Details'}
                             </Button>
                         </div>
 
                         {complianceHighlights.length > 0 && (
-                            <div className="mt-6 pt-4 border-t border-gray-700">
-                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Compliance Snapshot</h3>
+                            <div className={`mt-6 pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                                <h3 className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wide mb-2`}>Compliance Snapshot</h3>
                                 <div className="space-y-2">
                                     {complianceHighlights.map(item => (
-                                        <div key={item.label} className="flex justify-between text-sm text-gray-300">
-                                            <span className="text-gray-400">{item.label}</span>
+                                        <div key={item.label} className={`flex justify-between text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                                            <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>{item.label}</span>
                                             <span className={item.accent ?? ''}>{item.value}</span>
                                         </div>
                                     ))}
                                     {selectedArtworkForDetails?.scanError && (
-                                        <p className="text-xs text-red-300">Scan Error: {selectedArtworkForDetails.scanError}</p>
+                                        <p className={`text-xs ${isDark ? 'text-red-300' : 'text-red-600'}`}>Scan Error: {selectedArtworkForDetails.scanError}</p>
                                     )}
                                 </div>
                             </div>
                         )}
 
                         {/* Actions */}
-                        <div className="mt-6 pt-6 border-t border-gray-700 space-y-2">
+                        <div className={`mt-6 pt-6 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} space-y-2`}>
                             <Button 
                                 onClick={() => handleDownload(selectedArtworkForDetails)}
                                 className="flex items-center justify-center gap-2 w-full bg-accent-500 hover:bg-accent-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
@@ -1124,7 +1129,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                             </Button>
                             <Button
                                 onClick={() => handleEditClick(selectedArtworkForDetails)}
-                                className="flex items-center justify-center gap-2 w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                                className={`flex items-center justify-center gap-2 w-full ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'} text-white font-semibold py-2 px-4 rounded-md transition-colors`}
                             >
                                 <DocumentDuplicateIcon className="w-5 h-5" />
                                 Edit Artwork
@@ -1138,7 +1143,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                             </Button>
                             <Button
                                 onClick={() => handleCopyLink(selectedArtworkForDetails)}
-                                className="flex items-center justify-center gap-2 w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
+                                className={`flex items-center justify-center gap-2 w-full ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'} text-white font-semibold py-2 px-4 rounded-md transition-colors`}
                             >
                                 <DocumentDuplicateIcon className="w-5 h-5" />
                                 Copy Share Link
@@ -1146,33 +1151,33 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                         </div>
 
                         {selectedShareHistory.length > 0 && (
-                            <div className="mt-6 pt-6 border-t border-gray-700 space-y-3">
-                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Share History</h3>
+                            <div className={`mt-6 pt-6 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} space-y-3`}>
+                                <h3 className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wide`}>Share History</h3>
                                 <div className="space-y-3">
                                     {selectedShareHistory.slice(0, 4).map(event => (
-                                        <div key={event.id} className="bg-gray-900/40 rounded-md p-3 border border-gray-800">
-                                            <div className="flex items-center justify-between text-xs text-gray-400">
+                                        <div key={event.id} className={`${isDark ? 'bg-gray-900/40 border-gray-800' : 'bg-gray-50 border-gray-200'} rounded-md p-3 border`}>
+                                            <div className={`flex items-center justify-between text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                                 <span>{new Date(event.timestamp).toLocaleString()}</span>
                                                 <span className={
                                                     event.channel === 'resend'
-                                                        ? 'text-emerald-300'
+                                                        ? isDark ? 'text-emerald-300' : 'text-emerald-600'
                                                         : event.channel === 'gmail'
-                                                            ? 'text-emerald-200'
-                                                            : 'text-yellow-300'
+                                                            ? isDark ? 'text-emerald-200' : 'text-emerald-500'
+                                                            : isDark ? 'text-yellow-300' : 'text-yellow-600'
                                                 }>
                                                     {event.channel ? event.channel.toUpperCase() : event.sentViaGmail ? 'GMAIL' : 'SIM'}
                                                 </span>
                                             </div>
-                                            <p className="text-sm text-white mt-1 truncate">
+                                            <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mt-1 truncate`}>
                                                 To: {event.to.join(', ')}
                                             </p>
                                             {event.cc.length > 0 && (
-                                                <p className="text-xs text-gray-400 truncate">
+                                                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} truncate`}>
                                                     Cc: {event.cc.join(', ')}
                                                 </p>
                                             )}
                                             {event.attachmentHash && (
-                                                <p className="text-[10px] text-gray-500 mt-1 font-mono">
+                                                <p className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'} mt-1 font-mono`}>
                                                     Hash: {event.attachmentHash.slice(0, 12)}…
                                                 </p>
                                             )}
@@ -1290,7 +1295,8 @@ const ArtworkCard: React.FC<{
     isSelected: boolean;
     onEdit: () => void;
     onShare: () => void;
-}> = ({art, selectedArtworkIds, onCheckboxChange, onScanClick, onUpdateArtwork, artworkFolders, onSelect, isSelected, onEdit, onShare}) => {
+    isDark: boolean;
+}> = ({art, selectedArtworkIds, onCheckboxChange, onScanClick, onUpdateArtwork, artworkFolders, onSelect, isSelected, onEdit, onShare, isDark}) => {
     
     const handleMove = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newFolderId = e.target.value === 'unassigned' ? undefined : e.target.value;
@@ -1302,40 +1308,40 @@ const ArtworkCard: React.FC<{
             key={art.id} 
             onClick={onSelect}
             data-testid="artwork-card"
-            className={`bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden group flex flex-col cursor-pointer transition-all hover:shadow-xl ${
-                isSelected ? 'border-accent-500 ring-2 ring-accent-500/50' : 'border-gray-700 hover:border-gray-600'
+            className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden group flex flex-col cursor-pointer transition-all hover:shadow-xl ${
+                isSelected ? 'border-accent-500 ring-2 ring-accent-500/50' : isDark ? 'border-gray-700 hover:border-gray-600' : 'border-gray-200 hover:border-gray-300'
             }`}
         >
-            <div className="relative aspect-square bg-gray-900 flex items-center justify-center">
-                <PhotoIcon className="w-16 h-16 text-gray-600" />
+            <div className={`relative aspect-square ${isDark ? 'bg-gray-900' : 'bg-gray-100'} flex items-center justify-center`}>
+                <PhotoIcon className={`w-16 h-16 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
                 <input 
                     type="checkbox" 
                     checked={selectedArtworkIds.includes(art.id)} 
                     onChange={(e) => onCheckboxChange(art.id, e.target.checked)} 
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute top-2 left-2 h-5 w-5 rounded bg-gray-700 text-accent-500 focus:ring-accent-500 border-gray-600" 
+                    className={`absolute top-2 left-2 h-5 w-5 rounded ${isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'} text-accent-500 focus:ring-accent-500`} 
                 />
             </div>
             <div className="p-3 flex-grow">
-                <p className="text-sm font-semibold text-white truncate" title={art.fileName}>{art.fileName}</p>
-                <p className="text-xs text-gray-400">Rev {art.revision}</p>
-                <p className="text-xs text-accent-300 mt-1 truncate" title={art.productName}>{art.productName}</p>
+                <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'} truncate`} title={art.fileName}>{art.fileName}</p>
+                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Rev {art.revision}</p>
+                <p className={`text-xs ${isDark ? 'text-accent-300' : 'text-accent-600'} mt-1 truncate`} title={art.productName}>{art.productName}</p>
             </div>
-             <div className="p-2 bg-gray-800 border-t border-gray-700 space-y-2" onClick={(e) => e.stopPropagation()}>
+             <div className={`p-2 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'} border-t space-y-2`} onClick={(e) => e.stopPropagation()}>
                 <div>
-                     <select onChange={handleMove} value={art.folderId || 'unassigned'} className="w-full text-xs bg-gray-700 p-1.5 rounded-md focus:ring-accent-500 focus:border-accent-500 border-gray-600">
+                     <select onChange={handleMove} value={art.folderId || 'unassigned'} className={`w-full text-xs ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} p-1.5 rounded-md focus:ring-accent-500 focus:border-accent-500 border`}>
                         <option value="unassigned">Move to...</option>
                         {artworkFolders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                      </select>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                    <a href={art.url} download className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
+                    <a href={art.url} download className={`flex items-center justify-center gap-1 w-full text-center ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'} text-xs font-bold py-1.5 px-2 rounded-md transition-colors`}>
                         <ArrowDownTrayIcon className="w-4 h-4" /> <span>Download</span>
                     </a>
                     <Button onClick={(e) => { e.stopPropagation(); onScanClick(art); }} className="flex items-center justify-center gap-1 w-full text-center bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
                         <SparklesIcon className="w-4 h-4" /> <span>Scan</span>
                     </Button>
-                    <Button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="flex items-center justify-center gap-1 w-full text-center bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-2 rounded-md transition-colors">
+                    <Button onClick={(e) => { e.stopPropagation(); onEdit(); }} className={`flex items-center justify-center gap-1 w-full text-center ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'} text-xs font-bold py-1.5 px-2 rounded-md transition-colors`}>
                         <PhotoIcon className="w-4 h-4" /> <span>Edit</span>
                     </Button>
                     <Button

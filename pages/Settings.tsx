@@ -100,7 +100,7 @@ const Settings: React.FC<SettingsProps> = ({
   }, [companyEmailSettings]);
 
   const { godMode, setGodMode, session } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, isDark } = useTheme();
   const { rowDensity, setRowDensity, fontScale, setFontScale } = useUserPreferences();
 
   const isOpsAdmin = currentUser.role === 'Admin' || currentUser.department === 'Operations';
@@ -117,11 +117,19 @@ const Settings: React.FC<SettingsProps> = ({
     addToast('Company email policy updated.', 'success');
   };
 
-  // Consistent card styling used across all sections
-  const cardClass = "bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700";
-  const labelClass = "text-xs font-semibold text-gray-400 uppercase tracking-wide";
-  const inputClass = "w-full bg-gray-900/60 border border-gray-700 rounded-lg p-3 text-white text-sm focus:border-accent-400 focus:ring-1 focus:ring-accent-400 transition-colors";
-  const selectClass = "w-full bg-gray-900/60 border border-gray-700 rounded-lg p-3 text-white text-sm focus:border-accent-400 focus:ring-1 focus:ring-accent-400 transition-colors";
+  // Consistent card styling used across all sections - theme-aware
+  const cardClass = isDark 
+    ? "bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700"
+    : "bg-white rounded-xl p-6 border border-gray-200 shadow-sm";
+  const labelClass = isDark 
+    ? "text-xs font-semibold text-gray-400 uppercase tracking-wide"
+    : "text-xs font-semibold text-gray-500 uppercase tracking-wide";
+  const inputClass = isDark 
+    ? "w-full bg-gray-900/60 border border-gray-700 rounded-lg p-3 text-white text-sm focus:border-accent-400 focus:ring-1 focus:ring-accent-400 transition-colors"
+    : "w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 text-sm focus:border-accent-400 focus:ring-1 focus:ring-accent-400 transition-colors";
+  const selectClass = isDark 
+    ? "w-full bg-gray-900/60 border border-gray-700 rounded-lg p-3 text-white text-sm focus:border-accent-400 focus:ring-1 focus:ring-accent-400 transition-colors"
+    : "w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 text-sm focus:border-accent-400 focus:ring-1 focus:ring-accent-400 transition-colors";
 
   return (
     <>

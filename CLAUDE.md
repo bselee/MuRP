@@ -10,7 +10,7 @@ MuRP (Manufacturing Resource Planning) is a production-ready system built with R
 
 ### Development
 ```bash
-npm run dev          # Vite dev server (port 3000 or APP_PORT env var)
+npm run dev          # Vite dev server (port 5173 by default)
 npm run build        # TypeScript + Vite production build
 npm run preview      # Preview production build locally
 ```
@@ -23,6 +23,12 @@ npm run e2e:ui       # Playwright UI mode for debugging
 npm run test:transformers      # Schema transformer smoke tests
 npm run test:transformers:all  # Comprehensive schema validation
 npm run test:inventory-ui      # Inventory display tests
+
+# Run a single E2E test file
+npx playwright test e2e/vendors.spec.ts
+
+# Run specific test by name
+npx playwright test -g "should display vendor list"
 ```
 
 ### Supabase Operations
@@ -131,13 +137,13 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 ```bash
 # 1. Find highest migration number
-ls supabase/migrations | sort | tail -1  # Example: 091_cleanup_inactive_finale_data.sql
+ls supabase/migrations | sort | tail -1  # Example: 108_state_regulatory_sources.sql
 
-# 2. Create new migration (next number: 092)
+# 2. Create new migration (next number: 109)
 supabase migration new feature_name
 
 # 3. Rename to sequential number
-mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/092_feature_name.sql
+mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/109_feature_name.sql
 
 # 4. Test locally
 supabase db reset
@@ -340,12 +346,13 @@ ls supabase/migrations | sort | tail -1
 - **Component wrapping**: All pages wrapped in `ErrorBoundary`
 - **State management**: React state only - no Redux/MobX/Zustand
 - **Imports**: Absolute imports from project root using `@/` alias
+- **Session tracking**: Log notable changes to `docs/SESSION_SUMMARY_2025-11-29_to_CURRENT.md` before ending sessions
 
 ## Key Documentation References
 
 - `SCHEMA_ARCHITECTURE.md` - Complete 4-layer schema design (read before modifying data transformations)
 - `docs/MIGRATION_CONVENTIONS.md` - Supabase migration numbering rules
+- `docs/CRITICAL_ARCHITECTURE.md` - Complete system architecture overview
 - `SUPABASE_DEPLOYMENT_GUIDE.md` - Deployment procedures
 - `API_INGESTION_SETUP.md` - API integration setup
-- `.github/copilot-instructions.md` - Comprehensive development guidelines
-- `README.md` - Quick start and feature overview
+- `.github/copilot-instructions.md` - Comprehensive development guidelines including TFR protocol, Vercel deployment, and session management
