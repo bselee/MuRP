@@ -260,28 +260,17 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
         };
       });
 
-      // CRITICAL: App-level filter to exclude globally excluded categories
-      // Users can configure this in Settings or Inventory page
-      // This uses the global category filter from useGlobalCategoryFilter hook
-      const excludedSet = getGlobalExcludedCategories();
-      console.log(`[useSupabaseInventory] Global excluded categories:`, Array.from(excludedSet));
+      // TEMPORARILY DISABLED: Global category filter was causing issues
+      // TODO: Re-enable after debugging why all items were being filtered
+      // const excludedSet = getGlobalExcludedCategories();
+      // const filtered = transformed.filter(item => {
+      //   if (!item.category) return true;
+      //   return !excludedSet.has(item.category.toLowerCase().trim());
+      // });
       
-      const filtered = transformed.filter(item => {
-        // Items with no category should NOT be filtered out
-        if (!item.category) return true;
-        const isExcluded = excludedSet.has(item.category.toLowerCase().trim());
-        return !isExcluded;
-      });
+      console.log(`[useSupabaseInventory] Total items: ${transformed.length} (category filter DISABLED for debugging)`);
       
-      console.log(`[useSupabaseInventory] Total: ${transformed.length}, After filter: ${filtered.length}, Filtered out: ${transformed.length - filtered.length}`);
-      
-      // SAFETY: If filtering removed ALL items, something is wrong - show unfiltered
-      if (filtered.length === 0 && transformed.length > 0) {
-        console.warn('[useSupabaseInventory] ⚠️ Filter removed ALL items! Showing unfiltered data. Check localStorage global-excluded-categories');
-        setData(transformed);
-      } else {
-        setData(filtered);
-      }
+      setData(transformed);
     } catch (err) {
       console.error('[useSupabaseInventory] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch inventory'));

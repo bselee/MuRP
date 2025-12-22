@@ -2,10 +2,11 @@
  * Workflow Panel Component
  *
  * Displays available workflows with run buttons and results.
- * Integrates with the workflow orchestrator service.
+ * Integrates with the workflow orchestrator service and the
+ * new action execution system for persistent pending actions.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   runMorningBriefing,
   runEmailProcessingWorkflow,
@@ -14,7 +15,14 @@ import {
   type WorkflowResult,
   type PendingAction,
 } from '../../services/workflowOrchestrator';
-import { SunIcon, MailIcon, ShoppingCartIcon, PlayIcon, CheckCircleIcon, XCircleIcon, ClockIcon, AlertTriangleIcon } from '../icons';
+import {
+  queueAction,
+  getPendingActions,
+  approveAction,
+  rejectAction,
+  type PendingAction as DBPendingAction,
+} from '../../services/actionExecutors';
+import { SunIcon, MailIcon, ShoppingCartIcon, PlayIcon, CheckCircleIcon, XCircleIcon, ClockIcon, AlertTriangleIcon, RefreshIcon, DatabaseIcon } from '../icons';
 
 interface WorkflowDefinition {
   id: string;
@@ -56,6 +64,25 @@ export const WorkflowPanel: React.FC<{ userId: string }> = ({ userId }) => {
   const [activeWorkflow, setActiveWorkflow] = useState<string | null>(null);
   const [results, setResults] = useState<Map<string, WorkflowResult>>(new Map());
   const [expandedWorkflow, setExpandedWorkflow] = useState<string | null>(null);
+  const [dbPendingActions, setDbPendingActions] = useState<DBPendingAction[]>([]);
+  const [loadingActions, setLoadingActions] = useState(false);
+  const [executingAction, setExecutingAction] = useState<string | null>(null);
+
+  // Load persistent pending actions from database
+  const loadPendingActions = async () => {
+    setLoadingActions(true);
+    try {
+      const actions = await getPendingActions(userId);
+      setDbPendingActions(actions);
+    } catch (err) {
+      console.error('Failed to load pending actions:', err);
+    }
+    setLoadingActions(false);
+  };
+
+  useEffect(() => {
+    loadPendingActions();
+  }, [userId]);
 
   const runWorkflow = async (workflow: WorkflowDefinition) => {
     setActiveWorkflow(workflow.id);
@@ -63,10 +90,50 @@ export const WorkflowPanel: React.FC<{ userId: string }> = ({ userId }) => {
       const result = await workflow.runner(userId);
       setResults(prev => new Map(prev).set(workflow.id, result));
       setExpandedWorkflow(workflow.id);
+
+      // Persist pending actions to database for durability
+      for (const action of result.pendingActions) {
+        await queueAction({
+          agentIdentifier: action.agent,
+          actionType: mapActionType(action.type),
+          actionLabel: action.description,
+          payload: action.data,
+          confidence: 0.85, // Default confidence
+          priority: mapPriority(action.priority),
+          reasoning: action.suggestedAction,
+          userId,
+        });
+      }
+
+      // Refresh the persistent actions list
+      await loadPendingActions();
     } catch (err: any) {
       console.error('Workflow failed:', err);
     }
     setActiveWorkflow(null);
+  };
+
+  // Map workflow action types to database action types
+  const mapActionType = (type: string): DBPendingAction['actionType'] => {
+    const typeMap: Record<string, DBPendingAction['actionType']> = {
+      'create_po': 'create_po',
+      'send_followup': 'send_email',
+      'send_email': 'send_email',
+      'process_emails': 'custom',
+      'confirm_extraction': 'update_inventory',
+    };
+    return typeMap[type] || 'custom';
+  };
+
+  // Map priority levels
+  const mapPriority = (priority: string): DBPendingAction['priority'] => {
+    const priorityMap: Record<string, DBPendingAction['priority']> = {
+      'critical': 'urgent',
+      'high': 'high',
+      'medium': 'normal',
+      'low': 'low',
+    };
+    return priorityMap[priority] || 'normal';
   };
 
   const handleApproveAction = async (action: PendingAction, workflowId: string) => {
@@ -106,12 +173,50 @@ export const WorkflowPanel: React.FC<{ userId: string }> = ({ userId }) => {
     }
   };
 
+  // Handle approval of database-persisted actions
+  const handleApproveDBAction = async (action: DBPendingAction) => {
+    setExecutingAction(action.id);
+    try {
+      const result = await approveAction(action.id, userId);
+      if (result.success) {
+        // Remove from local state
+        setDbPendingActions(prev => prev.filter(a => a.id !== action.id));
+      }
+    } catch (err) {
+      console.error('Failed to approve action:', err);
+    }
+    setExecutingAction(null);
+  };
+
+  // Handle rejection of database-persisted actions
+  const handleRejectDBAction = async (action: DBPendingAction, reason?: string) => {
+    setExecutingAction(action.id);
+    try {
+      await rejectAction(action.id, userId, reason);
+      // Remove from local state
+      setDbPendingActions(prev => prev.filter(a => a.id !== action.id));
+    } catch (err) {
+      console.error('Failed to reject action:', err);
+    }
+    setExecutingAction(null);
+  };
+
+  // Get priority color
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-500/20 text-red-400 border-red-800';
+      case 'high': return 'bg-amber-500/20 text-amber-400 border-amber-800';
+      case 'normal': return 'bg-blue-500/20 text-blue-400 border-blue-800';
+      default: return 'bg-gray-500/20 text-gray-400 border-gray-700';
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+          <h2 className="text-xl font-bold text-white dark:text-white flex items-center gap-2">
             <PlayIcon className="w-5 h-5 text-accent-400" />
             Workflows
           </h2>
@@ -120,6 +225,90 @@ export const WorkflowPanel: React.FC<{ userId: string }> = ({ userId }) => {
           </p>
         </div>
       </div>
+
+      {/* Persistent Pending Actions Queue */}
+      {dbPendingActions.length > 0 && (
+        <div className="bg-amber-900/20 border border-amber-700 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-amber-400 flex items-center gap-2">
+              <DatabaseIcon className="w-5 h-5" />
+              Pending Actions ({dbPendingActions.length})
+            </h3>
+            <button
+              onClick={loadPendingActions}
+              disabled={loadingActions}
+              className="text-amber-400 hover:text-amber-300 p-1 rounded"
+            >
+              <RefreshIcon className={`w-4 h-4 ${loadingActions ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+          <p className="text-xs text-amber-400/70 mb-3">
+            These actions were generated by agent workflows and persisted for your review.
+          </p>
+          <div className="space-y-2">
+            {dbPendingActions.map(action => (
+              <div
+                key={action.id}
+                className={`p-3 rounded-lg border ${getPriorityColor(action.priority)}`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`
+                        text-xs px-2 py-0.5 rounded uppercase font-bold
+                        ${action.priority === 'urgent'
+                          ? 'bg-red-500/30 text-red-300'
+                          : action.priority === 'high'
+                            ? 'bg-amber-500/30 text-amber-300'
+                            : 'bg-gray-600/30 text-gray-300'
+                        }
+                      `}>
+                        {action.priority}
+                      </span>
+                      <span className="text-xs text-gray-500">{action.agentIdentifier || 'Unknown Agent'}</span>
+                      {action.confidence && (
+                        <span className="text-xs text-gray-500">
+                          ({Math.round(action.confidence * 100)}% confidence)
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-white font-medium">{action.actionLabel}</p>
+                    {action.reasoning && (
+                      <p className="text-sm text-gray-400 mt-1">{action.reasoning}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Created: {action.createdAt.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleRejectDBAction(action, 'Skipped by user')}
+                      disabled={executingAction === action.id}
+                      className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
+                    >
+                      Skip
+                    </button>
+                    <button
+                      onClick={() => handleApproveDBAction(action)}
+                      disabled={executingAction === action.id}
+                      className="px-3 py-1.5 text-sm bg-accent-500 hover:bg-accent-600 text-white rounded transition-colors flex items-center gap-1 disabled:opacity-50"
+                    >
+                      {executingAction === action.id ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Executing...
+                        </>
+                      ) : (
+                        'Execute'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Workflow Cards */}
       <div className="space-y-4">

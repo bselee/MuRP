@@ -34,6 +34,7 @@ import {
   CloudUpload,
   Code2,
   Copy,
+  Database,
   DollarSign,
   ExternalLink,
   Eye,
@@ -227,3 +228,4 @@ export const CodeBracketIcon = wrapIcon(Code2);
 export const CommandLineIcon = wrapIcon(SquareTerminal);
 export const BracesIcon = wrapIcon(Braces);
 export const ZapIcon = wrapIcon(Zap);
+export const DatabaseIcon = wrapIcon(Database);

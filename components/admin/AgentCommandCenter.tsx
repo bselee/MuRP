@@ -35,6 +35,8 @@ import {
   PlusIcon,
   ClipboardCopyIcon,
   CheckCircleIcon,
+  TrendingUpIcon,
+  TrendingDownIcon,
 } from '../icons';
 
 interface AgentCommandCenterProps {
@@ -300,6 +302,19 @@ const AgentCard: React.FC<{
 
   const trustScorePercent = Math.round(agent.trustScore * 100);
 
+  // Simulate trend based on trust score (in production, this would come from agent_trust_scores view)
+  // High trust tends toward stable/improving, low trust toward declining
+  const getTrend = (): 'improving' | 'stable' | 'declining' => {
+    if (trustScorePercent >= 85) return 'improving';
+    if (trustScorePercent >= 70) return 'stable';
+    if (trustScorePercent >= 50) return Math.random() > 0.5 ? 'stable' : 'declining';
+    return 'declining';
+  };
+  const trend = getTrend();
+
+  const TrendIcon = trend === 'improving' ? TrendingUpIcon :
+                    trend === 'declining' ? TrendingDownIcon : null;
+
   return (
     <div className={`relative group bg-gray-800 rounded-xl border transition-all duration-300 ${
       agent.isActive ? 'border-gray-700 hover:border-accent-500/50' : 'border-gray-800 opacity-60'
@@ -317,7 +332,7 @@ const AgentCard: React.FC<{
           <div className="p-3 bg-gray-900 rounded-lg shadow-inner">
             {getIcon()}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end gap-1">
             <span className="text-xs font-mono text-gray-500">TRUST</span>
             <div className={`flex items-center gap-1 px-2 py-1 rounded border ${
               trustScorePercent >= 80 ? 'bg-green-900/20 border-green-800' :
@@ -330,7 +345,19 @@ const AgentCard: React.FC<{
               }`}>
                 {trustScorePercent}%
               </span>
+              {TrendIcon && (
+                <TrendIcon className={`w-4 h-4 ${
+                  trend === 'improving' ? 'text-green-400' : 'text-red-400'
+                }`} />
+              )}
             </div>
+            <span className={`text-[10px] ${
+              trend === 'improving' ? 'text-green-400' :
+              trend === 'declining' ? 'text-red-400' : 'text-gray-500'
+            }`}>
+              {trend === 'improving' ? 'improving' :
+               trend === 'declining' ? 'declining' : 'stable'}
+            </span>
           </div>
         </div>
 
