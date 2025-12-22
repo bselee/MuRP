@@ -666,7 +666,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     }, [inventory, selectedCategories, selectedVendors]);
 
     const processedInventory = useMemo(() => {
-        console.log('[Inventory] Processing inventory, input count:', inventory.length);
         let filteredItems = [...inventory];
 
         // Multi-select category filter with exclusion support
@@ -682,7 +681,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 // Filter by selected categories
                 return selectedCategories.has(category);
             });
-            console.log(`[Inventory] After category filter: ${filteredItems.length} (was ${before})`);
         }
 
         if (filters.status) {
@@ -723,17 +721,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
         // Recent only filter - show items updated in last 7 days
         if (showRecentOnly) {
-            const before = filteredItems.length;
             const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
             filteredItems = filteredItems.filter(item => {
                 if (!item.lastSyncAt) return false;
                 const updateTime = new Date(item.lastSyncAt);
                 return updateTime >= sevenDaysAgo;
             });
-            console.log(`[Inventory] After showRecentOnly filter: ${filteredItems.length} (was ${before})`);
         }
-        
-        console.log('[Inventory] Final processed count:', filteredItems.length);
 
         // Sorting logic
         if (sortConfig !== null) {
@@ -1085,15 +1079,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     return (
         <>
             {loading && <LoadingOverlay />}
-            {/* DEBUG: Show inventory count received */}
-            {!loading && inventory.length === 0 && (
-                <div className="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mb-4">
-                    <strong>DEBUG:</strong> Inventory prop is empty (length: {inventory.length}).
-                    Check browser console for [useSupabaseInventory] logs.
-                    <br />
-                    <small>This message will be removed once the issue is fixed.</small>
-                </div>
-            )}
             <div className="space-y-6">
                 <PageHeader
                     title="Inventory"

@@ -240,11 +240,7 @@ const AppShell: React.FC = () => {
   const users = userProfiles;
   const googleAuthService = useMemo(() => getGoogleAuthService(), []);
   const gmailService = useMemo(() => getGoogleGmailService(), []);
-  const inventory = useMemo(() => {
-    const result = (isE2ETestMode ? mockInventory : inventoryData) ?? [];
-    console.log('[App] inventory useMemo:', { isE2ETestMode, inventoryDataLength: inventoryData?.length, resultLength: result.length });
-    return result;
-  }, [isE2ETestMode, inventoryData]);
+  const inventory = useMemo(() => (isE2ETestMode ? mockInventory : inventoryData) ?? [], [isE2ETestMode, inventoryData]);
   const boms = useMemo(() => (isE2ETestMode ? mockBOMs : bomsData) ?? [], [isE2ETestMode, bomsData]);
   const purchaseOrders = useMemo(() => purchaseOrdersData ?? [], [purchaseOrdersData]);
   const vendors = isE2ETestMode ? mockVendors : vendorsData;
