@@ -638,33 +638,34 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         });
     };
 
-    const processedInventory = useMemo(() => {
-        let filteredItems = [...inventory];
-
-        // SAFETY: If inventory has data but filters would result in nothing, 
-        // clear the problematic filters
-        if (inventory.length > 0) {
-            // Check if selectedCategories would filter out everything
-            if (selectedCategories.size > 0) {
-                const inventoryCategories = new Set(inventory.map(i => normalizeCategory(i.category)));
-                const hasValidCategory = Array.from(selectedCategories).some(cat => inventoryCategories.has(cat));
-                if (!hasValidCategory) {
-                    console.warn('[Inventory] Selected categories do not match any inventory - clearing filter');
-                    localStorage.removeItem('inventory-selected-categories');
-                    setSelectedCategories(new Set());
-                }
-            }
-            // Check if selectedVendors would filter out everything
-            if (selectedVendors.size > 0) {
-                const inventoryVendors = new Set(inventory.map(i => i.vendorId).filter(Boolean));
-                const hasValidVendor = Array.from(selectedVendors).some(v => inventoryVendors.has(v));
-                if (!hasValidVendor) {
-                    console.warn('[Inventory] Selected vendors do not match any inventory - clearing filter');
-                    localStorage.removeItem('inventory-selected-vendors');
-                    setSelectedVendors(new Set());
-                }
+    // SAFETY: Auto-clear invalid filters when inventory loads
+    useEffect(() => {
+        if (inventory.length === 0) return;
+        
+        // Check if selectedCategories would filter out everything
+        if (selectedCategories.size > 0) {
+            const inventoryCategories = new Set(inventory.map(i => normalizeCategory(i.category)));
+            const hasValidCategory = Array.from(selectedCategories).some(cat => inventoryCategories.has(cat));
+            if (!hasValidCategory) {
+                console.warn('[Inventory] Selected categories do not match any inventory - clearing filter');
+                localStorage.removeItem('inventory-selected-categories');
+                setSelectedCategories(new Set());
             }
         }
+        // Check if selectedVendors would filter out everything
+        if (selectedVendors.size > 0) {
+            const inventoryVendors = new Set(inventory.map(i => i.vendorId).filter(Boolean));
+            const hasValidVendor = Array.from(selectedVendors).some(v => inventoryVendors.has(v));
+            if (!hasValidVendor) {
+                console.warn('[Inventory] Selected vendors do not match any inventory - clearing filter');
+                localStorage.removeItem('inventory-selected-vendors');
+                setSelectedVendors(new Set());
+            }
+        }
+    }, [inventory, selectedCategories, selectedVendors]);
+
+    const processedInventory = useMemo(() => {
+        let filteredItems = [...inventory];
 
         // Multi-select category filter with exclusion support
         if (selectedCategories.size > 0) {
