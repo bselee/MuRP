@@ -29,7 +29,7 @@ import type {
 } from '../types';
 import { mockBOMs, mockUsers } from '../types';
 import { isE2ETesting } from '../lib/auth/guards';
-import { isGloballyExcludedCategory } from './useGlobalCategoryFilter';
+import { isGloballyExcludedCategory, getGlobalExcludedCategories } from './useGlobalCategoryFilter';
 
 // Re-export for backward compatibility
 export { isGloballyExcludedCategory as isExcludedCategory } from './useGlobalCategoryFilter';
@@ -263,11 +263,25 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
       // CRITICAL: App-level filter to exclude globally excluded categories
       // Users can configure this in Settings or Inventory page
       // This uses the global category filter from useGlobalCategoryFilter hook
-      const filtered = transformed.filter(item => !isGloballyExcludedCategory(item.category));
+      const excludedSet = getGlobalExcludedCategories();
+      console.log(`[useSupabaseInventory] Global excluded categories:`, Array.from(excludedSet));
       
-      console.log(`[useSupabaseInventory] Filtered ${transformed.length - filtered.length} items with globally excluded categories`);
-
-      setData(filtered);
+      const filtered = transformed.filter(item => {
+        // Items with no category should NOT be filtered out
+        if (!item.category) return true;
+        const isExcluded = excludedSet.has(item.category.toLowerCase().trim());
+        return !isExcluded;
+      });
+      
+      console.log(`[useSupabaseInventory] Total: ${transformed.length}, After filter: ${filtered.length}, Filtered out: ${transformed.length - filtered.length}`);
+      
+      // SAFETY: If filtering removed ALL items, something is wrong - show unfiltered
+      if (filtered.length === 0 && transformed.length > 0) {
+        console.warn('[useSupabaseInventory] ⚠️ Filter removed ALL items! Showing unfiltered data. Check localStorage global-excluded-categories');
+        setData(transformed);
+      } else {
+        setData(filtered);
+      }
     } catch (err) {
       console.error('[useSupabaseInventory] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch inventory'));
