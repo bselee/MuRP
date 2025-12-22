@@ -248,13 +248,14 @@ export async function getAgentUsageSummary(): Promise<AgentUsageSummary[]> {
 
 /**
  * Get detailed cost breakdown for all agents
+ * Uses agent_definitions (unified source) instead of deprecated agent_configs
  */
 export async function getAgentCostBreakdown(): Promise<AgentCostBreakdown[]> {
   try {
-    // Get base agent info
+    // Get base agent info from unified agent_definitions table
     const { data: agents, error: agentsError } = await supabase
-      .from('agent_configs')
-      .select('agent_identifier, display_name, total_runs, total_cost, total_tokens_used');
+      .from('agent_definitions')
+      .select('identifier, name, total_runs, total_cost, total_tokens_used');
 
     if (agentsError || !agents) {
       console.error('[AgentUsage] Failed to fetch agents:', agentsError);
@@ -274,21 +275,21 @@ export async function getAgentCostBreakdown(): Promise<AgentCostBreakdown[]> {
       const { data: cost24h } = await supabase
         .from('agent_run_history')
         .select('estimated_cost')
-        .eq('agent_identifier', agent.agent_identifier)
+        .eq('agent_identifier', agent.identifier)
         .gte('started_at', last24h);
 
       // Get 7d cost
       const { data: cost7d } = await supabase
         .from('agent_run_history')
         .select('estimated_cost')
-        .eq('agent_identifier', agent.agent_identifier)
+        .eq('agent_identifier', agent.identifier)
         .gte('started_at', last7d);
 
       // Get 30d cost
       const { data: cost30d } = await supabase
         .from('agent_run_history')
         .select('estimated_cost')
-        .eq('agent_identifier', agent.agent_identifier)
+        .eq('agent_identifier', agent.identifier)
         .gte('started_at', last30d);
 
       const totalCost24h = cost24h?.reduce((sum, r) => sum + (r.estimated_cost || 0), 0) || 0;
@@ -296,14 +297,14 @@ export async function getAgentCostBreakdown(): Promise<AgentCostBreakdown[]> {
       const totalCost30d = cost30d?.reduce((sum, r) => sum + (r.estimated_cost || 0), 0) || 0;
 
       breakdown.push({
-        agent_identifier: agent.agent_identifier,
-        display_name: agent.display_name,
+        agent_identifier: agent.identifier,
+        display_name: agent.name,
         total_cost: agent.total_cost || 0,
         cost_last_24h: totalCost24h,
         cost_last_7d: totalCost7d,
         cost_last_30d: totalCost30d,
-        avg_cost_per_run: agent.total_runs > 0 
-          ? (agent.total_cost || 0) / agent.total_runs 
+        avg_cost_per_run: agent.total_runs > 0
+          ? (agent.total_cost || 0) / agent.total_runs
           : 0,
         total_runs: agent.total_runs || 0,
         tokens_used: agent.total_tokens_used || 0,

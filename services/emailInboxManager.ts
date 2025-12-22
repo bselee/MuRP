@@ -683,18 +683,13 @@ export async function completeAgentRun(
 
   if (error) throw new Error(`Failed to complete agent run: ${error.message}`);
 
-  // Update agent stats
-  await supabase
-    .from('agent_configs')
-    .update({
-      emails_processed: supabase.rpc('increment_counter', {
-        row_id: 'email_tracking',
-        column_name: 'emails_processed',
-        increment_by: stats.emails_processed || 0,
-      }),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('agent_identifier', 'email_tracking');
+  // Update agent stats in agent_definitions (unified source)
+  // Note: The trigger on agent_run_history will also update stats automatically
+  await supabase.rpc('increment_agent_emails_processed', {
+    p_agent_identifier: 'email-tracking-specialist',
+    p_emails_processed: stats.emails_processed || 0,
+    p_emails_correlated: stats.pos_correlated || 0,
+  });
 }
 
 /**
