@@ -1051,6 +1051,15 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     return (
         <>
             {loading && <LoadingOverlay />}
+            {/* DEBUG: Show inventory count received */}
+            {!loading && inventory.length === 0 && (
+                <div className="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mb-4">
+                    <strong>DEBUG:</strong> Inventory prop is empty (length: {inventory.length}).
+                    Check browser console for [useSupabaseInventory] logs.
+                    <br />
+                    <small>This message will be removed once the issue is fixed.</small>
+                </div>
+            )}
             <div className="space-y-6">
                 <PageHeader
                     title="Inventory"
