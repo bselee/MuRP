@@ -1,8 +1,12 @@
 /**
  * Agent Management Service
  *
+ * ARCHITECTURE: Database is the SINGLE SOURCE OF TRUTH.
+ * Built-in agents/skills are seeded via migration 113.
+ * No in-memory fallbacks - if DB is down, operations fail gracefully.
+ *
  * Provides CRUD operations for agents and skills with:
- * - Database persistence (agent_definitions table)
+ * - Database persistence (agent_definitions, skill_definitions tables)
  * - File sync for Claude Code (.claude/agents/, .claude/skills/)
  * - Import/export functionality
  */
@@ -16,14 +20,116 @@ import type {
   AgentTrigger,
   AgentCategory,
   SkillCategory,
-  AGENT_TEMPLATES,
 } from '../types/agents';
 import { agentToMarkdown, skillToMarkdown, parseAgentMarkdown } from '../types/agents';
 
 // ============================================================
-// BUILT-IN AGENTS (from .claude/agents/)
+// SERVICE FUNCTIONS - DATABASE IS SINGLE SOURCE OF TRUTH
 // ============================================================
 
+/**
+ * Get all agents from database
+ * Database is the single source of truth - no in-memory fallbacks.
+ * Built-in agents are seeded via migration 113_seed_builtin_agents_skills.sql
+ */
+export async function getAllAgents(): Promise<AgentDefinition[]> {
+  try {
+    const { data: dbAgents, error } = await supabase
+      .from('agent_definitions')
+      .select('*')
+      .order('is_built_in', { ascending: false }) // Built-in first
+      .order('name');
+
+    if (error) {
+      console.error('Failed to fetch agents from database:', error.message);
+      return [];
+    }
+
+    return (dbAgents || []).map(transformDbToAgent);
+  } catch (err) {
+    console.error('Failed to fetch agents:', err);
+    return [];
+  }
+}
+
+/**
+ * Get all skills from database
+ * Database is the single source of truth - no in-memory fallbacks.
+ */
+export async function getAllSkills(): Promise<SkillDefinition[]> {
+  try {
+    const { data: dbSkills, error } = await supabase
+      .from('skill_definitions')
+      .select('*')
+      .order('is_built_in', { ascending: false })
+      .order('name');
+
+    if (error) {
+      console.error('Failed to fetch skills from database:', error.message);
+      return [];
+    }
+
+    return (dbSkills || []).map(transformDbToSkill);
+  } catch (err) {
+    console.error('Failed to fetch skills:', err);
+    return [];
+  }
+}
+
+/**
+ * Get active agents only (for UI display)
+ */
+export async function getActiveAgents(): Promise<AgentDefinition[]> {
+  try {
+    const { data: dbAgents, error } = await supabase
+      .from('agent_definitions')
+      .select('*')
+      .eq('is_active', true)
+      .order('is_built_in', { ascending: false })
+      .order('name');
+
+    if (error) {
+      console.error('Failed to fetch active agents:', error.message);
+      return [];
+    }
+
+    return (dbAgents || []).map(transformDbToAgent);
+  } catch (err) {
+    console.error('Failed to fetch active agents:', err);
+    return [];
+  }
+}
+
+/**
+ * Get active skills only (for UI display)
+ */
+export async function getActiveSkills(): Promise<SkillDefinition[]> {
+  try {
+    const { data: dbSkills, error } = await supabase
+      .from('skill_definitions')
+      .select('*')
+      .eq('is_active', true)
+      .order('is_built_in', { ascending: false })
+      .order('name');
+
+    if (error) {
+      console.error('Failed to fetch active skills:', error.message);
+      return [];
+    }
+
+    return (dbSkills || []).map(transformDbToSkill);
+  } catch (err) {
+    console.error('Failed to fetch active skills:', err);
+    return [];
+  }
+}
+
+/**
+ * LEGACY PLACEHOLDER - Agents are now only in database
+ * This constant exists only for backwards compatibility during transition.
+ * Will be removed in future version.
+ * @deprecated Use getAllAgents() instead
+ */
 const BUILT_IN_AGENTS: AgentDefinition[] = [
   {
     id: 'stock-intelligence-analyst',
@@ -184,7 +290,8 @@ await supabase.from('vendors').insert(dbData);
 ];
 
 // ============================================================
-// BUILT-IN SKILLS (from .claude/skills/)
+// LEGACY PLACEHOLDER - Skills are now only in database
+// @deprecated Use getAllSkills() instead
 // ============================================================
 
 const BUILT_IN_SKILLS: SkillDefinition[] = [
@@ -273,79 +380,6 @@ Comprehensive security audit of the codebase.
   },
 ];
 
-// ============================================================
-// SERVICE FUNCTIONS
-// ============================================================
-
-/**
- * Get all agents from database (with fallback to in-memory defaults)
- *
- * Database is the source of truth. Built-in agents are seeded via migration 113.
- * In-memory BUILT_IN_AGENTS are only used as fallback when database is unavailable.
- */
-export async function getAllAgents(): Promise<AgentDefinition[]> {
-  try {
-    // Fetch ALL agents from database (built-in are seeded via migration)
-    const { data: dbAgents, error } = await supabase
-      .from('agent_definitions')
-      .select('*')
-      .eq('is_active', true)
-      .order('is_built_in', { ascending: false }) // Built-in first
-      .order('name');
-
-    if (error) {
-      console.warn('agent_definitions table not found, using in-memory fallback:', error.message);
-      return BUILT_IN_AGENTS;
-    }
-
-    // If database has agents, use them exclusively (no merging with in-memory)
-    if (dbAgents && dbAgents.length > 0) {
-      return dbAgents.map(transformDbToAgent);
-    }
-
-    // Fallback to in-memory only if database is empty (pre-migration state)
-    console.warn('No agents in database, using in-memory fallback');
-    return BUILT_IN_AGENTS;
-  } catch (err) {
-    console.warn('Failed to fetch agents, using in-memory fallback:', err);
-    return BUILT_IN_AGENTS;
-  }
-}
-
-/**
- * Get all skills from database (with fallback to in-memory defaults)
- *
- * Database is the source of truth. Built-in skills are seeded via migration 113.
- * In-memory BUILT_IN_SKILLS are only used as fallback when database is unavailable.
- */
-export async function getAllSkills(): Promise<SkillDefinition[]> {
-  try {
-    const { data: dbSkills, error } = await supabase
-      .from('skill_definitions')
-      .select('*')
-      .eq('is_active', true)
-      .order('is_built_in', { ascending: false }) // Built-in first
-      .order('name');
-
-    if (error) {
-      console.warn('skill_definitions table not found, using in-memory fallback:', error.message);
-      return BUILT_IN_SKILLS;
-    }
-
-    // If database has skills, use them exclusively
-    if (dbSkills && dbSkills.length > 0) {
-      return dbSkills.map(transformDbToSkill);
-    }
-
-    // Fallback to in-memory only if database is empty
-    console.warn('No skills in database, using in-memory fallback');
-    return BUILT_IN_SKILLS;
-  } catch (err) {
-    console.warn('Failed to fetch skills, using in-memory fallback:', err);
-    return BUILT_IN_SKILLS;
-  }
-}
-
 /**
  * Get a single agent by ID or identifier
  */
@@ -371,13 +405,9 @@ export async function getAgentById(id: string): Promise<AgentDefinition | null> 
       return transformDbToAgent(data);
     }
 
-    // Fallback to in-memory only if database query fails
-    const builtIn = BUILT_IN_AGENTS.find(a => a.id === id || a.identifier === id);
-    return builtIn || null;
+    return null;
   } catch {
-    // Fallback to in-memory
-    const builtIn = BUILT_IN_AGENTS.find(a => a.id === id || a.identifier === id);
-    return builtIn || null;
+    return null;
   }
 }
 
@@ -423,15 +453,23 @@ export async function createAgent(agent: Omit<AgentDefinition, 'id' | 'createdAt
 
 /**
  * Update an existing agent
+ * Note: Built-in agents can have their autonomy level and parameters updated,
+ * but not their core definition. For major changes, clone the agent.
  */
 export async function updateAgent(id: string, updates: Partial<AgentDefinition>): Promise<{ success: boolean; error?: string }> {
-  // Don't allow modifying built-in agents in database
-  const builtIn = BUILT_IN_AGENTS.find(a => a.id === id);
-  if (builtIn) {
-    return { success: false, error: 'Cannot modify built-in agents. Clone it to create a custom version.' };
-  }
-
   try {
+    // Check if trying to modify protected fields of built-in agents
+    const agent = await getAgentById(id);
+    if (agent?.isBuiltIn) {
+      // Only allow certain fields to be updated on built-in agents
+      const allowedFields = ['isActive', 'autonomyLevel', 'parameters', 'trustScore'];
+      const updateKeys = Object.keys(updates);
+      const disallowedUpdates = updateKeys.filter(k => !allowedFields.includes(k));
+      if (disallowedUpdates.length > 0) {
+        return { success: false, error: `Cannot modify ${disallowedUpdates.join(', ')} on built-in agents. Clone it to create a custom version.` };
+      }
+    }
+
     const dbUpdates: Record<string, unknown> = {};
     if (updates.name) dbUpdates.name = updates.name;
     if (updates.description) dbUpdates.description = updates.description;
@@ -463,15 +501,16 @@ export async function updateAgent(id: string, updates: Partial<AgentDefinition>)
 }
 
 /**
- * Delete an agent
+ * Delete an agent (built-in agents cannot be deleted, only deactivated)
  */
 export async function deleteAgent(id: string): Promise<{ success: boolean; error?: string }> {
-  const builtIn = BUILT_IN_AGENTS.find(a => a.id === id);
-  if (builtIn) {
-    return { success: false, error: 'Cannot delete built-in agents.' };
-  }
-
   try {
+    // Check if built-in - can't delete, only deactivate
+    const agent = await getAgentById(id);
+    if (agent?.isBuiltIn) {
+      return { success: false, error: 'Cannot delete built-in agents. Deactivate them instead.' };
+    }
+
     const { error } = await supabase
       .from('agent_definitions')
       .delete()
@@ -572,4 +611,8 @@ function transformDbToSkill(data: Record<string, unknown>): SkillDefinition {
   };
 }
 
+/**
+ * @deprecated BUILT_IN_AGENTS is deprecated - use getAllAgents() which fetches from database
+ * This export exists only for backward compatibility during migration.
+ */
 export { BUILT_IN_AGENTS, BUILT_IN_SKILLS };

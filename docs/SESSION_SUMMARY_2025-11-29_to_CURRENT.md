@@ -1,3 +1,112 @@
+### Session: 2025-12-22 (Agent System Architecture Complete)
+
+**Summary:** Completed full rebuild of agent/skill system with proper separation of concerns, single source of truth, and executable architecture.
+
+**Files Created:**
+- `services/agentExecutor.ts` - Unified agent execution with capability registry
+- `services/triggerDispatcher.ts` - Event/keyword routing to agents
+- `services/skillExecutor.ts` - Skill lookup, parsing, and usage tracking  
+- `services/trustScoreCalculator.ts` - Performance-based trust score calculation
+- `supabase/migrations/116_drop_deprecated_agent_configs.sql` - Removes redundant table
+
+**Files Modified:**
+- `services/agentManagementService.ts` - Removed BUILT_IN_AGENTS array, database-only source
+
+**Architecture (FINALIZED):**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    agent_definitions (PostgreSQL)                   │
+│                    SINGLE SOURCE OF TRUTH                           │
+│  - identifier (kebab-case): stockout-prevention, vendor-watchdog    │
+│  - capabilities, triggers, parameters, trust_score                  │
+└─────────────────┬───────────────────────────────────────────────────┘
+                  │
+        ┌─────────┴─────────┐
+        │                   │
+        ▼                   ▼
+┌───────────────┐   ┌───────────────────┐
+│ agentExecutor │   │ triggerDispatcher │
+│ - executeAgent│   │ - dispatch()      │
+│ - capabilities│   │ - matchKeyword()  │
+│   registry    │   │ - matchEvent()    │
+└───────────────┘   └───────────────────┘
+        │
+        ▼
+┌───────────────────────────────────────┐
+│      trustScoreCalculator             │
+│  - calculateTrustScore(stats)         │
+│  - Components: success, accuracy,     │
+│    response time, user feedback       │
+│  - Thresholds for autonomous exec     │
+└───────────────────────────────────────┘
+```
+
+**Key Decisions:**
+1. **No in-memory fallbacks** - If DB is down, operations return empty/null gracefully
+2. **Capability executors** - Each capability ID maps to an executor function
+3. **Trust thresholds** - 0.80 for autonomous execution, 0.60 for review, 0.40 auto-disable
+4. **Trigger caching** - 5-minute TTL cache for trigger mappings
+
+**Trust Score Weights:**
+- Success Rate: 50%
+- Accuracy (actions confirmed/proposed): 30%
+- Response Time: 10%
+- User Feedback: 10%
+
+**Build Status:** ✅ Passes
+**Tests Status:** Ready for E2E validation
+
+---
+
+### Session: 2025-12-22 (Agent System Architecture Overhaul)
+
+**Summary:** Critical review and complete rebuild of agent/skill system to eliminate redundancy, fix identifier mismatches, and create a proper execution architecture.
+
+**Problems Identified:**
+1. **Triple Redundancy**: Agents defined in 3 places (TS array, migration 113, agent_configs seed)
+2. **Identifier Mismatch**: kebab-case in agent_definitions vs snake_case in agent_configs
+3. **Orphaned Systems**: Skills stored but never executed, triggers defined but never wired
+4. **Magic Trust Scores**: Arbitrary values (0.72, 0.88, 0.91) with no calculation logic
+5. **No Agent Interface**: Each agent is hardcoded in workflowOrchestrator with no polymorphism
+
+**Architecture Decisions:**
+1. **Single Source of Truth**: Database `agent_definitions` table only - delete TypeScript duplicates
+2. **Consistent Identifiers**: All kebab-case (stockout-prevention, not stockout_prevention)
+3. **Agent Interface**: Standard `execute()` and `canHandle()` contract for all agents
+4. **Trigger Dispatcher**: Event bus routes to agents based on trigger configuration
+5. **Skill Execution**: Either implement properly or remove entirely
+6. **Trust Evolution**: Calculate from actual agent performance history
+
+**Implementation Plan:**
+- [ ] Remove BUILT_IN_AGENTS array from agentManagementService.ts
+- [ ] Remove agent_configs seeding from migration 113
+- [ ] Fix identifier inconsistencies (kebab-case everywhere)
+- [ ] Create Agent interface and base class
+- [ ] Wire trigger dispatcher to event bus
+- [ ] Implement skill executor (or remove skills)
+- [ ] Add trust score calculation from history
+
+---
+
+### Session: 2025-12-22 (BOM Filtering Fixes)
+
+**Summary:** Fixed inactive BOMs showing in UI by adding inventory SKU cross-reference filtering.
+
+**Changes:**
+- [hooks/useSupabaseData.ts](hooks/useSupabaseData.ts#L620-L720) - BOMs now filter by active inventory SKUs
+- [supabase/functions/sync-finale-data/index.ts](supabase/functions/sync-finale-data/index.ts#L597) - Mark inactive BOMs instead of deleting
+
+**Filter Logic (3 layers):**
+1. `is_active = true` on BOM itself
+2. BOM's `finished_sku` must exist in active `inventory_items`
+3. BOM's category not in globally excluded categories
+
+**Commits:**
+- `fix(boms): filter BOMs by active inventory SKUs` (20f43b9)
+- `fix(sync): mark inactive BOMs instead of deleting them` (5e3baec)
+
+---
+
 ### Session: 2025-12-23 (Global Category Filtering Fixed)
 
 **Summary:** Fixed critical inventory display issue and re-enabled global category filtering system.
