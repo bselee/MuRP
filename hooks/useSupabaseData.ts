@@ -299,11 +299,19 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
 
     setChannel(newChannel);
 
+    // Listen for global category filter changes to refetch with new exclusions
+    const handleFilterChange = () => {
+      console.log('[useSupabaseInventory] Global category filter changed, refetching...');
+      fetchInventory();
+    };
+    window.addEventListener('global-category-filter-changed', handleFilterChange);
+
     // Cleanup
     return () => {
       if (newChannel) {
         supabase.removeChannel(newChannel);
       }
+      window.removeEventListener('global-category-filter-changed', handleFilterChange);
     };
   }, [fetchInventory]);
 
@@ -697,11 +705,19 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
 
     setChannel(newChannel);
 
+    // Listen for global category filter changes to refetch with new exclusions
+    const handleFilterChange = () => {
+      console.log('[useSupabaseBOMs] Global category filter changed, refetching...');
+      fetchBOMs();
+    };
+    window.addEventListener('global-category-filter-changed', handleFilterChange);
+
     // Cleanup
     return () => {
       if (newChannel) {
         supabase.removeChannel(newChannel);
       }
+      window.removeEventListener('global-category-filter-changed', handleFilterChange);
     };
   }, [fetchBOMs]);
 

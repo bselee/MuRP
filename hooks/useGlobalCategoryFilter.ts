@@ -79,9 +79,14 @@ export function useGlobalCategoryFilter(): UseGlobalCategoryFilterResult {
   });
 
   // Persist to localStorage whenever exclusions change
+  // Also dispatch a custom event so other hooks (like useSupabaseInventory) can refetch
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(excludedCategories)));
+      // Dispatch custom event to notify data hooks to refetch
+      window.dispatchEvent(new CustomEvent('global-category-filter-changed', {
+        detail: { excludedCategories: Array.from(excludedCategories) }
+      }));
     } catch (err) {
       console.warn('[useGlobalCategoryFilter] Failed to save exclusions:', err);
     }
