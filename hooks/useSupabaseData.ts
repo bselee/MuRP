@@ -311,6 +311,64 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
 }
 
 /**
+ * Hook to fetch ALL unique categories from inventory AND BOMs
+ * This does NOT apply the global category filter - used for Settings panel
+ * so users can see and manage all categories including currently excluded ones.
+ */
+export function useAllCategories(): { categories: string[]; loading: boolean } {
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchAllCategories() {
+      try {
+        // Fetch distinct categories from inventory_items
+        const { data: inventoryCategories, error: invError } = await supabase
+          .from('inventory_items')
+          .select('category')
+          .eq('is_active', true)
+          .not('category', 'is', null);
+
+        if (invError) {
+          console.error('[useAllCategories] Error fetching inventory categories:', invError);
+        }
+
+        // Fetch distinct categories from BOMs
+        const { data: bomCategories, error: bomError } = await supabase
+          .from('boms')
+          .select('category')
+          .not('category', 'is', null);
+
+        if (bomError) {
+          console.error('[useAllCategories] Error fetching BOM categories:', bomError);
+        }
+
+        // Combine and dedupe
+        const allCats = new Set<string>();
+        
+        inventoryCategories?.forEach(row => {
+          if (row.category) allCats.add(row.category);
+        });
+        
+        bomCategories?.forEach(row => {
+          if (row.category) allCats.add(row.category);
+        });
+
+        setCategories(Array.from(allCats).sort());
+      } catch (err) {
+        console.error('[useAllCategories] Error:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAllCategories();
+  }, []);
+
+  return { categories, loading };
+}
+
+/**
  * Fetch single inventory item by SKU
  */
 export function useSupabaseInventoryItem(sku: string): UseSupabaseSingleResult<InventoryItem> {
@@ -595,7 +653,13 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
         notes: bom.notes || '',
       }));
 
-      setData(transformed);
+      // CRITICAL: Apply global category filter to BOMs
+      // Items in excluded categories won't appear in the BOMs page
+      const filtered = transformed.filter(bom => !isGloballyExcludedCategory(bom.category));
+      
+      console.log(`[useSupabaseBOMs] Filtered ${transformed.length - filtered.length} BOMs with globally excluded categories`);
+
+      setData(filtered);
     } catch (err) {
       console.error('[useSupabaseBOMs] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch BOMs'));

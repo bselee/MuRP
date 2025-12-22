@@ -141,6 +141,11 @@ export function useGlobalCategoryFilter(): UseGlobalCategoryFilterResult {
     removeExcluded,
     resetToDefaults,
     clearAll,
+    // Aliases for clearer naming in UI contexts
+    isExcludedCategory: isExcluded,
+    toggleExcludedCategory: toggleExcluded,
+    addExcludedCategory: addExcluded,
+    removeExcludedCategory: removeExcluded,
   };
 }
 
@@ -173,6 +178,34 @@ export function isGloballyExcludedCategory(category: string | null | undefined):
   if (!category) return false;
   const excluded = getGlobalExcludedCategories();
   return excluded.has(category.toLowerCase().trim());
+}
+
+/**
+ * Filter a list of categories to only include non-excluded ones.
+ * Use this in page-level category dropdowns so excluded categories don't appear as choices.
+ */
+export function filterVisibleCategories(categories: string[]): string[] {
+  const excluded = getGlobalExcludedCategories();
+  return categories.filter(cat => cat && !excluded.has(cat.toLowerCase().trim()));
+}
+
+/**
+ * Get visible categories from an array of items with a category field.
+ * Extracts unique categories and filters out globally excluded ones.
+ */
+export function getVisibleCategoriesFromItems<T extends { category?: string | null }>(
+  items: T[]
+): string[] {
+  const excluded = getGlobalExcludedCategories();
+  const uniqueCategories = new Set<string>();
+  
+  for (const item of items) {
+    if (item.category && !excluded.has(item.category.toLowerCase().trim())) {
+      uniqueCategories.add(item.category);
+    }
+  }
+  
+  return Array.from(uniqueCategories).sort();
 }
 
 export default useGlobalCategoryFilter;

@@ -1,40 +1,71 @@
-### Session: 2025-12-21 (Global Category Filtering System)
+### Session: 2025-12-22 (Global Category Filtering System - Complete)
 
-**Summary:** Implemented global category filtering so that excluded categories (like "Deprecating") are filtered out app-wide, not just on individual pages. User clarified: category filtering is a USER PREFERENCE - if you don't want to see a category in Inventory, you shouldn't see it anywhere.
+**Summary:** Implemented a proper two-tier filtering architecture:
+1. **Global Settings** - Categories excluded here are NEVER shown anywhere (data layer filtering)
+2. **Page-Level Filters** - Only work with what remains after global filtering
+
+**Architecture:**
+```
+Settings (Global)     →  Data Layer (useSupabaseData)  →  Pages (Inventory/BOMs/Stock Intel)
+"Never show these"        Applies exclusions               Only see non-excluded data
+User-configurable         Before any page sees data        Page-specific filters work on remainder
+```
 
 **Changes Made:**
-- Created: `hooks/useGlobalCategoryFilter.ts` (NEW - 145 lines)
-  - `useGlobalCategoryFilter()` hook for managing excluded categories
-  - `getGlobalExcludedCategories()` utility for non-hook contexts
-  - `isGloballyExcludedCategory()` for checking exclusion status
-  - Default exclusions: `['deprecating', 'deprecated', 'discontinued']`
+- Created: `components/settings/GlobalDataFilterPanel.tsx` (NEW - 260 lines)
+  - UI for managing globally excluded categories
+  - Shows ALL categories from database (including excluded ones)
+  - Checkboxes to exclude/include categories
+  - Quick actions: Reset to defaults, Show all
+  - Custom category input for manual exclusions
+  - Visual indicators for excluded categories (red, strikethrough)
+
+- Created: `hooks/useGlobalCategoryFilter.ts` (enhanced)
+  - Core hook: `useGlobalCategoryFilter()` with state management
+  - Utility: `isGloballyExcludedCategory()` for data layer
+  - Utility: `filterVisibleCategories()` for page dropdowns
+  - Utility: `getVisibleCategoriesFromItems()` for extracting visible categories
+  - Default exclusions: `deprecating`, `deprecated`, `discontinued`
   - Persists to localStorage as `global-excluded-categories`
-  - Provides `toggleExcludedCategory()`, `addExcludedCategory()`, `removeExcludedCategory()`
 
 - Modified: `hooks/useSupabaseData.ts`
-  - Removed hardcoded `EXCLUDED_CATEGORIES` array
-  - Now imports `isGloballyExcludedCategory` from new hook
-  - Global filter applied to inventory data after transform
+  - `useSupabaseInventory()` - Applies global filter to inventory data
+  - `useSupabaseBOMs()` - Applies global filter to BOM data
+  - NEW: `useAllCategories()` - Fetches ALL categories (for Settings panel)
+
+- Modified: `pages/Settings.tsx`
+  - Added "Global Data Filtering" section under Account
+  - Uses `useAllCategories()` hook to show all categories including excluded
+  - Integrated `GlobalDataFilterPanel` component
+
+- Modified: `pages/StockIntelligence.tsx`
+  - Removed hardcoded category exclusions (deprecating, books, samples, etc.)
+  - Now relies on global filter for category exclusions
+  - Kept dropship-specific filtering (business logic)
 
 - Modified: `supabase/migrations/110_mark_deprecating_items_inactive.sql`
-  - Softened to NOT force `is_active=false` (per user feedback)
-  - Now just provides helper function and optional view
+  - Softened to NOT force is_active=false
+  - Now just provides helper function + optional view
   - Actual filtering done at app level (user preference)
 
-**Key Design Decision:**
-- Category filtering is USER-CONFIGURABLE, not hardcoded
-- App-level filtering via `useGlobalCategoryFilter` hook
-- Settings UI needed for users to manage excluded categories (TODO)
+**Key Design Decisions:**
+1. Category filtering is USER-CONFIGURABLE, not hardcoded
+2. Settings panel shows ALL categories so users can manage exclusions
+3. Page-level filters only see non-excluded categories (auto-filtered)
+4. Stock Intelligence removed hardcoded filters - uses global settings
+5. BOMs and Inventory now both filtered at data layer level
 
-**Build:** ✅ Clean (8.73s)
+**Data Flow:**
+```
+Database → useSupabaseInventory() → [Global Filter Applied] → Page receives filtered data
+                                                            → Category dropdowns only show visible categories
+```
 
-**TODO:**
-- [ ] Add Settings UI for managing globally excluded categories
-- [ ] Test filtering in browser with "Deprecating" items
+**Build:** ✅ Clean (8.71s)
 
 ---
 
-### Session: 2025-12-20 (Comprehensive Theme Compliance & Compliance Module)
+### Session: 2025-12-21 (Global Category Filtering System)
 
 **Summary:** Major UI/UX fixes for light/dark mode consistency across Purchase Orders, Inventory, and Projects pages. Added new Compliance module with Regulatory Q&A, Document Analysis, and State Contact Management.
 

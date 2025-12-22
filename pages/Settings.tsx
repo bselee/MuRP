@@ -3,7 +3,7 @@ import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor, CompanyEmailSettings } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, SparklesIcon, BellIcon, ClipboardCopyIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, SparklesIcon, BellIcon, ClipboardCopyIcon, EyeSlashIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import AdminUsersPanel from '../components/AdminUsersPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
@@ -34,6 +34,8 @@ import NotificationPreferencesPanel from '../components/NotificationPreferencesP
 import SOPSettingsPanel from '../components/SOPSettingsPanel';
 import BOMApprovalSettingsPanel from '../components/BOMApprovalSettingsPanel';
 import EmailConnectionCard from '../components/settings/EmailConnectionCard';
+import GlobalDataFilterPanel from '../components/settings/GlobalDataFilterPanel';
+import { useAllCategories } from '../hooks/useSupabaseData';
 
 interface SettingsProps {
   currentUser: User;
@@ -73,6 +75,7 @@ const Settings: React.FC<SettingsProps> = ({
 }) => {
   // Section open states - simplified structure
   const [isAccountOpen, setIsAccountOpen] = useState(true);
+  const [isDataFilteringOpen, setIsDataFilteringOpen] = useState(false);
   const [isBillingOpen, setIsBillingOpen] = useState(false);
   const [isTeamOpen, setIsTeamOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -106,6 +109,10 @@ const Settings: React.FC<SettingsProps> = ({
   const { rowDensity, setRowDensity, fontScale, setFontScale } = useUserPreferences();
 
   const isOpsAdmin = currentUser.role === 'Admin' || currentUser.department === 'Operations';
+
+  // Fetch ALL categories from database (including excluded ones) for global filter panel
+  // This uses a dedicated hook that doesn't apply the global filter
+  const { categories: allCategories } = useAllCategories();
 
   const handleSaveEmailPolicy = () => {
     if (emailPolicyDraft.enforceCompanySender && !emailPolicyDraft.fromAddress.trim()) {
@@ -241,6 +248,18 @@ const Settings: React.FC<SettingsProps> = ({
             onToggle={() => setIsBillingOpen(!isBillingOpen)}
           >
             <BillingPanel currentUser={currentUser} addToast={addToast} />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Global Data Filtering"
+            icon={<EyeSlashIcon className="w-5 h-5 text-red-400" />}
+            isOpen={isDataFilteringOpen}
+            onToggle={() => setIsDataFilteringOpen(!isDataFilteringOpen)}
+          >
+            <GlobalDataFilterPanel
+              allCategories={allCategories}
+              addToast={addToast}
+            />
           </CollapsibleSection>
         </section>
 

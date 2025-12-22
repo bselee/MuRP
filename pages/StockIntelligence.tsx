@@ -112,16 +112,11 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
       // FILTER 8: Exclude inactive items
       if (item.status && item.status.toLowerCase().trim() !== 'active') return false;
 
-      // FILTER 9: Exclude Deprecating/Deprecated category items
-      if (['deprecating', 'deprecated', 'discontinued'].includes(category)) return false;
+      // NOTE: Category-based exclusions (Deprecating, Discontinued, etc.) are now handled 
+      // by the Global Data Filter in Settings → useGlobalCategoryFilter hook.
+      // The inventory data arriving here is already filtered.
 
-      // FILTER 10: Exclude non-reorderable categories (books, clothing, samples, etc.)
-      if (['books', 'book', 'clothing', 'apparel', 'shirts', 'hats', 'merchandise', 'merch',
-           'promotional', 'promo', 'samples', 'sample', 'giveaway', 'giveaways', 'gift cards'].includes(category)) {
-        return false;
-      }
-
-      // FILTER 11: Exclude items with zero reorder point AND zero stock (likely placeholder/mock data)
+      // FILTER 9: Exclude items with zero reorder point AND zero stock (likely placeholder/mock data)
       const reorderPoint = item.reorderPoint || item.reorder_point || item.minStock || item.min_stock || 0;
       const stock = item.stock || 0;
       if (reorderPoint === 0 && stock === 0) {
