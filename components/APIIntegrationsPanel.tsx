@@ -1275,6 +1275,41 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
           </div>
         </div>
 
+        {/* Webhook Configuration */}
+        <div className="border-t border-gray-700 pt-4 mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <BellIcon className="w-5 h-5 text-blue-400" />
+            <h4 className="text-sm font-medium text-white">Real-time Webhook (Recommended)</h4>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">
+            Configure webhooks in AfterShip for instant tracking updates instead of polling. Copy this URL to AfterShip &rarr; Settings &rarr; Webhooks.
+          </p>
+          <div className="bg-gray-900/50 rounded-md p-3 border border-gray-600">
+            <div className="flex items-center justify-between gap-2">
+              <code className="text-xs text-accent-300 break-all flex-1">
+                {typeof window !== 'undefined'
+                  ? `${window.location.origin.replace('localhost:5173', '<your-project>.supabase.co')}/functions/v1/aftership-webhook`
+                  : 'https://<your-project>.supabase.co/functions/v1/aftership-webhook'}
+              </code>
+              <Button
+                type="button"
+                onClick={() => {
+                  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://<your-project>.supabase.co'}/functions/v1/aftership-webhook`;
+                  navigator.clipboard.writeText(webhookUrl);
+                  addToast?.('Webhook URL copied to clipboard', 'success');
+                }}
+                className="text-gray-400 hover:text-white p-1"
+                title="Copy webhook URL"
+              >
+                <ClipboardCopyIcon className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Benefits: Instant updates, no API rate limits, reduced latency, automatic email thread correlation.
+          </p>
+        </div>
+
         {afterShipError && (
           <p className="text-sm text-rose-300">{afterShipError}</p>
         )}

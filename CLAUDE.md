@@ -137,9 +137,9 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 ```bash
 # 1. Find highest migration number
-ls supabase/migrations | sort | tail -1  # Example: 108_state_regulatory_sources.sql
+ls supabase/migrations | sort | tail -1  # Example: 109_email_inbox_user_connection.sql
 
-# 2. Create new migration (next number: 109)
+# 2. Create new migration (next number: 110)
 supabase migration new feature_name
 
 # 3. Rename to sequential number
@@ -263,6 +263,44 @@ const trendDirection = trend30 > trend90 * 1.15 ? 'up' :
 - `components/PurchasingGuidanceDashboard.tsx` - KPI cards and replenishment advice
 - `components/StockoutRiskWidget.tsx` - Risk visualization
 
+### Compliance System
+
+Dedicated Compliance page (`/compliance`) for regulatory management with 5 tabs:
+
+**Key Components:**
+- `pages/Compliance.tsx` - Main compliance hub
+- `components/compliance/RegulatorySourcesPanel.tsx` - State regulatory agencies
+- `components/compliance/StateContactManager.tsx` - Agency contact info management
+- `components/compliance/RegulatoryQAPanel.tsx` - AI-powered regulatory Q&A
+- `components/compliance/DocumentAnalysisPanel.tsx` - Analyze letters from states
+- `components/compliance/ComplianceDocumentList.tsx` - Document library
+
+**Services:**
+- `services/regulatoryDataService.ts` - State sources, contact search, Q&A, document analysis
+- `services/complianceDocumentService.ts` - Document CRUD operations
+
+**Priority States:** CA, OR, WA, NY, TX, NM (configurable per user)
+
+### Theme System (Light/Dark Mode)
+
+All components must support both themes using the `useTheme()` hook:
+
+```typescript
+import { useTheme } from './components/ThemeProvider';
+
+const { isDark, theme, setTheme } = useTheme();
+
+// Theme-aware styling pattern
+const cardClass = isDark
+  ? "bg-gray-800/50 border-gray-700 text-white"
+  : "bg-white border-gray-200 text-gray-900 shadow-sm";
+```
+
+**Key files:**
+- `components/ThemeProvider.tsx` - Context provider with `isDark` helper
+- Theme preference stored in localStorage as `murp-ui-theme`
+- Supports: `'light' | 'dark' | 'system'`
+
 ## Key Integrations
 
 ### Finale Inventory API
@@ -282,7 +320,7 @@ const trendDirection = trend30 > trend90 * 1.15 ? 'up' :
 - Calendar: `services/googleCalendarService.ts`
 - Gmail: `services/googleGmailService.ts`
 
-### Edge Functions (24 functions)
+### Edge Functions (25+ functions)
 Located in `supabase/functions/`:
 - `api-proxy` - Secure backend proxy for external APIs
 - `auto-sync-finale` - Automated Finale data sync
@@ -290,7 +328,72 @@ Located in `supabase/functions/`:
 - `po-email-monitor` - Purchase order email tracking
 - `billing-webhook` - Stripe webhook handler
 - `shopify-nightly-sync` - Shopify integration sync
-- And 18 more for webhooks, notifications, sync operations
+- `google-auth` - Google OAuth flow for Gmail, Sheets, Calendar
+- `email-inbox-poller` - Proactive email monitoring for PO tracking
+- `gmail-webhook` - Push notifications for new emails
+- And more for webhooks, notifications, sync operations
+
+### Email Monitoring & PO Tracking
+
+**Email Connection Flow:**
+Users can connect Gmail accounts through Settings → Email Monitoring. Supports multiple inboxes:
+- **Purchasing Email**: For vendor communications, PO updates, tracking numbers
+- **Accounting Email**: For invoices, payment confirmations, financial docs
+
+**OAuth Architecture:**
+```
+User clicks "Connect" → Frontend calls google-auth/authorize
+→ User completes Google OAuth consent
+→ Callback stores tokens in email_inbox_configs + user_oauth_tokens
+→ email-inbox-poller runs every 5 mins to check for new emails
+→ Emails are parsed, correlated to POs, tracking extracted
+```
+
+**Key Tables:**
+- `email_inbox_configs` - Per-user inbox settings with OAuth tokens
+- `email_threads` - Conversation threads linked to POs
+- `email_thread_messages` - Individual messages with extracted data
+- `email_tracking_alerts` - Alerts for delays, backorders, exceptions
+
+**Key Components:**
+- `components/settings/EmailConnectionCard.tsx` - OAuth connection UI
+- `supabase/functions/google-auth/index.ts` - OAuth flow handler
+- `supabase/functions/email-inbox-poller/index.ts` - Email sync engine
+
+### AI Agent System
+
+**Agent Command Center** (`pages/Admin.tsx` → Agent Command Center tab):
+- View and configure 10+ AI agents
+- Set autonomy levels: `monitor` | `assist` | `autonomous`
+- Track trust scores that evolve based on agent performance
+
+**Agent Services** (in `services/`):
+- `vendorWatchdogAgent.ts` - Learns vendor behavior, adjusts lead times
+- `stockoutPreventionAgent.ts` - Proactive stockout alerts
+- `inventoryGuardianAgent.ts` - Stock level monitoring
+- `priceHunterAgent.ts` - Price trend tracking
+- `complianceValidationAgent.ts` - Regulatory compliance
+- `artworkApprovalAgent.ts` - Artwork workflow management
+- `trustScoreAgent.ts` - Agent performance tracking
+
+**Workflow Orchestrator** (`services/workflowOrchestrator.ts`):
+Chains multiple agents together for end-to-end automation:
+```typescript
+// Example: Morning Briefing Workflow
+const result = await runMorningBriefing(userId);
+// Runs: Inventory Guardian → PO Intelligence → Email Tracking → Air Traffic Controller
+// Returns: { success, summary, pendingActions, autoExecutedActions, errors }
+```
+
+**Workflows Panel** (`components/admin/WorkflowPanel.tsx`):
+- Morning Briefing - Daily priority list
+- Process Vendor Emails - Auto-update POs from emails
+- Generate Purchase Orders - Create POs for items below ROP
+
+**Key Tables:**
+- `agent_configs` - Agent settings (autonomy, trust score, parameters)
+- `workflow_executions` - Workflow run logs for audit
+- `oauth_states` - CSRF protection for OAuth flows
 
 ## Common Pitfalls
 
@@ -353,6 +456,23 @@ ls supabase/migrations | sort | tail -1
 - `SCHEMA_ARCHITECTURE.md` - Complete 4-layer schema design (read before modifying data transformations)
 - `docs/MIGRATION_CONVENTIONS.md` - Supabase migration numbering rules
 - `docs/CRITICAL_ARCHITECTURE.md` - Complete system architecture overview
+- `docs/AGENT_SKILL_MCP_ARCHITECTURE.md` - Claude agents, skills, and MCP server setup
+- `docs/USER_AI_ASSISTANT_DESIGN.md` - Design vision for AI-powered workflows
+- `docs/WORKFLOW_AUTOMATION_AGENTS.md` - Agent orchestration patterns
 - `SUPABASE_DEPLOYMENT_GUIDE.md` - Deployment procedures
 - `API_INGESTION_SETUP.md` - API integration setup
 - `.github/copilot-instructions.md` - Comprehensive development guidelines including TFR protocol, Vercel deployment, and session management
+
+## Claude Code Skills & Agents
+
+### Available Skills (in `.claude/skills/`)
+- `/deploy` - Build, commit, and deploy to main via claude/merge-to-main branch
+- `/code-review` - Review code for quality, security, and best practices
+- `/security-review` - Security audit for vulnerabilities and compliance
+
+### Domain Expert Agents (in `.claude/agents/`)
+- `stock-intelligence-analyst.md` - Expert in inventory forecasting and ROP calculations
+- `email-tracking-specialist.md` - Expert in PO email monitoring and Gmail integration
+- `schema-transformer-expert.md` - Expert in the 4-layer schema system
+
+Agents are automatically loaded by Claude Code and provide specialized context for domain-specific tasks.

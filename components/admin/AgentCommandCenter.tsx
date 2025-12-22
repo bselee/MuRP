@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase/client';
 import { AgentDetailDrawer } from './AgentDetailDrawer';
-import { CpuChipIcon, ShieldCheckIcon, TruckIcon } from '../icons';
+import { WorkflowPanel } from './WorkflowPanel';
+import { CpuChipIcon, ShieldCheckIcon, TruckIcon, MailIcon, BotIcon } from '../icons';
 
 interface AgentConfig {
     id: string;
@@ -116,13 +117,29 @@ const MOCK_AGENTS: AgentConfig[] = [
         parameters: {},
         system_prompt: '',
     },
+    {
+        id: '10',
+        agent_identifier: 'email_tracking',
+        display_name: 'Email Tracking Agent',
+        description: 'Monitors purchasing email inbox(es), correlates vendor emails to POs, extracts tracking/ETA information, and drafts intelligent responses.',
+        autonomy_level: 'assist',
+        is_active: true,
+        trust_score: 0.80,
+        parameters: {},
+        system_prompt: '',
+    },
 ];
 
-export const AgentCommandCenter: React.FC = () => {
+interface AgentCommandCenterProps {
+    userId?: string;
+}
+
+export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId = 'default-user' }) => {
     const [agents, setAgents] = useState<AgentConfig[]>([]);
     const [selectedAgent, setSelectedAgent] = useState<AgentConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [usingMockData, setUsingMockData] = useState(false);
+    const [activeTab, setActiveTab] = useState<'agents' | 'workflows'>('agents');
 
     useEffect(() => {
         fetchAgents();
@@ -201,7 +218,42 @@ export const AgentCommandCenter: React.FC = () => {
                 </div>
             </div>
 
-            {/* Agents Grid */}
+            {/* Tab Navigation */}
+            <div className="flex gap-2 border-b border-gray-700">
+                <button
+                    onClick={() => setActiveTab('agents')}
+                    className={`px-4 py-2 font-medium transition-colors border-b-2 -mb-[1px] ${
+                        activeTab === 'agents'
+                            ? 'text-accent-400 border-accent-400'
+                            : 'text-gray-400 border-transparent hover:text-white'
+                    }`}
+                >
+                    <span className="flex items-center gap-2">
+                        <BotIcon className="w-4 h-4" />
+                        Agents
+                    </span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('workflows')}
+                    className={`px-4 py-2 font-medium transition-colors border-b-2 -mb-[1px] ${
+                        activeTab === 'workflows'
+                            ? 'text-accent-400 border-accent-400'
+                            : 'text-gray-400 border-transparent hover:text-white'
+                    }`}
+                >
+                    <span className="flex items-center gap-2">
+                        <CpuChipIcon className="w-4 h-4" />
+                        Workflows
+                    </span>
+                </button>
+            </div>
+
+            {/* Tab Content */}
+            {activeTab === 'workflows' ? (
+                <WorkflowPanel userId={userId} />
+            ) : (
+                <>
+                    {/* Agents Grid */}
             {loading ? (
                 <div className="text-gray-400 flex items-center gap-2">
                     <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
@@ -218,6 +270,8 @@ export const AgentCommandCenter: React.FC = () => {
                         />
                     ))}
                 </div>
+            )}
+                </>
             )}
 
             {/* Detail/Edit Drawer */}

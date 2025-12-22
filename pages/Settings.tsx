@@ -33,6 +33,7 @@ import BillingPanel from '../components/BillingPanel';
 import NotificationPreferencesPanel from '../components/NotificationPreferencesPanel';
 import SOPSettingsPanel from '../components/SOPSettingsPanel';
 import BOMApprovalSettingsPanel from '../components/BOMApprovalSettingsPanel';
+import EmailConnectionCard from '../components/settings/EmailConnectionCard';
 
 interface SettingsProps {
   currentUser: User;
@@ -81,6 +82,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSopOpen, setIsSopOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [isEmailMonitoringOpen, setIsEmailMonitoringOpen] = useState(false);
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isShopifyOpen, setIsShopifyOpen] = useState(false);
@@ -507,6 +509,28 @@ const Settings: React.FC<SettingsProps> = ({
                   Save Policy
                 </Button>
               </div>
+            </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Email Monitoring (PO Tracking)"
+            icon={<MailIcon className="w-5 h-5 text-blue-400" />}
+            isOpen={isEmailMonitoringOpen}
+            onToggle={() => setIsEmailMonitoringOpen(!isEmailMonitoringOpen)}
+          >
+            <div className="space-y-4">
+              <p className="text-sm text-gray-400">
+                Connect your purchasing email to automatically track vendor communications, extract tracking numbers, and update PO status.
+              </p>
+              <EmailConnectionCard
+                userId={currentUser.id}
+                onConnectionChange={(connected) => {
+                  addToast(
+                    connected ? 'Email monitoring connected!' : 'Email monitoring disconnected',
+                    connected ? 'success' : 'info'
+                  );
+                }}
+              />
             </div>
           </CollapsibleSection>
 

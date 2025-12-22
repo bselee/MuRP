@@ -74,9 +74,11 @@ import {
   Server,
   Settings,
   ShieldCheck,
+  ShoppingCart,
   Slack,
   SlidersHorizontal,
   Sparkles,
+  Sun,
   Table2,
   History,
   Trash2,
@@ -211,3 +213,5 @@ export const SlackIcon = wrapIcon(Slack);
 export const GlobeIcon = wrapIcon(Globe);
 export const HashtagIcon = wrapIcon(Hash);
 export const AtSymbolIcon = wrapIcon(AtSign);
+export const SunIcon = wrapIcon(Sun);
+export const ShoppingCartIcon = wrapIcon(ShoppingCart);

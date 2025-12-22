@@ -19,6 +19,9 @@ export const GOOGLE_SCOPES = {
   CALENDAR_EVENTS: 'https://www.googleapis.com/auth/calendar.events', // Events only
   DOCS: 'https://www.googleapis.com/auth/documents',
   GMAIL_SEND: 'https://www.googleapis.com/auth/gmail.send',
+  GMAIL_READONLY: 'https://www.googleapis.com/auth/gmail.readonly', // Read emails for PO tracking
+  GMAIL_LABELS: 'https://www.googleapis.com/auth/gmail.labels', // Manage labels for organization
+  GMAIL_MODIFY: 'https://www.googleapis.com/auth/gmail.modify', // Mark as read, archive, etc.
 } as const;
 
 /**
@@ -30,4 +33,25 @@ export const DEFAULT_SCOPES = [
   GOOGLE_SCOPES.CALENDAR_READWRITE, // Calendar integration for production scheduling
   GOOGLE_SCOPES.DOCS,             // Create/update Google Docs templates
   GOOGLE_SCOPES.GMAIL_SEND,       // Send vendor emails via Gmail
+] as const;
+
+/**
+ * Scopes for email monitoring (PO tracking)
+ * Requires read access to process incoming vendor emails
+ */
+export const EMAIL_MONITORING_SCOPES = [
+  GOOGLE_SCOPES.GMAIL_READONLY,   // Read incoming vendor emails
+  GOOGLE_SCOPES.GMAIL_LABELS,     // Organize with labels
+  GOOGLE_SCOPES.GMAIL_SEND,       // Send follow-ups and responses
+] as const;
+
+/**
+ * Full scopes for complete email integration
+ * Use when user wants full email automation
+ */
+export const FULL_EMAIL_SCOPES = [
+  GOOGLE_SCOPES.GMAIL_READONLY,
+  GOOGLE_SCOPES.GMAIL_MODIFY,     // Mark as read, archive processed emails
+  GOOGLE_SCOPES.GMAIL_LABELS,
+  GOOGLE_SCOPES.GMAIL_SEND,
 ] as const;
