@@ -260,17 +260,17 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
         };
       });
 
-      // TEMPORARILY DISABLED: Global category filter was causing issues
-      // TODO: Re-enable after debugging why all items were being filtered
-      // const excludedSet = getGlobalExcludedCategories();
-      // const filtered = transformed.filter(item => {
-      //   if (!item.category) return true;
-      //   return !excludedSet.has(item.category.toLowerCase().trim());
-      // });
+      // Global category filter - exclude categories marked in Settings
+      const excludedSet = getGlobalExcludedCategories();
+      const filtered = transformed.filter(item => {
+        // Items with no category should NOT be filtered out
+        if (!item.category) return true;
+        return !excludedSet.has(item.category.toLowerCase().trim());
+      });
       
-      console.log(`[useSupabaseInventory] Total items: ${transformed.length} (category filter DISABLED for debugging)`);
+      console.log(`[useSupabaseInventory] Total: ${transformed.length}, After global filter: ${filtered.length}, Excluded categories:`, Array.from(excludedSet));
       
-      setData(transformed);
+      setData(filtered);
     } catch (err) {
       console.error('[useSupabaseInventory] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch inventory'));
