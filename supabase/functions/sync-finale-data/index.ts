@@ -597,25 +597,35 @@ serve(async (req) => {
             }
             
             if (appBoms.length > 0) {
+              // Add is_active: true to all synced BOMs
+              const appBomsWithActive = appBoms.map(bom => ({
+                ...bom,
+                is_active: true, // Mark synced BOMs as active
+              }));
+
               const { error: appBomError } = await supabase
                 .from('boms')
-                .upsert(appBoms, { onConflict: 'finished_sku' });
+                .upsert(appBomsWithActive, { onConflict: 'finished_sku' });
 
               if (appBomError) {
                 console.error('[Sync] boms table upsert error:', appBomError);
               } else {
-                // Clean up app BOMs from inactive products
-                const activeSKUs = activeProducts.map(p => p.sku);
-                const { error: appCleanupError } = await supabase
-                  .from('boms')
-                  .delete()
-                  .eq('data_source', 'finale_api')
-                  .not('finished_sku', 'in', `(${activeSKUs.map(s => `"${s}"`).join(',')})`);
+                // Mark BOMs from inactive products as is_active = false (not delete)
+                const activeSKUs = activeProducts.map(p => p.sku).filter(Boolean);
+                if (activeSKUs.length > 0) {
+                  // Mark inactive: BOMs with data_source='finale_api' whose SKU is NOT in active list
+                  const { error: markInactiveError, count: inactiveCount } = await supabase
+                    .from('boms')
+                    .update({ is_active: false, updated_at: new Date().toISOString() })
+                    .eq('data_source', 'finale_api')
+                    .eq('is_active', true) // Only update currently active ones
+                    .not('finished_sku', 'in', `(${activeSKUs.join(',')})`);
 
-                if (appCleanupError) {
-                  console.error('[Sync] Failed to clean up inactive app BOMs:', appCleanupError);
-                } else {
-                  console.log(`[Sync] Cleaned up app BOMs from inactive products`);
+                  if (markInactiveError) {
+                    console.error('[Sync] Failed to mark inactive BOMs:', markInactiveError);
+                  } else {
+                    console.log(`[Sync] Marked ${inactiveCount || 0} BOMs as inactive`);
+                  }
                 }
 
                 console.log(`[Sync] ✅ boms (app): ${appBoms.length} assemblies in ${Date.now() - bomsAppStart}ms`);
