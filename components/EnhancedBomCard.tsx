@@ -5,7 +5,7 @@
  * Shows all pertinent info at-a-glance: specs, packaging, compliance, artwork, production
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTheme } from './ThemeProvider';
 import type { BillOfMaterials, InventoryItem, Label, ComplianceRecord, ComponentSwapMap } from '../types';
 import type { LimitingSKUOnOrder } from '../hooks/useLimitingSKUOnOrder';
@@ -214,6 +214,18 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   const financialTableHeaderClass = themeSwap('text-amber-900', 'text-gray-500');
   const financialTableRowClass = themeSwap('text-slate-700', 'text-gray-300');
 
+  // Filter components to exclude those from globally excluded categories
+  // If a component SKU isn't in inventoryMap (because it was filtered out), hide it
+  const filteredComponents = useMemo(() => {
+    return (bom.components || []).filter(component => {
+      const inventoryItem = inventoryMap.get(component.sku);
+      // Keep component if: it exists in filtered inventory OR it's not in inventory at all (might be manual entry)
+      // Only hide if the SKU exists but was filtered out due to category exclusion
+      // We can detect this because inventoryMap only contains active, non-excluded items
+      return inventoryItem !== undefined || !component.sku;
+    });
+  }, [bom.components, inventoryMap]);
+
   // Determine display mode
   const isAdmin = userRole === 'Admin';
   const isManager = userRole === 'Manager';
@@ -278,7 +290,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   const artworkStatus = getArtworkStatus();
 
   // Calculate total component weight/volume if units are consistent
-  const totalMaterialWeight = bom.components.reduce((sum, c) => {
+  const totalMaterialWeight = filteredComponents.reduce((sum, c) => {
     if (c.unit === 'lbs' || c.unit === 'lb') {
       return sum + (c.quantity || 0);
     }
@@ -370,7 +382,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
           : runwayStatus === 'healthy'
             ? 'Plenty of cover'
             : 'Need demand signal';
-  const criticalPathComponent = bom.components.reduce<{
+  const criticalPathComponent = filteredComponents.reduce<{
     sku: string;
     name: string;
     leadTime: number | null;
@@ -397,10 +409,10 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
       componentSwapMap[normalized.toLowerCase()]
     );
   };
-  const hasSwapHints = bom.components?.some(component => Boolean(getSwapRuleForSku(component.sku)));
+  const hasSwapHints = filteredComponents?.some(component => Boolean(getSwapRuleForSku(component.sku)));
 
   // Calculate financial metrics if available
-  const totalMaterialCost = bom.components.reduce((sum, c) => {
+  const totalMaterialCost = filteredComponents.reduce((sum, c) => {
     const cost = c.unitCost || 0;
     return sum + (cost * c.quantity);
   }, 0);
@@ -826,7 +838,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             >
               <div className="flex items-center gap-2">
                 <BeakerIcon className="w-4 h-4" />
-                Components ({bom.components?.length || 0})
+                Components ({filteredComponents?.length || 0})
               </div>
             </button>
             
@@ -856,13 +868,13 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                   <h5 className={themeSwap('text-sm font-bold text-emerald-800 uppercase tracking-wide', 'text-sm font-bold text-emerald-300 uppercase tracking-wide')}>Recipe / Ingredients</h5>
                 </div>
                 <p className={themeSwap('text-xs text-gray-700', 'text-xs text-gray-400')}>
-                  {bom.components.length} ingredients • {bom.yieldQuantity || 1} unit yield per batch
+                  {filteredComponents.length} ingredients • {bom.yieldQuantity || 1} unit yield per batch
                 </p>
               </div>
 
               {/* Ingredient List */}
               <div className="space-y-3">
-                {bom.components.map((c, idx) => {
+                {filteredComponents.map((c, idx) => {
                   const componentItem = inventoryMap.get(c.sku);
                   const available = componentItem?.stock || 0;
                   const needed = c.quantity || 1;
@@ -1143,7 +1155,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                        </tr>
                      </thead>
                      <tbody className="divide-y divide-gray-800">
-                       {bom.components.map(c => (
+                       {filteredComponents.map(c => (
                          <tr key={c.sku}>
                            <td className="py-2 text-gray-300">{c.name}</td>
                            <td className="py-2 text-right text-gray-400">{c.quantity} {c.unit}</td>
