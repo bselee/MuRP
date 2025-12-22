@@ -52,9 +52,9 @@ CREATE POLICY agent_definitions_admin_all ON public.agent_definitions
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM public.users u
+            SELECT 1 FROM public.user_profiles u
             WHERE u.id = auth.uid()
-            AND (u.role = 'Admin' OR u.department = 'Operations')
+            AND u.role = 'Admin'
         )
     );
 
@@ -124,9 +124,9 @@ CREATE POLICY skill_definitions_admin_all ON public.skill_definitions
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM public.users u
+            SELECT 1 FROM public.user_profiles u
             WHERE u.id = auth.uid()
-            AND (u.role = 'Admin' OR u.department = 'Operations')
+            AND u.role = 'Admin'
         )
     );
 
@@ -178,9 +178,9 @@ CREATE POLICY agent_execution_log_admin ON public.agent_execution_log
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM public.users u
+            SELECT 1 FROM public.user_profiles u
             WHERE u.id = auth.uid()
-            AND (u.role = 'Admin' OR u.department = 'Operations')
+            AND u.role = 'Admin'
         )
     );
 
@@ -219,9 +219,9 @@ CREATE POLICY workflow_definitions_admin ON public.workflow_definitions
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM public.users u
+            SELECT 1 FROM public.user_profiles u
             WHERE u.id = auth.uid()
-            AND (u.role = 'Admin' OR u.department = 'Operations')
+            AND u.role = 'Admin'
         )
     );
 

@@ -642,6 +642,7 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       const { data: boms, error: fetchError } = await supabase
         .from('boms')
         .select('*')
+        .eq('is_active', true)  // Only fetch active BOMs
         .order('name');
 
       if (fetchError) throw fetchError;
@@ -666,9 +667,10 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
 
       // CRITICAL: Apply global category filter to BOMs
       // Items in excluded categories won't appear in the BOMs page
+      const excludedSet = getGlobalExcludedCategories();
       const filtered = transformed.filter(bom => !isGloballyExcludedCategory(bom.category));
       
-      console.log(`[useSupabaseBOMs] Filtered ${transformed.length - filtered.length} BOMs with globally excluded categories`);
+      console.log(`[useSupabaseBOMs] Total: ${transformed.length}, After global filter: ${filtered.length}, Excluded categories:`, Array.from(excludedSet));
 
       setData(filtered);
     } catch (err) {

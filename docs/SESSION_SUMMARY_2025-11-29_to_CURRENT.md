@@ -1,3 +1,29 @@
+### Session: 2025-12-23 (Global Category Filtering Fixed)
+
+**Summary:** Fixed critical inventory display issue and re-enabled global category filtering system.
+
+**Root Cause Analysis:**
+- Inventory page showed 0 items despite 4400 in database
+- Debug trace revealed `showRecentOnly` filter (defaulted `true`) was filtering ALL items
+- Items had null/old `lastSyncAt` timestamps, so all were excluded
+- Fix: Changed `showRecentOnly` default to `false`
+
+**Filtering System Status:**
+1. **Active-only filter**: ✅ Working at DB level (`.eq('is_active', true)`) - filters 0 items currently
+2. **Global category filter**: ✅ Re-enabled - filters 469 "Deprecating" items
+3. **Default excluded categories**: `['deprecating', 'deprecated', 'discontinued']`
+4. **Expected UI count**: ~3931 items (4400 active - 469 deprecating)
+
+**Files Modified:**
+- [pages/Inventory.tsx](pages/Inventory.tsx#L222) - Changed `showRecentOnly` default to `false`
+- [hooks/useSupabaseData.ts](hooks/useSupabaseData.ts#L263-L270) - Re-enabled global category filter
+- [hooks/useGlobalCategoryFilter.ts](hooks/useGlobalCategoryFilter.ts) - Added custom event dispatch
+
+**Commits:**
+- `feat(data): re-enable global category filter for inventory` (dca0664)
+
+---
+
 ### Session: 2025-12-22 (Autonomous AI Workflow System - Phase 1 Complete)
 
 **Summary:** Implemented foundation for autonomous AI workflows following the approved plan. Agents can now recommend AND EXECUTE actions with persistent approval queues, event-driven automation, and trust score evolution.

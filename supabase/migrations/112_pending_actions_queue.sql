@@ -87,7 +87,7 @@ CREATE POLICY pending_actions_admin ON public.pending_actions
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM public.users u
+            SELECT 1 FROM public.user_profiles u
             WHERE u.id = auth.uid()
             AND (u.role = 'Admin' OR u.department = 'Operations')
         )
@@ -152,7 +152,7 @@ CREATE POLICY event_triggers_admin ON public.event_triggers
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM public.users u
+            SELECT 1 FROM public.user_profiles u
             WHERE u.id = auth.uid()
             AND (u.role = 'Admin' OR u.department = 'Operations')
         )
@@ -214,7 +214,7 @@ CREATE POLICY agent_training_examples_admin ON public.agent_training_examples
     FOR ALL
     USING (
         EXISTS (
-            SELECT 1 FROM public.users u
+            SELECT 1 FROM public.user_profiles u
             WHERE u.id = auth.uid()
             AND (u.role = 'Admin' OR u.department = 'Operations')
         )
@@ -222,66 +222,29 @@ CREATE POLICY agent_training_examples_admin ON public.agent_training_examples
 
 
 -- ============================================================
--- WORKFLOW EXECUTIONS TABLE (Enhanced)
+-- WORKFLOW EXECUTIONS TABLE (Enhance existing table from migration 109)
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS public.workflow_executions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    workflow_id UUID REFERENCES public.workflow_definitions(id) ON DELETE SET NULL,
-    workflow_name TEXT NOT NULL,
+-- Add missing columns to existing workflow_executions table
+ALTER TABLE public.workflow_executions
+    ADD COLUMN IF NOT EXISTS workflow_id UUID REFERENCES public.workflow_definitions(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'completed',
+    ADD COLUMN IF NOT EXISTS current_step_index INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS steps_completed INTEGER DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS steps_total INTEGER DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS step_results JSONB DEFAULT '[]'::jsonb,
+    ADD COLUMN IF NOT EXISTS final_output JSONB,
+    ADD COLUMN IF NOT EXISTS error_message TEXT,
+    ADD COLUMN IF NOT EXISTS trigger_type TEXT,
+    ADD COLUMN IF NOT EXISTS trigger_event JSONB,
+    ADD COLUMN IF NOT EXISTS input_data JSONB DEFAULT '{}'::jsonb,
+    ADD COLUMN IF NOT EXISTS duration_ms INTEGER,
+    ADD COLUMN IF NOT EXISTS tokens_used INTEGER,
+    ADD COLUMN IF NOT EXISTS actions_generated INTEGER DEFAULT 0;
 
-    -- Execution details
-    started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    completed_at TIMESTAMPTZ,
-    status TEXT NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'completed', 'failed', 'cancelled', 'paused')),
-
-    -- Step tracking
-    current_step_index INTEGER DEFAULT 0,
-    steps_completed INTEGER DEFAULT 0,
-    steps_total INTEGER NOT NULL,
-
-    -- Results
-    step_results JSONB DEFAULT '[]'::jsonb,  -- Array of step execution results
-    final_output JSONB,
-    error_message TEXT,
-
-    -- Context
-    trigger_type TEXT,  -- 'schedule', 'event', 'manual'
-    trigger_event JSONB,
-    input_data JSONB DEFAULT '{}'::jsonb,
-
-    -- Metrics
-    duration_ms INTEGER,
-    tokens_used INTEGER,
-    actions_generated INTEGER DEFAULT 0,
-
-    -- User
-    user_id UUID REFERENCES auth.users(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Indexes
+-- Indexes for new columns
 CREATE INDEX IF NOT EXISTS idx_workflow_executions_workflow_id ON public.workflow_executions(workflow_id);
 CREATE INDEX IF NOT EXISTS idx_workflow_executions_status ON public.workflow_executions(status);
-CREATE INDEX IF NOT EXISTS idx_workflow_executions_started_at ON public.workflow_executions(started_at DESC);
-CREATE INDEX IF NOT EXISTS idx_workflow_executions_user_id ON public.workflow_executions(user_id);
-
--- RLS
-ALTER TABLE public.workflow_executions ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY workflow_executions_own ON public.workflow_executions
-    FOR SELECT
-    USING (user_id = auth.uid());
-
-CREATE POLICY workflow_executions_admin ON public.workflow_executions
-    FOR ALL
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.users u
-            WHERE u.id = auth.uid()
-            AND (u.role = 'Admin' OR u.department = 'Operations')
-        )
-    );
 
 
 -- ============================================================
