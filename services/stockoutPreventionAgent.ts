@@ -22,7 +22,7 @@ export interface StockoutAlert {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
   sku: string;
   product_name: string;
-  issue_type: 'OUT_OF_STOCK' | 'IMMINENT_STOCKOUT' | 'BOM_BLOCKING' | 'LEAD_TIME_VARIANCE' | 'CONSUMPTION_SPIKE';
+  issue_type: 'OUT_OF_STOCK' | 'IMMINENT_STOCKOUT' | 'BOM_BLOCKING' | 'LEAD_TIME_VARIANCE' | 'CONSUMPTION_SPIKE' | 'EMAIL_DELAY_NOTICE' | 'EMAIL_BACKORDER';
   message: string;
   current_stock: number;
   days_until_stockout: number;
@@ -32,6 +32,12 @@ export interface StockoutAlert {
   blocking_builds?: string[]; // Build orders that will be blocked
   consumption_change_pct?: number; // % change in consumption rate
   lead_time_variance_days?: number; // Days longer than expected
+  // Email-derived intelligence (Phase 4)
+  email_po_number?: string;
+  email_vendor?: string;
+  email_original_eta?: string;
+  email_new_eta?: string;
+  email_thread_id?: string;
 }
 
 export interface BOMBlockingAnalysis {
@@ -76,7 +82,145 @@ export interface PurchaseRecommendation {
 }
 
 /**
+ * Detect email-based stockout alerts (Phase 4)
+ * Looks for vendor delay notices and backorder notices in email threads
+ */
+async function detectEmailBasedAlerts(): Promise<StockoutAlert[]> {
+  const alerts: StockoutAlert[] = [];
+
+  try {
+    // Get email threads with delay or backorder notices
+    const { data: threads, error: threadError } = await supabase
+      .from('email_threads')
+      .select(`
+        id,
+        po_id,
+        subject,
+        latest_eta,
+        key_dates,
+        purchase_orders (
+          id,
+          order_id,
+          vendor_name,
+          expected_date,
+          line_items
+        )
+      `)
+      .eq('is_resolved', false)
+      .not('po_id', 'is', null);
+
+    if (threadError) {
+      console.warn('[StockoutPrevention] Failed to fetch email threads:', threadError);
+      return alerts;
+    }
+
+    // Get delay/backorder messages
+    const threadIds = (threads || []).map(t => t.id);
+    if (threadIds.length === 0) return alerts;
+
+    const { data: alertMessages } = await supabase
+      .from('email_thread_messages')
+      .select(`
+        thread_id,
+        is_delay_notice,
+        is_backorder_notice,
+        extracted_data,
+        body_preview,
+        sent_at
+      `)
+      .in('thread_id', threadIds)
+      .or('is_delay_notice.eq.true,is_backorder_notice.eq.true')
+      .order('sent_at', { ascending: false });
+
+    // Build thread lookup
+    const threadMap = new Map<string, any>();
+    for (const thread of threads || []) {
+      threadMap.set(thread.id, thread);
+    }
+
+    // Build alerts lookup to avoid duplicates per thread
+    const processedThreads = new Set<string>();
+
+    for (const msg of alertMessages || []) {
+      if (processedThreads.has(msg.thread_id)) continue;
+      processedThreads.add(msg.thread_id);
+
+      const thread = threadMap.get(msg.thread_id);
+      if (!thread || !thread.purchase_orders) continue;
+
+      const po = thread.purchase_orders;
+      const lineItems = Array.isArray(po.line_items) ? po.line_items : [];
+
+      // Get affected SKUs and their inventory
+      for (const item of lineItems.slice(0, 5)) { // Limit to first 5 items
+        const sku = item.product_url || item.sku || 'Unknown';
+        const productName = item.product_name || 'Unknown Product';
+
+        // Get current inventory for this SKU
+        const { data: inventory } = await supabase
+          .from('inventory_items')
+          .select('available_quantity, avg_daily_consumption, unit_cost, reorder_point')
+          .eq('sku', sku)
+          .single();
+
+        const currentStock = inventory?.available_quantity || 0;
+        const dailyConsumption = inventory?.avg_daily_consumption || 1;
+        const unitCost = inventory?.unit_cost || 0;
+        const daysUntilStockout = dailyConsumption > 0 ? Math.floor(currentStock / dailyConsumption) : 999;
+
+        if (msg.is_backorder_notice) {
+          alerts.push({
+            severity: 'CRITICAL',
+            sku,
+            product_name: productName,
+            issue_type: 'EMAIL_BACKORDER',
+            message: `BACKORDER: Vendor ${po.vendor_name} reported items on backorder for PO ${po.order_id}`,
+            current_stock: currentStock,
+            days_until_stockout: daysUntilStockout,
+            recommended_action: 'URGENT: Find alternate supplier immediately',
+            recommended_order_qty: Math.ceil(dailyConsumption * 30),
+            estimated_cost: Math.ceil(dailyConsumption * 30) * unitCost,
+            email_po_number: po.order_id,
+            email_vendor: po.vendor_name,
+            email_original_eta: po.expected_date,
+            email_new_eta: thread.latest_eta,
+            email_thread_id: thread.id,
+          });
+        } else if (msg.is_delay_notice) {
+          const delayDays = msg.extracted_data?.delay_days || 7;
+          alerts.push({
+            severity: delayDays > 14 ? 'CRITICAL' : 'HIGH',
+            sku,
+            product_name: productName,
+            issue_type: 'EMAIL_DELAY_NOTICE',
+            message: `DELAY: Vendor ${po.vendor_name} reported ${delayDays}-day delay for PO ${po.order_id}`,
+            current_stock: currentStock,
+            days_until_stockout: daysUntilStockout,
+            recommended_action: daysUntilStockout < delayDays
+              ? 'Stock will run out before delayed delivery - expedite or source elsewhere'
+              : 'Monitor closely, prepare contingency order',
+            recommended_order_qty: Math.ceil(dailyConsumption * 14),
+            estimated_cost: Math.ceil(dailyConsumption * 14) * unitCost,
+            lead_time_variance_days: delayDays,
+            email_po_number: po.order_id,
+            email_vendor: po.vendor_name,
+            email_original_eta: po.expected_date,
+            email_new_eta: thread.latest_eta,
+            email_thread_id: thread.id,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[StockoutPrevention] detectEmailBasedAlerts failed:', err);
+  }
+
+  return alerts;
+}
+
+/**
  * Get all critical stockout alerts requiring immediate attention
+ * Enhanced with email-derived intelligence (Phase 4)
  */
 export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
   const alerts: StockoutAlert[] = [];
@@ -86,7 +230,7 @@ export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
 
   for (const product of criticalProducts) {
     const alert: StockoutAlert = {
-      severity: product.reorder_status === 'OUT_OF_STOCK' ? 'CRITICAL' : 
+      severity: product.reorder_status === 'OUT_OF_STOCK' ? 'CRITICAL' :
                 product.reorder_status === 'CRITICAL' ? 'HIGH' : 'MEDIUM',
       sku: product.sku,
       product_name: product.product_name,
@@ -109,6 +253,10 @@ export async function getCriticalStockoutAlerts(): Promise<StockoutAlert[]> {
   // Check for lead time variances
   const leadTimeAlerts = await detectLeadTimeVariances();
   alerts.push(...leadTimeAlerts);
+
+  // Check for email-based alerts (Phase 4)
+  const emailAlerts = await detectEmailBasedAlerts();
+  alerts.push(...emailAlerts);
 
   return alerts.sort((a, b) => {
     // Sort by severity, then days until stockout

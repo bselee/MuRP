@@ -1,12 +1,13 @@
 /**
  * PO Intelligence Agent
- * 
+ *
  * Responsibilities:
  * - Track PO arrival dates and predict ETAs
  * - Pester for updates on out-of-stock items
  * - Monitor invoices for pricing variances
  * - Flag unexpected shipping costs
  * - Calculate landed costs with actual data
+ * - Integrate email-derived ETAs for better predictions (Phase 4)
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -14,6 +15,18 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Email thread data for enhanced predictions
+interface EmailThreadData {
+  po_id: string;
+  latest_eta: string | null;
+  eta_confidence: 'high' | 'medium' | 'low' | null;
+  latest_tracking_status: string | null;
+  tracking_numbers: string[] | null;
+  has_delay_notice: boolean;
+  has_backorder_notice: boolean;
+  days_since_vendor_update: number | null;
+}
 
 export interface POArrivalPrediction {
   po_id: string;
@@ -30,6 +43,14 @@ export interface POArrivalPrediction {
     quantity_ordered: number;
     is_out_of_stock: boolean;
   }[];
+  // Email-derived intelligence (Phase 4)
+  email_eta?: string | null;
+  email_eta_confidence?: 'high' | 'medium' | 'low' | null;
+  email_tracking_status?: string | null;
+  email_tracking_numbers?: string[];
+  has_email_delay_notice?: boolean;
+  has_email_backorder_notice?: boolean;
+  eta_source?: 'email' | 'po' | 'calculated';
 }
 
 export interface InvoiceVariance {
@@ -59,7 +80,87 @@ export interface PesterAlert {
 }
 
 /**
+ * Fetch email thread intelligence for POs
+ */
+async function getEmailThreadDataForPOs(poIds: string[]): Promise<Map<string, EmailThreadData>> {
+  const emailDataMap = new Map<string, EmailThreadData>();
+
+  if (poIds.length === 0) return emailDataMap;
+
+  try {
+    // Get email threads with ETA/tracking info
+    const { data: threads, error: threadError } = await supabase
+      .from('email_threads')
+      .select(`
+        id,
+        po_id,
+        latest_eta,
+        eta_confidence,
+        latest_tracking_status,
+        tracking_numbers,
+        last_inbound_at
+      `)
+      .in('po_id', poIds)
+      .eq('is_resolved', false);
+
+    if (threadError) {
+      console.warn('[POIntelligence] Failed to fetch email threads:', threadError);
+      return emailDataMap;
+    }
+
+    // Get delay/backorder messages
+    const threadIds = (threads || []).map(t => t.id);
+    let delayMessages: any[] = [];
+
+    if (threadIds.length > 0) {
+      const { data: messages } = await supabase
+        .from('email_thread_messages')
+        .select('thread_id, is_delay_notice, is_backorder_notice')
+        .in('thread_id', threadIds)
+        .or('is_delay_notice.eq.true,is_backorder_notice.eq.true');
+      delayMessages = messages || [];
+    }
+
+    // Build delay notice lookup
+    const delayByThread = new Map<string, { delay: boolean; backorder: boolean }>();
+    for (const msg of delayMessages) {
+      const existing = delayByThread.get(msg.thread_id) || { delay: false, backorder: false };
+      if (msg.is_delay_notice) existing.delay = true;
+      if (msg.is_backorder_notice) existing.backorder = true;
+      delayByThread.set(msg.thread_id, existing);
+    }
+
+    // Build email data map by PO
+    const now = new Date();
+    for (const thread of threads || []) {
+      if (!thread.po_id) continue;
+
+      const notices = delayByThread.get(thread.id) || { delay: false, backorder: false };
+      const daysSinceUpdate = thread.last_inbound_at
+        ? Math.floor((now.getTime() - new Date(thread.last_inbound_at).getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      emailDataMap.set(thread.po_id, {
+        po_id: thread.po_id,
+        latest_eta: thread.latest_eta,
+        eta_confidence: thread.eta_confidence,
+        latest_tracking_status: thread.latest_tracking_status,
+        tracking_numbers: thread.tracking_numbers,
+        has_delay_notice: notices.delay,
+        has_backorder_notice: notices.backorder,
+        days_since_vendor_update: daysSinceUpdate,
+      });
+    }
+  } catch (err) {
+    console.warn('[POIntelligence] Error fetching email thread data:', err);
+  }
+
+  return emailDataMap;
+}
+
+/**
  * Get arrival predictions for all active POs
+ * Enhanced with email-derived intelligence (Phase 4)
  */
 export async function getArrivalPredictions(): Promise<POArrivalPrediction[]> {
   try {
@@ -67,7 +168,7 @@ export async function getArrivalPredictions(): Promise<POArrivalPrediction[]> {
     // Filter: only recent orders (last 90 days) and exclude DropshipPo records
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    
+
     const { data: pos, error } = await supabase
       .from('finale_purchase_orders')
       .select(`
@@ -95,46 +196,80 @@ export async function getArrivalPredictions(): Promise<POArrivalPrediction[]> {
 
     const inventoryMap = new Map(inventory?.map(i => [i.sku, i]) || []);
 
+    // Get email thread data for all POs (Phase 4 enhancement)
+    const poIds = (pos || []).map(p => p.id);
+    const emailDataMap = await getEmailThreadDataForPOs(poIds);
+
     const predictions: POArrivalPrediction[] = (pos || []).map(po => {
       const expectedDate = po.expected_date ? new Date(po.expected_date) : null;
       const orderDate = new Date(po.order_date);
       const now = new Date();
-      
-      // Calculate days until arrival
-      const daysUntilArrival = expectedDate 
-        ? Math.ceil((expectedDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+
+      // Get email thread data for this PO
+      const emailData = emailDataMap.get(po.id);
+
+      // Determine best ETA source: email > PO tracking > PO expected date
+      let effectiveEta = expectedDate;
+      let etaSource: 'email' | 'po' | 'calculated' = 'po';
+
+      // Use email ETA if available and confidence is not low
+      if (emailData?.latest_eta && emailData.eta_confidence !== 'low') {
+        effectiveEta = new Date(emailData.latest_eta);
+        etaSource = 'email';
+      }
+
+      // Calculate days until arrival using best available ETA
+      const daysUntilArrival = effectiveEta
+        ? Math.ceil((effectiveEta.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         : 999;
 
       // Predict ETA based on tracking status
-      let predictedEta = expectedDate?.toISOString() || null;
+      let predictedEta = effectiveEta?.toISOString() || null;
       let confidence: 'high' | 'medium' | 'low' = 'medium';
       let status: 'on_time' | 'delayed' | 'at_risk' | 'unknown' = 'unknown';
 
-      if (po.tracking_status === 'delivered') {
+      // Use email tracking status if available, otherwise PO tracking status
+      const trackingStatus = emailData?.latest_tracking_status || po.tracking_status;
+
+      if (trackingStatus === 'delivered') {
         status = 'on_time';
         confidence = 'high';
-      } else if (po.tracking_status === 'in_transit' || po.tracking_status === 'out_for_delivery') {
+      } else if (trackingStatus === 'in_transit' || trackingStatus === 'out_for_delivery') {
         status = 'on_time';
         confidence = 'high';
-      } else if (po.tracking_status === 'exception') {
+      } else if (trackingStatus === 'exception') {
         status = 'delayed';
         confidence = 'high';
-      } else if (expectedDate && daysUntilArrival < 0) {
+      } else if (effectiveEta && daysUntilArrival < 0) {
         status = 'delayed';
         confidence = 'high';
-      } else if (expectedDate && daysUntilArrival < 3) {
+      } else if (effectiveEta && daysUntilArrival < 3) {
         status = 'at_risk';
         confidence = 'medium';
-      } else if (expectedDate) {
+      } else if (effectiveEta) {
         status = 'on_time';
         confidence = 'medium';
+      }
+
+      // Email delay/backorder notices escalate status (Phase 4)
+      if (emailData?.has_backorder_notice) {
+        status = 'delayed';
+        confidence = 'high';
+      } else if (emailData?.has_delay_notice && status !== 'delayed') {
+        status = 'at_risk';
+        confidence = 'high';
+      }
+
+      // Boost confidence if we have email ETA
+      if (etaSource === 'email' && emailData?.eta_confidence === 'high') {
+        confidence = 'high';
       }
 
       // Parse line items
       const lineItems = Array.isArray(po.line_items) ? po.line_items : [];
       const items = lineItems.map((item: any) => {
         const invItem = inventoryMap.get(item.product_url || item.sku || '');
-        const isOutOfStock = invItem 
+        const isOutOfStock = invItem
           ? (invItem.available_quantity || 0) <= (invItem.reorder_point || 0)
           : false;
 
@@ -156,6 +291,14 @@ export async function getArrivalPredictions(): Promise<POArrivalPrediction[]> {
         status,
         days_until_arrival: daysUntilArrival,
         items,
+        // Email-derived intelligence (Phase 4)
+        email_eta: emailData?.latest_eta || null,
+        email_eta_confidence: emailData?.eta_confidence || null,
+        email_tracking_status: emailData?.latest_tracking_status || null,
+        email_tracking_numbers: emailData?.tracking_numbers || [],
+        has_email_delay_notice: emailData?.has_delay_notice || false,
+        has_email_backorder_notice: emailData?.has_backorder_notice || false,
+        eta_source: etaSource,
       };
     });
 
