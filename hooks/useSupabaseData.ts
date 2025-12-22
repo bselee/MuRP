@@ -620,6 +620,12 @@ export function useSupabaseVendor(id: string): UseSupabaseSingleResult<Vendor> {
 /**
  * Fetch and subscribe to BOMs (Bill of Materials)
  * Real-time updates when BOMs change in database
+ * 
+ * FILTERING LOGIC:
+ * BOMs are finished goods with a finished_sku. A BOM should only show if:
+ * 1. The BOM itself has is_active = true
+ * 2. The finished_sku exists in active inventory_items
+ * 3. The BOM's category is not globally excluded
  */
 export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
   const [data, setData] = useState<BillOfMaterials[]>([]);
@@ -639,6 +645,21 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       setLoading(true);
       setError(null);
 
+      // Step 1: Get all active inventory SKUs (the source of truth for active products)
+      const { data: activeInventory, error: invError } = await supabase
+        .from('inventory_items')
+        .select('sku')
+        .eq('is_active', true);
+
+      if (invError) {
+        console.error('[useSupabaseBOMs] Failed to fetch active inventory:', invError);
+      }
+
+      // Create a Set of active SKUs for fast lookup
+      const activeSKUs = new Set((activeInventory || []).map((item: any) => item.sku?.toLowerCase?.() || item.sku));
+      console.log(`[useSupabaseBOMs] Found ${activeSKUs.size} active inventory SKUs`);
+
+      // Step 2: Fetch BOMs with is_active = true
       const { data: boms, error: fetchError } = await supabase
         .from('boms')
         .select('*')
@@ -665,12 +686,24 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
         notes: bom.notes || '',
       }));
 
-      // CRITICAL: Apply global category filter to BOMs
-      // Items in excluded categories won't appear in the BOMs page
+      // Step 3: Filter BOMs - only show if finished_sku is in active inventory
+      const activeFiltered = transformed.filter(bom => {
+        if (!bom.finishedSku) return false; // No SKU = can't verify active status
+        const skuLower = bom.finishedSku.toLowerCase();
+        const isActive = activeSKUs.has(skuLower);
+        if (!isActive) {
+          console.log(`[useSupabaseBOMs] Filtering out BOM "${bom.name}" - SKU "${bom.finishedSku}" not in active inventory`);
+        }
+        return isActive;
+      });
+
+      console.log(`[useSupabaseBOMs] After inventory filter: ${activeFiltered.length}/${transformed.length} BOMs have active SKUs`);
+
+      // Step 4: Apply global category filter
       const excludedSet = getGlobalExcludedCategories();
-      const filtered = transformed.filter(bom => !isGloballyExcludedCategory(bom.category));
+      const filtered = activeFiltered.filter(bom => !isGloballyExcludedCategory(bom.category));
       
-      console.log(`[useSupabaseBOMs] Total: ${transformed.length}, After global filter: ${filtered.length}, Excluded categories:`, Array.from(excludedSet));
+      console.log(`[useSupabaseBOMs] Final: ${filtered.length} BOMs (after category filter), Excluded categories:`, Array.from(excludedSet));
 
       setData(filtered);
     } catch (err) {
