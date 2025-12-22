@@ -278,72 +278,106 @@ Comprehensive security audit of the codebase.
 // ============================================================
 
 /**
- * Get all agents (built-in + user-created from database)
+ * Get all agents from database (with fallback to in-memory defaults)
+ *
+ * Database is the source of truth. Built-in agents are seeded via migration 113.
+ * In-memory BUILT_IN_AGENTS are only used as fallback when database is unavailable.
  */
 export async function getAllAgents(): Promise<AgentDefinition[]> {
   try {
-    // Try to fetch user-created agents from database
+    // Fetch ALL agents from database (built-in are seeded via migration)
     const { data: dbAgents, error } = await supabase
       .from('agent_definitions')
       .select('*')
+      .eq('is_active', true)
+      .order('is_built_in', { ascending: false }) // Built-in first
       .order('name');
 
     if (error) {
-      console.warn('agent_definitions table not found, using built-in only:', error.message);
+      console.warn('agent_definitions table not found, using in-memory fallback:', error.message);
       return BUILT_IN_AGENTS;
     }
 
-    // Merge built-in with database agents
-    const userAgents = (dbAgents || []).map(transformDbToAgent);
-    return [...BUILT_IN_AGENTS, ...userAgents];
+    // If database has agents, use them exclusively (no merging with in-memory)
+    if (dbAgents && dbAgents.length > 0) {
+      return dbAgents.map(transformDbToAgent);
+    }
+
+    // Fallback to in-memory only if database is empty (pre-migration state)
+    console.warn('No agents in database, using in-memory fallback');
+    return BUILT_IN_AGENTS;
   } catch (err) {
-    console.warn('Failed to fetch agents:', err);
+    console.warn('Failed to fetch agents, using in-memory fallback:', err);
     return BUILT_IN_AGENTS;
   }
 }
 
 /**
- * Get all skills (built-in + user-created from database)
+ * Get all skills from database (with fallback to in-memory defaults)
+ *
+ * Database is the source of truth. Built-in skills are seeded via migration 113.
+ * In-memory BUILT_IN_SKILLS are only used as fallback when database is unavailable.
  */
 export async function getAllSkills(): Promise<SkillDefinition[]> {
   try {
     const { data: dbSkills, error } = await supabase
       .from('skill_definitions')
       .select('*')
+      .eq('is_active', true)
+      .order('is_built_in', { ascending: false }) // Built-in first
       .order('name');
 
     if (error) {
-      console.warn('skill_definitions table not found, using built-in only:', error.message);
+      console.warn('skill_definitions table not found, using in-memory fallback:', error.message);
       return BUILT_IN_SKILLS;
     }
 
-    const userSkills = (dbSkills || []).map(transformDbToSkill);
-    return [...BUILT_IN_SKILLS, ...userSkills];
+    // If database has skills, use them exclusively
+    if (dbSkills && dbSkills.length > 0) {
+      return dbSkills.map(transformDbToSkill);
+    }
+
+    // Fallback to in-memory only if database is empty
+    console.warn('No skills in database, using in-memory fallback');
+    return BUILT_IN_SKILLS;
   } catch (err) {
-    console.warn('Failed to fetch skills:', err);
+    console.warn('Failed to fetch skills, using in-memory fallback:', err);
     return BUILT_IN_SKILLS;
   }
 }
 
 /**
- * Get a single agent by ID
+ * Get a single agent by ID or identifier
  */
 export async function getAgentById(id: string): Promise<AgentDefinition | null> {
-  // Check built-in first
-  const builtIn = BUILT_IN_AGENTS.find(a => a.id === id);
-  if (builtIn) return builtIn;
-
   try {
-    const { data, error } = await supabase
+    // Try by UUID first, then by identifier
+    let query = supabase
       .from('agent_definitions')
-      .select('*')
-      .eq('id', id)
-      .single();
+      .select('*');
 
-    if (error || !data) return null;
-    return transformDbToAgent(data);
+    // Check if it's a UUID format or an identifier
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+    if (isUUID) {
+      query = query.eq('id', id);
+    } else {
+      query = query.eq('identifier', id);
+    }
+
+    const { data, error } = await query.single();
+
+    if (!error && data) {
+      return transformDbToAgent(data);
+    }
+
+    // Fallback to in-memory only if database query fails
+    const builtIn = BUILT_IN_AGENTS.find(a => a.id === id || a.identifier === id);
+    return builtIn || null;
   } catch {
-    return null;
+    // Fallback to in-memory
+    const builtIn = BUILT_IN_AGENTS.find(a => a.id === id || a.identifier === id);
+    return builtIn || null;
   }
 }
 

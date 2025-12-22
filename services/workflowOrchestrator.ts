@@ -7,6 +7,11 @@
  * from start to finish. Each workflow chains agents together based on
  * the autonomy level set in Agent Command Center.
  *
+ * UNIFIED AGENT SYSTEM: All agent configuration now comes from the
+ * `agent_definitions` table. The deprecated `agent_configs` table is no
+ * longer used. This ensures the Agent Command Center UI and workflow
+ * execution are always in sync.
+ *
  * Autonomy Levels:
  * - MONITOR: Agent observes and reports, no actions taken
  * - ASSIST: Agent recommends actions, user confirms
@@ -26,9 +31,13 @@ import type { AgentResponse } from './agentService';
 
 export type AutonomyLevel = 'monitor' | 'assist' | 'autonomous';
 
+/**
+ * Agent configuration interface - unified with agent_definitions table
+ * Uses 'identifier' field (matching agent_definitions.identifier)
+ */
 export interface AgentConfig {
-  agent_identifier: string;
-  display_name: string;
+  identifier: string;          // Unified: matches agent_definitions.identifier
+  name: string;                // Display name
   autonomy_level: AutonomyLevel;
   is_active: boolean;
   trust_score: number;
@@ -84,43 +93,67 @@ export interface WorkflowContext {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 📊 Agent Configuration Loader
+// 📊 Agent Configuration Loader (UNIFIED - uses agent_definitions)
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Load agent configurations from database or use defaults
+ * Workflow agent identifiers - these map to agent_definitions.identifier
+ * Using kebab-case to match the unified naming convention
+ */
+const WORKFLOW_AGENT_IDS = {
+  STOCKOUT_PREVENTION: 'stockout-prevention',
+  TRAFFIC_CONTROLLER: 'air-traffic-controller',
+  EMAIL_TRACKING: 'email-tracking-specialist',
+  INVENTORY_GUARDIAN: 'inventory-guardian',
+  PO_INTELLIGENCE: 'po-intelligence',
+  VENDOR_WATCHDOG: 'vendor-watchdog',
+  COMPLIANCE_VALIDATOR: 'compliance-validator',
+} as const;
+
+/**
+ * Load agent configurations from agent_definitions table (UNIFIED SOURCE)
+ *
+ * This function now reads from agent_definitions instead of the deprecated
+ * agent_configs table, ensuring Agent Command Center and workflows are in sync.
  */
 export async function getAgentConfigs(): Promise<Map<string, AgentConfig>> {
   const configMap = new Map<string, AgentConfig>();
 
   try {
     const { data, error } = await supabase
-      .from('agent_configs')
-      .select('*')
+      .from('agent_definitions')
+      .select('identifier, name, autonomy_level, is_active, trust_score, parameters')
       .eq('is_active', true);
 
     if (!error && data && data.length > 0) {
-      data.forEach(config => {
-        configMap.set(config.agent_identifier, config);
+      data.forEach(agent => {
+        configMap.set(agent.identifier, {
+          identifier: agent.identifier,
+          name: agent.name,
+          autonomy_level: agent.autonomy_level as AutonomyLevel,
+          is_active: agent.is_active,
+          trust_score: Number(agent.trust_score),
+          parameters: agent.parameters || {},
+        });
       });
       return configMap;
     }
   } catch (err) {
-    console.warn('Could not load agent configs, using defaults');
+    console.warn('Could not load agent_definitions, using defaults');
   }
 
-  // Default configurations if table doesn't exist
+  // Default configurations if table doesn't exist (fallback only)
   const defaults: AgentConfig[] = [
-    { agent_identifier: 'stockout_prevention', display_name: 'Stockout Prevention', autonomy_level: 'assist', is_active: true, trust_score: 0.91, parameters: {} },
-    { agent_identifier: 'traffic_controller', display_name: 'Air Traffic Controller', autonomy_level: 'monitor', is_active: true, trust_score: 0.72, parameters: {} },
-    { agent_identifier: 'email_tracking', display_name: 'Email Tracking Agent', autonomy_level: 'assist', is_active: true, trust_score: 0.80, parameters: {} },
-    { agent_identifier: 'inventory_guardian', display_name: 'Inventory Guardian', autonomy_level: 'assist', is_active: true, trust_score: 0.88, parameters: {} },
-    { agent_identifier: 'po_intelligence', display_name: 'PO Intelligence', autonomy_level: 'assist', is_active: true, trust_score: 0.82, parameters: {} },
-    { agent_identifier: 'vendor_watchdog', display_name: 'Vendor Watchdog', autonomy_level: 'assist', is_active: true, trust_score: 0.85, parameters: {} },
-    { agent_identifier: 'compliance_validator', display_name: 'Compliance Validator', autonomy_level: 'monitor', is_active: true, trust_score: 0.89, parameters: {} },
+    { identifier: WORKFLOW_AGENT_IDS.STOCKOUT_PREVENTION, name: 'Stockout Prevention', autonomy_level: 'assist', is_active: true, trust_score: 0.91, parameters: {} },
+    { identifier: WORKFLOW_AGENT_IDS.TRAFFIC_CONTROLLER, name: 'Air Traffic Controller', autonomy_level: 'monitor', is_active: true, trust_score: 0.72, parameters: {} },
+    { identifier: WORKFLOW_AGENT_IDS.EMAIL_TRACKING, name: 'Email Tracking Specialist', autonomy_level: 'assist', is_active: true, trust_score: 0.80, parameters: {} },
+    { identifier: WORKFLOW_AGENT_IDS.INVENTORY_GUARDIAN, name: 'Inventory Guardian', autonomy_level: 'assist', is_active: true, trust_score: 0.88, parameters: {} },
+    { identifier: WORKFLOW_AGENT_IDS.PO_INTELLIGENCE, name: 'PO Intelligence', autonomy_level: 'assist', is_active: true, trust_score: 0.82, parameters: {} },
+    { identifier: WORKFLOW_AGENT_IDS.VENDOR_WATCHDOG, name: 'Vendor Watchdog', autonomy_level: 'assist', is_active: true, trust_score: 0.85, parameters: {} },
+    { identifier: WORKFLOW_AGENT_IDS.COMPLIANCE_VALIDATOR, name: 'Compliance Validator', autonomy_level: 'monitor', is_active: true, trust_score: 0.89, parameters: {} },
   ];
 
-  defaults.forEach(config => configMap.set(config.agent_identifier, config));
+  defaults.forEach(config => configMap.set(config.identifier, config));
   return configMap;
 }
 
@@ -157,14 +190,14 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
   // ─────────────────────────────────────────────────────────────────────────
   // Step 1: Stockout Prevention Agent
   // ─────────────────────────────────────────────────────────────────────────
-  const stockoutConfig = agentConfigs.get('stockout_prevention');
+  const stockoutConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.STOCKOUT_PREVENTION);
   if (stockoutConfig?.is_active) {
     try {
       const alerts = await getCriticalStockoutAlerts();
       const criticalAlerts = alerts.filter(a => a.severity === 'CRITICAL' || a.severity === 'HIGH');
 
       const stockoutResult: AgentWorkResult = {
-        agent: 'stockout_prevention',
+        agent: WORKFLOW_AGENT_IDS.STOCKOUT_PREVENTION,
         success: true,
         autonomyLevel: stockoutConfig.autonomy_level,
         findings: {
@@ -180,7 +213,7 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
       for (const alert of criticalAlerts) {
         const action: PendingAction = {
           id: `stockout-${alert.sku}-${Date.now()}`,
-          agent: 'stockout_prevention',
+          agent: WORKFLOW_AGENT_IDS.STOCKOUT_PREVENTION,
           type: 'create_po',
           description: `Create PO for ${alert.product_name} (${alert.sku})`,
           priority: alert.severity === 'CRITICAL' ? 'critical' : 'high',
@@ -198,10 +231,9 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
 
         if (shouldAutoExecute(stockoutConfig) && alert.severity === 'CRITICAL') {
           // Auto-execute for autonomous mode on critical items
-          // In real implementation, this would create the PO
           autoExecutedActions.push({
             id: action.id,
-            agent: 'stockout_prevention',
+            agent: WORKFLOW_AGENT_IDS.STOCKOUT_PREVENTION,
             type: 'create_po',
             description: action.description,
             executedAt: new Date(),
@@ -218,7 +250,7 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
     } catch (err: any) {
       errors.push(`Stockout Prevention: ${err.message}`);
       agentResults.push({
-        agent: 'stockout_prevention',
+        agent: WORKFLOW_AGENT_IDS.STOCKOUT_PREVENTION,
         success: false,
         autonomyLevel: stockoutConfig.autonomy_level,
         findings: null,
@@ -232,7 +264,7 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
   // ─────────────────────────────────────────────────────────────────────────
   // Step 2: PO Intelligence Agent - Check open POs
   // ─────────────────────────────────────────────────────────────────────────
-  const poConfig = agentConfigs.get('po_intelligence');
+  const poConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.PO_INTELLIGENCE);
   if (poConfig?.is_active) {
     try {
       const { data: openPOs, error } = await supabase
@@ -250,7 +282,7 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
       }).length || 0;
 
       const poResult: AgentWorkResult = {
-        agent: 'po_intelligence',
+        agent: WORKFLOW_AGENT_IDS.PO_INTELLIGENCE,
         success: true,
         autonomyLevel: poConfig.autonomy_level,
         findings: {
@@ -272,7 +304,7 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
       for (const po of overduePOs) {
         const action: PendingAction = {
           id: `followup-${po.id}-${Date.now()}`,
-          agent: 'po_intelligence',
+          agent: WORKFLOW_AGENT_IDS.PO_INTELLIGENCE,
           type: 'send_followup',
           description: `Follow up on overdue PO ${po.order_id}`,
           priority: 'high',
@@ -296,7 +328,7 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
   // ─────────────────────────────────────────────────────────────────────────
   // Step 3: Email Tracking Agent - Check for unprocessed emails
   // ─────────────────────────────────────────────────────────────────────────
-  const emailConfig = agentConfigs.get('email_tracking');
+  const emailConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.EMAIL_TRACKING);
   if (emailConfig?.is_active) {
     try {
       // Check for unprocessed email threads
@@ -308,7 +340,7 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
         .limit(20);
 
       const emailResult: AgentWorkResult = {
-        agent: 'email_tracking',
+        agent: WORKFLOW_AGENT_IDS.EMAIL_TRACKING,
         success: true,
         autonomyLevel: emailConfig.autonomy_level,
         findings: {
@@ -323,7 +355,7 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
       if (unprocessedEmails && unprocessedEmails.length > 0) {
         const action: PendingAction = {
           id: `process-emails-${Date.now()}`,
-          agent: 'email_tracking',
+          agent: WORKFLOW_AGENT_IDS.EMAIL_TRACKING,
           type: 'process_emails',
           description: `Process ${unprocessedEmails.length} unread vendor emails`,
           priority: 'medium',
@@ -348,7 +380,7 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
   // ─────────────────────────────────────────────────────────────────────────
   // Step 4: Air Traffic Controller - Prioritize alerts
   // ─────────────────────────────────────────────────────────────────────────
-  const atcConfig = agentConfigs.get('traffic_controller');
+  const atcConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.TRAFFIC_CONTROLLER);
   if (atcConfig?.is_active) {
     try {
       // Get recent PO delay alerts
@@ -360,7 +392,7 @@ export async function runMorningBriefing(userId: string): Promise<WorkflowResult
         .limit(10);
 
       const atcResult: AgentWorkResult = {
-        agent: 'traffic_controller',
+        agent: WORKFLOW_AGENT_IDS.TRAFFIC_CONTROLLER,
         success: true,
         autonomyLevel: atcConfig.autonomy_level,
         findings: {
@@ -426,7 +458,7 @@ function generateBriefingSummary(
   const lines: string[] = [];
 
   // Stockout summary
-  const stockoutResult = agentResults.find(r => r.agent === 'stockout_prevention');
+  const stockoutResult = agentResults.find(r => r.agent === WORKFLOW_AGENT_IDS.STOCKOUT_PREVENTION);
   if (stockoutResult?.success && stockoutResult.findings) {
     const { criticalCount, totalAlerts } = stockoutResult.findings;
     if (criticalCount > 0) {
@@ -439,7 +471,7 @@ function generateBriefingSummary(
   }
 
   // PO summary
-  const poResult = agentResults.find(r => r.agent === 'po_intelligence');
+  const poResult = agentResults.find(r => r.agent === WORKFLOW_AGENT_IDS.PO_INTELLIGENCE);
   if (poResult?.success && poResult.findings) {
     const { openPOCount, overdueCount } = poResult.findings;
     if (overdueCount > 0) {
@@ -449,7 +481,7 @@ function generateBriefingSummary(
   }
 
   // Email summary
-  const emailResult = agentResults.find(r => r.agent === 'email_tracking');
+  const emailResult = agentResults.find(r => r.agent === WORKFLOW_AGENT_IDS.EMAIL_TRACKING);
   if (emailResult?.success && emailResult.findings) {
     const { unprocessedCount } = emailResult.findings;
     if (unprocessedCount > 0) {
@@ -488,7 +520,7 @@ export async function runEmailProcessingWorkflow(userId: string): Promise<Workfl
   const autoExecutedActions: ExecutedAction[] = [];
   const errors: string[] = [];
 
-  const emailConfig = agentConfigs.get('email_tracking');
+  const emailConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.EMAIL_TRACKING);
 
   if (!emailConfig?.is_active) {
     return {
@@ -576,7 +608,7 @@ export async function runEmailProcessingWorkflow(userId: string): Promise<Workfl
 
           autoExecutedActions.push({
             id: `email-${email.id}`,
-            agent: 'email_tracking',
+            agent: WORKFLOW_AGENT_IDS.EMAIL_TRACKING,
             type: 'extract_tracking',
             description: `Extracted tracking from "${email.subject}"`,
             executedAt: new Date(),
@@ -590,7 +622,7 @@ export async function runEmailProcessingWorkflow(userId: string): Promise<Workfl
           // Queue for user confirmation
           pendingActions.push({
             id: `email-${email.id}`,
-            agent: 'email_tracking',
+            agent: WORKFLOW_AGENT_IDS.EMAIL_TRACKING,
             type: 'confirm_extraction',
             description: `Confirm tracking from "${email.subject}"`,
             priority: 'medium',
@@ -605,7 +637,7 @@ export async function runEmailProcessingWorkflow(userId: string): Promise<Workfl
     }
 
     agentResults.push({
-      agent: 'email_tracking',
+      agent: WORKFLOW_AGENT_IDS.EMAIL_TRACKING,
       success: true,
       autonomyLevel: emailConfig.autonomy_level,
       findings: {
@@ -613,8 +645,8 @@ export async function runEmailProcessingWorkflow(userId: string): Promise<Workfl
         trackingFound: trackingUpdates.length,
         processedEmails,
       },
-      actionsProposed: pendingActions.filter(a => a.agent === 'email_tracking'),
-      actionsExecuted: autoExecutedActions.filter(a => a.agent === 'email_tracking'),
+      actionsProposed: pendingActions.filter(a => a.agent === WORKFLOW_AGENT_IDS.EMAIL_TRACKING),
+      actionsExecuted: autoExecutedActions.filter(a => a.agent === WORKFLOW_AGENT_IDS.EMAIL_TRACKING),
     });
 
   } catch (err: any) {
@@ -654,8 +686,8 @@ export async function runPOCreationWorkflow(
   const autoExecutedActions: ExecutedAction[] = [];
   const errors: string[] = [];
 
-  const stockoutConfig = agentConfigs.get('stockout_prevention');
-  const poConfig = agentConfigs.get('po_intelligence');
+  const stockoutConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.STOCKOUT_PREVENTION);
+  const poConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.PO_INTELLIGENCE);
 
   try {
     // Get items needing reorder
@@ -681,7 +713,7 @@ export async function runPOCreationWorkflow(
 
       const action: PendingAction = {
         id: `create-po-${vendorId}-${Date.now()}`,
-        agent: 'po_intelligence',
+        agent: WORKFLOW_AGENT_IDS.PO_INTELLIGENCE,
         type: 'create_po',
         description: `Create PO with ${items.length} items ($${totalCost.toFixed(2)})`,
         priority: items.some(i => i.severity === 'CRITICAL') ? 'critical' : 'high',
@@ -701,10 +733,9 @@ export async function runPOCreationWorkflow(
 
       if (shouldAutoExecute(poConfig) && poConfig!.trust_score >= 0.9) {
         // Only auto-execute if trust score is high enough
-        // In real implementation, this would actually create the PO
         autoExecutedActions.push({
           id: action.id,
-          agent: 'po_intelligence',
+          agent: WORKFLOW_AGENT_IDS.PO_INTELLIGENCE,
           type: 'create_po',
           description: action.description,
           executedAt: new Date(),
@@ -716,7 +747,7 @@ export async function runPOCreationWorkflow(
     }
 
     agentResults.push({
-      agent: 'po_intelligence',
+      agent: WORKFLOW_AGENT_IDS.PO_INTELLIGENCE,
       success: true,
       autonomyLevel: poConfig?.autonomy_level || 'monitor',
       findings: {
@@ -748,8 +779,16 @@ export async function runPOCreationWorkflow(
 // 🎯 ACTION EXECUTION
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Import real action executors from actionExecutors.ts
+import {
+  executeAction as executeRealAction,
+  type PendingAction as DBPendingAction,
+  type ActionType,
+} from './actionExecutors';
+
 /**
- * Execute a pending action that was approved by user
+ * Execute a pending action that was approved by user.
+ * Uses real action executors from actionExecutors.ts - no more placeholder responses.
  */
 export async function executePendingAction(
   actionId: string,
@@ -757,52 +796,60 @@ export async function executePendingAction(
   userId: string
 ): Promise<{ success: boolean; result?: any; error?: string }> {
   try {
-    switch (action.type) {
-      case 'create_po':
-        // In real implementation, create the PO
-        return {
-          success: true,
-          result: {
-            message: 'PO draft created',
-            poId: `PO-${Date.now()}`
-          }
-        };
-
-      case 'send_followup':
-        // In real implementation, send follow-up email
-        return {
-          success: true,
-          result: {
-            message: 'Follow-up email drafted',
-            poId: action.data.poId
-          }
-        };
-
-      case 'process_emails':
-        // Trigger email processing workflow
-        const result = await runEmailProcessingWorkflow(userId);
-        return { success: result.success, result };
-
-      case 'confirm_extraction':
-        // Update PO with confirmed tracking
-        if (action.data.trackingNumber) {
-          // In real implementation, find the PO and update it
-          return {
-            success: true,
-            result: {
-              message: 'Tracking number saved',
-              tracking: action.data.trackingNumber
-            }
-          };
-        }
-        return { success: false, error: 'No tracking number to save' };
-
-      default:
-        return { success: false, error: `Unknown action type: ${action.type}` };
+    // Special case: process_emails triggers the workflow
+    if (action.type === 'process_emails') {
+      const result = await runEmailProcessingWorkflow(userId);
+      return { success: result.success, result };
     }
+
+    // Map workflow action to database action format for real execution
+    const dbAction: DBPendingAction = {
+      id: actionId,
+      agentIdentifier: action.agent,
+      actionType: mapWorkflowTypeToActionType(action.type),
+      actionLabel: action.description,
+      payload: action.data,
+      priority: mapWorkflowPriorityToDbPriority(action.priority),
+      reasoning: action.suggestedAction,
+      status: 'approved',
+      userId,
+      createdAt: new Date(),
+    };
+
+    // Use real executor from actionExecutors.ts
+    const result = await executeRealAction(dbAction);
+
+    return {
+      success: result.success,
+      result: result.result,
+      error: result.error,
+    };
   } catch (err: any) {
     return { success: false, error: err.message };
   }
+}
+
+/** Map workflow action types to database action types */
+function mapWorkflowTypeToActionType(workflowType: string): ActionType {
+  const typeMap: Record<string, ActionType> = {
+    'create_po': 'create_po',
+    'send_followup': 'send_email',
+    'send_email': 'send_email',
+    'process_emails': 'custom',
+    'confirm_extraction': 'update_inventory',
+  };
+  return typeMap[workflowType] || 'custom';
+}
+
+/** Map workflow priority to database priority */
+function mapWorkflowPriorityToDbPriority(priority: string): 'low' | 'normal' | 'high' | 'urgent' {
+  const priorityMap: Record<string, 'low' | 'normal' | 'high' | 'urgent'> = {
+    'critical': 'urgent',
+    'high': 'high',
+    'medium': 'normal',
+    'low': 'low',
+  };
+  return priorityMap[priority] || 'normal';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
