@@ -665,10 +665,12 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     }, [inventory, selectedCategories, selectedVendors]);
 
     const processedInventory = useMemo(() => {
+        console.log('[Inventory] Processing inventory, input count:', inventory.length);
         let filteredItems = [...inventory];
 
         // Multi-select category filter with exclusion support
         if (selectedCategories.size > 0) {
+            const before = filteredItems.length;
             filteredItems = filteredItems.filter(item => {
                 const category = normalizeCategory(item.category);
                 const config = getCategoryConfig(category);
@@ -679,6 +681,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 // Filter by selected categories
                 return selectedCategories.has(category);
             });
+            console.log(`[Inventory] After category filter: ${filteredItems.length} (was ${before})`);
         }
 
         if (filters.status) {
@@ -719,13 +722,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
         // Recent only filter - show items updated in last 7 days
         if (showRecentOnly) {
+            const before = filteredItems.length;
             const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
             filteredItems = filteredItems.filter(item => {
                 if (!item.lastSyncAt) return false;
                 const updateTime = new Date(item.lastSyncAt);
                 return updateTime >= sevenDaysAgo;
             });
+            console.log(`[Inventory] After showRecentOnly filter: ${filteredItems.length} (was ${before})`);
         }
+        
+        console.log('[Inventory] Final processed count:', filteredItems.length);
 
         // Sorting logic
         if (sortConfig !== null) {
