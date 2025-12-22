@@ -219,7 +219,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
     const [showRecentOnly, setShowRecentOnly] = useState(() => {
         const saved = localStorage.getItem('inventory-show-recent-only');
-        return saved ? JSON.parse(saved) : true;
+        // Default to FALSE - showing all items is the expected default behavior
+        return saved ? JSON.parse(saved) : false;
     });
     const [suggestions, setSuggestions] = useState<InventoryItem[]>([]);
     const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
