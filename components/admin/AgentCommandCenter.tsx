@@ -2,7 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase/client';
 import { AgentDetailDrawer } from './AgentDetailDrawer';
 import { WorkflowPanel } from './WorkflowPanel';
-import { CpuChipIcon, ShieldCheckIcon, TruckIcon, MailIcon, BotIcon } from '../icons';
+import { SkillsPanel } from './SkillsPanel';
+import {
+  CpuChipIcon,
+  ShieldCheckIcon,
+  TruckIcon,
+  MailIcon,
+  BotIcon,
+  ChartBarIcon,
+  PackageIcon,
+  DollarSignIcon,
+  DocumentTextIcon,
+  PhotoIcon,
+  CommandLineIcon,
+  ZapIcon,
+} from '../icons';
 
 interface AgentConfig {
     id: string;
@@ -139,7 +153,7 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
     const [selectedAgent, setSelectedAgent] = useState<AgentConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [usingMockData, setUsingMockData] = useState(false);
-    const [activeTab, setActiveTab] = useState<'agents' | 'workflows'>('agents');
+    const [activeTab, setActiveTab] = useState<'agents' | 'workflows' | 'skills'>('agents');
 
     useEffect(() => {
         fetchAgents();
@@ -231,6 +245,9 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
                     <span className="flex items-center gap-2">
                         <BotIcon className="w-4 h-4" />
                         Agents
+                        <span className="text-xs bg-gray-700 px-1.5 py-0.5 rounded">
+                            {agents.filter(a => a.is_active).length}
+                        </span>
                     </span>
                 </button>
                 <button
@@ -242,8 +259,21 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
                     }`}
                 >
                     <span className="flex items-center gap-2">
-                        <CpuChipIcon className="w-4 h-4" />
+                        <ZapIcon className="w-4 h-4" />
                         Workflows
+                    </span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('skills')}
+                    className={`px-4 py-2 font-medium transition-colors border-b-2 -mb-[1px] ${
+                        activeTab === 'skills'
+                            ? 'text-accent-400 border-accent-400'
+                            : 'text-gray-400 border-transparent hover:text-white'
+                    }`}
+                >
+                    <span className="flex items-center gap-2">
+                        <CommandLineIcon className="w-4 h-4" />
+                        Skills
                     </span>
                 </button>
             </div>
@@ -251,26 +281,28 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
             {/* Tab Content */}
             {activeTab === 'workflows' ? (
                 <WorkflowPanel userId={userId} />
+            ) : activeTab === 'skills' ? (
+                <SkillsPanel />
             ) : (
                 <>
                     {/* Agents Grid */}
-            {loading ? (
-                <div className="text-gray-400 flex items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                    Loading agents...
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {agents.map(agent => (
-                        <AgentCard
-                            key={agent.id}
-                            agent={agent}
-                            onUpdate={updateAgent}
-                            onEdit={() => setSelectedAgent(agent)}
-                        />
-                    ))}
-                </div>
-            )}
+                    {loading ? (
+                        <div className="text-gray-400 flex items-center gap-2">
+                            <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                            Loading agents...
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {agents.map(agent => (
+                                <AgentCard
+                                    key={agent.id}
+                                    agent={agent}
+                                    onUpdate={updateAgent}
+                                    onEdit={() => setSelectedAgent(agent)}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </>
             )}
 
@@ -302,8 +334,15 @@ const AgentCard: React.FC<{
     const getIcon = () => {
         switch (agent.agent_identifier) {
             case 'vendor_watchdog': return <ShieldCheckIcon className="w-6 h-6 text-orange-400" />;
-            case 'traffic_controller': return <TruckIcon className="w-6 h-6 text-blue-400" />;
-            case 'trust_score': return <CpuChipIcon className="w-6 h-6 text-green-400" />;
+            case 'traffic_controller': return <TruckIcon className="w-6 h-6 text-sky-400" />;
+            case 'trust_score': return <ChartBarIcon className="w-6 h-6 text-green-400" />;
+            case 'inventory_guardian': return <PackageIcon className="w-6 h-6 text-purple-400" />;
+            case 'price_hunter': return <DollarSignIcon className="w-6 h-6 text-emerald-400" />;
+            case 'po_intelligence': return <DocumentTextIcon className="w-6 h-6 text-blue-400" />;
+            case 'stockout_prevention': return <ZapIcon className="w-6 h-6 text-red-400" />;
+            case 'artwork_approval': return <PhotoIcon className="w-6 h-6 text-pink-400" />;
+            case 'compliance_validator': return <ShieldCheckIcon className="w-6 h-6 text-amber-400" />;
+            case 'email_tracking': return <MailIcon className="w-6 h-6 text-cyan-400" />;
             default: return <CpuChipIcon className="w-6 h-6 text-gray-400" />;
         }
     };

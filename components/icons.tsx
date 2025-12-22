@@ -13,6 +13,7 @@ import {
   Bookmark,
   Bot,
   Box,
+  Braces,
   Cpu,
   Calendar as CalendarIconBase,
   CalendarClock,
@@ -31,6 +32,7 @@ import {
   ClipboardList,
   Clock,
   CloudUpload,
+  Code2,
   Copy,
   DollarSign,
   ExternalLink,
@@ -68,6 +70,7 @@ import {
   QrCode,
   RefreshCcw,
   RefreshCw,
+  Rocket,
   Save,
   Search,
   Send,
@@ -78,6 +81,7 @@ import {
   Slack,
   SlidersHorizontal,
   Sparkles,
+  SquareTerminal,
   Sun,
   Table2,
   History,
@@ -91,6 +95,7 @@ import {
   Wrench,
   X,
   XCircle,
+  Zap,
 } from 'lucide-react';
 
 type IconProps = { className?: string };
@@ -215,3 +220,10 @@ export const HashtagIcon = wrapIcon(Hash);
 export const AtSymbolIcon = wrapIcon(AtSign);
 export const SunIcon = wrapIcon(Sun);
 export const ShoppingCartIcon = wrapIcon(ShoppingCart);
+
+// Skills & Agent Icons
+export const RocketLaunchIcon = wrapIcon(Rocket);
+export const CodeBracketIcon = wrapIcon(Code2);
+export const CommandLineIcon = wrapIcon(SquareTerminal);
+export const BracesIcon = wrapIcon(Braces);
+export const ZapIcon = wrapIcon(Zap);

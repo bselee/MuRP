@@ -1,3 +1,39 @@
+### Session: 2025-12-21 (Global Category Filtering System)
+
+**Summary:** Implemented global category filtering so that excluded categories (like "Deprecating") are filtered out app-wide, not just on individual pages. User clarified: category filtering is a USER PREFERENCE - if you don't want to see a category in Inventory, you shouldn't see it anywhere.
+
+**Changes Made:**
+- Created: `hooks/useGlobalCategoryFilter.ts` (NEW - 145 lines)
+  - `useGlobalCategoryFilter()` hook for managing excluded categories
+  - `getGlobalExcludedCategories()` utility for non-hook contexts
+  - `isGloballyExcludedCategory()` for checking exclusion status
+  - Default exclusions: `['deprecating', 'deprecated', 'discontinued']`
+  - Persists to localStorage as `global-excluded-categories`
+  - Provides `toggleExcludedCategory()`, `addExcludedCategory()`, `removeExcludedCategory()`
+
+- Modified: `hooks/useSupabaseData.ts`
+  - Removed hardcoded `EXCLUDED_CATEGORIES` array
+  - Now imports `isGloballyExcludedCategory` from new hook
+  - Global filter applied to inventory data after transform
+
+- Modified: `supabase/migrations/110_mark_deprecating_items_inactive.sql`
+  - Softened to NOT force `is_active=false` (per user feedback)
+  - Now just provides helper function and optional view
+  - Actual filtering done at app level (user preference)
+
+**Key Design Decision:**
+- Category filtering is USER-CONFIGURABLE, not hardcoded
+- App-level filtering via `useGlobalCategoryFilter` hook
+- Settings UI needed for users to manage excluded categories (TODO)
+
+**Build:** ✅ Clean (8.73s)
+
+**TODO:**
+- [ ] Add Settings UI for managing globally excluded categories
+- [ ] Test filtering in browser with "Deprecating" items
+
+---
+
 ### Session: 2025-12-20 (Comprehensive Theme Compliance & Compliance Module)
 
 **Summary:** Major UI/UX fixes for light/dark mode consistency across Purchase Orders, Inventory, and Projects pages. Added new Compliance module with Regulatory Q&A, Document Analysis, and State Contact Management.

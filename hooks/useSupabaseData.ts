@@ -29,6 +29,10 @@ import type {
 } from '../types';
 import { mockBOMs, mockUsers } from '../types';
 import { isE2ETesting } from '../lib/auth/guards';
+import { isGloballyExcludedCategory } from './useGlobalCategoryFilter';
+
+// Re-export for backward compatibility
+export { isGloballyExcludedCategory as isExcludedCategory } from './useGlobalCategoryFilter';
 
 // ============================================================================
 // TYPES
@@ -154,6 +158,7 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
         const { data: chunk, error: fetchError, count } = await supabase
           .from('inventory_items')
           .select('*', { count: 'exact' })
+          .eq('is_active', true)  // CRITICAL: Only fetch active items
           .range(rangeStart, rangeStart + rangeSize - 1)
           .order('name');
 
@@ -255,7 +260,14 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
         };
       });
 
-      setData(transformed);
+      // CRITICAL: App-level filter to exclude globally excluded categories
+      // Users can configure this in Settings or Inventory page
+      // This uses the global category filter from useGlobalCategoryFilter hook
+      const filtered = transformed.filter(item => !isGloballyExcludedCategory(item.category));
+      
+      console.log(`[useSupabaseInventory] Filtered ${transformed.length - filtered.length} items with globally excluded categories`);
+
+      setData(filtered);
     } catch (err) {
       console.error('[useSupabaseInventory] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch inventory'));
