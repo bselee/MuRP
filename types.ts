@@ -1032,10 +1032,36 @@ export interface FinalePurchaseOrderRecord {
   lineCount: number;
   totalQuantity: number;
   deliveryStatus?: string;
+  // Tracking fields (populated by agents from email/AfterShip)
+  trackingNumber?: string;
+  trackingCarrier?: string;
+  trackingStatus?: POTrackingStatus;
+  trackingEstimatedDelivery?: string;
+  trackingShippedDate?: string;
+  trackingDeliveredDate?: string;
+  trackingLastException?: string;
+  trackingSource?: 'email' | 'aftership' | 'manual';
+  trackingEvents?: FinalePOTrackingEvent[];
   finaleLastModified?: string;
   syncedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+/**
+ * Tracking event for Finale POs (from finale_po_tracking_events table)
+ */
+export interface FinalePOTrackingEvent {
+  id: string;
+  finalePoId: string;
+  trackingNumber?: string;
+  carrier?: string;
+  status: string;
+  location?: string;
+  description?: string;
+  eventTime?: string;
+  source?: string;
+  createdAt?: string;
 }
 
 export interface CreatePurchaseOrderItemInput {

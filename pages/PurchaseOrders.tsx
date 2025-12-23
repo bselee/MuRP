@@ -851,10 +851,15 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             <div className="px-3 pb-2">
                                                 <PODeliveryTimeline
                                                     status={fpo.status}
+                                                    trackingStatus={fpo.trackingStatus}
                                                     orderDate={fpo.orderDate}
                                                     expectedDate={fpo.expectedDate}
-                                                    trackingNumber={undefined}
-                                                    carrier={undefined}
+                                                    shippedDate={fpo.trackingShippedDate}
+                                                    deliveredDate={fpo.trackingDeliveredDate || fpo.receivedDate}
+                                                    trackingNumber={fpo.trackingNumber}
+                                                    carrier={fpo.trackingCarrier}
+                                                    trackingException={fpo.trackingLastException}
+                                                    trackingEvents={fpo.trackingEvents}
                                                     isDark={isDark}
                                                     expandable={true}
                                                 />

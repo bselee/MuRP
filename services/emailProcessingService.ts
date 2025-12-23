@@ -576,6 +576,112 @@ function createEmptyStats(): EmailProcessingStats {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Finale PO Tracking Integration
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Update Finale PO tracking from extracted email data
+ * Called by agents after extracting tracking info from vendor emails
+ */
+export async function updateFinalePOTracking(
+  orderId: string,
+  trackingNumber: string,
+  carrier?: string,
+  estimatedDelivery?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.rpc('update_finale_po_tracking', {
+      p_order_id: orderId,
+      p_tracking_number: trackingNumber,
+      p_carrier: carrier || null,
+      p_estimated_delivery: estimatedDelivery || null,
+      p_source: 'email',
+    });
+
+    if (error) {
+      console.error('Failed to update Finale PO tracking:', error);
+      return { success: false, error: error.message };
+    }
+
+    const result = data as { success: boolean; error?: string; po_id?: string };
+    return result;
+  } catch (err: any) {
+    console.error('Error updating Finale PO tracking:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Propagate tracking from email threads to Finale POs
+ * Scans recent emails with tracking and updates corresponding Finale POs
+ */
+export async function propagateTrackingToFinalePOs(): Promise<{
+  success: boolean;
+  updated: number;
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  let updated = 0;
+
+  try {
+    // Get emails with tracking that are correlated to POs
+    const { data: emailsWithTracking } = await supabase
+      .from('email_thread_messages')
+      .select(`
+        extracted_tracking_number,
+        extracted_carrier,
+        extracted_eta,
+        email_threads!inner (
+          po_id,
+          correlation_confidence
+        )
+      `)
+      .not('extracted_tracking_number', 'is', null)
+      .not('email_threads.po_id', 'is', null)
+      .gte('email_threads.correlation_confidence', 0.7)
+      .order('received_at', { ascending: false })
+      .limit(100);
+
+    if (!emailsWithTracking || emailsWithTracking.length === 0) {
+      return { success: true, updated: 0, errors: [] };
+    }
+
+    // For each email with tracking, try to match to a Finale PO
+    for (const email of emailsWithTracking) {
+      const poId = (email.email_threads as any)?.po_id;
+      if (!poId) continue;
+
+      // Get the PO to find the order_id
+      const { data: po } = await supabase
+        .from('purchase_orders')
+        .select('finale_order_id')
+        .eq('id', poId)
+        .single();
+
+      if (!po?.finale_order_id) continue;
+
+      const result = await updateFinalePOTracking(
+        po.finale_order_id,
+        email.extracted_tracking_number!,
+        email.extracted_carrier || undefined,
+        email.extracted_eta || undefined
+      );
+
+      if (result.success) {
+        updated++;
+      } else if (result.error) {
+        errors.push(`PO ${po.finale_order_id}: ${result.error}`);
+      }
+    }
+
+    return { success: true, updated, errors };
+  } catch (err: any) {
+    console.error('Error propagating tracking to Finale POs:', err);
+    return { success: false, updated, errors: [err.message] };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Export
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -586,4 +692,6 @@ export default {
   getEmailsByPurpose,
   getUncorrelatedEmails,
   getEmailsWithTracking,
+  updateFinalePOTracking,
+  propagateTrackingToFinalePOs,
 };
