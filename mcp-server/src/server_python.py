@@ -1009,6 +1009,589 @@ async def get_state_strictness_rankings(
 
 
 # ============================================================================
+# Tool 11: Get Ingredient Compliance Status
+# ============================================================================
+@app.call_tool()
+async def get_ingredient_compliance(
+    ingredient_sku: str,
+    state_codes: Optional[List[str]] = None
+) -> List[TextContent]:
+    """
+    Get compliance status for an ingredient across states
+
+    Args:
+        ingredient_sku: SKU of the ingredient to check
+        state_codes: Optional list of state codes to filter ['CA', 'OR', 'WA']
+    """
+    try:
+        query = supabase.table("ingredient_compliance_status") \
+            .select("*") \
+            .eq("ingredient_sku", ingredient_sku)
+
+        if state_codes:
+            query = query.in_("state_code", state_codes)
+
+        result = query.order("state_code").execute()
+
+        if not result.data:
+            return [TextContent(
+                type="text",
+                text=json.dumps({
+                    "ingredient_sku": ingredient_sku,
+                    "status": "unknown",
+                    "message": "No compliance data found for this ingredient"
+                })
+            )]
+
+        # Group by compliance status
+        by_status = {
+            'compliant': [],
+            'restricted': [],
+            'prohibited': [],
+            'conditional': [],
+            'unknown': []
+        }
+
+        for record in result.data:
+            status = record.get("compliance_status", "unknown")
+            by_status[status].append({
+                "state_code": record["state_code"],
+                "restriction_type": record.get("restriction_type"),
+                "restriction_details": record.get("restriction_details"),
+                "max_concentration": record.get("max_concentration"),
+                "regulation_code": record.get("regulation_code"),
+                "sds_status": record.get("sds_status", "missing")
+            })
+
+        return [TextContent(
+            type="text",
+            text=json.dumps({
+                "ingredient_sku": ingredient_sku,
+                "ingredient_name": result.data[0].get("ingredient_name"),
+                "cas_number": result.data[0].get("cas_number"),
+                "total_states_checked": len(result.data),
+                "by_compliance_status": by_status,
+                "has_issues": len(by_status['restricted']) > 0 or len(by_status['prohibited']) > 0
+            }, indent=2)
+        )]
+
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": str(e)})
+        )]
+
+
+# ============================================================================
+# Tool 12: Get Ingredient SDS Information
+# ============================================================================
+@app.call_tool()
+async def get_ingredient_sds(
+    ingredient_sku: Optional[str] = None,
+    cas_number: Optional[str] = None,
+    hazard_code: Optional[str] = None
+) -> List[TextContent]:
+    """
+    Get Safety Data Sheet information for an ingredient
+
+    Args:
+        ingredient_sku: SKU of the ingredient
+        cas_number: CAS number to search by
+        hazard_code: GHS hazard code to filter by (e.g., 'H302')
+    """
+    try:
+        query = supabase.table("ingredient_sds_documents").select("*")
+
+        if ingredient_sku:
+            query = query.eq("ingredient_sku", ingredient_sku)
+        if cas_number:
+            query = query.eq("cas_number", cas_number)
+        if hazard_code:
+            query = query.contains("ghs_hazard_codes", [hazard_code])
+
+        result = query.eq("status", "active").execute()
+
+        if not result.data:
+            return [TextContent(
+                type="text",
+                text=json.dumps({
+                    "found": False,
+                    "message": "No SDS document found matching criteria"
+                })
+            )]
+
+        sds_list = []
+        for sds in result.data:
+            sds_list.append({
+                "ingredient_sku": sds["ingredient_sku"],
+                "ingredient_name": sds.get("ingredient_name"),
+                "cas_number": sds.get("cas_number"),
+                "manufacturer": sds.get("manufacturer_name"),
+                "revision_date": sds.get("sds_revision_date"),
+                "expiration_date": sds.get("sds_expiration_date"),
+                "hazards": {
+                    "signal_word": sds.get("signal_word"),
+                    "hazard_codes": sds.get("ghs_hazard_codes", []),
+                    "precautionary_codes": sds.get("ghs_precautionary_codes", []),
+                    "hazard_statements": sds.get("hazard_statements", [])
+                },
+                "physical_properties": {
+                    "state": sds.get("physical_state"),
+                    "appearance": sds.get("appearance"),
+                    "ph": sds.get("ph"),
+                    "flash_point": sds.get("flash_point")
+                },
+                "file_url": sds.get("sds_file_url"),
+                "is_primary": sds.get("is_primary", False)
+            })
+
+        return [TextContent(
+            type="text",
+            text=json.dumps({
+                "found": True,
+                "count": len(sds_list),
+                "sds_documents": sds_list
+            }, indent=2)
+        )]
+
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": str(e)})
+        )]
+
+
+# ============================================================================
+# Tool 13: Check BOM Ingredient Compliance
+# ============================================================================
+@app.call_tool()
+async def check_bom_compliance(
+    bom_id: str,
+    target_states: List[str]
+) -> List[TextContent]:
+    """
+    Check compliance of all ingredients in a BOM for target states
+
+    Args:
+        bom_id: UUID of the BOM to check
+        target_states: List of state codes to check ['CA', 'OR', 'WA']
+    """
+    try:
+        # Get BOM details
+        bom_result = supabase.table("boms") \
+            .select("id, name, finished_sku, components") \
+            .eq("id", bom_id) \
+            .single() \
+            .execute()
+
+        if not bom_result.data:
+            return [TextContent(
+                type="text",
+                text=json.dumps({"error": "BOM not found"})
+            )]
+
+        bom = bom_result.data
+        components = bom.get("components", [])
+
+        # Check compliance for each ingredient
+        issues = {
+            "prohibited": [],
+            "restricted": [],
+            "missing_sds": [],
+            "unknown_status": []
+        }
+
+        for component in components:
+            sku = component.get("sku")
+            name = component.get("name", sku)
+
+            # Get compliance status
+            compliance_result = supabase.table("ingredient_compliance_status") \
+                .select("*") \
+                .eq("ingredient_sku", sku) \
+                .in_("state_code", target_states) \
+                .execute()
+
+            if not compliance_result.data:
+                issues["unknown_status"].append({
+                    "sku": sku,
+                    "name": name,
+                    "states": target_states
+                })
+                continue
+
+            for record in compliance_result.data:
+                status = record.get("compliance_status")
+                state = record.get("state_code")
+
+                if status == "prohibited":
+                    issues["prohibited"].append({
+                        "sku": sku,
+                        "name": name,
+                        "state": state,
+                        "details": record.get("restriction_details")
+                    })
+                elif status == "restricted":
+                    issues["restricted"].append({
+                        "sku": sku,
+                        "name": name,
+                        "state": state,
+                        "restriction": record.get("restriction_type"),
+                        "details": record.get("restriction_details"),
+                        "max_concentration": record.get("max_concentration")
+                    })
+
+                if record.get("sds_status") == "missing":
+                    issues["missing_sds"].append({
+                        "sku": sku,
+                        "name": name
+                    })
+
+        # Determine overall status
+        if issues["prohibited"]:
+            overall_status = "non_compliant"
+        elif issues["restricted"]:
+            overall_status = "needs_attention"
+        elif issues["unknown_status"] or issues["missing_sds"]:
+            overall_status = "pending_review"
+        else:
+            overall_status = "compliant"
+
+        return [TextContent(
+            type="text",
+            text=json.dumps({
+                "bom_id": bom_id,
+                "bom_name": bom["name"],
+                "finished_sku": bom["finished_sku"],
+                "target_states": target_states,
+                "total_ingredients": len(components),
+                "overall_status": overall_status,
+                "issues": issues,
+                "recommendations": _generate_compliance_recommendations(issues)
+            }, indent=2)
+        )]
+
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": str(e)})
+        )]
+
+
+def _generate_compliance_recommendations(issues: dict) -> List[str]:
+    """Generate actionable recommendations based on compliance issues"""
+    recommendations = []
+
+    if issues["prohibited"]:
+        skus = list(set(i["sku"] for i in issues["prohibited"]))
+        recommendations.append(
+            f"CRITICAL: Remove or replace {len(skus)} prohibited ingredient(s): {', '.join(skus)}"
+        )
+
+    if issues["restricted"]:
+        recommendations.append(
+            f"Review {len(issues['restricted'])} restricted ingredient(s) for concentration limits"
+        )
+
+    if issues["missing_sds"]:
+        skus = list(set(i["sku"] for i in issues["missing_sds"]))
+        recommendations.append(
+            f"Obtain SDS documents for {len(skus)} ingredient(s): {', '.join(skus[:5])}"
+        )
+
+    if issues["unknown_status"]:
+        recommendations.append(
+            f"Research compliance status for {len(issues['unknown_status'])} ingredient(s) with unknown status"
+        )
+
+    if not recommendations:
+        recommendations.append("All ingredients appear compliant for target states")
+
+    return recommendations
+
+
+# ============================================================================
+# Tool 14: Search for Problematic Ingredients
+# ============================================================================
+@app.call_tool()
+async def search_problematic_ingredients(
+    state_code: str,
+    include_restricted: bool = True
+) -> List[TextContent]:
+    """
+    Get all prohibited and optionally restricted ingredients for a state
+
+    Args:
+        state_code: Two-letter state code (e.g., 'CA')
+        include_restricted: Include restricted ingredients (default True)
+    """
+    try:
+        statuses = ["prohibited"]
+        if include_restricted:
+            statuses.extend(["restricted", "conditional"])
+
+        result = supabase.table("ingredient_compliance_status") \
+            .select("*") \
+            .eq("state_code", state_code) \
+            .in_("compliance_status", statuses) \
+            .order("compliance_status") \
+            .execute()
+
+        # Group by status
+        by_status = {}
+        for record in result.data:
+            status = record["compliance_status"]
+            if status not in by_status:
+                by_status[status] = []
+            by_status[status].append({
+                "sku": record["ingredient_sku"],
+                "name": record.get("ingredient_name"),
+                "cas_number": record.get("cas_number"),
+                "restriction_type": record.get("restriction_type"),
+                "details": record.get("restriction_details"),
+                "max_concentration": record.get("max_concentration"),
+                "regulation": record.get("regulation_code")
+            })
+
+        return [TextContent(
+            type="text",
+            text=json.dumps({
+                "state_code": state_code,
+                "total_flagged": len(result.data),
+                "by_status": by_status,
+                "warning": f"Using these ingredients in {state_code} requires careful review"
+            }, indent=2)
+        )]
+
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": str(e)})
+        )]
+
+
+# ============================================================================
+# Tool 15: Find BOMs Using Ingredient (Cross-Use Analysis)
+# ============================================================================
+@app.call_tool()
+async def find_boms_using_ingredient(
+    ingredient_sku: str
+) -> List[TextContent]:
+    """
+    Find all BOMs that use a specific ingredient (for impact analysis)
+
+    Args:
+        ingredient_sku: SKU of the ingredient to search for
+    """
+    try:
+        # Get all BOMs with components
+        result = supabase.table("boms") \
+            .select("id, name, finished_sku, components") \
+            .not_("components", "is", "null") \
+            .execute()
+
+        using_boms = []
+        for bom in result.data:
+            components = bom.get("components", [])
+            for component in components:
+                if component.get("sku") == ingredient_sku:
+                    using_boms.append({
+                        "bom_id": bom["id"],
+                        "bom_name": bom["name"],
+                        "finished_sku": bom["finished_sku"],
+                        "quantity_used": component.get("quantity")
+                    })
+                    break
+
+        # Get compliance issues for this ingredient
+        compliance_result = supabase.table("ingredient_compliance_status") \
+            .select("state_code, compliance_status, restriction_details") \
+            .eq("ingredient_sku", ingredient_sku) \
+            .in_("compliance_status", ["prohibited", "restricted"]) \
+            .execute()
+
+        return [TextContent(
+            type="text",
+            text=json.dumps({
+                "ingredient_sku": ingredient_sku,
+                "used_in_boms": len(using_boms),
+                "boms": using_boms,
+                "compliance_issues": compliance_result.data,
+                "impact_warning": f"Changes to this ingredient affect {len(using_boms)} product(s)"
+            }, indent=2)
+        )]
+
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": str(e)})
+        )]
+
+
+# ============================================================================
+# Tool 16: Fetch External SDS (Agentic Discovery)
+# ============================================================================
+@app.call_tool()
+async def fetch_external_sds(
+    ingredient_name: str,
+    manufacturer: Optional[str] = None,
+    cas_number: Optional[str] = None
+) -> List[TextContent]:
+    """
+    Search for SDS documents from external sources (for agentic discovery)
+
+    Args:
+        ingredient_name: Name of the ingredient to search for
+        manufacturer: Optional manufacturer name to narrow search
+        cas_number: Optional CAS number for precise identification
+    """
+    try:
+        # Build search query
+        search_terms = [ingredient_name, "SDS", "Safety Data Sheet"]
+        if manufacturer:
+            search_terms.insert(0, manufacturer)
+        if cas_number:
+            search_terms.append(cas_number)
+
+        search_query = " ".join(search_terms)
+
+        # Known SDS databases to check
+        sds_sources = [
+            {
+                "name": "PubChem",
+                "url_template": f"https://pubchem.ncbi.nlm.nih.gov/compound/{cas_number}" if cas_number else None,
+                "type": "database"
+            },
+            {
+                "name": "ChemSpider",
+                "url_template": f"https://www.chemspider.com/Search.aspx?q={cas_number}" if cas_number else None,
+                "type": "database"
+            },
+            {
+                "name": "MSDS Online",
+                "url_template": f"https://www.msdsonline.com/search/?q={ingredient_name.replace(' ', '+')}",
+                "type": "aggregator"
+            }
+        ]
+
+        # Filter to only valid URLs
+        available_sources = [s for s in sds_sources if s["url_template"]]
+
+        return [TextContent(
+            type="text",
+            text=json.dumps({
+                "search_query": search_query,
+                "ingredient_name": ingredient_name,
+                "cas_number": cas_number,
+                "manufacturer": manufacturer,
+                "suggested_sources": available_sources,
+                "action_required": "Use Perplexity or web search to find and download SDS from these sources",
+                "next_step": "After obtaining SDS, call store_sds_document to save it"
+            }, indent=2)
+        )]
+
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": str(e)})
+        )]
+
+
+# ============================================================================
+# Tool 17: Store SDS Document
+# ============================================================================
+@app.call_tool()
+async def store_sds_document(
+    ingredient_sku: str,
+    ingredient_name: str,
+    cas_number: Optional[str] = None,
+    manufacturer_name: Optional[str] = None,
+    sds_file_url: Optional[str] = None,
+    sds_source: str = "manual_entry",
+    sds_revision_date: Optional[str] = None,
+    ghs_hazard_codes: Optional[List[str]] = None,
+    signal_word: Optional[str] = None,
+    hazard_statements: Optional[List[str]] = None
+) -> List[TextContent]:
+    """
+    Store an SDS document for an ingredient
+
+    Args:
+        ingredient_sku: SKU of the ingredient
+        ingredient_name: Name of the ingredient
+        cas_number: CAS number (optional)
+        manufacturer_name: Manufacturer name (optional)
+        sds_file_url: URL to the SDS file (optional)
+        sds_source: Source type (uploaded, scraped, api, manual_entry)
+        sds_revision_date: Date of SDS revision (YYYY-MM-DD)
+        ghs_hazard_codes: List of GHS hazard codes ['H302', 'H315']
+        signal_word: 'Danger' or 'Warning'
+        hazard_statements: List of hazard statements
+    """
+    try:
+        # Check if primary SDS exists, and update it
+        existing = supabase.table("ingredient_sds_documents") \
+            .select("id") \
+            .eq("ingredient_sku", ingredient_sku) \
+            .eq("is_primary", True) \
+            .execute()
+
+        sds_data = {
+            "ingredient_sku": ingredient_sku,
+            "ingredient_name": ingredient_name,
+            "cas_number": cas_number,
+            "manufacturer_name": manufacturer_name,
+            "sds_file_url": sds_file_url,
+            "sds_source": sds_source,
+            "sds_revision_date": sds_revision_date,
+            "ghs_hazard_codes": ghs_hazard_codes or [],
+            "ghs_precautionary_codes": [],
+            "signal_word": signal_word,
+            "hazard_statements": hazard_statements or [],
+            "status": "active",
+            "is_primary": True
+        }
+
+        if existing.data:
+            # Update existing
+            result = supabase.table("ingredient_sds_documents") \
+                .update(sds_data) \
+                .eq("id", existing.data[0]["id"]) \
+                .execute()
+            action = "updated"
+        else:
+            # Insert new
+            result = supabase.table("ingredient_sds_documents") \
+                .insert(sds_data) \
+                .execute()
+            action = "created"
+
+        # Update compliance status to reflect SDS availability
+        supabase.table("ingredient_compliance_status") \
+            .update({"sds_status": "current"}) \
+            .eq("ingredient_sku", ingredient_sku) \
+            .execute()
+
+        return [TextContent(
+            type="text",
+            text=json.dumps({
+                "success": True,
+                "action": action,
+                "ingredient_sku": ingredient_sku,
+                "has_hazards": bool(ghs_hazard_codes),
+                "signal_word": signal_word,
+                "message": f"SDS document {action} for {ingredient_name}"
+            }, indent=2)
+        )]
+
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": str(e)})
+        )]
+
+
+# ============================================================================
 # Main Server Entry Point
 # ============================================================================
 async def main():
