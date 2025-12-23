@@ -137,13 +137,13 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 ```bash
 # 1. Find highest migration number
-ls supabase/migrations | sort | tail -1  # Example: 116_drop_deprecated_agent_configs.sql
+ls supabase/migrations | sort | tail -1  # Example: 124_add_tracking_to_finale_pos.sql
 
-# 2. Create new migration (next number: 117)
+# 2. Create new migration (next number: 125)
 supabase migration new feature_name
 
 # 3. Rename to sequential number
-mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/117_feature_name.sql
+mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/125_feature_name.sql
 
 # 4. Test locally
 supabase db reset
@@ -281,6 +281,19 @@ Dedicated Compliance page (`/compliance`) for regulatory management with 5 tabs:
 
 **Priority States:** CA, OR, WA, NY, TX, NM (configurable per user)
 
+### Ingredient Compliance System
+
+BOM ingredients are checked against state regulatory databases for compliance:
+
+**Key Tables** (migrations 121-122):
+- `ingredient_compliance_rules` - State-specific ingredient rules
+- `ingredient_compliance_checks` - Per-ingredient compliance status
+- `bom_compliance_summary` - Aggregated BOM compliance status
+
+**Key Components:**
+- `components/compliance/BOMIngredientCompliance.tsx` - Compliance checker UI
+- `services/ingredientComplianceService.ts` - Compliance validation logic
+
 ### Theme System (Light/Dark Mode)
 
 All components must support both themes using the `useTheme()` hook:
@@ -320,7 +333,7 @@ const cardClass = isDark
 - Calendar: `services/googleCalendarService.ts`
 - Gmail: `services/googleGmailService.ts`
 
-### Edge Functions (27 functions)
+### Edge Functions (28 functions)
 Located in `supabase/functions/`:
 - `api-proxy` - Secure backend proxy for external APIs
 - `auto-sync-finale` - Automated Finale data sync
@@ -331,6 +344,8 @@ Located in `supabase/functions/`:
 - `google-auth` - Google OAuth flow for Gmail, Sheets, Calendar
 - `email-inbox-poller` - Proactive email monitoring for PO tracking
 - `gmail-webhook` - Push notifications for new emails
+- `aftership-webhook` - Real-time tracking updates from AfterShip
+- `scheduled-agent-runner` - pg_cron triggered agent execution
 - And more for webhooks, notifications, sync operations
 
 ### Email Monitoring & PO Tracking
@@ -359,6 +374,54 @@ User clicks "Connect" → Frontend calls google-auth/authorize
 - `components/settings/EmailConnectionCard.tsx` - OAuth connection UI
 - `supabase/functions/google-auth/index.ts` - OAuth flow handler
 - `supabase/functions/email-inbox-poller/index.ts` - Email sync engine
+
+### AfterShip Tracking Integration
+
+**Autonomous Tracking Flow** (CRITICAL - tracking should be autonomous, manual entry is last resort):
+
+```
+EMAIL ARRIVES → email-inbox-poller (5 min) → REGEX EXTRACTION →
+CORRELATE TO PO → REGISTER WITH AFTERSHIP → WEBHOOKS UPDATE STATUS →
+PODeliveryTimeline DISPLAYS AUTOMATICALLY
+```
+
+**Tracking Extraction Patterns** (`services/emailProcessingService.ts`):
+```typescript
+// UPS: 1Z followed by 16 alphanumeric
+/\b1Z[A-Z0-9]{16}\b/gi
+
+// FedEx: 96-prefix with 20 digits, or 12-22 digits
+/\b(?:96\d{20}|\d{12,22})\b/g
+
+// USPS: 91-94 prefix + 20-22 digits
+/\b(?:94|93|92|91)\d{20,22}\b/g
+
+// DHL: 10-11 digits OR 3 letters + 7-10 digits
+/\b(?:\d{10,11}|[A-Z]{3}\d{7,10})\b/gi
+```
+
+**Key Tables:**
+- `aftership_trackings` - Tracking records with PO correlation
+- `aftership_checkpoints` - Detailed checkpoint history
+- `finale_purchase_orders.tracking_*` - Finale PO tracking columns (migration 124)
+- `po_tracking_events` - Tracking event timeline
+
+**Key Services:**
+- `services/afterShipService.ts` - AfterShip API client, correlation, sync
+- `services/emailProcessingService.ts` - Email parsing, tracking extraction
+- `supabase/functions/aftership-webhook/index.ts` - Real-time webhook handler
+
+**Required Secrets for Autonomous Operation:**
+```bash
+supabase secrets set GOOGLE_CLIENT_ID="..."      # Gmail OAuth
+supabase secrets set GOOGLE_CLIENT_SECRET="..."  # Gmail OAuth
+supabase secrets set AFTERSHIP_API_KEY="..."     # AfterShip API
+supabase secrets set AFTERSHIP_WEBHOOK_SECRET="..." # Webhook verification
+```
+
+**UI Components:**
+- `components/PODeliveryTimeline.tsx` - Visual tracking timeline
+- `components/AfterShipSettingsPanel.tsx` - AfterShip configuration
 
 ### AI Agent System
 
