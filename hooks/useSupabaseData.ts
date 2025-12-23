@@ -2042,3 +2042,198 @@ export function useSupabaseSkills(): UseSupabaseDataResult<SkillDefinitionDispla
 
   return { data, loading, error, refetch: fetchSkills };
 }
+
+// ============================================================================
+// INGREDIENT COMPLIANCE HOOKS
+// ============================================================================
+
+export interface IngredientComplianceDisplay {
+  ingredientSku: string;
+  ingredientName: string | null;
+  casNumber: string | null;
+  stateCode: string;
+  complianceStatus: 'compliant' | 'restricted' | 'prohibited' | 'conditional' | 'pending_review' | 'unknown';
+  restrictionType: string | null;
+  restrictionDetails: string | null;
+  maxConcentration: number | null;
+  regulationCode: string | null;
+  effectiveDate: string | null;
+  notes: string | null;
+}
+
+export interface IngredientSDSDisplay {
+  id: string;
+  ingredientSku: string;
+  ingredientName: string | null;
+  casNumber: string | null;
+  sdsUrl: string | null;
+  manufacturerName: string | null;
+  revisionDate: string | null;
+  sdsExpirationDate: string | null;
+  ghsHazardCodes: string[];
+  ghsPrecautionaryCodes: string[];
+  signalWord: string | null;
+  hazardStatements: string[];
+  status: 'active' | 'expired' | 'pending_review';
+}
+
+export interface BOMComplianceData {
+  bomId: string;
+  components: Array<{
+    sku: string;
+    name: string;
+    compliance: IngredientComplianceDisplay[];
+    sds: IngredientSDSDisplay | null;
+  }>;
+  summary: {
+    totalComponents: number;
+    componentsWithSDS: number;
+    componentsWithCompliance: number;
+    prohibitedCount: number;
+    restrictedCount: number;
+    compliantCount: number;
+    unknownCount: number;
+  };
+}
+
+/**
+ * Fetch ingredient compliance data for a BOM's components
+ * Returns compliance status and SDS documents for each ingredient
+ */
+export function useBOMIngredientCompliance(
+  bomId: string | null,
+  componentSkus: string[],
+  targetStates: string[] = ['CA', 'OR', 'WA', 'TX', 'NM', 'NY']
+): UseSupabaseSingleResult<BOMComplianceData> {
+  const [data, setData] = useState<BOMComplianceData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchComplianceData = useCallback(async () => {
+    if (!bomId || componentSkus.length === 0) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch compliance status for all components across target states
+      const { data: complianceData, error: complianceError } = await supabase
+        .from('ingredient_compliance_status')
+        .select('*')
+        .in('ingredient_sku', componentSkus)
+        .in('state_code', targetStates);
+
+      if (complianceError) throw complianceError;
+
+      // Fetch SDS documents for all components
+      const { data: sdsData, error: sdsError } = await supabase
+        .from('ingredient_sds_documents')
+        .select('*')
+        .in('ingredient_sku', componentSkus)
+        .eq('is_primary', true)
+        .eq('status', 'active');
+
+      if (sdsError) throw sdsError;
+
+      // Group compliance by SKU
+      const complianceBySkuMap = new Map<string, IngredientComplianceDisplay[]>();
+      for (const record of complianceData || []) {
+        const sku = record.ingredient_sku;
+        if (!complianceBySkuMap.has(sku)) {
+          complianceBySkuMap.set(sku, []);
+        }
+        complianceBySkuMap.get(sku)!.push({
+          ingredientSku: record.ingredient_sku,
+          ingredientName: record.ingredient_name,
+          casNumber: record.cas_number,
+          stateCode: record.state_code,
+          complianceStatus: record.compliance_status,
+          restrictionType: record.restriction_type,
+          restrictionDetails: record.restriction_details,
+          maxConcentration: record.max_concentration_pct,
+          regulationCode: record.regulation_code,
+          effectiveDate: record.effective_date,
+          notes: record.notes,
+        });
+      }
+
+      // Map SDS by SKU
+      const sdsBySkuMap = new Map<string, IngredientSDSDisplay>();
+      for (const sds of sdsData || []) {
+        sdsBySkuMap.set(sds.ingredient_sku, {
+          id: sds.id,
+          ingredientSku: sds.ingredient_sku,
+          ingredientName: sds.ingredient_name,
+          casNumber: sds.cas_number,
+          sdsUrl: sds.sds_url,
+          manufacturerName: sds.manufacturer_name,
+          revisionDate: sds.revision_date,
+          sdsExpirationDate: sds.sds_expiration_date,
+          ghsHazardCodes: sds.ghs_hazard_codes || [],
+          ghsPrecautionaryCodes: sds.ghs_precautionary_codes || [],
+          signalWord: sds.signal_word,
+          hazardStatements: sds.hazard_statements || [],
+          status: sds.status,
+        });
+      }
+
+      // Build components array
+      const components = componentSkus.map(sku => ({
+        sku,
+        name: complianceBySkuMap.get(sku)?.[0]?.ingredientName || sdsBySkuMap.get(sku)?.ingredientName || sku,
+        compliance: complianceBySkuMap.get(sku) || [],
+        sds: sdsBySkuMap.get(sku) || null,
+      }));
+
+      // Calculate summary
+      let prohibitedCount = 0;
+      let restrictedCount = 0;
+      let compliantCount = 0;
+      let unknownCount = 0;
+
+      for (const comp of components) {
+        const statuses = comp.compliance.map(c => c.complianceStatus);
+        if (statuses.includes('prohibited')) {
+          prohibitedCount++;
+        } else if (statuses.includes('restricted') || statuses.includes('conditional')) {
+          restrictedCount++;
+        } else if (statuses.includes('compliant')) {
+          compliantCount++;
+        } else {
+          unknownCount++;
+        }
+      }
+
+      setData({
+        bomId,
+        components,
+        summary: {
+          totalComponents: components.length,
+          componentsWithSDS: components.filter(c => c.sds !== null).length,
+          componentsWithCompliance: components.filter(c => c.compliance.length > 0).length,
+          prohibitedCount,
+          restrictedCount,
+          compliantCount,
+          unknownCount,
+        },
+      });
+
+      console.log(`[useBOMIngredientCompliance] Loaded compliance for ${components.length} components`);
+    } catch (err) {
+      console.error('[useBOMIngredientCompliance] Error:', err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch ingredient compliance'));
+    } finally {
+      setLoading(false);
+    }
+  }, [bomId, componentSkus.join(','), targetStates.join(',')]);
+
+  useEffect(() => {
+    fetchComplianceData();
+  }, [fetchComplianceData]);
+
+  return { data, loading, error, refetch: fetchComplianceData };
+}

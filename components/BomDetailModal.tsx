@@ -7,6 +7,7 @@ import UploadArtworkModal from './UploadArtworkModal';
 import RegistrationManagement from './RegistrationManagement';
 import AddRegistrationModal from './AddRegistrationModal';
 import ProductDataSheetGenerator from './ProductDataSheetGenerator';
+import BOMIngredientCompliance from './BOMIngredientCompliance';
 import StrategicBomMetrics, { type BuildabilityInfo } from './StrategicBomMetrics';
 import { useSupabaseLabels, useSupabaseComplianceRecords, useBomRevisions } from '../hooks/useSupabaseData';
 import {
@@ -677,6 +678,19 @@ const assignedReviewer = bom.revisionReviewerId ? reviewerMap.get(bom.revisionRe
                         </Button>
                       </div>
                     ) : (
+                      <></>
+                    )}
+
+                    {/* Ingredient Compliance & SDS Section - Always visible */}
+                    <div className="mt-8 pt-6 border-t border-gray-700">
+                      <h3 className="text-lg font-semibold text-white mb-4">Ingredient Compliance & SDS</h3>
+                      <BOMIngredientCompliance
+                        bomId={bom.id}
+                        components={bom.components.map(c => ({ sku: c.sku, name: c.name }))}
+                      />
+                    </div>
+
+                    {dataSheets.length > 0 && (
                       <div className="space-y-3">
                         {dataSheets.map((sheet) => (
                           <div

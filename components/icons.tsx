@@ -214,6 +214,7 @@ export const ChevronRightIcon = wrapIcon(ChevronRight);
 export const InboxIcon = wrapIcon(Inbox);
 export const CurrencyDollarIcon = wrapIcon(CircleDollarSign);
 export const ArrowTopRightOnSquareIcon = wrapIcon(ExternalLink);
+export const ExternalLinkIcon = ArrowTopRightOnSquareIcon;
 export const ClipboardIcon = wrapIcon(ClipboardList);
 export const SlackIcon = wrapIcon(Slack);
 export const GlobeIcon = wrapIcon(Globe);
