@@ -211,20 +211,6 @@ async function processCampaign(campaign: any, rules: any[]) {
   return sentCount;
 }
 
-async function fetchCandidates(campaign: any) {
-  if (campaign.trigger_type === 'invoice_missing') {
-    const { data, error } = await supabase
-      .from('purchase_orders')
-    .select(
-      'id, order_id, vendor_id, vendor_name, supplier, status, sent_at, received_at, invoice_detected_at, tracking_status, total, created_at',
-    )
-      .in('status', ['received', 'Fulfilled'])
-      .is('invoice_detected_at', null);
-    if (error) {
-      console.error('[po-followup-runner] invoice candidate query failed', error);
-  return [];
-}
-
 async function recordOutboundCommunication(entry: {
   poId: string;
   vendorEmail: string;
@@ -258,6 +244,20 @@ async function recordOutboundCommunication(entry: {
     console.error('[po-followup-runner] failed to log vendor communication', error);
   }
 }
+
+async function fetchCandidates(campaign: any) {
+  if (campaign.trigger_type === 'invoice_missing') {
+    const { data, error } = await supabase
+      .from('purchase_orders')
+      .select(
+        'id, order_id, vendor_id, vendor_name, supplier, status, sent_at, received_at, invoice_detected_at, tracking_status, total, created_at',
+      )
+      .in('status', ['received', 'Fulfilled'])
+      .is('invoice_detected_at', null);
+    if (error) {
+      console.error('[po-followup-runner] invoice candidate query failed', error);
+      return [];
+    }
     return (data || []).filter((po) => !!po.sent_at);
   }
 
