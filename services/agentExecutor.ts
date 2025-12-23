@@ -757,6 +757,347 @@ const capabilityExecutors: Record<string, CapabilityExecutor> = {
         })),
     };
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Ingredient Compliance Agent capabilities
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  'research-regulations': async (ctx, params) => {
+    // This capability uses MCP tools via the Python server
+    // The actual research is done by calling the MCP server externally
+    // Here we just identify ingredients that need research
+    const findings: AgentFinding[] = [];
+    const proposedActions: ProposedAction[] = [];
+
+    try {
+      // Get ingredients missing compliance data for priority states
+      const priorityStates = (params?.priority_states as string[]) || ['CA', 'OR', 'WA', 'TX', 'NM', 'NY'];
+
+      // Get all unique ingredients from BOMs
+      const { data: boms } = await supabase
+        .from('boms')
+        .select('components')
+        .not('components', 'is', null);
+
+      const ingredientSkus = new Set<string>();
+      for (const bom of boms || []) {
+        const components = bom.components as Array<{ sku: string; name: string }>;
+        for (const comp of components || []) {
+          if (comp.sku) ingredientSkus.add(comp.sku);
+        }
+      }
+
+      // Check which ingredients have compliance data
+      const { data: existingCompliance } = await supabase
+        .from('ingredient_compliance_status')
+        .select('ingredient_sku, state_code')
+        .in('state_code', priorityStates);
+
+      const complianceMap = new Map<string, Set<string>>();
+      for (const record of existingCompliance || []) {
+        if (!complianceMap.has(record.ingredient_sku)) {
+          complianceMap.set(record.ingredient_sku, new Set());
+        }
+        complianceMap.get(record.ingredient_sku)!.add(record.state_code);
+      }
+
+      // Find ingredients missing compliance data
+      const needsResearch: Array<{ sku: string; missingStates: string[] }> = [];
+      for (const sku of ingredientSkus) {
+        const coveredStates = complianceMap.get(sku) || new Set();
+        const missingStates = priorityStates.filter(s => !coveredStates.has(s));
+        if (missingStates.length > 0) {
+          needsResearch.push({ sku, missingStates });
+        }
+      }
+
+      if (needsResearch.length > 0) {
+        findings.push({
+          type: 'info',
+          severity: 'medium',
+          title: `${needsResearch.length} Ingredients Need Compliance Research`,
+          description: `Found ${needsResearch.length} ingredients missing state compliance data. Use MCP tools to research regulations.`,
+          data: { needsResearch: needsResearch.slice(0, 10) }, // First 10
+        });
+
+        // Propose research actions
+        for (const item of needsResearch.slice(0, 5)) {
+          proposedActions.push({
+            id: `research-${item.sku}-${Date.now()}`,
+            type: 'custom',
+            description: `Research ${item.sku} compliance for ${item.missingStates.join(', ')}`,
+            priority: 'medium',
+            data: {
+              action: 'research_ingredient_regulations',
+              ingredient_sku: item.sku,
+              states: item.missingStates,
+            },
+            requiresConfirmation: false,
+          });
+        }
+      }
+
+      return { findings, proposedActions };
+    } catch (error) {
+      findings.push({
+        type: 'warning',
+        severity: 'medium',
+        title: 'Research Analysis Error',
+        description: String(error),
+      });
+      return { findings, proposedActions };
+    }
+  },
+
+  'populate-compliance': async (ctx, params) => {
+    // This is triggered after research - just monitors current state
+    const findings: AgentFinding[] = [];
+    const proposedActions: ProposedAction[] = [];
+
+    try {
+      // Get counts of compliance data
+      const { count: totalRecords } = await supabase
+        .from('ingredient_compliance_status')
+        .select('*', { count: 'exact', head: true });
+
+      const { data: byStatus } = await supabase
+        .from('ingredient_compliance_status')
+        .select('compliance_status')
+        .not('compliance_status', 'is', null);
+
+      const statusCounts: Record<string, number> = {};
+      for (const record of byStatus || []) {
+        const status = record.compliance_status;
+        statusCounts[status] = (statusCounts[status] || 0) + 1;
+      }
+
+      findings.push({
+        type: 'info',
+        severity: 'low',
+        title: 'Ingredient Compliance Database Status',
+        description: `${totalRecords || 0} total compliance records. Prohibited: ${statusCounts['prohibited'] || 0}, Restricted: ${statusCounts['restricted'] || 0}, Compliant: ${statusCounts['compliant'] || 0}`,
+        data: statusCounts,
+      });
+
+      return { findings, proposedActions };
+    } catch (error) {
+      findings.push({
+        type: 'warning',
+        severity: 'medium',
+        title: 'Compliance Data Check Error',
+        description: String(error),
+      });
+      return { findings, proposedActions };
+    }
+  },
+
+  'research-sds': async (ctx, params) => {
+    // Find ingredients missing SDS documents
+    const findings: AgentFinding[] = [];
+    const proposedActions: ProposedAction[] = [];
+
+    try {
+      // Get ingredients that need SDS but don't have one
+      const { data: missingSDS } = await supabase
+        .from('ingredient_compliance_status')
+        .select('ingredient_sku, ingredient_name')
+        .eq('sds_required', true)
+        .eq('sds_status', 'missing');
+
+      const uniqueSkus = [...new Set((missingSDS || []).map(r => r.ingredient_sku))];
+
+      if (uniqueSkus.length > 0) {
+        findings.push({
+          type: 'warning',
+          severity: 'medium',
+          title: `${uniqueSkus.length} Ingredients Missing SDS`,
+          description: `These ingredients require SDS documents for compliance verification.`,
+          data: { skus: uniqueSkus.slice(0, 20) },
+        });
+
+        // Propose SDS research for top 5
+        for (const sku of uniqueSkus.slice(0, 5)) {
+          const record = missingSDS?.find(r => r.ingredient_sku === sku);
+          proposedActions.push({
+            id: `sds-research-${sku}-${Date.now()}`,
+            type: 'custom',
+            description: `Research SDS for ${record?.ingredient_name || sku}`,
+            priority: 'medium',
+            data: {
+              action: 'research_ingredient_sds',
+              ingredient_sku: sku,
+              ingredient_name: record?.ingredient_name,
+            },
+            requiresConfirmation: false,
+          });
+        }
+      }
+
+      // Check for expiring SDS
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+      const { data: expiringSDS } = await supabase
+        .from('ingredient_sds_documents')
+        .select('ingredient_sku, ingredient_name, sds_expiration_date')
+        .eq('status', 'active')
+        .lte('sds_expiration_date', thirtyDaysFromNow.toISOString().split('T')[0])
+        .gte('sds_expiration_date', new Date().toISOString().split('T')[0]);
+
+      if ((expiringSDS?.length || 0) > 0) {
+        findings.push({
+          type: 'warning',
+          severity: 'high',
+          title: `${expiringSDS!.length} SDS Documents Expiring Soon`,
+          description: `These SDS documents will expire within 30 days and need renewal.`,
+          data: { expiring: expiringSDS },
+        });
+      }
+
+      return { findings, proposedActions };
+    } catch (error) {
+      findings.push({
+        type: 'warning',
+        severity: 'medium',
+        title: 'SDS Research Error',
+        description: String(error),
+      });
+      return { findings, proposedActions };
+    }
+  },
+
+  'cross-use-analysis': async (ctx, params) => {
+    // Analyze ingredient usage across BOMs to prioritize compliance research
+    const findings: AgentFinding[] = [];
+    const proposedActions: ProposedAction[] = [];
+
+    try {
+      // Get all BOMs with components
+      const { data: boms } = await supabase
+        .from('boms')
+        .select('id, name, finished_sku, components')
+        .not('components', 'is', null);
+
+      // Count ingredient usage
+      const usageCounts = new Map<string, { count: number; boms: string[] }>();
+
+      for (const bom of boms || []) {
+        const components = bom.components as Array<{ sku: string; name: string }>;
+        for (const comp of components || []) {
+          if (!comp.sku) continue;
+          if (!usageCounts.has(comp.sku)) {
+            usageCounts.set(comp.sku, { count: 0, boms: [] });
+          }
+          const entry = usageCounts.get(comp.sku)!;
+          entry.count++;
+          entry.boms.push(bom.finished_sku);
+        }
+      }
+
+      // Find high-impact ingredients (used in 3+ BOMs)
+      const highImpact = Array.from(usageCounts.entries())
+        .filter(([_, v]) => v.count >= 3)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 10);
+
+      if (highImpact.length > 0) {
+        findings.push({
+          type: 'info',
+          severity: 'medium',
+          title: `${highImpact.length} High-Impact Ingredients Identified`,
+          description: `These ingredients are used across multiple products. Changes affect many BOMs.`,
+          data: {
+            highImpact: highImpact.map(([sku, data]) => ({
+              sku,
+              usedInBOMs: data.count,
+              products: data.boms.slice(0, 5),
+            })),
+          },
+        });
+      }
+
+      // Check for restricted/prohibited high-impact ingredients
+      const { data: problemIngredients } = await supabase
+        .from('ingredient_compliance_status')
+        .select('ingredient_sku, state_code, compliance_status, restriction_details')
+        .in('ingredient_sku', highImpact.map(([sku]) => sku))
+        .in('compliance_status', ['prohibited', 'restricted']);
+
+      if ((problemIngredients?.length || 0) > 0) {
+        findings.push({
+          type: 'alert',
+          severity: 'high',
+          title: 'High-Impact Ingredients Have Compliance Issues',
+          description: `Found ${problemIngredients!.length} compliance issues in frequently-used ingredients.`,
+          data: { issues: problemIngredients },
+        });
+      }
+
+      return { findings, proposedActions };
+    } catch (error) {
+      findings.push({
+        type: 'warning',
+        severity: 'medium',
+        title: 'Cross-Use Analysis Error',
+        description: String(error),
+      });
+      return { findings, proposedActions };
+    }
+  },
+
+  'check-ingredient-compliance': async (ctx, params) => {
+    // Check overall ingredient compliance status
+    const findings: AgentFinding[] = [];
+    const proposedActions: ProposedAction[] = [];
+
+    try {
+      const priorityStates = (params?.priority_states as string[]) || ['CA', 'OR', 'WA'];
+
+      // Get prohibited ingredients
+      const { data: prohibited } = await supabase
+        .from('ingredient_compliance_status')
+        .select('ingredient_sku, ingredient_name, state_code, restriction_details')
+        .eq('compliance_status', 'prohibited')
+        .in('state_code', priorityStates);
+
+      if ((prohibited?.length || 0) > 0) {
+        findings.push({
+          type: 'alert',
+          severity: 'critical',
+          title: `${prohibited!.length} Prohibited Ingredients Found`,
+          description: `These ingredients cannot be used in products sold in the listed states.`,
+          data: { prohibited },
+        });
+      }
+
+      // Get restricted ingredients
+      const { data: restricted } = await supabase
+        .from('ingredient_compliance_status')
+        .select('ingredient_sku, ingredient_name, state_code, restriction_type, restriction_details, max_concentration')
+        .eq('compliance_status', 'restricted')
+        .in('state_code', priorityStates);
+
+      if ((restricted?.length || 0) > 0) {
+        findings.push({
+          type: 'warning',
+          severity: 'high',
+          title: `${restricted!.length} Restricted Ingredients`,
+          description: `These ingredients have concentration limits or special requirements.`,
+          data: { restricted },
+        });
+      }
+
+      return { findings, proposedActions };
+    } catch (error) {
+      findings.push({
+        type: 'warning',
+        severity: 'medium',
+        title: 'Compliance Check Error',
+        description: String(error),
+      });
+      return { findings, proposedActions };
+    }
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
