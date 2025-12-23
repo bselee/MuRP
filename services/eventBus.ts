@@ -604,3 +604,98 @@ export async function emitComplianceAlert(
     userId,
   });
 }
+
+/**
+ * Check for overdue POs and emit events
+ * Should be called periodically (e.g., every 4 hours via cron)
+ */
+export async function checkAndEmitOverduePOs(): Promise<TriggerResult[]> {
+  const results: TriggerResult[] = [];
+
+  try {
+    // Get POs that are overdue (expected_date < now and not received)
+    const { data: overduePOs, error } = await supabase
+      .from('purchase_orders')
+      .select('id, order_id, vendor_id, supplier_name, expected_date, status')
+      .lt('expected_date', new Date().toISOString())
+      .in('status', ['sent', 'pending', 'draft'])
+      .order('expected_date');
+
+    if (error) {
+      console.error('[checkAndEmitOverduePOs] Query error:', error);
+      return results;
+    }
+
+    for (const po of overduePOs || []) {
+      const expectedDate = new Date(po.expected_date);
+      const daysOverdue = Math.floor((Date.now() - expectedDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      const eventResults = await emitPOOverdue(
+        po.id,
+        po.vendor_id || '',
+        expectedDate,
+        daysOverdue
+      );
+
+      results.push(...eventResults);
+    }
+
+    console.log(`[checkAndEmitOverduePOs] Checked ${overduePOs?.length || 0} overdue POs, emitted ${results.length} events`);
+  } catch (err) {
+    console.error('[checkAndEmitOverduePOs] Error:', err);
+  }
+
+  return results;
+}
+
+/**
+ * Check for expiring compliance items and emit events
+ * Should be called periodically (e.g., daily)
+ */
+export async function checkAndEmitExpiringCompliance(): Promise<TriggerResult[]> {
+  const results: TriggerResult[] = [];
+
+  try {
+    // Get compliance documents expiring within 30 days
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    const { data: expiringDocs, error } = await supabase
+      .from('compliance_documents')
+      .select('id, name, expiry_date, state, document_type')
+      .lt('expiry_date', thirtyDaysFromNow.toISOString())
+      .gt('expiry_date', new Date().toISOString());
+
+    if (error) {
+      console.error('[checkAndEmitExpiringCompliance] Query error:', error);
+      return results;
+    }
+
+    for (const doc of expiringDocs || []) {
+      const expiryDate = new Date(doc.expiry_date);
+      const daysUntilExpiry = Math.floor((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+      const eventResults = await emitEvent({
+        type: 'compliance.expiring',
+        data: {
+          documentId: doc.id,
+          name: doc.name,
+          state: doc.state,
+          type: doc.document_type,
+          expiryDate: doc.expiry_date,
+          daysUntilExpiry,
+        },
+        timestamp: new Date(),
+        source: 'compliance-monitor',
+      });
+
+      results.push(...eventResults);
+    }
+
+    console.log(`[checkAndEmitExpiringCompliance] Checked ${expiringDocs?.length || 0} expiring documents`);
+  } catch (err) {
+    console.error('[checkAndEmitExpiringCompliance] Error:', err);
+  }
+
+  return results;
+}
