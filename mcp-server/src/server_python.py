@@ -1429,7 +1429,310 @@ async def find_boms_using_ingredient(
 
 
 # ============================================================================
-# Tool 16: Fetch External SDS (Agentic Discovery)
+# Tool 16: Research Ingredient Regulations (Perplexity)
+# ============================================================================
+@app.call_tool()
+async def research_ingredient_regulations(
+    ingredient_name: str,
+    state_codes: List[str],
+    cas_number: Optional[str] = None,
+    regulation_type: str = "fertilizer"
+) -> List[TextContent]:
+    """
+    Research ingredient regulations using Perplexity API for state-by-state compliance data.
+    This tool helps build the ingredient compliance database by researching:
+    - State-specific restrictions and prohibitions
+    - Maximum concentration limits
+    - Required disclosures and labeling
+    - Relevant regulation codes
+
+    Args:
+        ingredient_name: Name of the ingredient to research
+        state_codes: List of state codes to research ['CA', 'OR', 'WA']
+        cas_number: Optional CAS number for more precise results
+        regulation_type: Type of regulation (fertilizer, organic, soil_amendment, pesticide)
+    """
+    try:
+        import httpx
+
+        perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
+        if not perplexity_api_key:
+            return [TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": "PERPLEXITY_API_KEY not configured",
+                    "fallback": "Manual research required for ingredient regulations"
+                })
+            )]
+
+        # Build research query
+        states_str = ", ".join(state_codes)
+        cas_str = f" (CAS: {cas_number})" if cas_number else ""
+
+        query = f"""Research {regulation_type} regulations for the ingredient "{ingredient_name}"{cas_str} in these US states: {states_str}.
+
+For each state, find:
+1. Is this ingredient allowed, restricted, or prohibited?
+2. If restricted, what are the maximum concentration limits?
+3. What labeling requirements apply?
+4. What is the relevant regulation code or statute reference?
+5. Are there any special permits or conditions required?
+
+Focus on agricultural/fertilizer product regulations, not consumer safety regulations.
+Provide specific regulation citations where available."""
+
+        # Call Perplexity Sonar API
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {perplexity_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "sonar",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are an expert in US agricultural and fertilizer regulations. Provide accurate, citation-backed information about ingredient restrictions by state. Format responses as structured data when possible."
+                        },
+                        {
+                            "role": "user",
+                            "content": query
+                        }
+                    ],
+                    "max_tokens": 2000,
+                    "temperature": 0.1,
+                    "return_citations": True
+                },
+                timeout=60.0
+            )
+
+            if response.status_code != 200:
+                return [TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Perplexity API error: {response.status_code}",
+                        "details": response.text
+                    })
+                )]
+
+            result = response.json()
+            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            citations = result.get("citations", [])
+
+            return [TextContent(
+                type="text",
+                text=json.dumps({
+                    "ingredient_name": ingredient_name,
+                    "cas_number": cas_number,
+                    "states_researched": state_codes,
+                    "regulation_type": regulation_type,
+                    "research_findings": content,
+                    "citations": citations,
+                    "next_steps": [
+                        "Review findings and extract compliance status per state",
+                        "Call set_ingredient_compliance to store each state's status",
+                        "Call store_sds_document if SDS info was found"
+                    ]
+                }, indent=2)
+            )]
+
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": str(e)})
+        )]
+
+
+# ============================================================================
+# Tool 17: Bulk Populate Ingredient Compliance from Research
+# ============================================================================
+@app.call_tool()
+async def set_ingredient_compliance(
+    ingredient_sku: str,
+    ingredient_name: str,
+    state_code: str,
+    compliance_status: str,
+    cas_number: Optional[str] = None,
+    restriction_type: Optional[str] = None,
+    restriction_details: Optional[str] = None,
+    max_concentration: Optional[float] = None,
+    concentration_unit: str = "percent",
+    regulation_code: Optional[str] = None
+) -> List[TextContent]:
+    """
+    Set compliance status for an ingredient in a specific state.
+    Use after researching regulations to populate the database.
+
+    Args:
+        ingredient_sku: SKU of the ingredient
+        ingredient_name: Name of the ingredient
+        state_code: Two-letter state code
+        compliance_status: compliant, restricted, prohibited, conditional, unknown
+        cas_number: Optional CAS number
+        restriction_type: banned, limited_use, special_permit, concentration_limit
+        restriction_details: Human-readable restriction explanation
+        max_concentration: Maximum allowed concentration if restricted
+        concentration_unit: percent, ppm, or ppb
+        regulation_code: Legal citation (e.g., "CCR Title 3, Section 2303")
+    """
+    try:
+        data = {
+            "ingredient_sku": ingredient_sku,
+            "ingredient_name": ingredient_name,
+            "state_code": state_code,
+            "compliance_status": compliance_status,
+            "cas_number": cas_number,
+            "restriction_type": restriction_type,
+            "restriction_details": restriction_details,
+            "max_concentration": max_concentration,
+            "concentration_unit": concentration_unit,
+            "regulation_code": regulation_code,
+            "sds_required": True,
+            "sds_status": "missing"
+        }
+
+        result = supabase.table("ingredient_compliance_status") \
+            .upsert(data, on_conflict="ingredient_sku,state_code") \
+            .execute()
+
+        return [TextContent(
+            type="text",
+            text=json.dumps({
+                "success": True,
+                "ingredient_sku": ingredient_sku,
+                "state_code": state_code,
+                "compliance_status": compliance_status,
+                "message": f"Compliance status set for {ingredient_name} in {state_code}"
+            }, indent=2)
+        )]
+
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": str(e)})
+        )]
+
+
+# ============================================================================
+# Tool 18: Research SDS and Hazard Data (Perplexity)
+# ============================================================================
+@app.call_tool()
+async def research_ingredient_sds(
+    ingredient_name: str,
+    manufacturer: Optional[str] = None,
+    cas_number: Optional[str] = None
+) -> List[TextContent]:
+    """
+    Research SDS and hazard information for an ingredient using Perplexity.
+    Finds GHS hazard codes, signal words, and safety information.
+
+    Args:
+        ingredient_name: Name of the ingredient
+        manufacturer: Optional manufacturer name
+        cas_number: Optional CAS number for precise identification
+    """
+    try:
+        import httpx
+
+        perplexity_api_key = os.getenv("PERPLEXITY_API_KEY")
+        if not perplexity_api_key:
+            return [TextContent(
+                type="text",
+                text=json.dumps({
+                    "error": "PERPLEXITY_API_KEY not configured",
+                    "fallback": "Use fetch_external_sds for manual SDS lookup"
+                })
+            )]
+
+        # Build research query
+        mfr_str = f" manufactured by {manufacturer}" if manufacturer else ""
+        cas_str = f" (CAS Number: {cas_number})" if cas_number else ""
+
+        query = f"""Find Safety Data Sheet (SDS) information for the ingredient "{ingredient_name}"{mfr_str}{cas_str}.
+
+Provide:
+1. CAS Number (if not provided)
+2. GHS Hazard Classification:
+   - Signal word (Danger or Warning)
+   - H-codes (hazard statements like H302, H315, etc.)
+   - P-codes (precautionary statements)
+3. Physical properties:
+   - Physical state (solid, liquid, gas)
+   - Appearance
+   - pH (if applicable)
+   - Flash point
+4. Primary health and environmental hazards
+5. URL to official SDS if available
+
+Focus on agricultural-grade or industrial-grade products if available."""
+
+        # Call Perplexity Sonar API
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {perplexity_api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "sonar",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are an expert in chemical safety and SDS documentation. Provide accurate GHS hazard classifications and safety data. When citing H-codes and P-codes, use the standard GHS format."
+                        },
+                        {
+                            "role": "user",
+                            "content": query
+                        }
+                    ],
+                    "max_tokens": 1500,
+                    "temperature": 0.1,
+                    "return_citations": True
+                },
+                timeout=60.0
+            )
+
+            if response.status_code != 200:
+                return [TextContent(
+                    type="text",
+                    text=json.dumps({
+                        "error": f"Perplexity API error: {response.status_code}",
+                        "details": response.text
+                    })
+                )]
+
+            result = response.json()
+            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            citations = result.get("citations", [])
+
+            return [TextContent(
+                type="text",
+                text=json.dumps({
+                    "ingredient_name": ingredient_name,
+                    "manufacturer": manufacturer,
+                    "cas_number": cas_number,
+                    "sds_research": content,
+                    "citations": citations,
+                    "next_steps": [
+                        "Extract GHS hazard codes from research",
+                        "Call store_sds_document to save the data",
+                        "Verify critical hazard info against official SDS"
+                    ]
+                }, indent=2)
+            )]
+
+    except Exception as e:
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": str(e)})
+        )]
+
+
+# ============================================================================
+# Tool 19: Fetch External SDS (Agentic Discovery)
 # ============================================================================
 @app.call_tool()
 async def fetch_external_sds(
