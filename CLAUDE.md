@@ -137,13 +137,13 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 ```bash
 # 1. Find highest migration number
-ls supabase/migrations | sort | tail -1  # Example: 109_email_inbox_user_connection.sql
+ls supabase/migrations | sort | tail -1  # Example: 116_drop_deprecated_agent_configs.sql
 
-# 2. Create new migration (next number: 110)
+# 2. Create new migration (next number: 117)
 supabase migration new feature_name
 
 # 3. Rename to sequential number
-mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/109_feature_name.sql
+mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/117_feature_name.sql
 
 # 4. Test locally
 supabase db reset
@@ -320,7 +320,7 @@ const cardClass = isDark
 - Calendar: `services/googleCalendarService.ts`
 - Gmail: `services/googleGmailService.ts`
 
-### Edge Functions (25+ functions)
+### Edge Functions (27 functions)
 Located in `supabase/functions/`:
 - `api-proxy` - Secure backend proxy for external APIs
 - `auto-sync-finale` - Automated Finale data sync
@@ -391,9 +391,22 @@ const result = await runMorningBriefing(userId);
 - Generate Purchase Orders - Create POs for items below ROP
 
 **Key Tables:**
-- `agent_configs` - Agent settings (autonomy, trust score, parameters)
+
+- `agent_definitions` - Unified agent configuration (autonomy, trust score, parameters, usage tracking)
 - `workflow_executions` - Workflow run logs for audit
+- `pending_actions_queue` - Actions proposed by agents awaiting approval/execution
+- `event_triggers` - Event-to-agent mappings for automated execution
 - `oauth_states` - CSRF protection for OAuth flows
+
+**Agent Execution Architecture:**
+
+```text
+Event/Trigger → eventBus.ts → agentExecutor.ts → agent_definitions (config)
+                     ↓                ↓
+              executeAgentByIdentifier()    →    capabilityExecutors (actions)
+                                                        ↓
+                                            actionExecutors.ts → pending_actions_queue
+```
 
 ## Common Pitfalls
 
