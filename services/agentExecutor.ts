@@ -18,9 +18,18 @@ import { getCriticalStockoutAlerts, type StockoutAlert } from './stockoutPrevent
 import { assessPODelay, type PODelayAlert } from './airTrafficControllerAgent';
 import { getVendorPerformance, getFlaggedVendors } from './vendorWatchdogAgent';
 import { runInventoryHealthCheck, getReorderPointRecommendations, analyzeVelocityChanges } from './inventoryGuardianAgent';
-import { getArrivalPredictions, getPesterAlerts, getInvoiceVariances } from './poIntelligenceAgent';
+import { getArrivalPredictions, getPesterAlerts, getInvoiceVariances, type PesterAlert } from './poIntelligenceAgent';
+import { runFollowUpAutomation } from './followUpService';
 import { validatePendingLabels, getComplianceSummary } from './complianceValidationAgent';
-import { getThreadsRequiringAttention, getOpenAlerts, getAlertSummary } from './emailInboxManager';
+import { getThreadsRequiringAttention, getOpenAlerts, getAlertSummary, correlateEmailToPO } from './emailInboxManager';
+import {
+  triggerEmailPolling,
+  extractTrackingInfo,
+  getEmailsByPurpose,
+  getUncorrelatedEmails,
+  getEmailsWithTracking,
+  type ParsedEmailContent,
+} from './emailProcessingService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -156,64 +165,192 @@ const capabilityExecutors: Record<string, CapabilityExecutor> = {
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Email Tracking capabilities (email-tracking-specialist)
+  // These actually process emails from configured Gmail inboxes (Purchasing + AP)
   // ═══════════════════════════════════════════════════════════════════════════
 
   'email-parsing': async (ctx, params) => {
-    // Get threads that require attention (unresolved, high urgency, etc.)
+    // Trigger actual email polling from Gmail inboxes
+    const pollingResults = await triggerEmailPolling();
+    const findings: AgentFinding[] = [];
+    const proposedActions: ProposedAction[] = [];
+
+    // Process results from each inbox
+    for (const result of pollingResults) {
+      if (!result.success) {
+        findings.push({
+          type: 'warning' as const,
+          severity: 'medium' as const,
+          title: `Inbox Error: ${result.inboxName}`,
+          description: result.error || 'Failed to process inbox',
+          data: { inboxId: result.inboxId, purpose: result.purpose },
+        });
+        continue;
+      }
+
+      // Report processing stats
+      if (result.stats.emailsProcessed > 0) {
+        findings.push({
+          type: 'info' as const,
+          severity: 'low' as const,
+          title: `Processed ${result.stats.emailsProcessed} emails from ${result.inboxName}`,
+          description: `Inbox purpose: ${result.purpose}. Correlated ${result.stats.posCorrelated} to POs, found ${result.stats.trackingNumbersFound} tracking numbers.`,
+          data: result.stats,
+        });
+      }
+
+      // Report alerts generated
+      if (result.stats.alertsGenerated > 0) {
+        findings.push({
+          type: 'alert' as const,
+          severity: 'high' as const,
+          title: `${result.stats.alertsGenerated} alerts from ${result.inboxName}`,
+          description: `New alerts generated from incoming vendor emails`,
+          data: { alertCount: result.stats.alertsGenerated },
+        });
+      }
+    }
+
+    // Also get threads requiring attention
     const threads = await getThreadsRequiringAttention();
-    return {
-      findings: threads.map((thread: any) => ({
+    for (const thread of threads) {
+      findings.push({
         type: thread.urgency_level === 'critical' ? 'alert' as const : 'info' as const,
         severity: thread.urgency_level === 'critical' ? 'critical' as const :
                   thread.urgency_level === 'high' ? 'high' as const : 'medium' as const,
         title: `Email Attention: ${thread.subject || 'No subject'}`,
         description: `${thread.message_count} messages, requires response: ${thread.requires_response}`,
         data: thread,
-      })),
-      proposedActions: threads
-        .filter((t: any) => t.requires_response)
-        .map((thread: any) => ({
+      });
+
+      if (thread.requires_response) {
+        proposedActions.push({
           id: `email-respond-${thread.id}-${Date.now()}`,
           type: 'schedule-followup',
           description: `Respond to vendor email: ${thread.subject}`,
           priority: thread.urgency_level === 'critical' ? 'critical' as const : 'high' as const,
           data: { threadId: thread.id, subject: thread.subject },
           requiresConfirmation: true,
-        })),
-    };
+        });
+      }
+    }
+
+    return { findings, proposedActions };
   },
 
   'tracking-extraction': async (ctx, params) => {
-    // Get open alerts related to tracking
-    const alerts = await getOpenAlerts('tracking');
-    return {
-      findings: alerts.map((alert: any) => ({
-        type: 'info' as const,
-        severity: alert.severity === 'critical' ? 'critical' as const : 'medium' as const,
-        title: `Tracking Alert: ${alert.alert_type}`,
-        description: alert.description || alert.message,
-        data: alert,
-      })),
-      proposedActions: [],
-    };
-  },
-
-  'po-correlation': async (ctx, params) => {
-    // Get summary of correlation stats
-    const summary = await getAlertSummary();
+    // Get emails with tracking information from both inbox types
+    const emailsWithTracking = await getEmailsWithTracking(50);
     const findings: AgentFinding[] = [];
 
-    if (summary.total > 0) {
+    // Group by carrier for summary
+    const carrierCounts: Record<string, number> = {};
+    const recentTracking: ParsedEmailContent[] = [];
+
+    for (const email of emailsWithTracking) {
+      const carrier = email.carrier || 'Unknown';
+      carrierCounts[carrier] = (carrierCounts[carrier] || 0) + 1;
+
+      // Get recent ones for detailed findings
+      if (recentTracking.length < 10) {
+        recentTracking.push(email);
+      }
+    }
+
+    // Summary finding
+    if (Object.keys(carrierCounts).length > 0) {
       findings.push({
         type: 'info' as const,
         severity: 'low' as const,
-        title: 'Email Correlation Summary',
-        description: `${summary.total} open alerts: ${summary.critical || 0} critical, ${summary.high || 0} high priority`,
-        data: summary,
+        title: 'Tracking Numbers Summary',
+        description: Object.entries(carrierCounts)
+          .map(([carrier, count]) => `${carrier}: ${count}`)
+          .join(', '),
+        data: { carrierCounts, totalTracking: emailsWithTracking.length },
+      });
+    }
+
+    // Recent tracking details
+    for (const email of recentTracking) {
+      findings.push({
+        type: 'info' as const,
+        severity: email.poId ? 'low' as const : 'medium' as const,
+        title: `Tracking: ${email.trackingNumber} (${email.carrier || 'Unknown'})`,
+        description: email.poId
+          ? `Linked to PO, ETA: ${email.eta || 'Unknown'}`
+          : `Subject: ${email.subject}. Needs PO correlation.`,
+        data: email,
+      });
+    }
+
+    // Also get tracking alerts
+    const alerts = await getOpenAlerts('tracking');
+    for (const alert of alerts) {
+      findings.push({
+        type: 'alert' as const,
+        severity: alert.severity === 'critical' ? 'critical' as const : 'high' as const,
+        title: `Tracking Alert: ${alert.alert_type}`,
+        description: alert.description || alert.message,
+        data: alert,
       });
     }
 
     return { findings, proposedActions: [] };
+  },
+
+  'po-correlation': async (ctx, params) => {
+    // Get uncorrelated emails that need manual PO matching
+    const uncorrelatedEmails = await getUncorrelatedEmails(20);
+    const findings: AgentFinding[] = [];
+    const proposedActions: ProposedAction[] = [];
+
+    // Get alert summary
+    const summary = await getAlertSummary();
+
+    if (summary.total_open > 0) {
+      findings.push({
+        type: 'info' as const,
+        severity: summary.critical_count > 0 ? 'high' as const : 'medium' as const,
+        title: 'Email Alert Summary',
+        description: `${summary.total_open} open alerts: ${summary.critical_count || 0} critical, ${summary.high_count || 0} high priority`,
+        data: summary,
+      });
+    }
+
+    // Report uncorrelated emails
+    if (uncorrelatedEmails.length > 0) {
+      findings.push({
+        type: 'warning' as const,
+        severity: 'medium' as const,
+        title: `${uncorrelatedEmails.length} emails need PO correlation`,
+        description: 'These vendor emails could not be automatically matched to purchase orders',
+        data: { count: uncorrelatedEmails.length },
+      });
+
+      // Add individual uncorrelated emails as findings
+      for (const email of uncorrelatedEmails.slice(0, 5)) {
+        findings.push({
+          type: 'info' as const,
+          severity: 'low' as const,
+          title: `Uncorrelated: ${email.subject.slice(0, 50)}...`,
+          description: `From: ${email.from}${email.trackingNumber ? `. Tracking: ${email.trackingNumber}` : ''}`,
+          data: email,
+        });
+
+        // Propose manual correlation if tracking number found
+        if (email.trackingNumber) {
+          proposedActions.push({
+            id: `correlate-${email.threadId}-${Date.now()}`,
+            type: 'manual-correlation',
+            description: `Match email with tracking ${email.trackingNumber} to a PO`,
+            priority: 'medium' as const,
+            data: { threadId: email.threadId, trackingNumber: email.trackingNumber, from: email.from },
+            requiresConfirmation: true,
+          });
+        }
+      }
+    }
+
+    return { findings, proposedActions };
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -362,6 +499,96 @@ const capabilityExecutors: Record<string, CapabilityExecutor> = {
       })),
       proposedActions: [],
     };
+  },
+
+  'po-followup': async (ctx, params) => {
+    // Get POs that need follow-up (overdue, no tracking, out of stock items)
+    const pesterAlerts = await getPesterAlerts();
+    const findings: AgentFinding[] = [];
+    const proposedActions: ProposedAction[] = [];
+
+    // Group by priority for summary
+    const urgent = pesterAlerts.filter(a => a.priority === 'urgent');
+    const high = pesterAlerts.filter(a => a.priority === 'high');
+    const medium = pesterAlerts.filter(a => a.priority === 'medium');
+
+    // Add summary finding
+    if (pesterAlerts.length > 0) {
+      findings.push({
+        type: 'alert' as const,
+        severity: urgent.length > 0 ? 'critical' as const : high.length > 0 ? 'high' as const : 'medium' as const,
+        title: `${pesterAlerts.length} POs Need Follow-Up`,
+        description: `${urgent.length} urgent, ${high.length} high priority, ${medium.length} medium priority`,
+        data: { counts: { urgent: urgent.length, high: high.length, medium: medium.length } },
+      });
+    }
+
+    // Add individual alerts and propose follow-up actions
+    for (const alert of pesterAlerts) {
+      const reasonLabels: Record<string, string> = {
+        out_of_stock: 'Out of Stock Items',
+        overdue: 'Overdue Delivery',
+        no_tracking: 'No Tracking Info',
+        exception: 'Delivery Exception',
+      };
+
+      findings.push({
+        type: 'alert' as const,
+        severity: alert.priority === 'urgent' ? 'critical' as const :
+                  alert.priority === 'high' ? 'high' as const : 'medium' as const,
+        title: `${alert.po_number}: ${reasonLabels[alert.reason] || alert.reason}`,
+        description: alert.days_overdue > 0
+          ? `${alert.days_overdue} days overdue. Vendor: ${alert.vendor_name}. ${alert.items_affected.length > 0 ? `Affected: ${alert.items_affected.slice(0, 3).join(', ')}` : ''}`
+          : `Vendor: ${alert.vendor_name}. Reason: ${alert.reason}`,
+        data: alert,
+      });
+
+      // Propose follow-up email action
+      if (alert.vendor_email) {
+        proposedActions.push({
+          id: `followup-${alert.po_id}-${Date.now()}`,
+          type: 'send-email',
+          description: `Send follow-up email to ${alert.vendor_name} for PO ${alert.po_number}`,
+          priority: alert.priority === 'urgent' ? 'critical' as const :
+                    alert.priority === 'high' ? 'high' as const : 'medium' as const,
+          data: {
+            poId: alert.po_id,
+            poNumber: alert.po_number,
+            vendorEmail: alert.vendor_email,
+            vendorName: alert.vendor_name,
+            reason: alert.reason,
+            itemsAffected: alert.items_affected,
+          },
+          requiresConfirmation: alert.priority !== 'urgent', // Auto-send urgent ones if autonomous
+        });
+      }
+    }
+
+    // Try to trigger the follow-up automation
+    if (ctx.triggerSource === 'scheduled' || ctx.triggerSource === 'event') {
+      try {
+        const result = await runFollowUpAutomation();
+        if (result.sent && result.sent > 0) {
+          findings.push({
+            type: 'info' as const,
+            severity: 'low' as const,
+            title: `Sent ${result.sent} Follow-Up Emails`,
+            description: 'Automated follow-up emails were sent to vendors',
+            data: result,
+          });
+        }
+      } catch (error) {
+        findings.push({
+          type: 'warning' as const,
+          severity: 'medium' as const,
+          title: 'Follow-Up Automation Failed',
+          description: error instanceof Error ? error.message : 'Unknown error',
+          data: { error: String(error) },
+        });
+      }
+    }
+
+    return { findings, proposedActions };
   },
 
   // ═══════════════════════════════════════════════════════════════════════════

@@ -332,7 +332,7 @@ BEGIN
     p.id,
     p.order_id,
     p.vendor_id,
-    p.vendor_name,
+    p.supplier_name as vendor_name,
     p.expected_date
   INTO v_po
   FROM purchase_orders p
@@ -473,7 +473,7 @@ CREATE OR REPLACE VIEW aftership_active_trackings AS
 SELECT
   at.*,
   po.order_id as po_number,
-  po.vendor_name,
+  po.supplier_name as vendor_name,
   po.expected_date as po_expected_date,
   po.status as po_status,
   et.subject as thread_subject,
@@ -540,8 +540,8 @@ CREATE POLICY "aftership_checkpoints_service" ON aftership_checkpoints
 -- INITIALIZE AFTERSHIP CONFIG
 -- ═══════════════════════════════════════════════════════════════════════════
 
-INSERT INTO app_settings (setting_key, setting_value)
-VALUES ('aftership_config', '{
+INSERT INTO app_settings (setting_key, setting_category, setting_value)
+VALUES ('aftership_config', 'integrations', '{
   "enabled": false,
   "apiKey": null,
   "webhookSecret": null,
