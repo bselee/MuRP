@@ -74,6 +74,18 @@ const AVAILABLE_TOOLS: MCPTool[] = [
     description: 'Retrieve overview of compliance status',
     requiresAI: false,
   },
+  {
+    name: 'research_ingredient_regulations',
+    displayName: 'Research Ingredient Regulations',
+    description: 'Research state-by-state regulations using Perplexity AI',
+    requiresAI: true,
+  },
+  {
+    name: 'research_ingredient_sds',
+    displayName: 'Research Ingredient SDS',
+    description: 'Discover SDS hazard data using Perplexity AI',
+    requiresAI: true,
+  },
 ];
 
 export const MCPServerPanel: React.FC = () => {
@@ -81,10 +93,12 @@ export const MCPServerPanel: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
+  const [showPerplexityKey, setShowPerplexityKey] = useState(false);
   
   // Configuration state
   const [serverUrl, setServerUrl] = useState('http://localhost:8000');
   const [anthropicApiKey, setAnthropicApiKey] = useState('');
+  const [perplexityApiKey, setPerplexityApiKey] = useState('');
   const [isEnabled, setIsEnabled] = useState(false);
   const [healthStatus, setHealthStatus] = useState<'healthy' | 'unhealthy' | 'unknown'>('unknown');
   const [lastHealthCheck, setLastHealthCheck] = useState<Date | null>(null);
@@ -112,6 +126,7 @@ export const MCPServerPanel: React.FC = () => {
       if (data) {
         setServerUrl(data.server_url);
         setAnthropicApiKey(data.anthropic_api_key || '');
+        setPerplexityApiKey(data.perplexity_api_key || '');
         setIsEnabled(data.is_enabled);
         setHealthStatus(data.health_status as 'healthy' | 'unhealthy' | 'unknown');
         setLastHealthCheck(data.last_health_check ? new Date(data.last_health_check) : null);
@@ -136,6 +151,7 @@ export const MCPServerPanel: React.FC = () => {
         .update({
           server_url: serverUrl,
           anthropic_api_key: anthropicApiKey,
+          perplexity_api_key: perplexityApiKey,
           is_enabled: isEnabled,
           notes,
           updated_at: new Date().toISOString(),
@@ -308,6 +324,44 @@ export const MCPServerPanel: React.FC = () => {
           </div>
           <p className="mt-1 text-xs text-gray-500">
             Required for AI-powered compliance checks (full_ai_compliance_check tool)
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Perplexity API Key
+            <span className="ml-1 text-purple-500 text-xs">(Regulatory Research)</span>
+          </label>
+          <div className="relative">
+            <input
+              type={showPerplexityKey ? 'text' : 'password'}
+              value={perplexityApiKey}
+              onChange={(e) => setPerplexityApiKey(e.target.value)}
+              placeholder="pplx-..."
+              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+            <Button
+              type="button"
+              onClick={() => setShowPerplexityKey(!showPerplexityKey)}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              {showPerplexityKey ? (
+                <EyeSlashIcon className="w-5 h-5" />
+              ) : (
+                <EyeIcon className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Powers state regulatory research. Get your key from{' '}
+            <a
+              href="https://www.perplexity.ai/settings/api"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-purple-600 hover:underline"
+            >
+              perplexity.ai/settings/api
+            </a>
           </p>
         </div>
 
