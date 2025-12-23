@@ -12,6 +12,7 @@
 
 import { supabase } from '../lib/supabase/client';
 import type { AgentDefinition } from '../types/agents';
+import { executeAgentByIdentifier, type AgentExecutionResult } from './agentExecutor';
 
 // ============================================================
 // TYPES
@@ -229,46 +230,44 @@ async function invokeTrigger(
 
 /**
  * Invoke an agent with event data
+ * Uses the unified agentExecutor to run the agent's capabilities
  */
 async function invokeAgent(
   agentId: string,
   eventData: Record<string, unknown>,
   userId?: string
 ): Promise<string> {
-  // Create execution log entry
-  const { data: execution, error } = await supabase
-    .from('agent_execution_log')
-    .insert({
-      agent_id: agentId,
-      agent_identifier: 'event-triggered',
-      input: eventData,
-      status: 'running',
-      started_at: new Date().toISOString(),
-      user_id: userId,
-    })
-    .select('id')
+  // Look up agent identifier from ID (triggers store agent_id as UUID)
+  const { data: agentDef } = await supabase
+    .from('agent_definitions')
+    .select('identifier')
+    .eq('id', agentId)
     .single();
 
-  if (error) throw error;
+  const agentIdentifier = agentDef?.identifier || agentId;
 
-  // In a full implementation, this would:
-  // 1. Load the agent definition
-  // 2. Prepare the prompt with event context
-  // 3. Call the AI gateway
-  // 4. Process the response
-  // 5. Generate pending actions
+  // Execute the agent using the unified executor
+  const result = await executeAgentByIdentifier(agentIdentifier, {
+    userId: userId || 'system',
+    parameters: eventData,
+    triggerSource: 'event',
+    triggerValue: JSON.stringify(eventData),
+  });
 
-  // For now, mark as completed (actual AI invocation TBD)
-  await supabase
-    .from('agent_execution_log')
-    .update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      output: { message: 'Event-triggered execution logged' },
-    })
-    .eq('id', execution.id);
+  if (!result) {
+    throw new Error(`Agent not found or inactive: ${agentIdentifier}`);
+  }
 
-  return execution.id;
+  // Log findings and actions if any
+  if (result.findings.length > 0 || result.actionsProposed.length > 0) {
+    console.log(`[EventBus] Agent ${result.agentName} completed:`, {
+      findings: result.findings.length,
+      proposed: result.actionsProposed.length,
+      executed: result.actionsExecuted.length,
+    });
+  }
+
+  return result.agentId;
 }
 
 /**
