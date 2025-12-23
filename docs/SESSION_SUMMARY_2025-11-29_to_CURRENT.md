@@ -1,3 +1,56 @@
+### Session: 2025-12-23 (PO Tracking Lifecycle & Compliance Infrastructure)
+
+**Summary:** Implemented complete PO tracking lifecycle with agent-driven data acquisition, AfterShip webhook integration, and enhanced Settings UI. Also added Perplexity API key configuration for StateRegulatoryResearch feature.
+
+**Migrations Applied:**
+- `123_add_perplexity_api_key.sql` - Adds perplexity_api_key column to mcp_server_configs
+- `124_add_tracking_to_finale_pos.sql` - Tracking columns + finale_po_tracking_events table + DB functions
+
+**Files Created/Modified:**
+
+*Compliance & AI Settings:*
+- Modified: `components/MCPServerPanel.tsx` - Added Perplexity API key input field, show/hide toggle, help link
+- Added: 2 new MCP tools registered: `research_ingredient_regulations`, `research_ingredient_sds`
+
+*PO Tracking System:*
+- Created: `components/PODeliveryTimeline.tsx` (383 lines) - Visual 4-step timeline with expand/collapse
+- Modified: `pages/PurchaseOrders.tsx` - Added manual tracking input modal, integrated PODeliveryTimeline
+- Modified: `pages/Settings.tsx` - Wired AfterShip settings panel to Settings → API Integrations
+
+*Agent Command Center:*
+- Modified: `components/admin/AgentCommandCenter.tsx` - Removed Skills tab (CLI-only features)
+- Modified: `components/admin/WorkflowPanel.tsx` (751 lines) - Redesigned with visual flow diagrams, user-configurable parameters
+
+**Database Functions Created:**
+- `update_finale_po_tracking(p_order_id, p_tracking_number, p_carrier, p_estimated_delivery, p_source)` - For email agent
+- `update_finale_po_from_aftership(p_tracking_number, p_status, p_carrier, ...)` - For webhook updates
+
+**Data Flow Established:**
+```
+Vendor Email → Email Agent → updateFinalePOTracking() → finale_purchase_orders
+AfterShip Webhook → update_finale_po_from_aftership() → finale_purchase_orders
+finale_purchase_orders → PODeliveryTimeline component (UI display)
+```
+
+**Key Features:**
+- PODeliveryTimeline shows: Ordered → Confirmed → In Transit → Delivered
+- Expandable for tracking number, carrier, exception alerts
+- WorkflowsPanel shows agent flow diagrams with configurable parameters per step
+- Morning Briefing: criticalThreshold, includeSeasonalItems, maxOpenPOs, lookbackHours
+- Generate POs: severityFilter (select), preferReliable, autoSubmit, minOrderValue
+
+**Verification:**
+- ✅ Build passes (8.78s)
+- ✅ Migrations 123, 124 applied to production
+- ✅ GitHub push: b9d1412..d3c19ec
+
+**Next Steps:**
+- [ ] Connect email inbox in Settings to activate email tracking agent
+- [ ] Configure AfterShip API for real-time webhook updates (optional)
+- [ ] Test PODeliveryTimeline with live tracking data
+
+---
+
 ### Session: 2025-12-22 (Agent System Architecture Complete)
 
 **Summary:** Completed full rebuild of agent/skill system with proper separation of concerns, single source of truth, and executable architecture.
