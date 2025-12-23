@@ -4,6 +4,7 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowDownToLine,
+  ArrowRight,
   ArrowRightLeft,
   ArrowUpDown,
   ArrowUpToLine,
@@ -173,6 +174,7 @@ export const PencilSquareIcon = wrapIcon(PenSquare);
 export const ArrowDownTrayIcon = wrapIcon(ArrowDownToLine);
 export const ArrowUpTrayIcon = wrapIcon(ArrowUpToLine);
 export const ArrowsRightLeftIcon = wrapIcon(ArrowRightLeft);
+export const ArrowRightIcon = wrapIcon(ArrowRight);
 export const TimelineIcon = wrapIcon(History);
 export const SparklesIcon = wrapIcon(Sparkles);
 export const DocumentDuplicateIcon = wrapIcon(Copy);

@@ -8,7 +8,6 @@
 import React, { useState, useEffect } from 'react';
 import { AgentDetailDrawer } from './AgentDetailDrawer';
 import { WorkflowPanel } from './WorkflowPanel';
-import { SkillsPanel } from './SkillsPanel';
 import { AgentEditor } from './AgentEditor';
 import {
   getAllAgents,
@@ -30,7 +29,6 @@ import {
   DollarSignIcon,
   DocumentTextIcon,
   PhotoIcon,
-  CommandLineIcon,
   ZapIcon,
   PlusIcon,
   ClipboardCopyIcon,
@@ -54,7 +52,7 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
   const [editingAgent, setEditingAgent] = useState<AgentDefinition | null>(null);
   const [isCreatingAgent, setIsCreatingAgent] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'agents' | 'workflows' | 'skills'>('agents');
+  const [activeTab, setActiveTab] = useState<'agents' | 'workflows'>('agents');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [executingAgentId, setExecutingAgentId] = useState<string | null>(null);
   const [executionResult, setExecutionResult] = useState<AgentExecutionResult | null>(null);
@@ -226,19 +224,6 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
               Workflows
             </span>
           </button>
-          <button
-            onClick={() => setActiveTab('skills')}
-            className={`px-4 py-2 font-medium transition-colors border-b-2 -mb-[1px] ${
-              activeTab === 'skills'
-                ? 'text-accent-400 border-accent-400'
-                : 'text-gray-400 border-transparent hover:text-white'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <CommandLineIcon className="w-4 h-4" />
-              Skills
-            </span>
-          </button>
         </div>
 
         {activeTab === 'agents' && (
@@ -255,8 +240,6 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
       {/* Tab Content */}
       {activeTab === 'workflows' ? (
         <WorkflowPanel userId={userId} />
-      ) : activeTab === 'skills' ? (
-        <SkillsPanel />
       ) : (
         <>
           {/* Agent Categories */}
