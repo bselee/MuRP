@@ -1,18 +1,15 @@
-/**
- * Scheduled Agent Runner
- *
- * Edge function that runs scheduled agent triggers.
- * Called every 15 minutes via pg_cron.
- *
- * This function:
- * 1. Queries event_triggers where cron_expression is set and is_active = true
- * 2. For each trigger, checks if the cron matches the current time
- * 3. Executes the associated agent by creating an execution log entry
- * 4. Also runs periodic checks for overdue POs and expiring compliance
- *
- * Schedule via migration:
- *   SELECT cron.schedule('agent-runner-15min', '*/15 * * * *', ...);
- */
+// Scheduled Agent Runner
+//
+// Edge function that runs scheduled agent triggers.
+// Called every 15 minutes via pg_cron.
+//
+// This function:
+// 1. Queries event_triggers where cron_expression is set and is_active = true
+// 2. For each trigger, checks if the cron matches the current time
+// 3. Executes the associated agent by creating an execution log entry
+// 4. Also runs periodic checks for overdue POs and expiring compliance
+//
+// Schedule via migration 120_schedule_agent_runner.sql
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.1';
