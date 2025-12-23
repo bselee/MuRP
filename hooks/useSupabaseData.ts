@@ -1960,3 +1960,85 @@ export function useSupabaseVelocityData(): UseSupabaseDataResult<any> {
 
   return { data, loading, error, refetch: fetchVelocityData };
 }
+
+// ============================================================================
+// SKILL DEFINITIONS HOOK
+// ============================================================================
+
+export interface SkillDefinitionDisplay {
+  id: string;
+  identifier: string;
+  name: string;
+  command: string;
+  description: string | null;
+  category: 'deployment' | 'quality' | 'security' | 'automation' | 'custom';
+  icon: string | null;
+  instructions: string;
+  allowedTools: string[];
+  isActive: boolean;
+  isBuiltIn: boolean;
+  usageCount: number;
+  lastUsedAt: Date | null;
+  version: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Fetch skill definitions from the database
+ * Used by SkillsPanel to display available skills
+ */
+export function useSupabaseSkills(): UseSupabaseDataResult<SkillDefinitionDisplay> {
+  const [data, setData] = useState<SkillDefinitionDisplay[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchSkills = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data: skills, error: fetchError } = await supabase
+        .from('skill_definitions')
+        .select('*')
+        .eq('is_active', true)
+        .order('is_built_in', { ascending: false })
+        .order('name');
+
+      if (fetchError) throw fetchError;
+
+      const transformed: SkillDefinitionDisplay[] = (skills || []).map(skill => ({
+        id: skill.id,
+        identifier: skill.identifier,
+        name: skill.name,
+        command: skill.command,
+        description: skill.description,
+        category: skill.category,
+        icon: skill.icon,
+        instructions: skill.instructions,
+        allowedTools: skill.allowed_tools || [],
+        isActive: skill.is_active,
+        isBuiltIn: skill.is_built_in,
+        usageCount: skill.usage_count || 0,
+        lastUsedAt: skill.last_used_at ? new Date(skill.last_used_at) : null,
+        version: skill.version,
+        createdAt: new Date(skill.created_at),
+        updatedAt: new Date(skill.updated_at),
+      }));
+
+      setData(transformed);
+      console.log(`[useSupabaseSkills] Loaded ${transformed.length} skills`);
+    } catch (err) {
+      console.error('[useSupabaseSkills] Error:', err);
+      setError(err instanceof Error ? err : new Error('Failed to fetch skills'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSkills();
+  }, [fetchSkills]);
+
+  return { data, loading, error, refetch: fetchSkills };
+}
