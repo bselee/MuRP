@@ -16,7 +16,6 @@ import {
   createAgent,
   cloneAgent,
   exportAgentToMarkdown,
-  BUILT_IN_AGENTS,
 } from '../../services/agentManagementService';
 import { executeAgentByIdentifier, type AgentExecutionResult } from '../../services/agentExecutor';
 import type { AgentDefinition } from '../../types/agents';

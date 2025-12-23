@@ -20,6 +20,7 @@ import { getVendorPerformance, getFlaggedVendors } from './vendorWatchdogAgent';
 import { runInventoryHealthCheck, getReorderPointRecommendations, analyzeVelocityChanges } from './inventoryGuardianAgent';
 import { getArrivalPredictions, getPesterAlerts, getInvoiceVariances } from './poIntelligenceAgent';
 import { validatePendingLabels, getComplianceSummary } from './complianceValidationAgent';
+import { getThreadsRequiringAttention, getOpenAlerts, getAlertSummary } from './emailInboxManager';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -158,18 +159,61 @@ const capabilityExecutors: Record<string, CapabilityExecutor> = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   'email-parsing': async (ctx, params) => {
-    // Email parsing is event-driven, not scheduled - return current state
-    return { findings: [], proposedActions: [] };
+    // Get threads that require attention (unresolved, high urgency, etc.)
+    const threads = await getThreadsRequiringAttention();
+    return {
+      findings: threads.map((thread: any) => ({
+        type: thread.urgency_level === 'critical' ? 'alert' as const : 'info' as const,
+        severity: thread.urgency_level === 'critical' ? 'critical' as const :
+                  thread.urgency_level === 'high' ? 'high' as const : 'medium' as const,
+        title: `Email Attention: ${thread.subject || 'No subject'}`,
+        description: `${thread.message_count} messages, requires response: ${thread.requires_response}`,
+        data: thread,
+      })),
+      proposedActions: threads
+        .filter((t: any) => t.requires_response)
+        .map((thread: any) => ({
+          id: `email-respond-${thread.id}-${Date.now()}`,
+          type: 'schedule-followup',
+          description: `Respond to vendor email: ${thread.subject}`,
+          priority: thread.urgency_level === 'critical' ? 'critical' as const : 'high' as const,
+          data: { threadId: thread.id, subject: thread.subject },
+          requiresConfirmation: true,
+        })),
+    };
   },
 
   'tracking-extraction': async (ctx, params) => {
-    // Tracking extraction happens in email-inbox-poller edge function
-    return { findings: [], proposedActions: [] };
+    // Get open alerts related to tracking
+    const alerts = await getOpenAlerts('tracking');
+    return {
+      findings: alerts.map((alert: any) => ({
+        type: 'info' as const,
+        severity: alert.severity === 'critical' ? 'critical' as const : 'medium' as const,
+        title: `Tracking Alert: ${alert.alert_type}`,
+        description: alert.description || alert.message,
+        data: alert,
+      })),
+      proposedActions: [],
+    };
   },
 
   'po-correlation': async (ctx, params) => {
-    // PO correlation is done during email processing
-    return { findings: [], proposedActions: [] };
+    // Get summary of correlation stats
+    const summary = await getAlertSummary();
+    const findings: AgentFinding[] = [];
+
+    if (summary.total > 0) {
+      findings.push({
+        type: 'info' as const,
+        severity: 'low' as const,
+        title: 'Email Correlation Summary',
+        description: `${summary.total} open alerts: ${summary.critical || 0} critical, ${summary.high || 0} high priority`,
+        data: summary,
+      });
+    }
+
+    return { findings, proposedActions: [] };
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -191,8 +235,30 @@ const capabilityExecutors: Record<string, CapabilityExecutor> = {
   },
 
   'lead-time-tracking': async (ctx, params) => {
-    // Lead time updates happen via recordPODelivery in vendorWatchdogAgent
-    return { findings: [], proposedActions: [] };
+    // Get vendor performance metrics which include lead time data
+    const performance = await getVendorPerformance();
+    const vendorsWithLeadTimeIssues = performance.filter((v: any) =>
+      v.averageLeadTimeVariance && Math.abs(v.averageLeadTimeVariance) > 3 // > 3 days variance
+    );
+    return {
+      findings: vendorsWithLeadTimeIssues.map((v: any) => ({
+        type: 'info' as const,
+        severity: Math.abs(v.averageLeadTimeVariance) > 7 ? 'high' as const : 'medium' as const,
+        title: `Lead Time Variance: ${v.vendorName}`,
+        description: `Average ${v.averageLeadTimeVariance > 0 ? 'late' : 'early'} by ${Math.abs(v.averageLeadTimeVariance).toFixed(1)} days (${v.onTimeDeliveryRate}% on-time)`,
+        data: v,
+      })),
+      proposedActions: vendorsWithLeadTimeIssues
+        .filter((v: any) => v.averageLeadTimeVariance > 5) // Consistently late
+        .map((v: any) => ({
+          id: `lead-time-adjust-${v.vendorId}-${Date.now()}`,
+          type: 'update-lead-time',
+          description: `Increase lead time buffer for ${v.vendorName} by ${Math.ceil(v.averageLeadTimeVariance)} days`,
+          priority: 'medium' as const,
+          data: { vendorId: v.vendorId, suggestedBuffer: Math.ceil(v.averageLeadTimeVariance) },
+          requiresConfirmation: true,
+        })),
+    };
   },
 
   'performance-alerts': async (ctx, params) => {
@@ -238,8 +304,49 @@ const capabilityExecutors: Record<string, CapabilityExecutor> = {
   },
 
   'consolidation': async (ctx, params) => {
-    // PO consolidation analysis would be here
-    return { findings: [], proposedActions: [] };
+    // Analyze pending POs to find consolidation opportunities
+    const { data: pendingPOs } = await supabase
+      .from('purchase_orders')
+      .select('id, order_id, vendor_id, supplier_name, status, expected_date')
+      .in('status', ['draft', 'pending'])
+      .order('vendor_id');
+
+    // Group by vendor to find consolidation opportunities
+    const vendorGroups: Record<string, any[]> = {};
+    for (const po of pendingPOs || []) {
+      const vendorId = po.vendor_id || 'unknown';
+      if (!vendorGroups[vendorId]) vendorGroups[vendorId] = [];
+      vendorGroups[vendorId].push(po);
+    }
+
+    const consolidationOpportunities = Object.entries(vendorGroups)
+      .filter(([_, pos]) => pos.length > 1)
+      .map(([vendorId, pos]) => ({
+        vendorId,
+        vendorName: pos[0]?.supplier_name || 'Unknown Vendor',
+        poCount: pos.length,
+        poIds: pos.map(p => p.order_id),
+      }));
+
+    return {
+      findings: consolidationOpportunities.map(opp => ({
+        type: 'recommendation' as const,
+        severity: opp.poCount >= 3 ? 'high' as const : 'medium' as const,
+        title: `Consolidation: ${opp.vendorName}`,
+        description: `${opp.poCount} pending POs could be combined for shipping savings`,
+        data: opp,
+      })),
+      proposedActions: consolidationOpportunities
+        .filter(opp => opp.poCount >= 2)
+        .map(opp => ({
+          id: `consolidate-${opp.vendorId}-${Date.now()}`,
+          type: 'consolidate-po',
+          description: `Consolidate ${opp.poCount} POs for ${opp.vendorName}`,
+          priority: opp.poCount >= 3 ? 'high' as const : 'medium' as const,
+          data: opp,
+          requiresConfirmation: true,
+        })),
+    };
   },
 
   'cost-optimization': async (ctx, params) => {
@@ -309,8 +416,44 @@ const capabilityExecutors: Record<string, CapabilityExecutor> = {
   },
 
   'regulatory-monitoring': async (ctx, params) => {
-    // Regulatory monitoring would check for new regulations
-    return { findings: [], proposedActions: [] };
+    // Check for expiring certifications and compliance deadlines
+    const summary = await getComplianceSummary();
+    const expiringCerts = summary.expiringCertifications || [];
+    const pendingActions = summary.pendingActions || [];
+
+    const findings: AgentFinding[] = [];
+
+    // Add expiring certifications as findings
+    findings.push(...expiringCerts.map((cert: any) => ({
+      type: 'warning' as const,
+      severity: cert.daysUntilExpiry <= 30 ? 'high' as const : 'medium' as const,
+      title: `Certification Expiring: ${cert.name}`,
+      description: `${cert.state} ${cert.type} expires in ${cert.daysUntilExpiry} days`,
+      data: cert,
+    })));
+
+    // Add pending regulatory actions
+    findings.push(...pendingActions.map((action: any) => ({
+      type: 'alert' as const,
+      severity: action.priority === 'urgent' ? 'critical' as const : 'high' as const,
+      title: `Regulatory Action Required: ${action.title}`,
+      description: action.description,
+      data: action,
+    })));
+
+    return {
+      findings,
+      proposedActions: expiringCerts
+        .filter((cert: any) => cert.daysUntilExpiry <= 30)
+        .map((cert: any) => ({
+          id: `renew-cert-${cert.id}-${Date.now()}`,
+          type: 'schedule-followup',
+          description: `Renew ${cert.name} for ${cert.state}`,
+          priority: cert.daysUntilExpiry <= 7 ? 'critical' as const : 'high' as const,
+          data: cert,
+          requiresConfirmation: true,
+        })),
+    };
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -347,8 +490,45 @@ const capabilityExecutors: Record<string, CapabilityExecutor> = {
   },
 
   'discrepancy-resolution': async (ctx, params) => {
-    // Discrepancy resolution would analyze count vs system
-    return { findings: [], proposedActions: [] };
+    // Check for inventory discrepancies - items where stock count may not match system
+    const { data: items } = await supabase
+      .from('inventory_items')
+      .select('sku, name, stock, last_count_date, last_count_quantity')
+      .not('last_count_date', 'is', null);
+
+    const discrepancies = (items || [])
+      .filter((item: any) => {
+        const countDiff = Math.abs((item.stock || 0) - (item.last_count_quantity || 0));
+        return countDiff > 0 && item.last_count_quantity !== null;
+      })
+      .map((item: any) => ({
+        sku: item.sku,
+        name: item.name,
+        systemStock: item.stock,
+        countedStock: item.last_count_quantity,
+        difference: item.stock - item.last_count_quantity,
+        lastCountDate: item.last_count_date,
+      }));
+
+    return {
+      findings: discrepancies.map(d => ({
+        type: 'warning' as const,
+        severity: Math.abs(d.difference) > 10 ? 'high' as const : 'medium' as const,
+        title: `Stock Discrepancy: ${d.sku}`,
+        description: `System: ${d.systemStock}, Counted: ${d.countedStock} (Diff: ${d.difference > 0 ? '+' : ''}${d.difference})`,
+        data: d,
+      })),
+      proposedActions: discrepancies
+        .filter(d => Math.abs(d.difference) > 5)
+        .map(d => ({
+          id: `adjust-stock-${d.sku}-${Date.now()}`,
+          type: 'update-inventory',
+          description: `Adjust ${d.sku} stock to ${d.countedStock} (counted value)`,
+          priority: Math.abs(d.difference) > 20 ? 'high' as const : 'medium' as const,
+          data: { sku: d.sku, newStock: d.countedStock, reason: 'Count reconciliation' },
+          requiresConfirmation: true,
+        })),
+    };
   },
 };
 
