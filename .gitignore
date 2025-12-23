@@ -25,6 +25,9 @@ dist-ssr
 *.sw?
 .env*.local
 
+# MCP Server secrets
+mcp-server/.env
+
 # Playwright console test scripts
 scripts/playwright-console.js
 scripts/playwright-console.mjs
