@@ -34,8 +34,33 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         sourcemap: mode !== 'production',
+        chunkSizeWarningLimit: 600,
         rollupOptions: {
-          external: ['node-fetch', '@google-cloud/local-auth', 'googleapis']
+          external: ['node-fetch', '@google-cloud/local-auth', 'googleapis'],
+          output: {
+            manualChunks(id) {
+              // React core
+              if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+                return 'react-vendor';
+              }
+              // Supabase
+              if (id.includes('node_modules/@supabase/')) {
+                return 'supabase-vendor';
+              }
+              // Lucide icons (large)
+              if (id.includes('node_modules/lucide-react/')) {
+                return 'icons-vendor';
+              }
+              // Markdown rendering
+              if (id.includes('node_modules/react-markdown/') || id.includes('node_modules/remark-') || id.includes('node_modules/unified/') || id.includes('node_modules/mdast-') || id.includes('node_modules/micromark')) {
+                return 'markdown-vendor';
+              }
+              // Zod validation
+              if (id.includes('node_modules/zod/')) {
+                return 'zod-vendor';
+              }
+            }
+          }
         }
       }
     };
