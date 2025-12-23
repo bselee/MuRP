@@ -18,6 +18,7 @@ import {
   exportAgentToMarkdown,
   BUILT_IN_AGENTS,
 } from '../../services/agentManagementService';
+import { executeAgentByIdentifier, type AgentExecutionResult } from '../../services/agentExecutor';
 import type { AgentDefinition } from '../../types/agents';
 import {
   CpuChipIcon,
@@ -37,6 +38,10 @@ import {
   CheckCircleIcon,
   TrendingUpIcon,
   TrendingDownIcon,
+  PlayIcon,
+  XMarkIcon,
+  AlertTriangleIcon,
+  InformationCircleIcon,
 } from '../icons';
 
 interface AgentCommandCenterProps {
@@ -52,6 +57,8 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'agents' | 'workflows' | 'skills'>('agents');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [executingAgentId, setExecutingAgentId] = useState<string | null>(null);
+  const [executionResult, setExecutionResult] = useState<AgentExecutionResult | null>(null);
 
   useEffect(() => {
     loadAgents();
@@ -107,6 +114,42 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
     setCopiedId(agent.id);
     setTimeout(() => setCopiedId(null), 2000);
     addToast?.('Agent markdown copied to clipboard!', 'success');
+  };
+
+  const handleExecuteAgent = async (agent: AgentDefinition) => {
+    if (!agent.isActive) {
+      addToast?.('Cannot execute paused agent', 'error');
+      return;
+    }
+
+    setExecutingAgentId(agent.id);
+    addToast?.(`Running ${agent.name}...`, 'info');
+
+    try {
+      const result = await executeAgentByIdentifier(agent.identifier, {
+        userId,
+        parameters: agent.parameters || {},
+        triggerSource: 'manual',
+      });
+
+      if (result) {
+        setExecutionResult(result);
+        if (result.success) {
+          addToast?.(
+            `${agent.name} completed: ${result.findings.length} findings, ${result.actionsProposed.length} actions`,
+            'success'
+          );
+        } else {
+          addToast?.(`${agent.name} failed: ${result.error}`, 'error');
+        }
+      } else {
+        addToast?.(`Agent ${agent.name} not found`, 'error');
+      }
+    } catch (error) {
+      addToast?.(`Error executing ${agent.name}: ${error}`, 'error');
+    } finally {
+      setExecutingAgentId(null);
+    }
   };
 
   const systemTrustScore = agents.length > 0
@@ -245,7 +288,9 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
                   onEdit={() => setEditingAgent(agent)}
                   onClone={() => handleCloneAgent(agent.id)}
                   onExport={() => handleExportAgent(agent)}
+                  onExecute={() => handleExecuteAgent(agent)}
                   isCopied={copiedId === agent.id}
+                  isExecuting={executingAgentId === agent.id}
                 />
               ))}
             </div>
@@ -264,6 +309,178 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
           }}
         />
       )}
+
+      {/* Execution Results Modal */}
+      {executionResult && (
+        <ExecutionResultsModal
+          result={executionResult}
+          onClose={() => setExecutionResult(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+// ============================================================
+// EXECUTION RESULTS MODAL
+// ============================================================
+
+const ExecutionResultsModal: React.FC<{
+  result: AgentExecutionResult;
+  onClose: () => void;
+}> = ({ result, onClose }) => {
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return 'text-red-400 bg-red-900/30 border-red-800';
+      case 'high': return 'text-orange-400 bg-orange-900/30 border-orange-800';
+      case 'medium': return 'text-amber-400 bg-amber-900/30 border-amber-800';
+      case 'low': return 'text-gray-400 bg-gray-800/50 border-gray-700';
+      default: return 'text-gray-400 bg-gray-800/50 border-gray-700';
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'alert': return <AlertTriangleIcon className="w-4 h-4 text-red-400" />;
+      case 'warning': return <AlertTriangleIcon className="w-4 h-4 text-amber-400" />;
+      case 'recommendation': return <CheckCircleIcon className="w-4 h-4 text-green-400" />;
+      default: return <InformationCircleIcon className="w-4 h-4 text-blue-400" />;
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-xl border border-gray-700 max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              {result.success ? (
+                <CheckCircleIcon className="w-6 h-6 text-green-400" />
+              ) : (
+                <AlertTriangleIcon className="w-6 h-6 text-red-400" />
+              )}
+              {result.agentName} Results
+            </h2>
+            <p className="text-sm text-gray-400 mt-1">
+              Executed in {result.durationMs}ms • {new Date(result.executedAt).toLocaleString()}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"
+          >
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* Summary Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-gray-800 rounded-lg p-4 text-center">
+              <p className="text-3xl font-bold text-white">{result.findings.length}</p>
+              <p className="text-sm text-gray-400">Findings</p>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-4 text-center">
+              <p className="text-3xl font-bold text-amber-400">{result.actionsProposed.length}</p>
+              <p className="text-sm text-gray-400">Actions Proposed</p>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-4 text-center">
+              <p className="text-3xl font-bold text-green-400">{result.actionsExecuted.length}</p>
+              <p className="text-sm text-gray-400">Auto-Executed</p>
+            </div>
+          </div>
+
+          {/* Findings */}
+          {result.findings.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-400 uppercase mb-3">Findings</h3>
+              <div className="space-y-2">
+                {result.findings.map((finding, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-lg border ${getSeverityColor(finding.severity)}`}
+                  >
+                    <div className="flex items-start gap-2">
+                      {getTypeIcon(finding.type)}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-white">{finding.title}</p>
+                        <p className="text-sm text-gray-300 mt-1">{finding.description}</p>
+                      </div>
+                      <span className="text-xs px-2 py-1 rounded bg-gray-900/50 text-gray-400 uppercase">
+                        {finding.severity}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Proposed Actions */}
+          {result.actionsProposed.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-400 uppercase mb-3">Proposed Actions</h3>
+              <div className="space-y-2">
+                {result.actionsProposed.map((action, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 bg-gray-800 rounded-lg border border-gray-700"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-white">{action.description}</p>
+                        <p className="text-xs text-gray-500 mt-1">Type: {action.type}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          action.priority === 'critical' ? 'bg-red-900/50 text-red-400' :
+                          action.priority === 'high' ? 'bg-orange-900/50 text-orange-400' :
+                          'bg-gray-700 text-gray-400'
+                        }`}>
+                          {action.priority}
+                        </span>
+                        {action.requiresConfirmation && (
+                          <span className="text-xs px-2 py-1 rounded bg-blue-900/50 text-blue-400">
+                            Needs Approval
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* No Results */}
+          {result.findings.length === 0 && result.actionsProposed.length === 0 && (
+            <div className="text-center py-8 text-gray-400">
+              <CheckCircleIcon className="w-12 h-12 mx-auto mb-3 text-green-400" />
+              <p>No issues found. Everything looks good!</p>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {result.error && (
+            <div className="p-4 bg-red-900/30 border border-red-800 rounded-lg">
+              <p className="text-red-400 font-medium">Error</p>
+              <p className="text-sm text-red-300 mt-1">{result.error}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-700 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -278,8 +495,10 @@ const AgentCard: React.FC<{
   onEdit: () => void;
   onClone: () => void;
   onExport: () => void;
+  onExecute: () => void;
   isCopied: boolean;
-}> = ({ agent, onUpdate, onEdit, onClone, onExport, isCopied }) => {
+  isExecuting: boolean;
+}> = ({ agent, onUpdate, onEdit, onClone, onExport, onExecute, isCopied, isExecuting }) => {
 
   const getIcon = () => {
     switch (agent.identifier) {
@@ -444,6 +663,26 @@ const AgentCard: React.FC<{
           </label>
 
           <div className="flex items-center gap-1">
+            {/* Execute button */}
+            <button
+              onClick={onExecute}
+              disabled={!agent.isActive || isExecuting}
+              className={`p-2 rounded transition-colors ${
+                !agent.isActive
+                  ? 'text-gray-600 cursor-not-allowed'
+                  : isExecuting
+                    ? 'text-accent-400 animate-pulse'
+                    : 'text-green-400 hover:text-green-300 hover:bg-gray-700'
+              }`}
+              title={!agent.isActive ? 'Enable agent to execute' : isExecuting ? 'Running...' : 'Run agent now'}
+            >
+              {isExecuting ? (
+                <div className="w-5 h-5 border-2 border-accent-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <PlayIcon className="w-5 h-5" />
+              )}
+            </button>
+
             {/* Export button */}
             <button
               onClick={onExport}

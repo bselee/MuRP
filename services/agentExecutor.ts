@@ -12,8 +12,14 @@
 
 import { supabase } from '../lib/supabase/client';
 import type { AgentDefinition, AgentCapability } from '../types/agents';
+
+// Agent service imports - wire capabilities to real implementations
 import { getCriticalStockoutAlerts, type StockoutAlert } from './stockoutPreventionAgent';
 import { assessPODelay, type PODelayAlert } from './airTrafficControllerAgent';
+import { getVendorPerformance, getFlaggedVendors } from './vendorWatchdogAgent';
+import { runInventoryHealthCheck, getReorderPointRecommendations, analyzeVelocityChanges } from './inventoryGuardianAgent';
+import { getArrivalPredictions, getPesterAlerts, getInvoiceVariances } from './poIntelligenceAgent';
+import { validatePendingLabels, getComplianceSummary } from './complianceValidationAgent';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -79,24 +85,43 @@ type CapabilityExecutor = (
 }>;
 
 const capabilityExecutors: Record<string, CapabilityExecutor> = {
-  // Stock Intelligence capabilities
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Stock Intelligence / Stockout Prevention capabilities
+  // ═══════════════════════════════════════════════════════════════════════════
+
   'rop-calculation': async (ctx, params) => {
-    // Placeholder - would call actual ROP calculation
+    const recommendations = await getReorderPointRecommendations();
     return {
-      findings: [{
-        type: 'info',
-        severity: 'medium',
-        title: 'ROP Calculation',
-        description: 'Reorder point calculation completed',
-      }],
-      proposedActions: [],
+      findings: recommendations.map(rec => ({
+        type: 'recommendation' as const,
+        severity: rec.urgency === 'critical' ? 'critical' as const : 'medium' as const,
+        title: `ROP Update: ${rec.sku}`,
+        description: `Current ROP: ${rec.currentROP} → Suggested: ${rec.suggestedROP} (based on ${rec.reason})`,
+        data: rec,
+      })),
+      proposedActions: recommendations
+        .filter(r => Math.abs(r.suggestedROP - r.currentROP) > r.currentROP * 0.1) // >10% change
+        .map(rec => ({
+          id: `rop-${rec.sku}-${Date.now()}`,
+          type: 'adjust-rop',
+          description: `Adjust ROP for ${rec.sku}: ${rec.currentROP} → ${rec.suggestedROP}`,
+          priority: rec.urgency === 'critical' ? 'high' as const : 'medium' as const,
+          data: { sku: rec.sku, newROP: rec.suggestedROP, reason: rec.reason },
+          requiresConfirmation: true,
+        })),
     };
   },
 
   'velocity-analysis': async (ctx, params) => {
-    // Placeholder - would call velocity analysis
+    const changes = await analyzeVelocityChanges();
     return {
-      findings: [],
+      findings: changes.map(change => ({
+        type: change.changePercent > 50 ? 'alert' as const : 'info' as const,
+        severity: change.changePercent > 100 ? 'high' as const : 'medium' as const,
+        title: `Velocity ${change.direction}: ${change.sku}`,
+        description: `${change.productName} velocity changed ${change.changePercent.toFixed(0)}% (${change.previousVelocity.toFixed(1)} → ${change.currentVelocity.toFixed(1)} units/day)`,
+        data: change,
+      })),
       proposedActions: [],
     };
   },
@@ -128,68 +153,201 @@ const capabilityExecutors: Record<string, CapabilityExecutor> = {
     };
   },
 
-  // Email Tracking capabilities
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Email Tracking capabilities (email-tracking-specialist)
+  // ═══════════════════════════════════════════════════════════════════════════
+
   'email-parsing': async (ctx, params) => {
+    // Email parsing is event-driven, not scheduled - return current state
     return { findings: [], proposedActions: [] };
   },
 
   'tracking-extraction': async (ctx, params) => {
+    // Tracking extraction happens in email-inbox-poller edge function
     return { findings: [], proposedActions: [] };
   },
 
   'po-correlation': async (ctx, params) => {
+    // PO correlation is done during email processing
     return { findings: [], proposedActions: [] };
   },
 
+  // ═══════════════════════════════════════════════════════════════════════════
   // Vendor Watchdog capabilities
+  // ═══════════════════════════════════════════════════════════════════════════
+
   'vendor-scoring': async (ctx, params) => {
-    return { findings: [], proposedActions: [] };
+    const flaggedVendors = await getFlaggedVendors();
+    return {
+      findings: flaggedVendors.map(v => ({
+        type: 'warning' as const,
+        severity: v.reliabilityScore < 0.5 ? 'high' as const : 'medium' as const,
+        title: `Vendor Performance Issue: ${v.vendorName}`,
+        description: `${v.issue} - Reliability: ${(v.reliabilityScore * 100).toFixed(0)}%`,
+        data: v,
+      })),
+      proposedActions: [],
+    };
   },
 
   'lead-time-tracking': async (ctx, params) => {
+    // Lead time updates happen via recordPODelivery in vendorWatchdogAgent
     return { findings: [], proposedActions: [] };
   },
 
   'performance-alerts': async (ctx, params) => {
-    return { findings: [], proposedActions: [] };
+    const flagged = await getFlaggedVendors();
+    return {
+      findings: flagged.map(v => ({
+        type: 'alert' as const,
+        severity: v.reliabilityScore < 0.5 ? 'critical' as const : 'high' as const,
+        title: `Vendor Alert: ${v.vendorName}`,
+        description: v.issue,
+        data: v,
+      })),
+      proposedActions: flagged
+        .filter(v => v.reliabilityScore < 0.5)
+        .map(v => ({
+          id: `vendor-review-${v.vendorId}-${Date.now()}`,
+          type: 'notify-user',
+          description: `Review vendor ${v.vendorName} - reliability dropped to ${(v.reliabilityScore * 100).toFixed(0)}%`,
+          priority: 'high' as const,
+          data: { vendorId: v.vendorId, vendorName: v.vendorName, issue: v.issue },
+          requiresConfirmation: false,
+        })),
+    };
   },
 
+  // ═══════════════════════════════════════════════════════════════════════════
   // PO Intelligence capabilities
+  // ═══════════════════════════════════════════════════════════════════════════
+
   'po-tracking': async (ctx, params) => {
-    return { findings: [], proposedActions: [] };
+    const predictions = await getArrivalPredictions();
+    const lateOrders = predictions.filter(p => p.status === 'late' || p.status === 'at_risk');
+    return {
+      findings: lateOrders.map(po => ({
+        type: po.status === 'late' ? 'alert' as const : 'warning' as const,
+        severity: po.status === 'late' ? 'high' as const : 'medium' as const,
+        title: `PO ${po.poNumber} ${po.status === 'late' ? 'LATE' : 'At Risk'}`,
+        description: `Expected: ${po.expectedDate}, Predicted: ${po.predictedDate} (${po.daysVariance} days ${po.daysVariance > 0 ? 'late' : 'early'})`,
+        data: po,
+      })),
+      proposedActions: [],
+    };
   },
 
   'consolidation': async (ctx, params) => {
+    // PO consolidation analysis would be here
     return { findings: [], proposedActions: [] };
   },
 
   'cost-optimization': async (ctx, params) => {
-    return { findings: [], proposedActions: [] };
+    const variances = await getInvoiceVariances();
+    const significantVariances = variances.filter(v => Math.abs(v.variancePercent) > 5);
+    return {
+      findings: significantVariances.map(v => ({
+        type: 'warning' as const,
+        severity: v.variancePercent > 10 ? 'high' as const : 'medium' as const,
+        title: `Invoice Variance: PO ${v.poNumber}`,
+        description: `${v.variancePercent > 0 ? 'Over' : 'Under'} by ${Math.abs(v.variancePercent).toFixed(1)}% ($${Math.abs(v.varianceAmount).toFixed(2)})`,
+        data: v,
+      })),
+      proposedActions: [],
+    };
   },
 
+  // ═══════════════════════════════════════════════════════════════════════════
   // Compliance capabilities
+  // ═══════════════════════════════════════════════════════════════════════════
+
   'label-validation': async (ctx, params) => {
-    return { findings: [], proposedActions: [] };
+    const pendingValidations = await validatePendingLabels();
+    return {
+      findings: pendingValidations.map(v => ({
+        type: v.status === 'failed' ? 'alert' as const : 'info' as const,
+        severity: v.status === 'failed' ? 'high' as const : 'low' as const,
+        title: `Label Validation: ${v.productName}`,
+        description: `${v.status === 'passed' ? '✓ Passed' : v.status === 'failed' ? '✗ Failed' : 'Pending'} - ${v.issues?.join(', ') || 'No issues'}`,
+        data: v,
+      })),
+      proposedActions: pendingValidations
+        .filter(v => v.status === 'failed')
+        .map(v => ({
+          id: `compliance-fix-${v.productId}-${Date.now()}`,
+          type: 'flag-compliance',
+          description: `Fix compliance issues for ${v.productName}: ${v.issues?.join(', ')}`,
+          priority: 'high' as const,
+          data: { productId: v.productId, productName: v.productName, issues: v.issues },
+          requiresConfirmation: true,
+        })),
+    };
   },
 
   'document-tracking': async (ctx, params) => {
-    return { findings: [], proposedActions: [] };
+    const summary = await getComplianceSummary();
+    const expiringDocs = summary.expiringDocuments || [];
+    return {
+      findings: expiringDocs.map((doc: any) => ({
+        type: 'warning' as const,
+        severity: doc.daysUntilExpiry <= 30 ? 'high' as const : 'medium' as const,
+        title: `Document Expiring: ${doc.documentName}`,
+        description: `Expires in ${doc.daysUntilExpiry} days (${doc.expiryDate})`,
+        data: doc,
+      })),
+      proposedActions: expiringDocs
+        .filter((doc: any) => doc.daysUntilExpiry <= 30)
+        .map((doc: any) => ({
+          id: `doc-renew-${doc.documentId}-${Date.now()}`,
+          type: 'schedule-followup',
+          description: `Renew ${doc.documentName} before ${doc.expiryDate}`,
+          priority: doc.daysUntilExpiry <= 7 ? 'critical' as const : 'high' as const,
+          data: doc,
+          requiresConfirmation: true,
+        })),
+    };
   },
 
   'regulatory-monitoring': async (ctx, params) => {
+    // Regulatory monitoring would check for new regulations
     return { findings: [], proposedActions: [] };
   },
 
+  // ═══════════════════════════════════════════════════════════════════════════
   // Inventory Guardian capabilities
+  // ═══════════════════════════════════════════════════════════════════════════
+
   'stock-monitoring': async (ctx, params) => {
-    return { findings: [], proposedActions: [] };
+    const healthCheck = await runInventoryHealthCheck();
+    return {
+      findings: healthCheck.issues.map((issue: any) => ({
+        type: issue.severity === 'critical' ? 'alert' as const : 'warning' as const,
+        severity: issue.severity as 'critical' | 'high' | 'medium' | 'low',
+        title: issue.title,
+        description: issue.description,
+        data: issue,
+      })),
+      proposedActions: [],
+    };
   },
 
   'anomaly-detection': async (ctx, params) => {
-    return { findings: [], proposedActions: [] };
+    const healthCheck = await runInventoryHealthCheck();
+    const anomalies = healthCheck.anomalies || [];
+    return {
+      findings: anomalies.map((anomaly: any) => ({
+        type: 'warning' as const,
+        severity: 'medium' as const,
+        title: `Inventory Anomaly: ${anomaly.sku}`,
+        description: anomaly.description,
+        data: anomaly,
+      })),
+      proposedActions: [],
+    };
   },
 
   'discrepancy-resolution': async (ctx, params) => {
+    // Discrepancy resolution would analyze count vs system
     return { findings: [], proposedActions: [] };
   },
 };
