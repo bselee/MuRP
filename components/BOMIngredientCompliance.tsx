@@ -8,6 +8,7 @@
 import React, { useState, useMemo } from 'react';
 import Button from '@/components/ui/Button';
 import { useBOMIngredientCompliance, type BOMComplianceData, type IngredientSDSDisplay, type IngredientComplianceDisplay } from '../hooks/useSupabaseData';
+import StateRegulatoryResearch from './StateRegulatoryResearch';
 import {
   CheckCircleIcon,
   ExclamationCircleIcon,
@@ -20,6 +21,7 @@ import {
   ExternalLinkIcon,
   ShieldCheckIcon,
   AlertTriangleIcon,
+  SparklesIcon,
 } from './icons';
 
 interface BOMIngredientComplianceProps {
@@ -44,6 +46,7 @@ const BOMIngredientCompliance: React.FC<BOMIngredientComplianceProps> = ({
 
   const [expandedComponent, setExpandedComponent] = useState<string | null>(null);
   const [selectedState, setSelectedState] = useState<string | null>(null);
+  const [showResearchPanel, setShowResearchPanel] = useState(false);
 
   if (loading) {
     return (
@@ -440,8 +443,36 @@ const BOMIngredientCompliance: React.FC<BOMIngredientComplianceProps> = ({
         })}
       </div>
 
+      {/* Deep Research Section */}
+      <div className="mt-8 pt-6 border-t border-gray-700">
+        <button
+          onClick={() => setShowResearchPanel(!showResearchPanel)}
+          className="w-full flex items-center justify-between py-2 hover:bg-gray-800/30 rounded-lg px-3 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <SparklesIcon className="w-5 h-5 text-purple-400" />
+            <span className="text-sm font-medium text-white">Deep Research by State</span>
+            <span className="text-xs text-gray-500">(Perplexity AI)</span>
+          </div>
+          {showResearchPanel ? (
+            <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+          ) : (
+            <ChevronRightIcon className="w-4 h-4 text-gray-400" />
+          )}
+        </button>
+
+        {showResearchPanel && (
+          <div className="mt-4">
+            <StateRegulatoryResearch
+              targetStates={targetStates}
+              regulationType="fertilizer"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Footer note */}
-      <p className="text-xs text-gray-500 text-center">
+      <p className="text-xs text-gray-500 text-center mt-6">
         Compliance data is researched using the Ingredient Compliance Agent with Perplexity AI.
         Last checked states: {targetStates.join(', ')}
       </p>

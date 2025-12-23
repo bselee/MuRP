@@ -374,6 +374,137 @@ export async function routeComplianceQuestion(
 }
 
 // ============================================================================
+// Tool 16: Research Ingredient Regulations (Perplexity AI)
+// ============================================================================
+
+export interface ResearchIngredientRegulationsArgs {
+  ingredient_name: string;
+  state_codes: string[];
+  cas_number?: string;
+  regulation_type?: 'fertilizer' | 'organic' | 'soil_amendment' | 'biostimulant';
+}
+
+export interface StateRegulatoryResearch {
+  state: string;
+  summary: string;
+  keyChanges: string[];
+  whoIsAffected: string[];
+  skuImpact: Array<{
+    category: string;
+    action: string;
+    priority: 'High' | 'Medium' | 'Low' | 'Watch';
+  }>;
+  nextSteps: string[];
+  sources: string[];
+  lastUpdated: string;
+}
+
+/**
+ * Research state-by-state regulations for an ingredient using Perplexity AI
+ * Returns detailed regulatory summary with citations
+ */
+export async function researchIngredientRegulations(
+  args: ResearchIngredientRegulationsArgs
+): Promise<McpToolResult> {
+  return callMcpTool('research_ingredient_regulations', {
+    ingredient_name: args.ingredient_name,
+    state_codes: args.state_codes,
+    cas_number: args.cas_number,
+    regulation_type: args.regulation_type || 'fertilizer',
+  });
+}
+
+// ============================================================================
+// Tool 17: Set Ingredient Compliance
+// ============================================================================
+
+export interface SetIngredientComplianceArgs {
+  ingredient_sku: string;
+  ingredient_name: string;
+  state_code: string;
+  compliance_status: 'compliant' | 'restricted' | 'prohibited' | 'conditional' | 'pending_review';
+  restriction_type?: string;
+  restriction_details?: string;
+  max_concentration_pct?: number;
+  regulation_code?: string;
+  effective_date?: string;
+  notes?: string;
+  cas_number?: string;
+}
+
+/**
+ * Store researched compliance data for an ingredient in a specific state
+ */
+export async function setIngredientCompliance(
+  args: SetIngredientComplianceArgs
+): Promise<McpToolResult> {
+  return callMcpTool('set_ingredient_compliance', {
+    ingredient_sku: args.ingredient_sku,
+    ingredient_name: args.ingredient_name,
+    state_code: args.state_code,
+    compliance_status: args.compliance_status,
+    restriction_type: args.restriction_type,
+    restriction_details: args.restriction_details,
+    max_concentration_pct: args.max_concentration_pct,
+    regulation_code: args.regulation_code,
+    effective_date: args.effective_date,
+    notes: args.notes,
+    cas_number: args.cas_number,
+  });
+}
+
+// ============================================================================
+// Tool 18: Research Ingredient SDS (Perplexity AI)
+// ============================================================================
+
+export interface ResearchIngredientSDSArgs {
+  ingredient_name: string;
+  cas_number?: string;
+  manufacturer?: string;
+}
+
+/**
+ * Research SDS/hazard data for an ingredient using Perplexity AI
+ * Returns GHS classifications, hazard codes, and safety information
+ */
+export async function researchIngredientSDS(
+  args: ResearchIngredientSDSArgs
+): Promise<McpToolResult> {
+  return callMcpTool('research_ingredient_sds', {
+    ingredient_name: args.ingredient_name,
+    cas_number: args.cas_number,
+    manufacturer: args.manufacturer,
+  });
+}
+
+// ============================================================================
+// Tool: Research State Regulations (General fertilizer/ag law)
+// ============================================================================
+
+export interface ResearchStateRegulationsArgs {
+  state_code: string;
+  regulation_type?: 'fertilizer' | 'organic' | 'soil_amendment' | 'biostimulant' | 'general';
+  focus_area?: string; // e.g., "nitrogen management", "labeling requirements"
+}
+
+/**
+ * Research state-level regulatory requirements using Perplexity AI
+ * Returns comprehensive summary with recent changes, affected parties, and action items
+ */
+export async function researchStateRegulations(
+  args: ResearchStateRegulationsArgs
+): Promise<McpToolResult> {
+  // Build a research query for the state
+  const query = `${args.state_code} state ${args.regulation_type || 'fertilizer'} regulations ${args.focus_area || ''} 2025 recent changes requirements`;
+
+  return callMcpTool('research_ingredient_regulations', {
+    ingredient_name: query, // Repurposing the ingredient field for general state research
+    state_codes: [args.state_code],
+    regulation_type: args.regulation_type || 'fertilizer',
+  });
+}
+
+// ============================================================================
 // Export all tools
 // ============================================================================
 
@@ -386,6 +517,10 @@ export const mcpTools = {
   scrapeStateRegulation,
   upgradeToFullAi,
   getComplianceSummary,
+  researchIngredientRegulations,
+  setIngredientCompliance,
+  researchIngredientSDS,
+  researchStateRegulations,
 };
 
 export default mcpTools;
