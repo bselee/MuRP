@@ -17,6 +17,7 @@ import type {
     RequisitionRequestOptions,
 } from '../types';
 import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon, Squares2X2Icon, ListBulletIcon } from '../components/icons';
+import PODeliveryTimeline from '../components/PODeliveryTimeline';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CreatePoModal from '../components/CreatePoModal';
 import Modal from '../components/Modal';
@@ -705,7 +706,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>📦 External Purchase Orders</h2>
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>📦 Purchase Orders</h2>
                                 <StatusBadge variant="primary" className="ml-2">
                                     {finalePurchaseOrders.filter(fpo => {
                                         // Exclude dropship POs - only those with "DropshipPO" in the order ID
@@ -846,6 +847,19 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 </div>
                                             </div>
 
+                                            {/* Delivery Timeline - Always visible */}
+                                            <div className="px-3 pb-2">
+                                                <PODeliveryTimeline
+                                                    status={fpo.status}
+                                                    orderDate={fpo.orderDate}
+                                                    expectedDate={fpo.expectedDate}
+                                                    trackingNumber={undefined}
+                                                    carrier={undefined}
+                                                    isDark={isDark}
+                                                    expandable={true}
+                                                />
+                                            </div>
+
                                             {/* Expanded Details */}
                                             {isExpanded && (
                                                 <div className={`relative p-4 space-y-4 border-t backdrop-blur-lg ${isDark
@@ -948,8 +962,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                                 <td className={`px-3 py-2 text-sm font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.product_id || 'N/A'}</td>
                                                                                 <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.quantity_ordered || 0}</td>
                                                                                 <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.quantity_received || 0}</td>
-                                                                                <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>${Number(item.unit_price || 0).toFixed(2)}</td>
-                                                                                <td className={`px-3 py-2 text-sm text-right font-mono font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>${Number(item.line_total || 0).toFixed(2)}</td>
+                                                                                <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>${(Number(item.unit_price) || 0).toFixed(2)}</td>
+                                                                                <td className={`px-3 py-2 text-sm text-right font-mono font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>${(item.line_total != null ? Number(item.line_total) : (Number(item.quantity_ordered) || 0) * (Number(item.unit_price) || 0)).toFixed(2)}</td>
                                                                             </tr>
                                                                         ))}
                                                                     </tbody>
@@ -982,7 +996,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-amber-200/60'}`} />
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                                <h2 className={`text-xl font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Internal Purchase Orders</h2>
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Draft & In-Progress POs</h2>
                                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDark ? 'bg-slate-800/50 text-gray-300 border border-slate-700' : 'bg-amber-100 text-amber-800 border border-amber-300'}`}>
                                     {filteredPOCount} total
                                     {totalPOCount !== filteredPOCount && (
