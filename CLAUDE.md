@@ -120,11 +120,11 @@ import ErrorBoundary from './components/ErrorBoundary';
   /supabase/         # Supabase client configuration
   /sync/             # Data sync orchestration
 /pages/              # Page components (Dashboard, Inventory, PurchaseOrders, etc.)
-/services/           # Business logic (~80 services)
+/services/           # Business logic (~109 services)
 /types/              # TypeScript type definitions
 /supabase/
-  /functions/        # Edge functions (24 functions for webhooks, sync, automation)
-  /migrations/       # Numbered SQL migrations (strict 3-digit numbering)
+  /functions/        # Edge functions (28 functions for webhooks, sync, automation)
+  /migrations/       # 118+ SQL migrations (strict 3-digit sequential numbering)
 /e2e/                # Playwright E2E tests
 /tests/              # Unit tests
 ```
@@ -137,7 +137,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 ```bash
 # 1. Find highest migration number
-ls supabase/migrations | sort | tail -1  # Example: 124_add_tracking_to_finale_pos.sql
+ls supabase/migrations | sort | tail -1  # Current: 124_add_tracking_to_finale_pos.sql
 
 # 2. Create new migration (next number: 125)
 supabase migration new feature_name
@@ -333,7 +333,7 @@ const cardClass = isDark
 - Calendar: `services/googleCalendarService.ts`
 - Gmail: `services/googleGmailService.ts`
 
-### Edge Functions (28 functions)
+### Edge Functions (28 deployed)
 Located in `supabase/functions/`:
 - `api-proxy` - Secure backend proxy for external APIs
 - `auto-sync-finale` - Automated Finale data sync
