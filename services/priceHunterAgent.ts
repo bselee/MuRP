@@ -116,7 +116,7 @@ export async function detectPriceChanges(
 
     // Get recent purchase data grouped by SKU and vendor
     const { data: recentPurchases, error } = await supabase
-      .from('sku_purchase_log')
+      .from('product_purchase_log')
       .select(`
         sku,
         product_name,

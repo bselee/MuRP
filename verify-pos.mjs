@@ -1,8 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
+if (!process.env.SUPABASE_SERVICE_KEY) {
+  throw new Error('SUPABASE_SERVICE_KEY environment variable is required');
+}
+
 const supabase = createClient(
   'https://mpuevsmtowyexhsqugkm.supabase.co',
-  process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wdWV2c210b3d5ZXhoc3F1Z2ttIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzI0ODMwOSwiZXhwIjoyMDYyODI0MzA5fQ.YjXZsIIbp_J3gI0agHrSWYS8p1Wa6nz1EWr82yXKu7g'
+  process.env.SUPABASE_SERVICE_KEY
 );
 
 // Total count
