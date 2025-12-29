@@ -9,9 +9,9 @@
 -- ============================================================================
 
 -- Insert default carrier configurations (disabled by default)
-INSERT INTO app_settings (setting_key, setting_value, updated_at)
+INSERT INTO app_settings (setting_key, setting_category, setting_value, updated_at)
 VALUES 
-  ('carrier_api_usps', '{
+  ('carrier_api_usps', 'integrations', '{
     "name": "USPS",
     "userId": "",
     "enabled": false,
@@ -19,7 +19,7 @@ VALUES
     "registrationUrl": "https://www.usps.com/business/web-tools-apis/",
     "freeTier": "Unlimited"
   }', NOW()),
-  ('carrier_api_ups', '{
+  ('carrier_api_ups', 'integrations', '{
     "name": "UPS",
     "userId": "",
     "apiKey": "",
@@ -28,7 +28,7 @@ VALUES
     "registrationUrl": "https://developer.ups.com/",
     "freeTier": "500/month"
   }', NOW()),
-  ('carrier_api_fedex', '{
+  ('carrier_api_fedex', 'integrations', '{
     "name": "FedEx",
     "userId": "",
     "apiKey": "",
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS tracking_cache (
 CREATE INDEX IF NOT EXISTS idx_tracking_cache_number ON tracking_cache(tracking_number);
 CREATE INDEX IF NOT EXISTS idx_tracking_cache_carrier ON tracking_cache(carrier);
 CREATE INDEX IF NOT EXISTS idx_tracking_cache_status ON tracking_cache(status);
-CREATE INDEX IF NOT EXISTS idx_tracking_cache_expires ON tracking_cache(expires_at) WHERE expires_at > NOW();
+CREATE INDEX IF NOT EXISTS idx_tracking_cache_expires ON tracking_cache(expires_at);
 CREATE INDEX IF NOT EXISTS idx_tracking_cache_po_ids ON tracking_cache USING GIN(related_po_ids);
 
 COMMENT ON TABLE tracking_cache IS 'Cache for tracking results from carrier APIs and email extraction';
