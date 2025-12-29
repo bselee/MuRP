@@ -4,7 +4,7 @@ import React from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, MuRPLogo, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, UsersIcon, ChartBarIcon, CpuChipIcon, ShieldCheckIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, UsersIcon, ChartBarIcon, CpuChipIcon, ShieldCheckIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
 import UserSettingsDropdown from './UserSettingsDropdown';
@@ -160,10 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isCollap
         <aside className={`${asideClasses} border-r flex-shrink-0 hidden md:flex flex-col transition-all duration-300 ease-in-out ${isCollapsed ? 'w-20' : 'w-64'}`}>
             <div className={`h-16 flex items-center border-b ${sectionBorder} relative ${isCollapsed ? 'justify-center' : 'px-4'}`}>
                 {!isCollapsed && (
-                    <>
-                        <MuRPLogo className={`w-16 h-8 mr-3 ${isLight ? 'text-amber-700' : 'text-accent-200'}`} />
-                        <div className={`text-2xl font-bold tracking-tight whitespace-nowrap ${isLight ? 'text-amber-900' : 'text-white'}`}>MuRP</div>
-                    </>
+                    <div className={`text-2xl font-bold tracking-tight whitespace-nowrap ${isLight ? 'text-amber-900' : 'text-white'}`}>MuRP</div>
                 )}
                 <Button
                     onClick={onToggle}
