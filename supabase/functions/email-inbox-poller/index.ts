@@ -25,6 +25,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+const AFTERSHIP_API_KEY = Deno.env.get('AFTERSHIP_API_KEY');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -604,6 +605,25 @@ async function processMessage(
   const trackingInfo = extractTrackingInfo(subject, bodyText);
   if (trackingInfo.trackingNumber) {
     result.trackingFound = true;
+
+    // Get PO number for AfterShip registration
+    let poNumber: string | null = null;
+    if (correlation.poId) {
+      const { data: po } = await supabase
+        .from('purchase_orders')
+        .select('order_id')
+        .eq('id', correlation.poId)
+        .single();
+      poNumber = po?.order_id || null;
+    }
+
+    // AUTO-REGISTER with AfterShip for real-time webhook updates
+    await registerTrackingWithAfterShip(
+      trackingInfo.trackingNumber,
+      trackingInfo.carrier,
+      correlation.poId,
+      poNumber
+    );
   }
 
   // Add message to thread
@@ -837,6 +857,121 @@ async function correlateEmailToPO(
   }
 
   return { poId: null, confidence: 0, method: 'none' };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AfterShip Integration - Auto-register tracking for real-time updates
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function registerTrackingWithAfterShip(
+  trackingNumber: string,
+  carrier: string | null,
+  poId: string | null,
+  poNumber: string | null
+): Promise<{ success: boolean; aftershipId?: string; error?: string }> {
+  if (!AFTERSHIP_API_KEY) {
+    console.log('[email-inbox-poller] AfterShip API key not configured, skipping registration');
+    return { success: false, error: 'AfterShip not configured' };
+  }
+
+  try {
+    // Check if already registered
+    const { data: existing } = await supabase
+      .from('aftership_trackings')
+      .select('id, aftership_id')
+      .eq('tracking_number', trackingNumber)
+      .single();
+
+    if (existing) {
+      console.log(`[email-inbox-poller] Tracking ${trackingNumber} already registered`);
+      return { success: true, aftershipId: existing.aftership_id };
+    }
+
+    // Map carrier name to AfterShip slug
+    const slugMap: Record<string, string> = {
+      UPS: 'ups',
+      FedEx: 'fedex',
+      USPS: 'usps',
+      DHL: 'dhl',
+    };
+    const slug = carrier ? slugMap[carrier] || 'auto-detect' : 'auto-detect';
+
+    // Register with AfterShip
+    const response = await fetch('https://api.aftership.com/v4/trackings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'aftership-api-key': AFTERSHIP_API_KEY,
+      },
+      body: JSON.stringify({
+        tracking: {
+          tracking_number: trackingNumber,
+          slug: slug === 'auto-detect' ? undefined : slug,
+          title: poNumber ? `PO ${poNumber}` : undefined,
+          order_number: poNumber,
+          custom_fields: poId ? { po_id: poId } : undefined,
+        },
+      }),
+    });
+
+    if (response.status === 409) {
+      // Tracking already exists in AfterShip
+      console.log(`[email-inbox-poller] Tracking ${trackingNumber} already in AfterShip`);
+      return { success: true };
+    }
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      const errorMsg = errorBody?.meta?.message || `HTTP ${response.status}`;
+      console.error(`[email-inbox-poller] AfterShip API error: ${errorMsg}`);
+      return { success: false, error: errorMsg };
+    }
+
+    const data = await response.json();
+    const aftershipId = data?.data?.tracking?.id;
+
+    // Store in our database
+    await supabase.from('aftership_trackings').insert({
+      aftership_id: aftershipId,
+      tracking_number: trackingNumber,
+      slug: data?.data?.tracking?.slug || slug,
+      po_id: poId,
+      tag: 'Pending',
+      internal_status: 'processing',
+      source: 'email',
+      order_number: poNumber,
+    });
+
+    // Update PO with tracking info
+    if (poId) {
+      await supabase
+        .from('purchase_orders')
+        .update({
+          tracking_number: trackingNumber,
+          tracking_carrier: carrier || slug.toUpperCase(),
+          tracking_status: 'processing',
+          tracking_last_checked_at: new Date().toISOString(),
+        })
+        .eq('id', poId);
+
+      // Also update finale_purchase_orders if applicable
+      await supabase
+        .from('finale_purchase_orders')
+        .update({
+          tracking_number: trackingNumber,
+          tracking_carrier: carrier || slug.toUpperCase(),
+          tracking_status: 'processing',
+        })
+        .eq('id', poId);
+    }
+
+    console.log(`[email-inbox-poller] ✅ Registered tracking ${trackingNumber} with AfterShip (ID: ${aftershipId})`);
+    return { success: true, aftershipId };
+
+  } catch (error) {
+    console.error('[email-inbox-poller] AfterShip registration failed:', error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 async function checkForAlerts(
