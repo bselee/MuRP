@@ -983,6 +983,12 @@ async function checkForAlerts(
 ): Promise<boolean> {
   const combined = `${subject}\n${bodyText}`.toLowerCase();
 
+  // Check for dispute responses first
+  const disputeProcessed = await processDisputeResponse(threadId, poId, subject, bodyText, trackingInfo);
+  if (disputeProcessed) {
+    return true;
+  }
+
   // Check for delay notices
   if (
     combined.includes('delay') ||
@@ -1037,4 +1043,345 @@ async function checkForAlerts(
   }
 
   return false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Dispute Response Processing
+// Parses vendor replies to dispute emails and updates dispute status
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function processDisputeResponse(
+  threadId: string,
+  poId: string | null,
+  subject: string,
+  bodyText: string,
+  trackingInfo: { trackingNumber: string | null; carrier: string | null; eta: string | null }
+): Promise<boolean> {
+  const combined = `${subject}\n${bodyText}`.toLowerCase();
+
+  // Check if this is a dispute-related email
+  const isDisputeReply =
+    subject.toLowerCase().includes('invoice discrepancy') ||
+    subject.toLowerCase().includes('credit request') ||
+    combined.includes('dispute-') ||
+    combined.includes('credit memo') ||
+    combined.includes('dispute reference');
+
+  if (!isDisputeReply) {
+    return false;
+  }
+
+  // Try to extract dispute ID from body or subject
+  const disputeIdMatch = combined.match(/dispute[-\s]?([a-f0-9]{8})/i);
+  let disputeId: string | null = null;
+
+  if (disputeIdMatch) {
+    // Look up full dispute ID by prefix
+    const { data: dispute } = await supabase
+      .from('invoice_disputes')
+      .select('id, po_id, status')
+      .ilike('id', `${disputeIdMatch[1]}%`)
+      .single();
+
+    if (dispute) {
+      disputeId = dispute.id;
+      poId = dispute.po_id;
+    }
+  }
+
+  // If no dispute ID found, try to find by PO
+  if (!disputeId && poId) {
+    const { data: dispute } = await supabase
+      .from('invoice_disputes')
+      .select('id, status')
+      .eq('po_id', poId)
+      .eq('status', 'open')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (dispute) {
+      disputeId = dispute.id;
+    }
+  }
+
+  if (!disputeId) {
+    console.log('[email-inbox-poller] Dispute-like email but no matching dispute found');
+    return false;
+  }
+
+  // Parse vendor response type
+  const responseType = parseDisputeResponseType(combined, trackingInfo.trackingNumber);
+
+  console.log(`[email-inbox-poller] Dispute response detected: ${responseType} for dispute ${disputeId}`);
+
+  // Update dispute status based on response
+  const now = new Date().toISOString();
+
+  switch (responseType) {
+    case 'credit_issued':
+      await supabase
+        .from('invoice_disputes')
+        .update({
+          status: 'resolved',
+          resolution_type: 'credit',
+          resolution_details: extractCreditDetails(bodyText),
+          resolved_at: now,
+          vendor_response_at: now,
+          vendor_response_type: 'credit_issued',
+          notes: `Auto-resolved: Vendor issued credit. ${bodyText.slice(0, 500)}`,
+        })
+        .eq('id', disputeId);
+
+      // Log success for trust score improvement
+      await recordDisputeResolution(disputeId, poId, 'credit_issued', true);
+      break;
+
+    case 'shipping_items':
+      await supabase
+        .from('invoice_disputes')
+        .update({
+          status: 'resolved',
+          resolution_type: 'reshipped',
+          resolution_details: {
+            trackingNumber: trackingInfo.trackingNumber,
+            carrier: trackingInfo.carrier,
+          },
+          resolved_at: now,
+          vendor_response_at: now,
+          vendor_response_type: 'shipping_items',
+          notes: `Auto-resolved: Vendor shipping missing items. Tracking: ${trackingInfo.trackingNumber || 'pending'}`,
+        })
+        .eq('id', disputeId);
+
+      // Register tracking if found
+      if (trackingInfo.trackingNumber && poId) {
+        await registerTrackingWithAfterShip(
+          trackingInfo.trackingNumber,
+          trackingInfo.carrier,
+          poId,
+          null
+        );
+      }
+
+      await recordDisputeResolution(disputeId, poId, 'shipping_items', true);
+      break;
+
+    case 'vendor_disputes':
+      await supabase
+        .from('invoice_disputes')
+        .update({
+          status: 'escalated',
+          escalated_at: now,
+          vendor_response_at: now,
+          vendor_response_type: 'vendor_disputes',
+          requires_human: true,
+          notes: `Vendor disputes claim. Human review required. Response: ${bodyText.slice(0, 500)}`,
+        })
+        .eq('id', disputeId);
+
+      // Create alert for human review
+      await supabase.rpc('create_email_tracking_alert', {
+        p_alert_type: 'dispute_escalated',
+        p_severity: 'high',
+        p_title: 'Vendor Disputes Credit Claim',
+        p_description: `Vendor is disputing our shortage claim. Manual review required.`,
+        p_thread_id: threadId,
+        p_po_id: poId,
+        p_requires_human: true,
+        p_route_to_agent: 'vendor_watchdog',
+        p_metadata: { disputeId },
+      });
+
+      await recordDisputeResolution(disputeId, poId, 'vendor_disputes', false);
+      break;
+
+    case 'needs_clarification':
+      await supabase
+        .from('invoice_disputes')
+        .update({
+          vendor_response_at: now,
+          vendor_response_type: 'needs_clarification',
+          notes: `Vendor needs more information. Response: ${bodyText.slice(0, 500)}`,
+        })
+        .eq('id', disputeId);
+
+      // Increment follow-up stage
+      await supabase
+        .from('invoice_disputes')
+        .update({
+          follow_up_count: supabase.sql`follow_up_count + 1`,
+          next_follow_up_due_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+        })
+        .eq('id', disputeId);
+      break;
+
+    default:
+      // Unknown response - flag for human review
+      await supabase
+        .from('invoice_disputes')
+        .update({
+          vendor_response_at: now,
+          notes: `Vendor response received but unclear. Response: ${bodyText.slice(0, 500)}`,
+          requires_human: true,
+        })
+        .eq('id', disputeId);
+  }
+
+  // Log the parsed response
+  await supabase.from('po_vendor_communications').insert({
+    po_id: poId,
+    communication_type: 'dispute_response',
+    direction: 'inbound',
+    gmail_thread_id: threadId,
+    subject,
+    body_preview: bodyText.slice(0, 800),
+    sent_at: now,
+    metadata: {
+      disputeId,
+      responseType,
+      parsed: true,
+    },
+  });
+
+  return true;
+}
+
+function parseDisputeResponseType(
+  text: string,
+  trackingNumber: string | null
+): 'credit_issued' | 'shipping_items' | 'vendor_disputes' | 'needs_clarification' | 'unknown' {
+  const lower = text.toLowerCase();
+
+  // Credit issued indicators
+  const creditIndicators = [
+    'credit memo',
+    'credit issued',
+    'credit applied',
+    'issuing credit',
+    'credit number',
+    'will credit',
+    'credited your account',
+    'credit note',
+    'refund',
+  ];
+
+  for (const indicator of creditIndicators) {
+    if (lower.includes(indicator)) {
+      return 'credit_issued';
+    }
+  }
+
+  // Shipping items indicators
+  const shippingIndicators = [
+    'shipping',
+    'will ship',
+    'sending',
+    'replacement',
+    'resending',
+    'new shipment',
+    'dispatching',
+    'tracking number',
+    'tracking:',
+  ];
+
+  if (trackingNumber || shippingIndicators.some(i => lower.includes(i))) {
+    return 'shipping_items';
+  }
+
+  // Vendor disputes indicators
+  const disputeIndicators = [
+    'disagree',
+    'we shipped',
+    'items were shipped',
+    'delivered',
+    'proof of delivery',
+    'pod attached',
+    'signed for',
+    'confirmed delivery',
+    'dispute your claim',
+    'reject',
+  ];
+
+  for (const indicator of disputeIndicators) {
+    if (lower.includes(indicator)) {
+      return 'vendor_disputes';
+    }
+  }
+
+  // Needs clarification indicators
+  const clarificationIndicators = [
+    'need more',
+    'please provide',
+    'can you send',
+    'clarify',
+    'which items',
+    'please specify',
+    'more details',
+    'unclear',
+  ];
+
+  for (const indicator of clarificationIndicators) {
+    if (lower.includes(indicator)) {
+      return 'needs_clarification';
+    }
+  }
+
+  return 'unknown';
+}
+
+function extractCreditDetails(text: string): Record<string, any> {
+  const details: Record<string, any> = {};
+
+  // Try to extract credit amount
+  const amountMatch = text.match(/\$([0-9,]+\.?\d*)/);
+  if (amountMatch) {
+    details.creditAmount = parseFloat(amountMatch[1].replace(',', ''));
+  }
+
+  // Try to extract credit memo number
+  const memoMatch = text.match(/(?:credit|memo|reference)[:\s#]*([A-Z0-9-]+)/i);
+  if (memoMatch) {
+    details.creditMemoNumber = memoMatch[1];
+  }
+
+  return details;
+}
+
+async function recordDisputeResolution(
+  disputeId: string,
+  poId: string | null,
+  responseType: string,
+  successful: boolean
+): Promise<void> {
+  // Get dispute details for trust score update
+  const { data: dispute } = await supabase
+    .from('invoice_disputes')
+    .select('vendor_id, disputed_amount')
+    .eq('id', disputeId)
+    .single();
+
+  if (!dispute?.vendor_id) return;
+
+  // Update vendor trust metrics
+  const column = successful ? 'disputes_resolved' : 'disputes_escalated';
+  await supabase.rpc('increment_vendor_metric', {
+    p_vendor_id: dispute.vendor_id,
+    p_metric_name: column,
+    p_increment: 1,
+  });
+
+  // Log for trust score calculation
+  await supabase.from('vendor_trust_events').insert({
+    vendor_id: dispute.vendor_id,
+    event_type: 'dispute_resolution',
+    outcome: successful ? 'positive' : 'negative',
+    details: {
+      disputeId,
+      poId,
+      responseType,
+      amount: dispute.disputed_amount,
+    },
+    trust_impact: successful ? 0.02 : -0.05, // Small positive for resolution, larger negative for escalation
+  });
 }
