@@ -124,7 +124,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 /types/              # TypeScript type definitions
 /supabase/
   /functions/        # Edge functions (28 functions for webhooks, sync, automation)
-  /migrations/       # 118+ SQL migrations (strict 3-digit sequential numbering)
+  /migrations/       # 125 SQL migrations (strict 3-digit sequential numbering)
 /e2e/                # Playwright E2E tests
 /tests/              # Unit tests
 ```
@@ -137,13 +137,13 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 ```bash
 # 1. Find highest migration number
-ls supabase/migrations | sort | tail -1  # Current: 124_add_tracking_to_finale_pos.sql
+ls supabase/migrations | sort | tail -1  # Current: 125_add_scheduled_agent_triggers.sql
 
-# 2. Create new migration (next number: 125)
+# 2. Create new migration (next number: 126)
 supabase migration new feature_name
 
 # 3. Rename to sequential number
-mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/125_feature_name.sql
+mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/126_feature_name.sql
 
 # 4. Test locally
 supabase db reset
@@ -423,6 +423,31 @@ supabase secrets set AFTERSHIP_WEBHOOK_SECRET="..." # Webhook verification
 - `components/PODeliveryTimeline.tsx` - Visual tracking timeline
 - `components/AfterShipSettingsPanel.tsx` - AfterShip configuration
 
+### PO Lifecycle Pipeline
+
+**Pipeline View** (`pages/PurchaseOrders.tsx` → Pipeline tab):
+Kanban-style visualization of PO lifecycle stages:
+
+```
+Draft → Sent → Confirmed → In Transit → Completed
+```
+
+**Key Components:**
+- `components/POPipelineView.tsx` - Full Kanban board with drag-drop stages
+- `components/POPipelineWidget.tsx` - Lightweight dashboard widget with stage counts
+- `components/StockoutCountdown.tsx` - Days until stockout indicator on PO cards
+
+**Stage Assignment Logic:**
+```typescript
+function getPOStage(po: FinalePurchaseOrderRecord): POPipelineStage {
+  if (status === 'RECEIVED' || status === 'COMPLETED') return 'completed';
+  if (po.trackingStatus === 'in_transit' || po.trackingStatus === 'out_for_delivery') return 'in_transit';
+  if (po.trackingNumber && po.trackingStatus !== 'delivered') return 'confirmed';
+  if (status === 'SUBMITTED' || status === 'PARTIALLY_RECEIVED') return 'sent';
+  return 'draft';
+}
+```
+
 ### AI Agent System
 
 **Agent Command Center** (`pages/Admin.tsx` → Agent Command Center tab):
@@ -470,6 +495,20 @@ Event/Trigger → eventBus.ts → agentExecutor.ts → agent_definitions (config
                                                         ↓
                                             actionExecutors.ts → pending_actions_queue
 ```
+
+**pg_cron Scheduled Agents** (Migration 125):
+Autonomous agent execution via Supabase pg_cron triggers:
+
+| Agent | Schedule | Purpose |
+|-------|----------|---------|
+| Stockout Prevention | 6:00 AM daily | Morning stockout check |
+| Vendor Watchdog | 7:00 AM daily | Vendor performance review |
+| Inventory Guardian | 2:00 AM nightly | Stock level monitoring |
+| PO Intelligence | Hourly 8AM-6PM Mon-Fri | Order status updates |
+| Compliance Validator | Monday 9:00 AM | Weekly compliance check |
+| AfterShip Sync | Every 30 minutes | Tracking updates |
+
+Triggers call `scheduled-agent-runner` edge function which executes the appropriate agent.
 
 ## Common Pitfalls
 
