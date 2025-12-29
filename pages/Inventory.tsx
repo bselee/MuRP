@@ -851,7 +851,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     return (
                         <div
                             onClick={() => onNavigateToProduct?.(item.sku)}
-                            className="font-mono font-medium text-accent-400 hover:text-accent-300 hover:underline cursor-pointer"
+                            className={`font-mono font-semibold hover:underline cursor-pointer ${isDark ? 'text-amber-400 hover:text-amber-300' : 'text-amber-700 hover:text-amber-600'}`}
                             title="Click to view product details"
                         >
                             {item.sku}

@@ -451,7 +451,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                     onToggleExpand();
                   }
                 }}
-                className={`font-extrabold font-mono transition-colors cursor-pointer hover:opacity-80 ${isLightTheme ? 'text-black hover:text-black' : 'text-white hover:text-white'}`}
+                className={`font-extrabold font-mono transition-colors cursor-pointer hover:opacity-80 ${isLightTheme ? 'text-amber-700 hover:text-amber-600' : 'text-amber-400 hover:text-amber-300'}`}
                 style={{ fontSize: '1.3rem', letterSpacing: '0.02em' }}
                 title={canEdit ? 'Edit this BOM' : isExpanded ? 'Hide recipe ingredients' : 'Show recipe ingredients'}
               >

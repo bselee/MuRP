@@ -417,7 +417,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <div className="font-mono text-sm font-semibold text-accent-400">{item.sku}</div>
+                          <div className="font-mono text-sm font-semibold text-amber-400">{item.sku}</div>
                           <div className="text-sm text-gray-300 mt-0.5">{item.name}</div>
                           {item.category && (
                             <div className="text-xs text-gray-500 mt-1">{item.category}</div>
@@ -535,7 +535,7 @@ const BomEditModal: React.FC<BomEditModalProps> = ({
                   {editedBom.components.map((component, index) => (
                     <tr key={component.id || index} className="hover:bg-gray-800/30 transition-colors">
                       <td className="px-4 py-1 whitespace-nowrap">
-                        <span className="text-sm font-mono text-accent-400 font-semibold">{component.sku}</span>
+                        <span className="text-sm font-mono text-amber-400 font-semibold">{component.sku}</span>
                       </td>
                       <td className="px-4 py-1">
                         <span className="text-sm text-gray-300">{component.name}</span>
