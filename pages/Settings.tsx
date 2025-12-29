@@ -3,9 +3,10 @@ import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor, CompanyEmailSettings } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, SparklesIcon, BellIcon, ClipboardCopyIcon, EyeSlashIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, SparklesIcon, BellIcon, ClipboardCopyIcon, EyeSlashIcon, TruckIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import AdminUsersPanel from '../components/AdminUsersPanel';
+import AfterShipSettingsPanel from '../components/AfterShipSettingsPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
 import APIIntegrationsPanel from '../components/APIIntegrationsPanel';
 import ShopifyIntegrationPanel from '../components/ShopifyIntegrationPanel';
@@ -89,6 +90,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isShopifyOpen, setIsShopifyOpen] = useState(false);
+  const [isAfterShipOpen, setIsAfterShipOpen] = useState(false);
   const [isMcpOpen, setIsMcpOpen] = useState(false);
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
@@ -373,6 +375,15 @@ const Settings: React.FC<SettingsProps> = ({
               <ShopifyIntegrationPanel currentUser={currentUser} inventory={inventory} boms={boms} />
             </CollapsibleSection>
           )}
+
+          <CollapsibleSection
+            title="AfterShip Tracking"
+            icon={<TruckIcon className="w-5 h-5 text-cyan-400" />}
+            isOpen={isAfterShipOpen}
+            onToggle={() => setIsAfterShipOpen(!isAfterShipOpen)}
+          >
+            <AfterShipSettingsPanel addToast={addToast} />
+          </CollapsibleSection>
         </section>
 
         {/* ============================================================ */}
