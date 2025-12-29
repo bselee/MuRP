@@ -552,3 +552,22 @@ ls supabase/migrations | sort | tail -1
 - `schema-transformer-expert.md` - Expert in the 4-layer schema system
 
 Agents are automatically loaded by Claude Code and provide specialized context for domain-specific tasks.
+
+### Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`)
+Programmatic access to Claude Code capabilities for building autonomous agents:
+
+```typescript
+import { Agent } from '@anthropic-ai/claude-agent-sdk';
+
+const agent = new Agent({
+  model: 'claude-sonnet-4-20250514',
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+const result = await agent.run({
+  prompt: 'Analyze inventory and suggest ROP adjustments',
+  workingDirectory: process.cwd(),
+});
+```
+
+Use for building custom automation scripts that need file access, code editing, and command execution.
