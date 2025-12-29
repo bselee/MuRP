@@ -585,6 +585,31 @@ ls supabase/migrations | sort | tail -1
 - `API_INGESTION_SETUP.md` - API integration setup
 - `.github/copilot-instructions.md` - Comprehensive development guidelines including TFR protocol, Vercel deployment, and session management
 
+## Claude Opus 4.5 Capabilities
+
+### Core Workspace Tools
+| Category | Tools |
+|----------|-------|
+| **File Ops** | `read_file`, `create_file`, `replace_string_in_file`, `multi_replace_string_in_file`, `list_dir` |
+| **Search** | `file_search` (glob), `grep_search` (regex/text), `semantic_search` (AI-powered) |
+| **Terminal** | `run_in_terminal`, `run_task`, `get_terminal_output` |
+| **Testing** | `runTests` (with coverage), `get_errors` (compile/lint) |
+| **Git** | `get_changed_files`, terminal git commands |
+
+### MCP Server Integrations
+| Server | Capabilities |
+|--------|--------------|
+| **GitHub** | Repos, issues, PRs, Copilot coding agent |
+| **Context7** | Library docs, code examples |
+| **Brave Search** | Web/local search |
+| **Pylance** | Python syntax, environments, imports |
+
+### Autonomous Workflows
+- **TFR Protocol**: Test → Fix → Refactor → Re-test (mandatory before commits)
+- **Session Management**: Auto-resume, progress tracking, documentation
+- **Sub-agents**: Launch autonomous agents for complex research/tasks
+- **Deployment Loops**: Vercel and Supabase auto-deploy with error recovery
+
 ## Claude Code Skills & Agents
 
 ### Available Skills (in `.claude/skills/`)
