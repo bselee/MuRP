@@ -329,6 +329,19 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Disable JWT verification for google-auth since it handles OAuth flow
+# before users are authenticated
+[functions.google-auth]
+verify_jwt = false
+
+# Also disable for aftership-webhook which receives external webhooks
+[functions.aftership-webhook]
+verify_jwt = false
+
+# Gmail webhook receives push notifications from Google
+[functions.gmail-webhook]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

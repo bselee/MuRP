@@ -13,7 +13,6 @@ GmailIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   XCircleIcon,
-  TruckIcon,
   BellIcon,
 } from './icons';
 import { supabase } from '../lib/supabase/client';
@@ -69,16 +68,6 @@ const SYNC_STEPS: Array<{ type: SyncType; label: string; accent: string }> = [
   { type: 'boms', label: 'BOMs', accent: 'text-emerald-300' },
 ];
 
-const CUSTOM_CARRIER_VALUE = 'custom';
-
-const AFTERSHIP_CARRIER_OPTIONS = [
-  { value: 'ups', label: 'UPS' },
-  { value: 'fedex', label: 'FedEx' },
-  { value: 'usps', label: 'USPS' },
-  { value: 'dhl', label: 'DHL' },
-  { value: CUSTOM_CARRIER_VALUE, label: 'Custom Carrier' },
-];
-
 const TRACKING_STATUS_CHOICES: Array<{
   value: POTrackingStatus;
   label: string;
@@ -110,26 +99,6 @@ const TRACKING_STATUS_CHOICES: Array<{
     description: 'Optional progress pings while in route.',
   },
 ];
-
-const resolveCarrierSelection = (slug?: string) => {
-  if (!slug || slug === 'other') {
-    return { selectedCarrier: 'ups', customSlug: '' };
-  }
-
-  if (slug === CUSTOM_CARRIER_VALUE) {
-    return { selectedCarrier: CUSTOM_CARRIER_VALUE, customSlug: '' };
-  }
-
-  const matchesPreset = AFTERSHIP_CARRIER_OPTIONS.some(
-    (option) => option.value === slug && option.value !== CUSTOM_CARRIER_VALUE,
-  );
-
-  if (matchesPreset) {
-    return { selectedCarrier: slug, customSlug: '' };
-  }
-
-  return { selectedCarrier: CUSTOM_CARRIER_VALUE, customSlug: slug };
-};
 
 const formatRelativeTime = (iso?: string) => {
   if (!iso) return 'Never synced';
@@ -189,15 +158,6 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
   } | null>(null);
 
   const [newConnection, setNewConnection] = useState({ name: '', apiUrl: '', apiKey: '' });
-  const [afterShipInputs, setAfterShipInputs] = useState({
-    enabled: false,
-    selectedCarrier: 'ups',
-    customSlug: '',
-    apiKey: '',
-  });
-  const [afterShipStoredKey, setAfterShipStoredKey] = useState<string | null>(null);
-  const [afterShipLoading, setAfterShipLoading] = useState(false);
-  const [afterShipError, setAfterShipError] = useState<string | null>(null);
   const [trackingAlerts, setTrackingAlerts] = useState<{
     enabled: boolean;
     slackWebhookUrl: string;
@@ -238,98 +198,6 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
       console.error('[APIIntegrations] Failed to load sync health', error);
     }
   }, []);
-
-  const loadAfterShipConfig = useCallback(async () => {
-    try {
-      setAfterShipLoading(true);
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('setting_value')
-        .eq('setting_key', 'aftership_config')
-        .maybeSingle();
-      if (error) throw error;
-
-      const value = data?.setting_value || {};
-      const { selectedCarrier, customSlug } = resolveCarrierSelection(value.defaultSlug);
-
-      setAfterShipInputs({
-        enabled: Boolean(value.enabled),
-        selectedCarrier,
-        customSlug,
-        apiKey: '',
-      });
-      setAfterShipStoredKey(value.apiKey ?? null);
-      setAfterShipError(null);
-    } catch (error) {
-      console.error('[APIIntegrations] Failed to load AfterShip config', error);
-      addToast?.('Failed to load AfterShip settings', 'error');
-    } finally {
-      setAfterShipLoading(false);
-    }
-  }, [addToast]);
-
-  const handleSaveAfterShip = useCallback(async () => {
-    try {
-      setAfterShipLoading(true);
-      setAfterShipError(null);
-      const apiKeyToSave = afterShipInputs.apiKey.trim()
-        ? afterShipInputs.apiKey.trim()
-        : afterShipStoredKey;
-
-      const resolvedSlug =
-        afterShipInputs.selectedCarrier === CUSTOM_CARRIER_VALUE
-          ? afterShipInputs.customSlug.trim()
-          : afterShipInputs.selectedCarrier;
-
-      if (afterShipInputs.selectedCarrier === CUSTOM_CARRIER_VALUE && !resolvedSlug) {
-        setAfterShipError('Enter a valid AfterShip carrier slug when using the custom option.');
-        addToast?.('Custom carrier slug required before saving.', 'error');
-        return;
-      }
-
-      if (afterShipInputs.enabled && !resolvedSlug) {
-        setAfterShipError('Default carrier slug is required when tracking is enabled.');
-        addToast?.('Default carrier slug cannot be empty.', 'error');
-        return;
-      }
-
-      const payload = {
-        enabled: afterShipInputs.enabled,
-        defaultSlug: resolvedSlug || 'ups',
-        apiKey: apiKeyToSave,
-      };
-
-      const { error } = await supabase
-        .from('app_settings')
-        .update({
-          setting_value: payload,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('setting_key', 'aftership_config');
-
-      if (error) throw error;
-
-      setAfterShipInputs((prev) => ({ ...prev, apiKey: '' }));
-      setAfterShipStoredKey(apiKeyToSave ?? null);
-      addToast?.('AfterShip settings updated', 'success');
-    } catch (error) {
-      console.error('[APIIntegrations] Failed to save AfterShip config', error);
-      addToast?.('Failed to save AfterShip settings', 'error');
-    } finally {
-      setAfterShipLoading(false);
-    }
-  }, [afterShipInputs, afterShipStoredKey, addToast]);
-
-  const handleClearAfterShipKey = useCallback(() => {
-    setAfterShipStoredKey(null);
-    setAfterShipInputs((prev) => ({ ...prev, apiKey: '' }));
-    setAfterShipError(null);
-  }, []);
-
-  const handleResetAfterShip = useCallback(() => {
-    setAfterShipError(null);
-    loadAfterShipConfig();
-  }, [loadAfterShipConfig]);
 
   const handleTrackingStatusToggle = (status: POTrackingStatus) => {
     setTrackingAlertsError(null);
@@ -450,9 +318,8 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
   }, [fetchSyncHealth]);
 
   useEffect(() => {
-    loadAfterShipConfig();
     loadTrackingNotifications();
-  }, [loadAfterShipConfig, loadTrackingNotifications]);
+  }, [loadTrackingNotifications]);
 
   useEffect(() => {
     return () => {
@@ -1170,169 +1037,6 @@ const APIIntegrationsPanel: React.FC<APIIntegrationsPanelProps> = ({
 
       {/* Finale Inventory Integration */}
       <FinaleIntegrationPanel addToast={addToast} />
-
-      {/* AfterShip Integration */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700 space-y-4">
-        <div className="flex items-center gap-4">
-          <TruckIcon className="w-8 h-8 text-accent-300" />
-          <div>
-            <h3 className="text-lg font-semibold text-white">AfterShip Tracking</h3>
-            <p className="text-sm text-gray-400 mt-1">
-              Poll carrier APIs via AfterShip to update PO tracking statuses automatically.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <label className="flex items-center gap-3 text-sm text-gray-300">
-            <input
-              type="checkbox"
-              className="rounded bg-gray-700 border-gray-600 text-accent-500 focus:ring-accent-500"
-              checked={afterShipInputs.enabled}
-              onChange={(e) => {
-                setAfterShipInputs((prev) => ({ ...prev, enabled: e.target.checked }));
-                setAfterShipError(null);
-              }}
-            />
-            Enable automatic tracking updates
-          </label>
-          <div>
-            <label className="block text-xs text-gray-400 uppercase tracking-wide mb-1">
-              Default Carrier Slug
-            </label>
-            <select
-              value={afterShipInputs.selectedCarrier}
-              onChange={(e) => {
-                const nextValue = e.target.value;
-                setAfterShipInputs((prev) => ({
-                  ...prev,
-                  selectedCarrier: nextValue,
-                  customSlug: nextValue === CUSTOM_CARRIER_VALUE ? prev.customSlug : '',
-                }));
-                setAfterShipError(null);
-              }}
-              className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm text-white"
-            >
-              {AFTERSHIP_CARRIER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {afterShipInputs.selectedCarrier === CUSTOM_CARRIER_VALUE && (
-              <div className="mt-3">
-                <label className="block text-xs text-gray-400 uppercase tracking-wide mb-1">
-                  Carrier slug (from AfterShip docs)
-                </label>
-                <input
-                  type="text"
-                  value={afterShipInputs.customSlug}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setAfterShipInputs((prev) => ({ ...prev, customSlug: value }));
-                    setAfterShipError(null);
-                  }}
-                  placeholder="e.g., canada-post"
-                  className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm text-white"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  Use the exact slug AfterShip expects for your carrier.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs text-gray-400 uppercase tracking-wide mb-1">
-            AfterShip API Key
-          </label>
-          <input
-            type="password"
-            value={afterShipInputs.apiKey}
-            onChange={(e) => {
-              setAfterShipInputs((prev) => ({ ...prev, apiKey: e.target.value }));
-              setAfterShipError(null);
-            }}
-            placeholder={afterShipStoredKey ? '•••••••••• (stored)' : 'Enter AfterShip API key'}
-            className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-sm text-white"
-          />
-          <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
-            <span>
-              {afterShipStoredKey
-                ? 'API key stored securely. Enter a new key to rotate.'
-                : 'No API key stored yet.'}
-            </span>
-            {afterShipStoredKey && (
-              <Button
-                type="button"
-                onClick={handleClearAfterShipKey}
-                className="text-rose-300 hover:text-rose-200"
-              >
-                Remove stored key
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Webhook Configuration */}
-        <div className="border-t border-gray-700 pt-4 mt-4">
-          <div className="flex items-center gap-2 mb-3">
-            <BellIcon className="w-5 h-5 text-blue-400" />
-            <h4 className="text-sm font-medium text-white">Real-time Webhook (Recommended)</h4>
-          </div>
-          <p className="text-xs text-gray-400 mb-3">
-            Configure webhooks in AfterShip for instant tracking updates instead of polling. Copy this URL to AfterShip &rarr; Settings &rarr; Webhooks.
-          </p>
-          <div className="bg-gray-900/50 rounded-md p-3 border border-gray-600">
-            <div className="flex items-center justify-between gap-2">
-              <code className="text-xs text-accent-300 break-all flex-1">
-                {typeof window !== 'undefined'
-                  ? `${window.location.origin.replace('localhost:5173', '<your-project>.supabase.co')}/functions/v1/aftership-webhook`
-                  : 'https://<your-project>.supabase.co/functions/v1/aftership-webhook'}
-              </code>
-              <Button
-                type="button"
-                onClick={() => {
-                  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL || 'https://<your-project>.supabase.co'}/functions/v1/aftership-webhook`;
-                  navigator.clipboard.writeText(webhookUrl);
-                  addToast?.('Webhook URL copied to clipboard', 'success');
-                }}
-                className="text-gray-400 hover:text-white p-1"
-                title="Copy webhook URL"
-              >
-                <ClipboardCopyIcon className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Benefits: Instant updates, no API rate limits, reduced latency, automatic email thread correlation.
-          </p>
-        </div>
-
-        {afterShipError && (
-          <p className="text-sm text-rose-300">{afterShipError}</p>
-        )}
-
-        <div className="flex items-center justify-end gap-3">
-          <Button
-            type="button"
-            onClick={handleResetAfterShip}
-            className="text-sm text-gray-300 hover:text-white"
-            disabled={afterShipLoading}
-          >
-            {afterShipLoading ? 'Refreshing…' : 'Reset Changes'}
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSaveAfterShip}
-            disabled={afterShipLoading}
-            className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-600"
-          >
-            {afterShipLoading ? 'Saving…' : 'Save AfterShip Settings'}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 };
