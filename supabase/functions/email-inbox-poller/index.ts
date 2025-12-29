@@ -272,14 +272,17 @@ async function pollInbox(inbox: InboxConfig): Promise<PollResult> {
     }
 
     // Update inbox config with new history ID and stats
+    const now = new Date().toISOString();
+    const pollIntervalMs = (inbox.poll_interval_minutes || 5) * 60 * 1000;
     await supabase
       .from('email_inbox_configs')
       .update({
         last_history_id: newHistoryId,
-        last_poll_at: new Date().toISOString(),
-        next_poll_at: new Date(Date.now() + inbox.poll_interval_minutes * 60 * 1000).toISOString(),
-        total_emails_processed: inbox.total_emails_processed + result.emailsProcessed,
-        total_pos_correlated: inbox.total_pos_correlated + result.posCorrelated,
+        last_poll_at: now,
+        last_sync_at: now, // Also update last_sync_at for UI display
+        next_poll_at: new Date(Date.now() + pollIntervalMs).toISOString(),
+        total_emails_processed: (inbox.total_emails_processed || 0) + result.emailsProcessed,
+        total_pos_correlated: (inbox.total_pos_correlated || 0) + result.posCorrelated,
         status: 'active',
         last_error: null,
         consecutive_errors: 0,
@@ -822,14 +825,30 @@ async function correlateEmailToPO(
     return { poId: existingThread.po_id, confidence: 0.95, method: 'thread_history' };
   }
 
-  // Subject line match
+  // Subject line match - extract PO number (Finale uses just the number, not "PO-123")
   const subjectMatch = subject.match(/PO[-\s#]*(\d{4,})/i);
   if (subjectMatch) {
-    const poNumber = `PO-${subjectMatch[1]}`;
+    const poNumber = subjectMatch[1]; // Just the number, no prefix
+    console.log(`[email-inbox-poller] Found PO number in subject: ${poNumber}`);
+
+    // Try finale_purchase_orders first (primary source)
+    const { data: finalePO } = await supabase
+      .from('finale_purchase_orders')
+      .select('id')
+      .eq('order_id', poNumber)
+      .single();
+
+    if (finalePO) {
+      console.log(`[email-inbox-poller] ✅ Matched to finale_purchase_orders: ${finalePO.id}`);
+      return { poId: finalePO.id, confidence: 0.90, method: 'subject_match' };
+    }
+
+    // Fallback to purchase_orders with various formats
     const { data: po } = await supabase
       .from('purchase_orders')
       .select('id')
-      .eq('order_id', poNumber)
+      .or(`order_id.eq.${poNumber},order_id.eq.PO-${poNumber},order_id.ilike.%${poNumber}%`)
+      .limit(1)
       .single();
 
     if (po) {
@@ -844,12 +863,13 @@ async function correlateEmailToPO(
 
   if (vendorLookup && vendorLookup.length > 0) {
     const vendorId = vendorLookup[0].vendor_id;
+    // Check finale_purchase_orders for recent POs from this vendor
     const { data: recentPO } = await supabase
-      .from('purchase_orders')
+      .from('finale_purchase_orders')
       .select('id')
       .eq('vendor_id', vendorId)
-      .in('status', ['sent', 'confirmed', 'committed', 'processing'])
-      .order('sent_at', { ascending: false })
+      .in('status', ['Submitted', 'Committed', 'Partially Received'])
+      .order('order_date', { ascending: false })
       .limit(1)
       .single();
 
@@ -865,11 +885,26 @@ async function correlateEmailToPO(
   // Body match
   const bodyMatch = bodyText.match(/PO[-\s#]*(\d{4,})/i);
   if (bodyMatch) {
-    const poNumber = `PO-${bodyMatch[1]}`;
+    const poNumber = bodyMatch[1]; // Just the number
+    console.log(`[email-inbox-poller] Found PO number in body: ${poNumber}`);
+
+    // Try finale_purchase_orders first
+    const { data: finalePO } = await supabase
+      .from('finale_purchase_orders')
+      .select('id')
+      .eq('order_id', poNumber)
+      .single();
+
+    if (finalePO) {
+      console.log(`[email-inbox-poller] ✅ Matched body PO to finale_purchase_orders: ${finalePO.id}`);
+      return { poId: finalePO.id, confidence: 0.80, method: 'body_match' };
+    }
+
     const { data: po } = await supabase
       .from('purchase_orders')
       .select('id')
-      .eq('order_id', poNumber)
+      .or(`order_id.eq.${poNumber},order_id.eq.PO-${poNumber}`)
+      .limit(1)
       .single();
 
     if (po) {

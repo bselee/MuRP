@@ -153,9 +153,9 @@ const POTrackingDashboard: React.FC = () => {
         <div>
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
             <TruckIcon className="w-5 h-5 text-accent-400" />
-            PO Tracking
+            PO Tracking & Email Intelligence
           </h2>
-          <p className="text-sm text-gray-400">Real-time shipment visibility</p>
+          <p className="text-sm text-gray-400">Real-time shipment visibility with AI-powered email analysis</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -180,7 +180,7 @@ const POTrackingDashboard: React.FC = () => {
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-gray-900/60 rounded-lg p-4 border border-gray-700">
           <p className="text-sm text-gray-400">At Risk</p>
           <p className="text-2xl font-semibold text-red-300">{summary.atRisk}</p>
@@ -193,6 +193,12 @@ const POTrackingDashboard: React.FC = () => {
           <p className="text-sm text-gray-400">Delivered Today</p>
           <p className="text-2xl font-semibold text-green-300">{summary.deliveredToday}</p>
         </div>
+        <div className="bg-gray-900/60 rounded-lg p-4 border border-cyan-700/50">
+          <p className="text-sm text-cyan-400">📧 Awaiting Reply</p>
+          <p className="text-2xl font-semibold text-cyan-300">
+            {trackedPos.filter(po => (po as any).awaiting_response).length}
+          </p>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -204,46 +210,93 @@ const POTrackingDashboard: React.FC = () => {
               <th className="px-4 py-2 text-left">Tracking</th>
               <th className="px-4 py-2 text-left">Status</th>
               <th className="px-4 py-2 text-left">ETA</th>
-              <th className="px-4 py-2 text-left">Updated</th>
+              <th className="px-4 py-2 text-left">Email Intel</th>
               <th className="px-4 py-2 text-left">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
-            {trackedPos.slice(0, 10).map(po => (
-              <tr key={po.id} className="text-gray-200">
-                <td className="px-4 py-2 font-semibold text-accent-300">{po.order_id}</td>
-                <td className="px-4 py-2">{po.vendor_name}</td>
-                <td className="px-4 py-2">
-                  <div className="flex flex-col">
-                    <span>{po.tracking_number}</span>
-                    <span className="text-xs text-gray-400 uppercase">{po.tracking_carrier || '—'}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-2">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium ${STATUS_COLORS[po.tracking_status as POTrackingStatus] ?? 'bg-gray-700 text-gray-200 border-gray-600'}`}>
-                    {STATUS_LABELS[po.tracking_status as POTrackingStatus] ?? po.tracking_status}
-                  </span>
-                </td>
-                <td className="px-4 py-2">
-                  {po.tracking_estimated_delivery
-                    ? new Date(po.tracking_estimated_delivery).toLocaleDateString()
-                    : '—'}
-                </td>
-                <td className="px-4 py-2">
-                  {po.tracking_last_checked_at
-                    ? new Date(po.tracking_last_checked_at).toLocaleString()
-                    : '—'}
-                </td>
-                <td className="px-4 py-2">
-                  <Button
-                    onClick={() => openTimeline(po)}
-                    className="text-xs text-accent-200 border border-accent-500/40 rounded-md px-2 py-1 hover:bg-accent-500/10"
-                  >
-                    Timeline
-                  </Button>
-                </td>
-              </tr>
-            ))}
+            {trackedPos.slice(0, 15).map(po => {
+              const emailData = po as any;
+              const hasEmailIntel = emailData.email_thread_id || emailData.email_count > 0;
+              const sentimentColor = emailData.email_sentiment === 'positive' ? 'text-green-400' 
+                : emailData.email_sentiment === 'negative' ? 'text-red-400' 
+                : 'text-gray-400';
+              
+              return (
+                <tr key={po.id} className="text-gray-200 hover:bg-gray-900/40">
+                  <td className="px-4 py-2">
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-accent-300">{po.order_id}</span>
+                      <span className="text-xs text-gray-500">
+                        {(po as any).source === 'finale' ? '📦 Finale' : '🏠 Internal'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2">{po.vendor_name}</td>
+                  <td className="px-4 py-2">
+                    {po.tracking_number ? (
+                      <div className="flex flex-col">
+                        <span className="font-mono text-cyan-300">{po.tracking_number}</span>
+                        <span className="text-xs text-gray-400 uppercase">{po.tracking_carrier || '—'}</span>
+                      </div>
+                    ) : emailData.has_email_tracking ? (
+                      <span className="text-xs text-cyan-400">📧 In email</span>
+                    ) : (
+                      <span className="text-xs text-gray-500">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium ${STATUS_COLORS[po.tracking_status as POTrackingStatus] ?? 'bg-gray-700 text-gray-200 border-gray-600'}`}>
+                      {STATUS_LABELS[po.tracking_status as POTrackingStatus] ?? po.tracking_status ?? 'Unknown'}
+                    </span>
+                    {emailData.email_derived_status && emailData.email_derived_status !== po.tracking_status && (
+                      <div className="text-xs text-cyan-400 mt-0.5">
+                        AI: {emailData.email_derived_status}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    {po.tracking_estimated_delivery
+                      ? new Date(po.tracking_estimated_delivery).toLocaleDateString()
+                      : emailData.email_derived_eta 
+                        ? <span className="text-cyan-400">{new Date(emailData.email_derived_eta).toLocaleDateString()} (AI)</span>
+                        : '—'}
+                  </td>
+                  <td className="px-4 py-2">
+                    {hasEmailIntel ? (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs">📧 {emailData.email_count || 0}</span>
+                          {emailData.awaiting_response && (
+                            <span className="text-xs px-1 bg-amber-500/20 text-amber-300 rounded">Needs Reply</span>
+                          )}
+                        </div>
+                        {emailData.last_vendor_reply && (
+                          <span className="text-xs text-green-400">
+                            ✓ Vendor replied {new Date(emailData.last_vendor_reply).toLocaleDateString()}
+                          </span>
+                        )}
+                        {emailData.email_summary && (
+                          <span className={`text-xs ${sentimentColor} truncate max-w-[150px]`} title={emailData.email_summary}>
+                            {emailData.email_summary.slice(0, 30)}...
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-500">No emails</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    <Button
+                      onClick={() => openTimeline(po)}
+                      className="text-xs text-accent-200 border border-accent-500/40 rounded-md px-2 py-1 hover:bg-accent-500/10"
+                    >
+                      Timeline
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

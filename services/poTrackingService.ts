@@ -5,13 +5,26 @@ export interface TrackedPurchaseOrder {
   id: string;
   order_id: string;
   vendor_name: string;
-  tracking_number: string;
+  tracking_number: string | null;
   tracking_carrier: string | null;
   tracking_status: POTrackingStatus;
   tracking_estimated_delivery: string | null;
   tracking_last_checked_at: string | null;
   tracking_last_exception: string | null;
   last_event_at: string | null;
+  // Source indicator (internal vs finale)
+  source?: 'internal' | 'finale';
+  // Email intelligence fields
+  email_thread_id?: string | null;
+  email_summary?: string | null;
+  email_sentiment?: string | null;
+  email_derived_status?: string | null;
+  email_derived_eta?: string | null;
+  awaiting_response?: boolean | null;
+  has_email_tracking?: boolean | null;
+  email_count?: number | null;
+  last_vendor_reply?: string | null;
+  last_sent_email?: string | null;
 }
 
 export interface TrackingTimelineEvent {
