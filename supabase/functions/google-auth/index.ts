@@ -42,21 +42,30 @@ const getRedirectUri = () => {
 };
 
 // Scopes for different purposes
+// CRITICAL: Always include userinfo.email and userinfo.profile to get the user's email address
 const SCOPES = {
   email_monitoring: [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/gmail.readonly',
     'https://www.googleapis.com/auth/gmail.modify',
     'https://www.googleapis.com/auth/gmail.labels',
     'https://www.googleapis.com/auth/gmail.send',
   ],
   sheets: [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive.file',
   ],
   calendar: [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/calendar',
   ],
   default: [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/calendar',
@@ -252,9 +261,11 @@ async function handleCallback(req: Request, url: URL): Promise<Response> {
     googleEmail = userInfo.email || '';
   }
 
-  // Store tokens
+  // Store tokens - ALWAYS save to email_inbox_configs for email monitoring
+  // This ensures the connection persists even if user session wasn't available
+
+  // If we have a userId, also store in user_oauth_tokens
   if (userId) {
-    // Store in user_oauth_tokens table
     const tokenData = {
       user_id: userId,
       provider: 'google',
@@ -264,28 +275,88 @@ async function handleCallback(req: Request, url: URL): Promise<Response> {
         ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
         : null,
       scopes: tokens.scope?.split(' ') || [],
-      google_email: googleEmail,
+      token_metadata: { google_email: googleEmail },
       updated_at: new Date().toISOString(),
     };
 
     await supabase
       .from('user_oauth_tokens')
       .upsert(tokenData, { onConflict: 'user_id,provider' });
+  }
 
-    // If this is for email monitoring, also update email_inbox_configs
-    if (purpose === 'email_monitoring' && googleEmail) {
-      // Determine inbox name based on purpose
-      const purposeLabels: Record<string, string> = {
-        purchasing: 'Purchasing',
-        accounting: 'Accounting',
-        general: 'General',
-      };
-      const inboxLabel = purposeLabels[finalInboxPurpose] || 'Email';
+  // ALWAYS save to email_inbox_configs for email monitoring (with or without userId)
+  // This ensures the OAuth tokens are stored and the inbox shows as connected
+  if (purpose === 'email_monitoring' && googleEmail) {
+    console.log(`[google-auth] Saving email config for ${googleEmail}, purpose: ${finalInboxPurpose}, userId: ${userId || 'none'}`);
 
-      await supabase
+    const purposeLabels: Record<string, string> = {
+      purchasing: 'Purchasing',
+      accounting: 'Accounting',
+      general: 'General',
+    };
+    const inboxLabel = purposeLabels[finalInboxPurpose] || 'Email';
+
+    // Try to find existing inbox: first by email+purpose, then just by purpose (for placeholder emails)
+    let existingInbox = null;
+
+    // Try exact email match first
+    const { data: exactMatch } = await supabase
+      .from('email_inbox_configs')
+      .select('id, email_address')
+      .eq('email_address', googleEmail)
+      .eq('inbox_purpose', finalInboxPurpose)
+      .maybeSingle();
+
+    if (exactMatch) {
+      existingInbox = exactMatch;
+      console.log(`[google-auth] Found exact email match: ${exactMatch.id}`);
+    } else {
+      // Try to find any inbox with this purpose (could be a placeholder like purchasing@murp.io)
+      const { data: purposeMatch } = await supabase
         .from('email_inbox_configs')
-        .upsert({
-          user_id: userId,
+        .select('id, email_address')
+        .eq('inbox_purpose', finalInboxPurpose)
+        .limit(1)
+        .maybeSingle();
+
+      if (purposeMatch) {
+        existingInbox = purposeMatch;
+        console.log(`[google-auth] Found purpose match: ${purposeMatch.id} (was: ${purposeMatch.email_address})`);
+      }
+    }
+
+    if (existingInbox) {
+      // Update existing inbox with new tokens AND update the email address
+      console.log(`[google-auth] Updating inbox ${existingInbox.id} with new tokens and email`);
+      const { error: updateError } = await supabase
+        .from('email_inbox_configs')
+        .update({
+          user_id: userId || undefined,
+          email_address: googleEmail, // Update to actual Google email
+          inbox_name: `${inboxLabel} - ${googleEmail}`,
+          gmail_refresh_token: tokens.refresh_token,
+          oauth_expires_at: tokens.expires_in
+            ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+            : null,
+          is_active: true,
+          poll_enabled: true,
+          status: 'active',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingInbox.id);
+
+      if (updateError) {
+        console.error(`[google-auth] Failed to update inbox: ${updateError.message}`);
+      } else {
+        console.log(`[google-auth] Successfully updated inbox ${existingInbox.id}`);
+      }
+    } else {
+      // Create new inbox config
+      console.log(`[google-auth] Creating new inbox config for ${googleEmail}`);
+      const { error: insertError } = await supabase
+        .from('email_inbox_configs')
+        .insert({
+          user_id: userId || null,
           email_address: googleEmail,
           inbox_name: `${inboxLabel} - ${googleEmail}`,
           inbox_type: 'gmail',
@@ -297,11 +368,20 @@ async function handleCallback(req: Request, url: URL): Promise<Response> {
           is_active: true,
           poll_enabled: true,
           status: 'active',
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,inbox_purpose' }); // Unique by user + purpose
-    }
+        });
 
-    // Clean up state token
+      if (insertError) {
+        console.error(`[google-auth] Failed to create inbox: ${insertError.message}`);
+      } else {
+        console.log(`[google-auth] Successfully created new inbox`);
+      }
+    }
+  } else {
+    console.log(`[google-auth] Not saving email config: purpose=${purpose}, googleEmail=${googleEmail || 'empty'}`);
+  }
+
+  // Clean up state token if it exists
+  if (stateToken) {
     await supabase
       .from('oauth_states')
       .delete()

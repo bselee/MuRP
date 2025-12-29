@@ -96,14 +96,25 @@ export const EmailConnectionCard: React.FC<EmailConnectionCardProps> = ({
   const fetchInboxes = async () => {
     setLoading(true);
     try {
+      // Fetch inboxes for this user OR orphaned inboxes (from OAuth before auth was set up)
       const { data, error: fetchError } = await supabase
         .from('email_inbox_configs')
-        .select('id, email_address, inbox_purpose, is_active, last_sync_at, total_emails_processed, status')
-        .eq('user_id', userId)
+        .select('id, email_address, inbox_purpose, is_active, last_sync_at, total_emails_processed, status, user_id')
+        .or(`user_id.eq.${userId},user_id.is.null`)
         .order('inbox_purpose');
 
       if (fetchError && fetchError.code !== 'PGRST116') {
         console.warn('Could not fetch inbox configs:', fetchError);
+      }
+
+      // Claim any orphaned inboxes (where user_id is null) for this user
+      const orphanedInboxes = (data || []).filter(i => !i.user_id);
+      if (orphanedInboxes.length > 0 && userId) {
+        console.log(`[EmailConnectionCard] Claiming ${orphanedInboxes.length} orphaned inbox(es) for user ${userId}`);
+        await supabase
+          .from('email_inbox_configs')
+          .update({ user_id: userId })
+          .in('id', orphanedInboxes.map(i => i.id));
       }
 
       setInboxes(data || []);

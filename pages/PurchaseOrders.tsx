@@ -700,6 +700,11 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                 {/* VendorResponseWorkbench component removed - was causing ReferenceError */}
 
+                {/* PO Tracking Dashboard */}
+                <div id="po-tracking">
+                    <POTrackingDashboard />
+                </div>
+
                 {/* Finale Purchase Orders - Current/Open POs from Finale API */}
                 {finalePurchaseOrders.length > 0 && (
                     <div className="space-y-4">
