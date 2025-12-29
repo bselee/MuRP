@@ -36,9 +36,12 @@ interface InboxConfig {
   id: string;
   inbox_name: string;
   email_address: string;
+  // Legacy ref-based credentials (deprecated)
   gmail_client_id: string | null;
   gmail_client_secret_ref: string | null;
   gmail_refresh_token_ref: string | null;
+  // New OAuth-based credentials (preferred)
+  gmail_refresh_token: string | null;
   gmail_user: string;
   last_history_id: string | null;
   ai_parsing_enabled: boolean;
@@ -46,6 +49,9 @@ interface InboxConfig {
   keyword_filters: string[];
   max_daily_ai_cost_usd: number;
   daily_ai_cost_usd: number;
+  poll_interval_minutes: number;
+  total_emails_processed: number;
+  total_pos_correlated: number;
 }
 
 interface PollResult {
@@ -322,17 +328,33 @@ async function resolveGmailCredentials(inbox: InboxConfig): Promise<{
   refreshToken: string;
   user: string;
 } | null> {
-  // Resolve credentials from refs (env vars or vault)
-  const clientId = resolveSecretRef(inbox.gmail_client_id);
-  const clientSecret = resolveSecretRef(inbox.gmail_client_secret_ref);
-  const refreshToken = resolveSecretRef(inbox.gmail_refresh_token_ref);
-  const user = inbox.gmail_user || 'me';
+  // First, try the new OAuth-based flow with stored refresh token
+  // Client ID and Secret come from environment variables
+  const clientId = Deno.env.get('GOOGLE_CLIENT_ID');
+  const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET');
 
-  if (!clientId || !clientSecret || !refreshToken) {
-    console.error(`[email-inbox-poller] Missing credentials for ${inbox.inbox_name}`);
+  // Prefer the directly-stored refresh token (from OAuth flow)
+  let refreshToken = inbox.gmail_refresh_token;
+
+  // Fall back to legacy ref-based token if no direct token
+  if (!refreshToken && inbox.gmail_refresh_token_ref) {
+    refreshToken = resolveSecretRef(inbox.gmail_refresh_token_ref);
+  }
+
+  // Use the inbox email address for Gmail API, or 'me' as fallback
+  const user = inbox.email_address || inbox.gmail_user || 'me';
+
+  if (!clientId || !clientSecret) {
+    console.error(`[email-inbox-poller] Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET env vars`);
     return null;
   }
 
+  if (!refreshToken) {
+    console.error(`[email-inbox-poller] No refresh token available for ${inbox.inbox_name}`);
+    return null;
+  }
+
+  console.log(`[email-inbox-poller] Resolved credentials for ${inbox.email_address}`);
   return { clientId, clientSecret, refreshToken, user };
 }
 

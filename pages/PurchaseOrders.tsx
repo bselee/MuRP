@@ -822,8 +822,23 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                         <StatusBadge status={fpo.status} size="sm">
                                                             {formatStatusText(fpo.status)}
                                                         </StatusBadge>
+                                                        {/* Tracking Status Badge */}
+                                                        {fpo.trackingStatus && (
+                                                            <StatusBadge status={fpo.trackingStatus} size="sm">
+                                                                {formatStatusText(fpo.trackingStatus)}
+                                                            </StatusBadge>
+                                                        )}
                                                     </div>
                                                     <div className="flex items-center gap-6">
+                                                        {/* Tracking Info */}
+                                                        {fpo.trackingNumber && (
+                                                            <div className="text-right">
+                                                                <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Tracking</div>
+                                                                <div className={`text-sm font-mono ${isDark ? 'text-cyan-400' : 'text-cyan-700'}`}>
+                                                                    {fpo.trackingCarrier ? `${fpo.trackingCarrier}: ` : ''}{fpo.trackingNumber}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                         <div className="text-right">
                                                             <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Order Date</div>
                                                             <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -905,6 +920,69 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                             </div>
                                                         </div>
                                                     </div>
+
+                                                    {/* Tracking Information */}
+                                                    {(fpo.trackingNumber || fpo.trackingStatus) && (
+                                                        <div className={`rounded-xl border backdrop-blur-lg p-4 ${isDark 
+                                                            ? 'border-cyan-500/30 bg-gradient-to-br from-slate-950/80 via-cyan-950/20 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
+                                                            : 'border-cyan-200 bg-gradient-to-br from-white via-cyan-50/30 to-white shadow-cyan-100/50'}`}>
+                                                            <div className={`text-xs uppercase tracking-wider mb-3 ${isDark ? 'text-cyan-400' : 'text-cyan-700'}`}>
+                                                                <TruckIcon className="w-4 h-4 inline mr-2" />
+                                                                Shipment Tracking
+                                                            </div>
+                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                                                {fpo.trackingNumber && (
+                                                                    <div>
+                                                                        <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Tracking #</div>
+                                                                        <div className={`font-mono ${isDark ? 'text-cyan-300' : 'text-cyan-700'}`}>{fpo.trackingNumber}</div>
+                                                                    </div>
+                                                                )}
+                                                                {fpo.trackingCarrier && (
+                                                                    <div>
+                                                                        <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Carrier</div>
+                                                                        <div className={isDark ? 'text-gray-200' : 'text-gray-800'}>{fpo.trackingCarrier.toUpperCase()}</div>
+                                                                    </div>
+                                                                )}
+                                                                {fpo.trackingStatus && (
+                                                                    <div>
+                                                                        <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Status</div>
+                                                                        <StatusBadge status={fpo.trackingStatus} size="sm">
+                                                                            {formatStatusText(fpo.trackingStatus)}
+                                                                        </StatusBadge>
+                                                                    </div>
+                                                                )}
+                                                                {fpo.trackingEstimatedDelivery && (
+                                                                    <div>
+                                                                        <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Est. Delivery</div>
+                                                                        <div className={isDark ? 'text-gray-200' : 'text-gray-800'}>
+                                                                            {new Date(fpo.trackingEstimatedDelivery).toLocaleDateString()}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {fpo.trackingShippedDate && (
+                                                                    <div>
+                                                                        <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Shipped</div>
+                                                                        <div className={isDark ? 'text-gray-200' : 'text-gray-800'}>
+                                                                            {new Date(fpo.trackingShippedDate).toLocaleDateString()}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {fpo.trackingDeliveredDate && (
+                                                                    <div>
+                                                                        <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Delivered</div>
+                                                                        <div className={`${isDark ? 'text-green-400' : 'text-green-700'}`}>
+                                                                            {new Date(fpo.trackingDeliveredDate).toLocaleDateString()}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {fpo.trackingLastException && (
+                                                                <div className={`mt-3 p-2 rounded-lg text-sm ${isDark ? 'bg-red-900/30 text-red-300 border border-red-500/30' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                                                    <strong>Exception:</strong> {fpo.trackingLastException}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
 
                                                     {/* Notes */}
                                                     {(fpo.publicNotes || fpo.privateNotes) && (
