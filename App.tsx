@@ -38,6 +38,8 @@ import { UserPreferencesProvider } from './components/UserPreferencesProvider';
 import { useAuth } from './lib/auth/AuthContext';
 import AuthCallback from './pages/AuthCallback';
 import ResetPassword from './pages/ResetPassword';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
 import { usePermissions } from './hooks/usePermissions';
@@ -1891,6 +1893,15 @@ const AppShell: React.FC = () => {
         </div>
       </>
     );
+  }
+
+  // Public legal pages (accessible without authentication for OAuth consent requirements)
+  if (currentPath === '/privacy') {
+    return <PrivacyPolicy />;
+  }
+
+  if (currentPath === '/terms') {
+    return <TermsOfService />;
   }
 
   if (authLoading || checkingOnboarding) {
