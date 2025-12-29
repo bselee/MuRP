@@ -344,7 +344,6 @@ Located in `supabase/functions/`:
 - `google-auth` - Google OAuth flow for Gmail, Sheets, Calendar
 - `email-inbox-poller` - Proactive email monitoring for PO tracking
 - `gmail-webhook` - Push notifications for new emails
-- `aftership-webhook` - Real-time tracking updates from AfterShip
 - `scheduled-agent-runner` - pg_cron triggered agent execution
 - And more for webhooks, notifications, sync operations
 
@@ -375,15 +374,20 @@ User clicks "Connect" → Frontend calls google-auth/authorize
 - `supabase/functions/google-auth/index.ts` - OAuth flow handler
 - `supabase/functions/email-inbox-poller/index.ts` - Email sync engine
 
-### AfterShip Tracking Integration
+### Direct Carrier Tracking (Free APIs)
 
-**Autonomous Tracking Flow** (CRITICAL - tracking should be autonomous, manual entry is last resort):
+**Tracking Architecture** (CRITICAL - uses free carrier APIs, no subscription required):
 
 ```
 EMAIL ARRIVES → email-inbox-poller (5 min) → REGEX EXTRACTION →
-CORRELATE TO PO → REGISTER WITH AFTERSHIP → WEBHOOKS UPDATE STATUS →
+CORRELATE TO PO → DIRECT CARRIER API CALL → CACHE RESULT →
 PODeliveryTimeline DISPLAYS AUTOMATICALLY
 ```
+
+**Supported Carriers (Free Tiers):**
+- **USPS Web Tools API** - Free unlimited tracking with registration
+- **UPS Tracking API** - 500 requests/month free
+- **FedEx Track API** - 5000 requests/month free
 
 **Tracking Extraction Patterns** (`services/emailProcessingService.ts`):
 ```typescript
@@ -401,27 +405,30 @@ PODeliveryTimeline DISPLAYS AUTOMATICALLY
 ```
 
 **Key Tables:**
-- `aftership_trackings` - Tracking records with PO correlation
-- `aftership_checkpoints` - Detailed checkpoint history
-- `finale_purchase_orders.tracking_*` - Finale PO tracking columns (migration 124)
-- `po_tracking_events` - Tracking event timeline
+- `tracking_cache` - Cached tracking results with TTL
+- `tracking_events` - Detailed checkpoint history
+- `carrier_api_usage` - API usage monitoring
+- `finale_purchase_orders.tracking_*` - Finale PO tracking columns
 
 **Key Services:**
-- `services/afterShipService.ts` - AfterShip API client, correlation, sync
+- `services/directCarrierTrackingService.ts` - Direct carrier API integration
+- `services/unifiedTrackingService.ts` - Orchestration of all tracking methods
+- `services/enhancedEmailTrackingService.ts` - Email-based tracking extraction
 - `services/emailProcessingService.ts` - Email parsing, tracking extraction
-- `supabase/functions/aftership-webhook/index.ts` - Real-time webhook handler
 
-**Required Secrets for Autonomous Operation:**
+**Required Settings for Carrier APIs (Optional):**
 ```bash
-supabase secrets set GOOGLE_CLIENT_ID="..."      # Gmail OAuth
-supabase secrets set GOOGLE_CLIENT_SECRET="..."  # Gmail OAuth
-supabase secrets set AFTERSHIP_API_KEY="..."     # AfterShip API
-supabase secrets set AFTERSHIP_WEBHOOK_SECRET="..." # Webhook verification
+# In Settings → Carrier Tracking (Free)
+USPS User ID: Register at https://www.usps.com/business/web-tools-apis/
+UPS Client ID: Get from UPS Developer Portal
+UPS Client Secret: Get from UPS Developer Portal
+FedEx API Key: Get from FedEx Developer Portal
+FedEx Secret Key: Get from FedEx Developer Portal
 ```
 
 **UI Components:**
 - `components/PODeliveryTimeline.tsx` - Visual tracking timeline
-- `components/AfterShipSettingsPanel.tsx` - AfterShip configuration
+- `components/CarrierTrackingSettingsPanel.tsx` - Carrier API configuration
 
 ### PO Lifecycle Pipeline
 
@@ -506,7 +513,7 @@ Autonomous agent execution via Supabase pg_cron triggers:
 | Inventory Guardian | 2:00 AM nightly | Stock level monitoring |
 | PO Intelligence | Hourly 8AM-6PM Mon-Fri | Order status updates |
 | Compliance Validator | Monday 9:00 AM | Weekly compliance check |
-| AfterShip Sync | Every 30 minutes | Tracking updates |
+| Tracking Cache Refresh | Every 30 minutes | Update active tracking info |
 
 Triggers call `scheduled-agent-runner` edge function which executes the appropriate agent.
 

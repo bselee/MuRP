@@ -90,7 +90,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isShopifyOpen, setIsShopifyOpen] = useState(false);
-  const [isAfterShipOpen, setIsAfterShipOpen] = useState(false);
+  const [isCarrierTrackingOpen, setIsCarrierTrackingOpen] = useState(false);
   const [isMcpOpen, setIsMcpOpen] = useState(false);
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
@@ -379,8 +379,8 @@ const Settings: React.FC<SettingsProps> = ({
           <CollapsibleSection
             title="Carrier Tracking (Free)"
             icon={<TruckIcon className="w-5 h-5 text-cyan-400" />}
-            isOpen={isAfterShipOpen}
-            onToggle={() => setIsAfterShipOpen(!isAfterShipOpen)}
+            isOpen={isCarrierTrackingOpen}
+            onToggle={() => setIsCarrierTrackingOpen(!isCarrierTrackingOpen)}
           >
             <CarrierTrackingSettingsPanel addToast={addToast} />
           </CollapsibleSection>

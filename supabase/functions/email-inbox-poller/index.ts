@@ -25,7 +25,6 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
-const AFTERSHIP_API_KEY = Deno.env.get('AFTERSHIP_API_KEY');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -617,8 +616,8 @@ async function processMessage(
       poNumber = po?.order_id || null;
     }
 
-    // AUTO-REGISTER with AfterShip for real-time webhook updates
-    await registerTrackingWithAfterShip(
+    // AUTO-REGISTER in tracking cache for tracking updates
+    await registerTrackingInCache(
       trackingInfo.trackingNumber,
       trackingInfo.carrier,
       correlation.poId,
@@ -860,86 +859,47 @@ async function correlateEmailToPO(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AfterShip Integration - Auto-register tracking for real-time updates
+// Tracking Cache - Store tracking info for local caching
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function registerTrackingWithAfterShip(
+async function registerTrackingInCache(
   trackingNumber: string,
   carrier: string | null,
   poId: string | null,
   poNumber: string | null
-): Promise<{ success: boolean; aftershipId?: string; error?: string }> {
-  if (!AFTERSHIP_API_KEY) {
-    console.log('[email-inbox-poller] AfterShip API key not configured, skipping registration');
-    return { success: false, error: 'AfterShip not configured' };
-  }
-
+): Promise<{ success: boolean; error?: string }> {
   try {
     // Check if already registered
     const { data: existing } = await supabase
-      .from('aftership_trackings')
-      .select('id, aftership_id')
+      .from('tracking_cache')
+      .select('id')
       .eq('tracking_number', trackingNumber)
       .single();
 
     if (existing) {
-      console.log(`[email-inbox-poller] Tracking ${trackingNumber} already registered`);
-      return { success: true, aftershipId: existing.aftership_id };
+      console.log(`[email-inbox-poller] Tracking ${trackingNumber} already in cache`);
+      return { success: true };
     }
 
-    // Map carrier name to AfterShip slug
+    // Map carrier name to standard slug
     const slugMap: Record<string, string> = {
       UPS: 'ups',
       FedEx: 'fedex',
       USPS: 'usps',
       DHL: 'dhl',
     };
-    const slug = carrier ? slugMap[carrier] || 'auto-detect' : 'auto-detect';
+    const slug = carrier ? slugMap[carrier] || carrier.toLowerCase() : 'unknown';
 
-    // Register with AfterShip
-    const response = await fetch('https://api.aftership.com/v4/trackings', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'aftership-api-key': AFTERSHIP_API_KEY,
-      },
-      body: JSON.stringify({
-        tracking: {
-          tracking_number: trackingNumber,
-          slug: slug === 'auto-detect' ? undefined : slug,
-          title: poNumber ? `PO ${poNumber}` : undefined,
-          order_number: poNumber,
-          custom_fields: poId ? { po_id: poId } : undefined,
-        },
-      }),
-    });
-
-    if (response.status === 409) {
-      // Tracking already exists in AfterShip
-      console.log(`[email-inbox-poller] Tracking ${trackingNumber} already in AfterShip`);
-      return { success: true };
-    }
-
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      const errorMsg = errorBody?.meta?.message || `HTTP ${response.status}`;
-      console.error(`[email-inbox-poller] AfterShip API error: ${errorMsg}`);
-      return { success: false, error: errorMsg };
-    }
-
-    const data = await response.json();
-    const aftershipId = data?.data?.tracking?.id;
-
-    // Store in our database
-    await supabase.from('aftership_trackings').insert({
-      aftership_id: aftershipId,
+    // Store in tracking cache
+    await supabase.from('tracking_cache').insert({
       tracking_number: trackingNumber,
-      slug: data?.data?.tracking?.slug || slug,
-      po_id: poId,
-      tag: 'Pending',
-      internal_status: 'processing',
+      carrier: slug,
+      status: 'Pending',
+      status_description: 'Awaiting carrier update',
       source: 'email',
-      order_number: poNumber,
+      confidence: 0.8,
+      last_update: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     });
 
     // Update PO with tracking info
@@ -965,11 +925,11 @@ async function registerTrackingWithAfterShip(
         .eq('id', poId);
     }
 
-    console.log(`[email-inbox-poller] ✅ Registered tracking ${trackingNumber} with AfterShip (ID: ${aftershipId})`);
-    return { success: true, aftershipId };
+    console.log(`[email-inbox-poller] ✅ Registered tracking ${trackingNumber} in cache`);
+    return { success: true };
 
   } catch (error) {
-    console.error('[email-inbox-poller] AfterShip registration failed:', error);
+    console.error('[email-inbox-poller] Tracking cache registration failed:', error);
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
@@ -1156,7 +1116,7 @@ async function processDisputeResponse(
 
       // Register tracking if found
       if (trackingInfo.trackingNumber && poId) {
-        await registerTrackingWithAfterShip(
+        await registerTrackingInCache(
           trackingInfo.trackingNumber,
           trackingInfo.carrier,
           poId,

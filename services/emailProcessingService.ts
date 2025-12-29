@@ -23,6 +23,16 @@ import {
   type EmailInboxConfig,
   type ProcessingResult,
 } from './emailInboxManager';
+import {
+  extractShipmentInfo,
+  scoreExtractionQuality,
+  type ExtractedShipmentInfo,
+} from './enhancedEmailTrackingService';
+import {
+  detectCarrier,
+  extractTrackingNumbers as extractTrackingNumbersAdvanced,
+  type Carrier,
+} from './directCarrierTrackingService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -67,19 +77,15 @@ export interface InboxProcessingResult {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Tracking Number Extraction Patterns
+// Enhanced Tracking Extraction (using new tracking services)
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Legacy patterns kept for backward compatibility, but enhanced services are preferred
 const TRACKING_PATTERNS = {
-  // UPS: 1Z followed by 16 alphanumeric chars
   UPS: /\b1Z[A-Z0-9]{16}\b/gi,
-  // FedEx: 12-22 digits
   FedEx: /\b(?:96\d{20}|\d{12,22})\b/g,
-  // USPS: Various formats
   USPS: /\b(?:94\d{20}|93\d{20}|92\d{20}|91\d{20}|94\d{22}|93\d{22}|92\d{22}|91\d{22})\b/g,
-  // DHL: 10-11 digits or alphanumeric
   DHL: /\b(?:\d{10,11}|[A-Z]{3}\d{7,10})\b/gi,
-  // Generic tracking pattern
   Generic: /\b(?:tracking|track|shipment)[:\s#]*([A-Z0-9]{10,30})\b/gi,
 };
 
@@ -261,8 +267,72 @@ async function getProcessedEmailsFromDatabase(
 
 /**
  * Extract tracking numbers and carrier info from text
+ * Enhanced version using the new tracking services for higher accuracy
  */
-export function extractTrackingInfo(text: string): {
+export function extractTrackingInfo(text: string, senderEmail?: string): {
+  trackingNumber: string | null;
+  carrier: string | null;
+  eta: string | null;
+  confidence: number;
+  allTrackingNumbers: Array<{ number: string; carrier: string; confidence: number }>;
+  isShipmentNotification: boolean;
+  isBackorderNotification: boolean;
+} {
+  // Use enhanced extraction service
+  const shipmentInfo = extractShipmentInfo({
+    subject: '', // Will be in text already
+    body: text,
+    senderEmail: senderEmail || '',
+  });
+
+  // Get the highest confidence tracking number
+  const bestTracking = shipmentInfo.trackingNumbers.length > 0
+    ? shipmentInfo.trackingNumbers.reduce((best, curr) =>
+        curr.confidence > best.confidence ? curr : best
+      )
+    : null;
+
+  // Extract ETA from enhanced extraction
+  let eta: string | null = null;
+  if (shipmentInfo.estimatedDelivery) {
+    eta = shipmentInfo.estimatedDelivery.date;
+  }
+
+  // Fall back to legacy extraction if enhanced didn't find anything
+  if (!bestTracking) {
+    const legacyResult = extractTrackingInfoLegacy(text);
+    return {
+      trackingNumber: legacyResult.trackingNumber,
+      carrier: legacyResult.carrier,
+      eta: legacyResult.eta || eta,
+      confidence: legacyResult.trackingNumber ? 0.6 : 0,
+      allTrackingNumbers: legacyResult.trackingNumber
+        ? [{ number: legacyResult.trackingNumber, carrier: legacyResult.carrier || 'Unknown', confidence: 0.6 }]
+        : [],
+      isShipmentNotification: shipmentInfo.isShipmentNotification,
+      isBackorderNotification: shipmentInfo.isBackorderNotification,
+    };
+  }
+
+  return {
+    trackingNumber: bestTracking.number,
+    carrier: bestTracking.carrier,
+    eta,
+    confidence: bestTracking.confidence,
+    allTrackingNumbers: shipmentInfo.trackingNumbers.map(t => ({
+      number: t.number,
+      carrier: t.carrier,
+      confidence: t.confidence,
+    })),
+    isShipmentNotification: shipmentInfo.isShipmentNotification,
+    isBackorderNotification: shipmentInfo.isBackorderNotification,
+  };
+}
+
+/**
+ * Legacy tracking extraction (fallback for simpler patterns)
+ */
+function extractTrackingInfoLegacy(text: string): {
   trackingNumber: string | null;
   carrier: string | null;
   eta: string | null;
@@ -322,6 +392,7 @@ export function extractTrackingInfo(text: string): {
 
 /**
  * Process a single email and correlate to PO
+ * Uses enhanced tracking extraction with confidence scoring
  */
 export async function processAndCorrelateEmail(
   gmailThreadId: string,
@@ -337,22 +408,28 @@ export async function processAndCorrelateEmail(
   // Correlate to PO
   const correlation = await correlateEmailToPO(gmailThreadId, senderEmail, subject, bodyText);
 
-  // Extract tracking info
-  const tracking = extractTrackingInfo(`${subject}\n${bodyText}`);
+  // Extract tracking info using enhanced extraction
+  const tracking = extractTrackingInfo(`${subject}\n${bodyText}`, senderEmail);
 
   // Determine direction
   const direction = senderEmail.includes('@') ? 'inbound' : 'outbound';
 
-  // Check for alert-worthy content
+  // Check for alert-worthy content using enhanced detection
   let alertType: string | null = null;
-  const combinedLower = `${subject}\n${bodyText}`.toLowerCase();
 
-  if (combinedLower.includes('delay') || combinedLower.includes('postpone')) {
-    alertType = 'delay_detected';
-  } else if (combinedLower.includes('backorder') || combinedLower.includes('out of stock')) {
+  // Use enhanced backorder detection from tracking service
+  if (tracking.isBackorderNotification) {
     alertType = 'backorder_notice';
-  } else if (combinedLower.includes('exception') || combinedLower.includes('undeliverable')) {
-    alertType = 'tracking_exception';
+  } else {
+    // Fallback to keyword detection
+    const combinedLower = `${subject}\n${bodyText}`.toLowerCase();
+    if (combinedLower.includes('delay') || combinedLower.includes('postpone')) {
+      alertType = 'delay_detected';
+    } else if (combinedLower.includes('backorder') || combinedLower.includes('out of stock')) {
+      alertType = 'backorder_notice';
+    } else if (combinedLower.includes('exception') || combinedLower.includes('undeliverable')) {
+      alertType = 'tracking_exception';
+    }
   }
 
   // Create alert if needed
@@ -361,11 +438,16 @@ export async function processAndCorrelateEmail(
       alertType,
       severity: alertType === 'backorder_notice' ? 'critical' : 'high',
       title: `${alertType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}`,
-      description: `Detected in email: "${subject}"`,
+      description: `Detected in email: "${subject}"${tracking.confidence > 0.8 ? ' (high confidence)' : ''}`,
       threadId: thread.id,
       poId: correlation.poId || undefined,
       requiresHuman: true,
     });
+  }
+
+  // Log high-confidence tracking extractions
+  if (tracking.trackingNumber && tracking.confidence >= 0.9) {
+    console.log(`[Email Processing] High-confidence tracking found: ${tracking.trackingNumber} (${tracking.carrier}) - ${tracking.confidence.toFixed(2)}`);
   }
 
   return {

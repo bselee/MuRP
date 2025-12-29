@@ -3,7 +3,7 @@
  * DIRECT CARRIER TRACKING SERVICE
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Free/low-cost direct carrier tracking without AfterShip dependency.
+ * Free/low-cost direct carrier tracking using official carrier APIs.
  * Uses official carrier APIs where free tiers exist, plus enhanced
  * email-based tracking as primary fallback.
  *
@@ -35,7 +35,7 @@ export interface TrackingStatus {
   lastLocation?: string;
   lastUpdate?: string;
   events: TrackingEvent[];
-  source: 'carrier_api' | 'email' | 'manual' | 'aftership';
+  source: 'carrier_api' | 'email' | 'manual';
   confidence: number;
   rawResponse?: any;
 }
@@ -573,11 +573,6 @@ export async function trackPackage(
     // DHL would require enterprise API access
   }
 
-  // If carrier API failed, try AfterShip as fallback
-  if (!result) {
-    result = await trackViaAfterShip(trackingNumber, carrier);
-  }
-
   // If still no result, return unknown status
   if (!result) {
     return {
@@ -682,74 +677,26 @@ async function storeTrackingResult(result: TrackingStatus): Promise<void> {
       }
     }
 
-    // Also update aftership_trackings if exists
-    await supabase.from('aftership_trackings').upsert({
+    // Also store in tracking_cache for future lookups
+    await supabase.from('tracking_cache').upsert({
       tracking_number: result.trackingNumber,
-      slug: result.carrier.toLowerCase(),
-      tag: result.status,
-      subtag: result.statusDescription,
-      expected_delivery: result.estimatedDelivery,
-      last_updated_at: new Date().toISOString(),
+      carrier: result.carrier,
+      status: result.status,
+      status_description: result.statusDescription,
+      estimated_delivery: result.estimatedDelivery,
+      actual_delivery: result.actualDelivery,
+      last_location: result.lastLocation,
+      last_update: new Date().toISOString(),
+      events: result.events,
+      source: result.source,
+      confidence: result.confidence,
+      updated_at: new Date().toISOString(),
     }, {
       onConflict: 'tracking_number',
     });
   } catch (error) {
     console.error('Failed to store tracking result:', error);
   }
-}
-
-/**
- * Fallback to AfterShip if direct API fails
- */
-async function trackViaAfterShip(trackingNumber: string, carrier: Carrier): Promise<TrackingStatus | null> {
-  try {
-    const { data, error } = await supabase.functions.invoke('aftership-webhook', {
-      body: {
-        action: 'get_tracking',
-        tracking_number: trackingNumber,
-        slug: carrier.toLowerCase(),
-      },
-    });
-
-    if (error || !data?.tracking) return null;
-
-    const tracking = data.tracking;
-    return {
-      carrier,
-      trackingNumber,
-      status: mapAfterShipStatus(tracking.tag),
-      statusDescription: tracking.subtag_message || tracking.tag,
-      estimatedDelivery: tracking.expected_delivery,
-      events: (tracking.checkpoints || []).map((cp: any) => ({
-        timestamp: cp.checkpoint_time,
-        status: cp.tag,
-        description: cp.message,
-        location: cp.location,
-        city: cp.city,
-        state: cp.state,
-        country: cp.country_name,
-      })),
-      source: 'aftership',
-      confidence: 0.90,
-      rawResponse: tracking,
-    };
-  } catch (error) {
-    console.error('AfterShip fallback failed:', error);
-    return null;
-  }
-}
-
-function mapAfterShipStatus(tag: string): TrackingStatus['status'] {
-  const statusMap: Record<string, TrackingStatus['status']> = {
-    'Delivered': 'delivered',
-    'OutForDelivery': 'out_for_delivery',
-    'InTransit': 'in_transit',
-    'InfoReceived': 'pending',
-    'Exception': 'exception',
-    'Pending': 'pending',
-    'AvailableForPickup': 'out_for_delivery',
-  };
-  return statusMap[tag] || 'unknown';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

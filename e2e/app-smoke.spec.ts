@@ -81,8 +81,8 @@ const routes: RouteCheck[] = [
     path: '/settings',
     assert: async (page) => {
       await expect(page.locator('h1').filter({ hasText: 'Settings' })).toBeVisible();
-      // Check for the section toggle button header
-      await expect(page.getByRole('button', { name: /Email Configuration/i })).toBeVisible();
+      // Check for a section that is always visible - Account section is open by default
+      await expect(page.getByRole('button', { name: /Profile & Display/i })).toBeVisible();
     },
   },
   {

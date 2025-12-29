@@ -16,7 +16,7 @@
  * ✨ Multiple tracking numbers per shipment
  * ✨ Partial shipment support
  * ✨ Real-time delivery alerts
- * ✨ Integration with AfterShip tracking
+ * ✨ Integration with direct carrier APIs
  *
  * @module services/shipmentTrackingService
  * @author MuRP Development Team
@@ -77,7 +77,7 @@ export interface ShipmentTrackingEvent {
   trackingNumber?: string;
   carrierLocation?: string;
   carrierTimestamp?: string;
-  source: 'email' | 'aftership' | 'manual' | 'carrier_api';
+  source: 'email' | 'carrier_api' | 'manual';
   sourceId?: string;
   aiConfidence?: number;
   createdAt: string;
@@ -495,7 +495,7 @@ export async function createTrackingEvent(event: {
 }
 
 /**
- * Update shipment from carrier API/AfterShip
+ * Update shipment from carrier API
  */
 export async function updateShipmentFromCarrier(
   shipmentId: string,
@@ -529,7 +529,7 @@ export async function updateShipmentFromCarrier(
     carrierLocation: carrierUpdate.location,
     carrierTimestamp: carrierUpdate.timestamp,
     trackingNumber: carrierUpdate.trackingNumber,
-    source: 'aftership'
+    source: 'carrier_api'
   });
 }
 

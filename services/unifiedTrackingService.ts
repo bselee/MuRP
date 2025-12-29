@@ -6,15 +6,13 @@
  * Single entry point for all tracking operations. Combines:
  * - Direct carrier APIs (USPS free, UPS free tier, FedEx free tier)
  * - Email-based tracking extraction
- * - AfterShip fallback (if configured)
- * - Database caching
+ * - Database caching via tracking_cache table
  *
  * Strategy:
- * 1. Check database cache first
+ * 1. Check database cache first (tracking_cache table)
  * 2. If stale, try email-based tracking
  * 3. If no email data, try direct carrier API
- * 4. Fall back to AfterShip if all else fails
- * 5. Store results in database for future queries
+ * 4. Store results in database for future queries
  *
  * This reduces API dependency and costs while maximizing tracking accuracy.
  *
@@ -53,7 +51,7 @@ export interface UnifiedTrackingResult {
   lastLocation?: string;
   lastUpdate: string;
   events: TrackingStatus['events'];
-  source: 'cache' | 'email' | 'carrier_api' | 'aftership';
+  source: 'cache' | 'email' | 'carrier_api';
   confidence: number;
   carrierTrackingUrl: string;
   relatedPOs: string[];
@@ -184,8 +182,7 @@ export async function getBulkTrackingStatus(
         switch (br.result.source) {
           case 'cache': stats.fromCache++; break;
           case 'email': stats.fromEmail++; break;
-          case 'carrier_api':
-          case 'aftership': stats.fromApi++; break;
+          case 'carrier_api': stats.fromApi++; break;
         }
       } else if ('trackingNumber' in br) {
         failed.push({ trackingNumber: br.trackingNumber, error: br.error || 'Unknown error' });
@@ -305,25 +302,23 @@ async function getCachedTracking(
     const cutoffTime = new Date(Date.now() - maxAgeMinutes * 60 * 1000).toISOString();
 
     const { data } = await supabase
-      .from('aftership_trackings')
+      .from('tracking_cache')
       .select(`
         tracking_number,
-        slug,
-        tag,
-        subtag,
-        expected_delivery,
-        last_updated_at,
-        aftership_checkpoints (
-          checkpoint_time,
-          tag,
-          message,
-          location,
-          city,
-          state
-        )
+        carrier,
+        status,
+        status_description,
+        estimated_delivery,
+        actual_delivery,
+        last_location,
+        last_update,
+        events,
+        source,
+        confidence,
+        updated_at
       `)
       .eq('tracking_number', trackingNumber)
-      .gte('last_updated_at', cutoffTime)
+      .gte('updated_at', cutoffTime)
       .single();
 
     if (!data) return null;
@@ -338,25 +333,20 @@ async function getCachedTracking(
       ?.filter((s: any) => s.purchase_orders?.order_id)
       .map((s: any) => s.purchase_orders.order_id) || [];
 
-    const carrier = (data.slug?.toUpperCase() || 'Unknown') as Carrier;
+    const carrier = (data.carrier?.toUpperCase() || 'Unknown') as Carrier;
 
     return {
       trackingNumber,
       carrier,
-      status: mapTagToStatus(data.tag || ''),
-      statusDescription: data.subtag || data.tag || 'Status from cache',
-      estimatedDelivery: data.expected_delivery,
-      lastUpdate: data.last_updated_at,
-      events: (data.aftership_checkpoints || []).map((cp: any) => ({
-        timestamp: cp.checkpoint_time,
-        status: cp.tag,
-        description: cp.message,
-        location: cp.city ? `${cp.city}, ${cp.state}` : cp.location,
-        city: cp.city,
-        state: cp.state,
-      })),
+      status: mapTagToStatus(data.status || ''),
+      statusDescription: data.status_description || data.status || 'Status from cache',
+      estimatedDelivery: data.estimated_delivery,
+      actualDelivery: data.actual_delivery,
+      lastLocation: data.last_location,
+      lastUpdate: data.last_update || data.updated_at,
+      events: (data.events || []) as TrackingStatus['events'],
       source: 'cache',
-      confidence: 0.85,
+      confidence: data.confidence || 0.85,
       carrierTrackingUrl: getCarrierTrackingUrl(trackingNumber, carrier),
       relatedPOs: [...new Set(relatedPOs)],
       needsRefresh: false,
@@ -371,44 +361,44 @@ async function getCachedTracking(
  */
 async function cacheTrackingResult(result: UnifiedTrackingResult): Promise<void> {
   try {
-    await supabase.from('aftership_trackings').upsert({
+    await supabase.from('tracking_cache').upsert({
       tracking_number: result.trackingNumber,
-      slug: result.carrier.toLowerCase(),
-      tag: statusToTag(result.status),
-      subtag: result.statusDescription,
-      expected_delivery: result.estimatedDelivery,
-      last_updated_at: new Date().toISOString(),
+      carrier: result.carrier.toLowerCase(),
+      status: statusToTag(result.status),
+      status_description: result.statusDescription,
+      estimated_delivery: result.estimatedDelivery,
+      actual_delivery: result.actualDelivery,
+      last_location: result.lastLocation,
+      last_update: new Date().toISOString(),
+      events: result.events,
+      source: result.source,
+      confidence: result.confidence,
+      updated_at: new Date().toISOString(),
     }, {
       onConflict: 'tracking_number',
     });
 
-    // Cache checkpoints if we have events
+    // Cache events in tracking_events table if we have events
     if (result.events.length > 0) {
-      const { data: tracking } = await supabase
-        .from('aftership_trackings')
-        .select('id')
-        .eq('tracking_number', result.trackingNumber)
-        .single();
+      const events = result.events.map(event => ({
+        tracking_number: result.trackingNumber,
+        carrier: result.carrier.toLowerCase(),
+        event_time: event.timestamp,
+        status: event.status,
+        description: event.description,
+        location: event.location,
+        city: event.city,
+        state: event.state,
+        country: event.country,
+        source: result.source,
+      }));
 
-      if (tracking) {
-        const checkpoints = result.events.map(event => ({
-          tracking_id: tracking.id,
-          checkpoint_time: event.timestamp,
-          tag: event.status,
-          message: event.description,
-          location: event.location,
-          city: event.city,
-          state: event.state,
-          country_name: event.country,
-        }));
-
-        // Insert new checkpoints (ignore duplicates)
-        for (const cp of checkpoints) {
-          await supabase
-            .from('aftership_checkpoints')
-            .upsert(cp, { onConflict: 'tracking_id,checkpoint_time' })
-            .select();
-        }
+      // Insert new events (ignore duplicates)
+      for (const ev of events) {
+        await supabase
+          .from('tracking_events')
+          .upsert(ev, { onConflict: 'tracking_number,event_time' })
+          .select();
       }
     }
   } catch (error) {
@@ -474,10 +464,10 @@ export async function getPOTrackingSummary(poId: string): Promise<{
  */
 export async function getActiveTrackings(): Promise<UnifiedTrackingResult[]> {
   const { data } = await supabase
-    .from('aftership_trackings')
+    .from('tracking_cache')
     .select('tracking_number')
-    .in('tag', ['InTransit', 'OutForDelivery', 'Pending', 'InfoReceived'])
-    .order('last_updated_at', { ascending: false })
+    .in('status', ['InTransit', 'OutForDelivery', 'Pending', 'InfoReceived', 'in_transit', 'out_for_delivery', 'pending'])
+    .order('updated_at', { ascending: false })
     .limit(50);
 
   if (!data || data.length === 0) return [];
@@ -495,10 +485,10 @@ export async function getStaleTrackings(maxAgeMinutes: number = 120): Promise<st
   const cutoffTime = new Date(Date.now() - maxAgeMinutes * 60 * 1000).toISOString();
 
   const { data } = await supabase
-    .from('aftership_trackings')
+    .from('tracking_cache')
     .select('tracking_number')
-    .in('tag', ['InTransit', 'OutForDelivery', 'Pending', 'InfoReceived'])
-    .lt('last_updated_at', cutoffTime)
+    .in('status', ['InTransit', 'OutForDelivery', 'Pending', 'InfoReceived', 'in_transit', 'out_for_delivery', 'pending'])
+    .lt('updated_at', cutoffTime)
     .limit(20);
 
   return data?.map((d: any) => d.tracking_number) || [];

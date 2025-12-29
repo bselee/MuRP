@@ -626,13 +626,13 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
                   <div className="rounded-full bg-blue-500/20 p-2">
                     <PackageIcon className="w-5 h-5 text-blue-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white">AfterShip Tracking</h3>
+                  <h3 className="text-lg font-semibold text-white">Carrier Tracking (Free)</h3>
                 </div>
                 <p className="text-sm text-gray-300 mb-3">
-                  Automated shipment tracking and delivery notifications for your customers.
+                  Free shipment tracking using direct carrier APIs (USPS, UPS, FedEx).
                 </p>
                 <div className="text-xs text-blue-300">
-                  • 500+ carrier integrations • Auto-tracking • Customer notifications
+                  • Direct carrier APIs • No subscription fees • Email-based tracking
                 </div>
               </div>
 

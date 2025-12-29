@@ -1,3 +1,43 @@
+### Session: 2025-12-24 (AfterShip Removal & Direct Carrier APIs)
+
+**Summary:** Completely removed AfterShip integration and replaced with free direct carrier APIs (USPS, UPS, FedEx).
+
+**Key Changes:**
+
+1. **Deleted AfterShip Files:**
+   - `services/afterShipService.ts` - Removed
+   - `components/AfterShipSettingsPanel.tsx` - Removed
+   - `supabase/functions/aftership-webhook/` - Entire directory removed
+
+2. **New Tracking Services Created:**
+   - [services/directCarrierTrackingService.ts](services/directCarrierTrackingService.ts) - Direct carrier API integration
+   - [services/enhancedEmailTrackingService.ts](services/enhancedEmailTrackingService.ts) - Email-based tracking extraction
+   - [services/unifiedTrackingService.ts](services/unifiedTrackingService.ts) - Combined orchestration
+   - [components/CarrierTrackingSettingsPanel.tsx](components/CarrierTrackingSettingsPanel.tsx) - New settings panel
+
+3. **Migration 131:** Created `tracking_cache`, `tracking_events`, `carrier_api_usage` tables
+
+4. **Updated Edge Functions:**
+   - `po-tracking-updater` - Now uses direct carrier APIs instead of AfterShip
+   - `email-inbox-poller` - Now registers tracking in `tracking_cache` table
+
+5. **Files Updated:**
+   - [pages/Settings.tsx](pages/Settings.tsx) - Uses new CarrierTrackingSettingsPanel
+   - [services/shipmentTrackingService.ts](services/shipmentTrackingService.ts) - Removed AfterShip references
+   - [types.ts](types.ts) - Updated trackingSource type
+   - [CLAUDE.md](CLAUDE.md) - Updated documentation
+
+**Free Carrier API Tiers:**
+- USPS Web Tools API: Free unlimited with registration
+- UPS Tracking API: 500 requests/month free
+- FedEx Track API: 5000 requests/month free
+
+**Remaining Work:**
+- `components/APIIntegrationsPanel.tsx` still has legacy AfterShip config section (deprecated, can be removed later)
+- `types/supabase.ts` has aftership table types (auto-generated, will update when schema changes)
+
+---
+
 ### Session: 2025-12-23 (Global Category Filtering Fixed)
 
 **Summary:** Fixed critical inventory display issue and re-enabled global category filtering system.

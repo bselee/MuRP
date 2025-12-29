@@ -13,10 +13,12 @@ type TrackingStatus =
   | 'cancelled'
   | 'invoice_received';
 
-interface AfterShipConfig {
-  enabled: boolean;
-  apiKey: string | null;
-  defaultSlug: string;
+interface CarrierConfig {
+  uspsUserId: string | null;
+  upsClientId: string | null;
+  upsClientSecret: string | null;
+  fedexApiKey: string | null;
+  fedexSecretKey: string | null;
 }
 
 const corsHeaders = {
@@ -63,7 +65,7 @@ async function updatePOTracking(supabase: any) {
     return { processed: 0, updates: 0, notified: 0 };
   }
 
-  const afterShipConfig = await getAfterShipConfig(supabase);
+  const carrierConfig = await getCarrierConfig(supabase);
 
   let updates = 0;
   let deliveredCount = 0;
@@ -73,22 +75,22 @@ async function updatePOTracking(supabase: any) {
     try {
       let carrierStatus = null;
 
-      // SAFETY NET: Try AfterShip first, fall back gracefully
-      if (afterShipConfig.enabled && afterShipConfig.apiKey) {
+      // Try direct carrier APIs first
+      if (carrierConfig.uspsUserId || carrierConfig.upsClientId || carrierConfig.fedexApiKey) {
         try {
-          carrierStatus = await fetchAfterShipTracking(
+          carrierStatus = await fetchDirectCarrierTracking(
             po.tracking_carrier,
             po.tracking_number,
-            afterShipConfig,
+            carrierConfig,
           );
-        } catch (afterShipError) {
-          console.warn(`[po-tracking-updater] AfterShip failed for PO ${po.id}, falling back`, afterShipError);
-          await logTrackingFailure(supabase, po.id, new Error(`AfterShip API error: ${afterShipError.message}`));
+        } catch (carrierError) {
+          console.warn(`[po-tracking-updater] Direct carrier API failed for PO ${po.id}, falling back`, carrierError);
+          await logTrackingFailure(supabase, po.id, new Error(`Carrier API error: ${carrierError.message}`));
           // Continue to fallback
         }
       }
 
-      // FALLBACK: Use simulated progression if AfterShip unavailable
+      // FALLBACK: Use simulated progression if carrier API unavailable
       if (!carrierStatus) {
         carrierStatus = await getFallbackCarrierStatus(
           po.tracking_carrier,
@@ -134,7 +136,7 @@ async function updatePOTracking(supabase: any) {
         if (latest) {
           await supabase.from('po_tracking_events').insert({
             po_id: po.id,
-            status: mapAfterShipTag(latest.tag ?? carrierStatus.status),
+            status: mapCarrierTag(latest.tag ?? carrierStatus.status),
             carrier: latest.slug ?? po.tracking_carrier,
             tracking_number: po.tracking_number,
             description: latest.message ?? latest.tag ?? 'Carrier update',
@@ -242,18 +244,20 @@ async function notifyDeliveries(supabase: any, deliveredCount: number) {
   }
 }
 
-async function getAfterShipConfig(supabase: any): Promise<AfterShipConfig> {
+async function getCarrierConfig(supabase: any): Promise<CarrierConfig> {
   const { data } = await supabase
     .from('app_settings')
     .select('setting_value')
-    .eq('setting_key', 'aftership_config')
+    .eq('setting_key', 'carrier_api_config')
     .maybeSingle();
 
   const value = data?.setting_value || {};
   return {
-    enabled: Boolean(value.enabled),
-    apiKey: value.apiKey ?? null,
-    defaultSlug: value.defaultSlug || 'ups',
+    uspsUserId: value.usps_user_id ?? null,
+    upsClientId: value.ups_client_id ?? null,
+    upsClientSecret: value.ups_client_secret ?? null,
+    fedexApiKey: value.fedex_api_key ?? null,
+    fedexSecretKey: value.fedex_secret_key ?? null,
   };
 }
 
@@ -268,7 +272,7 @@ function mapCarrierSlug(carrier?: string | null, fallback?: string) {
   return carrier.toLowerCase().replace(/\s+/g, '-');
 }
 
-function mapAfterShipTag(tag?: string): TrackingStatus {
+function mapCarrierTag(tag?: string): TrackingStatus {
   if (!tag) return 'processing';
   const normalized = tag.toLowerCase();
   const tagMap: Record<string, TrackingStatus> = {
@@ -288,10 +292,14 @@ function mapAfterShipTag(tag?: string): TrackingStatus {
   return tagMap[normalized] ?? 'processing';
 }
 
-async function fetchAfterShipTracking(
+/**
+ * Fetch tracking from direct carrier APIs (USPS, UPS, FedEx)
+ * All these carriers offer free API access with registration
+ */
+async function fetchDirectCarrierTracking(
   carrier: string | null,
   trackingNumber: string,
-  config: AfterShipConfig,
+  config: CarrierConfig,
 ): Promise<{
   status: TrackingStatus;
   estimatedDelivery?: string;
@@ -299,94 +307,264 @@ async function fetchAfterShipTracking(
   rawPayload?: any;
   checkpoints?: any[];
 } | null> {
-  if (!config.apiKey) {
-    return null;
-  }
-
-  const slug = mapCarrierSlug(carrier, config.defaultSlug);
-  const headers = {
-    'Content-Type': 'application/json',
-    'aftership-api-key': config.apiKey,
-  };
+  const slug = mapCarrierSlug(carrier);
 
   try {
-    // SAFETY NET: Try to fetch existing tracking first
-    let response = await fetch(`https://api.aftership.com/v4/trackings/${slug}/${trackingNumber}`, {
-      headers,
-    });
-
-    // SAFETY NET: Auto-create tracking if not found (404)
-    if (response.status === 404) {
-      console.log(`[po-tracking-updater] Creating new AfterShip tracking for ${trackingNumber}`);
-      
-      const createResponse = await fetch('https://api.aftership.com/v4/trackings', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          tracking: {
-            tracking_number: trackingNumber,
-            slug,
-          },
-        }),
-      });
-
-      if (!createResponse.ok) {
-        const errorText = await createResponse.text();
-        throw new Error(`AfterShip create failed: ${createResponse.status} ${errorText}`);
-      }
-
-      // SAFETY NET: Wait briefly for AfterShip to populate data
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Retry fetch
-      response = await fetch(`https://api.aftership.com/v4/trackings/${slug}/${trackingNumber}`, {
-        headers,
-      });
+    // Route to appropriate carrier API
+    switch (slug) {
+      case 'usps':
+        if (config.uspsUserId) {
+          return await fetchUSPSTracking(trackingNumber, config.uspsUserId);
+        }
+        break;
+      case 'ups':
+        if (config.upsClientId && config.upsClientSecret) {
+          return await fetchUPSTracking(trackingNumber, config.upsClientId, config.upsClientSecret);
+        }
+        break;
+      case 'fedex':
+        if (config.fedexApiKey && config.fedexSecretKey) {
+          return await fetchFedExTracking(trackingNumber, config.fedexApiKey, config.fedexSecretKey);
+        }
+        break;
     }
 
-    // SAFETY NET: Handle rate limits with exponential backoff
-    if (response.status === 429) {
-      const retryAfter = parseInt(response.headers.get('Retry-After') || '60', 10);
-      console.warn(`[po-tracking-updater] AfterShip rate limited, retry after ${retryAfter}s`);
-      throw new Error(`AfterShip rate limited, retry after ${retryAfter}s`);
-    }
-
-    // SAFETY NET: Handle other errors gracefully
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[po-tracking-updater] AfterShip error', response.status, errorText);
-      throw new Error(`AfterShip API error: ${response.status} ${errorText}`);
-    }
-
-    const { data } = await response.json();
-    const tracking = data?.tracking;
-    
-    // SAFETY NET: Validate response structure
-    if (!tracking) {
-      console.warn('[po-tracking-updater] AfterShip response missing tracking data');
-      return null;
-    }
-
-    const tag = tracking.tag;
-    const checkpoints = tracking.checkpoints || [];
-    const latestCheckpoint = checkpoints.length ? checkpoints[checkpoints.length - 1] : null;
-
-    return {
-      status: mapAfterShipTag(tag),
-      estimatedDelivery: tracking.expected_delivery ?? tracking.estimated_delivery ?? null,
-      description: latestCheckpoint?.message || `AfterShip status: ${tag}`,
-      rawPayload: tracking,
-      checkpoints,
-    };
+    // No config for this carrier
+    console.log(`[po-tracking-updater] No API config for carrier ${slug}, using fallback`);
+    return null;
   } catch (error) {
-    // SAFETY NET: Log detailed error but don't throw (allows fallback)
-    console.error('[po-tracking-updater] AfterShip fetch failed', {
-      carrier,
+    console.error('[po-tracking-updater] Direct carrier fetch failed', {
+      carrier: slug,
       trackingNumber,
       error: error.message,
     });
-    throw error; // Re-throw for updatePOTracking to catch and fall back
+    throw error;
   }
+}
+
+/**
+ * USPS Web Tools API (FREE - unlimited with registration)
+ * https://www.usps.com/business/web-tools-apis/
+ */
+async function fetchUSPSTracking(
+  trackingNumber: string,
+  userId: string,
+): Promise<{
+  status: TrackingStatus;
+  estimatedDelivery?: string;
+  description?: string;
+  rawPayload?: any;
+  checkpoints?: any[];
+} | null> {
+  const xml = `<?xml version="1.0"?>
+<TrackFieldRequest USERID="${userId}">
+  <TrackID ID="${trackingNumber}"/>
+</TrackFieldRequest>`;
+
+  const response = await fetch(
+    `https://secure.shippingapis.com/ShippingAPI.dll?API=TrackV2&XML=${encodeURIComponent(xml)}`
+  );
+
+  if (!response.ok) {
+    throw new Error(`USPS API error: ${response.status}`);
+  }
+
+  const text = await response.text();
+  
+  // Parse XML response (simplified - production should use proper XML parser)
+  const statusMatch = text.match(/<Status>(.*?)<\/Status>/);
+  const deliveryMatch = text.match(/<ExpectedDeliveryDate>(.*?)<\/ExpectedDeliveryDate>/);
+  const descMatch = text.match(/<StatusSummary>(.*?)<\/StatusSummary>/);
+
+  if (!statusMatch) {
+    return null;
+  }
+
+  return {
+    status: mapCarrierTag(statusMatch[1]),
+    estimatedDelivery: deliveryMatch?.[1] || undefined,
+    description: descMatch?.[1] || `USPS: ${statusMatch[1]}`,
+    rawPayload: { carrier: 'usps', xml: text },
+    checkpoints: [],
+  };
+}
+
+/**
+ * UPS Tracking API (FREE tier - 500 requests/month)
+ * https://developer.ups.com/
+ */
+async function fetchUPSTracking(
+  trackingNumber: string,
+  clientId: string,
+  clientSecret: string,
+): Promise<{
+  status: TrackingStatus;
+  estimatedDelivery?: string;
+  description?: string;
+  rawPayload?: any;
+  checkpoints?: any[];
+} | null> {
+  // Get OAuth token
+  const tokenResponse = await fetch('https://onlinetools.ups.com/security/v1/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+    },
+    body: 'grant_type=client_credentials',
+  });
+
+  if (!tokenResponse.ok) {
+    throw new Error(`UPS OAuth error: ${tokenResponse.status}`);
+  }
+
+  const { access_token } = await tokenResponse.json();
+
+  // Fetch tracking
+  const response = await fetch(
+    `https://onlinetools.ups.com/api/track/v1/details/${trackingNumber}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${access_token}`,
+        'transId': crypto.randomUUID(),
+        'transactionSrc': 'murp',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`UPS API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const shipment = data.trackResponse?.shipment?.[0];
+  const pkg = shipment?.package?.[0];
+  
+  if (!pkg) return null;
+
+  const activity = pkg.activity || [];
+  const latest = activity[0];
+  const deliveryDate = pkg.deliveryDate?.[0]?.date;
+
+  return {
+    status: mapUPSStatus(latest?.status?.type),
+    estimatedDelivery: deliveryDate ? formatUPSDate(deliveryDate) : undefined,
+    description: latest?.status?.description || 'UPS tracking',
+    rawPayload: data,
+    checkpoints: activity.map((a: any) => ({
+      tag: a.status?.type,
+      message: a.status?.description,
+      location: a.location?.address?.city,
+      timestamp: a.date && a.time ? `${a.date}T${a.time}` : undefined,
+    })),
+  };
+}
+
+function mapUPSStatus(code?: string): TrackingStatus {
+  if (!code) return 'processing';
+  const map: Record<string, TrackingStatus> = {
+    'D': 'delivered',
+    'I': 'in_transit',
+    'M': 'processing',
+    'X': 'exception',
+    'P': 'processing',
+    'O': 'out_for_delivery',
+  };
+  return map[code] || 'processing';
+}
+
+function formatUPSDate(date: string): string {
+  // UPS format: YYYYMMDD
+  return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
+}
+
+/**
+ * FedEx Track API (FREE tier - 5000 requests/month)
+ * https://developer.fedex.com/
+ */
+async function fetchFedExTracking(
+  trackingNumber: string,
+  apiKey: string,
+  secretKey: string,
+): Promise<{
+  status: TrackingStatus;
+  estimatedDelivery?: string;
+  description?: string;
+  rawPayload?: any;
+  checkpoints?: any[];
+} | null> {
+  // Get OAuth token
+  const tokenResponse = await fetch('https://apis.fedex.com/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: `grant_type=client_credentials&client_id=${apiKey}&client_secret=${secretKey}`,
+  });
+
+  if (!tokenResponse.ok) {
+    throw new Error(`FedEx OAuth error: ${tokenResponse.status}`);
+  }
+
+  const { access_token } = await tokenResponse.json();
+
+  // Fetch tracking
+  const response = await fetch('https://apis.fedex.com/track/v1/trackingnumbers', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${access_token}`,
+      'Content-Type': 'application/json',
+      'X-locale': 'en_US',
+    },
+    body: JSON.stringify({
+      trackingInfo: [{
+        trackingNumberInfo: {
+          trackingNumber,
+        },
+      }],
+      includeDetailedScans: true,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`FedEx API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const result = data.output?.completeTrackResults?.[0]?.trackResults?.[0];
+
+  if (!result) return null;
+
+  const latestStatus = result.latestStatusDetail;
+  const deliveryDate = result.standardTransitTimeWindow?.window?.ends || 
+                       result.estimatedDeliveryTimeWindow?.window?.ends;
+  const scanEvents = result.scanEvents || [];
+
+  return {
+    status: mapFedExStatus(latestStatus?.code),
+    estimatedDelivery: deliveryDate ? deliveryDate.split('T')[0] : undefined,
+    description: latestStatus?.description || 'FedEx tracking',
+    rawPayload: data,
+    checkpoints: scanEvents.map((e: any) => ({
+      tag: e.eventType,
+      message: e.eventDescription,
+      location: e.scanLocation?.city,
+      timestamp: e.date,
+    })),
+  };
+}
+
+function mapFedExStatus(code?: string): TrackingStatus {
+  if (!code) return 'processing';
+  const map: Record<string, TrackingStatus> = {
+    'DL': 'delivered',
+    'IT': 'in_transit',
+    'OD': 'out_for_delivery',
+    'PU': 'processing',
+    'DE': 'exception',
+    'CA': 'cancelled',
+  };
+  return map[code] || 'processing';
 }
 
 /**

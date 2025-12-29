@@ -1032,7 +1032,7 @@ export interface FinalePurchaseOrderRecord {
   lineCount: number;
   totalQuantity: number;
   deliveryStatus?: string;
-  // Tracking fields (populated by agents from email/AfterShip)
+  // Tracking fields (populated by agents from email/carrier APIs)
   trackingNumber?: string;
   trackingCarrier?: string;
   trackingStatus?: POTrackingStatus;
@@ -1040,7 +1040,7 @@ export interface FinalePurchaseOrderRecord {
   trackingShippedDate?: string;
   trackingDeliveredDate?: string;
   trackingLastException?: string;
-  trackingSource?: 'email' | 'aftership' | 'manual';
+  trackingSource?: 'email' | 'carrier_api' | 'manual';
   trackingEvents?: FinalePOTrackingEvent[];
   finaleLastModified?: string;
   syncedAt?: string;
