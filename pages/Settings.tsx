@@ -6,7 +6,7 @@ import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, I
 import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, SparklesIcon, BellIcon, ClipboardCopyIcon, EyeSlashIcon, TruckIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import AdminUsersPanel from '../components/AdminUsersPanel';
-import AfterShipSettingsPanel from '../components/AfterShipSettingsPanel';
+import CarrierTrackingSettingsPanel from '../components/CarrierTrackingSettingsPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
 import APIIntegrationsPanel from '../components/APIIntegrationsPanel';
 import ShopifyIntegrationPanel from '../components/ShopifyIntegrationPanel';
@@ -377,12 +377,12 @@ const Settings: React.FC<SettingsProps> = ({
           )}
 
           <CollapsibleSection
-            title="AfterShip Tracking"
+            title="Carrier Tracking (Free)"
             icon={<TruckIcon className="w-5 h-5 text-cyan-400" />}
             isOpen={isAfterShipOpen}
             onToggle={() => setIsAfterShipOpen(!isAfterShipOpen)}
           >
-            <AfterShipSettingsPanel addToast={addToast} />
+            <CarrierTrackingSettingsPanel addToast={addToast} />
           </CollapsibleSection>
         </section>
 
