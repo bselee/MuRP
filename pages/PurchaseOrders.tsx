@@ -16,8 +16,9 @@ import type {
     POTrackingStatus,
     RequisitionRequestOptions,
 } from '../types';
-import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon, Squares2X2Icon, ListBulletIcon } from '../components/icons';
+import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon, Squares2X2Icon, ListBulletIcon, ViewColumnsIcon } from '../components/icons';
 import PODeliveryTimeline from '../components/PODeliveryTimeline';
+import POPipelineView from '../components/POPipelineView';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CreatePoModal from '../components/CreatePoModal';
 import Modal from '../components/Modal';
@@ -114,7 +115,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
     const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default newest first
     const [isAgentSettingsOpen, setIsAgentSettingsOpen] = useState(false);
-    const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'card' | 'pipeline'>('list');
 
     // Finale PO tracking modal state
     const [finaleTrackingModal, setFinaleTrackingModal] = useState<{
@@ -200,6 +201,19 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 .slice(0, 4),
         [purchaseOrders]
     );
+
+    // Inventory map for stockout calculations in Pipeline view
+    const inventoryMapForPipeline = useMemo(() => {
+        const map = new Map<string, { stock: number; salesVelocity: number; name: string }>();
+        inventory.forEach(item => {
+            map.set(item.sku, {
+                stock: item.stock || 0,
+                salesVelocity: item.salesVelocity || 0,
+                name: item.name || item.sku,
+            });
+        });
+        return map;
+    }, [inventory]);
 
     const isAdminLike = permissions.isAdminLike;
     const showCommandCenter = permissions.isPurchasing || permissions.isOperations || isAdminLike;
@@ -1140,6 +1154,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     >
                                         <Squares2X2Icon className="w-4 h-4" />
                                     </Button>
+                                    <Button
+                                        onClick={() => setViewMode('pipeline')}
+                                        className={`p-1.5 rounded transition-colors ${viewMode === 'pipeline'
+                                            ? isDark ? 'bg-slate-700 text-white' : 'bg-amber-200 text-amber-900'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
+                                            }`}
+                                        title="Pipeline View"
+                                    >
+                                        <ViewColumnsIcon className="w-4 h-4" />
+                                    </Button>
                                 </div>
                             </div>
                         </div>
@@ -1197,6 +1221,14 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     </div>
                                 )}
                             </div>
+                        ) : viewMode === 'pipeline' ? (
+                            <POPipelineView
+                                purchaseOrders={finalePurchaseOrders}
+                                inventoryMap={inventoryMapForPipeline}
+                                onPOClick={(po) => {
+                                    setExpandedFinalePO(expandedFinalePO === po.id ? null : po.id);
+                                }}
+                            />
                         ) : viewMode === 'list' ? (
                             <table className={`min-w-full divide-y ${isDark ? 'divide-slate-800' : 'divide-amber-200'}`}>
                                 <thead className={`sticky top-0 z-10 ${isDark ? 'bg-slate-950/50' : 'bg-amber-50/90'}`}>

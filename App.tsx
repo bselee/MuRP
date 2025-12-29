@@ -1656,6 +1656,7 @@ const AppShell: React.FC = () => {
           historicalSales={historicalSales}
           vendors={vendors}
           purchaseOrders={purchaseOrders}
+          finalePurchaseOrders={finalePurchaseOrders}
           onCreateBuildOrder={handleCreateBuildOrder}
           onCreateRequisition={handleCreateRequisition}
           requisitions={requisitions}
