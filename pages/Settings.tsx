@@ -3,7 +3,7 @@ import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import type { Page } from '../App';
 import type { GmailConnection, ExternalConnection, User, AiConfig, AiSettings, InventoryItem, BillOfMaterials, Vendor, CompanyEmailSettings } from '../types';
-import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, SparklesIcon, BellIcon, ClipboardCopyIcon, EyeSlashIcon, TruckIcon } from '../components/icons';
+import { UsersIcon, LinkIcon, BotIcon, ShieldCheckIcon, SearchIcon, ServerStackIcon, DocumentTextIcon, KeyIcon, MailIcon, SparklesIcon, BellIcon, ClipboardCopyIcon, EyeSlashIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import AdminUsersPanel from '../components/AdminUsersPanel';
 import AIProviderPanel from '../components/AIProviderPanel';
@@ -35,7 +35,6 @@ import SOPSettingsPanel from '../components/SOPSettingsPanel';
 import BOMApprovalSettingsPanel from '../components/BOMApprovalSettingsPanel';
 import EmailConnectionCard from '../components/settings/EmailConnectionCard';
 import GlobalDataFilterPanel from '../components/settings/GlobalDataFilterPanel';
-import AfterShipSettingsPanel from '../components/AfterShipSettingsPanel';
 import { useAllCategories } from '../hooks/useSupabaseData';
 
 interface SettingsProps {
@@ -86,10 +85,10 @@ const Settings: React.FC<SettingsProps> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSopOpen, setIsSopOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [isEmailMonitoringOpen, setIsEmailMonitoringOpen] = useState(false);
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [isShopifyOpen, setIsShopifyOpen] = useState(false);
-  const [isAfterShipOpen, setIsAfterShipOpen] = useState(false);
   const [isMcpOpen, setIsMcpOpen] = useState(false);
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
@@ -99,6 +98,11 @@ const Settings: React.FC<SettingsProps> = ({
 
   // Local state
   const [showApiKey, setShowApiKey] = useState(false);
+  const [emailPolicyDraft, setEmailPolicyDraft] = useState<CompanyEmailSettings>(companyEmailSettings);
+
+  useEffect(() => {
+    setEmailPolicyDraft(companyEmailSettings);
+  }, [companyEmailSettings]);
 
   const { godMode, setGodMode, session } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
@@ -109,6 +113,18 @@ const Settings: React.FC<SettingsProps> = ({
   // Fetch ALL categories from database (including excluded ones) for global filter panel
   // This uses a dedicated hook that doesn't apply the global filter
   const { categories: allCategories } = useAllCategories();
+
+  const handleSaveEmailPolicy = () => {
+    if (emailPolicyDraft.enforceCompanySender && !emailPolicyDraft.fromAddress.trim()) {
+      addToast('Enter a company sender email before enforcing policy.', 'error');
+      return;
+    }
+    onUpdateCompanyEmailSettings({
+      ...emailPolicyDraft,
+      fromAddress: emailPolicyDraft.fromAddress.trim(),
+    });
+    addToast('Company email policy updated.', 'success');
+  };
 
   // Consistent card styling used across all sections - theme-aware
   const cardClass = isDark 
@@ -357,15 +373,6 @@ const Settings: React.FC<SettingsProps> = ({
               <ShopifyIntegrationPanel currentUser={currentUser} inventory={inventory} boms={boms} />
             </CollapsibleSection>
           )}
-
-          <CollapsibleSection
-            title="AfterShip Tracking"
-            icon={<TruckIcon className="w-5 h-5 text-cyan-400" />}
-            isOpen={isAfterShipOpen}
-            onToggle={() => setIsAfterShipOpen(!isAfterShipOpen)}
-          >
-            <AfterShipSettingsPanel addToast={addToast} />
-          </CollapsibleSection>
         </section>
 
         {/* ============================================================ */}
@@ -436,26 +443,109 @@ const Settings: React.FC<SettingsProps> = ({
         {/* COMMUNICATION */}
         {/* ============================================================ */}
         <section>
-          <h2 className={`text-xl font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
             <MailIcon className="w-5 h-5 text-accent-400" />
             Communication
           </h2>
 
           <CollapsibleSection
-            title="Email Inboxes"
-            icon={<MailIcon className="w-5 h-5 text-blue-400" />}
+            title="Email Policy"
+            icon={<MailIcon className="w-5 h-5 text-emerald-400" />}
             isOpen={isEmailOpen}
             onToggle={() => setIsEmailOpen(!isEmailOpen)}
           >
+            <div className="space-y-6">
+              <p className="text-sm text-gray-400">
+                Define a company-wide sender address for automated compliance and artwork emails.
+              </p>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className={labelClass}>Company From Address</label>
+                  <input
+                    type="email"
+                    value={emailPolicyDraft.fromAddress}
+                    onChange={e => setEmailPolicyDraft(prev => ({ ...prev, fromAddress: e.target.value }))}
+                    placeholder="purchasing@yourdomain.com"
+                    aria-label="Company from address"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Delivery Provider</label>
+                  <div className="mt-2 space-y-2">
+                    {[
+                      { value: 'resend' as const, label: 'Resend', description: 'Built-in email delivery' },
+                      { value: 'gmail' as const, label: 'Workspace Gmail', description: 'Route through Google Workspace' },
+                    ].map(option => (
+                      <label
+                        key={option.value}
+                        className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                          emailPolicyDraft.provider === option.value ? 'border-accent-400 bg-accent-400/5' : 'border-gray-700 bg-gray-900/40 hover:border-gray-600'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="email-provider"
+                          checked={emailPolicyDraft.provider === option.value}
+                          onChange={() => setEmailPolicyDraft(prev => ({ ...prev, provider: option.value }))}
+                          className="mt-1 text-accent-400 focus:ring-accent-400"
+                        />
+                        <span className="text-sm text-gray-200">
+                          <span className="font-medium">{option.label}</span>
+                          <span className="block text-xs text-gray-400">{option.description}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-gray-900/40 border border-gray-700 rounded-lg">
+                <div>
+                  <p className="text-sm text-gray-200 font-medium">Enforce company sender</p>
+                  <p className="text-xs text-gray-400">All artwork emails route through the selected channel</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={emailPolicyDraft.enforceCompanySender}
+                    onChange={e => setEmailPolicyDraft(prev => ({ ...prev, enforceCompanySender: e.target.checked }))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent-400 rounded-full peer peer-checked:bg-accent-500 transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  onClick={() => setEmailPolicyDraft(companyEmailSettings)}
+                  variant="ghost"
+                >
+                  Reset
+                </Button>
+                <Button onClick={handleSaveEmailPolicy}>
+                  Save Policy
+                </Button>
+              </div>
+            </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Email Monitoring (PO Tracking)"
+            icon={<MailIcon className="w-5 h-5 text-blue-400" />}
+            isOpen={isEmailMonitoringOpen}
+            onToggle={() => setIsEmailMonitoringOpen(!isEmailMonitoringOpen)}
+          >
             <div className="space-y-4">
-              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                Connect your email inboxes for automated vendor tracking and invoice processing.
+              <p className="text-sm text-gray-400">
+                Connect your purchasing email to automatically track vendor communications, extract tracking numbers, and update PO status.
               </p>
               <EmailConnectionCard
                 userId={currentUser.id}
                 onConnectionChange={(connected) => {
                   addToast(
-                    connected ? 'Email inbox connected!' : 'Email inbox disconnected',
+                    connected ? 'Email monitoring connected!' : 'Email monitoring disconnected',
                     connected ? 'success' : 'info'
                   );
                 }}

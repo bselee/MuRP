@@ -162,8 +162,7 @@ SELECT
     WHEN po.tracking_status = 'in_transit' THEN 'In transit'
     ELSE 'Unknown'
   END as delay_reason,
-  v.email as vendor_email,
-  v.contact_name as vendor_contact
+  v.contact_emails[1] as vendor_email
 FROM purchase_orders po
 LEFT JOIN vendors v ON po.vendor_id = v.id
 WHERE po.status IN ('sent', 'confirmed', 'partial')
@@ -193,6 +192,14 @@ CREATE TABLE IF NOT EXISTS po_followup_campaigns (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Add priority column if it doesn't exist
+ALTER TABLE po_followup_campaigns ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT 10;
+
+-- Update check constraint to allow new trigger types
+ALTER TABLE po_followup_campaigns DROP CONSTRAINT IF EXISTS po_followup_campaigns_trigger_type_check;
+ALTER TABLE po_followup_campaigns ADD CONSTRAINT po_followup_campaigns_trigger_type_check 
+  CHECK (trigger_type IN ('tracking_missing', 'invoice_missing', 'custom', 'no_confirmation', 'overdue'));
+
 -- Default campaigns
 INSERT INTO po_followup_campaigns (name, description, trigger_type, active, priority)
 VALUES
@@ -217,6 +224,10 @@ CREATE TABLE IF NOT EXISTS po_followup_rules (
   active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add missing columns to existing table
+ALTER TABLE po_followup_rules ADD COLUMN IF NOT EXISTS campaign_id UUID REFERENCES po_followup_campaigns(id) ON DELETE CASCADE;
+ALTER TABLE po_followup_rules ADD COLUMN IF NOT EXISTS escalate_after_stage INTEGER;
 
 -- Default rules
 INSERT INTO po_followup_rules (campaign_id, stage, wait_hours, subject_template, body_template)

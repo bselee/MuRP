@@ -112,7 +112,7 @@ SELECT
   d.po_id,
   po.order_id as po_number,
   v.name as vendor_name,
-  v.email as vendor_email,
+  v.contact_emails[1] as vendor_email,
   d.dispute_type,
   d.dispute_amount,
   d.status,

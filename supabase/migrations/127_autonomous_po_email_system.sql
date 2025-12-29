@@ -97,17 +97,38 @@ INSERT INTO agent_definitions (
   name,
   description,
   category,
+  system_prompt,
   capabilities,
   autonomy_level,
   trust_score,
   is_active,
-  execution_config
+  parameters
 ) VALUES (
   'po_email_sender',
   'PO Email Sender',
   'Sends purchase order emails to vendors with trust-based autonomy. Auto-sends at high trust, queues for approval at medium trust.',
-  'purchasing',
-  ARRAY['send_po_email', 'draft_email', 'queue_for_approval'],
+  'operations',
+  'You are an autonomous PO email sender agent for the MuRP system.
+
+## Your Role
+Send purchase order emails to vendors with trust-based decision making.
+
+## Trust-Based Autonomy
+- **High Trust (≥85%)**: Auto-send emails immediately
+- **Medium Trust (70-85%)**: Queue for human approval
+- **Low Trust (<70%)**: Create draft only, require manual review
+
+## Email Content Rules
+- Use professional, clear language
+- Include PO number, items, quantities, and delivery requirements
+- Attach PO documents when available
+- CC relevant internal stakeholders
+
+## Safety Checks
+- Verify vendor email addresses are valid
+- Ensure PO data is complete before sending
+- Log all email activities for audit trail',
+  '["send_po_email", "draft_email", "queue_for_approval"]'::jsonb,
   'assist',
   0.70,  -- Start at medium trust
   TRUE,

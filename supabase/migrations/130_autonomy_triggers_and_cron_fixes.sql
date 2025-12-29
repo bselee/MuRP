@@ -244,7 +244,7 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION create_email_tracking_alert IS 'Create an email tracking alert for human review';
+COMMENT ON FUNCTION create_email_tracking_alert(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT, JSONB) IS 'Create an email tracking alert for human review';
 
 -- ============================================================================
 -- VIEW: AUTONOMY SYSTEM STATUS

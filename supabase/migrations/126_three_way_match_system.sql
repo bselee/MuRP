@@ -197,7 +197,7 @@ SELECT
   bo.days_until_stockout,
   bo.vendor_invoiced_shortage,
   bo.identified_at,
-  ii.current_stock,
+  ii.stock as current_stock,
   ii.reorder_point
 FROM po_backorders bo
 JOIN purchase_orders po ON bo.original_po_id = po.id

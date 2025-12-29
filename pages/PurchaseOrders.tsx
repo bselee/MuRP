@@ -16,9 +16,7 @@ import type {
     POTrackingStatus,
     RequisitionRequestOptions,
 } from '../types';
-import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon, Squares2X2Icon, ListBulletIcon, ViewColumnsIcon } from '../components/icons';
-import PODeliveryTimeline from '../components/PODeliveryTimeline';
-import POPipelineView from '../components/POPipelineView';
+import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon, Squares2X2Icon, ListBulletIcon } from '../components/icons';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CreatePoModal from '../components/CreatePoModal';
 import Modal from '../components/Modal';
@@ -115,17 +113,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
     const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default newest first
     const [isAgentSettingsOpen, setIsAgentSettingsOpen] = useState(false);
-    const [viewMode, setViewMode] = useState<'list' | 'card' | 'pipeline'>('list');
-
-    // Finale PO tracking modal state
-    const [finaleTrackingModal, setFinaleTrackingModal] = useState<{
-        isOpen: boolean;
-        orderId: string;
-        currentTracking?: string;
-        currentCarrier?: string;
-    }>({ isOpen: false, orderId: '' });
-    const [finaleTrackingInput, setFinaleTrackingInput] = useState({ number: '', carrier: '', eta: '' });
-    const [savingFinaleTracking, setSavingFinaleTracking] = useState(false);
+    const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
 
     // Date filter with localStorage persistence
     const [dateFilter, setDateFilter] = useState<'all' | '30days' | '90days' | '12months'>(() => {
@@ -201,19 +189,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 .slice(0, 4),
         [purchaseOrders]
     );
-
-    // Inventory map for stockout calculations in Pipeline view
-    const inventoryMapForPipeline = useMemo(() => {
-        const map = new Map<string, { stock: number; salesVelocity: number; name: string }>();
-        inventory.forEach(item => {
-            map.set(item.sku, {
-                stock: item.stock || 0,
-                salesVelocity: item.salesVelocity || 0,
-                name: item.name || item.sku,
-            });
-        });
-        return map;
-    }, [inventory]);
 
     const isAdminLike = permissions.isAdminLike;
     const showCommandCenter = permissions.isPurchasing || permissions.isOperations || isAdminLike;
@@ -443,37 +418,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         await onUpdateTracking(selectedPoForTracking.id, updates);
         setSelectedPoForTracking(null);
         setIsTrackingModalOpen(false);
-    };
-
-    // Handle Finale PO tracking update
-    const handleSaveFinaleTracking = async () => {
-        if (!finaleTrackingModal.orderId || !finaleTrackingInput.number) return;
-        setSavingFinaleTracking(true);
-        try {
-            const { supabase } = await import('../lib/supabase/client');
-            const { data, error } = await supabase.rpc('update_finale_po_tracking', {
-                p_order_id: finaleTrackingModal.orderId,
-                p_tracking_number: finaleTrackingInput.number,
-                p_carrier: finaleTrackingInput.carrier || null,
-                p_estimated_delivery: finaleTrackingInput.eta || null,
-                p_source: 'manual',
-            });
-
-            if (error) {
-                console.error('Failed to save tracking:', error);
-                addToast('Failed to save tracking: ' + error.message, 'error');
-            } else {
-                addToast('Tracking updated successfully', 'success');
-                setFinaleTrackingModal({ isOpen: false, orderId: '' });
-                setFinaleTrackingInput({ number: '', carrier: '', eta: '' });
-                // Refresh the page to show updated tracking
-                window.location.reload();
-            }
-        } catch (err: any) {
-            console.error('Error saving tracking:', err);
-            addToast('Failed to save tracking', 'error');
-        }
-        setSavingFinaleTracking(false);
     };
 
     const handleReceivePO = (po: PurchaseOrder) => {
@@ -761,7 +705,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>📦 Purchase Orders</h2>
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>📦 External Purchase Orders</h2>
                                 <StatusBadge variant="primary" className="ml-2">
                                     {finalePurchaseOrders.filter(fpo => {
                                         // Exclude dropship POs - only those with "DropshipPO" in the order ID
@@ -902,24 +846,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 </div>
                                             </div>
 
-                                            {/* Delivery Timeline - Always visible */}
-                                            <div className="px-3 pb-2">
-                                                <PODeliveryTimeline
-                                                    status={fpo.status}
-                                                    trackingStatus={fpo.trackingStatus}
-                                                    orderDate={fpo.orderDate}
-                                                    expectedDate={fpo.expectedDate}
-                                                    shippedDate={fpo.trackingShippedDate}
-                                                    deliveredDate={fpo.trackingDeliveredDate || fpo.receivedDate}
-                                                    trackingNumber={fpo.trackingNumber}
-                                                    carrier={fpo.trackingCarrier}
-                                                    trackingException={fpo.trackingLastException}
-                                                    trackingEvents={fpo.trackingEvents}
-                                                    isDark={isDark}
-                                                    expandable={true}
-                                                />
-                                            </div>
-
                                             {/* Expanded Details */}
                                             {isExpanded && (
                                                 <div className={`relative p-4 space-y-4 border-t backdrop-blur-lg ${isDark
@@ -1022,8 +948,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                                 <td className={`px-3 py-2 text-sm font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.product_id || 'N/A'}</td>
                                                                                 <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.quantity_ordered || 0}</td>
                                                                                 <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.quantity_received || 0}</td>
-                                                                                <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>${(Number(item.unit_price) || 0).toFixed(2)}</td>
-                                                                                <td className={`px-3 py-2 text-sm text-right font-mono font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>${(item.line_total != null ? Number(item.line_total) : (Number(item.quantity_ordered) || 0) * (Number(item.unit_price) || 0)).toFixed(2)}</td>
+                                                                                <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>${Number(item.unit_price || 0).toFixed(2)}</td>
+                                                                                <td className={`px-3 py-2 text-sm text-right font-mono font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>${Number(item.line_total || 0).toFixed(2)}</td>
                                                                             </tr>
                                                                         ))}
                                                                     </tbody>
@@ -1032,34 +958,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                         </div>
                                                     )}
 
-                                                    {/* Actions */}
-                                                    <div className={`flex items-center gap-2 pt-3 border-t ${isDark ? 'border-white/5' : 'border-amber-200'}`}>
-                                                        <Button
-                                                            onClick={() => {
-                                                                setFinaleTrackingModal({
-                                                                    isOpen: true,
-                                                                    orderId: fpo.orderId,
-                                                                    currentTracking: fpo.trackingNumber,
-                                                                    currentCarrier: fpo.trackingCarrier,
-                                                                });
-                                                                setFinaleTrackingInput({
-                                                                    number: fpo.trackingNumber || '',
-                                                                    carrier: fpo.trackingCarrier || '',
-                                                                    eta: fpo.trackingEstimatedDelivery?.split('T')[0] || '',
-                                                                });
-                                                            }}
-                                                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ${isDark
-                                                                ? 'bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/30 border border-cyan-600/30'
-                                                                : 'bg-cyan-50 text-cyan-700 hover:bg-cyan-100 border border-cyan-200'
-                                                            }`}
-                                                        >
-                                                            <TruckIcon className="w-3.5 h-3.5" />
-                                                            {fpo.trackingNumber ? 'Edit Tracking' : 'Add Tracking'}
-                                                        </Button>
-                                                    </div>
-
                                                     {/* Metadata */}
-                                                    <div className={`flex items-center justify-between pt-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                                                    <div className={`flex items-center justify-between pt-3 border-t text-xs ${isDark ? 'border-white/5 text-gray-500' : 'border-amber-200 text-gray-500'}`}>
                                                         <div>Finale: <span className={`font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{fpo.finaleOrderUrl}</span></div>
                                                         <div>Modified: {fpo.finaleLastModified ? new Date(fpo.finaleLastModified).toLocaleString() : 'N/A'}</div>
                                                     </div>
@@ -1082,7 +982,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-amber-200/60'}`} />
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                                <h2 className={`text-xl font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Draft & In-Progress POs</h2>
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Internal Purchase Orders</h2>
                                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDark ? 'bg-slate-800/50 text-gray-300 border border-slate-700' : 'bg-amber-100 text-amber-800 border border-amber-300'}`}>
                                     {filteredPOCount} total
                                     {totalPOCount !== filteredPOCount && (
@@ -1154,16 +1054,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     >
                                         <Squares2X2Icon className="w-4 h-4" />
                                     </Button>
-                                    <Button
-                                        onClick={() => setViewMode('pipeline')}
-                                        className={`p-1.5 rounded transition-colors ${viewMode === 'pipeline'
-                                            ? isDark ? 'bg-slate-700 text-white' : 'bg-amber-200 text-amber-900'
-                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
-                                            }`}
-                                        title="Pipeline View"
-                                    >
-                                        <ViewColumnsIcon className="w-4 h-4" />
-                                    </Button>
                                 </div>
                             </div>
                         </div>
@@ -1221,14 +1111,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     </div>
                                 )}
                             </div>
-                        ) : viewMode === 'pipeline' ? (
-                            <POPipelineView
-                                purchaseOrders={finalePurchaseOrders}
-                                inventoryMap={inventoryMapForPipeline}
-                                onPOClick={(po) => {
-                                    setExpandedFinalePO(expandedFinalePO === po.id ? null : po.id);
-                                }}
-                            />
                         ) : viewMode === 'list' ? (
                             <table className={`min-w-full divide-y ${isDark ? 'divide-slate-800' : 'divide-amber-200'}`}>
                                 <thead className={`sticky top-0 z-10 ${isDark ? 'bg-slate-950/50' : 'bg-amber-50/90'}`}>
@@ -1467,72 +1349,6 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 purchaseOrder={selectedPoForTracking}
                 onSave={handleSaveTracking}
             />
-
-            {/* Finale PO Tracking Modal */}
-            <Modal
-                isOpen={finaleTrackingModal.isOpen}
-                onClose={() => setFinaleTrackingModal({ isOpen: false, orderId: '' })}
-                title={`Add Tracking · PO #${finaleTrackingModal.orderId}`}
-            >
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">
-                            Tracking Number *
-                        </label>
-                        <input
-                            type="text"
-                            value={finaleTrackingInput.number}
-                            onChange={(e) => setFinaleTrackingInput(prev => ({ ...prev, number: e.target.value }))}
-                            placeholder="e.g., 1Z999AA10123456784"
-                            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">
-                            Carrier
-                        </label>
-                        <select
-                            value={finaleTrackingInput.carrier}
-                            onChange={(e) => setFinaleTrackingInput(prev => ({ ...prev, carrier: e.target.value }))}
-                            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        >
-                            <option value="">Select carrier...</option>
-                            <option value="UPS">UPS</option>
-                            <option value="FedEx">FedEx</option>
-                            <option value="USPS">USPS</option>
-                            <option value="DHL">DHL</option>
-                            <option value="LTL">LTL Freight</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">
-                            Estimated Delivery
-                        </label>
-                        <input
-                            type="date"
-                            value={finaleTrackingInput.eta}
-                            onChange={(e) => setFinaleTrackingInput(prev => ({ ...prev, eta: e.target.value }))}
-                            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        />
-                    </div>
-                    <div className="flex justify-end gap-3 pt-2">
-                        <Button
-                            onClick={() => setFinaleTrackingModal({ isOpen: false, orderId: '' })}
-                            className="px-4 py-2 text-sm text-gray-400 hover:text-white"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleSaveFinaleTracking}
-                            disabled={!finaleTrackingInput.number || savingFinaleTracking}
-                            className="px-4 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg disabled:opacity-50"
-                        >
-                            {savingFinaleTracking ? 'Saving...' : 'Save Tracking'}
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
 
             {
                 isAdminLike && (

@@ -5,7 +5,7 @@ import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Page } from '../App';
-import type { BillOfMaterials, InventoryItem, HistoricalSale, Vendor, InternalRequisition, User, AiConfig, RequisitionItem, PurchaseOrder, RequisitionRequestOptions, FinalePurchaseOrderRecord } from '../types';
+import type { BillOfMaterials, InventoryItem, HistoricalSale, Vendor, InternalRequisition, User, AiConfig, RequisitionItem, PurchaseOrder, RequisitionRequestOptions } from '../types';
 import CollapsibleSection from '../components/CollapsibleSection';
 import ExecutiveSummary from '../components/ExecutiveSummary';
 import BuildabilityTable from '../components/BuildabilityTable';
@@ -15,7 +15,6 @@ import AgentCommandWidget from '@/components/AgentCommandWidget';
 import StockoutRiskWidget from '@/components/StockoutRiskWidget';
 import POArrivalLeaderboard from '@/components/POArrivalLeaderboard';
 import CriticalStockoutWidget from '@/components/CriticalStockoutWidget';
-import POPipelineWidget from '@/components/POPipelineWidget';
 import { calculateAllBuildability } from '../services/buildabilityService';
 import { LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, BellIcon, CheckCircleIcon, ChartBarIcon, ClipboardDocumentListIcon, AlertCircleIcon, TrendingUpIcon, DollarSignIcon, UsersIcon, HomeIcon } from '../components/icons';
 
@@ -47,7 +46,6 @@ interface DashboardProps {
   users: User[];
   currentUser: User;
   purchaseOrders: PurchaseOrder[];
-  finalePurchaseOrders?: FinalePurchaseOrderRecord[];
   onCreateRequisition: (items: RequisitionItem[], source: 'Manual' | 'System', options?: RequisitionRequestOptions) => void;
   onCreateBuildOrder: (sku: string, name: string, quantity: number, scheduledDate?: string, dueDate?: string) => void;
   setCurrentPage: (page: Page) => void;
@@ -487,16 +485,6 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                   <AgentCommandWidget />
                 </div>
               </div>
-
-              {/* PO Pipeline Widget - Quick overview of purchase order stages */}
-              {props.finalePurchaseOrders && props.finalePurchaseOrders.length > 0 && (
-                <div className="mb-6">
-                  <POPipelineWidget
-                    purchaseOrders={props.finalePurchaseOrders}
-                    onNavigateToPipeline={() => setCurrentPage('Purchase Orders')}
-                  />
-                </div>
-              )}
 
               {/* PO Arrival Leaderboard - Shows upcoming deliveries */}
               <div className="mb-6">
