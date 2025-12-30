@@ -793,12 +793,20 @@ serve(async (req) => {
       }
     } catch (error) {
       console.error('[Sync] Purchase Orders sync failed:', error);
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        errorMessage = JSON.stringify(error);
+      } else {
+        errorMessage = String(error);
+      }
       results.push({
         dataType: 'purchase_orders',
         success: false,
         itemCount: 0,
         duration: 0,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
       });
     }
     } // end purchase_orders
