@@ -1805,9 +1805,21 @@ export function useSupabaseFinalePurchaseOrders(options?: {
       const targetYear = options?.year ?? new Date().getFullYear();
       const startOfYear = `${targetYear}-01-01`;
 
+      // Join with email_threads to get email correlation data
       let query = supabase
         .from('finale_purchase_orders')
-        .select('*')
+        .select(`
+          *,
+          email_threads!email_threads_finale_po_id_fkey (
+            id,
+            message_count,
+            last_inbound_at,
+            last_outbound_at,
+            sentiment,
+            requires_response,
+            has_tracking_info
+          )
+        `)
         .gte('order_date', startOfYear)
         .order('order_date', { ascending: false });
 
@@ -1833,37 +1845,59 @@ export function useSupabaseFinalePurchaseOrders(options?: {
       }
 
       // Transform database snake_case to camelCase for frontend
-      const transformed = (pos || []).map((po: any) => ({
-        id: po.id,
-        finaleOrderUrl: po.finale_order_url,
-        orderId: po.order_id,
-        orderType: po.order_type,
-        status: po.status,
-        vendorId: po.vendor_id,
-        vendorUrl: po.vendor_url,
-        vendorName: po.vendor_name,
-        facilityUrl: po.facility_url,
-        facilityId: po.facility_id,
-        orderDate: po.order_date,
-        expectedDate: po.expected_date,
-        receivedDate: po.received_date,
-        subtotal: po.subtotal,
-        tax: po.tax,
-        shipping: po.shipping,
-        total: po.total,
-        publicNotes: po.public_notes,
-        privateNotes: po.private_notes,
-        isDropship: po.is_dropship ?? false,
-        lineItems: po.line_items || [],
-        lineCount: po.line_count,
-        totalQuantity: po.total_quantity,
-        deliveryStatus: po.delivery_status,
-        finaleLastModified: po.finale_last_modified,
-        syncedAt: po.synced_at,
-        createdAt: po.created_at,
-        updatedAt: po.updated_at,
-        isActive: po.is_active ?? true,
-      }));
+      const transformed = (pos || []).map((po: any) => {
+        // Get email thread data (first thread if multiple)
+        const emailThread = Array.isArray(po.email_threads) && po.email_threads.length > 0
+          ? po.email_threads[0]
+          : null;
+
+        return {
+          id: po.id,
+          finaleOrderUrl: po.finale_order_url,
+          orderId: po.order_id,
+          orderType: po.order_type,
+          status: po.status,
+          vendorId: po.vendor_id,
+          vendorUrl: po.vendor_url,
+          vendorName: po.vendor_name,
+          facilityUrl: po.facility_url,
+          facilityId: po.facility_id,
+          orderDate: po.order_date,
+          expectedDate: po.expected_date,
+          receivedDate: po.received_date,
+          subtotal: po.subtotal,
+          tax: po.tax,
+          shipping: po.shipping,
+          total: po.total,
+          publicNotes: po.public_notes,
+          privateNotes: po.private_notes,
+          isDropship: po.is_dropship ?? false,
+          lineItems: po.line_items || [],
+          lineCount: po.line_count,
+          totalQuantity: po.total_quantity,
+          deliveryStatus: po.delivery_status,
+          // Tracking fields
+          trackingNumber: po.tracking_number,
+          trackingCarrier: po.tracking_carrier,
+          trackingStatus: po.tracking_status,
+          trackingEstimatedDelivery: po.tracking_estimated_delivery,
+          trackingSource: po.tracking_source,
+          finaleLastModified: po.finale_last_modified,
+          syncedAt: po.synced_at,
+          createdAt: po.created_at,
+          updatedAt: po.updated_at,
+          isActive: po.is_active ?? true,
+          // Email correlation fields (NEW)
+          hasEmailThread: !!emailThread,
+          emailThreadId: emailThread?.id,
+          emailMessageCount: emailThread?.message_count,
+          emailLastVendorReply: emailThread?.last_inbound_at,
+          emailLastSentAt: emailThread?.last_outbound_at,
+          emailSentiment: emailThread?.sentiment,
+          emailAwaitingResponse: emailThread?.requires_response,
+          emailHasTrackingInfo: emailThread?.has_tracking_info,
+        };
+      });
 
       setData(transformed);
       console.log(`[useSupabaseFinalePurchaseOrders] Loaded ${transformed.length} Finale POs`);

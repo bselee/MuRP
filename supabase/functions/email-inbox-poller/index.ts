@@ -64,6 +64,7 @@ interface PollResult {
   posCorrelated: number;
   trackingFound: number;
   alertsGenerated: number;
+  engagementsRecorded: number;
   newHistoryId: string | null;
   error?: string;
 }
@@ -145,6 +146,7 @@ serve(async (req) => {
       pos_correlated: results.reduce((sum, r) => sum + r.posCorrelated, 0),
       tracking_numbers_found: results.reduce((sum, r) => sum + r.trackingFound, 0),
       alerts_generated: results.reduce((sum, r) => sum + r.alertsGenerated, 0),
+      engagements_recorded: results.reduce((sum, r) => sum + r.engagementsRecorded, 0),
     };
 
     // Complete agent run
@@ -215,6 +217,7 @@ async function pollInbox(inbox: InboxConfig): Promise<PollResult> {
     posCorrelated: 0,
     trackingFound: 0,
     alertsGenerated: 0,
+    engagementsRecorded: 0,
     newHistoryId: null,
   };
 
@@ -266,6 +269,7 @@ async function pollInbox(inbox: InboxConfig): Promise<PollResult> {
         if (processResult.poCorrelated) result.posCorrelated++;
         if (processResult.trackingFound) result.trackingFound++;
         if (processResult.alertGenerated) result.alertsGenerated++;
+        if (processResult.engagementRecorded) result.engagementsRecorded++;
       } catch (msgError) {
         console.error(`[email-inbox-poller] Error processing message ${message.id}:`, msgError);
       }
@@ -466,29 +470,64 @@ async function fetchRecentMessages(
   user: string,
   maxResults: number
 ): Promise<{ messages: GmailMessage[]; historyId: string }> {
-  // Get list of message IDs
-  const listResponse = await fetch(
-    `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(user)}/messages?` +
-    `maxResults=${maxResults}&labelIds=INBOX`,
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }
-  );
-
-  if (!listResponse.ok) {
-    throw new Error(`Failed to list messages: ${listResponse.status}`);
-  }
-
-  const listData = await listResponse.json();
   const messages: GmailMessage[] = [];
+  const seenIds = new Set<string>();
 
-  // Fetch each message
-  for (const item of listData.messages || []) {
-    const message = await fetchMessage(accessToken, user, item.id);
-    if (message) {
-      messages.push(message);
+  // CRITICAL: Fetch from multiple sources with PO LABEL AS PRIMARY
+  // User requirement: "always look for specific PO label"
+  // Only concerned with POs within 1 month, not received
+  //
+  // Priority order:
+  // 1. label:PO - PRIMARY SOURCE (emails filed under PO label, may be marked read)
+  // 2. subject:PO newer_than:30d - backup for emails with PO in subject
+  // 3. INBOX - regular incoming emails (lowest priority)
+
+  const sources = [
+    { type: 'query', value: 'label:PO newer_than:30d', description: 'PO Label (30 days)', priority: 1, maxResults: maxResults },
+    { type: 'query', value: 'subject:PO newer_than:30d', description: 'PO in subject (30 days)', priority: 2, maxResults: Math.ceil(maxResults / 2) },
+    { type: 'label', value: 'INBOX', description: 'Inbox', priority: 3, maxResults: Math.ceil(maxResults / 3) },
+  ];
+
+  for (const source of sources) {
+    try {
+      // Use source-specific max results for priority weighting
+      const sourceMaxResults = (source as any).maxResults || Math.ceil(maxResults / 2);
+      const params = new URLSearchParams({ maxResults: String(sourceMaxResults) });
+
+      if (source.type === 'label') {
+        params.set('labelIds', source.value);
+      } else {
+        params.set('q', source.value);
+      }
+
+      const listResponse = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(user)}/messages?${params}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      if (listResponse.ok) {
+        const listData = await listResponse.json();
+        const count = (listData.messages || []).length;
+        console.log(`[email-inbox-poller] Found ${count} messages from ${source.description}`);
+
+        for (const item of listData.messages || []) {
+          if (!seenIds.has(item.id)) {
+            seenIds.add(item.id);
+            const message = await fetchMessage(accessToken, user, item.id);
+            if (message) {
+              messages.push(message);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[email-inbox-poller] Error fetching from ${source.description}:`, err);
     }
   }
+
+  console.log(`[email-inbox-poller] Total unique messages found: ${messages.length}`);
 
   // Get current history ID from profile
   const profileResponse = await fetch(
@@ -528,6 +567,51 @@ async function fetchMessage(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Vendor Engagement Recording
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Record vendor engagement event for scoring
+ * User requirement: "correlate vendor score with time sent to response,
+ * response to shipping/tracking to actual reception"
+ */
+async function recordVendorEngagement(
+  finalePoId: string | null,
+  eventType: 'vendor_acknowledged' | 'vendor_confirmed' | 'tracking_provided',
+  source: 'email' | 'aftership' | 'manual' = 'email',
+  metadata: Record<string, any> = {}
+): Promise<void> {
+  if (!finalePoId) return;
+
+  try {
+    // Get vendor_id from finale_purchase_orders
+    const { data: po } = await supabase
+      .from('finale_purchase_orders')
+      .select('vendor_id')
+      .eq('id', finalePoId)
+      .single();
+
+    if (!po?.vendor_id) return;
+
+    // Call the engagement recording function from migration 134
+    await supabase.rpc('record_vendor_engagement', {
+      p_vendor_id: po.vendor_id,
+      p_finale_po_id: finalePoId,
+      p_event_type: eventType,
+      p_source: source,
+      p_was_proactive: false, // Could enhance to detect proactive communication
+      p_was_automated: false,
+      p_metadata: metadata,
+    });
+
+    console.log(`[email-inbox-poller] ✅ Recorded vendor engagement: ${eventType} for PO ${finalePoId}`);
+  } catch (error) {
+    // Don't fail message processing if engagement recording fails
+    console.error('[email-inbox-poller] Failed to record vendor engagement:', error);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Message Processing
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -536,6 +620,7 @@ interface ProcessResult {
   poCorrelated: boolean;
   trackingFound: boolean;
   alertGenerated: boolean;
+  engagementRecorded: boolean;
 }
 
 async function processMessage(
@@ -549,6 +634,7 @@ async function processMessage(
     poCorrelated: false,
     trackingFound: false,
     alertGenerated: false,
+    engagementRecorded: false,
   };
 
   // Check if message already processed
@@ -599,28 +685,61 @@ async function processMessage(
   const correlation = await correlateEmailToPO(message.threadId, from, subject, bodyText);
 
   if (correlation.poId && correlation.confidence >= 0.7) {
-    await supabase.rpc('correlate_thread_to_po', {
-      p_thread_id: threadId,
-      p_po_id: correlation.poId,
-      p_confidence: correlation.confidence,
-      p_method: correlation.method,
-    });
-    result.poCorrelated = true;
+    // Determine if this is a Finale PO or custom PO
+    const isFinale = correlation.poSource === 'finale';
+    console.log(`[email-inbox-poller] Correlating thread ${threadId} to ${isFinale ? 'Finale' : 'custom'} PO ${correlation.poId} (${correlation.method}, ${correlation.confidence})`);
+
+    // Update email_threads directly with correct column
+    const updateData: Record<string, unknown> = {
+      correlation_confidence: correlation.confidence,
+      correlation_method: correlation.method,
+      correlation_details: {
+        correlated_at: new Date().toISOString(),
+        method: correlation.method,
+        confidence: correlation.confidence,
+        po_source: isFinale ? 'finale' : 'custom',
+      },
+      updated_at: new Date().toISOString(),
+    };
+
+    // Use the correct FK column based on PO source
+    if (isFinale) {
+      updateData.finale_po_id = correlation.poId;
+    } else {
+      updateData.po_id = correlation.poId;
+    }
+
+    const { error: updateError } = await supabase
+      .from('email_threads')
+      .update(updateData)
+      .eq('id', threadId);
+
+    if (updateError) {
+      console.error(`[email-inbox-poller] Failed to correlate thread: ${updateError.message}`);
+    } else {
+      result.poCorrelated = true;
+      console.log(`[email-inbox-poller] ✅ Thread correlated to PO`);
+    }
 
     // Learn vendor domain
     if (direction === 'inbound' && correlation.method !== 'sender_domain') {
+      const vendorTable = isFinale ? 'finale_purchase_orders' : 'purchase_orders';
       const { data: po } = await supabase
-        .from('purchase_orders')
+        .from(vendorTable)
         .select('vendor_id')
         .eq('id', correlation.poId)
         .single();
 
       if (po?.vendor_id) {
-        await supabase.rpc('learn_vendor_email_domain', {
-          p_sender_email: from,
-          p_vendor_id: po.vendor_id,
-          p_confidence: 0.85,
-        });
+        try {
+          await supabase.rpc('learn_vendor_email_domain', {
+            p_sender_email: from,
+            p_vendor_id: po.vendor_id,
+            p_confidence: 0.85,
+          });
+        } catch (e) {
+          // Ignore RPC errors for learning - it's optional
+        }
       }
     }
   }
@@ -690,6 +809,39 @@ async function processMessage(
       trackingInfo
     );
     result.alertGenerated = alertResult;
+
+    // Record vendor engagement for scoring
+    // Only record if we have a correlated Finale PO
+    if (correlation.poId && correlation.poSource === 'finale') {
+      // Determine event type based on email content
+      let eventType: 'vendor_acknowledged' | 'vendor_confirmed' | 'tracking_provided' = 'vendor_acknowledged';
+
+      if (trackingInfo.trackingNumber) {
+        eventType = 'tracking_provided';
+      } else {
+        // Check for confirmation keywords
+        const confirmKeywords = ['confirm', 'shipped', 'shipping', 'order received', 'processing', 'scheduled'];
+        const hasConfirmation = confirmKeywords.some(kw =>
+          subject.toLowerCase().includes(kw) || bodyText.toLowerCase().includes(kw)
+        );
+        if (hasConfirmation) {
+          eventType = 'vendor_confirmed';
+        }
+      }
+
+      await recordVendorEngagement(
+        correlation.poId,
+        eventType,
+        'email',
+        {
+          subject,
+          from,
+          tracking: trackingInfo.trackingNumber || null,
+          message_id: message.id,
+        }
+      );
+      result.engagementRecorded = true;
+    }
   }
 
   return result;
@@ -813,16 +965,28 @@ async function correlateEmailToPO(
   senderEmail: string,
   subject: string,
   bodyText: string
-): Promise<{ poId: string | null; confidence: number; method: string }> {
+): Promise<{ poId: string | null; confidence: number; method: string; poSource: 'finale' | 'custom' | null }> {
+  // CRITICAL FILTER: Only concerned with POs within 1 month, none if received
+  // User requirement: "we have all vendor scores, etc. Only concerned with POs within 1 month, none if received"
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
+
+  // Excluded statuses - Received/Completed/Fulfilled POs don't need email tracking
+  const excludedStatuses = ['Received', 'RECEIVED', 'Fulfilled', 'FULFILLED', 'Completed', 'COMPLETED', 'closed'];
+
   // Check if thread already correlated
   const { data: existingThread } = await supabase
     .from('email_threads')
-    .select('po_id')
+    .select('po_id, finale_po_id')
     .eq('gmail_thread_id', gmailThreadId)
     .single();
 
+  if (existingThread?.finale_po_id) {
+    return { poId: existingThread.finale_po_id, confidence: 0.95, method: 'thread_history', poSource: 'finale' };
+  }
   if (existingThread?.po_id) {
-    return { poId: existingThread.po_id, confidence: 0.95, method: 'thread_history' };
+    return { poId: existingThread.po_id, confidence: 0.95, method: 'thread_history', poSource: 'custom' };
   }
 
   // Subject line match - extract PO number (Finale uses just the number, not "PO-123")
@@ -832,15 +996,29 @@ async function correlateEmailToPO(
     console.log(`[email-inbox-poller] Found PO number in subject: ${poNumber}`);
 
     // Try finale_purchase_orders first (primary source)
+    // FILTER: Within 30 days AND not received
     const { data: finalePO } = await supabase
       .from('finale_purchase_orders')
-      .select('id')
+      .select('id, status, order_date')
       .eq('order_id', poNumber)
+      .gte('order_date', thirtyDaysAgoISO)
+      .not('status', 'in', `(${excludedStatuses.join(',')})`)
       .single();
 
     if (finalePO) {
-      console.log(`[email-inbox-poller] ✅ Matched to finale_purchase_orders: ${finalePO.id}`);
-      return { poId: finalePO.id, confidence: 0.90, method: 'subject_match' };
+      console.log(`[email-inbox-poller] ✅ Matched to finale_purchase_orders: ${finalePO.id} (status: ${finalePO.status})`);
+      return { poId: finalePO.id, confidence: 0.90, method: 'subject_match', poSource: 'finale' };
+    }
+
+    // Check if PO exists but is received (log it but don't correlate)
+    const { data: receivedPO } = await supabase
+      .from('finale_purchase_orders')
+      .select('id, status')
+      .eq('order_id', poNumber)
+      .single();
+
+    if (receivedPO) {
+      console.log(`[email-inbox-poller] ⏭️ Skipping PO ${poNumber} - status: ${receivedPO.status} (already received or too old)`);
     }
 
     // Fallback to purchase_orders with various formats
@@ -848,11 +1026,13 @@ async function correlateEmailToPO(
       .from('purchase_orders')
       .select('id')
       .or(`order_id.eq.${poNumber},order_id.eq.PO-${poNumber},order_id.ilike.%${poNumber}%`)
+      .gte('created_at', thirtyDaysAgoISO)
+      .not('status', 'in', `(${excludedStatuses.map(s => s.toLowerCase()).join(',')})`)
       .limit(1)
       .single();
 
     if (po) {
-      return { poId: po.id, confidence: 0.90, method: 'subject_match' };
+      return { poId: po.id, confidence: 0.90, method: 'subject_match', poSource: 'custom' };
     }
   }
 
@@ -864,20 +1044,24 @@ async function correlateEmailToPO(
   if (vendorLookup && vendorLookup.length > 0) {
     const vendorId = vendorLookup[0].vendor_id;
     // Check finale_purchase_orders for recent POs from this vendor
+    // FILTER: Within 30 days AND active status only
     const { data: recentPO } = await supabase
       .from('finale_purchase_orders')
-      .select('id')
+      .select('id, order_id, status')
       .eq('vendor_id', vendorId)
-      .in('status', ['Submitted', 'Committed', 'Partially Received'])
+      .gte('order_date', thirtyDaysAgoISO)
+      .not('status', 'in', `(${excludedStatuses.join(',')})`)
       .order('order_date', { ascending: false })
       .limit(1)
       .single();
 
     if (recentPO) {
+      console.log(`[email-inbox-poller] ✅ Matched via vendor domain to PO ${recentPO.order_id} (status: ${recentPO.status})`);
       return {
         poId: recentPO.id,
         confidence: Math.min(vendorLookup[0].confidence * 0.8, 0.75),
         method: 'sender_domain',
+        poSource: 'finale',
       };
     }
   }
@@ -889,30 +1073,35 @@ async function correlateEmailToPO(
     console.log(`[email-inbox-poller] Found PO number in body: ${poNumber}`);
 
     // Try finale_purchase_orders first
+    // FILTER: Within 30 days AND not received
     const { data: finalePO } = await supabase
       .from('finale_purchase_orders')
-      .select('id')
+      .select('id, status')
       .eq('order_id', poNumber)
+      .gte('order_date', thirtyDaysAgoISO)
+      .not('status', 'in', `(${excludedStatuses.join(',')})`)
       .single();
 
     if (finalePO) {
       console.log(`[email-inbox-poller] ✅ Matched body PO to finale_purchase_orders: ${finalePO.id}`);
-      return { poId: finalePO.id, confidence: 0.80, method: 'body_match' };
+      return { poId: finalePO.id, confidence: 0.80, method: 'body_match', poSource: 'finale' };
     }
 
     const { data: po } = await supabase
       .from('purchase_orders')
       .select('id')
       .or(`order_id.eq.${poNumber},order_id.eq.PO-${poNumber}`)
+      .gte('created_at', thirtyDaysAgoISO)
+      .not('status', 'in', `(${excludedStatuses.map(s => s.toLowerCase()).join(',')})`)
       .limit(1)
       .single();
 
     if (po) {
-      return { poId: po.id, confidence: 0.80, method: 'body_match' };
+      return { poId: po.id, confidence: 0.80, method: 'body_match', poSource: 'custom' };
     }
   }
 
-  return { poId: null, confidence: 0, method: 'none' };
+  return { poId: null, confidence: 0, method: 'none', poSource: null };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

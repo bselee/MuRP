@@ -1046,6 +1046,15 @@ export interface FinalePurchaseOrderRecord {
   syncedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  // Email correlation fields (from email_threads join)
+  hasEmailThread?: boolean;
+  emailThreadId?: string;
+  emailMessageCount?: number;
+  emailLastVendorReply?: string;
+  emailLastSentAt?: string;
+  emailSentiment?: 'positive' | 'neutral' | 'negative';
+  emailAwaitingResponse?: boolean;
+  emailHasTrackingInfo?: boolean;
 }
 
 /**

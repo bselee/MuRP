@@ -17,6 +17,7 @@ import type {
     RequisitionRequestOptions,
 } from '../types';
 import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon, Squares2X2Icon, ListBulletIcon } from '../components/icons';
+import PODeliveryTimeline from '../components/PODeliveryTimeline';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CreatePoModal from '../components/CreatePoModal';
 import Modal from '../components/Modal';
@@ -114,6 +115,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default newest first
     const [isAgentSettingsOpen, setIsAgentSettingsOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
+
+    // Finale PO tracking modal state
+    const [finaleTrackingModal, setFinaleTrackingModal] = useState<{
+        isOpen: boolean;
+        orderId: string;
+        currentTracking?: string;
+        currentCarrier?: string;
+    }>({ isOpen: false, orderId: '' });
+    const [finaleTrackingInput, setFinaleTrackingInput] = useState({ number: '', carrier: '', eta: '' });
+    const [savingFinaleTracking, setSavingFinaleTracking] = useState(false);
 
     // Date filter with localStorage persistence
     const [dateFilter, setDateFilter] = useState<'all' | '30days' | '90days' | '12months'>(() => {
@@ -418,6 +429,37 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         await onUpdateTracking(selectedPoForTracking.id, updates);
         setSelectedPoForTracking(null);
         setIsTrackingModalOpen(false);
+    };
+
+    // Handle Finale PO tracking update
+    const handleSaveFinaleTracking = async () => {
+        if (!finaleTrackingModal.orderId || !finaleTrackingInput.number) return;
+        setSavingFinaleTracking(true);
+        try {
+            const { supabase } = await import('../lib/supabase/client');
+            const { error } = await supabase.rpc('update_finale_po_tracking', {
+                p_order_id: finaleTrackingModal.orderId,
+                p_tracking_number: finaleTrackingInput.number,
+                p_carrier: finaleTrackingInput.carrier || null,
+                p_estimated_delivery: finaleTrackingInput.eta || null,
+                p_source: 'manual',
+            });
+
+            if (error) {
+                console.error('Failed to save tracking:', error);
+                addToast('Failed to save tracking: ' + error.message, 'error');
+            } else {
+                addToast('Tracking updated successfully', 'success');
+                setFinaleTrackingModal({ isOpen: false, orderId: '' });
+                setFinaleTrackingInput({ number: '', carrier: '', eta: '' });
+                // Refresh the page to show updated tracking
+                window.location.reload();
+            }
+        } catch (err: any) {
+            console.error('Error saving tracking:', err);
+            addToast('Failed to save tracking', 'error');
+        }
+        setSavingFinaleTracking(false);
     };
 
     const handleReceivePO = (po: PurchaseOrder) => {
@@ -866,6 +908,24 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 </div>
                                             </div>
 
+                                            {/* Delivery Timeline - Always visible */}
+                                            <div className="px-3 pb-2">
+                                                <PODeliveryTimeline
+                                                    status={fpo.status}
+                                                    trackingStatus={fpo.trackingStatus}
+                                                    orderDate={fpo.orderDate}
+                                                    expectedDate={fpo.expectedDate}
+                                                    shippedDate={fpo.trackingShippedDate}
+                                                    deliveredDate={fpo.trackingDeliveredDate || fpo.receivedDate}
+                                                    trackingNumber={fpo.trackingNumber}
+                                                    carrier={fpo.trackingCarrier}
+                                                    trackingException={fpo.trackingLastException}
+                                                    trackingEvents={fpo.trackingEvents}
+                                                    isDark={isDark}
+                                                    expandable={true}
+                                                />
+                                            </div>
+
                                             {/* Expanded Details */}
                                             {isExpanded && (
                                                 <div className={`relative p-4 space-y-4 border-t backdrop-blur-lg ${isDark
@@ -1041,8 +1101,34 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                         </div>
                                                     )}
 
+                                                    {/* Actions */}
+                                                    <div className={`flex items-center gap-2 pt-3 border-t ${isDark ? 'border-white/5' : 'border-amber-200'}`}>
+                                                        <Button
+                                                            onClick={() => {
+                                                                setFinaleTrackingModal({
+                                                                    isOpen: true,
+                                                                    orderId: fpo.orderId,
+                                                                    currentTracking: fpo.trackingNumber,
+                                                                    currentCarrier: fpo.trackingCarrier,
+                                                                });
+                                                                setFinaleTrackingInput({
+                                                                    number: fpo.trackingNumber || '',
+                                                                    carrier: fpo.trackingCarrier || '',
+                                                                    eta: fpo.trackingEstimatedDelivery?.split('T')[0] || '',
+                                                                });
+                                                            }}
+                                                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ${isDark
+                                                                ? 'bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/30 border border-cyan-600/30'
+                                                                : 'bg-cyan-50 text-cyan-700 hover:bg-cyan-100 border border-cyan-200'
+                                                            }`}
+                                                        >
+                                                            <TruckIcon className="w-3.5 h-3.5" />
+                                                            {fpo.trackingNumber ? 'Edit Tracking' : 'Add Tracking'}
+                                                        </Button>
+                                                    </div>
+
                                                     {/* Metadata */}
-                                                    <div className={`flex items-center justify-between pt-3 border-t text-xs ${isDark ? 'border-white/5 text-gray-500' : 'border-amber-200 text-gray-500'}`}>
+                                                    <div className={`flex items-center justify-between pt-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
                                                         <div>Finale: <span className={`font-mono ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{fpo.finaleOrderUrl}</span></div>
                                                         <div>Modified: {fpo.finaleLastModified ? new Date(fpo.finaleLastModified).toLocaleString() : 'N/A'}</div>
                                                     </div>
@@ -1432,6 +1518,84 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 purchaseOrder={selectedPoForTracking}
                 onSave={handleSaveTracking}
             />
+
+            {/* Finale PO Tracking Modal */}
+            <Modal
+                isOpen={finaleTrackingModal.isOpen}
+                onClose={() => setFinaleTrackingModal({ isOpen: false, orderId: '' })}
+                title={`Add Tracking · PO #${finaleTrackingModal.orderId}`}
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Tracking Number *
+                        </label>
+                        <input
+                            type="text"
+                            value={finaleTrackingInput.number}
+                            onChange={(e) => setFinaleTrackingInput(prev => ({ ...prev, number: e.target.value }))}
+                            placeholder="e.g., 1Z999AA10123456784"
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${isDark
+                                ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:ring-cyan-500'
+                                : 'bg-white border-amber-200 text-gray-900 placeholder-gray-400 focus:ring-amber-500'
+                            }`}
+                        />
+                    </div>
+                    <div>
+                        <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Carrier
+                        </label>
+                        <select
+                            value={finaleTrackingInput.carrier}
+                            onChange={(e) => setFinaleTrackingInput(prev => ({ ...prev, carrier: e.target.value }))}
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${isDark
+                                ? 'bg-gray-800 border-gray-700 text-white focus:ring-cyan-500'
+                                : 'bg-white border-amber-200 text-gray-900 focus:ring-amber-500'
+                            }`}
+                        >
+                            <option value="">Select carrier...</option>
+                            <option value="UPS">UPS</option>
+                            <option value="FedEx">FedEx</option>
+                            <option value="USPS">USPS</option>
+                            <option value="DHL">DHL</option>
+                            <option value="LTL">LTL Freight</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className={`block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            Estimated Delivery
+                        </label>
+                        <input
+                            type="date"
+                            value={finaleTrackingInput.eta}
+                            onChange={(e) => setFinaleTrackingInput(prev => ({ ...prev, eta: e.target.value }))}
+                            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${isDark
+                                ? 'bg-gray-800 border-gray-700 text-white focus:ring-cyan-500'
+                                : 'bg-white border-amber-200 text-gray-900 focus:ring-amber-500'
+                            }`}
+                        />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button
+                            onClick={() => setFinaleTrackingModal({ isOpen: false, orderId: '' })}
+                            className={`px-4 py-2 text-sm ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleSaveFinaleTracking}
+                            disabled={!finaleTrackingInput.number || savingFinaleTracking}
+                            className={`px-4 py-2 text-sm rounded-lg disabled:opacity-50 ${isDark
+                                ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                                : 'bg-amber-500 hover:bg-amber-600 text-white'
+                            }`}
+                        >
+                            {savingFinaleTracking ? 'Saving...' : 'Save Tracking'}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
 
             {
                 isAdminLike && (

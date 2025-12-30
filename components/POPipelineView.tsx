@@ -5,7 +5,7 @@
 import React, { useMemo, useState } from 'react';
 import { useTheme } from './ThemeProvider';
 import Button from './ui/Button';
-import { PackageIcon, TruckIcon, CheckCircleIcon, ClockIcon, AlertTriangleIcon, ChevronRightIcon } from './icons';
+import { PackageIcon, TruckIcon, CheckCircleIcon, ClockIcon, AlertTriangleIcon, ChevronRightIcon, MailIcon, MessageCircleIcon } from './icons';
 import type { FinalePurchaseOrderRecord } from '../types';
 
 export type POPipelineStage = 'draft' | 'sent' | 'confirmed' | 'in_transit' | 'completed';
@@ -188,6 +188,64 @@ const StockoutCountdown: React.FC<{ risk: StockoutRisk; compact?: boolean }> = (
 };
 
 /**
+ * Email/Tracking Status Indicator component
+ * Shows visual cues for email correlation and tracking status
+ */
+const EmailTrackingIndicators: React.FC<{
+  po: FinalePurchaseOrderRecord;
+  isDark: boolean;
+}> = ({ po, isDark }) => {
+  const hasEmail = po.hasEmailThread || po.emailThreadId;
+  const hasTracking = po.trackingNumber || po.emailHasTrackingInfo;
+  const awaitingResponse = po.emailAwaitingResponse;
+  const hasVendorReply = po.emailLastVendorReply;
+
+  if (!hasEmail && !hasTracking) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 mt-1">
+      {/* Email indicator */}
+      {hasEmail && (
+        <div
+          className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+            awaitingResponse
+              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+              : hasVendorReply
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+          }`}
+          title={
+            awaitingResponse
+              ? 'Awaiting vendor response'
+              : hasVendorReply
+                ? `Vendor replied${po.emailMessageCount ? ` (${po.emailMessageCount} msgs)` : ''}`
+                : 'Email thread linked'
+          }
+        >
+          <MailIcon className="w-2.5 h-2.5" />
+          {po.emailMessageCount && po.emailMessageCount > 1 && (
+            <span>{po.emailMessageCount}</span>
+          )}
+          {awaitingResponse && <span>!</span>}
+          {hasVendorReply && !awaitingResponse && <CheckCircleIcon className="w-2 h-2" />}
+        </div>
+      )}
+
+      {/* Tracking indicator (if from email and no carrier tracking yet) */}
+      {po.emailHasTrackingInfo && !po.trackingNumber && (
+        <div
+          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30"
+          title="Tracking info found in email"
+        >
+          <TruckIcon className="w-2.5 h-2.5" />
+          <span>📧</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
  * PO Card component for pipeline view
  */
 const POCard: React.FC<{
@@ -198,6 +256,7 @@ const POCard: React.FC<{
 }> = ({ po, stockoutRisk, onClick, isDark }) => {
   const isPartial = hasPartialReceipt(po);
   const overdue = isOverdue(po);
+  const hasEmailCorrelation = po.hasEmailThread || po.emailThreadId;
 
   return (
     <div
@@ -206,7 +265,7 @@ const POCard: React.FC<{
         isDark
           ? 'bg-slate-800/50 border-slate-700 hover:border-amber-500/50'
           : 'bg-white border-gray-200 hover:border-amber-400 shadow-sm'
-      }`}
+      } ${hasEmailCorrelation ? (isDark ? 'ring-1 ring-blue-500/30' : 'ring-1 ring-blue-400/30') : ''}`}
     >
       {/* Header: PO Number + Badges */}
       <div className="flex items-center justify-between mb-2">
@@ -228,12 +287,15 @@ const POCard: React.FC<{
       </div>
 
       {/* Vendor */}
-      <div className={`text-sm truncate mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+      <div className={`text-sm truncate mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
         {po.vendorName || 'Unknown Vendor'}
       </div>
 
+      {/* Email/Tracking indicators - NEW */}
+      <EmailTrackingIndicators po={po} isDark={isDark} />
+
       {/* Footer: Total + Stockout Risk */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mt-2">
         <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
           ${(po.total || 0).toLocaleString()}
         </span>
@@ -242,12 +304,12 @@ const POCard: React.FC<{
         )}
       </div>
 
-      {/* Tracking indicator */}
+      {/* Tracking indicator (carrier tracking) */}
       {po.trackingNumber && (
         <div className={`mt-2 pt-2 border-t flex items-center gap-1 text-xs ${
           isDark ? 'border-slate-700 text-gray-400' : 'border-gray-100 text-gray-500'
         }`}>
-          <TruckIcon className="w-3 h-3" />
+          <TruckIcon className="w-3 h-3 text-green-500" />
           <span className="truncate">{po.trackingCarrier || 'Tracking'}: {po.trackingNumber.slice(0, 12)}...</span>
         </div>
       )}
