@@ -1010,7 +1010,7 @@ const BOMs: React.FC<BOMsProps> = ({
       {/* Search, Filters, and Controls */}
       <CollapsibleSection
         title="Search & Filters"
-        icon={<AdjustmentsHorizontalIcon className="w-6 h-6 text-blue-400" />}
+        icon={<AdjustmentsHorizontalIcon className={`w-6 h-6 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />}
         variant="card"
         isOpen={isFiltersOpen}
         onToggle={() => setIsFiltersOpen(!isFiltersOpen)}

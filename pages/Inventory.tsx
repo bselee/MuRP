@@ -851,7 +851,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     return (
                         <div
                             onClick={() => onNavigateToProduct?.(item.sku)}
-                            className="font-mono font-medium text-accent-400 hover:text-accent-300 hover:underline cursor-pointer"
+                            className={`font-mono font-bold cursor-pointer transition-colors ${isDark 
+                                ? 'text-amber-400 hover:text-amber-300' 
+                                : 'text-amber-700 hover:text-amber-600'} hover:underline decoration-dotted`}
                             title="Click to view product details"
                         >
                             {item.sku}
@@ -879,7 +881,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     <div className="relative inline-block mt-0.5">
                                         <span
                                             onClick={() => handleBomClick(item)}
-                                            className="cursor-pointer hover:text-accent-400 text-xs text-blue-400 transition-colors"
+                                            className={`cursor-pointer text-xs transition-colors ${isDark 
+                                                ? 'text-amber-400 hover:text-amber-300' 
+                                                : 'text-amber-600 hover:text-amber-500'}`}
                                             title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
                                         >
                                             BOM ({bomCount})
@@ -1123,7 +1127,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 <div className="space-y-6">
                     <CollapsibleSection
                         title="Search & Filters"
-                        icon={<AdjustmentsHorizontalIcon className="w-6 h-6 text-blue-400" />}
+                        icon={<AdjustmentsHorizontalIcon className={`w-6 h-6 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />}
                         variant="card"
                         isOpen={isFiltersOpen}
                         onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
