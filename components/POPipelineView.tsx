@@ -5,7 +5,9 @@
 import React, { useMemo, useState } from 'react';
 import { useTheme } from './ThemeProvider';
 import Button from './ui/Button';
-import { PackageIcon, TruckIcon, CheckCircleIcon, ClockIcon, AlertTriangleIcon, ChevronRightIcon, MailIcon, MessageCircleIcon } from './icons';
+import { PackageIcon, TruckIcon, CheckCircleIcon, ClockIcon, AlertTriangleIcon, ChevronRightIcon, MailIcon, MessageCircleIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
+import { VendorResponseIndicator } from './VendorResponseIndicator';
+import { PendingFollowupsPanel } from './PendingFollowupsPanel';
 import type { FinalePurchaseOrderRecord } from '../types';
 
 export type POPipelineStage = 'draft' | 'sent' | 'confirmed' | 'in_transit' | 'completed';
@@ -33,6 +35,9 @@ interface POPipelineViewProps {
   onPOClick?: (po: FinalePurchaseOrderRecord) => void;
   onStageClick?: (stage: POPipelineStage) => void;
   compact?: boolean; // For dashboard widget mode
+  onSendFollowup?: (po: FinalePurchaseOrderRecord) => Promise<void>;
+  onMarkResolved?: (po: FinalePurchaseOrderRecord) => Promise<void>;
+  showPendingFollowups?: boolean; // Show collapsible pending followups panel
 }
 
 const STAGE_CONFIG: POPipelineStageConfig[] = [
@@ -286,13 +291,40 @@ const POCard: React.FC<{
         </div>
       </div>
 
-      {/* Vendor */}
-      <div className={`text-sm truncate mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-        {po.vendorName || 'Unknown Vendor'}
+      {/* Vendor + Response Status */}
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className={`text-sm truncate flex-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+          {po.vendorName || 'Unknown Vendor'}
+        </div>
+        {/* Vendor Response Indicator - Green for good, Red for problem */}
+        <VendorResponseIndicator po={po} isDark={isDark} compact />
       </div>
 
-      {/* Email/Tracking indicators - NEW */}
+      {/* Email/Tracking indicators */}
       <EmailTrackingIndicators po={po} isDark={isDark} />
+
+      {/* Vendor Response Status (expanded view when has issues) */}
+      {(po.vendorResponseRequiresAction || po.needsFollowup) && (
+        <div className={`mt-2 p-2 rounded border text-xs ${
+          isDark
+            ? 'bg-red-500/10 border-red-500/30 text-red-300'
+            : 'bg-red-50 border-red-200 text-red-700'
+        }`}>
+          <div className="flex items-center gap-1">
+            <AlertTriangleIcon className="w-3 h-3" />
+            <span className="font-medium">
+              {po.vendorResponseActionType || 'Action Required'}
+            </span>
+          </div>
+          {po.vendorResponseActionDueBy && (
+            <div className={`mt-1 text-[10px] ${
+              new Date(po.vendorResponseActionDueBy) < new Date() ? 'font-bold' : 'opacity-75'
+            }`}>
+              Due: {new Date(po.vendorResponseActionDueBy).toLocaleDateString()}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Footer: Total + Stockout Risk */}
       <div className="flex items-center justify-between mt-2">
@@ -408,6 +440,9 @@ export const POPipelineView: React.FC<POPipelineViewProps> = ({
   onPOClick,
   onStageClick,
   compact = false,
+  onSendFollowup,
+  onMarkResolved,
+  showPendingFollowups = true,
 }) => {
   const { isDark } = useTheme();
 
@@ -511,6 +546,16 @@ export const POPipelineView: React.FC<POPipelineViewProps> = ({
   // Full pipeline view
   return (
     <div className="space-y-4">
+      {/* Pending Followups Panel - Collapsible */}
+      {showPendingFollowups && (
+        <PendingFollowupsPanel
+          purchaseOrders={purchaseOrders}
+          onPOClick={onPOClick}
+          onSendFollowup={onSendFollowup}
+          onMarkResolved={onMarkResolved}
+        />
+      )}
+
       {/* Summary bar */}
       <div className={`flex items-center justify-between p-3 rounded-lg ${
         isDark ? 'bg-slate-800/50 border border-slate-700' : 'bg-gray-50 border border-gray-200'

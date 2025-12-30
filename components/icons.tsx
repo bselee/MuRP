@@ -15,6 +15,7 @@ import {
   Bot,
   Box,
   Braces,
+  Building2,
   Cpu,
   Calendar as CalendarIconBase,
   CalendarClock,
@@ -139,6 +140,7 @@ export const PackageIcon = wrapIcon(Package);
 export const TruckIcon = wrapIcon(Truck);
 export const DocumentTextIcon = wrapIcon(FileText);
 export const UsersIcon = wrapIcon(Users);
+export const BuildingOffice2Icon = wrapIcon(Building2);
 export const ChartBarIcon = wrapIcon(BarChart3);
 export const CogIcon = wrapIcon(Settings);
 export const SettingsIcon = wrapIcon(Settings);

@@ -12,7 +12,9 @@
     "test:transformers": "tsx lib/schema/transformers.smoke.ts",
     "test:transformers:all": "tsx lib/schema/transformers.runner.ts",
     "test:inventory-ui": "tsx tests/inventoryDisplay.test.ts",
-    "test": "npm run -s test:transformers && npm run -s test:transformers:all && npm run -s test:inventory-ui",
+    "test:invoice": "node --import tsx --test tests/invoiceExtraction.test.ts",
+    "test:invoice-integration": "node --import tsx --test tests/invoiceExtractor.integration.test.ts",
+    "test": "npm run -s test:transformers && npm run -s test:transformers:all && npm run -s test:inventory-ui && npm run -s test:invoice",
     "e2e": "npm run -s build && playwright test",
     "e2e:ui": "npm run -s build && playwright test --ui"
   },

@@ -41,6 +41,7 @@ import ResetPassword from './pages/ResetPassword';
 import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
 import { usePermissions } from './hooks/usePermissions';
+import useSyncErrorNotifications from './hooks/useSyncErrorNotifications';
 import {
   useSupabaseInventory,
   useSupabaseVendors,
@@ -1608,6 +1609,15 @@ const AppShell: React.FC = () => {
     }
   };
   const isOpsAdmin = currentUser ? currentUser.role === 'Admin' || currentUser.department === 'Operations' : false;
+
+  // Monitor for sync errors and show toast notifications (Admin only)
+  useSyncErrorNotifications({
+    addToast,
+    isAdmin: isOpsAdmin,
+    enabled: hasInitialDataLoaded,
+    maxAgeMinutes: 15,
+    pollIntervalMs: 60000, // Check every minute
+  });
 
   const pendingRequisitionCount = useMemo(() => {
     if (!currentUser) return 0;

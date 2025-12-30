@@ -36,6 +36,7 @@ interface InboxConfig {
   id: string;
   inbox_name: string;
   email_address: string;
+  inbox_purpose: 'purchasing' | 'accounting' | 'general';
   // Legacy ref-based credentials (deprecated)
   gmail_client_id: string | null;
   gmail_client_secret_ref: string | null;
@@ -65,6 +66,8 @@ interface PollResult {
   trackingFound: number;
   alertsGenerated: number;
   engagementsRecorded: number;
+  invoicesFound: number;
+  statementsFound: number;
   newHistoryId: string | null;
   error?: string;
 }
@@ -147,6 +150,8 @@ serve(async (req) => {
       tracking_numbers_found: results.reduce((sum, r) => sum + r.trackingFound, 0),
       alerts_generated: results.reduce((sum, r) => sum + r.alertsGenerated, 0),
       engagements_recorded: results.reduce((sum, r) => sum + r.engagementsRecorded, 0),
+      invoices_found: results.reduce((sum, r) => sum + r.invoicesFound, 0),
+      statements_found: results.reduce((sum, r) => sum + r.statementsFound, 0),
     };
 
     // Complete agent run
@@ -218,6 +223,8 @@ async function pollInbox(inbox: InboxConfig): Promise<PollResult> {
     trackingFound: 0,
     alertsGenerated: 0,
     engagementsRecorded: 0,
+    invoicesFound: 0,
+    statementsFound: 0,
     newHistoryId: null,
   };
 
@@ -270,9 +277,33 @@ async function pollInbox(inbox: InboxConfig): Promise<PollResult> {
         if (processResult.trackingFound) result.trackingFound++;
         if (processResult.alertGenerated) result.alertsGenerated++;
         if (processResult.engagementRecorded) result.engagementsRecorded++;
+        result.invoicesFound += processResult.invoicesFound;
+        result.statementsFound += processResult.statementsFound;
       } catch (msgError) {
         console.error(`[email-inbox-poller] Error processing message ${message.id}:`, msgError);
       }
+    }
+
+    // After processing all messages, run cross-thread correlation
+    // This finds vendor responses in other threads that may relate to awaiting POs
+    try {
+      const { data: correlationsFound } = await supabase.rpc('correlate_vendor_responses');
+      if (correlationsFound && correlationsFound > 0) {
+        console.log(`[email-inbox-poller] Cross-thread correlation found ${correlationsFound} matches`);
+      }
+    } catch (corrError) {
+      console.warn(`[email-inbox-poller] Cross-thread correlation error:`, corrError);
+    }
+
+    // Generate follow-up alerts for threads awaiting response > 48 hours
+    try {
+      const { data: alertsGenerated } = await supabase.rpc('generate_followup_alerts');
+      if (alertsGenerated && alertsGenerated > 0) {
+        console.log(`[email-inbox-poller] Generated ${alertsGenerated} vendor follow-up alerts`);
+        result.alertsGenerated += alertsGenerated;
+      }
+    } catch (alertError) {
+      console.warn(`[email-inbox-poller] Follow-up alert generation error:`, alertError);
     }
 
     // Update inbox config with new history ID and stats
@@ -621,6 +652,26 @@ interface ProcessResult {
   trackingFound: boolean;
   alertGenerated: boolean;
   engagementRecorded: boolean;
+  invoicesFound: number;
+  statementsFound: number;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Attachment Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface AttachmentInfo {
+  attachmentId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  partId: string;
+}
+
+interface AttachmentClassification {
+  type: 'invoice' | 'statement' | 'packing_slip' | 'pod' | 'quote' | 'credit_memo' | 'other';
+  confidence: number;
+  reason: string;
 }
 
 async function processMessage(
@@ -635,6 +686,8 @@ async function processMessage(
     trackingFound: false,
     alertGenerated: false,
     engagementRecorded: false,
+    invoicesFound: 0,
+    statementsFound: 0,
   };
 
   // Check if message already processed
@@ -749,23 +802,11 @@ async function processMessage(
   if (trackingInfo.trackingNumber) {
     result.trackingFound = true;
 
-    // Get PO number for AfterShip registration
-    let poNumber: string | null = null;
-    if (correlation.poId) {
-      const { data: po } = await supabase
-        .from('purchase_orders')
-        .select('order_id')
-        .eq('id', correlation.poId)
-        .single();
-      poNumber = po?.order_id || null;
-    }
-
-    // AUTO-REGISTER in tracking cache for tracking updates
+    // AUTO-REGISTER in tracking cache and update PO
     await registerTrackingInCache(
       trackingInfo.trackingNumber,
       trackingInfo.carrier,
-      correlation.poId,
-      poNumber
+      correlation.poId
     );
   }
 
@@ -842,6 +883,20 @@ async function processMessage(
       );
       result.engagementRecorded = true;
     }
+  }
+
+  // Process attachments for invoices and statements
+  if (hasAttachments(message)) {
+    const attachmentResults = await processMessageAttachments(
+      inbox,
+      message,
+      threadId,
+      correlation.poId,
+      accessToken,
+      user
+    );
+    result.invoicesFound = attachmentResults.invoicesFound;
+    result.statementsFound = attachmentResults.statementsFound;
   }
 
   return result;
@@ -1111,22 +1166,9 @@ async function correlateEmailToPO(
 async function registerTrackingInCache(
   trackingNumber: string,
   carrier: string | null,
-  poId: string | null,
-  poNumber: string | null
+  poId: string | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Check if already registered
-    const { data: existing } = await supabase
-      .from('tracking_cache')
-      .select('id')
-      .eq('tracking_number', trackingNumber)
-      .single();
-
-    if (existing) {
-      console.log(`[email-inbox-poller] Tracking ${trackingNumber} already in cache`);
-      return { success: true };
-    }
-
     // Map carrier name to standard slug
     const slugMap: Record<string, string> = {
       UPS: 'ups',
@@ -1136,39 +1178,57 @@ async function registerTrackingInCache(
     };
     const slug = carrier ? slugMap[carrier] || carrier.toLowerCase() : 'unknown';
 
-    // Store in tracking cache
-    await supabase.from('tracking_cache').insert({
-      tracking_number: trackingNumber,
-      carrier: slug,
-      status: 'Pending',
-      status_description: 'Awaiting carrier update',
-      source: 'email',
-      confidence: 0.8,
-      last_update: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
+    // Check if already registered in cache
+    const { data: existing } = await supabase
+      .from('tracking_cache')
+      .select('id')
+      .eq('tracking_number', trackingNumber)
+      .single();
 
-    // Update PO with tracking info
+    if (!existing) {
+      // Store in tracking cache
+      await supabase.from('tracking_cache').insert({
+        tracking_number: trackingNumber,
+        carrier: slug,
+        status: 'Pending',
+        status_description: 'Awaiting carrier update',
+        source: 'email',
+        confidence: 0.8,
+        last_update: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+
+    // Update PO with tracking info (try both tables - only one will match)
     if (poId) {
-      await supabase
+      const trackingUpdate = {
+        tracking_number: trackingNumber,
+        tracking_carrier: carrier || slug.toUpperCase(),
+        tracking_status: 'processing',
+      };
+
+      // Try finale_purchase_orders
+      const { data: finaleUpdated } = await supabase
+        .from('finale_purchase_orders')
+        .update(trackingUpdate)
+        .eq('id', poId)
+        .select('id')
+        .single();
+
+      // Try purchase_orders
+      const { data: customUpdated } = await supabase
         .from('purchase_orders')
         .update({
-          tracking_number: trackingNumber,
-          tracking_carrier: carrier || slug.toUpperCase(),
-          tracking_status: 'processing',
+          ...trackingUpdate,
           tracking_last_checked_at: new Date().toISOString(),
         })
-        .eq('id', poId);
+        .eq('id', poId)
+        .select('id')
+        .single();
 
-      // Also update finale_purchase_orders if applicable
-      await supabase
-        .from('finale_purchase_orders')
-        .update({
-          tracking_number: trackingNumber,
-          tracking_carrier: carrier || slug.toUpperCase(),
-          tracking_status: 'processing',
-        })
-        .eq('id', poId);
+      if (finaleUpdated || customUpdated) {
+        console.log(`[email-inbox-poller] ✅ Updated PO ${poId} with tracking ${trackingNumber}`);
+      }
     }
 
     console.log(`[email-inbox-poller] ✅ Registered tracking ${trackingNumber} in cache`);
@@ -1365,8 +1425,7 @@ async function processDisputeResponse(
         await registerTrackingInCache(
           trackingInfo.trackingNumber,
           trackingInfo.carrier,
-          poId,
-          null
+          poId
         );
       }
 
@@ -1590,4 +1649,488 @@ async function recordDisputeResolution(
     },
     trust_impact: successful ? 0.02 : -0.05, // Small positive for resolution, larger negative for escalation
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Invoice & Statement Attachment Processing
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Process all attachments in a message for invoices and statements
+ *
+ * FLEXIBLE INBOX ROUTING:
+ * - Single inbox (purchasing only): All flows through one inbox - POs, invoices, statements
+ * - Dual inbox (purchasing + AP):
+ *   - Purchasing: POs + invoices that arrive with PO correspondence
+ *   - AP/Accounting: Invoices + statements only (never POs)
+ * - Invoices must correlate with POs regardless of which inbox they came from
+ *
+ * User requirements:
+ * - Invoices: Review, compare to PO, note shipping/tax variances
+ * - Statements: Identify but leave unprocessed ("another beast, another project")
+ */
+async function processMessageAttachments(
+  inbox: InboxConfig,
+  message: GmailMessage,
+  threadId: string,
+  poId: string | null,
+  accessToken: string,
+  user: string
+): Promise<{ invoicesFound: number; statementsFound: number }> {
+  const results = { invoicesFound: 0, statementsFound: 0 };
+
+  try {
+    // Determine inbox purpose - default to 'purchasing' for backwards compatibility
+    // If only one inbox is configured, treat it as handling everything
+    const inboxPurpose = inbox.inbox_purpose || 'purchasing';
+
+    // Extract attachment info from message
+    const attachments = extractAttachmentInfo(message);
+
+    if (attachments.length === 0) {
+      return results;
+    }
+
+    console.log(`[email-inbox-poller] Found ${attachments.length} attachment(s) in message ${message.id}`);
+
+    // Get the message ID from the database for foreign key
+    const { data: dbMessage } = await supabase
+      .from('email_thread_messages')
+      .select('id')
+      .eq('gmail_message_id', message.id)
+      .single();
+
+    const messageDbId = dbMessage?.id;
+
+    for (const attachment of attachments) {
+      try {
+        // Skip non-document attachments (images that aren't scans, etc.)
+        if (!isDocumentAttachment(attachment)) {
+          console.log(`[email-inbox-poller] Skipping non-document: ${attachment.filename}`);
+          continue;
+        }
+
+        // Classify the attachment based on filename and content hints
+        const classification = classifyAttachment(attachment, message);
+
+        console.log(`[email-inbox-poller] Classified ${attachment.filename} as ${classification.type} (${classification.confidence})`);
+
+        // Download attachment to get content hash for deduplication
+        const attachmentData = await downloadAttachment(
+          accessToken,
+          user,
+          message.id,
+          attachment.attachmentId
+        );
+
+        if (!attachmentData) {
+          console.warn(`[email-inbox-poller] Could not download attachment: ${attachment.filename}`);
+          continue;
+        }
+
+        // Calculate content hash for deduplication
+        const contentHash = await calculateHash(attachmentData);
+
+        // Check if we've already processed this exact attachment
+        const { data: existingAttachment } = await supabase
+          .from('email_attachments')
+          .select('id, attachment_type')
+          .eq('content_hash', contentHash)
+          .single();
+
+        if (existingAttachment) {
+          console.log(`[email-inbox-poller] Duplicate attachment detected (hash: ${contentHash.slice(0, 8)}...)`);
+
+          // Record as duplicate but don't process again
+          await supabase.from('email_attachments').insert({
+            message_id: messageDbId,
+            thread_id: threadId,
+            gmail_attachment_id: attachment.attachmentId,
+            filename: attachment.filename,
+            mime_type: attachment.mimeType,
+            file_size: attachment.size,
+            content_hash: contentHash,
+            attachment_type: existingAttachment.attachment_type,
+            classification_confidence: classification.confidence,
+            processing_status: 'skipped',
+            processing_error: 'Duplicate of existing attachment',
+          });
+
+          // Still count it for stats
+          if (existingAttachment.attachment_type === 'invoice') results.invoicesFound++;
+          if (existingAttachment.attachment_type === 'statement') results.statementsFound++;
+          continue;
+        }
+
+        // Store attachment record
+        const { data: attachmentRecord } = await supabase
+          .from('email_attachments')
+          .insert({
+            message_id: messageDbId,
+            thread_id: threadId,
+            gmail_attachment_id: attachment.attachmentId,
+            filename: attachment.filename,
+            mime_type: attachment.mimeType,
+            file_size: attachment.size,
+            content_hash: contentHash,
+            attachment_type: classification.type,
+            classification_confidence: classification.confidence,
+            processing_status: classification.type === 'statement' ? 'skipped' : 'pending',
+            processing_error: classification.type === 'statement'
+              ? 'Statements deferred for separate processing'
+              : null,
+          })
+          .select('id')
+          .single();
+
+        // Handle based on classification
+        if (classification.type === 'invoice') {
+          results.invoicesFound++;
+
+          // Create invoice document record for processing
+          await createInvoiceDocument(
+            attachmentRecord?.id,
+            threadId,
+            inbox,
+            poId,
+            attachment.filename,
+            contentHash
+          );
+
+          console.log(`[email-inbox-poller] 📄 Invoice detected: ${attachment.filename}`);
+
+        } else if (classification.type === 'statement') {
+          results.statementsFound++;
+
+          // Per user: "Statements are another beast and for now should be left unread in inbox"
+          // We identify them but don't process them
+          await createStatementDocument(
+            attachmentRecord?.id,
+            threadId,
+            attachment.filename
+          );
+
+          console.log(`[email-inbox-poller] 📊 Statement detected (deferred): ${attachment.filename}`);
+        }
+        // Other attachment types (packing_slip, pod, etc.) are recorded but not specially processed
+
+      } catch (attachError) {
+        console.error(`[email-inbox-poller] Error processing attachment ${attachment.filename}:`, attachError);
+      }
+    }
+
+  } catch (error) {
+    console.error('[email-inbox-poller] Error in processMessageAttachments:', error);
+  }
+
+  return results;
+}
+
+/**
+ * Extract attachment metadata from Gmail message structure
+ */
+function extractAttachmentInfo(message: GmailMessage): AttachmentInfo[] {
+  const attachments: AttachmentInfo[] = [];
+
+  const traverseParts = (part: any, partId: string = '') => {
+    if (!part) return;
+
+    // Check if this part has an attachment
+    if (part.filename && part.filename.length > 0 && part.body?.attachmentId) {
+      attachments.push({
+        attachmentId: part.body.attachmentId,
+        filename: part.filename,
+        mimeType: part.mimeType || 'application/octet-stream',
+        size: part.body.size || 0,
+        partId: partId || part.partId || '',
+      });
+    }
+
+    // Recurse into nested parts
+    if (part.parts) {
+      part.parts.forEach((p: any, idx: number) => {
+        traverseParts(p, `${partId}.${idx}`);
+      });
+    }
+  };
+
+  traverseParts(message.payload);
+  return attachments;
+}
+
+/**
+ * Check if attachment is a document type we care about
+ */
+function isDocumentAttachment(attachment: AttachmentInfo): boolean {
+  const documentMimeTypes = [
+    'application/pdf',
+    'image/png',
+    'image/jpeg',
+    'image/tiff',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+    'application/vnd.ms-excel', // xls
+    'text/csv',
+  ];
+
+  const documentExtensions = ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.xlsx', '.xls', '.csv'];
+
+  const mimeMatch = documentMimeTypes.includes(attachment.mimeType);
+  const extMatch = documentExtensions.some(ext =>
+    attachment.filename.toLowerCase().endsWith(ext)
+  );
+
+  return mimeMatch || extMatch;
+}
+
+/**
+ * Classify attachment as invoice, statement, or other type
+ * Based on filename patterns and email context
+ */
+function classifyAttachment(
+  attachment: AttachmentInfo,
+  message: GmailMessage
+): AttachmentClassification {
+  const filename = attachment.filename.toLowerCase();
+  const subject = (message.payload?.headers?.find(h => h.name.toLowerCase() === 'subject')?.value || '').toLowerCase();
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STATEMENT DETECTION (identify first to avoid invoice false positives)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const statementPatterns = [
+    /statement/i,
+    /account.?statement/i,
+    /monthly.?statement/i,
+    /billing.?statement/i,
+    /account.?summary/i,
+    /balance.?due/i,
+    /aging.?report/i,
+    /ar.?statement/i,
+    /receivables/i,
+  ];
+
+  for (const pattern of statementPatterns) {
+    if (pattern.test(filename)) {
+      return { type: 'statement', confidence: 0.90, reason: 'filename_pattern' };
+    }
+    if (pattern.test(subject)) {
+      return { type: 'statement', confidence: 0.75, reason: 'subject_pattern' };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // INVOICE DETECTION
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const invoicePatterns = [
+    /invoice/i,
+    /inv[-_]?\d+/i,
+    /bill[-_]?of[-_]?sale/i,
+    /sales[-_]?order/i,
+    /order[-_]?confirmation/i,
+    /purchase[-_]?confirmation/i,
+  ];
+
+  for (const pattern of invoicePatterns) {
+    if (pattern.test(filename)) {
+      return { type: 'invoice', confidence: 0.90, reason: 'filename_pattern' };
+    }
+  }
+
+  // Check subject line for invoice keywords
+  if (/invoice|inv\s*#|bill\s*#/i.test(subject)) {
+    // PDF attachments with invoice-related subjects are likely invoices
+    if (attachment.mimeType === 'application/pdf' || filename.endsWith('.pdf')) {
+      return { type: 'invoice', confidence: 0.80, reason: 'subject_pattern_pdf' };
+    }
+    return { type: 'invoice', confidence: 0.65, reason: 'subject_pattern' };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // OTHER DOCUMENT TYPES
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // Packing slip detection
+  if (/packing|pack[-_]?slip|shipping[-_]?list/i.test(filename) ||
+      /packing|pack[-_]?slip/i.test(subject)) {
+    return { type: 'packing_slip', confidence: 0.85, reason: 'filename_or_subject' };
+  }
+
+  // Proof of delivery
+  if (/pod|proof.?of.?delivery|delivery.?receipt|signed.?delivery/i.test(filename) ||
+      /proof.?of.?delivery|pod/i.test(subject)) {
+    return { type: 'pod', confidence: 0.85, reason: 'filename_or_subject' };
+  }
+
+  // Quote/Estimate
+  if (/quote|quotation|estimate|proposal/i.test(filename) ||
+      /quote|quotation|estimate/i.test(subject)) {
+    return { type: 'quote', confidence: 0.80, reason: 'filename_or_subject' };
+  }
+
+  // Credit memo
+  if (/credit[-_]?memo|credit[-_]?note|refund/i.test(filename) ||
+      /credit[-_]?memo|credit[-_]?note/i.test(subject)) {
+    return { type: 'credit_memo', confidence: 0.85, reason: 'filename_or_subject' };
+  }
+
+  // Default: If it's a PDF from a vendor email thread, likely an invoice
+  if (attachment.mimeType === 'application/pdf' || filename.endsWith('.pdf')) {
+    return { type: 'invoice', confidence: 0.50, reason: 'pdf_default' };
+  }
+
+  return { type: 'other', confidence: 0.30, reason: 'unknown' };
+}
+
+/**
+ * Download attachment content from Gmail
+ */
+async function downloadAttachment(
+  accessToken: string,
+  user: string,
+  messageId: string,
+  attachmentId: string
+): Promise<Uint8Array | null> {
+  try {
+    const response = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(user)}/messages/${messageId}/attachments/${attachmentId}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`[email-inbox-poller] Failed to download attachment: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data.data) return null;
+
+    // Gmail returns base64url encoded data
+    const normalized = data.data.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = normalized.length % 4;
+    const padded = normalized + (pad ? '='.repeat(4 - pad) : '');
+
+    // Convert to Uint8Array
+    const binaryString = atob(padded);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    return bytes;
+  } catch (error) {
+    console.error('[email-inbox-poller] Error downloading attachment:', error);
+    return null;
+  }
+}
+
+/**
+ * Calculate SHA-256 hash of content for deduplication
+ */
+async function calculateHash(data: Uint8Array): Promise<string> {
+  // Convert Uint8Array to ArrayBuffer for crypto.subtle
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data.buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Create invoice document record for processing
+ */
+async function createInvoiceDocument(
+  attachmentId: string | undefined,
+  threadId: string,
+  inbox: InboxConfig,
+  poId: string | null,
+  _filename: string, // Used for logging, prefixed to indicate intentionally unused in function body
+  contentHash: string
+): Promise<void> {
+  try {
+    // Create a basic hash for deduplication (will be updated when invoice is parsed)
+    const invoiceHash = contentHash; // Use content hash initially
+
+    // Check for duplicate using content hash
+    const { data: duplicate } = await supabase
+      .from('vendor_invoice_documents')
+      .select('id')
+      .eq('invoice_hash', invoiceHash)
+      .eq('is_duplicate', false)
+      .single();
+
+    if (duplicate) {
+      console.log(`[email-inbox-poller] Invoice already exists, marking as duplicate`);
+
+      await supabase.from('vendor_invoice_documents').insert({
+        attachment_id: attachmentId,
+        email_thread_id: threadId,
+        source_inbox_id: inbox.id,
+        source_inbox_purpose: inbox.inbox_purpose || 'purchasing',
+        invoice_hash: invoiceHash,
+        is_duplicate: true,
+        duplicate_of: duplicate.id,
+        status: 'rejected',
+        review_notes: `Duplicate of existing invoice (detected from ${inbox.inbox_purpose} inbox)`,
+      });
+      return;
+    }
+
+    // Create new invoice document
+    // IMPORTANT: Invoices must correlate with POs regardless of which inbox they came from
+    // - Purchasing inbox: May already have poId from email thread correlation
+    // - AP inbox: Won't have poId from thread, but we'll attempt PO matching after extraction
+    const { data: invoiceDoc } = await supabase
+      .from('vendor_invoice_documents')
+      .insert({
+        attachment_id: attachmentId,
+        email_thread_id: threadId,
+        source_inbox_id: inbox.id,
+        source_inbox_purpose: inbox.inbox_purpose || 'purchasing',
+        invoice_hash: invoiceHash,
+        is_duplicate: false,
+        matched_po_id: poId, // Pre-fill if we have a correlated PO from purchasing inbox
+        po_match_confidence: poId ? 0.70 : null,
+        po_match_method: poId ? 'thread_correlation' : null,
+        // AP invoices need extraction + PO matching; Purchasing invoices may already have PO
+        status: poId ? 'pending_review' : 'pending_extraction',
+        extraction_method: 'pending',
+      })
+      .select('id')
+      .single();
+
+    console.log(`[email-inbox-poller] Created invoice document: ${invoiceDoc?.id} (from ${inbox.inbox_purpose || 'purchasing'} inbox)`);
+
+    // If invoice came from AP inbox without PO correlation, queue for PO matching after extraction
+    // This ensures invoices from AP can still be matched to POs from purchasing
+    if (!poId && invoiceDoc?.id) {
+      console.log(`[email-inbox-poller] Invoice from AP inbox - will attempt PO matching after extraction`);
+    }
+
+  } catch (error) {
+    console.error('[email-inbox-poller] Error creating invoice document:', error);
+  }
+}
+
+/**
+ * Create statement document record (identified but not processed)
+ * Per user: "Statements are another beast and for now should be left unread in inbox"
+ */
+async function createStatementDocument(
+  attachmentId: string | undefined,
+  threadId: string,
+  filename: string
+): Promise<void> {
+  try {
+    await supabase.from('vendor_statement_documents').insert({
+      attachment_id: attachmentId,
+      email_thread_id: threadId,
+      status: 'received',
+      notes: `Statement detected: ${filename}. Deferred for separate processing.`,
+    });
+
+    console.log(`[email-inbox-poller] Statement recorded (deferred): ${filename}`);
+  } catch (error) {
+    console.error('[email-inbox-poller] Error creating statement document:', error);
+  }
 }

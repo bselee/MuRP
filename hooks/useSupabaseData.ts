@@ -1805,7 +1805,7 @@ export function useSupabaseFinalePurchaseOrders(options?: {
       const targetYear = options?.year ?? new Date().getFullYear();
       const startOfYear = `${targetYear}-01-01`;
 
-      // Join with email_threads to get email correlation data
+      // Join with email_threads to get email correlation and vendor response data
       let query = supabase
         .from('finale_purchase_orders')
         .select(`
@@ -1817,7 +1817,16 @@ export function useSupabaseFinalePurchaseOrders(options?: {
             last_outbound_at,
             sentiment,
             requires_response,
-            has_tracking_info
+            has_tracking_info,
+            needs_followup,
+            followup_due_at,
+            followup_count,
+            vendor_response_status,
+            last_response_type,
+            response_requires_action,
+            response_action_type,
+            response_action_due_by,
+            response_classified_at
           )
         `)
         .gte('order_date', startOfYear)
@@ -1887,7 +1896,7 @@ export function useSupabaseFinalePurchaseOrders(options?: {
           createdAt: po.created_at,
           updatedAt: po.updated_at,
           isActive: po.is_active ?? true,
-          // Email correlation fields (NEW)
+          // Email correlation fields
           hasEmailThread: !!emailThread,
           emailThreadId: emailThread?.id,
           emailMessageCount: emailThread?.message_count,
@@ -1896,6 +1905,17 @@ export function useSupabaseFinalePurchaseOrders(options?: {
           emailSentiment: emailThread?.sentiment,
           emailAwaitingResponse: emailThread?.requires_response,
           emailHasTrackingInfo: emailThread?.has_tracking_info,
+          // Vendor response tracking fields
+          vendorResponseStatus: emailThread?.vendor_response_status,
+          vendorLastResponseType: emailThread?.last_response_type,
+          vendorResponseDate: emailThread?.last_inbound_at, // Actual vendor reply date
+          vendorResponseRequiresAction: emailThread?.response_requires_action,
+          vendorResponseActionType: emailThread?.response_action_type,
+          vendorResponseActionDueBy: emailThread?.response_action_due_by,
+          vendorFollowupCount: emailThread?.followup_count,
+          vendorFollowupDueAt: emailThread?.followup_due_at,
+          needsFollowup: emailThread?.needs_followup,
+          sentAt: po.sent_at, // When PO email was sent to vendor
         };
       });
 

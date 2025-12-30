@@ -801,6 +801,7 @@ export interface VendorConfidenceProfile {
   completenessScore: number;
   invoiceAccuracyScore: number;
   leadTimeScore: number;
+  followupResponseScore: number; // NEW: How often vendor responds well without issues
   trend: VendorConfidenceTrend;
   score30DaysAgo?: number | null;
   recommendedLeadTimeBufferDays: number;
@@ -816,6 +817,10 @@ export interface VendorConfidenceProfile {
   onTimePercentage?: number | null;
   totalPosCompleted?: number | null;
   leadTimeRiskLevel?: 'Low Risk' | 'Medium Risk' | 'High Risk' | null;
+  // Email response summary (from vendor_confidence_summary view)
+  emailResponsesCount?: number | null;
+  avgResponseTimeMinutes?: number | null;
+  problemResponsesCount?: number | null;
 }
 
 export interface VendorConfidenceHistoryPoint {
@@ -829,6 +834,40 @@ export interface VendorConfidenceHistoryPoint {
   invoiceAccuracyScore?: number | null;
   leadTimeScore?: number | null;
   communicationStatus?: VendorCommunicationStatus | null;
+}
+
+/**
+ * Unified Vendor Score with Real Examples
+ * Simple 1-10 score with expandable details showing actual PO history
+ */
+export interface VendorScoreWithExamples {
+  vendorId: string;
+  vendorName: string;
+  score: number; // 1-10 unified score
+  scoreBreakdown: {
+    responseSpeed: number;      // 1-10: How quickly they respond
+    deliveryReliability: number; // 1-10: On-time delivery rate
+    lowFollowupNeeded: number;  // 1-10: How often they respond without issues
+  };
+  recentExamples: Array<{
+    poNumber: string;
+    orderDate: string;
+    expectedDate?: string;
+    receivedDate?: string;
+    leadDays: number;
+    daysVsExpected?: number; // Positive = late, negative = early
+    status: 'on_time' | 'slightly_late' | 'late' | 'no_eta';
+  }>;
+  issuesSummary: Array<{
+    poNumber: string;
+    issueType: string;
+    actionNeeded?: string;
+    date: string;
+    resolved: boolean;
+    followupCount: number;
+    summary: string;
+  }>;
+  recommendation: string;
 }
 
 export interface VendorInteractionEvent {
@@ -1055,6 +1094,17 @@ export interface FinalePurchaseOrderRecord {
   emailSentiment?: 'positive' | 'neutral' | 'negative';
   emailAwaitingResponse?: boolean;
   emailHasTrackingInfo?: boolean;
+  // Vendor response tracking fields (from vendor follow-up system)
+  vendorResponseStatus?: 'awaiting' | 'responded' | 'followup_needed' | 'resolved';
+  vendorLastResponseType?: 'confirmation' | 'tracking_provided' | 'question' | 'delay_notice' | 'acknowledgment' | 'issue' | 'info_request' | 'price_quote' | 'unknown';
+  vendorResponseDate?: string;
+  vendorResponseRequiresAction?: boolean;
+  vendorResponseActionType?: string;
+  vendorResponseActionDueBy?: string;
+  vendorFollowupCount?: number;
+  vendorFollowupDueAt?: string;
+  needsFollowup?: boolean;
+  sentAt?: string; // When PO was emailed to vendor
 }
 
 /**

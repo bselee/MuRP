@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import Button from '@/components/ui/Button';
 import type { POTrackingStatus } from '../types';
 import type { TrackingTimelineEvent, TrackingHistoryRow } from '@/services/poTrackingService';
@@ -7,6 +7,7 @@ import {
   fetchTrackingTimeline,
   fetchTrackingHistoryRows,
 } from '../services/poTrackingService';
+import { supabase } from '../lib/supabase/client';
 import {
   RefreshCcwIcon,
   TruckIcon,
@@ -14,6 +15,8 @@ import {
   ArrowDownTrayIcon,
   XMarkIcon,
   ClockIcon,
+  ChatBubbleIcon,
+  CheckCircleIcon,
 } from './icons';
 
 const STATUS_LABELS: Record<POTrackingStatus, string> = {
@@ -42,7 +45,21 @@ const STATUS_COLORS: Record<POTrackingStatus, string> = {
   invoice_received: 'bg-teal-500/20 text-teal-100 border-teal-500/30',
 };
 
-const POTrackingDashboard: React.FC = () => {
+interface PendingFollowUp {
+  thread_id: string;
+  finale_po_id: string | null;
+  po_number: string | null;
+  vendor_name: string | null;
+  days_since_outbound: number;
+  urgency: 'critical' | 'high' | 'medium' | 'low';
+  suggested_action: string | null;
+}
+
+interface POTrackingDashboardProps {
+  addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
+}
+
+const POTrackingDashboard: React.FC<POTrackingDashboardProps> = ({ addToast }) => {
   const [loading, setLoading] = useState(false);
   const [trackedPos, setTrackedPos] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +68,24 @@ const POTrackingDashboard: React.FC = () => {
   const [timelineEvents, setTimelineEvents] = useState<TrackingTimelineEvent[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [pendingFollowups, setPendingFollowups] = useState<PendingFollowUp[]>([]);
+
+  const loadFollowups = useCallback(async () => {
+    try {
+      const { data, error: err } = await supabase
+        .from('pending_vendor_followups')
+        .select('thread_id, finale_po_id, po_number, vendor_name, days_since_outbound, urgency, suggested_action')
+        .eq('vendor_recently_active', false)
+        .in('urgency', ['critical', 'high', 'medium'])
+        .order('days_since_outbound', { ascending: false })
+        .limit(5);
+      if (!err && data) {
+        setPendingFollowups(data);
+      }
+    } catch (e) {
+      console.error('[POTrackingDashboard] followups load failed', e);
+    }
+  }, []);
 
   const refresh = async () => {
     try {
@@ -58,11 +93,31 @@ const POTrackingDashboard: React.FC = () => {
       setError(null);
       const data = await fetchTrackedPurchaseOrders();
       setTrackedPos(data);
+      await loadFollowups();
     } catch (err) {
       console.error('[POTrackingDashboard] refresh failed', err);
       setError(err instanceof Error ? err.message : 'Failed to load tracking data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const dismissFollowup = async (threadId: string) => {
+    try {
+      await supabase
+        .from('vendor_followup_alerts')
+        .update({ status: 'dismissed', resolved_at: new Date().toISOString() })
+        .eq('email_thread_id', threadId)
+        .eq('status', 'pending');
+      await supabase
+        .from('email_threads')
+        .update({ needs_followup: false, vendor_response_status: 'resolved' })
+        .eq('id', threadId);
+      setPendingFollowups(prev => prev.filter(f => f.thread_id !== threadId));
+      addToast?.('Alert dismissed', 'success');
+    } catch (e) {
+      console.error('[POTrackingDashboard] dismiss failed', e);
+      addToast?.('Failed to dismiss', 'error');
     }
   };
 
@@ -193,13 +248,48 @@ const POTrackingDashboard: React.FC = () => {
           <p className="text-sm text-gray-400">Delivered Today</p>
           <p className="text-2xl font-semibold text-green-300">{summary.deliveredToday}</p>
         </div>
-        <div className="bg-gray-900/60 rounded-lg p-4 border border-cyan-700/50">
-          <p className="text-sm text-cyan-400">📧 Awaiting Reply</p>
-          <p className="text-2xl font-semibold text-cyan-300">
-            {trackedPos.filter(po => (po as any).awaiting_response).length}
+        <div className={`bg-gray-900/60 rounded-lg p-4 border ${pendingFollowups.length > 0 ? 'border-amber-500/50' : 'border-gray-700'}`}>
+          <p className="text-sm text-amber-400">⚠️ Needs Follow-up</p>
+          <p className={`text-2xl font-semibold ${pendingFollowups.length > 0 ? 'text-amber-300' : 'text-gray-400'}`}>
+            {pendingFollowups.length}
           </p>
         </div>
       </div>
+
+      {/* Vendor Follow-up Alerts - inline */}
+      {pendingFollowups.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-amber-300 flex items-center gap-2">
+              <ChatBubbleIcon className="w-4 h-4" />
+              Vendors Not Responding ({pendingFollowups.length})
+            </span>
+          </div>
+          <div className="space-y-2">
+            {pendingFollowups.slice(0, 3).map(f => (
+              <div key={f.thread_id} className="flex items-center justify-between bg-gray-900/40 rounded px-3 py-2">
+                <div className="flex-1 min-w-0">
+                  <span className={`text-xs px-1.5 py-0.5 rounded mr-2 ${
+                    f.urgency === 'critical' ? 'bg-red-500/20 text-red-300' :
+                    f.urgency === 'high' ? 'bg-orange-500/20 text-orange-300' :
+                    'bg-amber-500/20 text-amber-300'
+                  }`}>{f.urgency}</span>
+                  <span className="text-sm text-gray-200">{f.vendor_name}</span>
+                  {f.po_number && <span className="text-xs text-gray-500 ml-2">PO {f.po_number}</span>}
+                  <span className="text-xs text-gray-500 ml-2">• {Math.floor(f.days_since_outbound)}d ago</span>
+                </div>
+                <Button
+                  onClick={() => dismissFollowup(f.thread_id)}
+                  className="p-1 text-gray-400 hover:text-green-400"
+                  title="Dismiss"
+                >
+                  <CheckCircleIcon className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="table-density min-w-full divide-y divide-gray-700 text-sm">

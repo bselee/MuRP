@@ -5,6 +5,7 @@ import type {
   VendorInteractionEvent,
   VendorResponseStrategy,
   VendorResponseTemplateStrictness,
+  VendorScoreWithExamples,
 } from '../types';
 
 export interface VendorConfidenceFilterOptions {
@@ -324,6 +325,7 @@ function mapProfileRow(row: any): VendorConfidenceProfile {
     completenessScore: Number(row.completeness_score ?? 0),
     invoiceAccuracyScore: Number(row.invoice_accuracy_score ?? 0),
     leadTimeScore: Number(row.lead_time_score ?? 0),
+    followupResponseScore: Number(row.followup_response_score ?? 5),
     trend: row.trend,
     score30DaysAgo: row.score_30_days_ago,
     recommendedLeadTimeBufferDays: Number(row.recommended_lead_time_buffer_days ?? 0),
@@ -332,6 +334,10 @@ function mapProfileRow(row: any): VendorConfidenceProfile {
     interactionsCount: Number(row.interactions_count ?? 0),
     lastRecalculatedAt: row.last_recalculated_at,
     updatedAt: row.updated_at,
+    // Email response summary (from view)
+    emailResponsesCount: row.email_responses_count ? Number(row.email_responses_count) : undefined,
+    avgResponseTimeMinutes: row.avg_response_time_minutes ? Number(row.avg_response_time_minutes) : undefined,
+    problemResponsesCount: row.problem_responses_count ? Number(row.problem_responses_count) : undefined,
   };
 }
 
@@ -350,4 +356,59 @@ function mapEventRow(row: any): VendorInteractionEvent {
     triggerSource: row.trigger_source ?? undefined,
     occurredAt: row.occurred_at,
   };
+}
+
+/**
+ * Get unified vendor score with real PO examples and issue history
+ * Simple 1-10 score with expandable details
+ */
+export async function getVendorScoreWithExamples(vendorId: string): Promise<VendorScoreWithExamples | null> {
+  try {
+    const { data, error } = await supabase
+      .rpc('get_vendor_score_with_examples', { p_vendor_id: vendorId });
+
+    if (error) {
+      console.error('[vendorConfidenceService] getVendorScoreWithExamples failed', error);
+      return null;
+    }
+
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    const row = data[0];
+
+    return {
+      vendorId: row.vendor_id,
+      vendorName: row.vendor_name || 'Unknown',
+      score: row.score ?? 5,
+      scoreBreakdown: {
+        responseSpeed: row.score_breakdown?.response_speed ?? 5,
+        deliveryReliability: row.score_breakdown?.delivery_reliability ?? 5,
+        lowFollowupNeeded: row.score_breakdown?.low_followup_needed ?? 5,
+      },
+      recentExamples: (row.recent_examples || []).map((ex: any) => ({
+        poNumber: ex.po_number,
+        orderDate: ex.order_date,
+        expectedDate: ex.expected_date,
+        receivedDate: ex.received_date,
+        leadDays: ex.lead_days ?? 0,
+        daysVsExpected: ex.days_vs_expected,
+        status: ex.status ?? 'no_eta',
+      })),
+      issuesSummary: (row.issues_summary || []).map((issue: any) => ({
+        poNumber: issue.po_number,
+        issueType: issue.issue_type,
+        actionNeeded: issue.action_needed,
+        date: issue.date,
+        resolved: issue.resolved ?? false,
+        followupCount: issue.followup_count ?? 0,
+        summary: issue.summary,
+      })),
+      recommendation: row.recommendation || 'No data available.',
+    };
+  } catch (error) {
+    console.error('[vendorConfidenceService] getVendorScoreWithExamples exception', error);
+    return null;
+  }
 }

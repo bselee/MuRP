@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { AgentDetailDrawer } from './AgentDetailDrawer';
 import { WorkflowPanel } from './WorkflowPanel';
 import { AgentEditor } from './AgentEditor';
+import AgentExecutionLog from './AgentExecutionLog';
 import {
   getAllAgents,
   updateAgent as updateAgentService,
@@ -39,6 +40,7 @@ import {
   XMarkIcon,
   AlertTriangleIcon,
   InformationCircleIcon,
+  ClockIcon,
 } from '../icons';
 
 interface AgentCommandCenterProps {
@@ -52,7 +54,7 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
   const [editingAgent, setEditingAgent] = useState<AgentDefinition | null>(null);
   const [isCreatingAgent, setIsCreatingAgent] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'agents' | 'workflows'>('agents');
+  const [activeTab, setActiveTab] = useState<'agents' | 'workflows' | 'history'>('agents');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [executingAgentId, setExecutingAgentId] = useState<string | null>(null);
   const [executionResult, setExecutionResult] = useState<AgentExecutionResult | null>(null);
@@ -224,6 +226,19 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
               Workflows
             </span>
           </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`px-4 py-2 font-medium transition-colors border-b-2 -mb-[1px] ${
+              activeTab === 'history'
+                ? 'text-accent-400 border-accent-400'
+                : 'text-gray-400 border-transparent hover:text-white'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <ClockIcon className="w-4 h-4" />
+              Execution History
+            </span>
+          </button>
         </div>
 
         {activeTab === 'agents' && (
@@ -238,7 +253,9 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'workflows' ? (
+      {activeTab === 'history' ? (
+        <AgentExecutionLog addToast={addToast} />
+      ) : activeTab === 'workflows' ? (
         <WorkflowPanel userId={userId} />
       ) : (
         <>

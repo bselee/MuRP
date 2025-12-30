@@ -742,9 +742,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                 {/* VendorResponseWorkbench component removed - was causing ReferenceError */}
 
-                {/* PO Tracking Dashboard */}
+                {/* PO Tracking Dashboard with integrated Vendor Attention Alerts */}
                 <div id="po-tracking">
-                    <POTrackingDashboard />
+                    <POTrackingDashboard addToast={addToast} />
                 </div>
 
                 {/* Finale Purchase Orders - Current/Open POs from Finale API */}
