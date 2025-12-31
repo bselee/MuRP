@@ -546,9 +546,23 @@ Triggers call `scheduled-agent-runner` edge function which executes the appropri
 
 ### Invoice & Three-Way Match System (Migrations 126, 144-146, 152)
 
-Autonomous invoice processing pipeline for AP automation:
+**CRITICAL: System Currently Non-Functional** - See [THREE_WAY_MATCH_FIX_PLAN.md](docs/THREE_WAY_MATCH_FIX_PLAN.md) for required fixes.
 
-**Flow:**
+Issues identified (2025-12-31):
+- Migration 152 queries wrong column (`classification` vs `attachment_type`)
+- `three-way-match-runner` references 3 non-existent tables
+- No GRN (Goods Receipt Note) table for receipt timestamps
+
+**What is Three-Way Match?**
+Verifies vendor bills by comparing three documents before payment:
+
+| Document | What It Verifies | Table |
+|----------|-----------------|-------|
+| Purchase Order | What you agreed to buy | `finale_purchase_orders` |
+| Receipt (GRN) | What you actually received | `po_receipt_events` (TODO) |
+| Invoice | What vendor is charging | `vendor_invoice_documents` |
+
+**Target Flow (after fixes):**
 ```
 Email Arrives → email-inbox-poller → Attachment Classification →
 Invoice Extraction (Claude Vision) → PO Matching → Three-Way Match →
@@ -560,6 +574,7 @@ Auto-Approve (95%+) OR Queue for Review (discrepancies)
 - `po_three_way_matches` - Match results comparing PO vs Invoice vs Receipt
 - `po_backorders` - Shortage tracking from three-way match discrepancies
 - `email_attachments` - Classified attachments with storage paths
+- `po_receipt_events` - GRN events with timestamps (TODO: Migration 153)
 
 **Key Services:**
 - `services/invoiceExtractionService.ts` - Invoice data extraction with regex patterns
@@ -568,7 +583,7 @@ Auto-Approve (95%+) OR Queue for Review (discrepancies)
 
 **Edge Functions:**
 - `invoice-extractor` - Claude Vision AI for PDF/image invoice extraction
-- `three-way-match-runner` - Batch matching with auto-approval logic
+- `three-way-match-runner` - Batch matching with auto-approval logic (NEEDS FIX)
 
 **Auto-Approval Thresholds (configurable):**
 ```typescript
