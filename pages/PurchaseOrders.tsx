@@ -16,7 +16,7 @@ import type {
     POTrackingStatus,
     RequisitionRequestOptions,
 } from '../types';
-import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon, Squares2X2Icon, ListBulletIcon } from '../components/icons';
+import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon, Squares2X2Icon, ListBulletIcon, AlertTriangleIcon, ClipboardDocumentListIcon } from '../components/icons';
 import PODeliveryTimeline from '../components/PODeliveryTimeline';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CreatePoModal from '../components/CreatePoModal';
@@ -29,9 +29,13 @@ import PODetailModal from '../components/PODetailModal';
 import ReorderQueueDashboard, { ReorderQueueVendorGroup } from '../components/ReorderQueueDashboard';
 import DraftPOReviewSection from '../components/DraftPOReviewSection';
 import POTrackingDashboard from '../components/POTrackingDashboard';
+import ThreeWayMatchReviewQueue from '../components/ThreeWayMatchReviewQueue';
+import ThreeWayMatchModal from '../components/ThreeWayMatchModal';
+import { InvoiceReviewModal } from '../components/InvoiceReviewModal';
 import ReceivePurchaseOrderModal from '../components/ReceivePurchaseOrderModal';
 import UpdateTrackingModal from '../components/UpdateTrackingModal';
 import { subscribeToPoDrafts } from '../lib/poDraftBridge';
+import { supabase } from '../lib/supabase/client';
 import { generatePoPdf } from '../services/pdfService';
 import { usePermissions } from '../hooks/usePermissions';
 import { runFollowUpAutomation } from '../services/followUpService';
@@ -105,6 +109,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [selectedPoForComm, setSelectedPoForComm] = useState<PurchaseOrder | null>(null);
     const [selectedPoForReceive, setSelectedPoForReceive] = useState<PurchaseOrder | null>(null);
     const [selectedPoForDetail, setSelectedPoForDetail] = useState<PurchaseOrder | null>(null);
+    const [selectedPoForInvoice, setSelectedPoForInvoice] = useState<string | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [activePoDraft, setActivePoDraft] = useState<PoDraftConfig | undefined>(undefined);
     const [pendingPoDrafts, setPendingPoDrafts] = useState<PoDraftConfig[]>([]);
@@ -126,6 +131,15 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [finaleTrackingInput, setFinaleTrackingInput] = useState({ number: '', carrier: '', eta: '' });
     const [savingFinaleTracking, setSavingFinaleTracking] = useState(false);
 
+    // Three-way match status for PO cards
+    const [matchStatuses, setMatchStatuses] = useState<Record<string, {
+        status: string;
+        score: number;
+        hasDiscrepancies: boolean;
+    }>>({});
+    // Modal state for three-way match review
+    const [matchModalPO, setMatchModalPO] = useState<{ orderId: string; vendorName: string } | null>(null);
+
     // Date filter with localStorage persistence
     const [dateFilter, setDateFilter] = useState<'all' | '30days' | '90days' | '12months'>(() => {
         if (typeof window !== 'undefined') {
@@ -140,6 +154,54 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
             localStorage.setItem('po-date-filter', dateFilter);
         }
     }, [dateFilter]);
+
+    // Fetch three-way match statuses for Finale POs
+    useEffect(() => {
+        const fetchMatchStatuses = async () => {
+            if (!finalePurchaseOrders || finalePurchaseOrders.length === 0) return;
+
+            try {
+                // Get match statuses for all Finale POs by order_id
+                const orderIds = finalePurchaseOrders.map(fpo => fpo.orderId).filter(Boolean);
+                if (orderIds.length === 0) return;
+
+                const { data, error } = await supabase
+                    .from('po_three_way_matches')
+                    .select(`
+                        po_id,
+                        match_status,
+                        overall_score,
+                        discrepancies,
+                        purchase_orders!inner(order_id)
+                    `)
+                    .in('purchase_orders.order_id', orderIds);
+
+                if (error) {
+                    console.error('[PurchaseOrders] Match status fetch error:', error);
+                    return;
+                }
+
+                if (data) {
+                    const statusMap: Record<string, { status: string; score: number; hasDiscrepancies: boolean }> = {};
+                    for (const match of data) {
+                        const orderId = (match.purchase_orders as any)?.order_id;
+                        if (orderId) {
+                            statusMap[orderId] = {
+                                status: match.match_status || 'pending_data',
+                                score: match.overall_score || 0,
+                                hasDiscrepancies: Array.isArray(match.discrepancies) && match.discrepancies.length > 0,
+                            };
+                        }
+                    }
+                    setMatchStatuses(statusMap);
+                }
+            } catch (err) {
+                console.error('[PurchaseOrders] Match status fetch error:', err);
+            }
+        };
+
+        fetchMatchStatuses();
+    }, [finalePurchaseOrders]);
 
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
@@ -747,6 +809,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <POTrackingDashboard addToast={addToast} />
                 </div>
 
+                {/* Invoice & Three-Way Match Review Queue - Auto-hides when empty */}
+                <ThreeWayMatchReviewQueue
+                    addToast={addToast}
+                    maxItems={10}
+                    compact
+                />
+
                 {/* Finale Purchase Orders - Current/Open POs from Finale API */}
                 {finalePurchaseOrders.length > 0 && (
                     <div className="space-y-4">
@@ -870,6 +939,43 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                 {formatStatusText(fpo.trackingStatus)}
                                                             </StatusBadge>
                                                         )}
+                                                        {/* Three-Way Match Status Badge - Shows on ALL POs */}
+                                                        {(() => {
+                                                            const matchInfo = matchStatuses[fpo.orderId];
+                                                            const status = matchInfo?.status || 'pending_data';
+                                                            const score = matchInfo?.score;
+                                                            const hasScore = score !== undefined && score !== null;
+                                                            
+                                                            // Color based on status
+                                                            const colorClass = status === 'matched'
+                                                                ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                                                                : status === 'partial_match'
+                                                                    ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+                                                                    : status === 'mismatch'
+                                                                        ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                                                        : 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+                                                            
+                                                            // Icon based on status
+                                                            const Icon = status === 'matched'
+                                                                ? CheckCircleIcon
+                                                                : status === 'mismatch'
+                                                                    ? XCircleIcon
+                                                                    : AlertTriangleIcon;
+                                                            
+                                                            return (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setMatchModalPO({ orderId: fpo.orderId, vendorName: fpo.vendorName || 'Unknown Vendor' });
+                                                                    }}
+                                                                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all hover:scale-105 ${colorClass}`}
+                                                                    title={hasScore ? `Match score: ${score}% - Tap to review` : 'Match pending - Tap for details'}
+                                                                >
+                                                                    <Icon className="w-3 h-3" />
+                                                                    <span>{hasScore ? `${score}%` : 'Match'}</span>
+                                                                </button>
+                                                            );
+                                                        })()}
                                                     </div>
                                                     <div className="flex items-center gap-6">
                                                         {/* Tracking Info */}
@@ -1667,6 +1773,34 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     }
                 }}
             />
+
+            {/* Invoice Review Modal */}
+            {selectedPoForInvoice && (
+                <InvoiceReviewModal
+                    poId={selectedPoForInvoice}
+                    isOpen={!!selectedPoForInvoice}
+                    onClose={() => setSelectedPoForInvoice(null)}
+                    onReviewComplete={() => {
+                        setSelectedPoForInvoice(null);
+                        addToast('Invoice review completed', 'success');
+                    }}
+                />
+            )}
+
+            {/* Three-Way Match Modal - Opens on badge tap */}
+            {matchModalPO && (
+                <ThreeWayMatchModal
+                    isOpen={!!matchModalPO}
+                    onClose={() => setMatchModalPO(null)}
+                    poOrderId={matchModalPO.orderId}
+                    vendorName={matchModalPO.vendorName}
+                    addToast={addToast}
+                    onResolved={() => {
+                        // Refresh match statuses after resolution
+                        setMatchModalPO(null);
+                    }}
+                />
+            )}
         </>
     );
 };

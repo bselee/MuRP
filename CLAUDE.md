@@ -123,8 +123,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 /services/           # Business logic (~109 services)
 /types/              # TypeScript type definitions
 /supabase/
-  /functions/        # Edge functions (28 functions for webhooks, sync, automation)
-  /migrations/       # 125 SQL migrations (strict 3-digit sequential numbering)
+  /functions/        # Edge functions (30 functions for webhooks, sync, automation)
+  /migrations/       # 152 SQL migrations (strict 3-digit sequential numbering)
 /e2e/                # Playwright E2E tests
 /tests/              # Unit tests
 ```
@@ -137,13 +137,13 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 ```bash
 # 1. Find highest migration number
-ls supabase/migrations | sort | tail -1  # Current: 125_add_scheduled_agent_triggers.sql
+ls supabase/migrations | sort | tail -1  # Current: 152_invoice_processing_cron.sql
 
-# 2. Create new migration (next number: 126)
+# 2. Create new migration (next number: 153)
 supabase migration new feature_name
 
 # 3. Rename to sequential number
-mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/126_feature_name.sql
+mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/153_feature_name.sql
 
 # 4. Test locally
 supabase db reset
@@ -333,7 +333,7 @@ const cardClass = isDark
 - Calendar: `services/googleCalendarService.ts`
 - Gmail: `services/googleGmailService.ts`
 
-### Edge Functions (28 deployed)
+### Edge Functions (30 deployed)
 Located in `supabase/functions/`:
 - `api-proxy` - Secure backend proxy for external APIs
 - `auto-sync-finale` - Automated Finale data sync
@@ -514,8 +514,51 @@ Autonomous agent execution via Supabase pg_cron triggers:
 | PO Intelligence | Hourly 8AM-6PM Mon-Fri | Order status updates |
 | Compliance Validator | Monday 9:00 AM | Weekly compliance check |
 | Tracking Cache Refresh | Every 30 minutes | Update active tracking info |
+| Invoice Extraction | Every 10 minutes | Process pending invoice attachments |
+| Three-Way Match | Every 15 minutes | PO vs Invoice vs Receipt verification |
 
 Triggers call `scheduled-agent-runner` edge function which executes the appropriate agent.
+
+### Invoice & Three-Way Match System (Migrations 126, 144-146, 152)
+
+Autonomous invoice processing pipeline for AP automation:
+
+**Flow:**
+```
+Email Arrives → email-inbox-poller → Attachment Classification →
+Invoice Extraction (Claude Vision) → PO Matching → Three-Way Match →
+Auto-Approve (95%+) OR Queue for Review (discrepancies)
+```
+
+**Key Tables:**
+- `vendor_invoice_documents` - Extracted invoice data with match status
+- `po_three_way_matches` - Match results comparing PO vs Invoice vs Receipt
+- `po_backorders` - Shortage tracking from three-way match discrepancies
+- `email_attachments` - Classified attachments with storage paths
+
+**Key Services:**
+- `services/invoiceExtractionService.ts` - Invoice data extraction with regex patterns
+- `services/threeWayMatchService.ts` - Match logic with configurable thresholds
+- `services/invoiceProcessingService.ts` - Review workflow and AP forwarding
+
+**Edge Functions:**
+- `invoice-extractor` - Claude Vision AI for PDF/image invoice extraction
+- `three-way-match-runner` - Batch matching with auto-approval logic
+
+**Auto-Approval Thresholds (configurable):**
+```typescript
+const DEFAULT_THRESHOLDS = {
+  quantityTolerancePercent: 2,    // 2% quantity variance allowed
+  priceToleranceDollars: 0.50,    // $0.50 price variance per unit
+  totalTolerancePercent: 1,       // 1% total variance allowed
+  minMatchScoreForApproval: 95,   // 95% score for auto-approval
+  autoApproveMaxVariance: 50,     // Max $50 variance for auto-approval
+};
+```
+
+**UI Components:**
+- `components/InvoiceReviewModal.tsx` - Invoice review with variance approval
+- `components/ThreeWayMatchReviewQueue.tsx` - Discrepancy review queue (compact mode hides when empty)
 
 ## Common Pitfalls
 
@@ -584,31 +627,6 @@ ls supabase/migrations | sort | tail -1
 - `SUPABASE_DEPLOYMENT_GUIDE.md` - Deployment procedures
 - `API_INGESTION_SETUP.md` - API integration setup
 - `.github/copilot-instructions.md` - Comprehensive development guidelines including TFR protocol, Vercel deployment, and session management
-
-## Claude Opus 4.5 Capabilities
-
-### Core Workspace Tools
-| Category | Tools |
-|----------|-------|
-| **File Ops** | `read_file`, `create_file`, `replace_string_in_file`, `multi_replace_string_in_file`, `list_dir` |
-| **Search** | `file_search` (glob), `grep_search` (regex/text), `semantic_search` (AI-powered) |
-| **Terminal** | `run_in_terminal`, `run_task`, `get_terminal_output` |
-| **Testing** | `runTests` (with coverage), `get_errors` (compile/lint) |
-| **Git** | `get_changed_files`, terminal git commands |
-
-### MCP Server Integrations
-| Server | Capabilities |
-|--------|--------------|
-| **GitHub** | Repos, issues, PRs, Copilot coding agent |
-| **Context7** | Library docs, code examples |
-| **Brave Search** | Web/local search |
-| **Pylance** | Python syntax, environments, imports |
-
-### Autonomous Workflows
-- **TFR Protocol**: Test → Fix → Refactor → Re-test (mandatory before commits)
-- **Session Management**: Auto-resume, progress tracking, documentation
-- **Sub-agents**: Launch autonomous agents for complex research/tasks
-- **Deployment Loops**: Vercel and Supabase auto-deploy with error recovery
 
 ## Claude Code Skills & Agents
 

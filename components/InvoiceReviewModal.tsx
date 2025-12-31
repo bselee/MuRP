@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertTriangle, CheckCircle, XCircle, DollarSign, Truck, Calculator, Mail } from 'lucide-react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { Textarea } from './ui/textarea';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Checkbox } from './ui/checkbox';
+import Button from '@/components/ui/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  XMarkIcon,
+  AlertTriangleIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  TruckIcon,
+  CalculatorIcon,
+  MailIcon,
+  CurrencyDollarIcon,
+} from './icons';
 import {
   getInvoiceDataForPO,
   getInvoiceVariancesForPO,
@@ -124,9 +133,9 @@ export function InvoiceReviewModal({ poId, isOpen, onClose, onReviewComplete }: 
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'critical': return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      case 'info': return <CheckCircle className="h-4 w-4 text-blue-500" />;
+      case 'critical': return <XCircleIcon className="h-4 w-4 text-red-500" />;
+      case 'warning': return <AlertTriangleIcon className="h-4 w-4 text-yellow-500" />;
+      case 'info': return <CheckCircleIcon className="h-4 w-4 text-blue-500" />;
       default: return null;
     }
   };
@@ -142,11 +151,11 @@ export function InvoiceReviewModal({ poId, isOpen, onClose, onReviewComplete }: 
 
   const getVarianceTypeIcon = (type: string) => {
     switch (type) {
-      case 'shipping': return <Truck className="h-4 w-4" />;
-      case 'pricing': return <DollarSign className="h-4 w-4" />;
-      case 'tax': return <Calculator className="h-4 w-4" />;
-      case 'total': return <Calculator className="h-4 w-4" />;
-      default: return <AlertTriangle className="h-4 w-4" />;
+      case 'shipping': return <TruckIcon className="h-4 w-4" />;
+      case 'pricing': return <CurrencyDollarIcon className="h-4 w-4" />;
+      case 'tax': return <CalculatorIcon className="h-4 w-4" />;
+      case 'total': return <CalculatorIcon className="h-4 w-4" />;
+      default: return <AlertTriangleIcon className="h-4 w-4" />;
     }
   };
 
@@ -158,7 +167,7 @@ export function InvoiceReviewModal({ poId, isOpen, onClose, onReviewComplete }: 
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold">Invoice Review</h2>
           <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
+            <XMarkIcon className="h-4 w-4" />
           </Button>
         </div>
 
@@ -175,7 +184,7 @@ export function InvoiceReviewModal({ poId, isOpen, onClose, onReviewComplete }: 
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Calculator className="h-5 w-5" />
+                    <CalculatorIcon className="h-5 w-5" />
                     Invoice Summary
                   </CardTitle>
                 </CardHeader>
@@ -225,7 +234,7 @@ export function InvoiceReviewModal({ poId, isOpen, onClose, onReviewComplete }: 
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5" />
+                      <AlertTriangleIcon className="h-5 w-5" />
                       Variances Detected ({variances.length})
                     </CardTitle>
                   </CardHeader>
@@ -273,7 +282,7 @@ export function InvoiceReviewModal({ poId, isOpen, onClose, onReviewComplete }: 
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Mail className="h-5 w-5" />
+                    <MailIcon className="h-5 w-5" />
                     AP Processing
                   </CardTitle>
                 </CardHeader>
