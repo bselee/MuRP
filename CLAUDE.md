@@ -23,6 +23,8 @@ npm run e2e:ui       # Playwright UI mode for debugging
 npm run test:transformers      # Schema transformer smoke tests
 npm run test:transformers:all  # Comprehensive schema validation
 npm run test:inventory-ui      # Inventory display tests
+npm run test:invoice           # Invoice extraction unit tests (38 tests)
+npm run test:invoice-integration  # Invoice system integration tests
 
 # Run a single E2E test file
 npx playwright test e2e/vendors.spec.ts
@@ -37,9 +39,10 @@ supabase status                           # Check local Supabase status
 supabase db reset                         # Rebuild local schema from migrations
 supabase db lint                          # Validate SQL syntax
 supabase db push                          # Apply migrations to remote
+supabase migration list                   # Compare local vs remote migrations
 supabase gen types typescript --local > types/supabase.ts  # Regenerate types
-supabase functions deploy <name>         # Deploy edge function
-supabase functions logs <name> --tail    # Stream function logs
+supabase functions deploy <name>          # Deploy edge function
+supabase functions list                   # List deployed functions
 ```
 
 ## Architecture
@@ -137,9 +140,9 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 ```bash
 # 1. Find highest migration number
-ls supabase/migrations | sort | tail -1  # Current: 152_invoice_processing_cron.sql
+ls supabase/migrations | sort | tail -1  # Check current highest number
 
-# 2. Create new migration (next number: 153)
+# 2. Create new migration (next sequential number)
 supabase migration new feature_name
 
 # 3. Rename to sequential number
@@ -333,10 +336,12 @@ const cardClass = isDark
 - Calendar: `services/googleCalendarService.ts`
 - Gmail: `services/googleGmailService.ts`
 
-### Edge Functions (30 deployed)
+### Edge Functions (30+ deployed)
+
 Located in `supabase/functions/`:
 - `api-proxy` - Secure backend proxy for external APIs
-- `auto-sync-finale` - Automated Finale data sync
+- `auto-sync-finale` - Automated Finale data sync orchestrator
+- `sync-finale-graphql` - Direct Finale GraphQL sync (vendors, products, POs)
 - `nightly-ai-purchasing` - AI-powered purchasing automation
 - `po-email-monitor` - Purchase order email tracking
 - `billing-webhook` - Stripe webhook handler
@@ -345,6 +350,8 @@ Located in `supabase/functions/`:
 - `email-inbox-poller` - Proactive email monitoring for PO tracking
 - `gmail-webhook` - Push notifications for new emails
 - `scheduled-agent-runner` - pg_cron triggered agent execution
+- `invoice-extractor` - Claude Vision AI for PDF/image invoice extraction
+- `three-way-match-runner` - Batch PO vs Invoice vs Receipt matching
 - And more for webhooks, notifications, sync operations
 
 ### Email Monitoring & PO Tracking
@@ -503,11 +510,14 @@ Event/Trigger → eventBus.ts → agentExecutor.ts → agent_definitions (config
                                             actionExecutors.ts → pending_actions_queue
 ```
 
-**pg_cron Scheduled Agents** (Migration 125):
-Autonomous agent execution via Supabase pg_cron triggers:
+**pg_cron Scheduled Jobs** (Migrations 081, 125, 150):
 
-| Agent | Schedule | Purpose |
-|-------|----------|---------|
+Autonomous execution via Supabase pg_cron:
+
+| Job | Schedule | Purpose |
+|-----|----------|---------|
+| `finale-full-sync` | 1 AM, 1 PM UTC | Full Finale data sync |
+| `finale-po-sync` | :30 every hour | Hourly PO-only sync |
 | Stockout Prevention | 6:00 AM daily | Morning stockout check |
 | Vendor Watchdog | 7:00 AM daily | Vendor performance review |
 | Inventory Guardian | 2:00 AM nightly | Stock level monitoring |
@@ -516,6 +526,21 @@ Autonomous agent execution via Supabase pg_cron triggers:
 | Tracking Cache Refresh | Every 30 minutes | Update active tracking info |
 | Invoice Extraction | Every 10 minutes | Process pending invoice attachments |
 | Three-Way Match | Every 15 minutes | PO vs Invoice vs Receipt verification |
+
+**Monitoring Sync Health (IMPORTANT):**
+```bash
+# Check sync state via API
+curl -s "https://mpuevsmtowyexhsqugkm.supabase.co/rest/v1/rpc/get_sync_stats" \
+  -H "apikey: $SUPABASE_ANON_KEY" | jq .
+
+# Manually trigger PO sync if needed
+curl -X POST "https://mpuevsmtowyexhsqugkm.supabase.co/functions/v1/sync-finale-graphql" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"syncTypes": ["purchase_orders"]}'
+```
+
+**If sync stops working:** Check `finale_sync_state` table - if `last_po_sync` is stale (>2 hours old), cron jobs may need restoration (see migration 150).
 
 Triggers call `scheduled-agent-runner` edge function which executes the appropriate agent.
 
@@ -559,6 +584,26 @@ const DEFAULT_THRESHOLDS = {
 **UI Components:**
 - `components/InvoiceReviewModal.tsx` - Invoice review with variance approval
 - `components/ThreeWayMatchReviewQueue.tsx` - Discrepancy review queue (compact mode hides when empty)
+
+## Troubleshooting
+
+### Finale Sync Not Running
+If POs or products aren't syncing from Finale:
+1. Check sync state: Query `finale_sync_state` table - `last_po_sync` should be recent
+2. Verify cron jobs exist: They may disappear after migrations - see migration 150
+3. Manual sync: Call `sync-finale-graphql` edge function directly
+4. Check for schema mismatches: New columns in transformers may not exist in DB
+
+### Security Lint Errors
+After migrations, run `supabase db lint` to check for:
+- **RLS Disabled**: Tables need `ENABLE ROW LEVEL SECURITY` + policies
+- **Security Definer Views**: Views should use SECURITY INVOKER (default)
+- See migrations 147-149 for patterns
+
+### Edge Function Errors
+If edge functions return `[object Object]` errors:
+- The error object wasn't stringified properly
+- Fix: Use `JSON.stringify(error)` or check for `error instanceof Error`
 
 ## Common Pitfalls
 

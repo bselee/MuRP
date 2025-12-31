@@ -420,21 +420,7 @@ Thank you!`
               </CollapsibleSection>
             )}
 
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Email Tracking & Inbox Monitoring"
-                icon={<MailIcon className="w-6 h-6 text-emerald-400" />}
-                isOpen={isEmailTrackingOpen}
-                onToggle={() => setIsEmailTrackingOpen(!isEmailTrackingOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <EmailTrackingSettingsPanel addToast={addToast} />
-              </CollapsibleSection>
-            )}
+
 
             {isOpsAdmin && (
               <CollapsibleSection
@@ -484,21 +470,7 @@ Thank you!`
               </CollapsibleSection>
             )}
 
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Email Processing Activity"
-                icon={<MailIcon className="w-6 h-6 text-cyan-400" />}
-                isOpen={isEmailLogOpen}
-                onToggle={() => setIsEmailLogOpen(!isEmailLogOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <EmailProcessingLog addToast={addToast} />
-              </CollapsibleSection>
-            )}
+
 
             <CollapsibleSection
               title="BOM Management"
@@ -550,13 +522,13 @@ Thank you!`
           </section>
 
           {/* ============================================================ */}
-          {/* COMMUNICATION */}
+          {/* EMAIL */}
           {/* ============================================================ */}
           <section>
-            <h2 className="text-2xl font-bold text-white mt-8 mb-4">Communication</h2>
+            <h2 className="text-2xl font-bold text-white mt-8 mb-4">Email</h2>
 
             <CollapsibleSection
-              title="Email Configuration"
+              title="Company Email Policy"
               icon={<MailIcon className="w-6 h-6 text-emerald-300" />}
               isOpen={isEmailConfigOpen}
               onToggle={() => setIsEmailConfigOpen(!isEmailConfigOpen)}
@@ -683,6 +655,45 @@ Thank you!`
               </div>
             </div>
           </CollapsibleSection>
+
+            {isOpsAdmin && (
+              <CollapsibleSection
+                title="Inbox Monitoring & Tracking"
+                icon={<MailIcon className="w-6 h-6 text-emerald-400" />}
+                isOpen={isEmailTrackingOpen}
+                onToggle={() => setIsEmailTrackingOpen(!isEmailTrackingOpen)}
+              >
+                <div className="mb-2">
+                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
+                    Admin Only
+                  </span>
+                </div>
+                <EmailTrackingSettingsPanel addToast={addToast} />
+              </CollapsibleSection>
+            )}
+
+            {isOpsAdmin && (
+              <CollapsibleSection
+                title="Email Activity Log"
+                icon={<MailIcon className="w-6 h-6 text-cyan-400" />}
+                isOpen={isEmailLogOpen}
+                onToggle={() => setIsEmailLogOpen(!isEmailLogOpen)}
+              >
+                <div className="mb-2">
+                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
+                    Admin Only
+                  </span>
+                </div>
+                <EmailProcessingLog addToast={addToast} />
+              </CollapsibleSection>
+            )}
+          </section>
+
+          {/* ============================================================ */}
+          {/* COMMUNICATION */}
+          {/* ============================================================ */}
+          <section>
+            <h2 className="text-2xl font-bold text-white mt-8 mb-4">Communication</h2>
 
             {isOpsAdmin && (
               <CollapsibleSection
