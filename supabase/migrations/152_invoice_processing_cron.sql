@@ -37,7 +37,7 @@ SELECT cron.schedule(
   $$
 );
 
-COMMENT ON COLUMN cron.job.command IS 'Scheduled invoice extraction (every 10 min)';
+-- Note: Cannot comment on cron.job columns (extension-owned)
 
 -- ============================================================================
 -- THREE-WAY MATCH CRON JOB (Every 15 minutes)
@@ -154,9 +154,9 @@ END $$;
 
 CREATE OR REPLACE VIEW invoice_processing_dashboard AS
 SELECT
-  -- Pending extraction count
+  -- Pending extraction count (use attachment_type, not classification)
   (SELECT COUNT(*) FROM email_attachments
-   WHERE classification IN ('invoice', 'packing_slip')
+   WHERE attachment_type IN ('invoice', 'packing_slip')
    AND processed_at IS NULL) as pending_extraction,
 
   -- Pending review count

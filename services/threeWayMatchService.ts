@@ -184,14 +184,47 @@ export async function performThreeWayMatch(
     throw new Error(`PO not found: ${poId}`);
   }
 
-  // 2. Get invoice data if available
-  const { data: invoice } = await supabase
+  // 2. Get invoice data if available (try both tables)
+  let invoice = null;
+
+  // First try po_invoice_data (legacy)
+  const { data: legacyInvoice } = await supabase
     .from('po_invoice_data')
     .select('*')
     .eq('po_id', poId)
     .order('extracted_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  if (legacyInvoice) {
+    invoice = legacyInvoice;
+  } else {
+    // Try vendor_invoice_documents (new system)
+    const { data: newInvoice } = await supabase
+      .from('vendor_invoice_documents')
+      .select('*')
+      .eq('matched_po_id', poId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    invoice = newInvoice;
+  }
+
+  // 2b. Get receipt events for receipt dates (new GRN system)
+  const { data: receiptEvents } = await supabase
+    .from('po_receipt_events')
+    .select('sku, quantity_received, received_at')
+    .eq('po_id', poId);
+
+  // Build receipt dates map
+  const receiptDates = new Map<string, string>();
+  for (const event of receiptEvents || []) {
+    // Use the latest receipt date for each SKU
+    const existing = receiptDates.get(event.sku);
+    if (!existing || event.received_at > existing) {
+      receiptDates.set(event.sku, event.received_at);
+    }
+  }
 
   // 3. Parse invoice line items if available
   const invoiceLineItems: Map<string, { qty: number; price: number; total: number }> = new Map();
@@ -212,11 +245,13 @@ export async function performThreeWayMatch(
   for (const poItem of po.purchase_order_items || []) {
     const sku = poItem.inventory_sku.toLowerCase();
     const invoiceItem = invoiceLineItems.get(sku);
+    const receivedDate = receiptDates.get(poItem.inventory_sku) || receiptDates.get(sku) || null;
 
     const lineMatch = matchLineItem(
       poItem,
       invoiceItem || null,
-      mergedThresholds
+      mergedThresholds,
+      receivedDate
     );
 
     lineItems.push(lineMatch);
@@ -305,7 +340,8 @@ export async function performThreeWayMatch(
 function matchLineItem(
   poItem: any,
   invoiceItem: { qty: number; price: number; total: number } | null,
-  thresholds: MatchThresholds
+  thresholds: MatchThresholds,
+  receivedDate: string | null = null
 ): LineItemMatch {
   const poQty = poItem.quantity_ordered;
   const receivedQty = poItem.quantity_received || 0;
@@ -371,7 +407,7 @@ function matchLineItem(
     poUnitPrice: poItem.unit_cost,
     poLineTotal: poItem.line_total,
     receivedQuantity: receivedQty,
-    receivedDate: null, // Would come from receipt data
+    receivedDate, // Now populated from po_receipt_events
     invoicedQuantity: invoicedQty,
     invoicedUnitPrice: invoicedPrice,
     invoicedLineTotal: invoiceItem?.total || null,

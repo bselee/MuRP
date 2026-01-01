@@ -1,37 +1,3 @@
-### Session: 2025-12-31 (Documentation & Settings UI Improvements)
-
-**Summary:** Updated CLAUDE.md documentation with comprehensive troubleshooting guidance and sync monitoring instructions. Reorganized Settings.tsx email panels for better UX flow.
-
-**Changes Made:**
-
-1. **CLAUDE.md Documentation Updates**
-   - Added `npm run test:invoice` and `npm run test:invoice-integration` test commands
-   - Added `supabase migration list` and `supabase functions list` commands  
-   - Updated pg_cron scheduled jobs section with Finale sync jobs (1 AM/1 PM full sync, hourly PO sync)
-   - Added "Monitoring Sync Health" section with curl examples for checking sync state
-   - Added "Troubleshooting" section covering:
-     - Finale sync not running diagnostics
-     - Security lint errors after migrations
-     - Edge function error handling fixes
-   - Improved Edge Functions documentation with invoice-extractor and three-way-match-runner
-
-2. **Settings.tsx UI Improvements**
-   - Consolidated email-related panels under new "Email" section header
-   - Moved "Email Tracking & Inbox Monitoring" → "Inbox Monitoring & Tracking" under Email section
-   - Moved "Email Processing Activity" → "Email Activity Log" under Email section
-   - Renamed "Email Configuration" → "Company Email Policy" for clarity
-   - Better separation of Communication section from Email section
-
-**Files Modified:**
-- `CLAUDE.md` - Documentation improvements (+65 lines)
-- `pages/Settings.tsx` - Email panel reorganization (+56/-43 lines)
-
-**Testing:**
-- ✅ Build: Successful (9.10s, 2.7MB bundle)
-- ✅ Tests: 50/50 passing (9 schema + 3 inventory + 38 invoice)
-
----
-
 ### Session: 2025-12-29 (Full PO Autonomy Implementation - Complete)
 
 **Summary:** Successfully implemented and merged complete Purchase Order autonomy system with three-way matching, autonomous email sending, backorder automation, and pipeline visualization. All critical gaps closed for "never out of stock" autonomous workflow.

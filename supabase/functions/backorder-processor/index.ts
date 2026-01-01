@@ -92,23 +92,58 @@ serve(async (req) => {
       results.posProcessed++;
 
       try {
-        // Get PO line items
-        const { data: poLines } = await supabase
-          .from('purchase_order_line_items')
-          .select('*')
-          .eq('po_id', po.id);
+        // Get PO line items from Finale PO system (primary) or purchase_order_items (fallback)
+        let poLines: any[] = [];
 
-        // Get receipt records
+        // Try to find the finale_po_id
+        const { data: finalePo } = await supabase
+          .from('finale_purchase_orders')
+          .select('id')
+          .or(`id.eq.${po.id},purchase_order_id.eq.${po.order_id}`)
+          .maybeSingle();
+
+        if (finalePo) {
+          const { data: finaleLines } = await supabase
+            .from('finale_po_line_items')
+            .select('*')
+            .eq('finale_po_id', finalePo.id);
+          poLines = (finaleLines || []).map(line => ({
+            ...line,
+            sku: line.product_sku || line.product_id,
+            quantity: line.quantity_ordered || 0,
+            unit_cost: line.unit_cost || 0,
+            product_name: line.product_name || line.product_sku,
+          }));
+        }
+
+        // Fallback: try purchase_order_items
+        if (poLines.length === 0) {
+          const { data: legacyLines } = await supabase
+            .from('purchase_order_items')
+            .select('*')
+            .eq('purchase_order_id', po.id);
+          poLines = (legacyLines || []).map(line => ({
+            ...line,
+            sku: line.inventory_sku || line.sku,
+            quantity: line.quantity_ordered || line.quantity || 0,
+            unit_cost: line.unit_cost || line.unit_price || 0,
+            product_name: line.item_name || line.sku,
+          }));
+        }
+
+        // Get receipt records from po_receipt_events (GRN table from migration 153)
         const { data: receipts } = await supabase
-          .from('po_receipts')
+          .from('po_receipt_events')
           .select('*')
-          .eq('po_id', po.id);
+          .or(`po_id.eq.${po.id},finale_po_id.eq.${finalePo?.id || po.id}`);
 
-        // Get invoice if exists
+        // Get invoice if exists from vendor_invoice_documents
         const { data: invoice } = await supabase
-          .from('vendor_invoices')
+          .from('vendor_invoice_documents')
           .select('*')
-          .eq('po_id', po.id)
+          .eq('matched_po_id', po.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         // Calculate shortages

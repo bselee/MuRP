@@ -1,7 +1,7 @@
 # Three-Way Match Fix Plan
 
 **Created:** 2025-12-31
-**Status:** Ready for Implementation
+**Status:** ✅ Phase 0 & 1 Implemented (2026-01-01)
 
 ## Executive Summary
 
@@ -77,9 +77,9 @@ Emails from vendors with 45+ day lead times never correlate to their POs.
 
 ## Implementation Plan
 
-### Phase 0: Create GRN (Goods Receipt) Table
+### Phase 0: Create GRN (Goods Receipt) Table ✅ COMPLETED
 
-Create `po_receipt_events` table to track receipt timestamps:
+Created `po_receipt_events` table to track receipt timestamps in migration 153:
 
 ```sql
 CREATE TABLE po_receipt_events (
@@ -100,14 +100,15 @@ CREATE TABLE po_receipt_events (
 );
 ```
 
-**Trigger:** Auto-log receipt events when `finale_po_line_items.quantity_received` changes.
+**Trigger:** `trg_log_finale_receipt` auto-logs receipt events when `finale_po_line_items.quantity_received` changes.
 
-### Phase 1: Critical Fixes (P0)
+### Phase 1: Critical Fixes (P0) ✅ COMPLETED
 
-| File | Fix |
-|------|-----|
-| `supabase/migrations/153_grn_and_invoice_fixes.sql` | NEW - Create GRN table + fix invoice view column |
-| `supabase/functions/three-way-match-runner/index.ts` | Fix 3 table references |
+| File | Fix | Status |
+|------|-----|--------|
+| `supabase/migrations/153_grn_and_invoice_fixes.sql` | Created GRN table + fixed invoice view column | ✅ |
+| `supabase/functions/three-way-match-runner/index.ts` | Fixed 3 table references | ✅ |
+| `services/threeWayMatchService.ts` | Added `po_receipt_events` lookup for receipt dates | ✅ |
 
 ### Phase 2: High Priority (P1)
 

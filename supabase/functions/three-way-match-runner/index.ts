@@ -243,33 +243,71 @@ interface LineItemMatch {
 }
 
 async function performThreeWayMatch(po: any): Promise<MatchResult> {
-  // Get PO line items
-  const { data: poLines } = await supabase
-    .from('purchase_order_line_items')
-    .select('*')
-    .eq('po_id', po.id);
+  // Get PO line items from Finale PO system
+  // First try finale_po_line_items (primary), fallback to purchase_order items
+  let poLines: any[] = [];
 
-  // Get invoice
+  // Try to find the finale_po_id if we only have purchase_orders.id
+  const { data: finalePo } = await supabase
+    .from('finale_purchase_orders')
+    .select('id')
+    .or(`id.eq.${po.id},purchase_order_id.eq.${po.order_id}`)
+    .maybeSingle();
+
+  if (finalePo) {
+    const { data: finaleLines } = await supabase
+      .from('finale_po_line_items')
+      .select('*')
+      .eq('finale_po_id', finalePo.id);
+    poLines = finaleLines || [];
+  }
+
+  // Fallback: try purchase_order_items if no finale lines found
+  if (poLines.length === 0) {
+    const { data: legacyLines } = await supabase
+      .from('purchase_order_items')
+      .select('*')
+      .eq('purchase_order_id', po.id);
+    poLines = legacyLines || [];
+  }
+
+  // Get invoice from vendor_invoice_documents (correct table)
   const { data: invoice } = await supabase
-    .from('vendor_invoices')
+    .from('vendor_invoice_documents')
     .select('*')
-    .eq('po_id', po.id)
+    .eq('matched_po_id', po.id)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  // Get receipts
+  // Get receipts from po_receipt_events (new GRN table from migration 153)
   const { data: receipts } = await supabase
-    .from('po_receipts')
+    .from('po_receipt_events')
     .select('*')
-    .eq('po_id', po.id);
+    .or(`po_id.eq.${po.id},finale_po_id.eq.${finalePo?.id || po.id}`);
 
   // Build lookup maps
+  // Handle both finale_po_line_items (product_sku, quantity_ordered, unit_cost)
+  // and purchase_order_items (sku, quantity, unit_price)
   const poLinesBySku = new Map<string, any>();
   let poTotal = 0;
   for (const line of poLines || []) {
-    poLinesBySku.set(line.sku, line);
-    poTotal += (line.quantity || 0) * (line.unit_cost || line.unit_price || 0);
+    const sku = line.product_sku || line.sku || line.product_id;
+    const qty = line.quantity_ordered || line.quantity || 0;
+    const price = line.unit_cost || line.unit_price || 0;
+
+    // Normalize line structure
+    const normalizedLine = {
+      ...line,
+      sku,
+      quantity: qty,
+      unit_cost: price,
+      unit_price: price,
+      product_name: line.product_name || line.description || sku,
+    };
+
+    poLinesBySku.set(sku, normalizedLine);
+    poTotal += qty * price;
   }
 
   const invoiceLinesBySku = new Map<string, any>();

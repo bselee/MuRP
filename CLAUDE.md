@@ -544,25 +544,18 @@ curl -X POST "https://mpuevsmtowyexhsqugkm.supabase.co/functions/v1/sync-finale-
 
 Triggers call `scheduled-agent-runner` edge function which executes the appropriate agent.
 
-### Invoice & Three-Way Match System (Migrations 126, 144-146, 152)
-
-**CRITICAL: System Currently Non-Functional** - See [THREE_WAY_MATCH_FIX_PLAN.md](docs/THREE_WAY_MATCH_FIX_PLAN.md) for required fixes.
-
-Issues identified (2025-12-31):
-- Migration 152 queries wrong column (`classification` vs `attachment_type`)
-- `three-way-match-runner` references 3 non-existent tables
-- No GRN (Goods Receipt Note) table for receipt timestamps
+### Invoice & Three-Way Match System (Migrations 126, 144-146, 152-153)
 
 **What is Three-Way Match?**
 Verifies vendor bills by comparing three documents before payment:
 
 | Document | What It Verifies | Table |
 |----------|-----------------|-------|
-| Purchase Order | What you agreed to buy | `finale_purchase_orders` |
-| Receipt (GRN) | What you actually received | `po_receipt_events` (TODO) |
+| Purchase Order | What you agreed to buy | `finale_purchase_orders` + `finale_po_line_items` |
+| Receipt (GRN) | What you actually received | `po_receipt_events` |
 | Invoice | What vendor is charging | `vendor_invoice_documents` |
 
-**Target Flow (after fixes):**
+**Flow:**
 ```
 Email Arrives → email-inbox-poller → Attachment Classification →
 Invoice Extraction (Claude Vision) → PO Matching → Three-Way Match →
@@ -573,17 +566,18 @@ Auto-Approve (95%+) OR Queue for Review (discrepancies)
 - `vendor_invoice_documents` - Extracted invoice data with match status
 - `po_three_way_matches` - Match results comparing PO vs Invoice vs Receipt
 - `po_backorders` - Shortage tracking from three-way match discrepancies
-- `email_attachments` - Classified attachments with storage paths
-- `po_receipt_events` - GRN events with timestamps (TODO: Migration 153)
+- `email_attachments` - Classified attachments with `attachment_type` column
+- `po_receipt_events` - GRN events with timestamps (Migration 153)
+- `po_receipt_summary` - Aggregated receipt view by PO/SKU
 
 **Key Services:**
 - `services/invoiceExtractionService.ts` - Invoice data extraction with regex patterns
-- `services/threeWayMatchService.ts` - Match logic with configurable thresholds
+- `services/threeWayMatchService.ts` - Match logic with configurable thresholds (uses `po_receipt_events` for receipt dates)
 - `services/invoiceProcessingService.ts` - Review workflow and AP forwarding
 
 **Edge Functions:**
 - `invoice-extractor` - Claude Vision AI for PDF/image invoice extraction
-- `three-way-match-runner` - Batch matching with auto-approval logic (NEEDS FIX)
+- `three-way-match-runner` - Batch matching with auto-approval logic
 
 **Auto-Approval Thresholds (configurable):**
 ```typescript
