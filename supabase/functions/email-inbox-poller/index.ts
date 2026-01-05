@@ -68,6 +68,7 @@ interface PollResult {
   engagementsRecorded: number;
   invoicesFound: number;
   statementsFound: number;
+  stockAlertsProcessed: number;
   newHistoryId: string | null;
   error?: string;
 }
@@ -152,6 +153,7 @@ serve(async (req) => {
       engagements_recorded: results.reduce((sum, r) => sum + r.engagementsRecorded, 0),
       invoices_found: results.reduce((sum, r) => sum + r.invoicesFound, 0),
       statements_found: results.reduce((sum, r) => sum + r.statementsFound, 0),
+      stock_alerts_processed: results.reduce((sum, r) => sum + r.stockAlertsProcessed, 0),
     };
 
     // Complete agent run
@@ -225,6 +227,7 @@ async function pollInbox(inbox: InboxConfig): Promise<PollResult> {
     engagementsRecorded: 0,
     invoicesFound: 0,
     statementsFound: 0,
+    stockAlertsProcessed: 0,
     newHistoryId: null,
   };
 
@@ -279,6 +282,7 @@ async function pollInbox(inbox: InboxConfig): Promise<PollResult> {
         if (processResult.engagementRecorded) result.engagementsRecorded++;
         result.invoicesFound += processResult.invoicesFound;
         result.statementsFound += processResult.statementsFound;
+        result.stockAlertsProcessed += processResult.stockAlertsProcessed;
       } catch (msgError) {
         console.error(`[email-inbox-poller] Error processing message ${message.id}:`, msgError);
       }
@@ -654,6 +658,7 @@ interface ProcessResult {
   engagementRecorded: boolean;
   invoicesFound: number;
   statementsFound: number;
+  stockAlertsProcessed: number;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -669,7 +674,7 @@ interface AttachmentInfo {
 }
 
 interface AttachmentClassification {
-  type: 'invoice' | 'statement' | 'packing_slip' | 'pod' | 'quote' | 'credit_memo' | 'other';
+  type: 'invoice' | 'statement' | 'packing_slip' | 'pod' | 'quote' | 'credit_memo' | 'stock_alert' | 'other';
   confidence: number;
   reason: string;
 }
@@ -688,6 +693,7 @@ async function processMessage(
     engagementRecorded: false,
     invoicesFound: 0,
     statementsFound: 0,
+    stockAlertsProcessed: 0,
   };
 
   // Check if message already processed
@@ -897,6 +903,7 @@ async function processMessage(
     );
     result.invoicesFound = attachmentResults.invoicesFound;
     result.statementsFound = attachmentResults.statementsFound;
+    result.stockAlertsProcessed = attachmentResults.stockAlertsProcessed;
   }
 
   return result;
@@ -1676,8 +1683,8 @@ async function processMessageAttachments(
   poId: string | null,
   accessToken: string,
   user: string
-): Promise<{ invoicesFound: number; statementsFound: number }> {
-  const results = { invoicesFound: 0, statementsFound: 0 };
+): Promise<{ invoicesFound: number; statementsFound: number; stockAlertsProcessed: number }> {
+  const results = { invoicesFound: 0, statementsFound: 0, stockAlertsProcessed: 0 };
 
   try {
     // Determine inbox purpose - default to 'purchasing' for backwards compatibility
@@ -1811,6 +1818,18 @@ async function processMessageAttachments(
           );
 
           console.log(`[email-inbox-poller] 📊 Statement detected (deferred): ${attachment.filename}`);
+
+        } else if (classification.type === 'stock_alert') {
+          // Process stock alert CSV (from Stockie, Shopify, etc.)
+          const stockResult = await processStockAlertCSV(
+            attachmentData,
+            attachment.filename,
+            messageDbId,
+            attachmentRecord?.id
+          );
+          results.stockAlertsProcessed = stockResult.itemsProcessed;
+
+          console.log(`[email-inbox-poller] 📦 Stock alert processed: ${attachment.filename} (${stockResult.itemsProcessed} items, ${stockResult.posCreated} draft POs)`);
         }
         // Other attachment types (packing_slip, pod, etc.) are recorded but not specially processed
 
@@ -1892,6 +1911,30 @@ function classifyAttachment(
 ): AttachmentClassification {
   const filename = attachment.filename.toLowerCase();
   const subject = (message.payload?.headers?.find(h => h.name.toLowerCase() === 'subject')?.value || '').toLowerCase();
+  const from = (message.payload?.headers?.find(h => h.name.toLowerCase() === 'from')?.value || '').toLowerCase();
+  const snippet = (message.snippet || '').toLowerCase();
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // STOCK ALERT DETECTION (CSV inventory reports from Stockie, Shopify, etc.)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const isCSV = filename.endsWith('.csv') || attachment.mimeType === 'text/csv';
+  const stockAlertKeywords = [
+    'out of stock', 'low stock', 'stock alert', 'inventory alert',
+    'reorder', 'below threshold', 'inventory report', 'stockie'
+  ];
+  const hasStockKeyword = stockAlertKeywords.some(kw =>
+    subject.includes(kw) || snippet.includes(kw) || from.includes('stockie') || from.includes('plutonian')
+  );
+
+  if (isCSV && hasStockKeyword) {
+    return { type: 'stock_alert', confidence: 0.95, reason: 'csv_stock_alert' };
+  }
+
+  // Also detect inventory-report.csv specifically (Stockie's filename)
+  if (isCSV && (filename.includes('inventory') || filename.includes('stock'))) {
+    return { type: 'stock_alert', confidence: 0.85, reason: 'inventory_csv_filename' };
+  }
 
   // ═══════════════════════════════════════════════════════════════════════
   // STATEMENT DETECTION (identify first to avoid invoice false positives)
@@ -2133,4 +2176,168 @@ async function createStatementDocument(
   } catch (error) {
     console.error('[email-inbox-poller] Error creating statement document:', error);
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Stock Alert CSV Processing (Stockie, Shopify, etc.)
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface StockAlertItem {
+  sku: string;
+  productName: string;
+  variant: string | null;
+  vendor: string | null;
+  available: number;
+  onHand: number;
+  incoming: number;
+  needsReorder: boolean;
+}
+
+/**
+ * Process stock alert CSV - create POs for out-of-stock items
+ * Goal: Never be out of stock. Autonomously create POs grouped by vendor.
+ */
+async function processStockAlertCSV(
+  csvData: Uint8Array,
+  filename: string,
+  _messageId: string | undefined,
+  _attachmentId: string | undefined
+): Promise<{ itemsProcessed: number; posCreated: number; errors: string[] }> {
+  const result = { itemsProcessed: 0, posCreated: 0, errors: [] as string[] };
+
+  try {
+    const csvContent = new TextDecoder().decode(csvData);
+    const items = parseStockAlertCSV(csvContent);
+    const outOfStock = items.filter(i => i.needsReorder);
+
+    console.log(`[stock-alert] ${filename}: ${outOfStock.length}/${items.length} need reorder`);
+
+    if (outOfStock.length === 0) return result;
+
+    // Group by vendor
+    const byVendor = new Map<string, StockAlertItem[]>();
+    for (const item of outOfStock) {
+      const vendor = (item.vendor || 'unknown').toLowerCase().trim();
+      if (!byVendor.has(vendor)) byVendor.set(vendor, []);
+      byVendor.get(vendor)!.push(item);
+    }
+
+    // Create one pending PO per vendor
+    for (const [vendorName, vendorItems] of byVendor) {
+      await supabase.from('pending_actions').insert({
+        action_type: 'create_po',
+        action_label: `Restock ${vendorItems.length} items from ${vendorName}`,
+        payload: {
+          vendor_name: vendorName,
+          line_items: vendorItems.map(i => ({ sku: i.sku, name: i.productName })),
+        },
+        confidence: 0.9,
+        priority: 'high',
+        reasoning: `Out of stock: ${vendorItems.map(i => i.sku).join(', ')}`,
+      });
+      result.posCreated++;
+      console.log(`[stock-alert] PO queued for ${vendorName}: ${vendorItems.length} SKUs`);
+    }
+
+    result.itemsProcessed = outOfStock.length;
+  } catch (error) {
+    console.error(`[stock-alert] Error:`, error);
+    result.errors.push(String(error));
+  }
+
+  return result;
+}
+
+/**
+ * Parse stock alert CSV with flexible column detection
+ * Handles Stockie format and similar inventory report CSVs
+ */
+function parseStockAlertCSV(csvContent: string): StockAlertItem[] {
+  const items: StockAlertItem[] = [];
+
+  try {
+    // Split into lines and parse
+    const lines = csvContent.split(/\r?\n/).filter(line => line.trim());
+    if (lines.length < 2) return items;
+
+    // Parse header row - normalize column names
+    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
+
+    // Find column indices with flexible matching
+    const findCol = (patterns: string[]): number => {
+      return headers.findIndex(h =>
+        patterns.some(p => h.includes(p) || h === p)
+      );
+    };
+
+    const skuCol = findCol(['sku', 'item_sku', 'product_sku', 'code', 'item code']);
+    const nameCol = findCol(['product', 'name', 'item', 'title', 'description']);
+    const variantCol = findCol(['variant', 'option', 'size', 'color']);
+    const vendorCol = findCol(['vendor', 'supplier', 'brand', 'manufacturer']);
+    const availCol = findCol(['available', 'avail', 'qty_available', 'sellable']);
+    const onHandCol = findCol(['on hand', 'on_hand', 'onhand', 'stock', 'quantity', 'qty']);
+    const incomingCol = findCol(['incoming', 'on order', 'on_order', 'in transit', 'ordered']);
+
+    console.log(`[stock-alert] Column mapping: sku=${skuCol}, name=${nameCol}, vendor=${vendorCol}, avail=${availCol}, onHand=${onHandCol}, incoming=${incomingCol}`);
+
+    // Parse data rows
+    for (let i = 1; i < lines.length; i++) {
+      const row = parseCSVLine(lines[i]);
+      if (row.length === 0) continue;
+
+      const sku = skuCol >= 0 ? row[skuCol]?.trim() : '';
+      if (!sku) continue; // Skip rows without SKU
+
+      const available = availCol >= 0 ? parseInt(row[availCol]) || 0 : 0;
+      const onHand = onHandCol >= 0 ? parseInt(row[onHandCol]) || 0 : 0;
+      const incoming = incomingCol >= 0 ? parseInt(row[incomingCol]) || 0 : 0;
+
+      items.push({
+        sku,
+        productName: nameCol >= 0 ? row[nameCol]?.trim() || sku : sku,
+        variant: variantCol >= 0 ? row[variantCol]?.trim() || null : null,
+        vendor: vendorCol >= 0 ? row[vendorCol]?.trim() || null : null,
+        available,
+        onHand,
+        incoming,
+        // Needs reorder if nothing available, nothing on hand, and nothing incoming
+        needsReorder: available === 0 && onHand === 0 && incoming === 0,
+      });
+    }
+  } catch (error) {
+    console.error('[stock-alert] CSV parsing error:', error);
+  }
+
+  return items;
+}
+
+/**
+ * Parse a single CSV line, handling quoted fields
+ */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        // Escaped quote
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  result.push(current);
+  return result;
 }

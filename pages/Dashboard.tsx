@@ -11,10 +11,12 @@ import ExecutiveSummary from '../components/ExecutiveSummary';
 import BuildabilityTable from '../components/BuildabilityTable';
 import RenewalAlertsWidget from '../components/RenewalAlertsWidget';
 import InventoryIntelligencePanel from '../components/InventoryIntelligencePanel';
-import AgentCommandWidget from '@/components/AgentCommandWidget';
 import StockoutRiskWidget from '@/components/StockoutRiskWidget';
 import POArrivalLeaderboard from '@/components/POArrivalLeaderboard';
 import CriticalStockoutWidget from '@/components/CriticalStockoutWidget';
+import AlertsPanel from '../components/AlertsPanel';
+import AgentActivityFeed from '../components/AgentActivityFeed';
+import PurchasingGuidanceDashboard from '../components/PurchasingGuidanceDashboard';
 import { calculateAllBuildability } from '../services/buildabilityService';
 import { LightBulbIcon, ClipboardListIcon, BeakerIcon, ExclamationCircleIcon, BellIcon, CheckCircleIcon, ChartBarIcon, ClipboardDocumentListIcon, AlertCircleIcon, TrendingUpIcon, DollarSignIcon, UsersIcon, HomeIcon } from '../components/icons';
 
@@ -470,37 +472,48 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
           <div className="p-6">
             {/* Dashboard Tab */}
             <TabsContent value="dashboard">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <div className="col-span-1 lg:col-span-2">
-                  <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-500/30 rounded-lg p-6 flex flex-col justify-center h-full">
-                    <h2 className="text-2xl font-bold text-white mb-2">Welcome, {currentUser.name.split(' ')[0]}</h2>
-                    <p className="text-gray-300">
-                      Your purchasing command center is active. Agents are monitoring
-                      <span className="font-semibold text-accent-400"> {props.vendors.length} vendors</span> and
-                      <span className="font-semibold text-accent-400"> {props.inventory.length} SKUs</span>.
-                    </p>
+              {/* PRIMARY: Purchasing Intelligence - The actionable replenishment view */}
+              <div className="mb-6">
+                <PurchasingGuidanceDashboard />
+              </div>
+
+              {/* Secondary: Three-column layout for alerts, agent activity, arrivals */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                {/* Pending Actions / Alerts */}
+                <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-amber-200'} backdrop-blur-sm rounded-lg border overflow-hidden`}>
+                  <div className={`px-3 py-2 border-b ${isDark ? 'border-gray-700' : 'border-amber-200'} flex items-center gap-2`}>
+                    <BellIcon className="w-4 h-4 text-orange-400" />
+                    <h4 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Pending Actions</h4>
+                  </div>
+                  <div className="p-3 max-h-[300px] overflow-y-auto">
+                    <AlertsPanel />
                   </div>
                 </div>
-                <div className="col-span-1">
-                  <AgentCommandWidget />
+
+                {/* Agent Activity */}
+                <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-amber-200'} backdrop-blur-sm rounded-lg border overflow-hidden`}>
+                  <div className={`px-3 py-2 border-b ${isDark ? 'border-gray-700' : 'border-amber-200'} flex items-center gap-2`}>
+                    <CheckCircleIcon className="w-4 h-4 text-green-400" />
+                    <h4 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Agent Activity</h4>
+                  </div>
+                  <div className="p-3 max-h-[300px] overflow-y-auto">
+                    <AgentActivityFeed />
+                  </div>
+                </div>
+
+                {/* PO Arrivals - Compact */}
+                <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-amber-200'} backdrop-blur-sm rounded-lg border overflow-hidden`}>
+                  <div className={`px-3 py-2 border-b ${isDark ? 'border-gray-700' : 'border-amber-200'} flex items-center gap-2`}>
+                    <ClipboardDocumentListIcon className="w-4 h-4 text-blue-400" />
+                    <h4 className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Incoming POs</h4>
+                  </div>
+                  <div className="p-3 max-h-[300px] overflow-y-auto">
+                    <POArrivalLeaderboard />
+                  </div>
                 </div>
               </div>
 
-              {/* PO Arrival Leaderboard - Shows upcoming deliveries */}
-              <div className="mb-6">
-                <POArrivalLeaderboard />
-              </div>
-
-              {/* Critical Purchasing Board - Promoted for Visibility */}
-              {stockoutRisks.some(r => r.riskLevel === 'critical' || r.riskLevel === 'high') && (
-                <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <StockoutRiskWidget
-                    risks={stockoutRisks.filter(r => r.riskLevel === 'critical' || r.riskLevel === 'high')}
-                    limit={5}
-                  />
-                </div>
-              )}
-
+              {/* Buildability Summary */}
               <ExecutiveSummary
                 data={buildabilityData}
                 onCardClick={handleExecutiveCardClick}
@@ -600,16 +613,11 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                 <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-amber-200'} backdrop-blur-sm rounded-lg border overflow-hidden`}>
                   <Tabs defaultValue="risks">
                     <div className="border-b border-gray-700 p-2">
-                      <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full">
+                      <TabsList className="grid grid-cols-3 w-full">
                         <TabsTrigger value="risks" className="flex items-center justify-center gap-2">
                           <AlertCircleIcon className="w-4 h-4" />
                           <span className="hidden md:inline">Risks</span>
                           <span className="md:hidden">Risks</span>
-                        </TabsTrigger>
-                        <TabsTrigger value="forecasts" className="flex items-center justify-center gap-2">
-                          <ChartBarIcon className="w-4 h-4" />
-                          <span className="hidden md:inline">Forecast</span>
-                          <span className="md:hidden">Fcst</span>
                         </TabsTrigger>
                         <TabsTrigger value="trends" className="flex items-center justify-center gap-2">
                           <TrendingUpIcon className="w-4 h-4" />
@@ -621,11 +629,6 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                           <span className="hidden md:inline">Vendors</span>
                           <span className="md:hidden">Vends</span>
                         </TabsTrigger>
-                        <TabsTrigger value="budget" className="flex items-center justify-center gap-2">
-                          <DollarSignIcon className="w-4 h-4" />
-                          <span className="hidden md:inline">Budget</span>
-                          <span className="md:hidden">Budget</span>
-                        </TabsTrigger>
                       </TabsList>
                     </div>
 
@@ -635,21 +638,6 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                         <div className="space-y-4">
                           <h3 className="text-lg font-semibold text-white">Stockout Risk Analysis</h3>
                           <StockoutRiskWidget risks={stockoutRisks} />
-                        </div>
-                      </TabsContent>
-
-                      {/* Forecast Accuracy Tab */}
-                      <TabsContent value="forecasts">
-                        <div className="space-y-4">
-                          <h3 className="text-lg font-semibold text-white">Forecast Accuracy Tracking</h3>
-                          <p className="text-gray-400 text-sm">
-                            Historical forecast performance to improve future predictions
-                          </p>
-                          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                            <p className="text-yellow-400 text-sm">
-                              📊 Forecast accuracy tracking requires historical data. This feature will populate over time as forecasts are validated against actual sales.
-                            </p>
-                          </div>
                         </div>
                       </TabsContent>
 
@@ -762,18 +750,7 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                         </div>
                       </TabsContent>
 
-                      {/* Budget Analysis Tab */}
-                      <TabsContent value="budget">
-                        <div className="space-y-4">
-                          <h3 className="text-lg font-semibold text-white">Budget & Cost Analysis</h3>
-                          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                            <p className="text-yellow-400 text-sm">
-                              📊 Budget analysis feature coming soon. Will track spending trends, forecast future costs, and identify optimization opportunities.
-                            </p>
-                          </div>
-                        </div>
-                      </TabsContent>
-                    </div>
+                      </div>
                   </Tabs>
                 </div>
               </div>

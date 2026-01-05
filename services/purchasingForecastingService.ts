@@ -47,6 +47,7 @@ export async function updateSkuPurchasingParameters(sku: string) {
 
 /**
  * Get accurate purchasing advice based on the new rigorous formula
+ * Enhanced to include: Days Remaining, Linked PO, Est Receive Date, Item Type
  */
 export async function getRigorousPurchasingAdvice() {
     // Get items where Current Stock < Calculated ROP
@@ -62,6 +63,8 @@ export async function getRigorousPurchasingAdvice() {
       category,
       is_dropship,
       reorder_method,
+      vendor_id,
+      sales_30_days,
       sku_purchasing_parameters!inner (
         calculated_reorder_point,
         calculated_safety_stock,
@@ -77,6 +80,43 @@ export async function getRigorousPurchasingAdvice() {
     const { data, error } = await query;
 
     if (error) throw error;
+
+    // Fetch open POs to link SKUs to their expected delivery
+    const { data: openPOs } = await supabase
+        .from('finale_purchase_orders')
+        .select('id, order_id, status, expected_date, line_items')
+        .in('status', ['SUBMITTED', 'OPEN', 'PARTIALLY_RECEIVED']);
+
+    // Build SKU -> PO mapping
+    const skuToPO = new Map<string, { poId: string; poNumber: string; expectedDate: string | null }>();
+    openPOs?.forEach(po => {
+        const lineItems = po.line_items as any[] || [];
+        lineItems.forEach(item => {
+            const sku = item.product_id || item.sku || item.productId;
+            if (sku && !skuToPO.has(sku)) {
+                skuToPO.set(sku, {
+                    poId: po.id,
+                    poNumber: po.order_id,
+                    expectedDate: po.expected_date
+                });
+            }
+        });
+    });
+
+    // Fetch BOM items to determine manufactured vs purchased
+    const { data: bomItems } = await supabase
+        .from('bom_items')
+        .select('sku')
+        .eq('is_finished_product', true);
+
+    const manufacturedSkus = new Set(bomItems?.map(b => b.sku) || []);
+
+    // Fetch vendors for names
+    const { data: vendors } = await supabase
+        .from('vendors')
+        .select('id, name');
+
+    const vendorMap = new Map(vendors?.map(v => [v.id, v.name]) || []);
 
     // Filter in JS for now (or could create a view)
     // CRITICAL: Stock Intelligence should NEVER show dropship or do_not_reorder items
@@ -123,9 +163,32 @@ export async function getRigorousPurchasingAdvice() {
             // For now, let's suggest ordering enough to cover the deficit + one lead time of demand
             const suggestedQty = Math.ceil(deficit + (params.demand_mean_daily * params.lead_time_mean));
 
+            // Calculate days remaining until stockout
+            const dailyDemand = params.demand_mean_daily || (item.sales_30_days || 0) / 30;
+            const availableStock = item.stock + (item.on_order || 0);
+            const daysRemaining = dailyDemand > 0 ? Math.floor(availableStock / dailyDemand) : 999;
+
+            // Get linked PO info
+            const poInfo = skuToPO.get(item.sku);
+
+            // Determine item type
+            const itemType = manufacturedSkus.has(item.sku) ? 'Manufactured' : 'Purchased';
+
+            // Get vendor name
+            const vendorName = vendorMap.get(item.vendor_id) || 'Unknown';
+
             return {
                 sku: item.sku,
                 name: item.name,
+                vendor_name: vendorName,
+                vendor_id: item.vendor_id,
+                item_type: itemType,
+                days_remaining: daysRemaining,
+                linked_po: poInfo ? {
+                    po_id: poInfo.poId,
+                    po_number: poInfo.poNumber,
+                    expected_date: poInfo.expectedDate
+                } : null,
                 current_status: {
                     stock: item.stock,
                     on_order: item.on_order,
@@ -144,7 +207,9 @@ export async function getRigorousPurchasingAdvice() {
                     reason: `Below ROP (${params.calculated_reorder_point.toFixed(0)}) with Service Level ${params.z_score === 1.65 ? '95%' : 'Custom'}`
                 }
             };
-        });
+        })
+        // Sort by days remaining (most critical first)
+        .sort((a, b) => a.days_remaining - b.days_remaining);
 }
 
 

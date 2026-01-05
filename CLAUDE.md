@@ -26,6 +26,9 @@ npm run test:inventory-ui      # Inventory display tests
 npm run test:invoice           # Invoice extraction unit tests (38 tests)
 npm run test:invoice-integration  # Invoice system integration tests
 
+# Type checking only (no emit)
+npx tsc --noEmit
+
 # Run a single E2E test file
 npx playwright test e2e/vendors.spec.ts
 
@@ -127,7 +130,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 /types/              # TypeScript type definitions
 /supabase/
   /functions/        # Edge functions (30 functions for webhooks, sync, automation)
-  /migrations/       # 152 SQL migrations (strict 3-digit sequential numbering)
+  /migrations/       # 153+ SQL migrations (strict 3-digit sequential numbering)
 /e2e/                # Playwright E2E tests
 /tests/              # Unit tests
 ```
@@ -146,7 +149,7 @@ ls supabase/migrations | sort | tail -1  # Check current highest number
 supabase migration new feature_name
 
 # 3. Rename to sequential number
-mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/153_feature_name.sql
+mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/154_feature_name.sql
 
 # 4. Test locally
 supabase db reset
@@ -669,6 +672,17 @@ ls supabase/migrations | sort | tail -1
 - **State management**: React state only - no Redux/MobX/Zustand
 - **Imports**: Absolute imports from project root using `@/` alias
 - **Session tracking**: Log notable changes to `docs/SESSION_SUMMARY_2025-11-29_to_CURRENT.md` before ending sessions
+
+## TFR Protocol (Before Commits)
+
+**Test-Fix-Refactor** - mandatory workflow before ANY commit:
+
+1. **Test**: Run `npm test` and `npm run build`
+2. **Fix**: If tests fail, fix code and re-run until ALL pass
+3. **Refactor**: Remove debug statements, clean up code
+4. **Re-test**: Verify refactoring didn't break anything
+
+Only proceed to commit when all tests pass and build succeeds.
 
 ## Key Documentation References
 

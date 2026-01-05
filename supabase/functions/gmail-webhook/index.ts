@@ -1,4 +1,5 @@
-import { createShipment, createTrackingEvent } from './shipmentTrackingService.ts';
+// Shipment tracking service available but not currently used in this flow
+// import { createShipment, createTrackingEvent } from './shipmentTrackingService.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -152,37 +153,7 @@ serve(async (req) => {
     let vendorResponseStatus: VendorResponseStatus = (invoiceSignal?.detected || pricelistSignal?.detected) ? 'requires_clarification' : 'vendor_responded';
     let vendorResponseSummary: any = invoiceSignal?.detected ? invoiceSignal : (pricelistSignal?.detected ? pricelistSignal : null);
 
-    // Check if AI detected invoice data
-    const hasInvoiceData = parsed?.invoiceData && parsed.status === 'invoice_received';
-
-    if (hasInvoiceData) {
-      vendorResponseStatus = 'requires_clarification';
-      vendorResponseSummary = {
-        ...vendorResponseSummary,
-        invoice_data: parsed.invoiceData,
-        extracted_by: 'ai'
-      };
-    }
-
-    // Check if AI detected pricelist data
-    const hasPricelistData = parsed?.pricelistData && parsed.responseCategory === 'pricelist_attached';
-
-    if (hasPricelistData) {
-      vendorResponseStatus = 'requires_clarification';
-      vendorResponseSummary = {
-        ...vendorResponseSummary,
-        pricelist_data: parsed.pricelistData,
-        extracted_by: 'ai'
-      };
-    }
-
-    if ((invoiceSignal?.detected || hasInvoiceData) && poRecord.invoice_gmail_message_id !== messageId) {
-      await recordInvoiceReceipt(poRecord, messageId, invoiceSignal, hasInvoiceData ? parsed?.invoiceData : undefined);
-    }
-
-    if ((pricelistSignal?.detected || hasPricelistData) && !poRecord.pricelist_gmail_message_id) {
-      await recordPricelistReceipt(poRecord, messageId, pricelistSignal, hasPricelistData ? parsed?.pricelistData : undefined);
-    }
+    // Note: AI-detected invoice/pricelist data is checked later after AI parsing (see below line ~320)
 
     const correlationConfidence = threadId ? 0.95 : 0.7;
     const communicationMetadata: Record<string, any> = {
@@ -311,6 +282,28 @@ serve(async (req) => {
 
     vendorResponseStatus = deriveVendorResponseStatus(parsed);
     vendorResponseSummary = parsed;
+
+    // Check if AI detected invoice data
+    const hasInvoiceData = parsed?.invoiceData && parsed.status === 'invoice_received';
+    if (hasInvoiceData) {
+      vendorResponseStatus = 'requires_clarification';
+      vendorResponseSummary = { ...vendorResponseSummary, invoice_data: parsed.invoiceData, extracted_by: 'ai' };
+    }
+
+    // Check if AI detected pricelist data
+    const hasPricelistData = parsed?.pricelistData && parsed.responseCategory === 'pricelist_attached';
+    if (hasPricelistData) {
+      vendorResponseStatus = 'requires_clarification';
+      vendorResponseSummary = { ...vendorResponseSummary, pricelist_data: parsed.pricelistData, extracted_by: 'ai' };
+    }
+
+    // Record invoice/pricelist receipts
+    if ((invoiceSignal?.detected || hasInvoiceData) && poRecord.invoice_gmail_message_id !== messageId) {
+      await recordInvoiceReceipt(poRecord, messageId, invoiceSignal, hasInvoiceData ? parsed?.invoiceData : undefined);
+    }
+    if ((pricelistSignal?.detected || hasPricelistData) && !poRecord.pricelist_gmail_message_id) {
+      await recordPricelistReceipt(poRecord, messageId, pricelistSignal, hasPricelistData ? parsed?.pricelistData : undefined);
+    }
 
     communicationMetadata.aiDecision = 'parsed';
     communicationMetadata.aiConfidence = parsed.confidence ?? null;
@@ -1051,76 +1044,10 @@ async function applyTrackingUpdate(poId: string, parsed: ParsedTrackingResult) {
   const status = normalizeStatus(parsed.status);
   const carrier = normalizeCarrier(parsed.carrier);
 
-  // Check if this is invoice data
-  if (parsed.invoiceData) {
-    // Handle invoice processing (existing logic)
-    await recordInvoiceReceipt(poRecord, messageId, null, parsed.invoiceData);
-    return;
-  }
+  // Invoice/pricelist data is handled in the main flow before this function is called
+  // This function only handles tracking/shipment updates
 
-  // Check if this is pricelist data
-  if (parsed.pricelistData) {
-    // Handle pricelist processing
-    await recordPricelistReceipt(poRecord, messageId, null, parsed.pricelistData);
-    return;
-  }
-
-  // Check if this contains shipment/tracking data
-  if (parsed.trackingNumber || carrier || parsed.status) {
-    // Create shipment record
-    const shipmentData = {
-      poId,
-      trackingNumbers: parsed.trackingNumber ? [parsed.trackingNumber] : [],
-      carrier: carrier || undefined,
-      carrierConfidence: parsed.confidence || 0.5,
-      shipDate: parsed.expectedDelivery ? new Date().toISOString().split('T')[0] : undefined, // Assume ship date is today if we have delivery date
-      estimatedDeliveryDate: parsed.expectedDelivery || undefined,
-      aiConfidence: parsed.confidence || 0.5,
-      aiExtraction: parsed,
-      gmailMessageId: messageId,
-      gmailThreadId: threadId,
-      requiresReview: (parsed.confidence || 0) < 0.8, // Require review for low confidence
-      reviewReason: (parsed.confidence || 0) < 0.8 ? 'Low AI confidence in extracted data' : undefined
-    };
-
-    try {
-      const shipment = await createShipment(shipmentData);
-
-      // Create tracking event
-      await createTrackingEvent({
-        shipmentId: shipment.id,
-        eventType: 'status_update',
-        status: status,
-        description: parsed.notes || parsed.action || 'Shipment detected from vendor email',
-        carrier: carrier || undefined,
-        trackingNumber: parsed.trackingNumber || undefined,
-        source: 'email',
-        sourceId: messageId,
-        aiConfidence: parsed.confidence || 0.5,
-        rawData: parsed
-      });
-
-      // Update PO tracking columns for backward compatibility
-      await supabase
-        .from('purchase_orders')
-        .update({
-          tracking_status: status,
-          tracking_carrier: carrier,
-          tracking_number: parsed.trackingNumber,
-          tracking_estimated_delivery: parsed.expectedDelivery,
-          tracking_last_checked_at: new Date().toISOString()
-        })
-        .eq('id', poId);
-
-      console.log(`[gmail-webhook] Created shipment ${shipment.id} for PO ${poId}`);
-    } catch (error) {
-      console.error('[gmail-webhook] Failed to create shipment:', error);
-    }
-
-    return;
-  }
-
-  // Fallback to legacy tracking update
+  // Update PO tracking columns
   const updates: Record<string, any> = {
     tracking_status: status,
     tracking_last_checked_at: new Date().toISOString(),
@@ -1324,52 +1251,7 @@ async function recordPricelistReceipt(
   }
 }
 
-async function calculateAndStoreVariances(poId: string, invoiceDataId: string, invoiceData: any) {
-  try {
-    // Call the database function to calculate variances
-    const { data: variances, error } = await supabase
-      .rpc('calculate_invoice_variances', {
-        p_po_id: poId,
-        p_invoice_data: invoiceData
-      });
-
-    if (error) {
-      console.error('[gmail-webhook] Failed to calculate variances:', error);
-      return;
-    }
-
-    if (!variances || variances.length === 0) {
-      console.log('[gmail-webhook] No variances detected');
-      return;
-    }
-
-    // Store each variance
-    for (const variance of variances) {
-      const varianceRecord = {
-        po_id: poId,
-        invoice_data_id: invoiceDataId,
-        variance_type: variance.variance_type,
-        severity: variance.severity,
-        po_amount: variance.po_amount,
-        invoice_amount: variance.invoice_amount,
-        variance_amount: variance.variance_amount,
-        variance_percentage: variance.variance_percentage,
-        threshold_percentage: variance.threshold_percentage,
-        threshold_amount: variance.threshold_amount,
-        status: 'pending'
-      };
-
-      await supabase
-        .from('po_invoice_variances')
-        .insert(varianceRecord);
-    }
-
-    console.log(`[gmail-webhook] Stored ${variances.length} variances for PO ${poId}`);
-
-  } catch (error) {
-    console.error('[gmail-webhook] Error calculating/storing variances:', error);
-  }
-}
+// NOTE: calculateAndStoreVariances is defined above (line ~1085) - duplicate removed
 
 async function markFollowUpResponse(
   poId: string,

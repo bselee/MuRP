@@ -1,3 +1,85 @@
+### Session: 2026-01-05 (Stock Alert Integration + Email System Bug Fixes + Alerts UI)
+
+**Summary:** Implemented Stockie stock alert email processing, fixed critical bugs in gmail-webhook, and added Alerts & Actions tab to Stock Intelligence for visibility into email-derived alerts and pending actions.
+
+**Changes Made:**
+
+1. **Stock Alert Email Processing** (`supabase/functions/email-inbox-poller/index.ts`)
+   - Added `stock_alert` attachment classification
+   - `processStockAlertCSV()`: Parse CSV, group out-of-stock items by vendor, create `pending_actions`
+   - Simple flow: Email → Parse CSV → Group by vendor → Queue PO for approval
+
+2. **Gmail-Webhook Bug Fixes** (`supabase/functions/gmail-webhook/index.ts`)
+   - Fixed undefined `parsed` variable at lines 156-185 (was used before defined)
+   - Fixed `applyTrackingUpdate()` using undefined `poRecord`, `messageId`, `threadId`
+   - Removed duplicate `calculateAndStoreVariances()` function
+   - Commented out unused `createShipment`/`createTrackingEvent` import
+
+3. **Alerts Panel UI** (`components/AlertsPanel.tsx`) - NEW
+   - Displays `email_tracking_alerts` (delays, backorders, stockout risks)
+   - Displays `pending_actions` (POs awaiting approval)
+   - Approve/Reject buttons for pending actions
+   - Dismiss button for alerts
+   - Summary cards: Total Alerts, Critical, Urgent Actions, Pending POs
+
+4. **Stock Intelligence Integration** (`pages/StockIntelligence.tsx`)
+   - Added "Alerts & Actions" as first tab (default view)
+   - Shows AlertsPanel component with email alerts and pending actions
+   - Users can now see and act on alerts directly in Stock Intelligence
+
+5. **Database Migration** (`supabase/migrations/154_stock_alert_email_support.sql`)
+   - Added `stock_alert` to `email_attachments.attachment_type` constraint
+   - Added `stock_alerts_processed` column to `email_tracking_runs`
+
+**Key Fixes:**
+- gmail-webhook would crash when invoice/pricelist detected (undefined variable)
+- applyTrackingUpdate() was completely broken (multiple undefined refs)
+- Duplicate function definition causing potential issues
+
+**Deployment:**
+- ✅ Migration 154 pushed to Supabase
+- ✅ Edge functions deployed: `email-inbox-poller`, `gmail-webhook`
+
+**Testing:**
+- ✅ Build: Successful
+- ✅ Tests: 38/38 passing
+
+---
+
+### Session: 2025-12-31 (Documentation & Settings UI Improvements)
+
+**Summary:** Updated CLAUDE.md documentation with comprehensive troubleshooting guidance and sync monitoring instructions. Reorganized Settings.tsx email panels for better UX flow.
+
+**Changes Made:**
+
+1. **CLAUDE.md Documentation Updates**
+   - Added `npm run test:invoice` and `npm run test:invoice-integration` test commands
+   - Added `supabase migration list` and `supabase functions list` commands  
+   - Updated pg_cron scheduled jobs section with Finale sync jobs (1 AM/1 PM full sync, hourly PO sync)
+   - Added "Monitoring Sync Health" section with curl examples for checking sync state
+   - Added "Troubleshooting" section covering:
+     - Finale sync not running diagnostics
+     - Security lint errors after migrations
+     - Edge function error handling fixes
+   - Improved Edge Functions documentation with invoice-extractor and three-way-match-runner
+
+2. **Settings.tsx UI Improvements**
+   - Consolidated email-related panels under new "Email" section header
+   - Moved "Email Tracking & Inbox Monitoring" → "Inbox Monitoring & Tracking" under Email section
+   - Moved "Email Processing Activity" → "Email Activity Log" under Email section
+   - Renamed "Email Configuration" → "Company Email Policy" for clarity
+   - Better separation of Communication section from Email section
+
+**Files Modified:**
+- `CLAUDE.md` - Documentation improvements (+65 lines)
+- `pages/Settings.tsx` - Email panel reorganization (+56/-43 lines)
+
+**Testing:**
+- ✅ Build: Successful (9.10s, 2.7MB bundle)
+- ✅ Tests: 50/50 passing (9 schema + 3 inventory + 38 invoice)
+
+---
+
 ### Session: 2025-12-29 (Full PO Autonomy Implementation - Complete)
 
 **Summary:** Successfully implemented and merged complete Purchase Order autonomy system with three-way matching, autonomous email sending, backorder automation, and pipeline visualization. All critical gaps closed for "never out of stock" autonomous workflow.

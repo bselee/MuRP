@@ -26,8 +26,10 @@ import {
   CalendarIcon,
   DollarSignIcon,
   UsersIcon,
-  ClipboardIcon
+  ClipboardIcon,
+  BellIcon
 } from '../components/icons';
+import AlertsPanel from '../components/AlertsPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import { getCriticalStockoutAlerts, type StockoutAlert } from '../services/stockoutPreventionAgent';
 
@@ -59,7 +61,7 @@ interface VendorPerformance {
 
 const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendors, purchaseOrders }) => {
   const permissions = usePermissions();
-  const [activeTab, setActiveTab] = useState<'guidance' | 'risks' | 'forecasts' | 'trends' | 'vendors' | 'budget'>('guidance');
+  const [activeTab, setActiveTab] = useState<'alerts' | 'guidance' | 'risks' | 'forecasts' | 'trends' | 'vendors' | 'budget'>('alerts');
   const [loading, setLoading] = useState(true);
   const [stockoutRisks, setStockoutRisks] = useState<StockoutRisk[]>([]);
   const [vendorPerformances, setVendorPerformances] = useState<VendorPerformance[]>([]);
@@ -337,6 +339,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
         <div className="flex border-b border-gray-700">
 
           {[
+            { id: 'alerts', label: 'Alerts & Actions', icon: BellIcon },
             { id: 'guidance', label: 'Purchasing Guidance', icon: ClipboardIcon },
             { id: 'risks', label: 'Stockout Risks', icon: AlertCircleIcon },
             { id: 'forecasts', label: 'Forecast Accuracy', icon: ChartBarIcon },
@@ -362,6 +365,17 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
         </div>
 
         <div className="p-6">
+          {/* Alerts & Actions Tab */}
+          {activeTab === 'alerts' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white">Alerts & Pending Actions</h3>
+              <p className="text-gray-400 text-sm">
+                Email-derived alerts and actions awaiting your approval
+              </p>
+              <AlertsPanel />
+            </div>
+          )}
+
           {/* Purchasing Guidance Tab */}
           {activeTab === 'guidance' && (
             <div className="space-y-4">

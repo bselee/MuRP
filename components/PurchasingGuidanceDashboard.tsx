@@ -237,55 +237,79 @@ export default function PurchasingGuidanceDashboard() {
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-50 text-slate-500 font-medium">
                                 <tr>
-                                    <th className="px-6 py-3">SKU / Product</th>
-                                    <th className="px-6 py-3">Status</th>
-                                    <th className="px-6 py-3 text-right">Calculated ROP</th>
-                                    <th className="px-6 py-3 text-right">Safety Stock</th>
-                                    <th className="px-6 py-3 text-right">Advice</th>
-                                    <th className="px-6 py-3">Reasoning</th>
+                                    <th className="px-4 py-3">SKU / Product</th>
+                                    <th className="px-4 py-3">Vendor</th>
+                                    <th className="px-4 py-3 text-right">Stock</th>
+                                    <th className="px-4 py-3 text-right">On Order</th>
+                                    <th className="px-4 py-3 text-right">Days Left</th>
+                                    <th className="px-4 py-3">Est. Receive</th>
+                                    <th className="px-4 py-3">Type</th>
+                                    <th className="px-4 py-3 text-right">Order Qty</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {advice.map((item, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <div className="font-medium text-slate-900">{item.sku}</div>
-                                            <div className="text-slate-500 text-xs truncate max-w-[200px]">{item.name}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex justify-between text-xs">
-                                                    <span>On Hand:</span>
-                                                    <span className="font-medium">{item.current_status.stock}</span>
-                                                </div>
-                                                <div className="flex justify-between text-xs text-slate-500">
-                                                    <span>On Order:</span>
-                                                    <span>{item.current_status.on_order}</span>
-                                                </div>
-                                                <div className="h-1.5 w-full bg-slate-100 rounded-full mt-1 overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-red-500 rounded-full"
-                                                        style={{ width: `${Math.min(100, (item.current_status.total_position / item.parameters.rop) * 100)}%` }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-mono text-slate-700">
-                                            {item.parameters.rop.toFixed(0)}
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-mono text-slate-500">
-                                            {item.parameters.safety_stock.toFixed(0)}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                + {item.recommendation.quantity} Units
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-xs text-slate-500 max-w-[250px]">
-                                            {item.recommendation.reason}
-                                        </td>
-                                    </tr>
-                                ))}
+                                {advice.map((item, idx) => {
+                                    // Row highlighting based on days remaining
+                                    const daysRemaining = item.days_remaining || 999;
+                                    const rowClass = daysRemaining <= 0 ? 'bg-red-100' :
+                                        daysRemaining < 7 ? 'bg-red-50' :
+                                        daysRemaining < 14 ? 'bg-yellow-50' :
+                                        item.linked_po ? 'bg-green-50' : '';
+
+                                    return (
+                                        <tr key={idx} className={`${rowClass} hover:opacity-90 transition-colors`}>
+                                            <td className="px-4 py-3">
+                                                <div className="font-medium text-slate-900 font-mono text-xs">{item.sku}</div>
+                                                <div className="text-slate-500 text-xs truncate max-w-[180px]">{item.name}</div>
+                                            </td>
+                                            <td className="px-4 py-3 text-xs text-slate-600 max-w-[100px] truncate">
+                                                {item.vendor_name || 'Unknown'}
+                                            </td>
+                                            <td className={`px-4 py-3 text-right font-medium ${item.current_status.stock === 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                                                {item.current_status.stock}
+                                            </td>
+                                            <td className={`px-4 py-3 text-right ${item.current_status.on_order > 0 ? 'text-green-600' : 'text-slate-400'}`}>
+                                                {item.current_status.on_order || '-'}
+                                            </td>
+                                            <td className={`px-4 py-3 text-right font-bold ${
+                                                daysRemaining <= 0 ? 'text-red-700' :
+                                                daysRemaining < 7 ? 'text-red-600' :
+                                                daysRemaining < 14 ? 'text-yellow-600' :
+                                                'text-slate-600'
+                                            }`}>
+                                                {daysRemaining === 999 ? '-' : daysRemaining}
+                                            </td>
+                                            <td className="px-4 py-3 text-xs">
+                                                {item.linked_po ? (
+                                                    <div>
+                                                        <div className="text-green-600 font-medium">{item.linked_po.po_number}</div>
+                                                        {item.linked_po.expected_date && (
+                                                            <div className="text-slate-500">
+                                                                {new Date(item.linked_po.expected_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-400">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`px-2 py-0.5 text-xs rounded ${
+                                                    item.item_type === 'Manufactured'
+                                                        ? 'bg-purple-100 text-purple-700'
+                                                        : 'bg-blue-100 text-blue-700'
+                                                }`}>
+                                                    {item.item_type === 'Manufactured' ? 'Mfg' : 'Purch'}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    +{item.recommendation.quantity}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
