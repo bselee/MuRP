@@ -75,10 +75,11 @@ export async function getRigorousPurchasingAdvice() {
     if (!data || data.length === 0) return [];
 
     // Fetch open POs to link SKUs to their expected delivery
+    // Finale status values: Committed = open/submitted, Draft = not yet sent
     const { data: openPOs } = await supabase
         .from('finale_purchase_orders')
         .select('id, order_id, status, expected_date, line_items')
-        .in('status', ['SUBMITTED', 'OPEN', 'PARTIALLY_RECEIVED']);
+        .in('status', ['Committed', 'Draft']);
 
     // Build SKU -> PO mapping
     const skuToPO = new Map<string, { poId: string; poNumber: string; expectedDate: string | null }>();

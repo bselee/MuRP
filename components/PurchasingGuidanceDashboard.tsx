@@ -250,7 +250,8 @@ export default function PurchasingGuidanceDashboard() {
                             <tbody className="divide-y divide-slate-100">
                                 {advice.map((item, idx) => {
                                     // Row highlighting based on days remaining
-                                    const daysRemaining = item.days_remaining || 999;
+                                    const daysRemaining = item.days_remaining ?? 999;
+                                    const onOrder = item.current_status?.on_order ?? 0;
                                     const rowClass = daysRemaining <= 0 ? 'bg-red-100' :
                                         daysRemaining < 7 ? 'bg-red-50' :
                                         daysRemaining < 14 ? 'bg-yellow-50' :
@@ -260,16 +261,16 @@ export default function PurchasingGuidanceDashboard() {
                                         <tr key={idx} className={`${rowClass} hover:opacity-90 transition-colors`}>
                                             <td className="px-4 py-3">
                                                 <div className="font-medium text-slate-900 font-mono text-xs">{item.sku}</div>
-                                                <div className="text-slate-500 text-xs truncate max-w-[180px]">{item.name}</div>
+                                                <div className="text-slate-500 text-xs max-w-[300px]" title={item.name}>{item.name}</div>
                                             </td>
-                                            <td className="px-4 py-3 text-xs text-slate-600 max-w-[100px] truncate">
+                                            <td className="px-4 py-3 text-xs text-slate-600 max-w-[120px] truncate">
                                                 {item.vendor_name || 'Unknown'}
                                             </td>
                                             <td className={`px-4 py-3 text-right font-medium ${item.current_status.stock === 0 ? 'text-red-600' : 'text-slate-900'}`}>
                                                 {item.current_status.stock}
                                             </td>
-                                            <td className={`px-4 py-3 text-right ${item.current_status.on_order > 0 ? 'text-green-600' : 'text-slate-400'}`}>
-                                                {item.current_status.on_order || '-'}
+                                            <td className={`px-4 py-3 text-right ${onOrder > 0 ? 'text-green-600 font-medium' : 'text-slate-400'}`}>
+                                                {onOrder}
                                             </td>
                                             <td className={`px-4 py-3 text-right font-bold ${
                                                 daysRemaining <= 0 ? 'text-red-700' :
@@ -277,7 +278,7 @@ export default function PurchasingGuidanceDashboard() {
                                                 daysRemaining < 14 ? 'text-yellow-600' :
                                                 'text-slate-600'
                                             }`}>
-                                                {daysRemaining === 999 ? '-' : daysRemaining}
+                                                {daysRemaining}
                                             </td>
                                             <td className="px-4 py-3 text-xs">
                                                 {item.linked_po ? (
@@ -290,7 +291,7 @@ export default function PurchasingGuidanceDashboard() {
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-slate-400">-</span>
+                                                    <span className="text-slate-400">No PO</span>
                                                 )}
                                             </td>
                                             <td className="px-4 py-3">
