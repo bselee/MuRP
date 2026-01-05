@@ -13,7 +13,6 @@ import RenewalAlertsWidget from '../components/RenewalAlertsWidget';
 import InventoryIntelligencePanel from '../components/InventoryIntelligencePanel';
 import StockoutRiskWidget from '@/components/StockoutRiskWidget';
 import POArrivalLeaderboard from '@/components/POArrivalLeaderboard';
-import CriticalStockoutWidget from '@/components/CriticalStockoutWidget';
 import AlertsPanel from '../components/AlertsPanel';
 import AgentActivityFeed from '../components/AgentActivityFeed';
 import PurchasingGuidanceDashboard from '../components/PurchasingGuidanceDashboard';
@@ -560,9 +559,6 @@ const Dashboard: React.FC<DashboardProps> = (props) => {
                   </h2>
                   <p className={`${isDark ? 'text-gray-400' : 'text-amber-700'} mt-1`}>Advanced analytics and predictive insights for inventory management</p>
                 </div>
-
-                {/* Critical Stockout Prevention Widget */}
-                <CriticalStockoutWidget />
 
                 {/* Key Metrics Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
