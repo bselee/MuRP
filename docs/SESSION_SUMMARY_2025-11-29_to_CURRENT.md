@@ -1,48 +1,88 @@
-### Session: 2026-01-05 (Stock Alert Integration + Email System Bug Fixes + Alerts UI)
+### Session: 2026-01-05 (Vendor Performance Analytics + Dropship Filtering + Dashboard Simplification + Deployment Fixes)
 
-**Summary:** Implemented Stockie stock alert email processing, fixed critical bugs in gmail-webhook, and added Alerts & Actions tab to Stock Intelligence for visibility into email-derived alerts and pending actions.
+**Summary:** Added vendor performance analytics, enhanced dropship filtering across purchasing forecasting, simplified Dashboard to single actionable table, and resolved Vercel deployment configuration issues.
 
 **Changes Made:**
 
-1. **Stock Alert Email Processing** (`supabase/functions/email-inbox-poller/index.ts`)
-   - Added `stock_alert` attachment classification
-   - `processStockAlertCSV()`: Parse CSV, group out-of-stock items by vendor, create `pending_actions`
-   - Simple flow: Email → Parse CSV → Group by vendor → Queue PO for approval
+1. **Vendor Performance Analytics** (`ff0ada2`, `7103146`, `244fa2d`)
+   - Created `VendorPerformanceInsights` component with metrics visualization
+   - Added `useVendorPerformance` hook for analytics queries
+   - Added `VendorPerformance` type definition
+   - Moved performance insights to `VendorsManagementPanel` for better organization
+   - Displays: on-time delivery %, quality scores, cost trends
 
-2. **Gmail-Webhook Bug Fixes** (`supabase/functions/gmail-webhook/index.ts`)
-   - Fixed undefined `parsed` variable at lines 156-185 (was used before defined)
-   - Fixed `applyTrackingUpdate()` using undefined `poRecord`, `messageId`, `threadId`
-   - Removed duplicate `calculateAndStoreVariances()` function
-   - Commented out unused `createShipment`/`createTrackingEvent` import
+2. **Dashboard Simplification** (`09bbaee`, `30d1935`)
+   - Simplified Dashboard to single actionable table showing critical stock items
+   - Removed redundant `CriticalStockoutWidget` 
+   - Cleaner, more focused UI for immediate action items
 
-3. **Alerts Panel UI** (`components/AlertsPanel.tsx`) - NEW
-   - Displays `email_tracking_alerts` (delays, backorders, stockout risks)
-   - Displays `pending_actions` (POs awaiting approval)
-   - Approve/Reject buttons for pending actions
-   - Dismiss button for alerts
-   - Summary cards: Total Alerts, Critical, Urgent Actions, Pending POs
+3. **Dropship Vendor Enhancements** (`ff0ada2`, `94e23f8`)
+   - Enhanced `PurchasingGuidanceDashboard` with dropship vendor filtering
+   - Improved `purchasingForecastingService` with dropship exclusion logic
+   - Reverted blanket dropship marking - now uses name-based detection only
+   - Better purchasing recommendations focused on stockable items
 
-4. **Stock Intelligence Integration** (`pages/StockIntelligence.tsx`)
-   - Added "Alerts & Actions" as first tab (default view)
-   - Shows AlertsPanel component with email alerts and pending actions
-   - Users can now see and act on alerts directly in Stock Intelligence
+4. **Vercel Deployment Fixes** (`b9a5d9f`, `bc86fc4`)
+   - Added `"framework": "vite"` to `vercel.json`
+   - Added `"outputDirectory": "dist"` to `vercel.json`
+   - Fixed npm audit vulnerabilities (glob, jws, qs)
+   - Remaining issues in `@vercel/node` (dev only) and `xlsx` (no fix available)
 
-5. **Database Migration** (`supabase/migrations/154_stock_alert_email_support.sql`)
-   - Added `stock_alert` to `email_attachments.attachment_type` constraint
-   - Added `stock_alerts_processed` column to `email_tracking_runs`
+5. **Bug Fixes** (`1d9eefc`, `5ec6d5b`)
+   - Fixed column name: `sales_last_30_days` (was incorrect reference)
+   - Removed `sku_purchasing_parameters` dependency from Stock Intelligence
 
-**Key Fixes:**
-- gmail-webhook would crash when invoice/pricelist detected (undefined variable)
-- applyTrackingUpdate() was completely broken (multiple undefined refs)
-- Duplicate function definition causing potential issues
+6. **Stock Alert System** (`680e539`)
+   - Added `AgentActivityFeed` component showing recent autonomous actions
+   - Added `AlertsPanel` for email-derived alerts and pending approvals
+   - Migration 154: `stock_alert` attachment type support
+   - Enhanced `email-inbox-poller` with stock alert CSV processing
 
-**Deployment:**
-- ✅ Migration 154 pushed to Supabase
-- ✅ Edge functions deployed: `email-inbox-poller`, `gmail-webhook`
+**Files Modified:**
+- `components/VendorsManagementPanel.tsx` - Added performance insights
+- `pages/Vendors.tsx` - Refactored, cleaned up duplicate code
+- `hooks/useSupabaseData.ts` - Added vendor performance hook
+- `types.ts` - Added VendorPerformance type
+- `pages/Dashboard.tsx` - Simplified to single table
+- `components/PurchasingGuidanceDashboard.tsx` - Dropship filtering
+- `services/purchasingForecastingService.ts` - Enhanced dropship logic
+- `pages/StockIntelligence.tsx` - Bug fixes
+- `vercel.json` - Proper Vite configuration
+- `package-lock.json` - Security updates
+
+**Commits Today (11 total):**
+- `ff0ada2` feat(purchasing): enhance forecasting with dropship filtering
+- `7103146` refactor(vendors): move performance insights to VendorsManagementPanel
+- `244fa2d` feat(vendors): add vendor performance analytics and insights
+- `09bbaee` feat: simplify Dashboard to single actionable table
+- `94e23f8` fix: revert blanket dropship marking - use name-based detection only
+- `30d1935` fix: remove redundant CriticalStockoutWidget from Dashboard
+- `1d9eefc` fix: use correct column name sales_last_30_days
+- `b9a5d9f` fix(deploy): add Vite framework and outputDirectory to vercel.json
+- `5ec6d5b` fix: remove sku_purchasing_parameters dependency for Stock Intelligence
+- `bc86fc4` chore(security): fix npm audit vulnerabilities
+- `680e539` feat(ui): add stock alert processing and agent activity feed
 
 **Testing:**
-- ✅ Build: Successful
-- ✅ Tests: 38/38 passing
+- ✅ All tests: 50/50 passing (9 schema + 3 inventory + 38 invoice)
+- ✅ Build: Successful (8.97s, 2.6MB bundle)
+- ✅ TFR Protocol followed for all commits
+
+**Deployment:**
+- ✅ All commits pushed to `origin/main`
+- ✅ Vercel configuration optimized for Vite
+- ✅ Ready for production deployment
+
+**Key Architectural Improvements:**
+- Better separation of concerns (performance insights → management panel)
+- Enhanced dropship filtering throughout purchasing workflow
+- Cleaner Dashboard UX focused on actionable items
+- Proper Vercel deployment configuration for Vite projects
+
+**Next Steps:**
+- Monitor vendor performance metrics in production
+- Validate dropship filtering accuracy with real data
+- Consider code-splitting for large bundle size (2.6MB main chunk)
 
 ---
 
