@@ -513,6 +513,8 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
         autoSendEmail: row.auto_send_email || false,
         isRecurringVendor: row.is_recurring_vendor || false,
         automationNotes: row.automation_notes || '',
+        // Dropship vendor flag (from migration 157)
+        isDropshipVendor: row.is_dropship_vendor || false,
       }));
 
       setData(transformed);

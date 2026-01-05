@@ -735,6 +735,8 @@ export interface Vendor {
     autoSendEmail?: boolean;
     isRecurringVendor?: boolean;
     automationNotes?: string;
+    // Dropship vendor flag (from migration 157)
+    isDropshipVendor?: boolean;
 }
 
 export interface PricelistItem {
