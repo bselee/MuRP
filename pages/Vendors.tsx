@@ -6,9 +6,8 @@ import SearchBar from '@/components/ui/SearchBar';
 import type { Vendor } from '../types';
 import VendorAutomationModal from '../components/VendorAutomationModal';
 import VendorManagementModal, { type VendorConfig } from '../components/VendorManagementModal';
-import { SearchIcon, AdjustmentsHorizontalIcon, UsersIcon } from '../components/icons';
+import { AdjustmentsHorizontalIcon, UsersIcon } from '../components/icons';
 import VendorConfidenceDashboard from '../components/VendorConfidenceDashboard';
-import { supabase } from '../lib/supabase/client';
 
 interface VendorsProps {
     vendors: Vendor[];
@@ -22,50 +21,6 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
     const [automationModalOpen, setAutomationModalOpen] = useState(false);
     const [isVendorManagementOpen, setIsVendorManagementOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-
-    // Track dropship vendor status (local state updated from DB)
-    const [dropshipVendors, setDropshipVendors] = useState<Set<string>>(new Set());
-    const [togglingDropship, setTogglingDropship] = useState<string | null>(null);
-
-    // Initialize dropship vendors from props
-    useEffect(() => {
-        const dropshipSet = new Set<string>();
-        vendors.forEach(v => {
-            if (v.isDropshipVendor) dropshipSet.add(v.id);
-        });
-        setDropshipVendors(dropshipSet);
-    }, [vendors]);
-
-    // Toggle dropship status for a vendor
-    const handleToggleDropship = async (vendorId: string, currentlyDropship: boolean) => {
-        setTogglingDropship(vendorId);
-        try {
-            const { error } = await supabase
-                .from('vendors')
-                .update({ is_dropship_vendor: !currentlyDropship })
-                .eq('id', vendorId);
-
-            if (error) throw error;
-
-            // Update local state
-            setDropshipVendors(prev => {
-                const newSet = new Set(prev);
-                if (currentlyDropship) {
-                    newSet.delete(vendorId);
-                } else {
-                    newSet.add(vendorId);
-                }
-                return newSet;
-            });
-
-            addToast?.(`Vendor ${currentlyDropship ? 'removed from' : 'marked as'} dropship`, 'success');
-        } catch (err) {
-            console.error('Failed to toggle dropship status:', err);
-            addToast?.('Failed to update dropship status', 'error');
-        } finally {
-            setTogglingDropship(null);
-        }
-    };
 
     // Vendor visibility config (same as Inventory page)
     const [vendorConfig, setVendorConfig] = useState<Record<string, VendorConfig>>(() => {
@@ -186,7 +141,6 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                 <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact Info</th>
                                 <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Address</th>
                                 <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Lead Time</th>
-                                <th scope="col" role="columnheader" className="px-6 py-2 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Dropship</th>
                                 <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Source</th>
                                 <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Auto-PO</th>
                             </tr>
@@ -247,27 +201,6 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                     </td>
                                     <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
                                         {vendor.leadTimeDays} days
-                                    </td>
-                                    <td className="px-6 py-1 whitespace-nowrap text-center">
-                                        <button
-                                            onClick={() => handleToggleDropship(vendor.id, dropshipVendors.has(vendor.id))}
-                                            disabled={togglingDropship === vendor.id}
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${
-                                                dropshipVendors.has(vendor.id)
-                                                    ? 'bg-orange-500'
-                                                    : 'bg-gray-600'
-                                            } ${togglingDropship === vendor.id ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
-                                            title={dropshipVendors.has(vendor.id) ? 'Click to remove dropship status' : 'Click to mark as dropship vendor'}
-                                        >
-                                            <span
-                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                                    dropshipVendors.has(vendor.id) ? 'translate-x-6' : 'translate-x-1'
-                                                }`}
-                                            />
-                                        </button>
-                                        {dropshipVendors.has(vendor.id) && (
-                                            <div className="text-xs text-orange-400 mt-1">Dropship</div>
-                                        )}
                                     </td>
                                     <td className="px-6 py-1 whitespace-nowrap text-xs">
                                         {vendor.dataSource === 'csv' && (

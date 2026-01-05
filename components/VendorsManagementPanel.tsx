@@ -3,10 +3,11 @@
  * Admin-only interface for managing vendor data with export capabilities
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Button from '@/components/ui/Button';
 import type { Vendor } from '../types';
 import { SearchIcon, ArrowDownTrayIcon, TableCellsIcon } from './icons';
+import { supabase } from '../lib/supabase/client';
 
 interface VendorsManagementPanelProps {
   vendors: Vendor[];
@@ -15,6 +16,49 @@ interface VendorsManagementPanelProps {
 
 const VendorsManagementPanel: React.FC<VendorsManagementPanelProps> = ({ vendors, addToast }) => {
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Track dropship vendor status
+  const [dropshipVendors, setDropshipVendors] = useState<Set<string>>(new Set());
+  const [togglingDropship, setTogglingDropship] = useState<string | null>(null);
+
+  // Initialize dropship vendors from props
+  useEffect(() => {
+    const dropshipSet = new Set<string>();
+    vendors.forEach(v => {
+      if (v.isDropshipVendor) dropshipSet.add(v.id);
+    });
+    setDropshipVendors(dropshipSet);
+  }, [vendors]);
+
+  // Toggle dropship status for a vendor
+  const handleToggleDropship = async (vendorId: string, currentlyDropship: boolean) => {
+    setTogglingDropship(vendorId);
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .update({ is_dropship_vendor: !currentlyDropship })
+        .eq('id', vendorId);
+
+      if (error) throw error;
+
+      setDropshipVendors(prev => {
+        const newSet = new Set(prev);
+        if (currentlyDropship) {
+          newSet.delete(vendorId);
+        } else {
+          newSet.add(vendorId);
+        }
+        return newSet;
+      });
+
+      addToast(`Vendor ${currentlyDropship ? 'removed from' : 'marked as'} dropship`, 'success');
+    } catch (err) {
+      console.error('Failed to toggle dropship status:', err);
+      addToast('Failed to update dropship status', 'error');
+    } finally {
+      setTogglingDropship(null);
+    }
+  };
 
   // Filter vendors by search term
   const filteredVendors = useMemo(() => {
@@ -192,13 +236,14 @@ const VendorsManagementPanel: React.FC<VendorsManagementPanelProps> = ({ vendors
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Address</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Lead Time</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Dropship</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Score</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
               {filteredVendors.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     {searchTerm ? 'No vendors found matching your search' : 'No vendors available'}
                   </td>
                 </tr>
@@ -249,6 +294,24 @@ const VendorsManagementPanel: React.FC<VendorsManagementPanelProps> = ({ vendors
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-300">
                       {vendor.leadTimeDays ? `${vendor.leadTimeDays} days` : <span className="text-gray-500 italic text-xs">Not set</span>}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => handleToggleDropship(vendor.id, dropshipVendors.has(vendor.id))}
+                        disabled={togglingDropship === vendor.id}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${
+                          dropshipVendors.has(vendor.id)
+                            ? 'bg-orange-500'
+                            : 'bg-gray-600'
+                        } ${togglingDropship === vendor.id ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                        title={dropshipVendors.has(vendor.id) ? 'Click to remove dropship status' : 'Click to mark as dropship vendor'}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            dropshipVendors.has(vendor.id) ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
