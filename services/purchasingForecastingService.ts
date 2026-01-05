@@ -104,18 +104,22 @@ export async function getRigorousPurchasingAdvice() {
 
     const manufacturedSkus = new Set(bomItems?.map(b => b.sku) || []);
 
-    // Fetch vendors for names
+    // Fetch vendors for names and dropship status
     const { data: vendors } = await supabase
         .from('vendors')
-        .select('id, name');
+        .select('id, name, is_dropship_vendor');
 
     const vendorMap = new Map(vendors?.map(v => [v.id, v.name]) || []);
+    const dropshipVendors = new Set(vendors?.filter(v => v.is_dropship_vendor).map(v => v.id) || []);
 
     // Filter and process items
     return data
         .filter((item: any) => {
             // FILTER 1: Exclude dropship items (explicit flag from database)
             if (item.is_dropship === true) return false;
+
+            // FILTER 1b: Exclude items from dropship vendors
+            if (item.vendor_id && dropshipVendors.has(item.vendor_id)) return false;
 
             // FILTER 2: Exclude "Do Not Reorder" items (from Finale reorder method)
             if (item.reorder_method === 'do_not_reorder') return false;
