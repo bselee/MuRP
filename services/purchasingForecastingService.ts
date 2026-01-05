@@ -63,10 +63,9 @@ export async function getRigorousPurchasingAdvice() {
       is_dropship,
       reorder_method,
       vendor_id,
-      sales_30_days,
-      sales_90_days,
-      reorder_point,
-      lead_time_days
+      sales_last_30_days,
+      sales_last_90_days,
+      reorder_point
     `)
         .eq('status', 'active')
         .neq('category', 'Deprecating')
@@ -142,8 +141,8 @@ export async function getRigorousPurchasingAdvice() {
                 return false;
             }
 
-            // Calculate daily demand from sales_30_days
-            const dailyDemand = (item.sales_30_days || 0) / 30;
+            // Calculate daily demand from sales_last_30_days
+            const dailyDemand = (item.sales_last_30_days || 0) / 30;
 
             // If no sales, skip (no demand = not at risk)
             if (dailyDemand <= 0) return false;
@@ -159,7 +158,7 @@ export async function getRigorousPurchasingAdvice() {
         })
         .map((item: any) => {
             // Calculate daily demand
-            const dailyDemand = (item.sales_30_days || 0) / 30;
+            const dailyDemand = (item.sales_last_30_days || 0) / 30;
             const availableStock = (item.stock || 0) + (item.on_order || 0);
             const daysRemaining = dailyDemand > 0 ? Math.floor(availableStock / dailyDemand) : 999;
 
