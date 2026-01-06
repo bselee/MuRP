@@ -45,6 +45,7 @@ import AutonomousApprovals from '../components/AutonomousApprovals';
 import AlertFeedComponent from '../components/AlertFeedComponent';
 import TrustScoreDashboard from '../components/TrustScoreDashboard';
 import VendorScorecardComponent from '../components/VendorScorecardComponent';
+import UnifiedPOList from '../components/UnifiedPOList';
 import type { FinalePurchaseOrderRecord } from '../types';
 
 interface PurchaseOrdersProps {
@@ -119,7 +120,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
     const [finalePOSortOrder, setFinalePOSortOrder] = useState<'asc' | 'desc'>('desc'); // Default newest first
     const [isAgentSettingsOpen, setIsAgentSettingsOpen] = useState(false);
-    const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
+    const [viewMode, setViewMode] = useState<'unified' | 'list' | 'card'>(() => {
+        if (typeof window !== 'undefined') {
+            return (localStorage.getItem('po-view-mode') as 'unified' | 'list' | 'card') || 'unified';
+        }
+        return 'unified';
+    });
 
     // Finale PO tracking modal state
     const [finaleTrackingModal, setFinaleTrackingModal] = useState<{
@@ -154,6 +160,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
             localStorage.setItem('po-date-filter', dateFilter);
         }
     }, [dateFilter]);
+
+    // Save view mode to localStorage when it changes
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('po-view-mode', viewMode);
+        }
+    }, [viewMode]);
 
     // Fetch three-way match statuses for Finale POs
     useEffect(() => {
@@ -651,42 +664,76 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     title="Purchase Orders"
                     description="Manage purchase orders, requisitions, and vendor communications"
                     actions={
-                        canManagePOs && (
-                            <div className="flex items-center gap-3">
-                                {currentUser.role !== 'Staff' && readyQueue.length > 0 && (
-                                    <Button
-                                        onClick={() => setIsGeneratePoModalOpen(true)}
-                                        className="relative"
-                                        variant="secondary"
-                                    >
-                                        Generate from Requisitions
-                                        <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs">
-                                            {readyQueue.length}
-                                        </span>
-                                    </Button>
-                                )}
-                                <Button
-                                    onClick={handleManualCreateClick}
-                                    variant="primary"
+                        <div className="flex items-center gap-3">
+                            {/* View Mode Toggle */}
+                            <div className={`inline-flex rounded-lg p-0.5 ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                                <button
+                                    onClick={() => setViewMode('unified')}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                        viewMode === 'unified'
+                                            ? isDark
+                                                ? 'bg-amber-500/20 text-amber-300'
+                                                : 'bg-amber-500 text-white'
+                                            : isDark
+                                                ? 'text-gray-400 hover:text-gray-200'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                    }`}
                                 >
-                                    Create New PO
-                                </Button>
-                                {(isAdminLike || showCommandCenter) && (
-                                    <Button
-                                        onClick={() => setIsAgentSettingsOpen(true)}
-                                        variant="secondary"
-                                        className={`p-2 border w-10 h-10 flex items-center justify-center rounded-lg shadow-sm ${isDark 
-                                            ? 'border-gray-600 hover:border-gray-500 hover:bg-gray-700' 
-                                            : 'border-amber-300 hover:border-amber-400 hover:bg-amber-100'}`}
-                                        aria-label="Agent Command Center & Settings"
-                                    >
-                                        <SettingsIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-amber-600'}`} />
-                                    </Button>
-                                )}
+                                    <ListBulletIcon className="w-4 h-4 inline mr-1" />
+                                    Simple
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                        viewMode === 'list'
+                                            ? isDark
+                                                ? 'bg-amber-500/20 text-amber-300'
+                                                : 'bg-amber-500 text-white'
+                                            : isDark
+                                                ? 'text-gray-400 hover:text-gray-200'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                    }`}
+                                >
+                                    <Squares2X2Icon className="w-4 h-4 inline mr-1" />
+                                    Detailed
+                                </button>
                             </div>
-                        )
+                            {canManagePOs && (
+                                <>
+                                    {currentUser.role !== 'Staff' && readyQueue.length > 0 && (
+                                        <Button
+                                            onClick={() => setIsGeneratePoModalOpen(true)}
+                                            className="relative"
+                                            variant="secondary"
+                                        >
+                                            Generate from Requisitions
+                                            <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs">
+                                                {readyQueue.length}
+                                            </span>
+                                        </Button>
+                                    )}
+                                    <Button
+                                        onClick={handleManualCreateClick}
+                                        variant="primary"
+                                    >
+                                        Create New PO
+                                    </Button>
+                                    {(isAdminLike || showCommandCenter) && (
+                                        <Button
+                                            onClick={() => setIsAgentSettingsOpen(true)}
+                                            variant="secondary"
+                                            className={`p-2 border w-10 h-10 flex items-center justify-center rounded-lg shadow-sm ${isDark
+                                                ? 'border-gray-600 hover:border-gray-500 hover:bg-gray-700'
+                                                : 'border-amber-300 hover:border-amber-400 hover:bg-amber-100'}`}
+                                            aria-label="Agent Command Center & Settings"
+                                        >
+                                            <SettingsIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-amber-600'}`} />
+                                        </Button>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     }
-
                 />
                 {/* Purchasing Command Center moved to Agent Settings Modal */}
 
@@ -804,20 +851,80 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                 {/* VendorResponseWorkbench component removed - was causing ReferenceError */}
 
-                {/* PO Tracking Dashboard with integrated Vendor Attention Alerts */}
-                <div id="po-tracking">
-                    <POTrackingDashboard addToast={addToast} />
-                </div>
+                {/* UNIFIED VIEW - Simple table of all POs */}
+                {viewMode === 'unified' && (
+                    <UnifiedPOList
+                        internalPOs={purchaseOrders}
+                        finalePOs={finalePurchaseOrders}
+                        onViewDetails={(po) => {
+                            if (po.source === 'internal') {
+                                const internalPo = purchaseOrders.find(p => p.id === po.id);
+                                if (internalPo) {
+                                    setSelectedPoForDetail(internalPo);
+                                    setIsDetailModalOpen(true);
+                                }
+                            } else {
+                                setExpandedFinalePO(po.id);
+                                // Switch to detailed view to see the expanded card
+                                setViewMode('list');
+                            }
+                        }}
+                        onUpdateTracking={(poId, source) => {
+                            if (source === 'internal') {
+                                const po = purchaseOrders.find(p => p.id === poId);
+                                if (po) {
+                                    setSelectedPoForTracking(po);
+                                    setIsTrackingModalOpen(true);
+                                }
+                            } else {
+                                const fpo = finalePurchaseOrders.find(p => p.id === poId);
+                                if (fpo) {
+                                    setFinaleTrackingModal({
+                                        isOpen: true,
+                                        orderId: fpo.orderId,
+                                        currentTracking: fpo.trackingNumber || undefined,
+                                        currentCarrier: fpo.trackingCarrier || undefined,
+                                    });
+                                    setFinaleTrackingInput({
+                                        number: fpo.trackingNumber || '',
+                                        carrier: fpo.trackingCarrier || '',
+                                        eta: fpo.trackingEstimatedDelivery || '',
+                                    });
+                                }
+                            }
+                        }}
+                        onSendEmail={(po) => {
+                            if (po.source === 'internal') {
+                                const internalPo = purchaseOrders.find(p => p.id === po.id);
+                                if (internalPo) {
+                                    setSelectedPoForEmail(internalPo);
+                                    setIsEmailModalOpen(true);
+                                }
+                            }
+                        }}
+                        addToast={addToast}
+                    />
+                )}
 
-                {/* Invoice & Three-Way Match Review Queue - Auto-hides when empty */}
-                <ThreeWayMatchReviewQueue
-                    addToast={addToast}
-                    maxItems={10}
-                    compact
-                />
+                {/* DETAILED VIEW - Original complex layout */}
+                {viewMode !== 'unified' && (
+                    <>
+                        {/* PO Tracking Dashboard with integrated Vendor Attention Alerts */}
+                        <div id="po-tracking">
+                            <POTrackingDashboard addToast={addToast} />
+                        </div>
 
-                {/* Finale Purchase Orders - Current/Open POs from Finale API */}
-                {finalePurchaseOrders.length > 0 && (
+                        {/* Invoice & Three-Way Match Review Queue - Auto-hides when empty */}
+                        <ThreeWayMatchReviewQueue
+                            addToast={addToast}
+                            maxItems={10}
+                            compact
+                        />
+                    </>
+                )}
+
+                {/* Finale Purchase Orders - Current/Open POs from Finale API (only in detailed view) */}
+                {viewMode !== 'unified' && finalePurchaseOrders.length > 0 && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -1247,7 +1354,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     </div>
                 )}
 
-                <div className={`relative overflow-hidden rounded-2xl border shadow-lg ${isDark 
+                {/* Internal Purchase Orders (only in detailed view) */}
+                {viewMode !== 'unified' && (
+                <div className={`relative overflow-hidden rounded-2xl border shadow-lg ${isDark
                     ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)]'
                     : 'border-amber-200 bg-gradient-to-br from-white via-amber-50/50 to-white shadow-amber-200/30'}`}>
                     {/* Card overlay effect */}
@@ -1574,6 +1683,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         )}
                     </div>
                 </div>
+                )}
+
             </div >
 
             <CreatePoModal

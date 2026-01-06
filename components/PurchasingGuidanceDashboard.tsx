@@ -1,11 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { getRigorousPurchasingAdvice, getForecastAccuracyMetrics } from '../services/purchasingForecastingService';
 import { detectInventoryAnomalies, type Anomaly } from '../services/aiPurchasingService';
 import { supabase } from '../lib/supabase/client';
-import { MagicSparklesIcon } from './icons';
+import { createPurchaseOrder, batchUpdateInventory } from '../hooks/useSupabaseMutations';
+import { MagicSparklesIcon, ShoppingCartIcon, CheckIcon, PlusIcon, CheckCircleIcon, XCircleIcon } from './icons';
+import type { CreatePurchaseOrderInput } from '../types';
+
+interface AdviceItem {
+    sku: string;
+    name: string;
+    vendor_name: string;
+    vendor_id?: string;
+    days_remaining: number;
+    current_status: {
+        stock: number;
+        on_order: number;
+    };
+    linked_po?: {
+        po_number: string;
+        expected_date: string;
+    };
+    item_type: string;
+    recommendation: {
+        quantity: number;
+    };
+}
 
 export default function PurchasingGuidanceDashboard() {
-    const [advice, setAdvice] = useState<any[]>([]);
+    const [advice, setAdvice] = useState<AdviceItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [metrics, setMetrics] = useState<any>({
         accuracy: null,
@@ -18,6 +40,31 @@ export default function PurchasingGuidanceDashboard() {
         critical: Anomaly[];
         warning: Anomaly[];
     }>({ critical: [], warning: [] });
+
+    // Selection state for batch actions
+    const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+    const [isCreatingPO, setIsCreatingPO] = useState(false);
+
+    // Toast notifications
+    const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
+
+    // Add a toast notification
+    const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+        const id = crypto.randomUUID();
+        setToasts(prev => [...prev, { id, message, type }]);
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id));
+        }, 5000);
+    }, []);
+
+    // Generate unique PO ID
+    const generateOrderId = useCallback(() => {
+        const now = new Date();
+        const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        const randomSegment = crypto.randomUUID().split('-')[0].toUpperCase();
+        return `PO-${datePart}-${randomSegment}`;
+    }, []);
 
     useEffect(() => {
         loadData();
@@ -81,7 +128,6 @@ export default function PurchasingGuidanceDashboard() {
             }
 
             // 4. Calculate Inventory Turnover from velocity data
-            // Turnover approximation based on average velocity across inventory
             let inventoryTurnover: number | null = null;
             try {
                 const { data: velocityData, error: velocityError } = await supabase
@@ -90,24 +136,21 @@ export default function PurchasingGuidanceDashboard() {
                     .gt('stock', 0);
 
                 if (!velocityError && velocityData && velocityData.length > 0) {
-                    // Calculate weighted average turnover (annual velocity / avg stock)
                     const totalVelocity = velocityData.reduce((sum: number, item: { sales_velocity: number | null }) =>
                         sum + (item.sales_velocity || 0), 0);
                     const totalStock = velocityData.reduce((sum: number, item: { stock: number | null }) =>
                         sum + (item.stock || 0), 0);
 
                     if (totalStock > 0) {
-                        // Annualized turnover: (daily velocity * 365) / avg stock
                         inventoryTurnover = (totalVelocity * 365) / totalStock;
                     }
                 }
             } catch (err) {
-                // View may not exist or query failed, that's okay
                 console.debug('Velocity summary not available:', err);
             }
 
             setMetrics({
-                accuracy: accuracy ? (100 - accuracy).toFixed(1) : 'N/A', // 100 - MAPE = Accuracy
+                accuracy: accuracy ? (100 - accuracy).toFixed(1) : 'N/A',
                 riskItems: adviceData.length,
                 vendorReliability: vendorReliability !== null ? vendorReliability.toFixed(1) : 'N/A',
                 inventoryTurnover: inventoryTurnover !== null ? inventoryTurnover.toFixed(1) : 'N/A'
@@ -120,8 +163,262 @@ export default function PurchasingGuidanceDashboard() {
         }
     }
 
+    // Toggle single item selection
+    const toggleSelect = (sku: string) => {
+        setSelectedItems(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(sku)) {
+                newSet.delete(sku);
+            } else {
+                newSet.add(sku);
+            }
+            return newSet;
+        });
+    };
+
+    // Toggle all items
+    const toggleSelectAll = () => {
+        if (selectedItems.size === advice.length) {
+            setSelectedItems(new Set());
+        } else {
+            setSelectedItems(new Set(advice.map(item => item.sku)));
+        }
+    };
+
+    // Group selected items by vendor for PO creation
+    const getSelectedByVendor = () => {
+        const byVendor: Record<string, AdviceItem[]> = {};
+        advice.filter(item => selectedItems.has(item.sku)).forEach(item => {
+            const vendor = item.vendor_name || 'Unknown';
+            if (!byVendor[vendor]) byVendor[vendor] = [];
+            byVendor[vendor].push(item);
+        });
+        return byVendor;
+    };
+
+    // Create draft PO for selected items
+    const handleCreatePO = async () => {
+        if (selectedItems.size === 0) return;
+
+        setIsCreatingPO(true);
+        const byVendor = getSelectedByVendor();
+        const vendorNames = Object.keys(byVendor);
+        let successCount = 0;
+        let errorCount = 0;
+        const createdPOs: string[] = [];
+
+        try {
+            // Create one PO per vendor
+            for (const vendorName of vendorNames) {
+                const vendorItems = byVendor[vendorName];
+                const vendorId = vendorItems[0]?.vendor_id;
+
+                if (!vendorId) {
+                    // Try to look up vendor by name
+                    const { data: vendorData } = await supabase
+                        .from('vendors')
+                        .select('id')
+                        .ilike('name', vendorName)
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (!vendorData?.id) {
+                        console.warn(`[handleCreatePO] Could not find vendor ID for ${vendorName}`);
+                        errorCount++;
+                        addToast(`Could not find vendor: ${vendorName}`, 'error');
+                        continue;
+                    }
+
+                    const orderId = generateOrderId();
+                    const poInput: CreatePurchaseOrderInput = {
+                        vendorId: vendorData.id,
+                        items: vendorItems.map(item => ({
+                            sku: item.sku,
+                            name: item.name,
+                            quantity: item.recommendation.quantity,
+                            unitCost: 0, // Will be filled in by user when editing
+                        })),
+                        notes: `Auto-generated from Purchasing Intelligence dashboard`,
+                    };
+
+                    const result = await createPurchaseOrder({
+                        ...poInput,
+                        orderId,
+                        supplier: vendorName,
+                        status: 'Pending',
+                        orderDate: new Date().toISOString().split('T')[0],
+                    });
+
+                    if (result.success) {
+                        createdPOs.push(orderId);
+                        successCount++;
+
+                        // Update on_order quantities
+                        await batchUpdateInventory(
+                            vendorItems.map(item => ({
+                                sku: item.sku,
+                                stockDelta: 0,
+                                onOrderDelta: item.recommendation.quantity,
+                            }))
+                        );
+                    } else {
+                        errorCount++;
+                        console.error(`[handleCreatePO] Failed to create PO for ${vendorName}:`, result.error);
+                    }
+                } else {
+                    const orderId = generateOrderId();
+                    const poInput: CreatePurchaseOrderInput = {
+                        vendorId,
+                        items: vendorItems.map(item => ({
+                            sku: item.sku,
+                            name: item.name,
+                            quantity: item.recommendation.quantity,
+                            unitCost: 0,
+                        })),
+                        notes: `Auto-generated from Purchasing Intelligence dashboard`,
+                    };
+
+                    const result = await createPurchaseOrder({
+                        ...poInput,
+                        orderId,
+                        supplier: vendorName,
+                        status: 'Pending',
+                        orderDate: new Date().toISOString().split('T')[0],
+                    });
+
+                    if (result.success) {
+                        createdPOs.push(orderId);
+                        successCount++;
+
+                        // Update on_order quantities
+                        await batchUpdateInventory(
+                            vendorItems.map(item => ({
+                                sku: item.sku,
+                                stockDelta: 0,
+                                onOrderDelta: item.recommendation.quantity,
+                            }))
+                        );
+                    } else {
+                        errorCount++;
+                        console.error(`[handleCreatePO] Failed to create PO for ${vendorName}:`, result.error);
+                    }
+                }
+            }
+
+            // Show results
+            if (successCount > 0) {
+                addToast(
+                    `Created ${successCount} PO${successCount > 1 ? 's' : ''}: ${createdPOs.join(', ')}`,
+                    'success'
+                );
+                // Clear selection after successful creation
+                setSelectedItems(new Set());
+                // Reload data to reflect new on_order quantities
+                loadData(true);
+            }
+
+            if (errorCount > 0) {
+                addToast(`Failed to create ${errorCount} PO${errorCount > 1 ? 's' : ''}`, 'error');
+            }
+        } catch (err) {
+            console.error('Failed to create PO:', err);
+            addToast('Unexpected error creating PO', 'error');
+        } finally {
+            setIsCreatingPO(false);
+        }
+    };
+
+    // Quick action for single item - creates a single-item PO
+    const handleQuickOrder = async (item: AdviceItem) => {
+        setIsCreatingPO(true);
+        try {
+            // Look up vendor ID
+            let vendorId = item.vendor_id;
+            if (!vendorId && item.vendor_name) {
+                const { data: vendorData } = await supabase
+                    .from('vendors')
+                    .select('id')
+                    .ilike('name', item.vendor_name)
+                    .limit(1)
+                    .maybeSingle();
+                vendorId = vendorData?.id;
+            }
+
+            if (!vendorId) {
+                addToast(`Could not find vendor: ${item.vendor_name}`, 'error');
+                return;
+            }
+
+            const orderId = generateOrderId();
+            const result = await createPurchaseOrder({
+                vendorId,
+                items: [{
+                    sku: item.sku,
+                    name: item.name,
+                    quantity: item.recommendation.quantity,
+                    unitCost: 0,
+                }],
+                notes: `Quick order from Purchasing Intelligence for ${item.sku}`,
+                orderId,
+                supplier: item.vendor_name,
+                status: 'Pending',
+                orderDate: new Date().toISOString().split('T')[0],
+            });
+
+            if (result.success) {
+                // Update on_order quantity
+                await batchUpdateInventory([{
+                    sku: item.sku,
+                    stockDelta: 0,
+                    onOrderDelta: item.recommendation.quantity,
+                }]);
+
+                addToast(`Created ${orderId} for ${item.sku} (${item.recommendation.quantity} units)`, 'success');
+                // Reload data to reflect new on_order quantities
+                loadData(true);
+            } else {
+                addToast(`Failed to create PO: ${result.error}`, 'error');
+            }
+        } catch (err) {
+            console.error('Failed to create quick order:', err);
+            addToast('Unexpected error creating quick order', 'error');
+        } finally {
+            setIsCreatingPO(false);
+        }
+    };
+
+    const selectedCount = selectedItems.size;
+    const allSelected = selectedCount === advice.length && advice.length > 0;
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 relative">
+            {/* Toast notifications */}
+            {toasts.length > 0 && (
+                <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md">
+                    {toasts.map(toast => (
+                        <div
+                            key={toast.id}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-in slide-in-from-right duration-300 ${
+                                toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
+                                toast.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
+                                'bg-blue-50 border-blue-200 text-blue-800'
+                            }`}
+                        >
+                            {toast.type === 'success' && <CheckCircleIcon className="w-5 h-5 text-green-500 flex-shrink-0" />}
+                            {toast.type === 'error' && <XCircleIcon className="w-5 h-5 text-red-500 flex-shrink-0" />}
+                            {toast.type === 'info' && <MagicSparklesIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />}
+                            <span className="text-sm font-medium">{toast.message}</span>
+                            <button
+                                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                                className="ml-auto text-gray-400 hover:text-gray-600"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* 1. Header & Context */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -215,13 +512,32 @@ export default function PurchasingGuidanceDashboard() {
             {/* 3. Actionable Reorder Advice */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                        Action Required: Replenishment
-                    </h3>
-                    <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                        Formula: Z × σD × √LT
-                    </span>
+                    <div className="flex items-center gap-4">
+                        <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                            Action Required: Replenishment
+                        </h3>
+                        {selectedCount > 0 && (
+                            <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                                {selectedCount} selected
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {selectedCount > 0 && (
+                            <button
+                                onClick={handleCreatePO}
+                                disabled={isCreatingPO}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                <ShoppingCartIcon className="w-4 h-4" />
+                                {isCreatingPO ? 'Creating...' : `Create PO (${selectedCount})`}
+                            </button>
+                        )}
+                        <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+                            Formula: Z × σD × √LT
+                        </span>
+                    </div>
                 </div>
 
                 {loading ? (
@@ -237,6 +553,15 @@ export default function PurchasingGuidanceDashboard() {
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-50 text-slate-500 font-medium">
                                 <tr>
+                                    <th className="px-4 py-3 w-10">
+                                        <input
+                                            type="checkbox"
+                                            checked={allSelected}
+                                            onChange={toggleSelectAll}
+                                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            title="Select all items"
+                                        />
+                                    </th>
                                     <th className="px-4 py-3">SKU / Product</th>
                                     <th className="px-4 py-3">Vendor</th>
                                     <th className="px-4 py-3 text-right">Stock</th>
@@ -245,23 +570,41 @@ export default function PurchasingGuidanceDashboard() {
                                     <th className="px-4 py-3">Est. Receive</th>
                                     <th className="px-4 py-3">Type</th>
                                     <th className="px-4 py-3 text-right">Order Qty</th>
+                                    <th className="px-4 py-3 w-20"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {advice.map((item, idx) => {
-                                    // Row highlighting based on days remaining
                                     const daysRemaining = item.days_remaining ?? 999;
                                     const onOrder = item.current_status?.on_order ?? 0;
+                                    const isSelected = selectedItems.has(item.sku);
                                     const rowClass = daysRemaining <= 0 ? 'bg-red-100' :
                                         daysRemaining < 7 ? 'bg-red-50' :
                                         daysRemaining < 14 ? 'bg-yellow-50' :
                                         item.linked_po ? 'bg-green-50' : '';
 
                                     return (
-                                        <tr key={idx} className={`${rowClass} hover:opacity-90 transition-colors`}>
+                                        <tr
+                                            key={idx}
+                                            className={`${rowClass} ${isSelected ? 'ring-2 ring-inset ring-blue-300' : ''} hover:bg-slate-50/50 transition-colors cursor-pointer`}
+                                            onClick={(e) => {
+                                                // Don't toggle if clicking on checkbox or button
+                                                if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'BUTTON') {
+                                                    toggleSelect(item.sku);
+                                                }
+                                            }}
+                                        >
+                                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => toggleSelect(item.sku)}
+                                                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                />
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <div className="font-medium text-slate-900 font-mono text-xs">{item.sku}</div>
-                                                <div className="text-slate-500 text-xs max-w-[300px]" title={item.name}>{item.name}</div>
+                                                <div className="text-slate-500 text-xs max-w-[300px] truncate" title={item.name}>{item.name}</div>
                                             </td>
                                             <td className="px-4 py-3 text-xs text-slate-600 max-w-[120px] truncate">
                                                 {item.vendor_name || 'Unknown'}
@@ -308,11 +651,59 @@ export default function PurchasingGuidanceDashboard() {
                                                     +{item.recommendation.quantity}
                                                 </span>
                                             </td>
+                                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                                {!item.linked_po && (
+                                                    <button
+                                                        onClick={() => handleQuickOrder(item)}
+                                                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded transition-colors"
+                                                        title={`Quick order ${item.recommendation.quantity} units`}
+                                                    >
+                                                        <PlusIcon className="w-3 h-3" />
+                                                        Order
+                                                    </button>
+                                                )}
+                                                {item.linked_po && (
+                                                    <span className="flex items-center gap-1 text-xs text-green-600">
+                                                        <CheckIcon className="w-3 h-3" />
+                                                        On PO
+                                                    </span>
+                                                )}
+                                            </td>
                                         </tr>
                                     );
                                 })}
                             </tbody>
                         </table>
+                    </div>
+                )}
+
+                {/* Batch action footer when items selected */}
+                {selectedCount > 0 && (
+                    <div className="px-6 py-3 bg-blue-50 border-t border-blue-100 flex items-center justify-between">
+                        <div className="text-sm text-blue-700">
+                            <strong>{selectedCount}</strong> item{selectedCount !== 1 ? 's' : ''} selected
+                            {Object.keys(getSelectedByVendor()).length > 1 && (
+                                <span className="ml-2 text-blue-500">
+                                    ({Object.keys(getSelectedByVendor()).length} vendors)
+                                </span>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setSelectedItems(new Set())}
+                                className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded transition-colors"
+                            >
+                                Clear
+                            </button>
+                            <button
+                                onClick={handleCreatePO}
+                                disabled={isCreatingPO}
+                                className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                <ShoppingCartIcon className="w-4 h-4" />
+                                Create Purchase Order{Object.keys(getSelectedByVendor()).length > 1 ? 's' : ''}
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
@@ -323,7 +714,6 @@ export default function PurchasingGuidanceDashboard() {
 
 function KPICard({ title, value, unit, trend, desc }: any) {
     const isCritical = trend === 'critical';
-    const isPositive = trend === 'positive';
 
     return (
         <div className={`p-4 rounded-xl border ${isCritical ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'} shadow-sm`}>

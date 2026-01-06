@@ -192,24 +192,28 @@ const AgentControlCenter: React.FC<AgentControlCenterProps> = ({
     if (severity === 'critical') return {
       icon: <XCircleIcon className="w-5 h-5" />,
       bg: isDark ? 'bg-red-500/10' : 'bg-red-50',
-      border: 'border-red-500/30',
+      border: 'border-red-500/20',
       iconColor: 'text-red-500',
-      pulse: true,
     };
     if (severity === 'warning') return {
       icon: <ExclamationTriangleIcon className="w-5 h-5" />,
       bg: isDark ? 'bg-amber-500/10' : 'bg-amber-50',
-      border: 'border-amber-500/30',
+      border: 'border-amber-500/20',
       iconColor: 'text-amber-500',
-      pulse: false,
     };
     return {
       icon: <CheckCircleIcon className="w-5 h-5" />,
       bg: isDark ? 'bg-green-500/10' : 'bg-green-50',
-      border: 'border-green-500/30',
+      border: 'border-green-500/20',
       iconColor: 'text-green-500',
-      pulse: false,
     };
+  };
+
+  // Get product name from context or description
+  const getProductName = (item: ActivityItem): string | null => {
+    if (item.context?.product_name) return String(item.context.product_name);
+    if (item.description) return item.description.split(' has ')[0] || item.description;
+    return null;
   };
 
   // Get actionable hint based on item type
@@ -292,6 +296,7 @@ const AgentControlCenter: React.FC<AgentControlCenterProps> = ({
               const agentInfo = getAgentInfo(item.agent_identifier);
               const isHovered = hoveredItem === item.id;
               const sku = extractSku(item.title);
+              const productName = getProductName(item);
 
               return (
                 <div
@@ -305,9 +310,8 @@ const AgentControlCenter: React.FC<AgentControlCenterProps> = ({
                   onMouseEnter={() => setHoveredItem(item.id)}
                   onMouseLeave={() => setHoveredItem(null)}
                 >
-                  {/* Severity indicator */}
-                  <div className={`flex-shrink-0 p-2 rounded-lg ${severity.bg} border ${severity.border} ${severity.iconColor} transition-transform duration-200 ${isHovered ? 'scale-110' : ''}`}>
-                    {severity.pulse && <span className="absolute inset-0 rounded-lg animate-ping bg-red-500/20" />}
+                  {/* Severity indicator - static, no pulse */}
+                  <div className={`flex-shrink-0 p-2 rounded-lg ${severity.bg} border ${severity.border} ${severity.iconColor} transition-transform duration-200 ${isHovered ? 'scale-105' : ''}`}>
                     {severity.icon}
                   </div>
 
@@ -315,13 +319,37 @@ const AgentControlCenter: React.FC<AgentControlCenterProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className={`text-sm font-medium ${textColor} truncate`}>{item.title}</p>
-                      {sku && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-gray-700' : 'bg-gray-100'} ${mutedColor} font-mono`}>
-                          {sku}
-                        </span>
-                      )}
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    {/* Product name */}
+                    {productName && (
+                      <p className={`text-sm ${mutedColor} truncate mt-0.5`}>{productName}</p>
+                    )}
+                    {/* Key metrics row */}
+                    {item.context && (
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        {item.context.current_stock !== undefined && (
+                          <span className={`text-xs ${Number(item.context.current_stock) <= 0 ? 'text-red-500 font-semibold' : mutedColor}`}>
+                            Stock: {item.context.current_stock}
+                          </span>
+                        )}
+                        {item.context.velocity !== undefined && Number(item.context.velocity) > 0 && (
+                          <span className={`text-xs ${mutedColor}`}>
+                            {Number(item.context.velocity).toFixed(1)}/day
+                          </span>
+                        )}
+                        {item.context.reorder_point !== undefined && (
+                          <span className={`text-xs ${mutedColor}`}>
+                            ROP: {item.context.reorder_point}
+                          </span>
+                        )}
+                        {item.context.vendor && (
+                          <span className={`text-xs ${mutedColor} truncate max-w-[120px]`}>
+                            {String(item.context.vendor)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mt-1">
                       <span className={`${agentInfo.color}`}>{agentInfo.icon}</span>
                       <span className={`text-xs ${mutedColor}`}>{agentInfo.name}</span>
                       <span className={`text-xs ${mutedColor}`}>·</span>
