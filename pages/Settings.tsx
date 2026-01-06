@@ -81,24 +81,19 @@ const Settings: React.FC<SettingsProps> = ({
     inventory, boms, vendors,
     companyEmailSettings, onUpdateCompanyEmailSettings
 }) => {
-    // Collapsible section states - organized by new structure
-    // Account & Profile (default open)
-    const [isUserPersonalizationOpen, setIsUserPersonalizationOpen] = useState(true);
+    // Collapsible section states - ALL START CLOSED for cleaner UX
+    // Account & Profile
+    const [isUserPersonalizationOpen, setIsUserPersonalizationOpen] = useState(false);
 
-    // Company & Team
+    // Company & Team - consolidated
     const [isBillingOpen, setIsBillingOpen] = useState(false);
-    const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
-    const [isRoleMatrixOpen, setIsRoleMatrixOpen] = useState(false);
-    const [isDelegationSettingsOpen, setIsDelegationSettingsOpen] = useState(false);
-    const [isNotificationPrefsOpen, setIsNotificationPrefsOpen] = useState(false);
+    const [isTeamManagementOpen, setIsTeamManagementOpen] = useState(false); // Consolidated team panel
 
-    // Data & Integrations (default open)
-    const [isDataIntegrationsOpen, setIsDataIntegrationsOpen] = useState(true);
+    // Data & Integrations
+    const [isDataIntegrationsOpen, setIsDataIntegrationsOpen] = useState(false);
 
-    // Operations & Purchasing
-    const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
-    const [isEmailTrackingOpen, setIsEmailTrackingOpen] = useState(false);
-    const [isVendorAdminOpen, setIsVendorAdminOpen] = useState(false);
+    // Operations & Purchasing - consolidated
+    const [isPurchasingVendorsOpen, setIsPurchasingVendorsOpen] = useState(false); // Consolidated: PO Automation, Vendor Management, Vendor Trust, Carrier Tracking
     const [isBomManagementOpen, setIsBomManagementOpen] = useState(false);
     const [isSemanticSearchOpen, setIsSemanticSearchOpen] = useState(false);
     const [isSopSettingsOpen, setIsSopSettingsOpen] = useState(false);
@@ -118,10 +113,9 @@ const Settings: React.FC<SettingsProps> = ({
     const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
     const [isSupportOpen, setIsSupportOpen] = useState(false);
 
-    // Restored panels
-    const [isCarrierTrackingOpen, setIsCarrierTrackingOpen] = useState(false);
+    // Email section panels
+    const [isEmailTrackingOpen, setIsEmailTrackingOpen] = useState(false);
     const [isEmailLogOpen, setIsEmailLogOpen] = useState(false);
-    const [isVendorTrustLogOpen, setIsVendorTrustLogOpen] = useState(false);
     const [isWorkflowLogOpen, setIsWorkflowLogOpen] = useState(false);
     const [isGlobalFiltersOpen, setIsGlobalFiltersOpen] = useState(false);
 
@@ -232,80 +226,56 @@ Thank you!`
               <BillingPanel currentUser={currentUser} addToast={addToast} />
             </CollapsibleSection>
 
-            {(isOpsAdmin || currentUser.role === 'Manager') && (
+            {/* Consolidated Team & Permissions Panel - Admin Only */}
+            {isOpsAdmin && (
               <CollapsibleSection
-                title="User Management"
+                title="Team & Permissions"
                 icon={<UsersIcon className="w-6 h-6 text-accent-400" />}
-                isOpen={isUserManagementOpen}
-                onToggle={() => setIsUserManagementOpen(!isUserManagementOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin/Manager Only
-                  </span>
-                </div>
-                <UserManagementPanel
-                  currentUser={currentUser}
-                  users={users}
-                  onInviteUser={onInviteUser}
-                  onUpdateUser={onUpdateUser}
-                  onDeleteUser={onDeleteUser}
-                />
-              </CollapsibleSection>
-            )}
-
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="User Roles & Permissions"
-                icon={<ShieldCheckIcon className="w-6 h-6 text-accent-400" />}
-                isOpen={isUserManagementOpen}
-                onToggle={() => setIsUserManagementOpen(!isUserManagementOpen)}
+                isOpen={isTeamManagementOpen}
+                onToggle={() => setIsTeamManagementOpen(!isTeamManagementOpen)}
               >
                 <div className="mb-2">
                   <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
                     Admin Only
                   </span>
                 </div>
-                <AdminUsersPanel currentUserId={currentUser.id} />
-              </CollapsibleSection>
-            )}            <CollapsibleSection
-              title="Role Permissions Overview"
-              icon={<ShieldCheckIcon className="w-6 h-6 text-accent-300" />}
-              isOpen={isRoleMatrixOpen}
-              onToggle={() => setIsRoleMatrixOpen(!isRoleMatrixOpen)}
-            >
-              <RolePermissionMatrix />
-            </CollapsibleSection>
+                <div className="space-y-6">
+                  {/* User Management */}
+                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-4">User Management</h3>
+                    <UserManagementPanel
+                      currentUser={currentUser}
+                      users={users}
+                      onInviteUser={onInviteUser}
+                      onUpdateUser={onUpdateUser}
+                      onDeleteUser={onDeleteUser}
+                    />
+                  </div>
 
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Task Delegation"
-                icon={<UsersIcon className="w-6 h-6 text-purple-400" />}
-                isOpen={isDelegationSettingsOpen}
-                onToggle={() => setIsDelegationSettingsOpen(!isDelegationSettingsOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <DelegationSettingsPanel addToast={addToast} />
-              </CollapsibleSection>
-            )}
+                  {/* User Roles & Permissions */}
+                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-4">User Roles & Permissions</h3>
+                    <AdminUsersPanel currentUserId={currentUser.id} />
+                  </div>
 
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Notification Preferences"
-                icon={<BellIcon className="w-6 h-6 text-orange-400" />}
-                isOpen={isNotificationPrefsOpen}
-                onToggle={() => setIsNotificationPrefsOpen(!isNotificationPrefsOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
+                  {/* Role Permissions Matrix */}
+                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-4">Role Permissions Overview</h3>
+                    <RolePermissionMatrix />
+                  </div>
+
+                  {/* Task Delegation */}
+                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-4">Task Delegation</h3>
+                    <DelegationSettingsPanel addToast={addToast} />
+                  </div>
+
+                  {/* Notification Preferences */}
+                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-4">Notification Preferences</h3>
+                    <NotificationPreferencesPanel currentUser={currentUser} addToast={addToast} />
+                  </div>
                 </div>
-                <NotificationPreferencesPanel currentUser={currentUser} addToast={addToast} />
               </CollapsibleSection>
             )}
           </section>
@@ -404,73 +374,46 @@ Thank you!`
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">Operations & Purchasing</h2>
 
+            {/* Consolidated Purchasing & Vendors Panel - Admin Only */}
             {isOpsAdmin && (
               <CollapsibleSection
-                title="Purchase Order Automation"
-                icon={<MailIcon className="w-6 h-6 text-sky-400" />}
-                isOpen={isFollowUpOpen}
-                onToggle={() => setIsFollowUpOpen(!isFollowUpOpen)}
+                title="Purchasing & Vendors"
+                icon={<TruckIcon className="w-6 h-6 text-sky-400" />}
+                isOpen={isPurchasingVendorsOpen}
+                onToggle={() => setIsPurchasingVendorsOpen(!isPurchasingVendorsOpen)}
               >
                 <div className="mb-2">
                   <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
                     Admin Only
                   </span>
                 </div>
-                <FollowUpSettingsPanel addToast={addToast} />
-              </CollapsibleSection>
-            )}
+                <div className="space-y-6">
+                  {/* PO Automation */}
+                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-4">Purchase Order Automation</h3>
+                    <FollowUpSettingsPanel addToast={addToast} />
+                  </div>
 
+                  {/* Vendor Management */}
+                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-4">Vendor Management</h3>
+                    <VendorsManagementPanel vendors={vendors} addToast={addToast} />
+                  </div>
 
+                  {/* Vendor Trust Score History */}
+                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-4">Vendor Trust Score History</h3>
+                    <VendorTrustScoreLog addToast={addToast} />
+                  </div>
 
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Vendor Management"
-                icon={<UsersIcon className="w-6 h-6 text-sky-400" />}
-                isOpen={isVendorAdminOpen}
-                onToggle={() => setIsVendorAdminOpen(!isVendorAdminOpen)}
-              >
-                <div className="mb-4">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
+                  {/* Carrier Tracking APIs */}
+                  <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                    <h3 className="text-lg font-semibold text-white mb-4">Carrier Tracking APIs</h3>
+                    <CarrierTrackingSettingsPanel addToast={addToast} />
+                  </div>
                 </div>
-                <VendorsManagementPanel vendors={vendors} addToast={addToast} />
               </CollapsibleSection>
             )}
-
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Vendor Trust Score History"
-                icon={<UsersIcon className="w-6 h-6 text-amber-400" />}
-                isOpen={isVendorTrustLogOpen}
-                onToggle={() => setIsVendorTrustLogOpen(!isVendorTrustLogOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <VendorTrustScoreLog addToast={addToast} />
-              </CollapsibleSection>
-            )}
-
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Carrier Tracking APIs"
-                icon={<TruckIcon className="w-6 h-6 text-blue-400" />}
-                isOpen={isCarrierTrackingOpen}
-                onToggle={() => setIsCarrierTrackingOpen(!isCarrierTrackingOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <CarrierTrackingSettingsPanel addToast={addToast} />
-              </CollapsibleSection>
-            )}
-
-
 
             <CollapsibleSection
               title="BOM Management"

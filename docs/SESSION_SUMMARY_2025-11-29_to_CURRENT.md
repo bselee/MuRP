@@ -14,6 +14,11 @@
 3. **Indexes & Comments**
   - Added filtered index for active inbox lookup by user/purpose
   - Documented cascade and uniqueness behavior
+4. **Settings Layout Consolidation**
+  - Collapsible sections default closed for cleaner first view
+  - Team & Permissions combined into one admin-only panel with Users, Roles, Delegation, Notifications
+  - Purchasing & Vendors combined into one admin-only panel with PO automation, vendors, trust log, carrier tracking
+  - Email section keeps policy, tracking, logs grouped logically
 
 **Testing:**
 - ✅ `npm test -- --runInBand` (schema transformers, inventory UI, invoice tests)
