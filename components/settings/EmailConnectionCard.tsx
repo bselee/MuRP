@@ -179,6 +179,31 @@ export const EmailConnectionCard: React.FC<EmailConnectionCardProps> = ({
     }
   };
 
+  const handleDelete = async (inboxId: string, email: string) => {
+    if (!confirm(`Permanently delete ${email}?\n\nThis will remove all email monitoring configuration. You'll need to re-authorize with Google to reconnect.`)) {
+      return;
+    }
+
+    try {
+      // Delete the inbox config (CASCADE should handle related data)
+      const { error: deleteError } = await supabase
+        .from('email_inbox_configs')
+        .delete()
+        .eq('id', inboxId);
+
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
+        throw deleteError;
+      }
+
+      await fetchInboxes();
+      onConnectionChange?.(false);
+    } catch (err: any) {
+      console.error('Failed to delete inbox:', err);
+      setError(`Failed to delete inbox: ${err.message || 'Unknown error'}`);
+    }
+  };
+
   const handleSyncNow = async (inboxId: string) => {
     setLoading(true);
     try {
@@ -240,8 +265,20 @@ export const EmailConnectionCard: React.FC<EmailConnectionCardProps> = ({
           key={inbox.id}
           inbox={inbox}
           onDisconnect={() => handleDisconnect(inbox.id, inbox.email_address)}
+          onDelete={() => handleDelete(inbox.id, inbox.email_address)}
           onSync={() => handleSyncNow(inbox.id)}
           loading={loading}
+        />
+      ))}
+
+      {/* Disconnected (but not deleted) Inboxes */}
+      {inboxes.filter(i => !i.is_active).map(inbox => (
+        <DisconnectedInboxCard
+          key={inbox.id}
+          inbox={inbox}
+          onReconnect={() => handleConnect(inbox.inbox_purpose)}
+          onDelete={() => handleDelete(inbox.id, inbox.email_address)}
+          loading={connecting === inbox.inbox_purpose}
         />
       ))}
 
@@ -316,9 +353,10 @@ export const EmailConnectionCard: React.FC<EmailConnectionCardProps> = ({
 const InboxCard: React.FC<{
   inbox: InboxConfig;
   onDisconnect: () => void;
+  onDelete: () => void;
   onSync: () => void;
   loading: boolean;
-}> = ({ inbox, onDisconnect, onSync, loading }) => {
+}> = ({ inbox, onDisconnect, onDelete, onSync, loading }) => {
   const info = PURPOSE_INFO[inbox.inbox_purpose] || PURPOSE_INFO.general;
 
   return (
@@ -373,12 +411,78 @@ const InboxCard: React.FC<{
             </button>
             <button
               onClick={onDisconnect}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-900/20 rounded-lg transition-colors"
+              title="Pause monitoring (keep config)"
             >
               <XCircleIcon className="w-4 h-4" />
-              Disconnect
+              Pause
+            </button>
+            <button
+              onClick={onDelete}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition-colors"
+              title="Delete and re-authorize"
+            >
+              Delete
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Disconnected inbox card (shows reconnect option)
+const DisconnectedInboxCard: React.FC<{
+  inbox: InboxConfig;
+  onReconnect: () => void;
+  onDelete: () => void;
+  loading: boolean;
+}> = ({ inbox, onReconnect, onDelete, loading }) => {
+  const info = PURPOSE_INFO[inbox.inbox_purpose] || PURPOSE_INFO.general;
+
+  return (
+    <div className="bg-gray-800 dark:bg-gray-800 light:bg-white rounded-xl border border-amber-700/50 dark:border-amber-700/50 light:border-amber-200 overflow-hidden">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-700 dark:border-gray-700 light:border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-900/30 dark:bg-amber-900/30 light:bg-amber-100 rounded-lg">
+              <MailIcon className="w-5 h-5 text-amber-400 dark:text-amber-400 light:text-amber-600" />
+            </div>
+            <div>
+              <h4 className="font-medium text-white dark:text-white light:text-gray-900">{info.title}</h4>
+              <p className="text-sm text-gray-400 dark:text-gray-400 light:text-gray-600">{inbox.email_address}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <AlertTriangleIcon className="w-4 h-4 text-amber-400" />
+            <span className="text-sm text-amber-400">Paused</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="p-4 flex items-center justify-between">
+        <p className="text-sm text-gray-400">Email monitoring is paused for this inbox.</p>
+        <div className="flex gap-2">
+          <button
+            onClick={onReconnect}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-700 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <RefreshIcon className="w-4 h-4" />
+            )}
+            Reconnect
+          </button>
+          <button
+            onClick={onDelete}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition-colors"
+          >
+            Delete
+          </button>
         </div>
       </div>
     </div>
