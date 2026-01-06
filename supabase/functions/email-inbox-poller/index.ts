@@ -29,6 +29,43 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Health Alert Helper
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Create a health alert for system monitoring
+ * Part of: Solid UX Initiative - NEVER fail silently
+ */
+async function createHealthAlert(
+  alertType: string,
+  severity: 'info' | 'warning' | 'error' | 'critical',
+  title: string,
+  message: string,
+  component: string,
+  metadata: Record<string, unknown> = {}
+): Promise<void> {
+  try {
+    // Generate fingerprint for deduplication
+    const fingerprint = `${alertType}:${component}:${JSON.stringify(metadata).slice(0, 100)}`;
+
+    await supabase.rpc('create_health_alert', {
+      p_alert_type: alertType,
+      p_severity: severity,
+      p_title: title,
+      p_message: message,
+      p_component: component,
+      p_metadata: metadata,
+      p_fingerprint: fingerprint,
+    });
+
+    console.log(`[email-inbox-poller] Created health alert: ${title}`);
+  } catch (error) {
+    // Don't let alert creation failure break the main flow
+    console.error('[email-inbox-poller] Failed to create health alert:', error);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -185,23 +222,35 @@ serve(async (req) => {
   } catch (error) {
     console.error('[email-inbox-poller] Fatal error:', error);
 
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
     // Mark run as failed
     if (runId) {
       await supabase
         .from('email_tracking_runs')
         .update({
           status: 'failed',
-          error_message: error instanceof Error ? error.message : String(error),
+          error_message: errorMessage,
           completed_at: new Date().toISOString(),
           duration_ms: Date.now() - startTime,
         })
         .eq('id', runId);
     }
 
+    // CREATE HEALTH ALERT - Never fail silently (Solid UX Initiative)
+    await createHealthAlert(
+      'email_polling_stopped',
+      'critical',
+      'Email Polling Failed',
+      `Email inbox polling failed with error: ${errorMessage}. PO tracking emails may be missed.`,
+      'email-inbox-poller',
+      { error: errorMessage, runId }
+    );
+
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
         results,
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -355,6 +404,24 @@ async function pollInbox(inbox: InboxConfig): Promise<PollResult> {
         next_poll_at: new Date(Date.now() + inbox.poll_interval_minutes * 60 * 1000).toISOString(),
       })
       .eq('id', inbox.id);
+
+    // CREATE HEALTH ALERT after 5 consecutive failures - Never fail silently
+    if (consecutiveErrors >= 5) {
+      await createHealthAlert(
+        'email_polling_stopped',
+        'error',
+        `Email Inbox "${inbox.inbox_name}" Stopped`,
+        `Inbox ${inbox.email_address} has failed ${consecutiveErrors} consecutive times. Error: ${result.error}`,
+        'email-inbox-poller',
+        {
+          inboxId: inbox.id,
+          inboxName: inbox.inbox_name,
+          email: inbox.email_address,
+          consecutiveErrors,
+          lastError: result.error,
+        }
+      );
+    }
   }
 
   return result;
@@ -437,7 +504,19 @@ async function getGmailAccessToken(credentials: {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Failed to refresh Gmail token: ${response.status} ${errorText}`);
+    const errorMessage = `Failed to refresh Gmail token: ${response.status} ${errorText}`;
+
+    // CREATE HEALTH ALERT for OAuth expiry - critical for email tracking
+    await createHealthAlert(
+      'oauth_expired',
+      'critical',
+      'Gmail OAuth Token Expired',
+      `Gmail authentication failed. User may need to re-authorize. Error: ${errorText}`,
+      'email-inbox-poller',
+      { status: response.status, error: errorText }
+    );
+
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();

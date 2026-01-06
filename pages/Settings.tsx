@@ -16,12 +16,7 @@ import SemanticSearchSettings from '../components/SemanticSearchSettings';
 import { MCPServerPanel } from '../components/MCPServerPanel';
 import DocumentTemplatesPanel from '../components/DocumentTemplatesPanel';
 import FollowUpSettingsPanel from '../components/FollowUpSettingsPanel';
-import DataPipelineGuide from '../components/DataPipelineGuide';
-import GoogleDataPanel from '../components/GoogleDataPanel';
 import termsUrl from '../docs/TERMS_OF_SERVICE.md?url';
-import googleOAuthDocUrl from '../docs/GOOGLE_OAUTH_SETUP.md?url';
-import googleSheetsDocUrl from '../GOOGLE_SHEETS_INTEGRATION.md?url';
-import apiIngestionDocUrl from '../API_INGESTION_SETUP.md?url';
 import { useAuth } from '../lib/auth/AuthContext';
 import { isDevelopment } from '../lib/auth/guards';
 import { useTheme, type ThemePreference } from '../components/ThemeProvider';
@@ -44,6 +39,7 @@ import EmailProcessingLog from '../components/settings/EmailProcessingLog';
 import WorkflowHistoryLog from '../components/settings/WorkflowHistoryLog';
 import VendorTrustScoreLog from '../components/settings/VendorTrustScoreLog';
 import GlobalDataFilterPanel from '../components/settings/GlobalDataFilterPanel';
+import CompanyIntegrationsPanel from '../components/CompanyIntegrationsPanel';
 
 interface SettingsProps {
     currentUser: User;
@@ -118,6 +114,7 @@ const Settings: React.FC<SettingsProps> = ({
     const [isEmailLogOpen, setIsEmailLogOpen] = useState(false);
     const [isWorkflowLogOpen, setIsWorkflowLogOpen] = useState(false);
     const [isGlobalFiltersOpen, setIsGlobalFiltersOpen] = useState(false);
+    const [isApiKeysOpen, setIsApiKeysOpen] = useState(false);
 
     // Modals
     const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
@@ -286,68 +283,54 @@ Thank you!`
           <section>
             <h2 className="text-2xl font-bold text-white mt-8 mb-4">Data & Integrations</h2>
 
-            <CollapsibleSection
-              title="Google Workspace & Finale Inventory"
-              icon={<LinkIcon className="w-6 h-6 text-blue-400" />}
-              isOpen={isDataIntegrationsOpen}
-              onToggle={() => setIsDataIntegrationsOpen(!isDataIntegrationsOpen)}
-            >
-            <div className="space-y-8">
-              <DataPipelineGuide
-                defaultCollapsed
-                items={[
-                  {
-                    label: 'Connect Google Workspace',
-                    description: 'Authenticate Calendar + Sheets scopes once, then reuse the token for Gmail, Docs, and integrations.',
-                    checklist: [
-                      'Click "Connect Google Workspace" below to launch OAuth.',
-                      'Approve calendar, drive, sheets scopes with the ops/admin account.',
-                      'Refresh the status card to confirm token + expiry time.',
-                    ],
-                    docHref: googleOAuthDocUrl,
-                    docLabel: 'Google OAuth setup',
-                  },
-                  {
-                    label: 'Sync Finale / Sheets',
-                    description: 'Pull curated data from Finale or a Sheet, then keep nightly backups in Google Drive.',
-                    checklist: [
-                      'Choose import strategy (update, add-only, or replace) before running.',
-                      'Use "Create Backup" after each major Finale sync to snapshot inventory.',
-                      'Store sheet IDs in the panel so everyone uses the same source.',
-                    ],
-                    docHref: googleSheetsDocUrl,
-                    docLabel: 'Sheets integration guide',
-                  },
-                  {
-                    label: 'Custom APIs',
-                    description: 'Share data with ERPs/vendors via API keys and the ingestion proxy.',
-                    checklist: [
-                      'Generate an API key, store it in the vendor portal, and limit the scopes.',
-                      'Document the payload format in the linked guide before handing off.',
-                      'Use the external connections list below to track every webhook.',
-                    ],
-                    docHref: apiIngestionDocUrl,
-                    docLabel: 'API ingestion playbook',
-                  },
-                ]}
-              />
-              <div id="google-data-panel-root">
-                <GoogleDataPanel userId={currentUser.id} gmailConnection={gmailConnection} addToast={addToast} />
-              </div>
-              <APIIntegrationsPanel
-                apiKey={apiKey}
-                onGenerateApiKey={onGenerateApiKey}
-                onRevokeApiKey={onRevokeApiKey}
-                showApiKey={showApiKey}
-                onToggleShowApiKey={setShowApiKey}
-                externalConnections={externalConnections}
-                onSetExternalConnections={onSetExternalConnections}
-                setCurrentPage={setCurrentPage}
-                addToast={addToast}
-              />
-            </div>
-          </CollapsibleSection>
+            {/* Company Integrations Panel - Admin Only - Consolidated Google, Email, Calendar, Sheets */}
+            {isOpsAdmin && (
+              <CollapsibleSection
+                title="Company Integrations"
+                icon={<LinkIcon className="w-6 h-6 text-blue-400" />}
+                isOpen={isDataIntegrationsOpen}
+                onToggle={() => setIsDataIntegrationsOpen(!isDataIntegrationsOpen)}
+              >
+                <div className="mb-2">
+                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
+                    Admin Only
+                  </span>
+                </div>
+                <p className="text-sm text-gray-400 mb-4">
+                  Configure company-level integrations: data sources, production calendar, and email inboxes for PO/AP tracking.
+                </p>
+                <CompanyIntegrationsPanel addToast={addToast} />
+              </CollapsibleSection>
+            )}
 
+            {/* API Keys & External Connections - Admin Only */}
+            {isOpsAdmin && (
+              <CollapsibleSection
+                title="API Keys & External Connections"
+                icon={<KeyIcon className="w-6 h-6 text-amber-400" />}
+                isOpen={isApiKeysOpen}
+                onToggle={() => setIsApiKeysOpen(!isApiKeysOpen)}
+              >
+                <div className="mb-2">
+                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
+                    Admin Only
+                  </span>
+                </div>
+                <APIIntegrationsPanel
+                  apiKey={apiKey}
+                  onGenerateApiKey={onGenerateApiKey}
+                  onRevokeApiKey={onRevokeApiKey}
+                  showApiKey={showApiKey}
+                  onToggleShowApiKey={setShowApiKey}
+                  externalConnections={externalConnections}
+                  onSetExternalConnections={onSetExternalConnections}
+                  setCurrentPage={setCurrentPage}
+                  addToast={addToast}
+                />
+              </CollapsibleSection>
+            )}
+
+            {/* Global Data Filters - Admin Only */}
             {isOpsAdmin && (
               <CollapsibleSection
                 title="Global Data Filters"

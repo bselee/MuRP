@@ -4,6 +4,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import type { Page } from '../App';
 import type { User } from '../types';
 import PurchasingGuidanceDashboard from '../components/PurchasingGuidanceDashboard';
+import SystemHealthWidget from '../components/SystemHealthWidget';
 import { ClipboardDocumentListIcon, HomeIcon } from '../components/icons';
 
 interface DashboardProps {
@@ -30,13 +31,19 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         description="Stock levels and reorder guidance"
         icon={<HomeIcon />}
         actions={
-          <Button
-            onClick={() => setCurrentPage('Purchase Orders')}
-            size="sm"
-            leftIcon={<ClipboardDocumentListIcon className="w-4 h-4" aria-hidden="true" />}
-          >
-            View Reorder Queue
-          </Button>
+          <div className="flex items-center gap-3">
+            <SystemHealthWidget
+              compact
+              onNavigateToSettings={() => setCurrentPage('Settings')}
+            />
+            <Button
+              onClick={() => setCurrentPage('Purchase Orders')}
+              size="sm"
+              leftIcon={<ClipboardDocumentListIcon className="w-4 h-4" aria-hidden="true" />}
+            >
+              View Reorder Queue
+            </Button>
+          </div>
         }
       />
 

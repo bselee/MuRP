@@ -111,6 +111,7 @@ import { getGoogleAuthService } from './services/googleAuthService';
 import { getGoogleGmailService } from './services/googleGmailService';
 import { GOOGLE_SCOPES } from './lib/google/scopes';
 import { ShipmentAlertBanner } from './components/ShipmentAlertBanner';
+import SystemHealthBanner from './components/SystemHealthBanner';
 import { ShipmentReviewModal } from './components/ShipmentReviewModal';
 import { isE2ETesting } from './lib/auth/guards';
 import {
@@ -1971,6 +1972,9 @@ const AppShell: React.FC = () => {
           data-surface="workspace"
           className={`workspace-surface flex-1 overflow-x-hidden overflow-y-auto ${mainBackground} p-4 sm:p-6 lg:p-8 pb-20 md:pb-8 transition-colors duration-300`}
         >
+          <SystemHealthBanner
+            onNavigateToSettings={() => navigateToPage('Settings')}
+          />
           <ShipmentAlertBanner
             onReviewShipment={(poId) => {
               setShipmentReviewPoId(poId);
