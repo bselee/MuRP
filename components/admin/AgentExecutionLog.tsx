@@ -17,12 +17,14 @@ interface AgentExecution {
   started_at: string;
   completed_at: string | null;
   duration_ms: number | null;
+  status: 'running' | 'completed' | 'failed' | 'cancelled';
   outcome: 'success' | 'partial' | 'failed' | 'cancelled' | null;
   user_feedback: 'approved' | 'corrected' | 'rejected' | 'pending' | null;
   actions_generated: number;
   actions_executed: number;
   actions_rejected: number;
   error_message: string | null;
+  error: string | null;
   result_summary: Record<string, unknown> | null;
   trigger_source: string | null;
 }
@@ -50,8 +52,10 @@ const AgentExecutionLog: React.FC<AgentExecutionLogProps> = ({ addToast }) => {
   const [agentRuns, setAgentRuns] = useState<AgentExecution[]>([]);
   const [workflowRuns, setWorkflowRuns] = useState<WorkflowExecution[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cleaning, setCleaning] = useState(false);
   const [activeTab, setActiveTab] = useState<'agents' | 'workflows' | 'errors'>('agents');
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
+  const [stuckCount, setStuckCount] = useState(0);
 
   const cardClass = isDark
     ? "bg-gray-900/60 border border-gray-700 rounded-lg"
@@ -87,6 +91,12 @@ const AgentExecutionLog: React.FC<AgentExecutionLogProps> = ({ addToast }) => {
         console.error('[AgentExecutionLog] Failed to load agent runs:', agentError);
       } else {
         setAgentRuns(agentData || []);
+        // Count stuck executions (running for more than 2 hours)
+        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+        const stuck = (agentData || []).filter(
+          r => r.status === 'running' && new Date(r.started_at) < twoHoursAgo
+        );
+        setStuckCount(stuck.length);
       }
 
       // Load workflow executions
@@ -106,6 +116,50 @@ const AgentExecutionLog: React.FC<AgentExecutionLogProps> = ({ addToast }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const cleanupStuckExecutions = async () => {
+    setCleaning(true);
+    try {
+      const { data, error } = await supabase.rpc('cleanup_stuck_agent_executions', {
+        p_max_age_hours: 2,
+        p_dry_run: false,
+      });
+
+      if (error) {
+        console.error('[AgentExecutionLog] Cleanup failed:', error);
+        addToast?.('Failed to cleanup stuck executions', 'error');
+      } else {
+        const cleaned = data?.[0]?.cleaned_count || 0;
+        addToast?.(`Cleaned up ${cleaned} stuck execution(s)`, 'success');
+        loadData();
+      }
+    } catch (err) {
+      console.error('[AgentExecutionLog] Cleanup error:', err);
+      addToast?.('Cleanup failed', 'error');
+    } finally {
+      setCleaning(false);
+    }
+  };
+
+  // Helper to check if an execution is stuck
+  const isStuck = (run: AgentExecution) => {
+    if (run.status !== 'running') return false;
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    return new Date(run.started_at) < twoHoursAgo;
+  };
+
+  // Helper to format how long something has been running
+  const formatRunningTime = (startedAt: string) => {
+    const start = new Date(startedAt);
+    const now = new Date();
+    const diffMs = now.getTime() - start.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays > 0) return `${diffDays}d ${diffHours % 24}h`;
+    if (diffHours > 0) return `${diffHours}h ${diffMins % 60}m`;
+    return `${diffMins}m`;
   };
 
   const getOutcomeIcon = (outcome: string | null) => {
@@ -177,6 +231,34 @@ const AgentExecutionLog: React.FC<AgentExecutionLogProps> = ({ addToast }) => {
 
   return (
     <div className="space-y-4">
+      {/* Stuck executions warning banner */}
+      {stuckCount > 0 && (
+        <div className={`p-3 rounded-lg flex items-center justify-between ${
+          isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            <ClockIcon className="w-5 h-5 text-amber-500" />
+            <div>
+              <p className={`font-medium ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                {stuckCount} stuck execution{stuckCount > 1 ? 's' : ''} detected
+              </p>
+              <p className={`text-xs ${isDark ? 'text-amber-500/70' : 'text-amber-600'}`}>
+                These have been running for over 2 hours and likely crashed
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={cleanupStuckExecutions}
+            variant="outline"
+            size="sm"
+            disabled={cleaning}
+            className={`${isDark ? 'border-amber-600 text-amber-400 hover:bg-amber-900/50' : 'border-amber-500 text-amber-700 hover:bg-amber-100'}`}
+          >
+            {cleaning ? 'Cleaning...' : 'Mark as Failed'}
+          </Button>
+        </div>
+      )}
+
       {/* Header with tabs and refresh */}
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
@@ -240,13 +322,27 @@ const AgentExecutionLog: React.FC<AgentExecutionLogProps> = ({ addToast }) => {
                   agentRuns.map((run) => (
                     <React.Fragment key={run.id}>
                       <tr
-                        className={`cursor-pointer ${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'}`}
+                        className={`cursor-pointer ${isStuck(run) ? (isDark ? 'bg-amber-900/20' : 'bg-amber-50') : ''} ${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'}`}
                         onClick={() => setExpandedRun(expandedRun === run.id ? null : run.id)}
                       >
                         <td className={`px-3 py-2 ${rowClass}`}>
                           <div className="flex items-center gap-2">
-                            {getOutcomeIcon(run.outcome)}
-                            <span className="capitalize">{run.outcome || 'pending'}</span>
+                            {isStuck(run) ? (
+                              <>
+                                <ClockIcon className="w-4 h-4 text-amber-500 animate-pulse" />
+                                <span className="text-amber-500">stuck ({formatRunningTime(run.started_at)})</span>
+                              </>
+                            ) : run.status === 'running' ? (
+                              <>
+                                <ClockIcon className="w-4 h-4 text-blue-400 animate-spin" />
+                                <span className="text-blue-400">running</span>
+                              </>
+                            ) : (
+                              <>
+                                {getOutcomeIcon(run.outcome)}
+                                <span className="capitalize">{run.outcome || run.status || 'pending'}</span>
+                              </>
+                            )}
                           </div>
                         </td>
                         <td className={`px-3 py-2 ${rowClass}`}>

@@ -30,6 +30,38 @@
 
 ---
 
+### Session: 2026-01-06 (Agent Activity Transparency + Multi-Invoice Extraction)
+
+**Summary:** Added end-to-end agent visibility with real-time activity logs and health views, plus multi-invoice extraction support.
+
+**Changes Made:**
+
+1. **Agent Transparency Infrastructure** (`160-162` migrations, new UI)
+  - `agent_activity_log` + `agent_activity_stream` view for real-time feed and human review
+  - `cleanup_stuck_agent_executions()` and `agent_execution_health` view to auto-fail stuck runs
+  - New components: `AgentActivityStream`, `AgentControlCenter`, `LiveAgentWidget` for UI surfacing
+  - Agent services updated to log activity and improve watchdog/stockout telemetry
+
+2. **Multi-Invoice Extraction Support** (`160_multi_invoice_extraction.sql`)
+  - Adds document_type/source_document_id/page_reference to `vendor_invoice_documents`
+  - New `multi_invoice_documents` and enhanced `invoices_pending_review` views for split invoices
+  - Extraction stats function for monitoring
+
+3. **Email & Invoice Processing**
+  - `email-inbox-poller` tuned for transparency and activity logging
+  - Invoice extractor function updated for multi-invoice context
+
+**Testing:**
+- ✅ `npm test -- --runInBand`
+- ✅ `npm run build`
+
+**Impact:**
+- Agents now emit auditable, real-time activity with review gates
+- Stuck agent executions are auto-cleaned and surfaced via health views
+- Multi-invoice statements can be split and tracked with parent/child visibility
+
+---
+
 ### Session: 2026-01-05 (Vendor Performance Analytics + Dropship Filtering + Dashboard Simplification + Deployment Fixes)
 
 **Summary:** Added vendor performance analytics, enhanced dropship filtering across purchasing forecasting, simplified Dashboard to single actionable table, and resolved Vercel deployment configuration issues.

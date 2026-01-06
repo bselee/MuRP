@@ -5,6 +5,7 @@ import type { Page } from '../App';
 import type { User } from '../types';
 import PurchasingGuidanceDashboard from '../components/PurchasingGuidanceDashboard';
 import SystemHealthWidget from '../components/SystemHealthWidget';
+import AgentControlCenter from '../components/AgentControlCenter';
 import { ClipboardDocumentListIcon, HomeIcon } from '../components/icons';
 
 interface DashboardProps {
@@ -47,7 +48,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
         }
       />
 
-      {/* Simple, actionable stock table - like your Google Sheet */}
+      {/* HERO: Agent Control Center - UNMISSABLE visibility into agent activity */}
+      <AgentControlCenter
+        onViewAllActivity={() => setCurrentPage('Admin')}
+      />
+
+      {/* Stock guidance below the agent activity */}
       <PurchasingGuidanceDashboard />
     </div>
   );

@@ -20,6 +20,12 @@
  */
 
 import { supabase } from '../lib/supabase/client';
+import {
+  logObservation,
+  logAnalysis,
+  logDecision,
+  logAction,
+} from './agentActivityService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 Types
@@ -133,6 +139,37 @@ export async function recordPODelivery(
 
     // Update trust score
     await updateVendorTrustScore(po.vendor_id);
+
+    // Log significant delivery events for user visibility
+    if (deliveryStatus === 'late_major') {
+      await logObservation(
+        'vendor-watchdog',
+        `${po.supplier_name} delivered ${variance} days late`,
+        {
+          description: `PO ${po.order_id}: Expected ${promisedLeadTime} days, took ${actualLeadTimeDays} days`,
+          data: {
+            vendor: po.supplier_name,
+            variance_days: variance,
+            promised_lead_time: promisedLeadTime,
+            actual_lead_time: actualLeadTimeDays,
+            caused_stockout: causedStockout,
+          },
+          severity: causedStockout ? 'error' : 'warning',
+          relatedVendorId: po.vendor_id,
+        }
+      );
+    } else if (deliveryStatus === 'early' && variance < -3) {
+      await logObservation(
+        'vendor-watchdog',
+        `${po.supplier_name} delivered ${Math.abs(variance)} days early`,
+        {
+          description: `PO ${po.order_id}: Expected ${promisedLeadTime} days, delivered in ${actualLeadTimeDays} days`,
+          data: { vendor: po.supplier_name, days_early: Math.abs(variance) },
+          severity: 'success',
+          relatedVendorId: po.vendor_id,
+        }
+      );
+    }
 
     return {
       success: true,
@@ -336,6 +373,16 @@ export async function getFlaggedVendors(): Promise<Array<{
   recommendation: string;
 }>> {
   try {
+    // Log that we're checking vendors
+    await logObservation(
+      'vendor-watchdog',
+      'Checking vendor performance scores',
+      {
+        description: 'Scanning all vendors for performance issues',
+        severity: 'info',
+      }
+    );
+
     // @ts-ignore - Types not yet generated for this view
     const { data: scorecards, error } = await supabase
       .from('vendor_scorecard')
@@ -381,6 +428,49 @@ export async function getFlaggedVendors(): Promise<Array<{
         recommendation,
       };
     });
+
+    // Log findings for user visibility
+    const highSeverity = results.filter(r => r.severity === 'high');
+    if (highSeverity.length > 0) {
+      await logDecision(
+        'vendor-watchdog',
+        `${highSeverity.length} vendors need immediate attention`,
+        {
+          description: highSeverity.map(v => `${v.vendor_name}: ${v.issue}`).join('; '),
+          reasoning: {
+            trigger: 'Vendor performance below acceptable thresholds',
+            vendors_flagged: highSeverity.length,
+          },
+          recommendation: {
+            action: 'Review flagged vendors and consider alternatives',
+            vendors: highSeverity.map(v => v.vendor_name),
+          },
+          riskLevel: 'high',
+          requiresApproval: false,
+        }
+      );
+    } else if (results.length > 0) {
+      await logAnalysis(
+        'vendor-watchdog',
+        `${results.length} vendors have minor issues`,
+        {
+          description: 'No critical vendor issues, monitoring continues',
+          conclusion: { vendors_monitored: results.length, critical_issues: 0 },
+          confidence: 0.9,
+        }
+      );
+    } else {
+      await logAction(
+        'vendor-watchdog',
+        'All vendors performing within acceptable ranges',
+        {
+          description: 'No vendor performance issues detected',
+          success: true,
+        }
+      );
+    }
+
+    return results;
   } catch (error) {
     console.error('Error getting flagged vendors:', error);
     return [];

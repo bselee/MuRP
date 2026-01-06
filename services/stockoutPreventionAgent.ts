@@ -31,6 +31,13 @@ import {
   logAgentAction,
   type ItemClassificationContext,
 } from './classificationContextService';
+import {
+  logObservation,
+  logAnalysis,
+  logDecision,
+  logAction,
+  logAgentError,
+} from './agentActivityService';
 
 export interface StockoutAlert {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
@@ -180,12 +187,26 @@ export async function getCriticalStockoutAlerts(options: AlertFilterOptions = {}
   // Get all products with reorder status indicating issues
   const criticalProducts = await getReorderAnalytics(['OUT_OF_STOCK', 'CRITICAL', 'REORDER_NOW']);
 
-  // Log agent action start
+  // Log visible activity for users
+  await logObservation(
+    'stockout-prevention',
+    `Scanning ${criticalProducts.length} items for stockout risk`,
+    {
+      description: 'Starting critical stock alert scan across inventory',
+      data: {
+        total_items_scanned: criticalProducts.length,
+        filter_mode: options.bypassClassificationFilter ? 'all_items' : 'standard_items_only'
+      },
+      severity: criticalProducts.length > 0 ? 'info' : 'success',
+    }
+  );
+
+  // Also log to SOP interactions table
   await logAgentAction(
     'stockout-prevention',
     null,
     'critical_alerts_scan_started',
-    options.bypassClassificationFilter 
+    options.bypassClassificationFilter
       ? 'Processing ALL items (classification filter bypassed)'
       : 'Only processing items that should trigger reorder alerts',
     null,
@@ -272,7 +293,58 @@ export async function getCriticalStockoutAlerts(options: AlertFilterOptions = {}
   const leadTimeAlerts = await detectLeadTimeVariances();
   alerts.push(...leadTimeAlerts);
 
-  // Log completion
+  // Log completion with decisions for user visibility
+  const criticalCount = alerts.filter(a => a.severity === 'CRITICAL').length;
+  const highCount = alerts.filter(a => a.severity === 'HIGH').length;
+  const totalEstimatedCost = alerts.reduce((sum, a) => sum + a.estimated_cost, 0);
+
+  // Log analysis result
+  await logAnalysis(
+    'stockout-prevention',
+    `Found ${alerts.length} stock alerts`,
+    {
+      description: `Identified ${criticalCount} critical, ${highCount} high priority items needing attention`,
+      inputData: { processed: processedCount, skipped: skippedCount },
+      conclusion: {
+        total_alerts: alerts.length,
+        critical_alerts: criticalCount,
+        high_alerts: highCount,
+        estimated_reorder_cost: totalEstimatedCost,
+      },
+      confidence: 0.95,
+    }
+  );
+
+  // If there are critical alerts, log a decision requiring attention
+  if (criticalCount > 0) {
+    const topCritical = alerts.filter(a => a.severity === 'CRITICAL').slice(0, 3);
+    await logDecision(
+      'stockout-prevention',
+      `${criticalCount} items need immediate reorder`,
+      {
+        description: topCritical.map(a => `${a.sku}: ${a.product_name} - ${a.days_until_stockout} days left`).join('; '),
+        reasoning: {
+          trigger: 'Critical stock levels detected',
+          impact: 'Production may be blocked without action',
+          urgency: 'immediate',
+        },
+        recommendation: {
+          action: 'Review and place orders for critical items',
+          items: topCritical.map(a => ({
+            sku: a.sku,
+            qty: a.recommended_order_qty,
+            cost: a.estimated_cost,
+          })),
+        },
+        confidence: 0.92,
+        riskLevel: 'high',
+        financialImpact: totalEstimatedCost,
+        requiresApproval: false, // Informational, user takes action
+      }
+    );
+  }
+
+  // Log completion to SOP interactions
   await logAgentAction(
     'stockout-prevention',
     null,
