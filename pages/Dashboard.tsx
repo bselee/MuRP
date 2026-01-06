@@ -51,6 +51,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
       {/* HERO: Agent Control Center - UNMISSABLE visibility into agent activity */}
       <AgentControlCenter
         onViewAllActivity={() => setCurrentPage('Admin')}
+        onNavigateToInventory={(sku) => {
+          // Navigate to Stock Intelligence where user can search for the SKU
+          console.log('[Dashboard] Navigating to Stock Intelligence for SKU:', sku);
+          setCurrentPage('Stock Intelligence');
+        }}
       />
 
       {/* Stock guidance below the agent activity */}
