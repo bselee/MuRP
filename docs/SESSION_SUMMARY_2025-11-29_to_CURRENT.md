@@ -1,3 +1,30 @@
+### Session: 2026-01-06 (Email Inbox Protections & Cleanup)
+
+**Summary:** Added migration 158 to harden email inbox configurations against user deletion, enforce per-user email uniqueness, and cascade cleanup of OAuth tokens.
+
+**Changes Made:**
+
+1. **Email Inbox Cascades** (`158_email_inbox_user_protection.sql`)
+  - `email_inbox_configs.user_id` now `ON DELETE CASCADE`
+  - `created_by` / `updated_by` set to `ON DELETE SET NULL`
+  - `user_oauth_tokens.user_id` cascades on delete
+2. **Duplicate Prevention & Cleanup**
+  - Added composite unique index `(user_id, email_address)` allowing org-wide NULL user
+  - Removed duplicate inbox configs, keeping newest per user/email
+3. **Indexes & Comments**
+  - Added filtered index for active inbox lookup by user/purpose
+  - Documented cascade and uniqueness behavior
+
+**Testing:**
+- ✅ `npm test -- --runInBand` (schema transformers, inventory UI, invoice tests)
+
+**Impact:**
+- Deleting a user now removes their inbox configs and OAuth tokens
+- Same email cannot be connected twice by the same user; org-wide inboxes unaffected
+- Audit columns preserved (nullified instead of deleted)
+
+---
+
 ### Session: 2026-01-05 (Vendor Performance Analytics + Dropship Filtering + Dashboard Simplification + Deployment Fixes)
 
 **Summary:** Added vendor performance analytics, enhanced dropship filtering across purchasing forecasting, simplified Dashboard to single actionable table, and resolved Vercel deployment configuration issues.
