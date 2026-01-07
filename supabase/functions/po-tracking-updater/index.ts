@@ -464,6 +464,36 @@ function mapUSPSStatus(statusCategory: string): TrackingStatus {
  * UPS Tracking API (FREE tier - 500 requests/month)
  * https://developer.ups.com/
  */
+let upsTokenCache: { token: string; expiresAt: number } | null = null;
+
+async function getUPSToken(clientId: string, clientSecret: string): Promise<string> {
+  // Return cached token if valid (with 5-minute buffer)
+  if (upsTokenCache && upsTokenCache.expiresAt > Date.now() + 300000) {
+    return upsTokenCache.token;
+  }
+
+  const tokenResponse = await fetch('https://onlinetools.ups.com/security/v1/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
+    },
+    body: 'grant_type=client_credentials',
+  });
+
+  if (!tokenResponse.ok) {
+    const errorText = await tokenResponse.text();
+    throw new Error(`UPS OAuth error: ${tokenResponse.status} - ${errorText}`);
+  }
+
+  const data = await tokenResponse.json();
+  upsTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + ((data.expires_in || 3600) * 1000),
+  };
+  return data.access_token;
+}
+
 async function fetchUPSTracking(
   trackingNumber: string,
   clientId: string,
@@ -475,21 +505,8 @@ async function fetchUPSTracking(
   rawPayload?: any;
   checkpoints?: any[];
 } | null> {
-  // Get OAuth token
-  const tokenResponse = await fetch('https://onlinetools.ups.com/security/v1/oauth/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`,
-    },
-    body: 'grant_type=client_credentials',
-  });
-
-  if (!tokenResponse.ok) {
-    throw new Error(`UPS OAuth error: ${tokenResponse.status}`);
-  }
-
-  const { access_token } = await tokenResponse.json();
+  // Get OAuth token (with caching)
+  const access_token = await getUPSToken(clientId, clientSecret);
 
   // Fetch tracking
   const response = await fetch(
@@ -553,6 +570,35 @@ function formatUPSDate(date: string): string {
  * FedEx Track API (FREE tier - 5000 requests/month)
  * https://developer.fedex.com/
  */
+let fedexTokenCache: { token: string; expiresAt: number } | null = null;
+
+async function getFedExToken(apiKey: string, secretKey: string): Promise<string> {
+  // Return cached token if valid (with 5-minute buffer)
+  if (fedexTokenCache && fedexTokenCache.expiresAt > Date.now() + 300000) {
+    return fedexTokenCache.token;
+  }
+
+  const tokenResponse = await fetch('https://apis.fedex.com/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: `grant_type=client_credentials&client_id=${apiKey}&client_secret=${secretKey}`,
+  });
+
+  if (!tokenResponse.ok) {
+    const errorText = await tokenResponse.text();
+    throw new Error(`FedEx OAuth error: ${tokenResponse.status} - ${errorText}`);
+  }
+
+  const data = await tokenResponse.json();
+  fedexTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + ((data.expires_in || 3600) * 1000),
+  };
+  return data.access_token;
+}
+
 async function fetchFedExTracking(
   trackingNumber: string,
   apiKey: string,
@@ -564,20 +610,8 @@ async function fetchFedExTracking(
   rawPayload?: any;
   checkpoints?: any[];
 } | null> {
-  // Get OAuth token
-  const tokenResponse = await fetch('https://apis.fedex.com/oauth/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: `grant_type=client_credentials&client_id=${apiKey}&client_secret=${secretKey}`,
-  });
-
-  if (!tokenResponse.ok) {
-    throw new Error(`FedEx OAuth error: ${tokenResponse.status}`);
-  }
-
-  const { access_token } = await tokenResponse.json();
+  // Get OAuth token (with caching)
+  const access_token = await getFedExToken(apiKey, secretKey);
 
   // Fetch tracking
   const response = await fetch('https://apis.fedex.com/track/v1/trackingnumbers', {

@@ -372,31 +372,54 @@ function parseUSPSResponse(data: any, trackingNumber: string): TrackingStatus {
 // Free tier: 500 requests/month
 
 /**
+ * UPS OAuth token cache
+ */
+let upsTokenCache: { token: string; expiresAt: number } | null = null;
+
+/**
+ * Get UPS OAuth 2.0 access token (with caching)
+ */
+async function getUPSToken(config: CarrierConfig): Promise<string> {
+  // Return cached token if valid (with 5-minute buffer)
+  if (upsTokenCache && upsTokenCache.expiresAt > Date.now() + 300000) {
+    return upsTokenCache.token;
+  }
+
+  const response = await fetch('https://onlinetools.ups.com/security/v1/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Basic ${btoa(`${config.userId}:${config.apiKey}`)}`,
+    },
+    body: 'grant_type=client_credentials',
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`UPS OAuth error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  upsTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + ((data.expires_in || 3600) * 1000),
+  };
+  return data.access_token;
+}
+
+/**
  * Track package via UPS API
  */
 export async function trackUPS(trackingNumber: string): Promise<TrackingStatus | null> {
   const config = await getCarrierConfig('UPS');
-  if (!config?.enabled || !config.apiKey) {
-    console.log('UPS API not configured');
+  if (!config?.enabled || !config.userId || !config.apiKey) {
+    console.log('UPS API not configured (requires Client ID and Client Secret)');
     return null;
   }
 
   try {
-    // UPS OAuth2 token (would need to be cached)
-    const tokenResponse = await fetch('https://onlinetools.ups.com/security/v1/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${btoa(`${config.apiKey}:${config.userId}`)}`,
-      },
-      body: 'grant_type=client_credentials',
-    });
-
-    if (!tokenResponse.ok) {
-      throw new Error('Failed to get UPS token');
-    }
-
-    const { access_token } = await tokenResponse.json();
+    // Get OAuth token (with caching)
+    const access_token = await getUPSToken(config);
 
     // Track package
     const trackResponse = await fetch(
@@ -480,34 +503,57 @@ function parseUPSResponse(data: any, trackingNumber: string): TrackingStatus {
 // Free tier: 5000 requests/month for tracking
 
 /**
+ * FedEx OAuth token cache
+ */
+let fedexTokenCache: { token: string; expiresAt: number } | null = null;
+
+/**
+ * Get FedEx OAuth 2.0 access token (with caching)
+ */
+async function getFedExToken(config: CarrierConfig): Promise<string> {
+  // Return cached token if valid (with 5-minute buffer)
+  if (fedexTokenCache && fedexTokenCache.expiresAt > Date.now() + 300000) {
+    return fedexTokenCache.token;
+  }
+
+  const response = await fetch('https://apis.fedex.com/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: config.userId || '',
+      client_secret: config.apiKey || '',
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`FedEx OAuth error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  fedexTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + ((data.expires_in || 3600) * 1000),
+  };
+  return data.access_token;
+}
+
+/**
  * Track package via FedEx API
  */
 export async function trackFedEx(trackingNumber: string): Promise<TrackingStatus | null> {
   const config = await getCarrierConfig('FedEx');
-  if (!config?.enabled || !config.apiKey) {
-    console.log('FedEx API not configured');
+  if (!config?.enabled || !config.userId || !config.apiKey) {
+    console.log('FedEx API not configured (requires API Key and Secret Key)');
     return null;
   }
 
   try {
-    // FedEx OAuth2 token
-    const tokenResponse = await fetch('https://apis.fedex.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: config.apiKey,
-        client_secret: config.userId || '',
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      throw new Error('Failed to get FedEx token');
-    }
-
-    const { access_token } = await tokenResponse.json();
+    // Get OAuth token (with caching)
+    const access_token = await getFedExToken(config);
 
     // Track package
     const trackResponse = await fetch('https://apis.fedex.com/track/v1/trackingnumbers', {
