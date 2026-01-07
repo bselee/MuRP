@@ -169,22 +169,23 @@ const Sidebar: React.FC<SidebarProps> = ({
         isDark ? 'border-gray-800' : 'border-gray-200'
       } ${isCollapsed ? 'justify-center' : 'px-4'}`}>
         {!isCollapsed && (
-          <div className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <div className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-black'}`}>
             MuRP
           </div>
         )}
-        <Button
+        <button
+          type="button"
           onClick={onToggle}
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!isCollapsed}
-          className={`absolute -right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 border transition-transform z-10 ${
+          className={`absolute -right-3 top-1/2 -translate-y-1/2 rounded-full p-1 border transition-transform z-10 ${
             isDark
               ? 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700'
               : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-50 shadow-sm'
           }`}
         >
-          <ChevronDoubleLeftIcon className={`w-3.5 h-3.5 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : 'rotate-0'}`} />
-        </Button>
+          <ChevronDoubleLeftIcon className={`w-3 h-3 transition-transform duration-200 ${isCollapsed ? 'rotate-180' : 'rotate-0'}`} />
+        </button>
       </div>
 
       {/* Navigation */}
