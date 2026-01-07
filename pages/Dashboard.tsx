@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { Page } from '../App';
 import type { User, InventoryItem, Vendor, PurchaseOrder } from '../types';
 import useDashboardHash from '../hooks/useDashboardHash';
+import usePersistentState from '../hooks/usePersistentState';
 import { getDefaultTab } from '../components/dashboard/dashboardConfig';
 import DashboardLayout from '../components/dashboard/DashboardLayout';
 import DashboardSidebar from '../components/dashboard/DashboardSidebar';
@@ -37,6 +38,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Desktop sidebar collapsed state (persisted)
+  const [isCollapsed, setIsCollapsed] = usePersistentState('dashboard-sidebar-collapsed', false);
+
   return (
     <DashboardLayout
       sidebar={
@@ -44,10 +48,13 @@ const Dashboard: React.FC<DashboardProps> = ({
           activeTab={activeTab}
           onSelect={setActiveTab}
           onClose={() => setSidebarOpen(false)}
+          isCollapsed={isCollapsed}
         />
       }
       sidebarOpen={sidebarOpen}
       onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+      isCollapsed={isCollapsed}
+      onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
     >
       <DashboardContent
         activeTab={activeTab}
