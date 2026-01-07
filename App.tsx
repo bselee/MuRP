@@ -44,6 +44,7 @@ import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
 import { usePermissions } from './hooks/usePermissions';
 import useSyncErrorNotifications from './hooks/useSyncErrorNotifications';
+import { pageToPath, pathToPage, getPathForPage, getPageFromPath } from './lib/routing';
 import {
   useSupabaseInventory,
   useSupabaseVendors,
@@ -206,25 +207,7 @@ const AppShell: React.FC = () => {
     setCurrentPage(nextPage);
 
     // Update browser URL to match the page change, preserving query parameters
-    const pageToPath: Record<Page, string> = {
-      'Dashboard': '/',
-      'Inventory': '/inventory',
-      'Purchase Orders': '/purchase-orders',
-      'Vendors': '/vendors',
-      'Production': '/production',
-      'BOMs': '/boms',
-      'Stock Intelligence': '/stock-intelligence',
-      'Settings': '/settings',
-      'API Documentation': '/api',
-      'Artwork': '/artwork',
-      'Projects': '/projects',
-      'Label Scanner': '/label-scanner',
-      'Product Page': '/product',
-      'Agent Command Center': '/admin/agents',
-      'Compliance': '/compliance',
-    };
-
-    const path = pageToPath[nextPage] || '/';
+    const path = getPathForPage(nextPage);
     if (typeof window !== 'undefined' && window.history) {
       const currentSearch = window.location.search;
       window.history.pushState({ page: nextPage }, '', path + currentSearch);
@@ -396,59 +379,34 @@ const AppShell: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, refreshGmailConnection]);
 
-  // Initialize URL state on app load
+  // Initialize URL routing and handle browser back/forward navigation
   useEffect(() => {
     try {
-      const { pathname, search } = window.location;
-      const path = pathname.replace(/\/$/, '');
-      const pathToPage: Record<string, Page> = {
-        '': 'Dashboard',
-        '/': 'Dashboard',
-        '/dashboard': 'Dashboard',
-        '/inventory': 'Inventory',
-        '/purchase-orders': 'Purchase Orders',
-        '/purchaseorders': 'Purchase Orders',
-        '/vendors': 'Vendors',
-        '/production': 'Production',
-        '/boms': 'BOMs',
-        '/stock-intelligence': 'Stock Intelligence',
-        '/settings': 'Settings',
-        '/api': 'API Documentation',
-        '/artwork': 'Artwork',
-        '/label-scanner': 'Label Scanner',
-        '/labels': 'Label Scanner',
-        '/projects': 'Projects',
-        '/product': 'Product Page',
-        '/admin/agents': 'Agent Command Center',
-        '/compliance': 'Compliance',
-      };
-      const initialPage = pathToPage[path] ?? 'Dashboard';
+      const { pathname, search, hash } = window.location;
+      const initialPage = getPageFromPath(pathname);
       setCurrentPage(initialPage);
 
-      // Push initial state to history, preserving query parameters
-      const pageToPath: Record<Page, string> = {
-        'Dashboard': '/',
-        'Inventory': '/inventory',
-        'Purchase Orders': '/purchase-orders',
-        'Vendors': '/vendors',
-        'Production': '/production',
-        'BOMs': '/boms',
-        'Stock Intelligence': '/stock-intelligence',
-        'Settings': '/settings',
-        'API Documentation': '/api',
-        'Artwork': '/artwork',
-        'Projects': '/projects',
-        'Label Scanner': '/label-scanner',
-        'Product Page': '/product',
-        'Agent Command Center': '/admin/agents',
-        'Compliance': '/compliance',
-      };
-      const initialPath = pageToPath[initialPage] || '/';
-      window.history.replaceState({ page: initialPage }, '', initialPath + search);
+      // Replace initial state to enable back/forward navigation
+      const initialPath = getPathForPage(initialPage);
+      window.history.replaceState({ page: initialPage }, '', initialPath + search + hash);
     } catch (err) {
-      // No-op: best-effort only for e2e/dev
       console.warn('[App] URL init skipped:', err);
     }
+
+    // Handle browser back/forward buttons
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state?.page) {
+        // Use the page from history state
+        setCurrentPage(event.state.page);
+      } else {
+        // Fallback: parse URL if state is missing
+        const page = getPageFromPath(window.location.pathname);
+        setCurrentPage(page);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, [setCurrentPage]);
 
   // Auto-complete onboarding for users who confirmed email (preventing flash of setup screen)
