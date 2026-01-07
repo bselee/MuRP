@@ -37,6 +37,7 @@ import { fetchComponentSwapRules, mapComponentSwaps } from '../services/componen
 import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
 import { useLimitingSKUOnOrder } from '../hooks/useLimitingSKUOnOrder';
 import { useTheme } from '../components/ThemeProvider';
+import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability' | 'category' | 'velocity' | 'runway';
@@ -123,6 +124,7 @@ const BOMs: React.FC<BOMsProps> = ({
   onNavigateToPurchaseOrders
 }) => {
   const { isDark } = useTheme();
+  const { isExcluded: isSkuGloballyExcluded } = useGlobalSkuFilter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -400,17 +402,27 @@ const BOMs: React.FC<BOMsProps> = ({
   }, [boms]);
 
   // Normalize BOMs so missing component arrays don't hide entire records
+  // Also filter out BOMs whose finished SKU is globally excluded
   const filteredBoms = useMemo(() => {
     const normalized = boms.map((bom) => ({
       ...bom,
       components: Array.isArray(bom.components) ? bom.components : [],
     }));
-    const missingComponentCount = normalized.filter((bom) => bom.components.length === 0).length;
+
+    // Filter out BOMs whose finished SKU is globally excluded
+    const afterGlobalFilter = normalized.filter((bom) => !isSkuGloballyExcluded(bom.finishedSku));
+
+    const excludedCount = normalized.length - afterGlobalFilter.length;
+    if (excludedCount > 0) {
+      console.info(`[BOMs] ${excludedCount} BOM(s) hidden due to globally excluded finished SKU.`);
+    }
+
+    const missingComponentCount = afterGlobalFilter.filter((bom) => bom.components.length === 0).length;
     if (missingComponentCount > 0) {
       console.warn(`[BOMs] ${missingComponentCount} BOM(s) have no component list yet, showing them with 0 components.`);
     }
-    return normalized;
-  }, [boms]);
+    return afterGlobalFilter;
+  }, [boms, isSkuGloballyExcluded]);
 
   // Create inventory lookup map for O(1) access
   const inventoryMap = useMemo(() => {

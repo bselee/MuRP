@@ -7,6 +7,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useTheme } from './ThemeProvider';
+import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
 import type { BillOfMaterials, InventoryItem, Label, ComplianceRecord, ComponentSwapMap } from '../types';
 import type { LimitingSKUOnOrder } from '../hooks/useLimitingSKUOnOrder';
 import {
@@ -130,6 +131,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   onNavigateToPurchaseOrders
 }) => {
   const { resolvedTheme } = useTheme();
+  const { isExcluded: isSkuGloballyExcluded } = useGlobalSkuFilter();
   const isLightTheme = resolvedTheme === 'light';
   const themeSwap = (light: string, dark: string) => (isLightTheme ? light : dark);
   const glassTile = themeSwap(LIGHT_GLASS_TILE, DARK_GLASS_TILE);
@@ -214,17 +216,35 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   const financialTableHeaderClass = themeSwap('text-amber-900', 'text-gray-500');
   const financialTableRowClass = themeSwap('text-slate-700', 'text-gray-300');
 
-  // Filter components to exclude those from globally excluded categories
-  // If a component SKU isn't in inventoryMap (because it was filtered out), hide it
+  // Show ALL components in BOMs - don't filter out excluded SKUs
+  // Excluded SKUs should be visible but flagged for replacement
   const filteredComponents = useMemo(() => {
-    return (bom.components || []).filter(component => {
-      const inventoryItem = inventoryMap.get(component.sku);
-      // Keep component if: it exists in filtered inventory OR it's not in inventory at all (might be manual entry)
-      // Only hide if the SKU exists but was filtered out due to category exclusion
-      // We can detect this because inventoryMap only contains active, non-excluded items
-      return inventoryItem !== undefined || !component.sku;
+    return bom.components || [];
+  }, [bom.components]);
+
+  // Track which components are globally excluded (need replacement)
+  const excludedComponentSkus = useMemo(() => {
+    const excluded = new Set<string>();
+    (bom.components || []).forEach(component => {
+      if (isSkuGloballyExcluded(component.sku)) {
+        excluded.add(component.sku);
+      }
     });
-  }, [bom.components, inventoryMap]);
+    return excluded;
+  }, [bom.components, isSkuGloballyExcluded]);
+
+  // Check if any component needs replacement
+  const hasExcludedComponents = excludedComponentSkus.size > 0;
+
+  // Excluded component row styles
+  const excludedComponentRowClass = themeSwap(
+    'bg-amber-50 border-2 border-amber-400 border-dashed',
+    'bg-amber-900/20 border-2 border-amber-600/50 border-dashed'
+  );
+  const excludedBadgeClass = themeSwap(
+    'px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800 border border-amber-400 font-semibold',
+    'px-2 py-0.5 rounded text-xs bg-amber-900/40 text-amber-300 border border-amber-600 font-semibold'
+  );
 
   // Determine display mode
   const isAdmin = userRole === 'Admin';
@@ -464,7 +484,20 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                   {bom.category}
                 </span>
               )}
-              
+
+              {/* Warning badge when BOM has excluded components */}
+              {hasExcludedComponents && (
+                <span className={`px-1.5 py-0.5 text-[10px] rounded font-semibold whitespace-nowrap flex items-center gap-1 ${
+                  themeSwap(
+                    'bg-amber-100 text-amber-800 border border-amber-400',
+                    'bg-amber-900/40 text-amber-300 border border-amber-600'
+                  )
+                }`} title={`${excludedComponentSkus.size} component(s) need replacement`}>
+                  <ExclamationTriangleIcon className="w-3 h-3" />
+                  {excludedComponentSkus.size} NEEDS REPLACE
+                </span>
+              )}
+
               {bom.description && (
                 <span className={`${passiveBodyText} text-xs flex-1 min-w-0 truncate border-l border-gray-700/30 pl-2 hidden md:block`}>
                   {bom.description}
@@ -888,13 +921,18 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                     return `${component.sku} — ${component.name ?? 'Unnamed'}${amount ? ` — ${amount}` : ''}`;
                   }) ?? [];
                   const nestedTooltipText = nestedTooltipLines.join('\n');
-                  
-                  const rowClass = isLimiting
-                    ? limitingHighlight.row
-                    : themeSwap(
-                        'bg-white/80 border border-emerald-600/10 hover:border-emerald-600/30 hover:bg-emerald-50/50',
-                        'bg-slate-900/50 border border-emerald-500/10 hover:border-emerald-500/30 hover:bg-emerald-950/20'
-                      );
+
+                  // Check if this component is globally excluded (needs replacement)
+                  const isGloballyExcluded = excludedComponentSkus.has(c.sku);
+
+                  const rowClass = isGloballyExcluded
+                    ? excludedComponentRowClass
+                    : isLimiting
+                      ? limitingHighlight.row
+                      : themeSwap(
+                          'bg-white/80 border border-emerald-600/10 hover:border-emerald-600/30 hover:bg-emerald-50/50',
+                          'bg-slate-900/50 border border-emerald-500/10 hover:border-emerald-500/30 hover:bg-emerald-950/20'
+                        );
 
                   return (
                     <div
@@ -905,10 +943,16 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                       <div className="flex items-start justify-between p-3">
                         <div className="flex items-start gap-3 flex-1">
                           {/* Step Number */}
-                          <div className={themeSwap(
-                            'flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center text-xs font-bold text-emerald-800',
-                            'flex-shrink-0 w-7 h-7 rounded-full bg-emerald-950/50 border border-emerald-600/40 flex items-center justify-center text-xs font-bold text-emerald-300'
-                          )}>
+                          <div className={isGloballyExcluded
+                            ? themeSwap(
+                                'flex-shrink-0 w-7 h-7 rounded-full bg-amber-100 border border-amber-400 flex items-center justify-center text-xs font-bold text-amber-800',
+                                'flex-shrink-0 w-7 h-7 rounded-full bg-amber-950/50 border border-amber-600/40 flex items-center justify-center text-xs font-bold text-amber-300'
+                              )
+                            : themeSwap(
+                                'flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center text-xs font-bold text-emerald-800',
+                                'flex-shrink-0 w-7 h-7 rounded-full bg-emerald-950/50 border border-emerald-600/40 flex items-center justify-center text-xs font-bold text-emerald-300'
+                              )
+                          }>
                             {idx + 1}
                           </div>
 
@@ -916,18 +960,24 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                           <div className="flex-1 min-w-0">
                             {/* SKU + Description + Name */}
                             <div className="flex items-baseline gap-2 flex-wrap">
+                              {/* Excluded badge */}
+                              {isGloballyExcluded && (
+                                <span className={excludedBadgeClass} title="This SKU is globally excluded and needs replacement">
+                                  REPLACE
+                                </span>
+                              )}
                               {onNavigateToInventory ? (
                                 <Button
                                   onClick={() => onNavigateToInventory(c.sku)}
-                                  className={themeSwap(
+                                  className={`${isGloballyExcluded ? 'line-through opacity-70 ' : ''}${themeSwap(
                                     'font-bold font-mono text-sm text-emerald-700 hover:text-emerald-600 underline decoration-dotted',
                                     'font-bold font-mono text-sm text-emerald-400 hover:text-emerald-300 underline decoration-dotted'
-                                  )}
+                                  )}`}
                                 >
                                   {c.sku}
                                 </Button>
                               ) : (
-                                <span className={themeSwap('font-bold font-mono text-sm text-emerald-800', 'font-bold font-mono text-sm text-emerald-300')}>{c.sku}</span>
+                                <span className={`${isGloballyExcluded ? 'line-through opacity-70 ' : ''}${themeSwap('font-bold font-mono text-sm text-emerald-800', 'font-bold font-mono text-sm text-emerald-300')}`}>{c.sku}</span>
                               )}
                               {componentItem?.description && (
                                 <span className={themeSwap('text-xs text-gray-600 italic', 'text-xs text-gray-400 italic')}>
