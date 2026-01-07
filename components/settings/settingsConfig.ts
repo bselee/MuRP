@@ -9,6 +9,8 @@ export type SettingsSectionId =
   | 'billing'
   // Team (admin)
   | 'team'
+  // Admin
+  | 'modules'
   // Data & Integrations (admin)
   | 'integrations'
   | 'api-keys'
@@ -37,6 +39,7 @@ export type SettingsSectionId =
 export type SettingsGroup =
   | 'Account'
   | 'Team'
+  | 'Admin'
   | 'Data'
   | 'Operations'
   | 'Email'
@@ -63,6 +66,9 @@ export const settingsSections: SettingsSectionConfig[] = [
 
   // Team (admin only)
   { id: 'team', label: 'Team & Permissions', group: 'Team', adminOnly: true },
+
+  // Admin (admin only)
+  { id: 'modules', label: 'Modules', group: 'Admin', adminOnly: true },
 
   // Data & Integrations (admin only)
   { id: 'integrations', label: 'Company Integrations', group: 'Data', adminOnly: true },
@@ -100,6 +106,7 @@ export const settingsSections: SettingsSectionConfig[] = [
 export const groupOrder: SettingsGroup[] = [
   'Account',
   'Team',
+  'Admin',
   'Data',
   'Operations',
   'Email',

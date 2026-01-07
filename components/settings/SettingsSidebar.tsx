@@ -28,9 +28,9 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       <div className="space-y-6">
         {Array.from(sections.entries()).map(([group, groupSections]) => (
           <div key={group}>
-            {/* Group header */}
+            {/* Group header - subtle uppercase label */}
             <h3
-              className={`text-xs font-semibold uppercase tracking-wider mb-2 px-3 ${
+              className={`text-[11px] font-semibold uppercase tracking-wider mb-2 px-3 ${
                 isDark ? 'text-gray-500' : 'text-gray-400'
               }`}
             >
@@ -49,10 +49,10 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                       className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                         isActive
                           ? isDark
-                            ? 'bg-gray-800 text-white border-l-2 border-accent-400'
-                            : 'bg-gray-100 text-gray-900 border-l-2 border-accent-500'
+                            ? 'bg-blue-500/10 text-blue-400 border-l-2 border-blue-500 -ml-[2px] pl-[14px]'
+                            : 'bg-blue-50 text-blue-600 border-l-2 border-blue-500 -ml-[2px] pl-[14px]'
                           : isDark
-                            ? 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                            ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
                             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                       }`}
                     >

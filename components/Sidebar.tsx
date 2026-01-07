@@ -5,6 +5,7 @@ import type { User } from '../types';
 import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, CpuChipIcon, ShieldCheckIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
+import useModuleVisibility from '../hooks/useModuleVisibility';
 import UserSettingsDropdown from './UserSettingsDropdown';
 import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 
@@ -86,6 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const permissions = usePermissions();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
+  const { isPageVisibleInSidebar } = useModuleVisibility();
 
   type NavItemConfig = {
     page: Page;
@@ -131,6 +133,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (!currentUser) return [];
     const adminLike = currentUser.role === 'Admin' || currentUser.department === 'Operations';
     return navItems.filter(item => {
+      // Check module visibility first (for toggleable modules)
+      if (!isPageVisibleInSidebar(item.page)) return false;
+
       if (adminLike) return true;
       if (currentUser.role === 'Manager') {
         if (item.adminOnly) return false;

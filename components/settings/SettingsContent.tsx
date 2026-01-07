@@ -34,6 +34,7 @@ import WorkflowHistoryLog from './WorkflowHistoryLog';
 import ShopifyIntegrationPanel from '../ShopifyIntegrationPanel';
 import { MCPServerPanel } from '../MCPServerPanel';
 import RegulatoryAgreementPanel from '../RegulatoryAgreementPanel';
+import ModulesSettingsPanel from './ModulesSettingsPanel';
 import TermsOfServiceModal from '../TermsOfServiceModal';
 import termsUrl from '../../docs/TERMS_OF_SERVICE.md?url';
 
@@ -60,7 +61,7 @@ const SectionHeader: React.FC<{ title: string; description?: string }> = ({ titl
   );
 };
 
-// Card wrapper for consistent styling
+// Card wrapper for consistent styling - Modern SaaS design
 const SettingsCard: React.FC<{ title?: string; children: React.ReactNode; className?: string }> = ({
   title,
   children,
@@ -73,12 +74,12 @@ const SettingsCard: React.FC<{ title?: string; children: React.ReactNode; classN
     <div
       className={`rounded-lg p-6 ${
         isDark
-          ? 'bg-gray-800/50 border border-gray-700'
+          ? 'bg-gray-900 border border-gray-800'
           : 'bg-white border border-gray-200 shadow-sm'
       } ${className}`}
     >
       {title && (
-        <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        <h3 className={`text-base font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
           {title}
         </h3>
       )}
@@ -226,6 +227,16 @@ Thank you!`
               <NotificationPreferencesPanel currentUser={currentUser} addToast={addToast} />
             </SettingsCard>
           </div>
+        </>
+      );
+
+    case 'modules':
+      return (
+        <>
+          <SectionHeader title="Modules" description="Enable or disable modules in the sidebar" />
+          <SettingsCard>
+            <ModulesSettingsPanel setCurrentPage={setCurrentPage} />
+          </SettingsCard>
         </>
       );
 

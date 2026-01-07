@@ -23,13 +23,14 @@ const SettingsLayout: React.FC<SettingsLayoutProps> = ({
       {/* Mobile overlay backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
           onClick={onToggleSidebar}
           aria-hidden="true"
         />
       )}
 
       {/* Sidebar - fixed on mobile, static on desktop */}
+      {/* Modern SaaS: White background, subtle border */}
       <aside
         className={`
           fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out
@@ -39,9 +40,11 @@ const SettingsLayout: React.FC<SettingsLayoutProps> = ({
         `}
       >
         {/* Mobile header with close button */}
-        <div className="flex items-center justify-between px-4 py-4 lg:hidden">
+        <div className={`flex items-center justify-between px-4 py-4 lg:hidden border-b ${
+          isDark ? 'border-gray-800' : 'border-gray-100'
+        }`}>
           <div className="flex items-center gap-2">
-            <SettingsIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+            <SettingsIcon className="w-5 h-5 text-gray-400" />
             <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
               Settings
             </span>
@@ -49,10 +52,10 @@ const SettingsLayout: React.FC<SettingsLayoutProps> = ({
           <button
             type="button"
             onClick={onToggleSidebar}
-            className={`p-2 rounded-md ${
+            className={`p-2 rounded-md transition-colors ${
               isDark
                 ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
             }`}
             aria-label="Close sidebar"
           >
@@ -61,8 +64,10 @@ const SettingsLayout: React.FC<SettingsLayoutProps> = ({
         </div>
 
         {/* Desktop header */}
-        <div className="hidden lg:flex items-center gap-2 px-6 py-5">
-          <SettingsIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+        <div className={`hidden lg:flex items-center gap-2 px-6 py-5 border-b ${
+          isDark ? 'border-gray-800' : 'border-gray-100'
+        }`}>
+          <SettingsIcon className="w-5 h-5 text-gray-400" />
           <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Settings
           </span>
@@ -74,8 +79,10 @@ const SettingsLayout: React.FC<SettingsLayoutProps> = ({
         </div>
       </aside>
 
-      {/* Main content area */}
-      <main className="flex-1 min-w-0 overflow-y-auto">
+      {/* Main content area - light gray background for contrast */}
+      <main className={`flex-1 min-w-0 overflow-y-auto ${
+        isDark ? 'bg-gray-950' : 'bg-gray-50'
+      }`}>
         {/* Mobile header with menu button */}
         <div
           className={`sticky top-0 z-30 flex items-center gap-3 px-4 py-3 lg:hidden ${
@@ -85,10 +92,10 @@ const SettingsLayout: React.FC<SettingsLayoutProps> = ({
           <button
             type="button"
             onClick={onToggleSidebar}
-            className={`p-2 -ml-2 rounded-md ${
+            className={`p-2 -ml-2 rounded-md transition-colors ${
               isDark
                 ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
             }`}
             aria-label="Open sidebar"
           >
