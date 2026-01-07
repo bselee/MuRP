@@ -64,14 +64,14 @@ const CARRIERS: CarrierInfo[] = [
     registrationUrl: 'https://developers.usps.com/getting-started',
     freeTier: 'Unlimited requests (free)',
     fields: {
-      userId: { label: 'Client ID', placeholder: 'Your USPS Client ID', required: true },
-      apiKey: { label: 'Client Secret', placeholder: 'Your USPS Client Secret', required: true },
+      userId: { label: 'Consumer Key', placeholder: 'Your USPS Consumer Key', required: true },
+      apiKey: { label: 'Consumer Secret', placeholder: 'Your USPS Consumer Secret', required: true },
     },
     instructions: [
       'Go to developers.usps.com',
       'Create a USPS Developer Account',
       'Create a new application',
-      'Copy the Client ID and Client Secret',
+      'Copy the Consumer Key and Consumer Secret',
     ],
   },
   {
@@ -201,85 +201,32 @@ const CarrierTrackingSettingsPanel: React.FC<CarrierSettingsProps> = ({ addToast
     }
   };
 
-  // Test carrier connection by validating OAuth credentials
+  // Test carrier connection - validates credentials are present
+  // Note: Direct OAuth calls blocked by CORS, but credentials verified when tracking runs via edge functions
   const testConnection = async (carrierId: string) => {
     const config = configs[carrierId];
+    const carrier = CARRIERS.find(c => c.id === carrierId);
+
     if (!config || !config.userId) {
-      addToast('Please enter Client ID first', 'error');
+      addToast(`Please enter ${carrier?.fields.userId.label || 'credentials'} first`, 'error');
       return;
     }
     if (!config.apiKey) {
-      addToast('Please enter Client Secret first', 'error');
+      addToast(`Please enter ${carrier?.fields.apiKey?.label || 'secret'} first`, 'error');
       return;
     }
 
     setTestingCarrier(carrierId);
-    try {
-      if (carrierId === 'usps') {
-        // Test USPS OAuth token endpoint
-        const response = await fetch('https://apis.usps.com/oauth2/v3/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            client_id: config.userId,
-            client_secret: config.apiKey,
-            grant_type: 'client_credentials',
-          }),
-        });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.access_token) {
-            addToast(`${config.name} credentials verified! OAuth token obtained.`, 'success');
-          } else {
-            addToast(`${config.name} response missing token`, 'error');
-          }
-        } else {
-          const errorText = await response.text();
-          addToast(`${config.name} auth failed: ${response.status} - Check credentials`, 'error');
-          console.error('USPS OAuth error:', errorText);
-        }
-      } else if (carrierId === 'ups') {
-        // Test UPS OAuth
-        const response = await fetch('https://onlinetools.ups.com/security/v1/oauth/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': `Basic ${btoa(`${config.userId}:${config.apiKey}`)}`,
-          },
-          body: 'grant_type=client_credentials',
-        });
-
-        if (response.ok) {
-          addToast(`${config.name} credentials verified!`, 'success');
-        } else {
-          addToast(`${config.name} auth failed: ${response.status} - Check credentials`, 'error');
-        }
-      } else if (carrierId === 'fedex') {
-        // Test FedEx OAuth
-        const response = await fetch('https://apis.fedex.com/oauth/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            grant_type: 'client_credentials',
-            client_id: config.userId,
-            client_secret: config.apiKey,
-          }),
-        });
-
-        if (response.ok) {
-          addToast(`${config.name} credentials verified!`, 'success');
-        } else {
-          addToast(`${config.name} auth failed: ${response.status} - Check credentials`, 'error');
-        }
-      } else {
-        addToast(`${config.name} credentials configured`, 'success');
-      }
-    } catch (err: any) {
-      addToast(`${config.name} connection test failed: ${err.message}`, 'error');
-    } finally {
+    // Credentials are present - inform user that actual OAuth validation happens server-side
+    // Browser CORS restrictions prevent direct OAuth calls to carrier APIs
+    setTimeout(() => {
+      addToast(
+        `${config.name} credentials saved. Enable tracking and the system will validate on first use.`,
+        'success'
+      );
       setTestingCarrier(null);
-    }
+    }, 500);
   };
 
   // Update config field
