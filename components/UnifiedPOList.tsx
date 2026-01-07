@@ -217,34 +217,118 @@ const ProgressDots: React.FC<{
 };
 
 // Email Intel Component
+/**
+ * Generate Gmail URL to open thread directly
+ */
+function getGmailUrl(threadId: string | null, subject?: string): string | null {
+  if (threadId) {
+    // Gmail thread URL format
+    return `https://mail.google.com/mail/u/0/#inbox/${threadId}`;
+  }
+  if (subject) {
+    // Search Gmail for subject
+    return `https://mail.google.com/mail/u/0/#search/${encodeURIComponent(subject)}`;
+  }
+  return null;
+}
+
+/**
+ * Check if followup is overdue
+ */
+function isFollowupOverdue(followupDueAt: string | null): boolean {
+  if (!followupDueAt) return false;
+  return new Date(followupDueAt) < new Date();
+}
+
 const EmailIntel: React.FC<{
   po: UnifiedPO;
   isDark: boolean;
 }> = ({ po, isDark }) => {
+  // Determine if this PO needs a response
+  const needsResponse = po.needsFollowup ||
+    (po.emailAwaitingResponse && !po.emailLastVendorReply) ||
+    (po.vendorResponseStatus === 'awaiting_initial');
+
+  const isOverdue = isFollowupOverdue(po.followupDueAt);
+  const gmailUrl = getGmailUrl(po.emailThreadId, po.rawData && 'orderId' in po.rawData ? `PO ${po.orderId}` : undefined);
+
+  // Show prominent "Needs Response" badge
+  if (needsResponse) {
+    return (
+      <div className="flex flex-col gap-1">
+        <a
+          href={gmailUrl || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!gmailUrl) e.preventDefault();
+          }}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            isOverdue
+              ? isDark
+                ? 'bg-red-900/60 text-red-300 hover:bg-red-800/70 border border-red-700/50'
+                : 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200'
+              : isDark
+                ? 'bg-amber-900/50 text-amber-300 hover:bg-amber-800/60 border border-amber-700/50'
+                : 'bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-200'
+          }`}
+          title={gmailUrl ? 'Open in Gmail' : 'View email thread'}
+        >
+          <MailIcon className="w-3.5 h-3.5" />
+          <span>{isOverdue ? 'Response Overdue' : 'Needs Response'}</span>
+          {gmailUrl && <ExternalLinkIcon className="w-3 h-3 opacity-60" />}
+        </a>
+        {po.followupDueAt && (
+          <span className={`text-[10px] pl-1 ${
+            isOverdue
+              ? isDark ? 'text-red-400' : 'text-red-600'
+              : isDark ? 'text-gray-500' : 'text-stone-400'
+          }`}>
+            {isOverdue ? 'Due: ' : 'Due: '}{new Date(po.followupDueAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  // No email activity
   if (!po.hasEmailThread && !po.emailLastSentAt && po.emailMessageCount === 0) {
     return (
       <span className={`text-xs ${isDark ? 'text-gray-600' : 'text-stone-400'}`}>—</span>
     );
   }
 
+  // Normal email intel display
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center gap-1.5">
-        <MailIcon className={`w-3.5 h-3.5 ${isDark ? 'text-gray-400' : 'text-stone-400'}`} />
-        <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
-          {po.emailMessageCount || 0}
-        </span>
+        {gmailUrl ? (
+          <a
+            href={gmailUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className={`flex items-center gap-1.5 hover:underline ${isDark ? 'text-gray-300 hover:text-cyan-400' : 'text-stone-600 hover:text-cyan-600'}`}
+            title="Open in Gmail"
+          >
+            <MailIcon className={`w-3.5 h-3.5 ${isDark ? 'text-gray-400' : 'text-stone-400'}`} />
+            <span className="text-sm">{po.emailMessageCount || 0}</span>
+            <ExternalLinkIcon className="w-2.5 h-2.5 opacity-50" />
+          </a>
+        ) : (
+          <>
+            <MailIcon className={`w-3.5 h-3.5 ${isDark ? 'text-gray-400' : 'text-stone-400'}`} />
+            <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
+              {po.emailMessageCount || 0}
+            </span>
+          </>
+        )}
       </div>
       {po.emailLastVendorReply && (
         <div className={`flex items-center gap-1 text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
           <CheckCircleIcon className="w-2.5 h-2.5" />
           <span>Replied {formatTimeAgo(po.emailLastVendorReply)}</span>
-        </div>
-      )}
-      {po.emailAwaitingResponse && !po.emailLastVendorReply && (
-        <div className={`flex items-center gap-1 text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-          <ClockIcon className="w-2.5 h-2.5" />
-          <span>Awaiting reply</span>
         </div>
       )}
     </div>

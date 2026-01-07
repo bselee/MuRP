@@ -18,6 +18,7 @@ import {
   ChevronRightIcon,
   AlertTriangleIcon,
   MailIcon,
+  ExternalLinkIcon,
 } from './icons';
 
 interface PODeliveryTimelineProps {
@@ -46,6 +47,57 @@ interface TimelineStep {
   isComplete: boolean;
   isCurrent: boolean;
   isException?: boolean;
+}
+
+/**
+ * Carrier brand colors and info
+ */
+const CARRIER_INFO: Record<string, { name: string; color: string; bgLight: string; bgDark: string }> = {
+  ups: { name: 'UPS', color: '#351C15', bgLight: 'bg-amber-100', bgDark: 'bg-amber-900/40' },
+  fedex: { name: 'FedEx', color: '#4D148C', bgLight: 'bg-purple-100', bgDark: 'bg-purple-900/40' },
+  usps: { name: 'USPS', color: '#004B87', bgLight: 'bg-blue-100', bgDark: 'bg-blue-900/40' },
+  dhl: { name: 'DHL', color: '#D40511', bgLight: 'bg-red-100', bgDark: 'bg-red-900/40' },
+  ontrac: { name: 'OnTrac', color: '#00A651', bgLight: 'bg-green-100', bgDark: 'bg-green-900/40' },
+  lso: { name: 'LSO', color: '#E31837', bgLight: 'bg-red-100', bgDark: 'bg-red-900/40' },
+  unknown: { name: 'Carrier', color: '#6B7280', bgLight: 'bg-gray-100', bgDark: 'bg-gray-800/40' },
+};
+
+/**
+ * Detect carrier from tracking number pattern or explicit carrier name
+ */
+function detectCarrier(trackingNumber: string | null | undefined, carrier: string | null | undefined): string {
+  const tn = (trackingNumber || '').trim().toUpperCase();
+  const cr = (carrier || '').toLowerCase();
+
+  if (cr.includes('ups') || tn.startsWith('1Z')) return 'ups';
+  if (cr.includes('fedex') || /^(\d{12,22}|96\d{20})$/.test(tn)) return 'fedex';
+  if (cr.includes('usps') || /^(94|93|92|91)\d{20,22}$/.test(tn)) return 'usps';
+  if (cr.includes('dhl')) return 'dhl';
+  if (cr.includes('ontrac') || tn.startsWith('C')) return 'ontrac';
+  if (cr.includes('lso') || cr.includes('lone star')) return 'lso';
+  return 'unknown';
+}
+
+/**
+ * Generate tracking URL for carrier website
+ * Allows users to click through to carrier tracking page without needing API credentials
+ */
+function getTrackingUrl(trackingNumber: string | null | undefined, carrier: string | null | undefined): string | null {
+  if (!trackingNumber) return null;
+  const tn = trackingNumber.trim();
+  const detectedCarrier = detectCarrier(trackingNumber, carrier);
+
+  const urls: Record<string, string> = {
+    ups: `https://www.ups.com/track?tracknum=${encodeURIComponent(tn)}`,
+    fedex: `https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(tn)}`,
+    usps: `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(tn)}`,
+    dhl: `https://www.dhl.com/us-en/home/tracking.html?tracking-id=${encodeURIComponent(tn)}`,
+    ontrac: `https://www.ontrac.com/tracking/?number=${encodeURIComponent(tn)}`,
+    lso: `https://www.lso.com/tracking/${encodeURIComponent(tn)}`,
+    unknown: `https://www.google.com/search?q=${encodeURIComponent(tn)}+tracking`,
+  };
+
+  return urls[detectedCarrier] || urls.unknown;
 }
 
 const PODeliveryTimeline: React.FC<PODeliveryTimelineProps> = ({
@@ -217,11 +269,36 @@ const PODeliveryTimeline: React.FC<PODeliveryTimelineProps> = ({
           }`}>
             {hasException ? 'Exception' : steps[Math.min(currentStep, steps.length - 1)]?.label || 'Processing'}
           </span>
-          {trackingNumber && (
-            <span className={`ml-2 text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-              {carrier ? `${carrier}: ` : ''}{trackingNumber.length > 12 ? `...${trackingNumber.slice(-8)}` : trackingNumber}
-            </span>
-          )}
+          {trackingNumber && (() => {
+            const trackingUrl = getTrackingUrl(trackingNumber, carrier);
+            const detectedCarrier = detectCarrier(trackingNumber, carrier);
+            const carrierInfo = CARRIER_INFO[detectedCarrier] || CARRIER_INFO.unknown;
+            return (
+              <a
+                href={trackingUrl || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!trackingUrl) e.preventDefault();
+                }}
+                className={`ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs transition-all ${
+                  isDark
+                    ? `${carrierInfo.bgDark} hover:bg-opacity-70`
+                    : `${carrierInfo.bgLight} hover:bg-opacity-70`
+                }`}
+                title={`Track on ${carrierInfo.name}`}
+              >
+                <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                  {carrierInfo.name}
+                </span>
+                <span className={`font-mono ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {trackingNumber.length > 16 ? `${trackingNumber.slice(0, 4)}...${trackingNumber.slice(-6)}` : trackingNumber}
+                </span>
+                <ExternalLinkIcon className={`w-3 h-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+              </a>
+            );
+          })()}
         </div>
 
         {/* Expected date */}
@@ -326,22 +403,67 @@ const PODeliveryTimeline: React.FC<PODeliveryTimelineProps> = ({
             </div>
           )}
 
-          {/* Tracking details */}
-          {trackingNumber && (
-            <div className={`mt-3 p-2 rounded-lg ${isDark ? 'bg-gray-900/50' : 'bg-white border border-gray-200'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TruckIcon className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
-                  <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {carrier || 'Tracking'}
-                  </span>
+          {/* Tracking details - Elegant card with carrier branding */}
+          {trackingNumber && (() => {
+            const trackingUrl = getTrackingUrl(trackingNumber, carrier);
+            const detectedCarrier = detectCarrier(trackingNumber, carrier);
+            const carrierInfo = CARRIER_INFO[detectedCarrier] || CARRIER_INFO.unknown;
+
+            return (
+              <div className={`mt-4 rounded-xl overflow-hidden border ${
+                isDark ? 'bg-gray-900/60 border-gray-700/50' : 'bg-white border-gray-200 shadow-sm'
+              }`}>
+                {/* Carrier header with brand color accent */}
+                <div className={`px-4 py-2 flex items-center gap-3 border-b ${
+                  isDark ? 'border-gray-700/50' : 'border-gray-100'
+                }`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    isDark ? carrierInfo.bgDark : carrierInfo.bgLight
+                  }`}>
+                    <TruckIcon className={`w-4 h-4 ${isDark ? 'text-white' : 'text-gray-700'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {carrierInfo.name}
+                    </span>
+                    <span className={`ml-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Shipment Tracking
+                    </span>
+                  </div>
                 </div>
-                <span className={`text-xs font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {trackingNumber}
-                </span>
+
+                {/* Tracking number display */}
+                <div className="px-4 py-3">
+                  <div className={`text-xs uppercase tracking-wide mb-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Tracking Number
+                  </div>
+                  <div className={`font-mono text-base tracking-wider select-all ${isDark ? 'text-cyan-400' : 'text-cyan-700'}`}>
+                    {trackingNumber}
+                  </div>
+                </div>
+
+                {/* Track button */}
+                {trackingUrl && (
+                  <div className={`px-4 py-3 border-t ${isDark ? 'border-gray-700/50 bg-gray-800/30' : 'border-gray-100 bg-gray-50'}`}>
+                    <a
+                      href={trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                        isDark
+                          ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white hover:from-cyan-500 hover:to-teal-500 shadow-lg shadow-cyan-900/30'
+                          : 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white hover:from-cyan-500 hover:to-teal-500 shadow-md shadow-cyan-200'
+                      }`}
+                    >
+                      <TruckIcon className="w-4 h-4" />
+                      Track Package on {carrierInfo.name}
+                      <ExternalLinkIcon className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Recent tracking events */}
           {trackingEvents.length > 0 && (
