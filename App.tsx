@@ -14,7 +14,7 @@ import Vendors from './pages/Vendors';
 import Production from './pages/Production';
 import BOMs from './pages/BOMs';
 import Settings from './pages/Settings';
-import StockIntelligence from './pages/StockIntelligence';
+// StockIntelligence moved to Dashboard tab - imported in DashboardContent.tsx
 import ProjectsPage from './pages/ProjectsPage';
 import LoginScreen from './pages/LoginScreen';
 import Toast from './components/Toast';
@@ -44,7 +44,7 @@ import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
 import { usePermissions } from './hooks/usePermissions';
 import useSyncErrorNotifications from './hooks/useSyncErrorNotifications';
-import { pageToPath, pathToPage, getPathForPage, getPageFromPath } from './lib/routing';
+import { pageToPath, pathToPage, getPathForPage, getPageFromPath, applyLegacyRedirects } from './lib/routing';
 import {
   useSupabaseInventory,
   useSupabaseVendors,
@@ -124,7 +124,7 @@ import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amaz
 import { initializeFinaleAutoSync } from './services/finaleAutoSync';
 import { triggerPOSync } from './services/purchaseOrderSyncService';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Stock Intelligence' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page' | 'Agent Command Center' | 'Compliance';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page' | 'Agent Command Center' | 'Compliance';
 
 export type ToastInfo = {
   id: number;
@@ -382,6 +382,9 @@ const AppShell: React.FC = () => {
   // Initialize URL routing and handle browser back/forward navigation
   useEffect(() => {
     try {
+      // Handle legacy URL redirects (e.g., /stock-intelligence → /#stock-intelligence)
+      applyLegacyRedirects();
+
       const { pathname, search, hash } = window.location;
       const initialPage = getPageFromPath(pathname);
       setCurrentPage(initialPage);
@@ -1681,12 +1684,6 @@ const AppShell: React.FC = () => {
         />;
       case 'Vendors':
         return <Vendors vendors={vendors} />;
-      case 'Stock Intelligence':
-        return <StockIntelligence
-          inventory={inventory}
-          vendors={vendors}
-          purchaseOrders={purchaseOrders}
-        />;
       case 'Production':
         return <Production
           buildOrders={buildOrders}

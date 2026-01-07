@@ -1,66 +1,63 @@
-import React from 'react';
-import Button from '@/components/ui/Button';
-import PageHeader from '@/components/ui/PageHeader';
+import React, { useState } from 'react';
 import type { Page } from '../App';
-import type { User } from '../types';
-import PurchasingGuidanceDashboard from '../components/PurchasingGuidanceDashboard';
-import SystemHealthWidget from '../components/SystemHealthWidget';
-import AgentControlCenter from '../components/AgentControlCenter';
-import { ClipboardDocumentListIcon, HomeIcon } from '../components/icons';
+import type { User, InventoryItem, Vendor, PurchaseOrder } from '../types';
+import useDashboardHash from '../hooks/useDashboardHash';
+import { getDefaultTab } from '../components/dashboard/dashboardConfig';
+import DashboardLayout from '../components/dashboard/DashboardLayout';
+import DashboardSidebar from '../components/dashboard/DashboardSidebar';
+import DashboardContent from '../components/dashboard/DashboardContent';
 
 interface DashboardProps {
   currentUser: User;
   setCurrentPage: (page: Page) => void;
-  // Legacy props - kept for compatibility but not used in simplified dashboard
-  inventory?: any[];
+  inventory?: InventoryItem[];
+  vendors?: Vendor[];
+  purchaseOrders?: PurchaseOrder[];
+  // Legacy props - kept for compatibility but not used
   boms?: any[];
   historicalSales?: any[];
-  vendors?: any[];
   requisitions?: any[];
   users?: any[];
-  purchaseOrders?: any[];
   onCreateRequisition?: any;
   onCreateBuildOrder?: any;
   aiConfig?: any;
+  finalePurchaseOrders?: any[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ setCurrentPage }) => {
+const Dashboard: React.FC<DashboardProps> = ({
+  currentUser,
+  setCurrentPage,
+  inventory = [],
+  vendors = [],
+  purchaseOrders = [],
+}) => {
+  // URL hash-based tab navigation
+  const [activeTab, setActiveTab] = useDashboardHash(getDefaultTab());
+
+  // Mobile sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Dashboard"
-        description="Stock levels and reorder guidance"
-        icon={<HomeIcon />}
-        actions={
-          <div className="flex items-center gap-3">
-            <SystemHealthWidget
-              compact
-              onNavigateToSettings={() => setCurrentPage('Settings')}
-            />
-            <Button
-              onClick={() => setCurrentPage('Purchase Orders')}
-              size="sm"
-              leftIcon={<ClipboardDocumentListIcon className="w-4 h-4" aria-hidden="true" />}
-            >
-              View Reorder Queue
-            </Button>
-          </div>
-        }
+    <DashboardLayout
+      sidebar={
+        <DashboardSidebar
+          activeTab={activeTab}
+          onSelect={setActiveTab}
+          onClose={() => setSidebarOpen(false)}
+        />
+      }
+      sidebarOpen={sidebarOpen}
+      onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+    >
+      <DashboardContent
+        activeTab={activeTab}
+        currentUser={currentUser}
+        setCurrentPage={setCurrentPage}
+        inventory={inventory}
+        vendors={vendors}
+        purchaseOrders={purchaseOrders}
       />
-
-      {/* HERO: Agent Control Center - UNMISSABLE visibility into agent activity */}
-      <AgentControlCenter
-        onViewAllActivity={() => setCurrentPage('Admin')}
-        onNavigateToInventory={(sku) => {
-          // Navigate to Stock Intelligence where user can search for the SKU
-          console.log('[Dashboard] Navigating to Stock Intelligence for SKU:', sku);
-          setCurrentPage('Stock Intelligence');
-        }}
-      />
-
-      {/* Stock guidance below the agent activity */}
-      <PurchasingGuidanceDashboard />
-    </div>
+    </DashboardLayout>
   );
 };
 

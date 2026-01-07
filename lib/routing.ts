@@ -13,7 +13,6 @@ export const pageToPath: Record<Page, string> = {
   'Vendors': '/vendors',
   'Production': '/production',
   'BOMs': '/boms',
-  'Stock Intelligence': '/stock-intelligence',
   'Settings': '/settings',
   'API Documentation': '/api',
   'Artwork': '/artwork',
@@ -35,7 +34,8 @@ export const pathToPage: Record<string, Page> = {
   '/vendors': 'Vendors',
   '/production': 'Production',
   '/boms': 'BOMs',
-  '/stock-intelligence': 'Stock Intelligence',
+  // Stock Intelligence is now a Dashboard tab - redirect handled separately
+  '/stock-intelligence': 'Dashboard',
   '/settings': 'Settings',
   '/api': 'API Documentation',
   '/artwork': 'Artwork',
@@ -110,4 +110,32 @@ export function buildUrl(page: Page, hash?: string): string {
   const path = getPathForPage(page);
   const hashPart = hash ? `#${hash.replace(/^#/, '')}` : '';
   return path + hashPart;
+}
+
+/**
+ * Legacy path redirects - maps old URLs to new locations
+ * Returns { redirectTo, hash } if redirect needed, null otherwise
+ */
+export function checkLegacyRedirect(pathname: string): { redirectTo: string; hash: string } | null {
+  // Stock Intelligence moved from /stock-intelligence to Dashboard tab /#stock-intelligence
+  if (pathname === '/stock-intelligence') {
+    return { redirectTo: '/', hash: '#stock-intelligence' };
+  }
+  return null;
+}
+
+/**
+ * Apply legacy redirects if needed
+ * Should be called on initial page load
+ */
+export function applyLegacyRedirects(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const redirect = checkLegacyRedirect(window.location.pathname);
+  if (redirect) {
+    const search = window.location.search;
+    window.history.replaceState({ page: 'Dashboard' }, '', redirect.redirectTo + search + redirect.hash);
+    return true;
+  }
+  return false;
 }

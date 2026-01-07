@@ -2,7 +2,7 @@ import React from 'react';
 import Button from '@/components/ui/Button';
 import type { Page } from '../App';
 import type { User } from '../types';
-import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, ChartBarIcon, CpuChipIcon, ShieldCheckIcon } from './icons';
+import { HomeIcon, PackageIcon, DocumentTextIcon, CogIcon, ChevronDoubleLeftIcon, WrenchScrewdriverIcon, BeakerIcon, PhotoIcon, RobotIcon, Squares2X2Icon, CpuChipIcon, ShieldCheckIcon } from './icons';
 import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
 import UserSettingsDropdown from './UserSettingsDropdown';
@@ -122,7 +122,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     },
     { page: 'Artwork', icon: <PhotoIcon className="w-5 h-5" />, managerAndUp: true },
     { page: 'Inventory', icon: <PackageIcon className="w-5 h-5" />, managerAndUp: true },
-    { page: 'Stock Intelligence', icon: <ChartBarIcon className="w-5 h-5" />, managerAndUp: true },
     { page: 'Compliance', icon: <ShieldCheckIcon className="w-5 h-5" />, managerAndUp: true },
     { page: 'Agent Command Center', icon: <CpuChipIcon className="w-5 h-5" />, adminOnly: true },
     { page: 'Settings', icon: <CogIcon className="w-5 h-5" />, adminOnly: true },
