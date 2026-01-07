@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.1';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 type TrackingStatus =
   | 'awaiting_confirmation'
@@ -14,11 +14,15 @@ type TrackingStatus =
   | 'invoice_received';
 
 interface CarrierConfig {
-  uspsUserId: string | null;
+  uspsConsumerKey: string | null;
+  uspsConsumerSecret: string | null;
+  uspsEnabled: boolean;
   upsClientId: string | null;
   upsClientSecret: string | null;
+  upsEnabled: boolean;
   fedexApiKey: string | null;
   fedexSecretKey: string | null;
+  fedexEnabled: boolean;
 }
 
 const corsHeaders = {
@@ -76,7 +80,7 @@ async function updatePOTracking(supabase: any) {
       let carrierStatus = null;
 
       // Try direct carrier APIs first
-      if (carrierConfig.uspsUserId || carrierConfig.upsClientId || carrierConfig.fedexApiKey) {
+      if (carrierConfig.uspsEnabled || carrierConfig.upsEnabled || carrierConfig.fedexEnabled) {
         try {
           carrierStatus = await fetchDirectCarrierTracking(
             po.tracking_carrier,
@@ -245,19 +249,31 @@ async function notifyDeliveries(supabase: any, deliveredCount: number) {
 }
 
 async function getCarrierConfig(supabase: any): Promise<CarrierConfig> {
+  // Fetch all carrier settings in one query
   const { data } = await supabase
     .from('app_settings')
-    .select('setting_value')
-    .eq('setting_key', 'carrier_api_config')
-    .maybeSingle();
+    .select('setting_key, setting_value')
+    .like('setting_key', 'carrier_api_%');
 
-  const value = data?.setting_value || {};
+  const settings: Record<string, any> = {};
+  for (const row of data || []) {
+    settings[row.setting_key] = row.setting_value;
+  }
+
+  const usps = settings['carrier_api_usps'] || {};
+  const ups = settings['carrier_api_ups'] || {};
+  const fedex = settings['carrier_api_fedex'] || {};
+
   return {
-    uspsUserId: value.usps_user_id ?? null,
-    upsClientId: value.ups_client_id ?? null,
-    upsClientSecret: value.ups_client_secret ?? null,
-    fedexApiKey: value.fedex_api_key ?? null,
-    fedexSecretKey: value.fedex_secret_key ?? null,
+    uspsConsumerKey: usps.userId ?? null,
+    uspsConsumerSecret: usps.apiKey ?? null,
+    uspsEnabled: usps.enabled ?? false,
+    upsClientId: ups.userId ?? null,
+    upsClientSecret: ups.apiKey ?? null,
+    upsEnabled: ups.enabled ?? false,
+    fedexApiKey: fedex.userId ?? null,
+    fedexSecretKey: fedex.apiKey ?? null,
+    fedexEnabled: fedex.enabled ?? false,
   };
 }
 
@@ -313,17 +329,17 @@ async function fetchDirectCarrierTracking(
     // Route to appropriate carrier API
     switch (slug) {
       case 'usps':
-        if (config.uspsUserId) {
-          return await fetchUSPSTracking(trackingNumber, config.uspsUserId);
+        if (config.uspsEnabled && config.uspsConsumerKey && config.uspsConsumerSecret) {
+          return await fetchUSPSTracking(trackingNumber, config.uspsConsumerKey, config.uspsConsumerSecret);
         }
         break;
       case 'ups':
-        if (config.upsClientId && config.upsClientSecret) {
+        if (config.upsEnabled && config.upsClientId && config.upsClientSecret) {
           return await fetchUPSTracking(trackingNumber, config.upsClientId, config.upsClientSecret);
         }
         break;
       case 'fedex':
-        if (config.fedexApiKey && config.fedexSecretKey) {
+        if (config.fedexEnabled && config.fedexApiKey && config.fedexSecretKey) {
           return await fetchFedExTracking(trackingNumber, config.fedexApiKey, config.fedexSecretKey);
         }
         break;
@@ -343,12 +359,45 @@ async function fetchDirectCarrierTracking(
 }
 
 /**
- * USPS Web Tools API (FREE - unlimited with registration)
- * https://www.usps.com/business/web-tools-apis/
+ * USPS Tracking API v3.2 with OAuth 2.0 (FREE - unlimited with registration)
+ * https://developers.usps.com/trackingv3r2
+ * Note: Legacy XML API retires January 25, 2026
  */
+let uspsTokenCache: { token: string; expiresAt: number } | null = null;
+
+async function getUSPSToken(consumerKey: string, consumerSecret: string): Promise<string> {
+  // Return cached token if valid (with 5-minute buffer)
+  if (uspsTokenCache && uspsTokenCache.expiresAt > Date.now() + 300000) {
+    return uspsTokenCache.token;
+  }
+
+  const response = await fetch('https://apis.usps.com/oauth2/v3/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: consumerKey,
+      client_secret: consumerSecret,
+      grant_type: 'client_credentials',
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`USPS OAuth error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  uspsTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + (data.expires_in * 1000),
+  };
+  return data.access_token;
+}
+
 async function fetchUSPSTracking(
   trackingNumber: string,
-  userId: string,
+  consumerKey: string,
+  consumerSecret: string,
 ): Promise<{
   status: TrackingStatus;
   estimatedDelivery?: string;
@@ -356,37 +405,59 @@ async function fetchUSPSTracking(
   rawPayload?: any;
   checkpoints?: any[];
 } | null> {
-  const xml = `<?xml version="1.0"?>
-<TrackFieldRequest USERID="${userId}">
-  <TrackID ID="${trackingNumber}"/>
-</TrackFieldRequest>`;
+  const accessToken = await getUSPSToken(consumerKey, consumerSecret);
 
   const response = await fetch(
-    `https://secure.shippingapis.com/ShippingAPI.dll?API=TrackV2&XML=${encodeURIComponent(xml)}`
+    `https://apis.usps.com/tracking/v3/tracking/${encodeURIComponent(trackingNumber)}?expand=DETAIL`,
+    {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+      },
+    }
   );
 
   if (!response.ok) {
-    throw new Error(`USPS API error: ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`USPS API error: ${response.status} - ${errorText}`);
   }
 
-  const text = await response.text();
-  
-  // Parse XML response (simplified - production should use proper XML parser)
-  const statusMatch = text.match(/<Status>(.*?)<\/Status>/);
-  const deliveryMatch = text.match(/<ExpectedDeliveryDate>(.*?)<\/ExpectedDeliveryDate>/);
-  const descMatch = text.match(/<StatusSummary>(.*?)<\/StatusSummary>/);
+  const data = await response.json();
 
-  if (!statusMatch) {
-    return null;
-  }
+  // Map USPS v3.2 response to our format
+  const statusCategory = data.statusCategory?.toLowerCase() || '';
+  const trackingEvents = data.trackingEvents || [];
 
   return {
-    status: mapCarrierTag(statusMatch[1]),
-    estimatedDelivery: deliveryMatch?.[1] || undefined,
-    description: descMatch?.[1] || `USPS: ${statusMatch[1]}`,
-    rawPayload: { carrier: 'usps', xml: text },
-    checkpoints: [],
+    status: mapUSPSStatus(statusCategory),
+    estimatedDelivery: data.expectedDeliveryDate || undefined,
+    description: data.statusSummary || data.status || 'USPS tracking',
+    rawPayload: { carrier: 'usps', data },
+    checkpoints: trackingEvents.map((event: any) => ({
+      tag: event.eventType,
+      message: event.eventDescription || event.eventType,
+      location: [event.eventCity, event.eventState].filter(Boolean).join(', '),
+      timestamp: event.eventTimestamp,
+    })),
   };
+}
+
+function mapUSPSStatus(statusCategory: string): TrackingStatus {
+  const map: Record<string, TrackingStatus> = {
+    'delivered': 'delivered',
+    'in transit': 'in_transit',
+    'in_transit': 'in_transit',
+    'intransit': 'in_transit',
+    'out for delivery': 'out_for_delivery',
+    'out_for_delivery': 'out_for_delivery',
+    'available for pickup': 'in_transit',
+    'pre-shipment': 'processing',
+    'pre_shipment': 'processing',
+    'accepted': 'processing',
+    'alert': 'exception',
+    'exception': 'exception',
+  };
+  return map[statusCategory] || 'processing';
 }
 
 /**

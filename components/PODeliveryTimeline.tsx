@@ -19,6 +19,7 @@ import {
   AlertTriangleIcon,
   MailIcon,
   ExternalLinkIcon,
+  RefreshIcon,
 } from './icons';
 
 interface PODeliveryTimelineProps {
@@ -36,6 +37,12 @@ interface PODeliveryTimelineProps {
   poNumber?: string;
   expandable?: boolean;
   isDark?: boolean;
+  /** Callback to refresh tracking data manually */
+  onRefresh?: () => Promise<void>;
+  /** Whether refresh is currently in progress */
+  isRefreshing?: boolean;
+  /** Last time tracking was updated */
+  lastUpdated?: string;
 }
 
 interface TimelineStep {
@@ -115,8 +122,27 @@ const PODeliveryTimeline: React.FC<PODeliveryTimelineProps> = ({
   poNumber,
   expandable = true,
   isDark = true,
+  onRefresh,
+  isRefreshing = false,
+  lastUpdated,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [localRefreshing, setLocalRefreshing] = useState(false);
+
+  // Handle refresh click
+  const handleRefresh = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onRefresh || isRefreshing || localRefreshing) return;
+
+    setLocalRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setLocalRefreshing(false);
+    }
+  };
+
+  const refreshing = isRefreshing || localRefreshing;
 
   // Determine which steps are complete based on status
   const getStepStatus = () => {
@@ -442,25 +468,56 @@ const PODeliveryTimeline: React.FC<PODeliveryTimelineProps> = ({
                   </div>
                 </div>
 
-                {/* Track button */}
-                {trackingUrl && (
-                  <div className={`px-4 py-3 border-t ${isDark ? 'border-gray-700/50 bg-gray-800/30' : 'border-gray-100 bg-gray-50'}`}>
-                    <a
-                      href={trackingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
-                        isDark
-                          ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white hover:from-cyan-500 hover:to-teal-500 shadow-lg shadow-cyan-900/30'
-                          : 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white hover:from-cyan-500 hover:to-teal-500 shadow-md shadow-cyan-200'
-                      }`}
-                    >
-                      <TruckIcon className="w-4 h-4" />
-                      Track Package on {carrierInfo.name}
-                      <ExternalLinkIcon className="w-3.5 h-3.5" />
-                    </a>
+                {/* Action buttons */}
+                <div className={`px-4 py-3 border-t ${isDark ? 'border-gray-700/50 bg-gray-800/30' : 'border-gray-100 bg-gray-50'}`}>
+                  <div className="flex gap-2">
+                    {/* Refresh tracking button */}
+                    {onRefresh && (
+                      <button
+                        onClick={handleRefresh}
+                        disabled={refreshing}
+                        className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                          refreshing
+                            ? isDark
+                              ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : isDark
+                              ? 'bg-gray-700 text-white hover:bg-gray-600'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                        title="Refresh tracking from carrier API"
+                      >
+                        <RefreshIcon className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                        {refreshing ? 'Updating...' : 'Refresh'}
+                      </button>
+                    )}
+
+                    {/* Track on carrier website button */}
+                    {trackingUrl && (
+                      <a
+                        href={trackingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                          isDark
+                            ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white hover:from-cyan-500 hover:to-teal-500 shadow-lg shadow-cyan-900/30'
+                            : 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white hover:from-cyan-500 hover:to-teal-500 shadow-md shadow-cyan-200'
+                        }`}
+                      >
+                        <TruckIcon className="w-4 h-4" />
+                        Track on {carrierInfo.name}
+                        <ExternalLinkIcon className="w-3.5 h-3.5" />
+                      </a>
+                    )}
                   </div>
-                )}
+
+                  {/* Last updated timestamp */}
+                  {lastUpdated && (
+                    <p className={`mt-2 text-xs text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Last updated: {new Date(lastUpdated).toLocaleString()}
+                    </p>
+                  )}
+                </div>
               </div>
             );
           })()}
