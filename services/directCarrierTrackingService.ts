@@ -222,97 +222,146 @@ export function extractTrackingNumbers(text: string): Array<{
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 📦 USPS Web Tools API (FREE)
+// 📦 USPS Tracking API v3.2 (FREE - OAuth 2.0)
 // ═══════════════════════════════════════════════════════════════════════════
-// Registration: https://www.usps.com/business/web-tools-apis/
-// Completely free, just need to register
+// Registration: https://developers.usps.com/getting-started
+// Completely free, requires OAuth 2.0 authentication
 
 /**
- * Track package via USPS Web Tools API
+ * USPS OAuth token cache to avoid repeated token requests
+ */
+let uspsTokenCache: { token: string; expiresAt: number } | null = null;
+
+/**
+ * Get USPS OAuth 2.0 access token (with caching)
+ */
+async function getUSPSToken(config: CarrierConfig): Promise<string> {
+  // Return cached token if valid (with 5-minute buffer)
+  if (uspsTokenCache && uspsTokenCache.expiresAt > Date.now() + 300000) {
+    return uspsTokenCache.token;
+  }
+
+  const response = await fetch('https://apis.usps.com/oauth2/v3/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: config.userId,
+      client_secret: config.apiKey,
+      grant_type: 'client_credentials',
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`USPS OAuth error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  uspsTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + ((data.expires_in || 3600) * 1000),
+  };
+  return data.access_token;
+}
+
+/**
+ * Track package via USPS Tracking API v3.2 (REST/JSON with OAuth 2.0)
  */
 export async function trackUSPS(trackingNumber: string): Promise<TrackingStatus | null> {
   const config = await getCarrierConfig('USPS');
-  if (!config?.enabled || !config.userId) {
-    console.log('USPS API not configured');
+  if (!config?.enabled || !config.userId || !config.apiKey) {
+    console.log('USPS API not configured (requires Client ID and Client Secret)');
     return null;
   }
 
   try {
-    // USPS uses XML API
-    const xml = `
-      <TrackRequest USERID="${config.userId}">
-        <TrackID ID="${trackingNumber}"></TrackID>
-      </TrackRequest>
-    `;
+    // Get OAuth token
+    const accessToken = await getUSPSToken(config);
 
+    // Call Tracking API v3.2
     const response = await fetch(
-      `https://secure.shippingapis.com/ShippingAPI.dll?API=TrackV2&XML=${encodeURIComponent(xml)}`
+      `https://apis.usps.com/tracking/v3/tracking/${encodeURIComponent(trackingNumber)}?expand=DETAIL`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+        },
+      }
     );
 
     if (!response.ok) {
-      throw new Error(`USPS API error: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`USPS API error: ${response.status} - ${errorText}`);
     }
 
-    const xmlText = await response.text();
-    const parsed = parseUSPSResponse(xmlText, trackingNumber);
-
-    return parsed;
+    const data = await response.json();
+    return parseUSPSResponse(data, trackingNumber);
   } catch (error) {
     console.error('USPS tracking error:', error);
     return null;
   }
 }
 
-function parseUSPSResponse(xmlText: string, trackingNumber: string): TrackingStatus {
-  // Simple XML parsing for USPS response
-  const events: TrackingEvent[] = [];
+/**
+ * Parse USPS Tracking API v3.2 JSON response
+ */
+function parseUSPSResponse(data: any, trackingNumber: string): TrackingStatus {
+  // Extract tracking events
+  const events: TrackingEvent[] = (data.trackingEvents || []).map((evt: any) => ({
+    timestamp: evt.eventTimestamp || '',
+    status: evt.eventType || '',
+    description: evt.eventType || '',
+    city: evt.eventCity,
+    state: evt.eventState,
+    country: evt.eventCountry || 'US',
+    location: evt.eventCity && evt.eventState
+      ? `${evt.eventCity}, ${evt.eventState}`
+      : evt.eventCity || evt.eventState || undefined,
+  }));
 
-  // Extract TrackDetail elements
-  const detailMatches = xmlText.matchAll(/<TrackDetail>(.*?)<\/TrackDetail>/gs);
-  for (const match of detailMatches) {
-    const detail = match[1];
-    const eventDate = extractXMLTag(detail, 'EventDate');
-    const eventTime = extractXMLTag(detail, 'EventTime');
-    const eventCity = extractXMLTag(detail, 'EventCity');
-    const eventState = extractXMLTag(detail, 'EventState');
-    const event = extractXMLTag(detail, 'Event');
+  // Determine status from statusCategory
+  let status: TrackingStatus['status'] = 'unknown';
+  const statusCategory = (data.statusCategory || '').toLowerCase();
+  const statusText = (data.status || '').toLowerCase();
 
-    if (event) {
-      events.push({
-        timestamp: `${eventDate} ${eventTime}`,
-        status: event,
-        description: event,
-        city: eventCity,
-        state: eventState,
-        location: eventCity && eventState ? `${eventCity}, ${eventState}` : undefined,
-      });
-    }
+  if (statusCategory === 'delivered' || statusText.includes('delivered')) {
+    status = 'delivered';
+  } else if (statusCategory === 'out for delivery' || statusText.includes('out for delivery')) {
+    status = 'out_for_delivery';
+  } else if (statusCategory === 'in transit' || statusText.includes('in transit') ||
+             statusText.includes('arrived') || statusText.includes('departed') ||
+             statusText.includes('processed') || statusText.includes('accepted')) {
+    status = 'in_transit';
+  } else if (statusCategory === 'alert' || statusCategory === 'exception' ||
+             statusText.includes('exception') || statusText.includes('alert') ||
+             statusText.includes('undeliverable')) {
+    status = 'exception';
+  } else if (events.length > 0) {
+    status = 'in_transit';
   }
 
-  // Extract summary
-  const summary = extractXMLTag(xmlText, 'TrackSummary');
-  const statusDesc = extractXMLTag(xmlText, 'Status');
-  const expectedDate = extractXMLTag(xmlText, 'ExpectedDeliveryDate');
-
-  // Determine status
-  let status: TrackingStatus['status'] = 'unknown';
-  const summaryLower = (summary || '').toLowerCase();
-  if (summaryLower.includes('delivered')) status = 'delivered';
-  else if (summaryLower.includes('out for delivery')) status = 'out_for_delivery';
-  else if (summaryLower.includes('in transit') || summaryLower.includes('arrived') || summaryLower.includes('departed')) status = 'in_transit';
-  else if (summaryLower.includes('exception') || summaryLower.includes('alert')) status = 'exception';
-  else if (events.length > 0) status = 'in_transit';
+  // Find actual delivery date from events if delivered
+  let actualDelivery: string | undefined;
+  if (status === 'delivered' && events.length > 0) {
+    const deliveredEvent = events.find(e =>
+      e.status.toLowerCase().includes('delivered')
+    );
+    actualDelivery = deliveredEvent?.timestamp;
+  }
 
   return {
     carrier: 'USPS',
     trackingNumber,
     status,
-    statusDescription: summary || statusDesc || 'Status unavailable',
-    estimatedDelivery: expectedDate,
+    statusDescription: data.statusSummary || data.status || 'Status unavailable',
+    estimatedDelivery: data.expectedDeliveryDate || data.expectedDelivery,
+    actualDelivery,
+    lastLocation: events[0]?.location,
+    lastUpdate: new Date().toISOString(),
     events,
     source: 'carrier_api',
     confidence: 0.95,
-    lastUpdate: new Date().toISOString(),
+    rawResponse: data,
   };
 }
 
@@ -702,11 +751,6 @@ async function storeTrackingResult(result: TrackingStatus): Promise<void> {
 // ═══════════════════════════════════════════════════════════════════════════
 // 🛠️ Utility Functions
 // ═══════════════════════════════════════════════════════════════════════════
-
-function extractXMLTag(xml: string, tagName: string): string | undefined {
-  const match = xml.match(new RegExp(`<${tagName}>(.*?)</${tagName}>`, 's'));
-  return match?.[1]?.trim();
-}
 
 /**
  * Validate tracking number format

@@ -61,16 +61,17 @@ const CARRIERS: CarrierInfo[] = [
     name: 'USPS',
     icon: '📫',
     color: 'blue',
-    registrationUrl: 'https://www.usps.com/business/web-tools-apis/',
+    registrationUrl: 'https://developers.usps.com/getting-started',
     freeTier: 'Unlimited requests (free)',
     fields: {
-      userId: { label: 'User ID', placeholder: 'Your USPS Web Tools User ID', required: true },
+      userId: { label: 'Client ID', placeholder: 'Your USPS Client ID', required: true },
+      apiKey: { label: 'Client Secret', placeholder: 'Your USPS Client Secret', required: true },
     },
     instructions: [
-      'Go to usps.com/business/web-tools-apis',
-      'Click "Web Tools Registration"',
-      'Complete the registration form',
-      'You\'ll receive your User ID via email',
+      'Go to developers.usps.com',
+      'Create a USPS Developer Account',
+      'Create a new application',
+      'Copy the Client ID and Client Secret',
     ],
   },
   {
@@ -215,7 +216,7 @@ const CarrierTrackingSettingsPanel: React.FC<CarrierSettingsProps> = ({ addToast
 
       // For now, just validate the credentials are present
       // In production, this would make an actual API call
-      const hasCredentials = config.userId && (carrierId === 'usps' || config.apiKey);
+      const hasCredentials = config.userId && config.apiKey;
       
       if (hasCredentials) {
         addToast(`${config.name} credentials configured. Test with a real tracking number.`, 'success');
@@ -252,7 +253,7 @@ const CarrierTrackingSettingsPanel: React.FC<CarrierSettingsProps> = ({ addToast
     const isEditing = editMode === carrier.id;
     const isSaving = saving === carrier.id;
     const isTesting = testingCarrier === carrier.id;
-    const isConfigured = config.userId && (carrier.id === 'usps' || config.apiKey);
+    const isConfigured = config.userId && config.apiKey;
 
     return (
       <div

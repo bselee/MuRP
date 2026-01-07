@@ -37,7 +37,6 @@ import EmailTrackingSettingsPanel from '../components/EmailTrackingSettingsPanel
 import CarrierTrackingSettingsPanel from '../components/CarrierTrackingSettingsPanel';
 import EmailProcessingLog from '../components/settings/EmailProcessingLog';
 import WorkflowHistoryLog from '../components/settings/WorkflowHistoryLog';
-import EmailTemplateEditor from '../components/admin/EmailTemplateEditor';
 import VendorTrustScoreLog from '../components/settings/VendorTrustScoreLog';
 import GlobalDataFilterPanel from '../components/settings/GlobalDataFilterPanel';
 import CompanyIntegrationsPanel from '../components/CompanyIntegrationsPanel';
@@ -113,7 +112,6 @@ const Settings: React.FC<SettingsProps> = ({
     // Email section panels
     const [isEmailTrackingOpen, setIsEmailTrackingOpen] = useState(false);
     const [isEmailLogOpen, setIsEmailLogOpen] = useState(false);
-    const [isEmailTemplatesOpen, setIsEmailTemplatesOpen] = useState(false);
     const [isWorkflowLogOpen, setIsWorkflowLogOpen] = useState(false);
     const [isGlobalFiltersOpen, setIsGlobalFiltersOpen] = useState(false);
     const [isApiKeysOpen, setIsApiKeysOpen] = useState(false);
@@ -613,25 +611,6 @@ Thank you!`
                   </span>
                 </div>
                 <EmailProcessingLog addToast={addToast} />
-              </CollapsibleSection>
-            )}
-
-            {isOpsAdmin && (
-              <CollapsibleSection
-                title="Email Templates"
-                icon={<DocumentTextIcon className="w-6 h-6 text-cyan-400" />}
-                isOpen={isEmailTemplatesOpen}
-                onToggle={() => setIsEmailTemplatesOpen(!isEmailTemplatesOpen)}
-              >
-                <div className="mb-2">
-                  <span className="inline-block px-2 py-1 text-xs font-semibold text-amber-200 bg-amber-900/30 border border-amber-700/50 rounded">
-                    Admin Only
-                  </span>
-                </div>
-                <p className="text-sm text-gray-400 mb-4">
-                  Edit automated PO follow-up email templates. Use placeholders like {"{{po_number}}"} and {"{{vendor_name}}"} that get replaced with real values when emails are sent.
-                </p>
-                <EmailTemplateEditor addToast={addToast} />
               </CollapsibleSection>
             )}
           </section>
