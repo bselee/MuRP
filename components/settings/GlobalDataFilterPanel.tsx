@@ -1,67 +1,129 @@
 /**
  * GlobalDataFilterPanel
- * 
- * Settings panel for managing globally excluded categories.
- * Items in excluded categories will NEVER appear anywhere in the app:
- * - Not in Inventory
- * - Not in BOMs  
- * - Not in Stock Intelligence
- * - Not in page-level category filters (they won't even be choices)
- * 
- * This is the "I never want to see these" setting.
+ *
+ * Settings panel for managing globally excluded categories, vendors, and SKUs.
+ * Items marked as excluded will NEVER appear anywhere in the app.
  */
 
 import React, { useState, useMemo } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { useGlobalCategoryFilter, DEFAULT_EXCLUDED_CATEGORIES } from '../../hooks/useGlobalCategoryFilter';
-import { 
-  EyeSlashIcon, 
-  EyeIcon, 
-  XMarkIcon, 
+import {
+  EyeSlashIcon,
+  EyeIcon,
   PlusIcon,
   ArrowPathIcon,
   CheckIcon,
   ExclamationTriangleIcon
 } from '../icons';
 import Button from '../ui/Button';
+import SettingsSubNav from './SettingsSubNav';
 
 interface GlobalDataFilterPanelProps {
   /** All categories found in the database (from inventory/BOMs) */
   allCategories: string[];
+  /** All vendor names */
+  allVendors?: string[];
+  /** All SKUs */
+  allSkus?: string[];
   addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
+// Storage keys for vendors and SKUs
+const VENDOR_STORAGE_KEY = 'global-excluded-vendors';
+const SKU_STORAGE_KEY = 'global-excluded-skus';
+
 const GlobalDataFilterPanel: React.FC<GlobalDataFilterPanelProps> = ({
   allCategories,
+  allVendors = [],
+  allSkus = [],
   addToast
 }) => {
   const { isDark } = useTheme();
-  const { 
-    excludedCategories, 
-    addExcludedCategory, 
-    removeExcludedCategory, 
+  const {
+    excludedCategories,
+    addExcludedCategory,
+    removeExcludedCategory,
     resetToDefaults,
-    clearAll 
+    clearAll
   } = useGlobalCategoryFilter();
 
   const [customCategory, setCustomCategory] = useState('');
+  const [customVendor, setCustomVendor] = useState('');
+  const [customSku, setCustomSku] = useState('');
   const [showConfirmClear, setShowConfirmClear] = useState(false);
 
-  // Sort categories: excluded first, then alphabetically
+  // Vendor exclusions (local state + localStorage)
+  const [excludedVendors, setExcludedVendors] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(VENDOR_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return new Set(parsed.map((v: string) => v.toLowerCase().trim()));
+        }
+      }
+    } catch {}
+    return new Set();
+  });
+
+  // SKU exclusions (local state + localStorage)
+  const [excludedSkus, setExcludedSkus] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(SKU_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return new Set(parsed.map((s: string) => s.toUpperCase().trim()));
+        }
+      }
+    } catch {}
+    return new Set();
+  });
+
+  // Persist vendors to localStorage
+  const saveVendors = (vendors: Set<string>) => {
+    setExcludedVendors(vendors);
+    localStorage.setItem(VENDOR_STORAGE_KEY, JSON.stringify(Array.from(vendors)));
+    window.dispatchEvent(new CustomEvent('global-vendor-filter-changed'));
+  };
+
+  // Persist SKUs to localStorage
+  const saveSkus = (skus: Set<string>) => {
+    setExcludedSkus(skus);
+    localStorage.setItem(SKU_STORAGE_KEY, JSON.stringify(Array.from(skus)));
+    window.dispatchEvent(new CustomEvent('global-sku-filter-changed'));
+  };
+
+  // Sort categories alphabetically only (keep position stable)
   const sortedCategories = useMemo(() => {
     const uniqueCategories = [...new Set(allCategories.filter(Boolean))];
-    return uniqueCategories.sort((a, b) => {
-      const aExcluded = excludedCategories.has(a.toLowerCase().trim());
-      const bExcluded = excludedCategories.has(b.toLowerCase().trim());
-      if (aExcluded && !bExcluded) return -1;
-      if (!aExcluded && bExcluded) return 1;
-      return a.localeCompare(b);
-    });
-  }, [allCategories, excludedCategories]);
+    return uniqueCategories.sort((a, b) => a.localeCompare(b));
+  }, [allCategories]);
+
+  // Sort vendors alphabetically
+  const sortedVendors = useMemo(() => {
+    const uniqueVendors = [...new Set(allVendors.filter(Boolean))];
+    return uniqueVendors.sort((a, b) => a.localeCompare(b));
+  }, [allVendors]);
+
+  // Sort SKUs alphabetically
+  const sortedSkus = useMemo(() => {
+    const uniqueSkus = [...new Set(allSkus.filter(Boolean))];
+    return uniqueSkus.sort((a, b) => a.localeCompare(b));
+  }, [allSkus]);
 
   // Count of excluded
-  const excludedCount = sortedCategories.filter(
+  const excludedCategoryCount = sortedCategories.filter(
     cat => excludedCategories.has(cat.toLowerCase().trim())
+  ).length;
+
+  const excludedVendorCount = sortedVendors.filter(
+    v => excludedVendors.has(v.toLowerCase().trim())
+  ).length;
+
+  const excludedSkuCount = sortedSkus.filter(
+    s => excludedSkus.has(s.toUpperCase().trim())
   ).length;
 
   const handleToggleCategory = (category: string) => {
@@ -75,13 +137,58 @@ const GlobalDataFilterPanel: React.FC<GlobalDataFilterPanelProps> = ({
     }
   };
 
-  const handleAddCustom = () => {
+  const handleToggleVendor = (vendor: string) => {
+    const normalized = vendor.toLowerCase().trim();
+    const next = new Set(excludedVendors);
+    if (next.has(normalized)) {
+      next.delete(normalized);
+      addToast?.(`"${vendor}" will now appear in the app`, 'info');
+    } else {
+      next.add(normalized);
+      addToast?.(`"${vendor}" will be hidden everywhere`, 'success');
+    }
+    saveVendors(next);
+  };
+
+  const handleToggleSku = (sku: string) => {
+    const normalized = sku.toUpperCase().trim();
+    const next = new Set(excludedSkus);
+    if (next.has(normalized)) {
+      next.delete(normalized);
+      addToast?.(`"${sku}" will now appear in the app`, 'info');
+    } else {
+      next.add(normalized);
+      addToast?.(`"${sku}" will be hidden everywhere`, 'success');
+    }
+    saveSkus(next);
+  };
+
+  const handleAddCustomCategory = () => {
     const trimmed = customCategory.trim();
     if (!trimmed) return;
-    
     addExcludedCategory(trimmed);
     setCustomCategory('');
-    addToast?.(`Added "${trimmed}" to global exclusions`, 'success');
+    addToast?.(`Added "${trimmed}" to category exclusions`, 'success');
+  };
+
+  const handleAddCustomVendor = () => {
+    const trimmed = customVendor.trim();
+    if (!trimmed) return;
+    const next = new Set(excludedVendors);
+    next.add(trimmed.toLowerCase());
+    saveVendors(next);
+    setCustomVendor('');
+    addToast?.(`Added "${trimmed}" to vendor exclusions`, 'success');
+  };
+
+  const handleAddCustomSku = () => {
+    const trimmed = customSku.trim();
+    if (!trimmed) return;
+    const next = new Set(excludedSkus);
+    next.add(trimmed.toUpperCase());
+    saveSkus(next);
+    setCustomSku('');
+    addToast?.(`Added "${trimmed}" to SKU exclusions`, 'success');
   };
 
   const handleResetDefaults = () => {
@@ -96,24 +203,81 @@ const GlobalDataFilterPanel: React.FC<GlobalDataFilterPanelProps> = ({
   };
 
   // Styles
-  const cardClass = isDark 
+  const cardClass = isDark
     ? "bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700"
     : "bg-white rounded-xl p-6 border border-gray-200 shadow-sm";
-  
-  const labelClass = isDark 
+
+  const labelClass = isDark
     ? "text-xs font-semibold text-gray-400 uppercase tracking-wide"
     : "text-xs font-semibold text-gray-500 uppercase tracking-wide";
 
-  const inputClass = isDark 
-    ? "flex-1 bg-gray-900/60 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-accent-400 focus:ring-1 focus:ring-accent-400 transition-colors"
-    : "flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:border-accent-400 focus:ring-1 focus:ring-accent-400 transition-colors";
+  const inputClass = isDark
+    ? "flex-1 bg-gray-900/60 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
+    : "flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors";
 
   const checkboxContainerClass = isDark
     ? "flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700/50 transition-colors cursor-pointer group"
     : "flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group";
 
-  const isDefaultExclusion = (cat: string) => 
+  const isDefaultExclusion = (cat: string) =>
     DEFAULT_EXCLUDED_CATEGORIES.map(c => c.toLowerCase()).includes(cat.toLowerCase().trim());
+
+  // Render an exclusion list
+  const renderExclusionList = (
+    items: string[],
+    excludedSet: Set<string>,
+    onToggle: (item: string) => void,
+    normalize: (item: string) => string,
+    type: 'category' | 'vendor' | 'sku'
+  ) => (
+    <div className={`max-h-64 overflow-y-auto rounded-lg border ${isDark ? 'border-gray-700 bg-gray-900/30' : 'border-gray-200 bg-gray-50'}`}>
+      {items.length === 0 ? (
+        <div className={`p-4 text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+          No {type}s found. Import data to see {type}s.
+        </div>
+      ) : (
+        items.map((item) => {
+          const isExcluded = excludedSet.has(normalize(item));
+          const isDefault = type === 'category' && isDefaultExclusion(item);
+
+          return (
+            <label
+              key={item}
+              className={checkboxContainerClass}
+            >
+              <input
+                type="checkbox"
+                checked={isExcluded}
+                onChange={() => onToggle(item)}
+                className="w-4 h-4 rounded border-gray-500 text-red-500 focus:ring-red-500 focus:ring-offset-0"
+              />
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {isExcluded ? (
+                  <EyeSlashIcon className="w-4 h-4 text-red-400 flex-shrink-0" />
+                ) : (
+                  <EyeIcon className="w-4 h-4 text-green-400 flex-shrink-0" />
+                )}
+                <span className={`truncate ${
+                  isExcluded
+                    ? (isDark ? 'text-red-300' : 'text-red-600')
+                    : (isDark ? 'text-white' : 'text-gray-900')
+                }`}>
+                  {item}
+                </span>
+                {isDefault && isExcluded && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    default
+                  </span>
+                )}
+              </div>
+            </label>
+          );
+        })
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -123,171 +287,198 @@ const GlobalDataFilterPanel: React.FC<GlobalDataFilterPanelProps> = ({
           <ExclamationTriangleIcon className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div>
             <h4 className={`font-semibold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Global Category Exclusions
+              Global Data Exclusions
             </h4>
             <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              Categories marked as excluded will be <strong>completely hidden</strong> throughout the app. 
-              They won't appear in Inventory, BOMs, Stock Intelligence, or even as filter options on those pages.
-              Use this for categories like "Deprecating" that you never want to see.
+              Items marked as excluded will be <strong>completely hidden</strong> throughout the app.
+              They won't appear in Inventory, BOMs, Stock Intelligence, or even as filter options.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className={cardClass}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Excluded Categories
-            </h3>
-            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              {excludedCount} of {sortedCategories.length} categories hidden
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleResetDefaults}
-              title="Reset to defaults (Deprecating, Deprecated, Discontinued)"
-            >
-              <ArrowPathIcon className="w-4 h-4 mr-1" />
-              Defaults
-            </Button>
-            {excludedCount > 0 && (
-              showConfirmClear ? (
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={handleClearAll}
-                  >
-                    <CheckIcon className="w-4 h-4 mr-1" />
-                    Confirm
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowConfirmClear(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
+      {/* Three-section layout with sidebar */}
+      <SettingsSubNav
+        items={[
+          { id: 'categories', label: `Categories (${excludedCategoryCount})` },
+          { id: 'vendors', label: `Vendors (${excludedVendorCount})` },
+          { id: 'skus', label: `SKUs (${excludedSkuCount})` },
+        ]}
+      >
+        <div className="space-y-6">
+          {/* Categories Section */}
+          <div id="subsection-categories" className={cardClass}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Excluded Categories
+                </h3>
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {excludedCategoryCount} of {sortedCategories.length} categories hidden
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowConfirmClear(true)}
+                  onClick={handleResetDefaults}
+                  title="Reset to defaults"
+                >
+                  <ArrowPathIcon className="w-4 h-4 mr-1" />
+                  Defaults
+                </Button>
+                {excludedCategoryCount > 0 && (
+                  showConfirmClear ? (
+                    <div className="flex items-center gap-1">
+                      <Button variant="danger" size="sm" onClick={handleClearAll}>
+                        <CheckIcon className="w-4 h-4 mr-1" />
+                        Confirm
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setShowConfirmClear(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => setShowConfirmClear(true)}>
+                      <EyeIcon className="w-4 h-4 mr-1" />
+                      Show All
+                    </Button>
+                  )
+                )}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className={labelClass}>Add Custom Exclusion</label>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="text"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCustomCategory()}
+                  placeholder="Enter category name..."
+                  className={inputClass}
+                />
+                <Button variant="secondary" size="sm" onClick={handleAddCustomCategory} disabled={!customCategory.trim()}>
+                  <PlusIcon className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {renderExclusionList(
+              sortedCategories,
+              excludedCategories,
+              handleToggleCategory,
+              (s) => s.toLowerCase().trim(),
+              'category'
+            )}
+          </div>
+
+          {/* Vendors Section */}
+          <div id="subsection-vendors" className={cardClass}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Excluded Vendors
+                </h3>
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {excludedVendorCount} of {sortedVendors.length} vendors hidden
+                </p>
+              </div>
+              {excludedVendorCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    saveVendors(new Set());
+                    addToast?.('All vendors are now visible', 'info');
+                  }}
                 >
                   <EyeIcon className="w-4 h-4 mr-1" />
                   Show All
                 </Button>
-              )
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className={labelClass}>Add Custom Exclusion</label>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="text"
+                  value={customVendor}
+                  onChange={(e) => setCustomVendor(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCustomVendor()}
+                  placeholder="Enter vendor name..."
+                  className={inputClass}
+                />
+                <Button variant="secondary" size="sm" onClick={handleAddCustomVendor} disabled={!customVendor.trim()}>
+                  <PlusIcon className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {renderExclusionList(
+              sortedVendors,
+              excludedVendors,
+              handleToggleVendor,
+              (s) => s.toLowerCase().trim(),
+              'vendor'
+            )}
+          </div>
+
+          {/* SKUs Section */}
+          <div id="subsection-skus" className={cardClass}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Excluded SKUs
+                </h3>
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {excludedSkuCount} of {sortedSkus.length} SKUs hidden
+                </p>
+              </div>
+              {excludedSkuCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    saveSkus(new Set());
+                    addToast?.('All SKUs are now visible', 'info');
+                  }}
+                >
+                  <EyeIcon className="w-4 h-4 mr-1" />
+                  Show All
+                </Button>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className={labelClass}>Add Custom Exclusion</label>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="text"
+                  value={customSku}
+                  onChange={(e) => setCustomSku(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCustomSku()}
+                  placeholder="Enter SKU..."
+                  className={inputClass}
+                />
+                <Button variant="secondary" size="sm" onClick={handleAddCustomSku} disabled={!customSku.trim()}>
+                  <PlusIcon className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {renderExclusionList(
+              sortedSkus,
+              excludedSkus,
+              handleToggleSku,
+              (s) => s.toUpperCase().trim(),
+              'sku'
             )}
           </div>
         </div>
-
-        {/* Add Custom Category */}
-        <div className="mb-4">
-          <label className={labelClass}>Add Custom Exclusion</label>
-          <div className="flex items-center gap-2 mt-1">
-            <input
-              type="text"
-              value={customCategory}
-              onChange={(e) => setCustomCategory(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddCustom()}
-              placeholder="Enter category name..."
-              className={inputClass}
-            />
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleAddCustom}
-              disabled={!customCategory.trim()}
-            >
-              <PlusIcon className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Category List */}
-        <div className={`max-h-80 overflow-y-auto rounded-lg border ${isDark ? 'border-gray-700 bg-gray-900/30' : 'border-gray-200 bg-gray-50'}`}>
-          {sortedCategories.length === 0 ? (
-            <div className={`p-4 text-center ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-              No categories found. Import inventory data to see categories.
-            </div>
-          ) : (
-            sortedCategories.map((category) => {
-              const isExcluded = excludedCategories.has(category.toLowerCase().trim());
-              const isDefault = isDefaultExclusion(category);
-              
-              return (
-                <label
-                  key={category}
-                  className={checkboxContainerClass}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isExcluded}
-                    onChange={() => handleToggleCategory(category)}
-                    className="w-4 h-4 rounded border-gray-500 text-red-500 focus:ring-red-500 focus:ring-offset-0"
-                  />
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {isExcluded ? (
-                      <EyeSlashIcon className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    ) : (
-                      <EyeIcon className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    )}
-                    <span className={`truncate ${
-                      isExcluded 
-                        ? (isDark ? 'text-red-300 line-through' : 'text-red-600 line-through')
-                        : (isDark ? 'text-white' : 'text-gray-900')
-                    }`}>
-                      {category}
-                    </span>
-                    {isDefault && isExcluded && (
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        isDark ? 'bg-amber-900/50 text-amber-300' : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        default
-                      </span>
-                    )}
-                  </div>
-                </label>
-              );
-            })
-          )}
-        </div>
-
-        {/* Currently Excluded Summary */}
-        {excludedCount > 0 && (
-          <div className={`mt-4 p-3 rounded-lg ${isDark ? 'bg-red-900/20 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
-            <p className={`text-sm font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>
-              Currently Hidden:
-            </p>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {sortedCategories
-                .filter(cat => excludedCategories.has(cat.toLowerCase().trim()))
-                .map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => handleToggleCategory(cat)}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
-                      isDark 
-                        ? 'bg-red-900/50 text-red-200 hover:bg-red-800/50' 
-                        : 'bg-red-100 text-red-700 hover:bg-red-200'
-                    } transition-colors`}
-                    title={`Click to show "${cat}"`}
-                  >
-                    {cat}
-                    <XMarkIcon className="w-3 h-3" />
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
-      </div>
+      </SettingsSubNav>
     </div>
   );
 };

@@ -209,44 +209,45 @@ Thank you!`
               { id: 'delegation', label: 'Delegation' },
               { id: 'notifications', label: 'Notifications' },
             ]}
-          />
-          <div className="space-y-6">
-            <div id="subsection-users">
-              <SettingsCard title="User Management">
-                <UserManagementPanel
-                  currentUser={currentUser}
-                  users={users}
-                  onInviteUser={onInviteUser}
-                  onUpdateUser={onUpdateUser}
-                  onDeleteUser={onDeleteUser}
-                />
-              </SettingsCard>
-            </div>
+          >
+            <div className="space-y-6">
+              <div id="subsection-users">
+                <SettingsCard title="User Management">
+                  <UserManagementPanel
+                    currentUser={currentUser}
+                    users={users}
+                    onInviteUser={onInviteUser}
+                    onUpdateUser={onUpdateUser}
+                    onDeleteUser={onDeleteUser}
+                  />
+                </SettingsCard>
+              </div>
 
-            <div id="subsection-roles">
-              <SettingsCard title="User Roles & Permissions">
-                <AdminUsersPanel currentUserId={currentUser.id} />
-              </SettingsCard>
-            </div>
+              <div id="subsection-roles">
+                <SettingsCard title="User Roles & Permissions">
+                  <AdminUsersPanel currentUserId={currentUser.id} />
+                </SettingsCard>
+              </div>
 
-            <div id="subsection-matrix">
-              <SettingsCard title="Role Permissions Overview">
-                <RolePermissionMatrix />
-              </SettingsCard>
-            </div>
+              <div id="subsection-matrix">
+                <SettingsCard title="Role Permissions Overview">
+                  <RolePermissionMatrix />
+                </SettingsCard>
+              </div>
 
-            <div id="subsection-delegation">
-              <SettingsCard title="Task Delegation">
-                <DelegationSettingsPanel addToast={addToast} />
-              </SettingsCard>
-            </div>
+              <div id="subsection-delegation">
+                <SettingsCard title="Task Delegation">
+                  <DelegationSettingsPanel addToast={addToast} />
+                </SettingsCard>
+              </div>
 
-            <div id="subsection-notifications">
-              <SettingsCard title="Notification Preferences">
-                <NotificationPreferencesPanel currentUser={currentUser} addToast={addToast} />
-              </SettingsCard>
+              <div id="subsection-notifications">
+                <SettingsCard title="Notification Preferences">
+                  <NotificationPreferencesPanel currentUser={currentUser} addToast={addToast} />
+                </SettingsCard>
+              </div>
             </div>
-          </div>
+          </SettingsSubNav>
         </>
       );
 
@@ -292,9 +293,11 @@ Thank you!`
     case 'data-filters':
       return (
         <>
-          <SectionHeader title="Global Data Filters" description="Configure category and SKU exclusion rules" />
+          <SectionHeader title="Global Data Filters" description="Configure category, vendor, and SKU exclusion rules" />
           <GlobalDataFilterPanel
             allCategories={[...new Set(inventory.map(i => i.category).filter(Boolean) as string[])]}
+            allVendors={vendors.map(v => v.name).filter(Boolean)}
+            allSkus={[...new Set(inventory.map(i => i.sku).filter(Boolean) as string[])]}
             addToast={addToast}
           />
         </>
@@ -311,32 +314,33 @@ Thank you!`
               { id: 'trust-scores', label: 'Trust Scores' },
               { id: 'carrier-apis', label: 'Carrier APIs' },
             ]}
-          />
-          <div className="space-y-6">
-            <div id="subsection-automation">
-              <SettingsCard title="Purchase Order Automation">
-                <FollowUpSettingsPanel addToast={addToast} />
-              </SettingsCard>
-            </div>
+          >
+            <div className="space-y-6">
+              <div id="subsection-automation">
+                <SettingsCard title="Purchase Order Automation">
+                  <FollowUpSettingsPanel addToast={addToast} />
+                </SettingsCard>
+              </div>
 
-            <div id="subsection-vendors">
-              <SettingsCard title="Vendor Management">
-                <VendorsManagementPanel vendors={vendors} addToast={addToast} />
-              </SettingsCard>
-            </div>
+              <div id="subsection-vendors">
+                <SettingsCard title="Vendor Management">
+                  <VendorsManagementPanel vendors={vendors} addToast={addToast} />
+                </SettingsCard>
+              </div>
 
-            <div id="subsection-trust-scores">
-              <SettingsCard title="Vendor Trust Score History">
-                <VendorTrustScoreLog addToast={addToast} />
-              </SettingsCard>
-            </div>
+              <div id="subsection-trust-scores">
+                <SettingsCard title="Vendor Trust Score History">
+                  <VendorTrustScoreLog addToast={addToast} />
+                </SettingsCard>
+              </div>
 
-            <div id="subsection-carrier-apis">
-              <SettingsCard title="Carrier Tracking APIs">
-                <CarrierTrackingSettingsPanel addToast={addToast} />
-              </SettingsCard>
+              <div id="subsection-carrier-apis">
+                <SettingsCard title="Carrier Tracking APIs">
+                  <CarrierTrackingSettingsPanel addToast={addToast} />
+                </SettingsCard>
+              </div>
             </div>
-          </div>
+          </SettingsSubNav>
         </>
       );
 
@@ -610,90 +614,90 @@ Thank you!`
               { id: 'playbook', label: 'Playbook' },
               { id: 'compliance', label: 'Compliance' },
             ]}
-          />
-          <div className="space-y-6">
-            <div id="subsection-terms">
-              <SettingsCard title="Terms & Controls">
-                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Keep auditors, plant owners, and investors aligned with the current Terms.
-                </p>
-                <ul className={`mt-3 space-y-1 text-sm list-disc list-inside ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                  <li>Section 14 covers data retention + deletion requests.</li>
-                  <li>Section 16 clarifies compliance responsibilities.</li>
-                  <li>Section 12 reminds teams AI output is not legal advice.</li>
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => setIsTermsModalOpen(true)}
-                  className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-accent-400 hover:text-accent-300 underline decoration-dotted"
-                >
-                  View Terms of Service
-                </button>
-              </SettingsCard>
-            </div>
+          >
+            <div className="space-y-6">
+              <div id="subsection-terms">
+                <SettingsCard title="Terms & Controls">
+                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Keep auditors, plant owners, and investors aligned with the current Terms.
+                  </p>
+                  <ul className={`mt-3 space-y-1 text-sm list-disc list-inside ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <li>Section 14 covers data retention + deletion requests.</li>
+                    <li>Section 16 clarifies compliance responsibilities.</li>
+                    <li>Section 12 reminds teams AI output is not legal advice.</li>
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => setIsTermsModalOpen(true)}
+                    className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-accent-400 hover:text-accent-300 underline decoration-dotted"
+                  >
+                    View Terms of Service
+                  </button>
+                </SettingsCard>
+              </div>
 
-            <div id="subsection-support">
-              <SettingsCard title="Help Desk Workflow">
-                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Send everything to{' '}
-                  <a href="mailto:support@murp.app" className="text-accent-400 hover:text-accent-300 underline decoration-dotted">
-                    support@murp.app
-                  </a>{' '}
-                  with logs, impact, and stakeholders copied.
-                </p>
-                <Button
-                  type="button"
-                  className="mt-4 bg-accent-500 hover:bg-accent-600 text-white px-4 py-2 rounded-md"
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      window.open(helpTicketMailto, '_blank');
-                    }
-                  }}
-                >
-                  Create Help Ticket
-                </Button>
-              </SettingsCard>
-            </div>
+              <div id="subsection-support">
+                <SettingsCard title="Help Desk Workflow">
+                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Send everything to{' '}
+                    <a href="mailto:support@murp.app" className="text-accent-400 hover:text-accent-300 underline decoration-dotted">
+                      support@murp.app
+                    </a>{' '}
+                    with logs, impact, and stakeholders copied.
+                  </p>
+                  <Button
+                    type="button"
+                    className="mt-4 bg-accent-500 hover:bg-accent-600 text-white px-4 py-2 rounded-md"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.open(helpTicketMailto, '_blank');
+                      }
+                    }}
+                  >
+                    Create Help Ticket
+                  </Button>
+                </SettingsCard>
+              </div>
 
-            <div id="subsection-playbook">
-              <SettingsCard title="Support Playbook">
-                <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  What each audience should include when escalating.
-                </p>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {supportPlaybook.map((group) => (
-                    <div
-                      key={group.title}
-                      className={`rounded-lg p-4 ${
-                        isDark ? 'border border-gray-700/70 bg-gray-900/40' : 'border border-gray-200 bg-gray-50'
-                      }`}
-                    >
-                      <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{group.title}</p>
-                      <ul className={`mt-2 space-y-1 text-sm list-disc list-inside ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                        {group.notes.map((note) => (
-                          <li key={note}>{note}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </SettingsCard>
-            </div>
+              <div id="subsection-playbook">
+                <SettingsCard title="Support Playbook">
+                  <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    What each audience should include when escalating.
+                  </p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {supportPlaybook.map((group) => (
+                      <div
+                        key={group.title}
+                        className={`rounded-lg p-4 ${
+                          isDark ? 'border border-gray-700/70 bg-gray-900/40' : 'border border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{group.title}</p>
+                        <ul className={`mt-2 space-y-1 text-sm list-disc list-inside ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                          {group.notes.map((note) => (
+                            <li key={note}>{note}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </SettingsCard>
+              </div>
 
-            <div id="subsection-compliance">
-              <SettingsCard title="Compliance Agreement">
-                <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Capture acknowledgements that MuRP&apos;s regulatory intel is advisory only.
-                </p>
-                <RegulatoryAgreementPanel
-                  currentUser={currentUser}
-                  onUpdateUser={onUpdateUser}
-                  addToast={addToast}
-                />
-              </SettingsCard>
+              <div id="subsection-compliance">
+                <SettingsCard title="Compliance Agreement">
+                  <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Capture acknowledgements that MuRP&apos;s regulatory intel is advisory only.
+                  </p>
+                  <RegulatoryAgreementPanel
+                    currentUser={currentUser}
+                    onUpdateUser={onUpdateUser}
+                    addToast={addToast}
+                  />
+                </SettingsCard>
+              </div>
             </div>
-          </div>
-
+          </SettingsSubNav>
           <TermsOfServiceModal isOpen={isTermsModalOpen} onClose={() => setIsTermsModalOpen(false)} />
         </>
       );
