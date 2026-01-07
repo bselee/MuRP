@@ -35,6 +35,7 @@ import {
     getBomDetailsForComponent,
 } from '../lib/inventory/utils';
 import { computeStockoutRisks, computeVendorPerformance } from '@/lib/inventory/stockIntelligence';
+import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
 
 interface InventoryProps {
     inventory: InventoryItem[];
@@ -202,6 +203,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const { rowDensity, fontScale } = useUserPreferences();
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
+    const { isExcluded: isSkuExcluded } = useGlobalSkuFilter();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
         const saved = localStorage.getItem('inventory-selected-categories');
@@ -668,6 +670,9 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const processedInventory = useMemo(() => {
         let filteredItems = [...inventory];
 
+        // Global SKU exclusion filter (from Settings > Global Data Filters)
+        filteredItems = filteredItems.filter(item => !isSkuExcluded(item.sku));
+
         // Multi-select category filter with exclusion support
         if (selectedCategories.size > 0) {
             const before = filteredItems.length;
@@ -779,6 +784,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         showRecentOnly,
         getCategoryConfig,
         getVendorConfig,
+        isSkuExcluded,
     ]);
 
     // Filter preset handlers

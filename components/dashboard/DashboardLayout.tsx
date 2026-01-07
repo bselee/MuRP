@@ -39,7 +39,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           fixed inset-y-0 left-0 z-50 transform transition-all duration-200 ease-in-out
           lg:relative lg:translate-x-0 lg:z-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          ${isCollapsed ? 'lg:w-14' : 'lg:w-56'} w-56
+          ${isCollapsed ? 'lg:w-16' : 'lg:w-56'} w-56
           ${isDark ? 'bg-gray-900 border-r border-gray-800' : 'bg-white border-r border-gray-200'}
         `}
       >

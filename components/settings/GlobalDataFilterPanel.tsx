@@ -101,16 +101,24 @@ const GlobalDataFilterPanel: React.FC<GlobalDataFilterPanelProps> = ({
     return uniqueCategories.sort((a, b) => a.localeCompare(b));
   }, [allCategories]);
 
-  // Sort vendors alphabetically
+  // Helper: check if string is purely numeric (likely PO number clutter)
+  const isNumericOnly = (str: string) => /^\d+$/.test(str.trim());
+
+  // Sort vendors alphabetically, filtering out numeric-only entries (PO number clutter)
   const sortedVendors = useMemo(() => {
     const uniqueVendors = [...new Set(allVendors.filter(Boolean))];
-    return uniqueVendors.sort((a, b) => a.localeCompare(b));
+    // Filter out numeric-only items (likely PO numbers polluting vendor data)
+    const realVendors = uniqueVendors.filter(v => !isNumericOnly(v));
+    return realVendors.sort((a, b) => a.localeCompare(b));
   }, [allVendors]);
 
-  // Sort SKUs alphabetically
+  // Sort SKUs alphabetically, filtering out numeric-only entries (PO number clutter)
   const sortedSkus = useMemo(() => {
     const uniqueSkus = [...new Set(allSkus.filter(Boolean))];
-    return uniqueSkus.sort((a, b) => a.localeCompare(b));
+    // Filter out numeric-only items (likely PO numbers polluting SKU data)
+    // Real SKUs typically start with letters (e.g., ARC01, BAS100)
+    const realSkus = uniqueSkus.filter(s => !isNumericOnly(s));
+    return realSkus.sort((a, b) => a.localeCompare(b));
   }, [allSkus]);
 
   // Count of excluded
