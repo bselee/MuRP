@@ -43,6 +43,14 @@ import {
   getCriticalRules,
   type ItemClassificationContext,
 } from './classificationContextService';
+import {
+  getKPISummary,
+  calculateInventoryKPIs,
+  getPastDuePOLines,
+  type KPISummary,
+  type InventoryKPIs,
+  type PastDuePOLine,
+} from './inventoryKPIService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 Types
@@ -112,6 +120,8 @@ export interface StockHealthSummary {
   at_risk_value: number;
   alerts: StockLevelAlert[];
   bom_alerts: StockLevelAlert[]; // Separate list for BOMs needing builds
+  // Extended KPIs
+  kpi_summary?: KPISummary;
 }
 
 export interface VelocityAnalysis {
@@ -531,7 +541,7 @@ export async function getReorderPointRecommendations(): Promise<Array<{
 
 /**
  * Main agent run function - called by UI and scheduler
- * Returns detailed runway-based analysis with velocity trends
+ * Returns detailed runway-based analysis with velocity trends and KPIs
  */
 export async function runInventoryGuardianAgent(
   config: Partial<InventoryGuardianConfig> = {}
@@ -540,6 +550,7 @@ export async function runInventoryGuardianAgent(
   summary: StockHealthSummary;
   velocity_alerts: VelocityAnalysis[];
   reorder_recommendations: Array<{ sku: string; product_name: string; current_reorder_point: number; recommended_reorder_point: number; reason: string }>;
+  kpi_summary: KPISummary | null;
   output: string[];
 }> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
@@ -548,7 +559,19 @@ export async function runInventoryGuardianAgent(
   output.push(`[${new Date().toISOString()}] Inventory Guardian starting health check...`);
   output.push(`  Target runway: ${cfg.target_days_of_stock} days | Critical threshold: ${cfg.critical_runway_days} days`);
 
-  const summary = await runInventoryHealthCheck(config);
+  // Run health check and KPI calculations in parallel
+  const [summary, kpiSummary] = await Promise.all([
+    runInventoryHealthCheck(config),
+    getKPISummary().catch(err => {
+      console.error('[InventoryGuardian] KPI calculation failed:', err);
+      return null;
+    })
+  ]);
+
+  // Attach KPI summary to health summary
+  if (kpiSummary) {
+    summary.kpi_summary = kpiSummary;
+  }
 
   // Summary line
   output.push('');
@@ -568,6 +591,74 @@ export async function runInventoryGuardianAgent(
   }
   output.push(`HEALTHY (>${cfg.target_days_of_stock}d runway): ${summary.healthy_skus} items`);
   output.push('');
+
+  // === KPI METRICS SECTION ===
+  if (kpiSummary) {
+    output.push(`=== KEY PERFORMANCE INDICATORS ===`);
+    output.push('');
+
+    // CLTR (Coverage-to-Lead-Time Ratio)
+    output.push(`--- CLTR (Coverage-to-Lead-Time Ratio) ---`);
+    output.push(`CRITICAL (CLTR < 0.5): ${kpiSummary.items_critical_cltr} items`);
+    output.push(`AT RISK (CLTR 0.5-1.0): ${kpiSummary.items_at_risk_cltr} items`);
+    output.push(`Average CLTR: ${kpiSummary.avg_cltr}`);
+    if (kpiSummary.critical_cltr_items.length > 0) {
+      output.push(`Top critical:`);
+      kpiSummary.critical_cltr_items.slice(0, 3).forEach(item => {
+        output.push(`  ${item.sku}: CLTR=${item.cltr}, ${item.runway_days}d runway, ${item.lead_time_planned}d LT`);
+      });
+    }
+    output.push('');
+
+    // Demand Variability (CV)
+    output.push(`--- DEMAND VARIABILITY (CV) ---`);
+    output.push(`High variability (CV > 1.0): ${kpiSummary.items_high_variability} items (Z class)`);
+    output.push(`Medium variability (CV 0.5-1.0): ${kpiSummary.items_medium_variability} items (Y class)`);
+    output.push(`Average CV: ${kpiSummary.avg_cv}`);
+    output.push('');
+
+    // Past Due PO Lines
+    if (kpiSummary.total_past_due_lines > 0) {
+      output.push(`--- PAST DUE PO LINES ---`);
+      output.push(`Total past due: ${kpiSummary.total_past_due_lines} lines`);
+      output.push(`Past due value: $${kpiSummary.past_due_value.toLocaleString()}`);
+      if (kpiSummary.past_due_lines.length > 0) {
+        output.push(`Most overdue:`);
+        kpiSummary.past_due_lines.slice(0, 3).forEach(line => {
+          output.push(`  PO ${line.po_number}: ${line.sku} - ${line.days_overdue}d late (${line.vendor_name})`);
+        });
+      }
+      output.push('');
+    }
+
+    // Lead Time Bias
+    if (kpiSummary.avg_lead_time_bias !== 0) {
+      output.push(`--- LEAD TIME BIAS ---`);
+      const biasDir = kpiSummary.avg_lead_time_bias > 0 ? 'late' : 'early';
+      output.push(`Average bias: ${Math.abs(kpiSummary.avg_lead_time_bias)} days ${biasDir}`);
+      output.push('');
+    }
+
+    // Safety Stock Attainment
+    output.push(`--- SAFETY STOCK ATTAINMENT ---`);
+    output.push(`Items below SS target: ${kpiSummary.safety_stock_shortfall_items}`);
+    output.push(`Average SS attainment: ${kpiSummary.avg_safety_stock_attainment}%`);
+    output.push('');
+
+    // Excess Inventory
+    if (kpiSummary.total_excess_value > 0) {
+      output.push(`--- EXCESS INVENTORY ---`);
+      output.push(`Total excess value: $${kpiSummary.total_excess_value.toLocaleString()}`);
+      output.push(`(Stock above 90-day runway)`);
+      output.push('');
+    }
+
+    // ABC/XYZ Classification
+    output.push(`--- ABC/XYZ CLASSIFICATION ---`);
+    output.push(`ABC: A=${kpiSummary.abc_distribution.A} | B=${kpiSummary.abc_distribution.B} | C=${kpiSummary.abc_distribution.C}`);
+    output.push(`XYZ: X=${kpiSummary.xyz_distribution.X} | Y=${kpiSummary.xyz_distribution.Y} | Z=${kpiSummary.xyz_distribution.Z}`);
+    output.push('');
+  }
 
   // Top alerts for purchased items
   if (summary.alerts.length > 0) {
@@ -635,6 +726,7 @@ export async function runInventoryGuardianAgent(
     summary,
     velocity_alerts: velocityAlerts,
     reorder_recommendations: recommendations,
+    kpi_summary: kpiSummary,
     output,
   };
 }

@@ -45,10 +45,17 @@ import {
 
 interface AgentCommandCenterProps {
   userId?: string;
+  userRole?: 'Admin' | 'Manager' | 'Staff';
   addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId = 'default-user', addToast }) => {
+export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({
+  userId = 'default-user',
+  userRole = 'Staff',
+  addToast,
+}) => {
+  // Admin and Manager can edit built-in agents
+  const canEditBuiltIn = userRole === 'Admin' || userRole === 'Manager';
   const [agents, setAgents] = useState<AgentDefinition[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<AgentDefinition | null>(null);
   const [editingAgent, setEditingAgent] = useState<AgentDefinition | null>(null);
@@ -301,7 +308,9 @@ export const AgentCommandCenter: React.FC<AgentCommandCenterProps> = ({ userId =
       {(isCreatingAgent || editingAgent) && (
         <AgentEditor
           agent={editingAgent || undefined}
+          canEditBuiltIn={canEditBuiltIn}
           onSave={handleCreateAgent}
+          onUpdate={handleUpdateAgent}
           onClose={() => {
             setIsCreatingAgent(false);
             setEditingAgent(null);

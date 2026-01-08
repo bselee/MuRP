@@ -1786,7 +1786,11 @@ const AppShell: React.FC = () => {
           onQuickRequest={openQuickRequestDrawer}
         />;
       case 'Agent Command Center':
-        return <AgentCommandCenter />;
+        return <AgentCommandCenter
+          userId={currentUser.id}
+          userRole={currentUser.role}
+          addToast={addToast}
+        />;
       case 'Settings':
         return <Settings
           currentUser={currentUser}

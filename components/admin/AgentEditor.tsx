@@ -24,7 +24,9 @@ import {
 
 interface AgentEditorProps {
   agent?: AgentDefinition;
+  canEditBuiltIn?: boolean;
   onSave: (agent: Omit<AgentDefinition, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onUpdate?: (id: string, updates: Partial<AgentDefinition>) => void;
   onClose: () => void;
   onTest?: (agent: AgentDefinition) => void;
 }
@@ -46,8 +48,17 @@ const AUTONOMY_OPTIONS = [
 
 const ALLOWED_TOOLS = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'WebFetch', 'WebSearch'];
 
-export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose, onTest }) => {
+export const AgentEditor: React.FC<AgentEditorProps> = ({
+  agent,
+  canEditBuiltIn = false,
+  onSave,
+  onUpdate,
+  onClose,
+  onTest,
+}) => {
   const isNew = !agent;
+  // Allow editing if: new agent, not built-in, OR admin+ can edit built-in
+  const canEdit = isNew || !agent?.isBuiltIn || canEditBuiltIn;
 
   // Form state
   const [name, setName] = useState(agent?.name || '');
@@ -66,6 +77,12 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
   const [activeTab, setActiveTab] = useState<'prompt' | 'capabilities' | 'triggers' | 'parameters' | 'tools'>('prompt');
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+
+  // AI Assistant state
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [aiInput, setAIInput] = useState('');
+  const [aiSuggestion, setAISuggestion] = useState('');
+  const [isAILoading, setIsAILoading] = useState(false);
 
   // Auto-generate identifier from name
   useEffect(() => {
@@ -91,28 +108,102 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
 
     setIsSaving(true);
     try {
-      await onSave({
-        identifier,
-        name,
-        description,
-        category,
-        systemPrompt,
-        autonomyLevel,
-        capabilities,
-        triggers,
-        parameters,
-        allowedTools,
-        isActive,
-        trustScore,
-        isBuiltIn: false,
-        version: agent?.version || '1.0.0',
-        mcpTools: [],
-      });
-      onClose();
+      if (agent && onUpdate) {
+        // Update existing agent (including built-in if allowed)
+        onUpdate(agent.id, {
+          name,
+          description,
+          category,
+          systemPrompt,
+          autonomyLevel,
+          capabilities,
+          triggers,
+          parameters,
+          allowedTools,
+          isActive,
+          trustScore,
+        });
+        onClose();
+      } else {
+        // Create new agent
+        await onSave({
+          identifier,
+          name,
+          description,
+          category,
+          systemPrompt,
+          autonomyLevel,
+          capabilities,
+          triggers,
+          parameters,
+          allowedTools,
+          isActive,
+          trustScore,
+          isBuiltIn: false,
+          version: agent?.version || '1.0.0',
+          mcpTools: [],
+        });
+        onClose();
+      }
     } catch (err) {
       setErrors([String(err)]);
     }
     setIsSaving(false);
+  };
+
+  // AI Assistant for prompt improvement
+  const handleAIAssist = async () => {
+    if (!aiInput.trim()) return;
+
+    setIsAILoading(true);
+    try {
+      // Build context for the AI
+      const context = `
+You are helping improve an AI agent's system prompt.
+
+Current agent: ${name}
+Category: ${category}
+Description: ${description}
+
+Current system prompt:
+${systemPrompt}
+
+User request: ${aiInput}
+
+Please provide an improved version of the system prompt that addresses the user's request.
+Keep the same overall structure but enhance based on the feedback.
+Only output the improved system prompt, no explanations.
+      `.trim();
+
+      // Use local AI processing (in production, call aiGatewayService)
+      // For now, provide structured suggestions
+      let suggestion = systemPrompt;
+
+      if (aiInput.toLowerCase().includes('more specific')) {
+        suggestion = `${systemPrompt}\n\n## Specific Guidelines\n- Be precise with data references\n- Include exact thresholds and metrics\n- Reference specific tables and columns`;
+      } else if (aiInput.toLowerCase().includes('add error handling')) {
+        suggestion = `${systemPrompt}\n\n## Error Handling\n- Always validate input data before processing\n- Log errors with context for debugging\n- Provide fallback behaviors when data is unavailable`;
+      } else if (aiInput.toLowerCase().includes('improve clarity')) {
+        suggestion = `${systemPrompt}\n\n## Output Formatting\n- Use clear headers for each section\n- Prioritize critical items first\n- Include actionable recommendations`;
+      } else {
+        // Generic improvement
+        suggestion = `${systemPrompt}\n\n## Additional Guidance\n${aiInput}`;
+      }
+
+      setAISuggestion(suggestion);
+    } catch (err) {
+      setErrors([`AI assist failed: ${err}`]);
+    }
+    setIsAILoading(false);
+  };
+
+  const applyAISuggestion = () => {
+    if (aiSuggestion) {
+      setSystemPrompt(aiSuggestion);
+      setAISuggestion('');
+      setAIInput('');
+      setShowAIAssistant(false);
+    }
   };
 
   const handleApplyTemplate = (templateId: string) => {
@@ -174,8 +265,12 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
               {isNew ? 'Create Agent' : `Edit: ${agent.name}`}
             </h2>
             {agent?.isBuiltIn && (
-              <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded">
-                Built-in (Read-only)
+              <span className={`text-xs px-2 py-0.5 rounded ${
+                canEdit
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-amber-500/20 text-amber-400'
+              }`}>
+                {canEdit ? 'Built-in (Admin Edit)' : 'Built-in (Read-only)'}
               </span>
             )}
           </div>
@@ -220,7 +315,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Stock Intelligence Analyst"
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-accent-500"
-                disabled={agent?.isBuiltIn}
+                disabled={!canEdit}
               />
             </div>
             <div>
@@ -231,7 +326,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                 onChange={(e) => setIdentifier(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
                 placeholder="stock-intelligence-analyst"
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-white font-mono text-sm focus:ring-2 focus:ring-accent-500"
-                disabled={agent?.isBuiltIn}
+                disabled={!canEdit}
               />
             </div>
           </div>
@@ -244,7 +339,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Expert in inventory forecasting and ROP calculations"
               className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-accent-500"
-              disabled={agent?.isBuiltIn}
+              disabled={!canEdit}
             />
           </div>
 
@@ -255,7 +350,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                 value={category}
                 onChange={(e) => setCategory(e.target.value as AgentCategory)}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-white"
-                disabled={agent?.isBuiltIn}
+                disabled={!canEdit}
               >
                 {CATEGORY_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -268,7 +363,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                 value={autonomyLevel}
                 onChange={(e) => setAutonomyLevel(e.target.value as typeof autonomyLevel)}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-white"
-                disabled={agent?.isBuiltIn}
+                disabled={!canEdit}
               >
                 {AUTONOMY_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -302,15 +397,100 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-gray-400">System Prompt *</label>
-                <span className="text-xs text-gray-500">{systemPrompt.length} chars</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500">{systemPrompt.length} chars</span>
+                  {canEdit && (
+                    <button
+                      onClick={() => setShowAIAssistant(!showAIAssistant)}
+                      className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-colors ${
+                        showAIAssistant
+                          ? 'bg-accent-500 text-white'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                      </svg>
+                      AI Assist
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* AI Assistant Panel */}
+              {showAIAssistant && canEdit && (
+                <div className="bg-accent-500/10 border border-accent-500/30 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-accent-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                    </svg>
+                    <span className="font-medium">AI Prompt Assistant</span>
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    Describe how you want to improve the prompt (e.g., "add error handling", "make more specific", "improve clarity")
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={aiInput}
+                      onChange={(e) => setAIInput(e.target.value)}
+                      placeholder="e.g., Add more specific threshold values..."
+                      className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:ring-2 focus:ring-accent-500"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAIAssist()}
+                    />
+                    <button
+                      onClick={handleAIAssist}
+                      disabled={isAILoading || !aiInput.trim()}
+                      className="px-4 py-2 bg-accent-500 hover:bg-accent-600 disabled:bg-gray-700 text-white rounded-lg text-sm transition-colors flex items-center gap-2"
+                    >
+                      {isAILoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Thinking...
+                        </>
+                      ) : (
+                        'Suggest'
+                      )}
+                    </button>
+                  </div>
+
+                  {/* AI Suggestion Preview */}
+                  {aiSuggestion && (
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-300">Suggested Changes:</span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setAISuggestion('')}
+                            className="text-xs text-gray-400 hover:text-white"
+                          >
+                            Dismiss
+                          </button>
+                          <button
+                            onClick={applyAISuggestion}
+                            className="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded"
+                          >
+                            Apply Changes
+                          </button>
+                        </div>
+                      </div>
+                      <div className="max-h-40 overflow-y-auto bg-gray-900 border border-gray-700 rounded p-3">
+                        <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">
+                          {aiSuggestion.slice(-500)}...
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <textarea
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
                 placeholder="You are an AI agent specialized in..."
-                rows={20}
+                rows={showAIAssistant ? 12 : 20}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white font-mono text-sm focus:ring-2 focus:ring-accent-500"
-                disabled={agent?.isBuiltIn}
+                disabled={!canEdit}
               />
               <p className="text-xs text-gray-500">
                 Use Markdown formatting. Include sections for expertise, key data sources, and important rules.
@@ -325,7 +505,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                 <p className="text-sm text-gray-400">Define what this agent can do</p>
                 <button
                   onClick={addCapability}
-                  disabled={agent?.isBuiltIn}
+                  disabled={!canEdit}
                   className="flex items-center gap-1 text-sm text-accent-400 hover:text-accent-300 disabled:opacity-50"
                 >
                   <PlusIcon className="w-4 h-4" /> Add Capability
@@ -344,11 +524,11 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                       }}
                       placeholder="Capability name"
                       className="flex-1 bg-gray-900 border border-gray-700 rounded p-2 text-white"
-                      disabled={agent?.isBuiltIn}
+                      disabled={!canEdit}
                     />
                     <button
                       onClick={() => removeCapability(i)}
-                      disabled={agent?.isBuiltIn}
+                      disabled={!canEdit}
                       className="p-2 text-red-400 hover:text-red-300 disabled:opacity-50"
                     >
                       <TrashIcon className="w-4 h-4" />
@@ -364,7 +544,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                     }}
                     placeholder="What this capability does..."
                     className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
-                    disabled={agent?.isBuiltIn}
+                    disabled={!canEdit}
                   />
                 </div>
               ))}
@@ -381,7 +561,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                 <p className="text-sm text-gray-400">When should this agent activate?</p>
                 <button
                   onClick={addTrigger}
-                  disabled={agent?.isBuiltIn}
+                  disabled={!canEdit}
                   className="flex items-center gap-1 text-sm text-accent-400 hover:text-accent-300 disabled:opacity-50"
                 >
                   <PlusIcon className="w-4 h-4" /> Add Trigger
@@ -397,7 +577,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                       setTriggers(updated);
                     }}
                     className="bg-gray-900 border border-gray-700 rounded p-2 text-white"
-                    disabled={agent?.isBuiltIn}
+                    disabled={!canEdit}
                   >
                     <option value="keyword">Keyword</option>
                     <option value="schedule">Schedule</option>
@@ -414,11 +594,11 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                     }}
                     placeholder={trigger.type === 'keyword' ? 'e.g., "stock level"' : trigger.type === 'schedule' ? 'e.g., "0 6 * * *"' : 'e.g., "new_email"'}
                     className="flex-1 bg-gray-900 border border-gray-700 rounded p-2 text-white"
-                    disabled={agent?.isBuiltIn}
+                    disabled={!canEdit}
                   />
                   <button
                     onClick={() => removeTrigger(i)}
-                    disabled={agent?.isBuiltIn}
+                    disabled={!canEdit}
                     className="p-2 text-red-400 hover:text-red-300 disabled:opacity-50"
                   >
                     <TrashIcon className="w-4 h-4" />
@@ -438,7 +618,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                 <p className="text-sm text-gray-400">Configurable parameters for this agent</p>
                 <button
                   onClick={addParameter}
-                  disabled={agent?.isBuiltIn}
+                  disabled={!canEdit}
                   className="flex items-center gap-1 text-sm text-accent-400 hover:text-accent-300 disabled:opacity-50"
                 >
                   <PlusIcon className="w-4 h-4" /> Add Parameter
@@ -458,7 +638,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                       }}
                       placeholder="Parameter label"
                       className="flex-1 bg-gray-900 border border-gray-700 rounded p-2 text-white"
-                      disabled={agent?.isBuiltIn}
+                      disabled={!canEdit}
                     />
                     <select
                       value={param.type}
@@ -469,7 +649,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                         });
                       }}
                       className="bg-gray-900 border border-gray-700 rounded p-2 text-white"
-                      disabled={agent?.isBuiltIn}
+                      disabled={!canEdit}
                     >
                       <option value="string">String</option>
                       <option value="number">Number</option>
@@ -477,7 +657,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                     </select>
                     <button
                       onClick={() => removeParameter(key)}
-                      disabled={agent?.isBuiltIn}
+                      disabled={!canEdit}
                       className="p-2 text-red-400 hover:text-red-300 disabled:opacity-50"
                     >
                       <TrashIcon className="w-4 h-4" />
@@ -495,7 +675,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                     }}
                     placeholder="Default value"
                     className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white"
-                    disabled={agent?.isBuiltIn}
+                    disabled={!canEdit}
                   />
                 </div>
               ))}
@@ -530,7 +710,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                         }
                       }}
                       className="accent-accent-500"
-                      disabled={agent?.isBuiltIn}
+                      disabled={!canEdit}
                     />
                     <span className="text-white font-mono text-sm">{tool}</span>
                   </label>
@@ -549,7 +729,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
                 className="accent-green-500"
-                disabled={agent?.isBuiltIn}
+                disabled={!canEdit}
               />
               <span className="text-sm text-gray-300">Active</span>
             </label>
@@ -562,7 +742,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                 value={trustScore * 100}
                 onChange={(e) => setTrustScore(Number(e.target.value) / 100)}
                 className="w-24 accent-accent-500"
-                disabled={agent?.isBuiltIn}
+                disabled={!canEdit}
               />
               <span className="text-xs text-gray-400">{Math.round(trustScore * 100)}%</span>
             </div>
@@ -583,7 +763,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                 Test
               </button>
             )}
-            {!agent?.isBuiltIn && (
+            {canEdit && (
               <button
                 onClick={handleSave}
                 disabled={isSaving}
@@ -597,7 +777,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({ agent, onSave, onClose
                 ) : (
                   <>
                     <SaveIcon className="w-4 h-4" />
-                    Save Agent
+                    {agent ? 'Update Agent' : 'Save Agent'}
                   </>
                 )}
               </button>
