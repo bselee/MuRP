@@ -11,7 +11,6 @@ import {
 import { supabase } from '../lib/supabase/client';
 import {
   RefreshCcwIcon,
-  TruckIcon,
   AlertTriangleIcon,
   ArrowDownTrayIcon,
   XMarkIcon,
@@ -226,8 +225,7 @@ const POTrackingDashboard: React.FC<POTrackingDashboardProps> = ({ addToast }) =
     <div className={`rounded-xl shadow-sm border p-6 space-y-4 ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className={`text-xl font-semibold flex items-center gap-2 ${isDark ? 'text-white' : 'text-amber-800'}`}>
-            <TruckIcon className={`w-5 h-5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
+          <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
             PO Tracking
           </h2>
         </div>
@@ -235,7 +233,7 @@ const POTrackingDashboard: React.FC<POTrackingDashboardProps> = ({ addToast }) =
           <Button
             onClick={handleExportHistory}
             disabled={exporting || !trackedPos.length}
-            className={`inline-flex items-center gap-2 text-sm rounded-md px-3 py-1.5 disabled:opacity-40 transition-colors ${isDark ? 'text-amber-200 border border-amber-500/40 hover:bg-amber-500/10' : 'text-amber-700 border border-amber-300 hover:bg-amber-50'}`}
+            className={`inline-flex items-center gap-2 text-sm rounded-md px-3 py-1.5 disabled:opacity-40 transition-colors ${isDark ? 'text-gray-200 border border-gray-600 hover:bg-gray-700' : 'text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
             title="Download full tracking history (CSV)"
           >
             <ArrowDownTrayIcon className={`w-4 h-4 ${exporting ? 'animate-pulse' : ''}`} />
@@ -255,15 +253,15 @@ const POTrackingDashboard: React.FC<POTrackingDashboardProps> = ({ addToast }) =
       {error && <p className="text-sm text-red-400">{error}</p>}
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className={`rounded-lg p-4 border ${isDark ? 'bg-gray-900/60 border-gray-700' : 'bg-red-50 border-red-200'}`}>
+        <div className={`rounded-lg p-4 border ${isDark ? 'bg-gray-900/60 border-gray-700' : 'bg-white border-red-200'}`}>
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>At Risk</p>
           <p className={`text-2xl font-semibold ${isDark ? 'text-red-300' : 'text-red-600'}`}>{summary.atRisk}</p>
         </div>
-        <div className={`rounded-lg p-4 border ${isDark ? 'bg-gray-900/60 border-gray-700' : 'bg-amber-50 border-amber-200'}`}>
+        <div className={`rounded-lg p-4 border ${isDark ? 'bg-gray-900/60 border-gray-700' : 'bg-white border-amber-200'}`}>
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Out for Delivery</p>
           <p className={`text-2xl font-semibold ${isDark ? 'text-amber-300' : 'text-amber-600'}`}>{summary.outForDelivery}</p>
         </div>
-        <div className={`rounded-lg p-4 border ${isDark ? 'bg-gray-900/60 border-gray-700' : 'bg-green-50 border-green-200'}`}>
+        <div className={`rounded-lg p-4 border ${isDark ? 'bg-gray-900/60 border-gray-700' : 'bg-white border-green-200'}`}>
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Delivered Today</p>
           <p className={`text-2xl font-semibold ${isDark ? 'text-green-300' : 'text-green-600'}`}>{summary.deliveredToday}</p>
         </div>
@@ -339,9 +337,9 @@ const POTrackingDashboard: React.FC<POTrackingDashboardProps> = ({ addToast }) =
                 <tr key={po.id} className={`${isDark ? 'text-gray-200 hover:bg-gray-900/40' : 'text-gray-800 hover:bg-gray-50'}`}>
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
-                      <span className={`font-semibold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>{po.order_id}</span>
-                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                        {(po as any).source === 'finale' ? '📦 Finale' : '🏠 Internal'}
+                      <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{po.order_id}</span>
+                      <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                        {(po as any).source === 'finale' ? 'Finale' : 'Internal'}
                       </span>
                     </div>
                   </td>

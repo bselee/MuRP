@@ -984,7 +984,7 @@ const ArtworkPage: React.FC<ArtworkPageProps> = ({ boms, inventory, vendors, onA
                             <div>
                                 <label className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} uppercase tracking-wide`}>Product</label>
                                 <p className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} mt-1`}>{selectedArtworkForDetails.productName}</p>
-                                <p className={`text-xs mt-0.5 font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{selectedArtworkForDetails.productSku}</p>
+                                <p className={`text-xs mt-0.5 font-mono font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedArtworkForDetails.productSku}</p>
                             </div>
 
                             <div>
