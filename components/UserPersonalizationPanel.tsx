@@ -135,140 +135,104 @@ const UserPersonalizationPanel: React.FC<UserPersonalizationPanelProps> = ({
                 }
             };
             onUpdateUser(updatedUser);
+            addToast('Personalization settings saved successfully!', 'success');
+        } catch (error) {
+            console.error('Error saving preferences:', error);
+            addToast('Failed to save preferences. Please try again.', 'error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-            return (
-                <div className="space-y-8">
-                    {/* E2E: Your Profile heading and labeled fields */}
-                    <div className="mb-8">
-                        <h2 className="text-xl font-bold mb-4" data-testid="your-profile-heading">Your Profile</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Name</label>
-                                <div className="p-3 rounded-md bg-gray-900/60 border border-gray-700 text-white">{currentUser.name}</div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Email</label>
-                                <div className="p-3 rounded-md bg-gray-900/60 border border-gray-700 text-white">{currentUser.email}</div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-400 uppercase mb-1">Role</label>
-                                <div className="p-3 rounded-md bg-gray-900/60 border border-gray-700 text-white">{currentUser.role}</div>
-                            </div>
-                        </div>
-                    </div>
+    const currentAvatar = currentUser.avatar?.url || null;
+    const currentInitials = currentUser.avatar?.initials || getInitials(displayName);
 
-                    {/* E2E: Theme selector */}
-                    <div className="mb-8">
-                        <label htmlFor="theme-select" className="block text-xs font-semibold text-gray-400 uppercase mb-1">Theme</label>
-                        <select
-                            id="theme-select"
-                            className="w-full md:w-64 bg-gray-900/60 border border-gray-700 rounded-md p-3 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                            value={currentUser.preferences?.theme || 'system'}
-                            onChange={e => onUpdateUser({
-                                ...currentUser,
-                                preferences: {
-                                    ...currentUser.preferences,
-                                    theme: e.target.value as 'system' | 'dark' | 'light',
-                                },
-                            })}
-                        >
-                            <option value="system">System</option>
-                            <option value="dark">Dark</option>
-                            <option value="light">Light</option>
-                        </select>
-                    </div>
+    return (
+        <div className="space-y-8">
+            {/* Profile Header */}
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <UserIcon className="w-5 h-5 text-blue-400" />
+                    Profile & Avatar
+                </h3>
 
-                    {/* Profile Header and Avatar */}
-                    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
-                        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                            <UserIcon className="w-5 h-5 text-blue-400" />
-                            Profile & Avatar
-                        </h3>
-                        <div className="flex items-start gap-6">
-                            {/* Avatar Section */}
-                            <div className="flex flex-col items-center gap-4">
-                                <div className="relative">
-                                    {currentAvatar ? (
-                                        <img
-                                            src={currentAvatar}
-                                            alt="Profile avatar"
-                                            className="w-20 h-20 rounded-full object-cover border-2 border-gray-600"
-                                        />
-                                    ) : (
-                                        <div
-                                            className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-xl border-2 border-gray-600"
-                                            style={{ backgroundColor: selectedAvatarColor }}
-                                        >
-                                            {currentInitials}
-                                        </div>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="absolute -bottom-1 -right-1 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors"
-                                        disabled={isLoading}
-                                    >
-                                        <PhotoIcon className="w-4 h-4" />
-                                    </button>
-                                </div>
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleAvatarUpload}
-                                    className="hidden"
+                <div className="flex items-start gap-6">
+                    {/* Avatar Section */}
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="relative">
+                            {currentAvatar ? (
+                                <img
+                                    src={currentAvatar}
+                                    alt="Profile avatar"
+                                    className="w-20 h-20 rounded-full object-cover border-2 border-gray-600"
                                 />
-                                {/* Color Picker */}
-                                <div className="flex flex-col items-center gap-2">
-                                    <span className="text-xs text-gray-400 uppercase font-semibold">Avatar Color</span>
-                                    <div className="flex gap-2">
-                                        {AVATAR_COLORS.map((color) => (
-                                            <button
-                                                key={color}
-                                                type="button"
-                                                onClick={() => handleAvatarColorChange(color)}
-                                                className={`w-6 h-6 rounded-full border-2 transition-all ${
-                                                    selectedAvatarColor === color
-                                                        ? 'border-white scale-110'
-                                                        : 'border-gray-600 hover:border-gray-400'
-                                                }`}
-                                                style={{ backgroundColor: color }}
-                                                disabled={isLoading}
-                                                aria-label={`Select ${color} color`}
-                                            />
-                                        ))}
-                                    </div>
+                            ) : (
+                                <div
+                                    className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-xl border-2 border-gray-600"
+                                    style={{ backgroundColor: selectedAvatarColor }}
+                                >
+                                    {currentInitials}
                                 </div>
-                            </div>
-                            {/* Profile Info */}
-                            <div className="flex-1 space-y-4">
-                                <div>
-                                    <label htmlFor="display-name" className="text-xs font-semibold text-gray-400 uppercase">Display Name</label>
-                                    <input
-                                        id="display-name"
-                                        type="text"
-                                        value={displayName}
-                                        onChange={(e) => setDisplayName(e.target.value)}
-                                        className="w-full bg-gray-900/60 border border-gray-700 rounded-md p-3 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                                        placeholder="Your display name"
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="absolute -bottom-1 -right-1 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors"
+                                disabled={isLoading}
+                            >
+                                <PhotoIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            className="hidden"
+                        />
+
+                        {/* Color Picker */}
+                        <div className="flex flex-col items-center gap-2">
+                            <span className="text-xs text-gray-400 uppercase font-semibold">Avatar Color</span>
+                            <div className="flex gap-2">
+                                {AVATAR_COLORS.map((color) => (
+                                    <button
+                                        key={color}
+                                        type="button"
+                                        onClick={() => handleAvatarColorChange(color)}
+                                        className={`w-6 h-6 rounded-full border-2 transition-all ${
+                                            selectedAvatarColor === color
+                                                ? 'border-white scale-110'
+                                                : 'border-gray-600 hover:border-gray-400'
+                                        }`}
+                                        style={{ backgroundColor: color }}
+                                        disabled={isLoading}
+                                        aria-label={`Select ${color} color`}
                                     />
-                                </div>
-                                <div>
-                                    <label htmlFor="bio" className="text-xs font-semibold text-gray-400 uppercase">Bio</label>
-                                    <textarea
-                                        id="bio"
-                                        value={bio}
-                                        onChange={(e) => setBio(e.target.value)}
-                                        rows={3}
-                                        className="w-full bg-gray-900/60 border border-gray-700 rounded-md p-3 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none"
-                                        placeholder="Tell us a bit about yourself..."
-                                        maxLength={200}
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">{bio.length}/200 characters</p>
-                                </div>
+                                ))}
                             </div>
                         </div>
                     </div>
+
+                    {/* Profile Info */}
+                    <div className="flex-1 space-y-4">
+                        <div>
+                            <label htmlFor="display-name" className="text-xs font-semibold text-gray-400 uppercase">Display Name</label>
+                            <input
+                                id="display-name"
+                                type="text"
+                                value={displayName}
+                                onChange={(e) => setDisplayName(e.target.value)}
+                                className="w-full bg-gray-900/60 border border-gray-700 rounded-md p-3 text-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                                placeholder="Your display name"
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="bio" className="text-xs font-semibold text-gray-400 uppercase">Bio</label>
+                            <textarea
+                                id="bio"
                                 value={bio}
                                 onChange={(e) => setBio(e.target.value)}
                                 rows={3}
