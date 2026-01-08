@@ -28,7 +28,7 @@ import PoCommunicationModal from '../components/PoCommunicationModal';
 import PODetailModal from '../components/PODetailModal';
 import ReorderQueueDashboard, { ReorderQueueVendorGroup } from '../components/ReorderQueueDashboard';
 import DraftPOReviewSection from '../components/DraftPOReviewSection';
-import POTrackingDashboard from '../components/POTrackingDashboard';
+// POTrackingDashboard removed - consolidated into UnifiedPOList
 import ThreeWayMatchReviewQueue from '../components/ThreeWayMatchReviewQueue';
 import ThreeWayMatchModal from '../components/ThreeWayMatchModal';
 import { InvoiceReviewModal } from '../components/InvoiceReviewModal';
@@ -1068,21 +1068,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     />
                 )}
 
-                {/* DETAILED VIEW - Original complex layout */}
+                {/* DETAILED VIEW - Only ThreeWayMatchReviewQueue (POTrackingDashboard consolidated into UnifiedPOList) */}
                 {viewMode !== 'unified' && (
-                    <>
-                        {/* PO Tracking Dashboard with integrated Vendor Attention Alerts */}
-                        <div id="po-tracking">
-                            <POTrackingDashboard addToast={addToast} />
-                        </div>
-
-                        {/* Invoice & Three-Way Match Review Queue - Auto-hides when empty */}
-                        <ThreeWayMatchReviewQueue
-                            addToast={addToast}
-                            maxItems={10}
-                            compact
-                        />
-                    </>
+                    <ThreeWayMatchReviewQueue
+                        addToast={addToast}
+                        maxItems={10}
+                        compact
+                    />
                 )}
 
                 {/* Finale Purchase Orders - Current/Open POs from Finale API (only in detailed view) */}
@@ -1191,7 +1183,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 >
                                                     <div className="flex items-center gap-4">
                                                         <div>
-                                                            <div className={`text-lg font-semibold font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'
+                                                            <div className={`text-lg font-semibold font-mono ${isDark ? 'text-white' : 'text-gray-900'
                                                                 }`}>
                                                                 PO #{fpo.orderId}
                                                             </div>
@@ -1269,7 +1261,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <div className={`text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                                                            <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                                                 ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                                                             </div>
                                                             <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
@@ -1528,7 +1520,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-blue-200/60'}`} />
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                                <h2 className={`text-xl font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Internal Purchase Orders</h2>
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Internal Purchase Orders</h2>
                                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDark ? 'bg-slate-800/50 text-gray-300 border border-slate-700' : 'bg-gray-100 text-gray-700 border border-gray-300'}`}>
                                     {filteredPOCount} total
                                     {totalPOCount !== filteredPOCount && (
@@ -1609,19 +1601,19 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         {sortedPurchaseOrders.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                                 <div className={`rounded-full p-6 mb-4 ${isDark ? 'bg-gray-700/30' : 'bg-gray-100'}`}>
-                                    <DocumentTextIcon className={`w-16 h-16 ${isDark ? 'text-gray-500' : 'text-blue-400'}`} />
+                                    <DocumentTextIcon className={`w-16 h-16 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
                                 </div>
                                 <h3 className={`text-xl font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                     {purchaseOrders.length === 0 ? 'No Purchase Orders Yet' : 'No Matching Purchase Orders'}
                                 </h3>
-                                <p className={`mb-4 max-w-md ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>
+                                <p className={`mb-4 max-w-md ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                                     {purchaseOrders.length === 0
                                         ? "Get started by creating a purchase order manually or importing from your Finale inventory system."
                                         : `${purchaseOrders.length} purchase order${purchaseOrders.length === 1 ? '' : 's'} exist, but none match your current filters.`}
                                 </p>
                                 {purchaseOrders.length > 0 && (
                                     <div className={`text-sm mb-4 space-y-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                                        <div>Current filter: <span className={isDark ? 'text-gray-400' : 'text-blue-600'}>Date = {dateFilter === 'all' ? 'All Time' : dateFilter === '30days' ? 'Last 30 Days' : dateFilter === '90days' ? 'Last 90 Days' : 'Last 12 Months'}</span></div>
+                                        <div>Current filter: <span className={isDark ? 'text-gray-400' : 'text-gray-700'}>Date = {dateFilter === 'all' ? 'All Time' : dateFilter === '30days' ? 'Last 30 Days' : dateFilter === '90days' ? 'Last 90 Days' : 'Last 12 Months'}</span></div>
                                         {dateFilter !== 'all' && (
                                             <div className="flex gap-2 justify-center mt-3">
                                                 <Button
@@ -1661,20 +1653,20 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             <table className={`min-w-full divide-y ${isDark ? 'divide-slate-800' : 'divide-gray-200'}`}>
                                 <thead className={`sticky top-0 z-10 ${isDark ? 'bg-slate-950/50' : 'bg-gray-50/90'}`}>
                                     <tr>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>PO Number</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Vendor</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Status</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Date Created</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Expected Date</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Tracking</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Total</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Actions</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>PO Number</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Vendor</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Status</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Date Created</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Expected Date</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Tracking</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Total</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className={`divide-y ${isDark ? 'bg-slate-950/30 divide-slate-800/50' : 'bg-white/80 divide-gray-100'}`}>
                                     {sortedPurchaseOrders.map((po) => (
                                         <tr key={po.id} className={`transition-colors duration-200 cursor-pointer ${isDark ? 'hover:bg-slate-900/50' : 'hover:bg-gray-50'}`} onClick={() => handleViewPODetail(po)}>
-                                            <td className={`px-6 py-3 whitespace-nowrap text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{po.orderId || po.id}</td>
+                                            <td className={`px-6 py-3 whitespace-nowrap text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{po.orderId || po.id}</td>
                                             <td className={`px-6 py-1 whitespace-nowrap text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                 <div className="flex items-center gap-2">
                                                     <span>{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</span>
@@ -1774,7 +1766,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         <div className="flex items-start justify-between">
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <h3 className={`text-lg font-mono font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{po.orderId || po.id}</h3>
+                                                    <h3 className={`text-lg font-mono font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{po.orderId || po.id}</h3>
                                                     {po.followUpCount && po.followUpCount > 0 && (
                                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/20 text-sky-200 border border-sky-500/40">
                                                             FU {po.followUpCount}

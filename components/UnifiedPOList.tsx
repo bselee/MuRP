@@ -635,7 +635,7 @@ const UnifiedPOList: React.FC<UnifiedPOListProps> = ({
                       <a
                         href="#"
                         onClick={(e) => { e.stopPropagation(); onViewDetails?.(po); }}
-                        className={`font-semibold hover:underline ${isDark ? 'text-amber-400' : 'text-amber-700'}`}
+                        className={`font-semibold hover:underline ${isDark ? 'text-white' : 'text-gray-900'}`}
                       >
                         {po.orderId}
                       </a>
@@ -670,7 +670,7 @@ const UnifiedPOList: React.FC<UnifiedPOListProps> = ({
                       ) : (
                         <span className={`${isDark ? 'text-gray-500' : 'text-stone-400'}`}>
                           {statusKey === 'unknown' ? (
-                            <span className={`${isDark ? 'text-amber-400' : 'text-amber-600'}`}>UNKNOWN</span>
+                            <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>UNKNOWN</span>
                           ) : '—'}
                         </span>
                       )}
