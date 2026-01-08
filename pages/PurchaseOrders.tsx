@@ -931,7 +931,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>📦 External Purchase Orders</h2>
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>📦 Purchase Orders</h2>
                                 <StatusBadge variant="primary" className="ml-2">
                                     {finalePurchaseOrders.filter(fpo => {
                                         // Exclude dropship POs - only those with "DropshipPO" in the order ID

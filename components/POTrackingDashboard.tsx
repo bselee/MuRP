@@ -226,11 +226,10 @@ const POTrackingDashboard: React.FC<POTrackingDashboardProps> = ({ addToast }) =
     <div className={`rounded-xl shadow-sm border p-6 space-y-4 ${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'}`}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className={`text-xl font-semibold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <h2 className={`text-xl font-semibold flex items-center gap-2 ${isDark ? 'text-white' : 'text-amber-800'}`}>
             <TruckIcon className={`w-5 h-5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
-            PO Tracking & Email Intelligence
+            PO Tracking
           </h2>
-          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Real-time shipment visibility with AI-powered email analysis</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
