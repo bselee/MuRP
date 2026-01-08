@@ -880,16 +880,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     return (
                         <div className="max-w-xs group relative" >
                             <div>
-                                <span className={`font-medium truncate block ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                <span className={`truncate block ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                     {item.name}
                                 </span>
                                 {bomCount > 0 && (
                                     <div className="relative inline-block mt-0.5">
                                         <span
                                             onClick={() => handleBomClick(item)}
-                                            className={`cursor-pointer text-xs transition-colors ${isDark 
-                                                ? 'text-blue-400 hover:text-blue-300' 
-                                                : 'text-gray-500 hover:text-gray-500'}`}
+                                            className={`cursor-pointer text-xs transition-colors ${isDark
+                                                ? 'text-gray-500 hover:text-gray-400'
+                                                : 'text-gray-500 hover:text-gray-600'}`}
                                             title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
                                         >
                                             BOM ({bomCount})

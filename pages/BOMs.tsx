@@ -1297,7 +1297,7 @@ const BOMs: React.FC<BOMsProps> = ({
                             <div className="flex items-center gap-2">
                               <Button
                                 onClick={() => onNavigateToInventory?.(bom.finishedSku)}
-                                className={`text-sm font-bold font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'} hover:text-blue-300 transition-colors underline decoration-dotted ${isDark ? 'decoration-blue-600/50' : 'decoration-blue-400'} hover:decoration-blue-300`}
+                                className={`text-sm font-bold font-mono ${isDark ? 'text-white' : 'text-gray-900'} hover:opacity-70 transition-colors underline decoration-dotted ${isDark ? 'decoration-gray-500' : 'decoration-gray-400'}`}
                               >
                                 {bom.finishedSku}
                               </Button>
