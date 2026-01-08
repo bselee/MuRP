@@ -4,18 +4,32 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * This agent monitors stock levels and predicts shortages before they occur.
+ * Uses runway-based calculations to ensure proactive ordering.
  *
- * Key Behaviors:
- * 1. Monitors all SKU stock levels against reorder points
- * 2. Predicts shortages based on consumption velocity
- * 3. Triggers reorder alerts before stockouts occur
- * 4. Adjusts reorder points based on demand patterns
+ * Key Concepts:
+ * - RUNWAY: Days of stock on hand = stock / daily_consumption
+ * - TARGET: 30 days of stock minimum (1 month buffer)
+ * - LEAD TIME: Days until order arrives
  *
- * Example:
- * - SKU BOTTLE-16OZ has 500 units, consumes 50/day
- * - Agent calculates 10 days of stock remaining
- * - Lead time is 14 days
- * - Agent flags CRITICAL: "Order now or stockout in 10 days"
+ * Status Levels:
+ * - COOKED (0 units): Out of stock - emergency action needed
+ * - CRITICAL (<14 days OR runway < lead_time): Order immediately
+ * - WARNING (14-30 days): Plan order this week
+ * - HEALTHY (>30 days): No action needed
+ *
+ * Velocity Analysis (Fine-grained):
+ * - SURGING: >100% increase (7d vs 30d)
+ * - ACCELERATING: 50-100% increase
+ * - WARMING: 20-50% increase
+ * - STABLE: -20% to +20%
+ * - COOLING: 20-50% decrease
+ * - SLOWING: 50-100% decrease
+ * - STALLED: >100% decrease
+ *
+ * Item Types:
+ * - PURCHASED: Standard inventory items ordered from vendors
+ * - MANUFACTURED (BOM): Finished goods built from components
+ *   - For BOMs: Check component availability, not just finished stock
  *
  * @module services/inventoryGuardianAgent
  */
@@ -35,27 +49,55 @@ import {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface InventoryGuardianConfig {
-  reorder_threshold: number; // Multiplier for safety stock (e.g., 0.2 = 20% buffer)
+  target_days_of_stock: number; // Target runway (default 30 days)
+  critical_runway_days: number; // Runway below this is CRITICAL (default 14)
   check_interval: number; // Seconds between checks
-  critical_days_threshold: number; // Days of stock considered critical
-  alert_on_velocity_change: boolean; // Alert if consumption spikes
-  velocity_change_threshold: number; // % change to trigger alert
+  safety_buffer_pct: number; // Safety stock multiplier (e.g., 0.2 = 20% buffer)
 }
 
+// Fine-grained velocity trends
+export type VelocityTrend =
+  | 'SURGING'      // >100% increase
+  | 'ACCELERATING' // 50-100% increase
+  | 'WARMING'      // 20-50% increase
+  | 'STABLE'       // -20% to +20%
+  | 'COOLING'      // 20-50% decrease
+  | 'SLOWING'      // 50-100% decrease
+  | 'STALLED';     // >100% decrease (or no sales)
+
+// Stock status levels
+export type StockStatus =
+  | 'COOKED'    // 0 units - out of stock
+  | 'CRITICAL'  // <14 days OR runway < lead_time
+  | 'WARNING'   // 14-30 days
+  | 'HEALTHY';  // >30 days
+
+// Item types for different handling
+export type ItemCategory =
+  | 'PURCHASED'     // Standard vendor-ordered items
+  | 'MANUFACTURED'; // BOM/finished goods (need to be built)
+
 export interface StockLevelAlert {
-  severity: 'CRITICAL' | 'WARNING' | 'INFO';
+  severity: StockStatus;
   sku: string;
   product_name: string;
+  item_category: ItemCategory;
   current_stock: number;
   reorder_point: number;
-  days_of_stock: number;
+  runway_days: number; // Days of stock on hand
+  target_runway: number; // Target days (30)
   daily_consumption: number;
   lead_time_days: number;
+  velocity_trend: VelocityTrend;
+  seasonal_factor: number; // Multiplier for seasonal adjustment
   message: string;
   recommended_action: string;
   recommended_order_qty: number;
   estimated_cost: number;
   order_by_date: Date | null;
+  // BOM-specific fields
+  buildable_qty?: number; // How many can be built from components
+  missing_components?: Array<{ sku: string; name: string; short_qty: number }>;
 }
 
 export interface StockHealthSummary {
@@ -63,10 +105,13 @@ export interface StockHealthSummary {
   healthy_skus: number;
   warning_skus: number;
   critical_skus: number;
-  out_of_stock_skus: number;
+  cooked_skus: number; // Out of stock
+  purchased_items: number;
+  manufactured_items: number;
   total_inventory_value: number;
   at_risk_value: number;
   alerts: StockLevelAlert[];
+  bom_alerts: StockLevelAlert[]; // Separate list for BOMs needing builds
 }
 
 export interface VelocityAnalysis {
@@ -74,18 +119,129 @@ export interface VelocityAnalysis {
   product_name: string;
   avg_daily_30d: number;
   avg_daily_7d: number;
+  avg_daily_90d: number; // Added for seasonal comparison
   velocity_change_pct: number;
-  trend: 'ACCELERATING' | 'STABLE' | 'DECELERATING';
+  trend: VelocityTrend;
+  seasonal_variance: number; // % difference from 90-day average
   alert_reason: string | null;
+  runway_impact: string; // How velocity affects runway
 }
 
 const DEFAULT_CONFIG: InventoryGuardianConfig = {
-  reorder_threshold: 0.2,
+  target_days_of_stock: 30, // 1 month buffer
+  critical_runway_days: 14, // 2 weeks is critical
   check_interval: 3600,
-  critical_days_threshold: 7,
-  alert_on_velocity_change: true,
-  velocity_change_threshold: 50,
+  safety_buffer_pct: 0.2,
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔧 Helper Functions - Velocity & Status
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Determine fine-grained velocity trend from percentage change
+ */
+function getVelocityTrend(changePct: number): VelocityTrend {
+  if (changePct > 100) return 'SURGING';
+  if (changePct > 50) return 'ACCELERATING';
+  if (changePct > 20) return 'WARMING';
+  if (changePct >= -20) return 'STABLE';
+  if (changePct >= -50) return 'COOLING';
+  if (changePct >= -100) return 'SLOWING';
+  return 'STALLED';
+}
+
+/**
+ * Get velocity trend description for UI
+ */
+function getVelocityDescription(trend: VelocityTrend, changePct: number): string {
+  const pct = Math.abs(changePct).toFixed(0);
+  switch (trend) {
+    case 'SURGING': return `Demand surging +${pct}% - runway shrinking fast`;
+    case 'ACCELERATING': return `Demand accelerating +${pct}% - monitor closely`;
+    case 'WARMING': return `Demand warming +${pct}% - slight uptick`;
+    case 'STABLE': return 'Demand stable';
+    case 'COOLING': return `Demand cooling -${pct}% - may extend runway`;
+    case 'SLOWING': return `Demand slowing -${pct}% - consider reducing orders`;
+    case 'STALLED': return 'Demand stalled - minimal movement';
+  }
+}
+
+/**
+ * Determine stock status based on runway and lead time
+ */
+function getStockStatus(
+  stock: number,
+  runwayDays: number,
+  leadTimeDays: number,
+  criticalThreshold: number,
+  targetDays: number
+): StockStatus {
+  if (stock === 0) return 'COOKED';
+  if (runwayDays < criticalThreshold || runwayDays < leadTimeDays) return 'CRITICAL';
+  if (runwayDays < targetDays) return 'WARNING';
+  return 'HEALTHY';
+}
+
+/**
+ * Get status message based on stock status
+ */
+function getStatusMessage(
+  status: StockStatus,
+  productName: string,
+  sku: string,
+  runwayDays: number,
+  leadTimeDays: number,
+  itemCategory: ItemCategory
+): string {
+  const itemType = itemCategory === 'MANUFACTURED' ? 'BOM' : 'item';
+
+  switch (status) {
+    case 'COOKED':
+      return `COOKED: ${productName} (${sku}) - Zero stock, ${itemCategory === 'MANUFACTURED' ? 'build needed' : 'order immediately'}`;
+    case 'CRITICAL':
+      if (runwayDays < leadTimeDays) {
+        return `CRITICAL: ${productName} - ${runwayDays}d runway < ${leadTimeDays}d lead time. Will stockout before delivery.`;
+      }
+      return `CRITICAL: ${productName} - Only ${runwayDays} days of stock. ${itemCategory === 'MANUFACTURED' ? 'Schedule build now' : 'Order now'}.`;
+    case 'WARNING':
+      return `WARNING: ${productName} - ${runwayDays} days runway, below 30d target. Plan ${itemCategory === 'MANUFACTURED' ? 'build' : 'order'} this week.`;
+    case 'HEALTHY':
+      return `OK: ${productName} - ${runwayDays} days runway`;
+  }
+}
+
+/**
+ * Get recommended action based on status and item type
+ */
+function getRecommendedAction(
+  status: StockStatus,
+  itemCategory: ItemCategory,
+  runwayDays: number,
+  leadTimeDays: number
+): string {
+  if (itemCategory === 'MANUFACTURED') {
+    switch (status) {
+      case 'COOKED': return 'Schedule emergency build - check component availability';
+      case 'CRITICAL':
+        return runwayDays < leadTimeDays
+          ? 'Build ASAP - will stockout during production lead time'
+          : 'Schedule build this week';
+      case 'WARNING': return 'Plan production run within 2 weeks';
+      case 'HEALTHY': return 'No action needed - monitor velocity';
+    }
+  } else {
+    switch (status) {
+      case 'COOKED': return 'Place emergency order immediately - contact vendor';
+      case 'CRITICAL':
+        return runwayDays < leadTimeDays
+          ? 'URGENT: Order now or stockout guaranteed. Consider expedited shipping.'
+          : 'Order now to maintain 30-day buffer';
+      case 'WARNING': return 'Plan order this week to maintain inventory buffer';
+      case 'HEALTHY': return 'No action needed';
+    }
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 📊 Core Functions
@@ -172,8 +328,8 @@ export async function runInventoryHealthCheck(
 }
 
 /**
- * Analyze consumption velocity changes
- * Detects sudden spikes or drops in demand
+ * Analyze consumption velocity changes with fine-grained trends
+ * Detects sudden spikes or drops in demand with seasonal context
  */
 export async function analyzeVelocityChanges(
   config: Partial<InventoryGuardianConfig> = {}
@@ -182,80 +338,123 @@ export async function analyzeVelocityChanges(
   const analyses: VelocityAnalysis[] = [];
 
   try {
-    // Get consumption data for last 30 days
+    // Get consumption data for last 90 days (for seasonal comparison)
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Get ACTIVE inventory items only
+    // Get ACTIVE inventory items with stock info
     const { data: inventory } = await supabase
       .from('inventory_items')
-      .select('sku, product_name, name')
-      .eq('is_active', true);  // CRITICAL: Only fetch active items
+      .select('sku, product_name, name, available_quantity, avg_daily_consumption, lead_time_days')
+      .eq('is_active', true);
 
     if (!inventory) return [];
 
-    // Get consumption logs
+    // Get consumption logs for 90 days
     const { data: consumptionLogs } = await supabase
       .from('sku_consumption_log')
       .select('sku, quantity_consumed, consumed_at')
-      .gte('consumed_at', thirtyDaysAgo.toISOString());
+      .gte('consumed_at', ninetyDaysAgo.toISOString());
 
     if (!consumptionLogs) return [];
 
-    // Calculate velocity per SKU
-    const skuMap = new Map<string, { total30d: number; total7d: number }>();
+    // Calculate velocity per SKU across time periods
+    const skuMap = new Map<string, { total90d: number; total30d: number; total7d: number }>();
 
     for (const log of consumptionLogs) {
-      const existing = skuMap.get(log.sku) || { total30d: 0, total7d: 0 };
-      existing.total30d += log.quantity_consumed || 0;
-      
-      if (new Date(log.consumed_at) >= sevenDaysAgo) {
+      const logDate = new Date(log.consumed_at);
+      const existing = skuMap.get(log.sku) || { total90d: 0, total30d: 0, total7d: 0 };
+
+      existing.total90d += log.quantity_consumed || 0;
+
+      if (logDate >= thirtyDaysAgo) {
+        existing.total30d += log.quantity_consumed || 0;
+      }
+
+      if (logDate >= sevenDaysAgo) {
         existing.total7d += log.quantity_consumed || 0;
       }
-      
+
       skuMap.set(log.sku, existing);
     }
 
-    // Analyze each SKU
+    // Analyze each SKU with fine-grained velocity
     for (const item of inventory) {
       const consumption = skuMap.get(item.sku);
       if (!consumption) continue;
 
+      const avg90d = consumption.total90d / 90;
       const avg30d = consumption.total30d / 30;
       const avg7d = consumption.total7d / 7;
-      
-      if (avg30d === 0) continue; // Skip items with no historical consumption
 
-      const changePct = ((avg7d - avg30d) / avg30d) * 100;
-      
-      let trend: 'ACCELERATING' | 'STABLE' | 'DECELERATING';
+      // Skip items with no meaningful consumption
+      if (avg30d < 0.01 && avg7d < 0.01) continue;
+
+      // Calculate velocity change (7d vs 30d)
+      const changePct = avg30d > 0 ? ((avg7d - avg30d) / avg30d) * 100 : 0;
+
+      // Calculate seasonal variance (30d vs 90d average)
+      const seasonalVariance = avg90d > 0 ? ((avg30d - avg90d) / avg90d) * 100 : 0;
+
+      // Get fine-grained trend
+      const trend = getVelocityTrend(changePct);
+
+      // Calculate runway impact
+      const currentStock = item.available_quantity || 0;
+      const currentRunway = avg7d > 0 ? Math.floor(currentStock / avg7d) : 999;
+      const historicalRunway = avg30d > 0 ? Math.floor(currentStock / avg30d) : 999;
+      const runwayDiff = currentRunway - historicalRunway;
+
+      // Build alert reason based on severity
       let alertReason: string | null = null;
 
-      if (changePct > cfg.velocity_change_threshold) {
-        trend = 'ACCELERATING';
-        alertReason = `Consumption up ${changePct.toFixed(0)}% - may stockout sooner than expected`;
-      } else if (changePct < -cfg.velocity_change_threshold) {
-        trend = 'DECELERATING';
-        alertReason = `Consumption down ${Math.abs(changePct).toFixed(0)}% - consider reducing order quantity`;
+      if (trend === 'SURGING' || trend === 'ACCELERATING') {
+        alertReason = getVelocityDescription(trend, changePct);
+      } else if (trend === 'SLOWING' || trend === 'STALLED') {
+        alertReason = getVelocityDescription(trend, changePct);
+      } else if (Math.abs(seasonalVariance) > 30) {
+        alertReason = `Seasonal shift: ${seasonalVariance > 0 ? '+' : ''}${seasonalVariance.toFixed(0)}% vs 90d avg`;
+      }
+
+      // Build runway impact description
+      let runwayImpact: string;
+      if (runwayDiff < -14) {
+        runwayImpact = `Runway shrinking fast: ${currentRunway}d (was ${historicalRunway}d at historical rate)`;
+      } else if (runwayDiff > 14) {
+        runwayImpact = `Runway extending: ${currentRunway}d (was ${historicalRunway}d at historical rate)`;
       } else {
-        trend = 'STABLE';
+        runwayImpact = `Runway stable: ~${currentRunway} days`;
       }
 
       analyses.push({
         sku: item.sku,
         product_name: item.product_name || item.name || item.sku,
+        avg_daily_90d: avg90d,
         avg_daily_30d: avg30d,
         avg_daily_7d: avg7d,
         velocity_change_pct: changePct,
         trend,
+        seasonal_variance: seasonalVariance,
         alert_reason: alertReason,
+        runway_impact: runwayImpact,
       });
     }
 
-    return analyses.filter(a => a.alert_reason !== null);
+    // Return all analyses, not just those with alerts (for complete picture)
+    return analyses.sort((a, b) => {
+      // Sort by trend severity
+      const trendOrder: Record<VelocityTrend, number> = {
+        'SURGING': 0, 'ACCELERATING': 1, 'WARMING': 2,
+        'STABLE': 3, 'COOLING': 4, 'SLOWING': 5, 'STALLED': 6
+      };
+      return trendOrder[a.trend] - trendOrder[b.trend];
+    });
   } catch (error) {
     console.error('[InventoryGuardian] Velocity analysis failed:', error);
     return [];
@@ -332,6 +531,7 @@ export async function getReorderPointRecommendations(): Promise<Array<{
 
 /**
  * Main agent run function - called by UI and scheduler
+ * Returns detailed runway-based analysis with velocity trends
  */
 export async function runInventoryGuardianAgent(
   config: Partial<InventoryGuardianConfig> = {}
@@ -342,24 +542,90 @@ export async function runInventoryGuardianAgent(
   reorder_recommendations: Array<{ sku: string; product_name: string; current_reorder_point: number; recommended_reorder_point: number; reason: string }>;
   output: string[];
 }> {
+  const cfg = { ...DEFAULT_CONFIG, ...config };
   const output: string[] = [];
+
   output.push(`[${new Date().toISOString()}] Inventory Guardian starting health check...`);
+  output.push(`  Target runway: ${cfg.target_days_of_stock} days | Critical threshold: ${cfg.critical_runway_days} days`);
 
   const summary = await runInventoryHealthCheck(config);
-  output.push(`✓ Scanned ${summary.total_skus} SKUs`);
-  output.push(`  - Healthy: ${summary.healthy_skus}`);
-  output.push(`  - Warning: ${summary.warning_skus}`);
-  output.push(`  - Critical: ${summary.critical_skus}`);
-  output.push(`  - Out of Stock: ${summary.out_of_stock_skus}`);
 
-  const velocityAlerts = await analyzeVelocityChanges(config);
-  if (velocityAlerts.length > 0) {
-    output.push(`⚠ ${velocityAlerts.length} SKUs with velocity changes detected`);
+  // Summary line
+  output.push('');
+  output.push(`=== INVENTORY HEALTH SUMMARY ===`);
+  output.push(`Scanned: ${summary.total_skus} SKUs (${summary.purchased_items} purchased, ${summary.manufactured_items} BOMs)`);
+  output.push('');
+
+  // Status breakdown
+  if (summary.cooked_skus > 0) {
+    output.push(`COOKED (0 stock): ${summary.cooked_skus} items - IMMEDIATE ACTION REQUIRED`);
+  }
+  if (summary.critical_skus > 0) {
+    output.push(`CRITICAL (<${cfg.critical_runway_days}d runway): ${summary.critical_skus} items`);
+  }
+  if (summary.warning_skus > 0) {
+    output.push(`WARNING (${cfg.critical_runway_days}-${cfg.target_days_of_stock}d runway): ${summary.warning_skus} items`);
+  }
+  output.push(`HEALTHY (>${cfg.target_days_of_stock}d runway): ${summary.healthy_skus} items`);
+  output.push('');
+
+  // Top alerts for purchased items
+  if (summary.alerts.length > 0) {
+    output.push(`--- PURCHASED ITEMS NEEDING ACTION (${summary.alerts.length}) ---`);
+    summary.alerts.slice(0, 5).forEach(alert => {
+      const status = alert.severity === 'COOKED' ? 'COOKED' :
+                    alert.severity === 'CRITICAL' ? 'CRIT' : 'WARN';
+      output.push(`[${status}] ${alert.sku}: ${alert.runway_days}d runway, ${alert.current_stock} units`);
+      output.push(`       → ${alert.recommended_action}`);
+    });
+    if (summary.alerts.length > 5) {
+      output.push(`       ... and ${summary.alerts.length - 5} more`);
+    }
+    output.push('');
   }
 
+  // BOM alerts (finished goods needing builds)
+  if (summary.bom_alerts.length > 0) {
+    output.push(`--- BOMS NEEDING BUILDS (${summary.bom_alerts.length}) ---`);
+    summary.bom_alerts.slice(0, 5).forEach(alert => {
+      const status = alert.severity === 'COOKED' ? 'COOKED' :
+                    alert.severity === 'CRITICAL' ? 'CRIT' : 'WARN';
+      output.push(`[${status}] ${alert.sku}: ${alert.runway_days}d runway, ${alert.current_stock} units`);
+      output.push(`       → ${alert.recommended_action}`);
+    });
+    if (summary.bom_alerts.length > 5) {
+      output.push(`       ... and ${summary.bom_alerts.length - 5} more BOMs`);
+    }
+    output.push('');
+  }
+
+  // Velocity analysis
+  const velocityAlerts = await analyzeVelocityChanges(config);
+  const significantVelocity = velocityAlerts.filter(v =>
+    v.trend === 'SURGING' || v.trend === 'ACCELERATING' || v.trend === 'SLOWING' || v.trend === 'STALLED'
+  );
+
+  if (significantVelocity.length > 0) {
+    output.push(`--- VELOCITY ALERTS (${significantVelocity.length}) ---`);
+    significantVelocity.slice(0, 5).forEach(v => {
+      output.push(`[${v.trend}] ${v.sku}: ${v.velocity_change_pct > 0 ? '+' : ''}${v.velocity_change_pct.toFixed(0)}%`);
+      output.push(`       ${v.runway_impact}`);
+      if (Math.abs(v.seasonal_variance) > 20) {
+        output.push(`       Seasonal: ${v.seasonal_variance > 0 ? '+' : ''}${v.seasonal_variance.toFixed(0)}% vs 90d avg`);
+      }
+    });
+    output.push('');
+  }
+
+  // Reorder point recommendations
   const recommendations = await getReorderPointRecommendations();
   if (recommendations.length > 0) {
-    output.push(`📊 ${recommendations.length} reorder point adjustments recommended`);
+    output.push(`--- ROP ADJUSTMENTS RECOMMENDED (${recommendations.length}) ---`);
+    recommendations.slice(0, 3).forEach(r => {
+      output.push(`${r.sku}: ${r.current_reorder_point} → ${r.recommended_reorder_point}`);
+      output.push(`       ${r.reason}`);
+    });
+    output.push('');
   }
 
   output.push(`[${new Date().toISOString()}] Inventory Guardian complete`);
@@ -379,17 +645,20 @@ export async function runInventoryGuardianAgent(
 
 /**
  * Process inventory items and generate health summary with alerts
- * Extracted to avoid code duplication between view and fallback queries
+ * Uses runway-based logic with 30-day target and BOM distinction
  */
 function processInventoryForHealthCheck(
   inventory: any[],
   cfg: InventoryGuardianConfig
 ): StockHealthSummary {
   const alerts: StockLevelAlert[] = [];
+  const bomAlerts: StockLevelAlert[] = [];
   let healthyCount = 0;
   let warningCount = 0;
   let criticalCount = 0;
-  let outOfStockCount = 0;
+  let cookedCount = 0;
+  let purchasedCount = 0;
+  let manufacturedCount = 0;
   let totalValue = 0;
   let atRiskValue = 0;
 
@@ -401,8 +670,24 @@ function processInventoryForHealthCheck(
     const unitCost = item.unit_cost || item.cost || 0;
     const productName = item.product_name || item.name || item.sku;
 
-    // Calculate days of stock
-    const daysOfStock = dailyConsumption > 0
+    // Determine if this is a manufactured item (BOM/finished good)
+    const itemFlowType = item.item_flow_type || '';
+    const itemType = item.item_type || '';
+    const isManufactured = itemFlowType === 'manufactured' ||
+                          itemType === 'Manufactured' ||
+                          itemType === 'BOM' ||
+                          itemType === 'Finished Good';
+
+    const itemCategory: ItemCategory = isManufactured ? 'MANUFACTURED' : 'PURCHASED';
+
+    if (isManufactured) {
+      manufacturedCount++;
+    } else {
+      purchasedCount++;
+    }
+
+    // Calculate runway (days of stock on hand)
+    const runwayDays = dailyConsumption > 0
       ? Math.floor(stock / dailyConsumption)
       : (stock > 0 ? 999 : 0);
 
@@ -410,102 +695,125 @@ function processInventoryForHealthCheck(
     const itemValue = stock * unitCost;
     totalValue += itemValue;
 
-    // Determine status
-    if (stock === 0) {
-      outOfStockCount++;
-      atRiskValue += (reorderPoint * unitCost); // Value needed to reach reorder point
+    // Get stock status using runway-based logic
+    const status = getStockStatus(
+      stock,
+      runwayDays,
+      leadTime,
+      cfg.critical_runway_days,
+      cfg.target_days_of_stock
+    );
 
-      alerts.push({
-        severity: 'CRITICAL',
-        sku: item.sku,
-        product_name: productName,
-        current_stock: stock,
-        reorder_point: reorderPoint,
-        days_of_stock: 0,
-        daily_consumption: dailyConsumption,
-        lead_time_days: leadTime,
-        message: `OUT OF STOCK: ${productName} (${item.sku})`,
-        recommended_action: 'Place emergency order immediately',
-        recommended_order_qty: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold),
-        estimated_cost: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold) * unitCost,
-        order_by_date: new Date(), // Order NOW
-      });
-    } else if (daysOfStock <= cfg.critical_days_threshold || stock <= reorderPoint) {
-      criticalCount++;
-      atRiskValue += itemValue;
+    // Calculate order quantity to reach 30-day target
+    const orderQty = calculateOrderQty(
+      cfg.target_days_of_stock,
+      dailyConsumption,
+      leadTime,
+      cfg.safety_buffer_pct
+    );
 
-      const orderByDate = new Date();
-      orderByDate.setDate(orderByDate.getDate() + Math.max(0, daysOfStock - leadTime));
+    // Calculate order-by date
+    let orderByDate: Date | null = null;
+    if (status !== 'HEALTHY') {
+      orderByDate = new Date();
+      const daysUntilAction = Math.max(0, runwayDays - leadTime);
+      orderByDate.setDate(orderByDate.getDate() + daysUntilAction);
+    }
 
-      alerts.push({
-        severity: 'CRITICAL',
-        sku: item.sku,
-        product_name: productName,
-        current_stock: stock,
-        reorder_point: reorderPoint,
-        days_of_stock: daysOfStock,
-        daily_consumption: dailyConsumption,
-        lead_time_days: leadTime,
-        message: `CRITICAL: ${productName} has only ${daysOfStock} days of stock (${stock} units)`,
-        recommended_action: daysOfStock < leadTime
-          ? 'Place emergency order - will stockout before delivery'
-          : 'Order now to prevent stockout',
-        recommended_order_qty: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold),
-        estimated_cost: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold) * unitCost,
-        order_by_date: orderByDate,
-      });
-    } else if (daysOfStock <= leadTime * 1.5) {
-      warningCount++;
+    // Build alert
+    const alert: StockLevelAlert = {
+      severity: status,
+      sku: item.sku,
+      product_name: productName,
+      item_category: itemCategory,
+      current_stock: stock,
+      reorder_point: reorderPoint,
+      runway_days: runwayDays,
+      target_runway: cfg.target_days_of_stock,
+      daily_consumption: dailyConsumption,
+      lead_time_days: leadTime,
+      velocity_trend: 'STABLE', // Will be enriched later with velocity analysis
+      seasonal_factor: 1.0, // Default, enriched later
+      message: getStatusMessage(status, productName, item.sku, runwayDays, leadTime, itemCategory),
+      recommended_action: getRecommendedAction(status, itemCategory, runwayDays, leadTime),
+      recommended_order_qty: orderQty,
+      estimated_cost: orderQty * unitCost,
+      order_by_date: orderByDate,
+    };
 
-      const orderByDate = new Date();
-      orderByDate.setDate(orderByDate.getDate() + Math.max(0, daysOfStock - leadTime));
-
-      alerts.push({
-        severity: 'WARNING',
-        sku: item.sku,
-        product_name: productName,
-        current_stock: stock,
-        reorder_point: reorderPoint,
-        days_of_stock: daysOfStock,
-        daily_consumption: dailyConsumption,
-        lead_time_days: leadTime,
-        message: `WARNING: ${productName} approaching reorder point (${daysOfStock} days remaining)`,
-        recommended_action: 'Plan reorder within the week',
-        recommended_order_qty: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold),
-        estimated_cost: calculateOrderQty(reorderPoint, dailyConsumption, leadTime, cfg.reorder_threshold) * unitCost,
-        order_by_date: orderByDate,
-      });
-    } else {
-      healthyCount++;
+    // Update counts and at-risk value
+    switch (status) {
+      case 'COOKED':
+        cookedCount++;
+        atRiskValue += (cfg.target_days_of_stock * dailyConsumption * unitCost);
+        if (isManufactured) {
+          bomAlerts.push(alert);
+        } else {
+          alerts.push(alert);
+        }
+        break;
+      case 'CRITICAL':
+        criticalCount++;
+        atRiskValue += itemValue;
+        if (isManufactured) {
+          bomAlerts.push(alert);
+        } else {
+          alerts.push(alert);
+        }
+        break;
+      case 'WARNING':
+        warningCount++;
+        if (isManufactured) {
+          bomAlerts.push(alert);
+        } else {
+          alerts.push(alert);
+        }
+        break;
+      case 'HEALTHY':
+        healthyCount++;
+        break;
     }
   }
+
+  // Sort alerts by severity
+  const severityOrder: Record<StockStatus, number> = {
+    'COOKED': 0, 'CRITICAL': 1, 'WARNING': 2, 'HEALTHY': 3
+  };
 
   return {
     total_skus: inventory.length,
     healthy_skus: healthyCount,
     warning_skus: warningCount,
     critical_skus: criticalCount,
-    out_of_stock_skus: outOfStockCount,
+    cooked_skus: cookedCount,
+    purchased_items: purchasedCount,
+    manufactured_items: manufacturedCount,
     total_inventory_value: totalValue,
     at_risk_value: atRiskValue,
-    alerts: alerts.sort((a, b) => {
-      const severityOrder = { CRITICAL: 0, WARNING: 1, INFO: 2 };
-      return severityOrder[a.severity] - severityOrder[b.severity];
-    }),
+    alerts: alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]),
+    bom_alerts: bomAlerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]),
   };
 }
 
+/**
+ * Calculate order quantity to reach target runway (30 days)
+ * Formula: (targetDays * dailyConsumption) + (leadTime * dailyConsumption * safetyBuffer)
+ */
 function calculateOrderQty(
-  reorderPoint: number,
+  targetDays: number,
   dailyConsumption: number,
   leadTime: number,
-  safetyBuffer: number
+  safetyBufferPct: number
 ): number {
-  // Order enough to cover lead time + safety buffer to max stock level
-  const demandDuringLeadTime = dailyConsumption * leadTime;
-  const safetyStock = demandDuringLeadTime * safetyBuffer;
-  const targetStock = reorderPoint + demandDuringLeadTime + safetyStock;
-  return Math.ceil(targetStock);
+  if (dailyConsumption <= 0) return 0;
+
+  // Target stock = target days of runway
+  const targetStock = targetDays * dailyConsumption;
+
+  // Safety stock = lead time consumption with buffer
+  const safetyStock = leadTime * dailyConsumption * safetyBufferPct;
+
+  return Math.ceil(targetStock + safetyStock);
 }
 
 function getEmptySummary(): StockHealthSummary {
@@ -514,10 +822,13 @@ function getEmptySummary(): StockHealthSummary {
     healthy_skus: 0,
     warning_skus: 0,
     critical_skus: 0,
-    out_of_stock_skus: 0,
+    cooked_skus: 0,
+    purchased_items: 0,
+    manufactured_items: 0,
     total_inventory_value: 0,
     at_risk_value: 0,
     alerts: [],
+    bom_alerts: [],
   };
 }
 
