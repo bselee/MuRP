@@ -193,12 +193,13 @@ export default function PurchasingGuidanceDashboard() {
         });
     };
 
-    // Toggle all items
+    // Toggle all items (only items needing orders, not ones already on PO)
     const toggleSelectAll = () => {
-        if (selectedItems.size === advice.length) {
+        const needsOrderSkus = advice.filter(item => !item.linked_po).map(item => item.sku);
+        if (selectedItems.size === needsOrderSkus.length && needsOrderSkus.length > 0) {
             setSelectedItems(new Set());
         } else {
-            setSelectedItems(new Set(advice.map(item => item.sku)));
+            setSelectedItems(new Set(needsOrderSkus));
         }
     };
 
@@ -404,8 +405,12 @@ export default function PurchasingGuidanceDashboard() {
         }
     };
 
+    // Split advice into items needing action vs items already on order
+    const needsOrder = advice.filter(item => !item.linked_po);
+    const onOrder = advice.filter(item => !!item.linked_po);
+
     const selectedCount = selectedItems.size;
-    const allSelected = selectedCount === advice.length && advice.length > 0;
+    const allSelected = selectedCount === needsOrder.length && needsOrder.length > 0;
 
     return (
         <div className="space-y-6 relative">
@@ -527,13 +532,18 @@ export default function PurchasingGuidanceDashboard() {
                 </div>
             )}
 
-            {/* 3. Actionable Reorder Advice */}
+            {/* 3. ACTION REQUIRED - Items needing POs */}
             <div ref={replenishmentRef} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <h3 className="font-semibold text-slate-800 flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                            Action Required: Replenishment
+                            Action Required: Order Now
+                            {needsOrder.length > 0 && (
+                                <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-full ml-2">
+                                    {needsOrder.length} items
+                                </span>
+                            )}
                         </h3>
                         {selectedCount > 0 && (
                             <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
@@ -552,24 +562,21 @@ export default function PurchasingGuidanceDashboard() {
                                 {isCreatingPO ? 'Creating...' : `Create PO (${selectedCount})`}
                             </button>
                         )}
-                        <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                            Formula: Z × σD × √LT
-                        </span>
                     </div>
                 </div>
 
                 {loading ? (
                     <div className="p-12 text-center text-slate-400">Loading analysis...</div>
-                ) : advice.length === 0 ? (
-                    <div className="p-12 text-center text-slate-500">
+                ) : needsOrder.length === 0 ? (
+                    <div className="p-8 text-center text-slate-500">
                         <div className="mb-2 text-2xl font-bold text-green-500">OK</div>
-                        No immediate reorder risks detected.<br />
-                        <span className="text-sm opacity-75">All inventory positions are above calculated Reorder Points.</span>
+                        No items need ordering right now.<br />
+                        <span className="text-sm opacity-75">All at-risk items already have POs placed.</span>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 text-slate-500 font-medium">
+                            <thead className="bg-red-50 text-slate-600 font-medium">
                                 <tr>
                                     <th className="px-4 py-3 w-10">
                                         <input
@@ -583,30 +590,25 @@ export default function PurchasingGuidanceDashboard() {
                                     <th className="px-4 py-3">SKU / Product</th>
                                     <th className="px-4 py-3">Vendor</th>
                                     <th className="px-4 py-3 text-right">Stock</th>
-                                    <th className="px-4 py-3 text-right">On Order</th>
                                     <th className="px-4 py-3 text-right">Days Left</th>
-                                    <th className="px-4 py-3">Est. Receive</th>
                                     <th className="px-4 py-3">Type</th>
-                                    <th className="px-4 py-3 text-right">Order Qty</th>
-                                    <th className="px-4 py-3 w-20"></th>
+                                    <th className="px-4 py-3 text-right">Suggested Qty</th>
+                                    <th className="px-4 py-3 w-24"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {advice.map((item, idx) => {
+                                {needsOrder.map((item, idx) => {
                                     const daysRemaining = item.days_remaining ?? 999;
-                                    const onOrder = item.current_status?.on_order ?? 0;
                                     const isSelected = selectedItems.has(item.sku);
                                     const rowClass = daysRemaining <= 0 ? 'bg-red-100' :
                                         daysRemaining < 7 ? 'bg-red-50' :
-                                        daysRemaining < 14 ? 'bg-yellow-50' :
-                                        item.linked_po ? 'bg-green-50' : '';
+                                        daysRemaining < 14 ? 'bg-yellow-50' : '';
 
                                     return (
                                         <tr
                                             key={idx}
                                             className={`${rowClass} ${isSelected ? 'ring-2 ring-inset ring-blue-300' : ''} hover:bg-slate-50/50 transition-colors cursor-pointer`}
                                             onClick={(e) => {
-                                                // Don't toggle if clicking on checkbox or button
                                                 if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'BUTTON') {
                                                     toggleSelect(item.sku);
                                                 }
@@ -630,30 +632,13 @@ export default function PurchasingGuidanceDashboard() {
                                             <td className={`px-4 py-3 text-right font-medium ${item.current_status.stock === 0 ? 'text-red-600' : 'text-slate-900'}`}>
                                                 {item.current_status.stock}
                                             </td>
-                                            <td className={`px-4 py-3 text-right ${onOrder > 0 ? 'text-green-600 font-medium' : 'text-slate-400'}`}>
-                                                {onOrder}
-                                            </td>
                                             <td className={`px-4 py-3 text-right font-bold ${
                                                 daysRemaining <= 0 ? 'text-red-700' :
                                                 daysRemaining < 7 ? 'text-red-600' :
                                                 daysRemaining < 14 ? 'text-yellow-600' :
                                                 'text-slate-600'
                                             }`}>
-                                                {daysRemaining}
-                                            </td>
-                                            <td className="px-4 py-3 text-xs">
-                                                {item.linked_po ? (
-                                                    <div>
-                                                        <div className="text-green-600 font-medium">{item.linked_po.po_number}</div>
-                                                        {item.linked_po.expected_date && (
-                                                            <div className="text-slate-500">
-                                                                {new Date(item.linked_po.expected_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-400">No PO</span>
-                                                )}
+                                                {daysRemaining <= 0 ? 'OUT' : daysRemaining}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span className={`px-2 py-0.5 text-xs rounded ${
@@ -670,22 +655,14 @@ export default function PurchasingGuidanceDashboard() {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                                                {!item.linked_po && (
-                                                    <button
-                                                        onClick={() => handleQuickOrder(item)}
-                                                        className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded transition-colors"
-                                                        title={`Quick order ${item.recommendation.quantity} units`}
-                                                    >
-                                                        <PlusIcon className="w-3 h-3" />
-                                                        Order
-                                                    </button>
-                                                )}
-                                                {item.linked_po && (
-                                                    <span className="flex items-center gap-1 text-xs text-green-600">
-                                                        <CheckIcon className="w-3 h-3" />
-                                                        On PO
-                                                    </span>
-                                                )}
+                                                <button
+                                                    onClick={() => handleQuickOrder(item)}
+                                                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded transition-colors"
+                                                    title={`Quick order ${item.recommendation.quantity} units`}
+                                                >
+                                                    <PlusIcon className="w-3 h-3" />
+                                                    Order
+                                                </button>
                                             </td>
                                         </tr>
                                     );
@@ -725,6 +702,110 @@ export default function PurchasingGuidanceDashboard() {
                     </div>
                 )}
             </div>
+
+            {/* 4. ON ORDER - Items with POs (monitoring) */}
+            {onOrder.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-green-100 bg-green-50/50 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                                <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                                On Order - Monitoring
+                                <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full ml-2">
+                                    {onOrder.length} items
+                                </span>
+                            </h3>
+                        </div>
+                        <span className="text-xs text-slate-500">POs placed, awaiting delivery</span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-green-50 text-slate-600 font-medium">
+                                <tr>
+                                    <th className="px-4 py-3">SKU / Product</th>
+                                    <th className="px-4 py-3">Vendor</th>
+                                    <th className="px-4 py-3 text-right">Stock</th>
+                                    <th className="px-4 py-3 text-right">Days Left</th>
+                                    <th className="px-4 py-3">PO #</th>
+                                    <th className="px-4 py-3">Est. Arrival</th>
+                                    <th className="px-4 py-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {onOrder.map((item, idx) => {
+                                    const daysRemaining = item.days_remaining ?? 999;
+                                    const expectedDate = item.linked_po?.expected_date ? new Date(item.linked_po.expected_date) : null;
+                                    const today = new Date();
+                                    const daysUntilArrival = expectedDate ? Math.ceil((expectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+                                    // Determine if PO will arrive in time
+                                    const willArriveInTime = daysUntilArrival !== null && daysUntilArrival <= daysRemaining;
+                                    const isLate = daysUntilArrival !== null && daysUntilArrival > daysRemaining;
+
+                                    return (
+                                        <tr key={idx} className={`${isLate ? 'bg-amber-50' : 'bg-white'} hover:bg-slate-50/50 transition-colors`}>
+                                            <td className="px-4 py-3">
+                                                <div className="font-medium text-slate-900 font-mono text-xs">{item.sku}</div>
+                                                <div className="text-slate-500 text-xs max-w-[250px] truncate" title={item.name}>{item.name}</div>
+                                            </td>
+                                            <td className="px-4 py-3 text-xs text-slate-600 max-w-[120px] truncate">
+                                                {item.vendor_name || 'Unknown'}
+                                            </td>
+                                            <td className={`px-4 py-3 text-right font-medium ${item.current_status.stock === 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                                                {item.current_status.stock}
+                                            </td>
+                                            <td className={`px-4 py-3 text-right font-bold ${
+                                                daysRemaining <= 0 ? 'text-red-700' :
+                                                daysRemaining < 7 ? 'text-red-600' :
+                                                daysRemaining < 14 ? 'text-yellow-600' :
+                                                'text-slate-600'
+                                            }`}>
+                                                {daysRemaining <= 0 ? 'OUT' : daysRemaining}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className="font-medium text-green-700 font-mono text-xs">
+                                                    {item.linked_po?.po_number}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-xs">
+                                                {expectedDate ? (
+                                                    <div>
+                                                        <div className="font-medium text-slate-700">
+                                                            {expectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                        </div>
+                                                        <div className="text-slate-400">
+                                                            {daysUntilArrival !== null && daysUntilArrival > 0 ? `in ${daysUntilArrival}d` : daysUntilArrival === 0 ? 'Today' : 'Past due'}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-400">No date</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {willArriveInTime ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
+                                                        <CheckIcon className="w-3 h-3" />
+                                                        On Track
+                                                    </span>
+                                                ) : isLate ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full">
+                                                        May stockout before arrival
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 bg-slate-100 rounded-full">
+                                                        Pending
+                                                    </span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
 
         </div>
     );
