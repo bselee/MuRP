@@ -1022,7 +1022,7 @@ const BOMs: React.FC<BOMsProps> = ({
       {/* Search, Filters, and Controls */}
       <CollapsibleSection
         title="Search & Filters"
-        icon={<AdjustmentsHorizontalIcon className={`w-6 h-6 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />}
+        icon={<AdjustmentsHorizontalIcon className={`w-6 h-6 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />}
         variant="card"
         isOpen={isFiltersOpen}
         onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
@@ -1297,7 +1297,7 @@ const BOMs: React.FC<BOMsProps> = ({
                             <div className="flex items-center gap-2">
                               <Button
                                 onClick={() => onNavigateToInventory?.(bom.finishedSku)}
-                                className={`text-sm font-bold font-mono ${isDark ? 'text-amber-400' : 'text-amber-700'} hover:text-amber-300 transition-colors underline decoration-dotted ${isDark ? 'decoration-amber-600/50' : 'decoration-amber-400'} hover:decoration-amber-300`}
+                                className={`text-sm font-bold font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'} hover:text-blue-300 transition-colors underline decoration-dotted ${isDark ? 'decoration-blue-600/50' : 'decoration-blue-400'} hover:decoration-blue-300`}
                               >
                                 {bom.finishedSku}
                               </Button>

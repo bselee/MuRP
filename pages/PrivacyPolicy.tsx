@@ -11,11 +11,11 @@ const PrivacyPolicy: React.FC = () => {
   const isLight = resolvedTheme === 'light';
 
   const containerClass = isLight
-    ? 'min-h-screen bg-[#f5f1e8]'
+    ? 'min-h-screen bg-gray-50'
     : 'min-h-screen bg-gray-900';
 
   const cardClass = isLight
-    ? 'bg-white shadow-lg border border-amber-900/10'
+    ? 'bg-white shadow-lg border border-gray-200'
     : 'bg-gray-800 border border-gray-700';
 
   const textClass = isLight
@@ -31,8 +31,8 @@ const PrivacyPolicy: React.FC = () => {
     : 'text-white';
 
   const linkClass = isLight
-    ? 'text-amber-700 hover:text-amber-800'
-    : 'text-amber-400 hover:text-amber-300';
+    ? 'text-blue-600 hover:text-blue-700'
+    : 'text-blue-400 hover:text-blue-300';
 
   const dividerClass = isLight
     ? 'border-gray-200'
@@ -95,7 +95,7 @@ const PrivacyPolicy: React.FC = () => {
                 <li><strong>Google Calendar:</strong> Production scheduling integration</li>
                 <li><strong>Google Drive:</strong> Artwork and document storage</li>
               </ul>
-              <p className={`mt-4 p-4 rounded-lg ${isLight ? 'bg-amber-50 border border-amber-200' : 'bg-amber-900/20 border border-amber-700'}`}>
+              <p className={`mt-4 p-4 rounded-lg ${isLight ? 'bg-blue-50 border border-blue-200' : 'bg-blue-900/20 border border-blue-700'}`}>
                 <strong>Important:</strong> We only access Google data that you explicitly authorize. OAuth tokens are stored securely server-side and are never exposed to the browser.
               </p>
             </section>

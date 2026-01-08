@@ -16,11 +16,11 @@ const TermsOfService: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const containerClass = isLight
-    ? 'min-h-screen bg-[#f5f1e8]'
+    ? 'min-h-screen bg-gray-50'
     : 'min-h-screen bg-gray-900';
 
   const cardClass = isLight
-    ? 'bg-white shadow-lg border border-amber-900/10'
+    ? 'bg-white shadow-lg border border-gray-200'
     : 'bg-gray-800 border border-gray-700';
 
   const textClass = isLight
@@ -36,8 +36,8 @@ const TermsOfService: React.FC = () => {
     : 'text-white';
 
   const linkClass = isLight
-    ? 'text-amber-700 hover:text-amber-800'
-    : 'text-amber-400 hover:text-amber-300';
+    ? 'text-blue-600 hover:text-blue-700'
+    : 'text-blue-400 hover:text-blue-300';
 
   useEffect(() => {
     let isCancelled = false;

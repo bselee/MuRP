@@ -33,9 +33,9 @@ const Header: React.FC<HeaderProps> = ({
     const formattedTime = `${currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${currentTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
     const statusText = isGlobalLoading ? 'Loading data…' : `Syncing · ${formattedTime}`;
     const headerClasses = isLight
-        ? 'bg-white/85 text-amber-900 border-amber-900/10 shadow-[0_12px_35px_rgba(15,23,42,0.08)]'
+        ? 'bg-white/85 text-gray-900 border-gray-200 shadow-[0_12px_35px_rgba(15,23,42,0.08)]'
         : 'bg-gray-800/50 text-white border-gray-700';
-    const statusTextClass = isLight ? 'text-amber-900/70' : 'text-gray-500';
+    const statusTextClass = isLight ? 'text-gray-500' : 'text-gray-500';
     const devBadgeClass = isLight
         ? 'border-yellow-600/30 bg-yellow-200/40 text-yellow-900'
         : 'border-yellow-400/40 bg-yellow-400/10 text-yellow-200';
@@ -43,7 +43,7 @@ const Header: React.FC<HeaderProps> = ({
     return (
         <header className={`h-16 backdrop-blur-sm border-b flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0 transition-colors duration-300 ${headerClasses}`}>
             <div className="flex items-center gap-3 min-w-[120px]">
-                <div className={`text-4xl font-extrabold tracking-wide ${isLight ? 'text-amber-900' : 'text-accent-200'} ${showLogo ? '' : 'md:hidden'}`}>
+                <div className={`text-4xl font-extrabold tracking-wide ${isLight ? 'text-black' : 'text-white'} ${showLogo ? '' : 'md:hidden'}`}>
                     MuRP
                 </div>
             </div>

@@ -293,7 +293,7 @@ const ProductPage: React.FC<ProductPageProps> = ({
                 </Button>
                 <Button
                   onClick={() => onQuickRequest?.({ sku: product.sku, requestType: 'product_alert', alertOnly: true })}
-                  className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-full font-medium"
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-full font-medium"
                   disabled={!onQuickRequest}
                 >
                   Set Alert

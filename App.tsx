@@ -1892,11 +1892,11 @@ const AppShell: React.FC = () => {
   }
 
   const shellBackground = resolvedTheme === 'light'
-    ? 'bg-[#f5f1e8]'
+    ? 'bg-gray-100'
     : 'bg-gray-900';
 
   const mainBackground = resolvedTheme === 'light'
-    ? 'bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.12)] border border-amber-900/10'
+    ? 'bg-white/80 shadow-[0_20px_60px_rgba(15,23,42,0.12)] border border-gray-200'
     : 'bg-gray-900';
 
   return (

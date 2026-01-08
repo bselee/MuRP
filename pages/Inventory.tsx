@@ -858,8 +858,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         <div
                             onClick={() => onNavigateToProduct?.(item.sku)}
                             className={`font-mono font-bold cursor-pointer transition-colors ${isDark 
-                                ? 'text-amber-400 hover:text-amber-300' 
-                                : 'text-amber-700 hover:text-amber-600'} hover:underline decoration-dotted`}
+                                ? 'text-blue-400 hover:text-blue-300' 
+                                : 'text-blue-600 hover:text-gray-500'} hover:underline decoration-dotted`}
                             title="Click to view product details"
                         >
                             {item.sku}
@@ -888,8 +888,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         <span
                                             onClick={() => handleBomClick(item)}
                                             className={`cursor-pointer text-xs transition-colors ${isDark 
-                                                ? 'text-amber-400 hover:text-amber-300' 
-                                                : 'text-amber-600 hover:text-amber-500'}`}
+                                                ? 'text-blue-400 hover:text-blue-300' 
+                                                : 'text-gray-500 hover:text-gray-500'}`}
                                             title={`Used in ${bomCount} BOM${bomCount > 1 ? 's' : ''}`}
                                         >
                                             BOM ({bomCount})
@@ -897,16 +897,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     </div>
                                 )}
                             </div>
-                            <div className={`hidden group-hover:block absolute left-0 top-full mt-1 ${isDark ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-amber-200'} p-3 rounded-lg shadow-xl z-50 border max-w-md whitespace-normal`}>
+                            <div className={`hidden group-hover:block absolute left-0 top-full mt-1 ${isDark ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-200'} p-3 rounded-lg shadow-xl z-50 border max-w-md whitespace-normal`}>
                                 {item.name}
                                 {bomCount > 0 && (
-                                    <div className={`mt-2 pt-2 border-t ${isDark ? 'border-gray-700' : 'border-amber-200'}`}>
-                                        <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-amber-600'} mb-1`}>Used in:</p>
+                                    <div className={`mt-2 pt-2 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                                        <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-1`}>Used in:</p>
                                         <ul className="space-y-1">
                                             {bomDetails.map(detail => (
                                                 <li key={detail.finishedSku} className={`text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                                     <span className="font-semibold">{detail.finishedName}</span>
-                                                    <span className={isDark ? 'text-gray-400' : 'text-amber-600'} style={{ marginLeft: '4px' }}>({detail.finishedSku})</span>
+                                                    <span className={isDark ? 'text-gray-400' : 'text-gray-500'} style={{ marginLeft: '4px' }}>({detail.finishedSku})</span>
                                                 </li>
                                             ))}
                                         </ul>
@@ -966,49 +966,49 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 >
                                     {runwayValue}
                                 </span>
-                                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>vs {leadValue || '—'}d lead</span>
+                                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>vs {leadValue || '—'}d lead</span>
                             </div>
-                            <div className={`hidden group-hover:block absolute left-0 top-full mt-2 w-80 ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-amber-200'} border rounded-lg shadow-2xl z-50 p-4 text-left`}>
+                            <div className={`hidden group-hover:block absolute left-0 top-full mt-2 w-80 ${isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg shadow-2xl z-50 p-4 text-left`}>
                                 <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-3`}>Runway Details</div>
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center">
-                                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Runway:</span>
+                                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Runway:</span>
                                         <span className={`font-semibold ${insight?.needsOrder ? 'text-red-300' : 'text-emerald-300'}`}>
                                             {runwayValue}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Lead Time:</span>
+                                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Lead Time:</span>
                                         <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{leadValue || '—'} days</span>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Source:</span>
+                                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Source:</span>
                                         <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{insight ? demandSourceLabels[insight.demandSource] : 'N/A'}</span>
                                     </div>
                                     {insight && insight.dailyDemand > 0 && (
                                         <div className="flex justify-between items-center">
-                                            <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Daily Demand:</span>
+                                            <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Daily Demand:</span>
                                             <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>≈ {insight.dailyDemand.toFixed(1)} units/day</span>
                                         </div>
                                     )}
                                     {breakdown && (
-                                        <div className={`mt-3 pt-3 border-t ${isDark ? 'border-gray-700' : 'border-amber-200'}`}>
-                                            <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-amber-600'} mb-2`}>Demand Breakdown:</div>
+                                        <div className={`mt-3 pt-3 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                                            <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mb-2`}>Demand Breakdown:</div>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
                                                 <div className="flex justify-between">
-                                                    <span className={isDark ? 'text-gray-500' : 'text-amber-500'}>30d avg:</span>
+                                                    <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>30d avg:</span>
                                                     <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{formatDemandRate(breakdown.avg30)}</span>
                                                 </div>
                                                 <div className="flex justify-between">
-                                                    <span className={isDark ? 'text-gray-500' : 'text-amber-500'}>60d avg:</span>
+                                                    <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>60d avg:</span>
                                                     <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{formatDemandRate(breakdown.avg60)}</span>
                                                 </div>
                                                 <div className="flex justify-between">
-                                                    <span className={isDark ? 'text-gray-500' : 'text-amber-500'}>90d avg:</span>
+                                                    <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>90d avg:</span>
                                                     <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{formatDemandRate(breakdown.avg90)}</span>
                                                 </div>
                                                 <div className="flex justify-between">
-                                                    <span className={isDark ? 'text-gray-500' : 'text-amber-500'}>Velocity:</span>
+                                                    <span className={isDark ? 'text-gray-500' : 'text-gray-500'}>Velocity:</span>
                                                     <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{formatDemandRate(breakdown.salesVelocity)}</span>
                                                 </div>
                                             </div>
@@ -1060,7 +1060,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     Req
                 </span>
                 <span
-                    className="cursor-pointer hover:text-accent-400 text-amber-300"
+                    className="cursor-pointer hover:text-accent-400 text-blue-300"
                     onClick={() => onQuickRequest?.({ sku: item.sku, requestType: 'product_alert', alertOnly: true, priority: 'high' })}
                     title="High priority alert"
                 >
@@ -1072,7 +1072,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
     const itemTypeStyles: Record<ItemType, { label: string; className: string }> = {
         retail: { label: 'Retail', className: 'text-accent-300' },
-        component: { label: 'Component', className: 'text-amber-300' },
+        component: { label: 'Component', className: 'text-blue-300' },
         hybrid: { label: 'Hybrid', className: 'text-pink-200' },
         standalone: { label: 'Standalone', className: 'text-gray-400' },
     };
@@ -1133,18 +1133,18 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 <div className="space-y-6">
                     <CollapsibleSection
                         title="Search & Filters"
-                        icon={<AdjustmentsHorizontalIcon className={`w-6 h-6 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />}
+                        icon={<AdjustmentsHorizontalIcon className={`w-6 h-6 ${isDark ? 'text-blue-400' : 'text-gray-500'}`} />}
                         variant="card"
                         isOpen={isFiltersOpen}
                         onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
                     >
-                        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-amber-50/80'} backdrop-blur-sm rounded-lg p-6 space-y-6`}>
+                        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50/80'} backdrop-blur-sm rounded-lg p-6 space-y-6`}>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                                 <div className="relative lg:col-span-1">
-                                    <label htmlFor="search-inventory" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-amber-800'} mb-1`}>Search by name or SKU</label>
+                                    <label htmlFor="search-inventory" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Search by name or SKU</label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <SearchIcon className={`h-5 w-5 ${isDark ? 'text-gray-400' : 'text-amber-500'}`} />
+                                            <SearchIcon className={`h-5 w-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                                         </div>
                                         <input
                                             id="search-inventory"
@@ -1155,13 +1155,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                             onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 200)}
                                             onFocus={handleSearchChange}
                                             autoComplete="off"
-                                            className={`${isDark ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-white text-gray-900 placeholder-amber-400 border border-amber-300'} rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full`}
+                                            className={`${isDark ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-300'} rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-accent-500 w-full`}
                                         />
                                         {isSuggestionsVisible && suggestions.length > 0 && (
-                                            <ul className={`absolute z-50 w-full ${isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-amber-200'} border rounded-md mt-1 max-h-60 overflow-auto shadow-lg`}>
+                                            <ul className={`absolute z-50 w-full ${isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'} border rounded-md mt-1 max-h-60 overflow-auto shadow-lg`}>
                                                 {suggestions.map(item => (
-                                                    <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className={`p-2 text-sm ${isDark ? 'text-white hover:bg-accent-500' : 'text-gray-900 hover:bg-amber-100'} cursor-pointer`}>
-                                                        {item.name} <span className={isDark ? 'text-gray-400' : 'text-amber-600'}>({item.sku})</span>
+                                                    <li key={item.sku} onMouseDown={() => handleSuggestionClick(item)} className={`p-2 text-sm ${isDark ? 'text-white hover:bg-accent-500' : 'text-gray-900 hover:bg-gray-100'} cursor-pointer`}>
+                                                        {item.name} <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>({item.sku})</span>
                                                     </li>
                                                 ))}
                                             </ul>
@@ -1171,12 +1171,12 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
                                 {/* Multi-select Category Filter */}
                                 <div ref={categoryDropdownRef} className={`relative ${isCategoryDropdownOpen ? 'z-40' : 'z-20'}`}>
-                                    <label htmlFor="filter-category" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-amber-800'} mb-1`}>
+                                    <label htmlFor="filter-category" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
                                         Categories {selectedCategories.size > 0 && <span className="text-accent-400">({selectedCategories.size})</span>}
                                     </label>
                                     <Button
                                         onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                                        className={`w-full ${isDark ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-amber-300'} rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border text-left flex justify-between items-center relative`}
+                                        className={`w-full ${isDark ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'} rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border text-left flex justify-between items-center relative`}
                                     >
                                         <span className="truncate">
                                             {selectedCategories.size === 0
@@ -1188,17 +1188,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         <ChevronDownIcon className="w-4 h-4 ml-2" />
                                     </Button>
                                     {isCategoryDropdownOpen && (
-                                        <div className={`absolute z-[100] w-full mt-1 border-2 ${isDark ? 'border-gray-500 bg-gray-900' : 'border-amber-300 bg-white'} rounded-md shadow-2xl max-h-80 overflow-hidden`}>
-                                            <div className={`sticky top-0 p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-amber-200 bg-amber-50'} flex gap-2`}>
+                                        <div className={`absolute z-[100] w-full mt-1 border-2 ${isDark ? 'border-gray-500 bg-gray-900' : 'border-gray-300 bg-white'} rounded-md shadow-2xl max-h-80 overflow-hidden`}>
+                                            <div className={`sticky top-0 p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-gray-200 bg-gray-50'} flex gap-2`}>
                                                 <Button
                                                     onClick={selectAllCategories}
-                                                    className={`text-xs text-accent-400 hover:text-accent-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-amber-100'} rounded`}
+                                                    className={`text-xs text-accent-400 hover:text-accent-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-gray-100'} rounded`}
                                                 >
                                                     Select All
                                                 </Button>
                                                 <Button
                                                     onClick={clearAllCategories}
-                                                    className={`text-xs ${isDark ? 'text-gray-400 hover:text-white bg-gray-600' : 'text-amber-600 hover:text-amber-800 bg-amber-100'} px-2 py-1 rounded`}
+                                                    className={`text-xs ${isDark ? 'text-gray-400 hover:text-white bg-gray-600' : 'text-gray-500 hover:text-gray-700 bg-gray-100'} px-2 py-1 rounded`}
                                                 >
                                                     Clear
                                                 </Button>
@@ -1207,38 +1207,38 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         setIsCategoryDropdownOpen(false);
                                                         setIsCategoryManagementOpen(true);
                                                     }}
-                                                    className={`ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-amber-100'} rounded flex items-center gap-1`}
+                                                    className={`ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-gray-100'} rounded flex items-center gap-1`}
                                                 >
                                                     <AdjustmentsHorizontalIcon className="w-3 h-3" />
                                                     Manage
                                                 </Button>
                                             </div>
-                                            <div className={`sticky top-[52px] p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-amber-200 bg-amber-50'}`}>
+                                            <div className={`sticky top-[52px] p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
                                                 <input
                                                     type="text"
                                                     value={categorySearchTerm}
                                                     onChange={(e) => setCategorySearchTerm(e.target.value)}
                                                     placeholder="Search categories..."
-                                                    className={`w-full ${isDark ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-amber-300'} text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border`}
+                                                    className={`w-full ${isDark ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'} text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border`}
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
                                             </div>
                                             <div className="max-h-60 overflow-auto">
                                                 {filteredCategories.length === 0 ? (
-                                                    <div className={`p-3 text-center ${isDark ? 'text-gray-400' : 'text-amber-600'} text-sm`}>No categories found</div>
+                                                    <div className={`p-3 text-center ${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>No categories found</div>
                                                 ) : (
                                                     filteredCategories.map(category => {
                                                         const label = categoryLabelMap.get(category) || formatCategoryLabel(category);
                                                         return (
                                                             <label
                                                                 key={category}
-                                                                className={`flex items-center p-2 ${isDark ? 'hover:bg-gray-700 bg-gray-900' : 'hover:bg-amber-100 bg-white'} cursor-pointer`}
+                                                                className={`flex items-center p-2 ${isDark ? 'hover:bg-gray-700 bg-gray-900' : 'hover:bg-gray-100 bg-white'} cursor-pointer`}
                                                             >
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={selectedCategories.has(category)}
                                                                     onChange={() => toggleCategory(category)}
-                                                                    className={`w-4 h-4 mr-2 rounded ${isDark ? 'border-gray-500' : 'border-amber-400'} text-accent-500 focus:ring-accent-500`}
+                                                                    className={`w-4 h-4 mr-2 rounded ${isDark ? 'border-gray-500' : 'border-gray-400'} text-accent-500 focus:ring-accent-500`}
                                                                 />
                                                                 <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`} title={category}>{label}</span>
                                                             </label>
@@ -1252,12 +1252,12 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
 
                                 {/* Multi-select Vendor Filter */}
                                 <div ref={vendorDropdownRef} className={`relative ${isVendorDropdownOpen ? 'z-40' : 'z-20'}`}>
-                                    <label htmlFor="filter-vendor" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-amber-800'} mb-1`}>
+                                    <label htmlFor="filter-vendor" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
                                         Vendors {selectedVendors.size > 0 && <span className="text-accent-400">({selectedVendors.size})</span>}
                                     </label>
                                     <Button
                                         onClick={() => setIsVendorDropdownOpen(!isVendorDropdownOpen)}
-                                        className={`w-full ${isDark ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-amber-300'} rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border text-left flex justify-between items-center relative`}
+                                        className={`w-full ${isDark ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'} rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border text-left flex justify-between items-center relative`}
                                     >
                                         <span className="truncate">
                                             {selectedVendors.size === 0
@@ -1269,17 +1269,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                         <ChevronDownIcon className="w-4 h-4 ml-2" />
                                     </Button>
                                     {isVendorDropdownOpen && (
-                                        <div className={`absolute z-[100] w-full mt-1 ${isDark ? 'bg-gray-900 border-gray-500' : 'bg-white border-amber-300'} border-2 rounded-md shadow-2xl max-h-80 overflow-hidden`}>
-                                            <div className={`sticky top-0 ${isDark ? 'bg-gray-900 border-gray-600' : 'bg-amber-50 border-amber-200'} p-2 border-b flex gap-2`}>
+                                        <div className={`absolute z-[100] w-full mt-1 ${isDark ? 'bg-gray-900 border-gray-500' : 'bg-white border-gray-300'} border-2 rounded-md shadow-2xl max-h-80 overflow-hidden`}>
+                                            <div className={`sticky top-0 ${isDark ? 'bg-gray-900 border-gray-600' : 'bg-gray-50 border-gray-200'} p-2 border-b flex gap-2`}>
                                                 <Button
                                                     onClick={selectAllVendors}
-                                                    className={`text-xs text-accent-400 hover:text-accent-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-amber-100'} rounded`}
+                                                    className={`text-xs text-accent-400 hover:text-accent-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-gray-100'} rounded`}
                                                 >
                                                     Select All
                                                 </Button>
                                                 <Button
                                                     onClick={clearAllVendors}
-                                                    className={`text-xs ${isDark ? 'text-gray-400 hover:text-white bg-gray-600' : 'text-amber-600 hover:text-amber-800 bg-amber-100'} px-2 py-1 rounded`}
+                                                    className={`text-xs ${isDark ? 'text-gray-400 hover:text-white bg-gray-600' : 'text-gray-500 hover:text-gray-700 bg-gray-100'} px-2 py-1 rounded`}
                                                 >
                                                     Clear
                                                 </Button>
@@ -1288,36 +1288,36 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                         setIsVendorDropdownOpen(false);
                                                         setIsVendorManagementOpen(true);
                                                     }}
-                                                    className={`ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-amber-100'} rounded flex items-center gap-1`}
+                                                    className={`ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-gray-100'} rounded flex items-center gap-1`}
                                                 >
                                                     <AdjustmentsHorizontalIcon className="w-3 h-3" />
                                                     Manage
                                                 </Button>
                                             </div>
-                                            <div className={`sticky top-[52px] p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-amber-200 bg-amber-50'}`}>
+                                            <div className={`sticky top-[52px] p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
                                                 <input
                                                     type="text"
                                                     value={vendorSearchTerm}
                                                     onChange={(e) => setVendorSearchTerm(e.target.value)}
                                                     placeholder="Search vendors..."
-                                                    className={`w-full ${isDark ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-amber-300'} text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border`}
+                                                    className={`w-full ${isDark ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'} text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border`}
                                                     onClick={(e) => e.stopPropagation()}
                                                 />
                                             </div>
                                             <div className="max-h-60 overflow-auto">
                                                 {filteredVendors.length === 0 ? (
-                                                    <div className={`p-3 text-center ${isDark ? 'text-gray-400' : 'text-amber-600'} text-sm`}>No vendors found</div>
+                                                    <div className={`p-3 text-center ${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>No vendors found</div>
                                                 ) : (
                                                     filteredVendors.map(vendorId => (
                                                         <label
                                                             key={vendorId}
-                                                            className={`flex items-center p-2 ${isDark ? 'hover:bg-gray-700 bg-gray-900' : 'hover:bg-amber-100 bg-white'} cursor-pointer`}
+                                                            className={`flex items-center p-2 ${isDark ? 'hover:bg-gray-700 bg-gray-900' : 'hover:bg-gray-100 bg-white'} cursor-pointer`}
                                                         >
                                                             <input
                                                                 type="checkbox"
                                                                 checked={selectedVendors.has(vendorId)}
                                                                 onChange={() => toggleVendor(vendorId)}
-                                                                className={`w-4 h-4 mr-2 rounded ${isDark ? 'border-gray-500' : 'border-amber-400'} text-accent-500 focus:ring-accent-500`}
+                                                                className={`w-4 h-4 mr-2 rounded ${isDark ? 'border-gray-500' : 'border-gray-400'} text-accent-500 focus:ring-accent-500`}
                                                             />
                                                             <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{getVendorName(vendorId)}</span>
                                                         </label>
@@ -1329,16 +1329,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 </div>
 
                                 <div>
-                                    <label htmlFor="filter-status" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-amber-800'} mb-1`}>Stock Status</label>
-                                    <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className={`w-full ${isDark ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-amber-300'} rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border`}>
+                                    <label htmlFor="filter-status" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Stock Status</label>
+                                    <select id="filter-status" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value)} className={`w-full ${isDark ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'} rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border`}>
                                         <option value="">All Statuses</option>
                                         {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
                                 </div>
 
                                 <div className="relative">
-                                    <label htmlFor="filter-bom" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-amber-800'} mb-1`}>BOM Status</label>
-                                    <select id="filter-bom" value={bomFilter} onChange={(e) => setBomFilter(e.target.value)} className={`w-full ${isDark ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-amber-300'} rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border`}>
+                                    <label htmlFor="filter-bom" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>BOM Status</label>
+                                    <select id="filter-bom" value={bomFilter} onChange={(e) => setBomFilter(e.target.value)} className={`w-full ${isDark ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'} rounded-md p-2 focus:ring-accent-500 focus:border-accent-500 border`}>
                                         <option value="all">All Items</option>
                                         <option value="with-bom">Has Constituents (BOM)</option>
                                         <option value="without-bom">No BOM</option>
@@ -1350,13 +1350,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     onClick={() => setShowRecentOnly(!showRecentOnly)}
                                     className={`px-4 py-2 text-sm font-semibold rounded-md border transition-colors ${showRecentOnly
                                         ? 'bg-blue-500/20 border-blue-400/60 text-blue-200 shadow-lg shadow-blue-900/40'
-                                        : isDark ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200'
+                                        : isDark ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
                                         }`}
                                     title={showRecentOnly ? 'Showing items updated in last 7 days' : 'Showing all items'}
                                 >
                                     {showRecentOnly ? '📅 Recent (7 days)' : '📚 All Data'}
                                 </Button>
-                                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>
+                                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>
                                     {showRecentOnly
                                         ? 'Showing items synced in the last 7 days'
                                         : 'Showing all items regardless of sync date'}
@@ -1367,18 +1367,18 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     onClick={handleNeedsOrderToggle}
                                     className={`px-4 py-2 text-sm font-semibold rounded-md border transition-colors ${riskFilter === 'needs-order'
                                         ? 'bg-red-500/20 border-red-400/60 text-red-200 shadow-lg shadow-red-900/40'
-                                        : isDark ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200'
+                                        : isDark ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
                                         }`}
                                 >
                                     Needs Order ({needsOrderCount})
                                 </Button>
-                                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>
+                                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>
                                     Flags SKUs when runway &lt; vendor lead time or stock is at/below the reorder point. Daily demand uses the most conservative rate across sales velocity and 30/60/90-day averages.
                                 </span>
                             </div>}
                             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>
-                                    Showing <span className={`font-semibold ${isDark ? 'text-white' : 'text-amber-900'}`}>{processedInventory.length}</span> of <span className={`font-semibold ${isDark ? 'text-white' : 'text-amber-900'}`}>{inventory.length}</span> items
+                                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>
+                                    Showing <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{processedInventory.length}</span> of <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{inventory.length}</span> items
                                 </p>
                                 {onQuickRequest && (
                                     <Button
@@ -1392,7 +1392,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         </div>
                     </CollapsibleSection>
                     {/* Inventory Table */}
-                    <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-amber-200'} backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden`}>
+                    <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden`}>
                         <Table
                             columns={tableColumns}
                             data={processedInventory}
@@ -1410,27 +1410,27 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
             {isColumnModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-md w-full max-h-[80vh] flex flex-col`}>
-                        <div className={`p-6 border-b ${isDark ? 'border-gray-700' : 'border-amber-200'}`}>
+                        <div className={`p-6 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
                             <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Manage Columns</h2>
-                            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-amber-700'} mt-1`}>Show/hide and reorder columns</p>
+                            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-blue-600'} mt-1`}>Show/hide and reorder columns</p>
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 space-y-2">
                             {columns.map((col, index) => (
-                                <div key={col.key} className={`flex items-center gap-3 p-3 ${isDark ? 'bg-gray-700/50' : 'bg-amber-50'} rounded-lg`}>
+                                <div key={col.key} className={`flex items-center gap-3 p-3 ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-lg`}>
                                     <div className="flex flex-col gap-1">
                                         <Button
                                             onClick={() => moveColumn(index, 'up')}
                                             disabled={index === 0}
-                                            className={`p-1 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-amber-200'} rounded disabled:opacity-30 disabled:cursor-not-allowed`}
+                                            className={`p-1 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200'} rounded disabled:opacity-30 disabled:cursor-not-allowed`}
                                         >
-                                            <ChevronUpIcon className={`w-4 h-4 ${isDark ? 'text-gray-300' : 'text-amber-700'}`} />
+                                            <ChevronUpIcon className={`w-4 h-4 ${isDark ? 'text-gray-300' : 'text-blue-600'}`} />
                                         </Button>
                                         <Button
                                             onClick={() => moveColumn(index, 'down')}
                                             disabled={index === columns.length - 1}
-                                            className={`p-1 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-amber-200'} rounded disabled:opacity-30 disabled:cursor-not-allowed`}
+                                            className={`p-1 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200'} rounded disabled:opacity-30 disabled:cursor-not-allowed`}
                                         >
-                                            <ChevronDownIcon className={`w-4 h-4 ${isDark ? 'text-gray-300' : 'text-amber-700'}`} />
+                                            <ChevronDownIcon className={`w-4 h-4 ${isDark ? 'text-gray-300' : 'text-blue-600'}`} />
                                         </Button>
                                     </div>
                                     <Button
@@ -1449,7 +1449,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 </div>
                             ))}
                         </div>
-                        <div className={`p-6 border-t ${isDark ? 'border-gray-700' : 'border-amber-200'}`}>
+                        <div className={`p-6 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
                             <Button
                                 onClick={() => setIsColumnModalOpen(false)}
                                 className="w-full bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors"

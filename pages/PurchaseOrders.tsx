@@ -676,8 +676,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                                         viewMode === 'unified'
                                             ? isDark
-                                                ? 'bg-amber-500/20 text-amber-300'
-                                                : 'bg-amber-500 text-white'
+                                                ? 'bg-blue-500/20 text-blue-300'
+                                                : 'bg-blue-500 text-white'
                                             : isDark
                                                 ? 'text-gray-400 hover:text-gray-200'
                                                 : 'text-gray-600 hover:text-gray-900'
@@ -691,8 +691,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                                         viewMode === 'list'
                                             ? isDark
-                                                ? 'bg-amber-500/20 text-amber-300'
-                                                : 'bg-amber-500 text-white'
+                                                ? 'bg-blue-500/20 text-blue-300'
+                                                : 'bg-blue-500 text-white'
                                             : isDark
                                                 ? 'text-gray-400 hover:text-gray-200'
                                                 : 'text-gray-600 hover:text-gray-900'
@@ -728,10 +728,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             variant="secondary"
                                             className={`p-2 border w-10 h-10 flex items-center justify-center rounded-lg shadow-sm ${isDark
                                                 ? 'border-gray-600 hover:border-gray-500 hover:bg-gray-700'
-                                                : 'border-amber-300 hover:border-amber-400 hover:bg-amber-100'}`}
+                                                : 'border-gray-300 hover:border-gray-400 hover:bg-gray-100'}`}
                                             aria-label="Agent Command Center & Settings"
                                         >
-                                            <SettingsIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-amber-600'}`} />
+                                            <SettingsIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                                         </Button>
                                     )}
                                 </>
@@ -746,7 +746,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div id="po-requisitions" className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>📋 Internal Requisitions</h2>
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>📋 Internal Requisitions</h2>
                                 <StatusBadge variant="info" className="ml-2">
                                     {requisitions.filter(r => !['Ordered', 'Fulfilled', 'Rejected'].includes(r.status)).length} pending
                                 </StatusBadge>
@@ -755,8 +755,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <Button
                                     onClick={() => setIsCreateReqModalOpen(true)}
                                     className={`px-3 py-1.5 text-xs rounded transition-colors ${isDark
-                                        ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                                        : 'bg-amber-600 hover:bg-amber-700 text-white'}`}
+                                        ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                                        : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
                                 >
                                     + New Requisition
                                 </Button>
@@ -825,7 +825,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                         {req.needByDate && (
                                                             <div className="text-right">
                                                                 <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Need By</div>
-                                                                <div className={`text-sm ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                                                                <div className={`text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                                                                     {new Date(req.needByDate).toLocaleDateString()}
                                                                 </div>
                                                             </div>
@@ -925,7 +925,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="space-y-8 p-1">
                         {showCommandCenter && (
                             <section>
-                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Purchasing Overview</h3>
+                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Purchasing Overview</h3>
                                 <PurchasingCommandCenter
                                     stats={[
                                         {
@@ -933,7 +933,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             label: 'Manager Review',
                                             value: managerQueue.length,
                                             description: 'Awaiting department approval',
-                                            accent: managerQueue.length > 0 ? 'border-amber-400/50 text-amber-100' : 'border-gray-600 text-gray-300',
+                                            accent: managerQueue.length > 0 ? 'border-blue-400/50 text-blue-100' : 'border-gray-600 text-gray-300',
                                             onClick: () => { setIsAgentSettingsOpen(false); focusRequisitionSection(); },
                                         },
                                         {
@@ -973,7 +973,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                         {(canManagePOs || isAdminLike) && (
                             <section>
-                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Automation Controls</h3>
+                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Automation Controls</h3>
                                 <AutomationControlsSection
                                     canManagePOs={canManagePOs}
                                     isAdminLike={isAdminLike}
@@ -987,22 +987,22 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                         {isAdminLike && (
                             <section>
-                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Autonomous Signing</h3>
+                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Autonomous Signing</h3>
                                 <AutonomousApprovals addToast={addToast} />
                             </section>
                         )}
 
                         {isAdminLike && (
                             <section>
-                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>System Intelligence</h3>
+                                <h3 className={`text-sm font-semibold uppercase tracking-wider mb-4 ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>System Intelligence</h3>
                                 <div className="space-y-6">
                                     <TrustScoreDashboard />
                                     <div>
-                                        <h4 className={`text-xs font-semibold mb-2 ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>ACTIVE ALERTS</h4>
+                                        <h4 className={`text-xs font-semibold mb-2 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>ACTIVE ALERTS</h4>
                                         <AlertFeedComponent limit={20} showResolved={false} />
                                     </div>
                                     <div>
-                                        <h4 className={`text-xs font-semibold mb-2 ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>VENDOR INTELLIGENCE</h4>
+                                        <h4 className={`text-xs font-semibold mb-2 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>VENDOR INTELLIGENCE</h4>
                                         <VendorScorecardComponent limit={10} />
                                     </div>
                                 </div>
@@ -1090,7 +1090,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>📦 Purchase Orders</h2>
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>📦 Purchase Orders</h2>
                                 <StatusBadge variant="primary" className="ml-2">
                                     {finalePurchaseOrders.filter(fpo => {
                                         // Exclude dropship POs - only those with "DropshipPO" in the order ID
@@ -1099,10 +1099,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     }).length} total
                                 </StatusBadge>
                                 {!showAllFinaleHistory && (
-                                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>(Active only)</span>
+                                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>(Active only)</span>
                                 )}
                                 {showAllFinaleHistory && (
-                                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>(Including inactive)</span>
+                                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>(Including inactive)</span>
                                 )}
                             </div>
                             <div className="flex items-center gap-2">
@@ -1111,7 +1111,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     onClick={() => setFinalePOSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                                     className={`px-3 py-1.5 text-xs rounded transition-colors ${isDark 
                                         ? 'bg-gray-800/50 border border-gray-700 text-gray-300 hover:bg-gray-700' 
-                                        : 'bg-white/80 border border-amber-200 text-amber-800 hover:bg-amber-100'}`}
+                                        : 'bg-white/80 border border-gray-200 text-gray-700 hover:bg-gray-100'}`}
                                 >
                                     {finalePOSortOrder === 'asc' ? 'Oldest ↑' : 'Newest ↓'}
                                 </Button>
@@ -1123,13 +1123,13 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         ? 'bg-accent-500/20 text-accent-300 border border-accent-500/50'
                                         : isDark 
                                             ? 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
-                                            : 'bg-white/80 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                                            : 'bg-white/80 text-blue-600 border border-gray-200 hover:bg-gray-100'
                                         }`}
                                 >
                                     {showAllFinaleHistory ? 'All History' : 'Active Only'}
                                 </Button>
 
-                                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>
+                                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                     Synced from Finale API
                                 </span>
                             </div>
@@ -1165,7 +1165,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         <div
                                             key={fpo.id}
                                             className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${isDark
-                                                ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] hover:border-amber-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]'
+                                                ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)] hover:border-blue-500/40 hover:shadow-[0_30px_90px_rgba(251,191,36,0.25)]'
                                                 : 'border-stone-300/30 bg-gradient-to-br from-white/95 via-stone-100/60 to-white/95 shadow-[0_30px_90px_rgba(15,23,42,0.25)] hover:border-stone-400/50 hover:shadow-[0_32px_110px_rgba(120,113,108,0.3)]'
                                                 }`}
                                         >
@@ -1178,9 +1178,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             {/* Header */}
                                             <div className={`relative p-2.5 ${isDark
                                                 ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70'
-                                                : 'bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90'
+                                                : 'bg-gradient-to-r from-gray-50 via-white to-gray-50'
                                                 }`}>
-                                                <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-amber-200/60'
+                                                <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-blue-200/60'
                                                     }`} />
                                                 <div
                                                     className="flex items-center justify-between cursor-pointer"
@@ -1191,7 +1191,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                 >
                                                     <div className="flex items-center gap-4">
                                                         <div>
-                                                            <div className={`text-lg font-semibold font-mono ${isDark ? 'text-amber-400' : 'text-amber-700'
+                                                            <div className={`text-lg font-semibold font-mono ${isDark ? 'text-blue-400' : 'text-blue-600'
                                                                 }`}>
                                                                 PO #{fpo.orderId}
                                                             </div>
@@ -1269,7 +1269,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <div className={`text-2xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                                                            <div className={`text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                                                                 ${fpo.total?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
                                                             </div>
                                                             <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
@@ -1305,16 +1305,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             {isExpanded && (
                                                 <div className={`relative p-4 space-y-4 border-t backdrop-blur-lg ${isDark
                                                     ? 'border-white/5 bg-slate-950/70'
-                                                    : 'border-amber-900/15 bg-amber-50/80'
+                                                    : 'border-gray-200 bg-gray-50'
                                                     }`}>
                                                     {/* Summary Info */}
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div className={`rounded-xl border backdrop-blur-lg p-4 space-y-3 ${isDark
                                                             ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
-                                                            : 'border-amber-200 bg-gradient-to-br from-white via-amber-50/30 to-white shadow-amber-100/50'
+                                                            : 'border-gray-200 bg-white shadow-sm'
                                                             }`}>
                                                             <div>
-                                                                <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Vendor Information</div>
+                                                                <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Vendor Information</div>
                                                                 <div className={`text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{fpo.vendorName || 'Unknown'}</div>
                                                                 {fpo.vendorUrl && (
                                                                     <div className={`text-xs font-mono mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{fpo.vendorUrl}</div>
@@ -1322,15 +1322,15 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                             </div>
                                                             {fpo.facilityId && (
                                                                 <div>
-                                                                    <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Facility</div>
+                                                                    <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Facility</div>
                                                                     <div className={`text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{fpo.facilityId}</div>
                                                                 </div>
                                                             )}
                                                         </div>
                                                         <div className={`rounded-xl border backdrop-blur-lg p-4 ${isDark 
                                                             ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
-                                                            : 'border-amber-200 bg-gradient-to-br from-white via-amber-50/30 to-white shadow-amber-100/50'}`}>
-                                                            <div className={`text-xs uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Financial Summary</div>
+                                                            : 'border-gray-200 bg-white shadow-sm'}`}>
+                                                            <div className={`text-xs uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Financial Summary</div>
                                                             <div className="space-y-1 text-sm">
                                                                 <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                                     <span>Subtotal:</span>
@@ -1348,7 +1348,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                         <span className="font-mono">${Number(fpo.shipping).toFixed(2)}</span>
                                                                     </div>
                                                                 )}
-                                                                <div className={`flex justify-between font-semibold pt-2 border-t ${isDark ? 'text-amber-400 border-white/10' : 'text-amber-700 border-amber-200'}`}>
+                                                                <div className={`flex justify-between font-semibold pt-2 border-t ${isDark ? 'text-blue-400 border-white/10' : 'text-blue-600 border-gray-200'}`}>
                                                                     <span>Total:</span>
                                                                     <span className="font-mono">${Number(fpo.total || 0).toFixed(2)}</span>
                                                                 </div>
@@ -1424,16 +1424,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                         <div className="space-y-2">
                                                             {fpo.publicNotes && (
                                                                 <div>
-                                                                    <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Public Notes</div>
-                                                                    <div className={`text-sm p-3 rounded-lg border ${isDark ? 'text-gray-300 bg-slate-950/50 border-white/5' : 'text-gray-700 bg-amber-50/50 border-amber-200'}`}>
+                                                                    <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Public Notes</div>
+                                                                    <div className={`text-sm p-3 rounded-lg border ${isDark ? 'text-gray-300 bg-slate-950/50 border-white/5' : 'text-gray-700 bg-gray-50/50 border-gray-200'}`}>
                                                                         {fpo.publicNotes}
                                                                     </div>
                                                                 </div>
                                                             )}
                                                             {fpo.privateNotes && (
                                                                 <div>
-                                                                    <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Private Notes</div>
-                                                                    <div className={`text-sm p-3 rounded-lg border ${isDark ? 'text-gray-300 bg-slate-950/50 border-white/5' : 'text-gray-700 bg-amber-50/50 border-amber-200'}`}>
+                                                                    <div className={`text-xs uppercase tracking-wider mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Private Notes</div>
+                                                                    <div className={`text-sm p-3 rounded-lg border ${isDark ? 'text-gray-300 bg-slate-950/50 border-white/5' : 'text-gray-700 bg-gray-50/50 border-gray-200'}`}>
                                                                         {fpo.privateNotes}
                                                                     </div>
                                                                 </div>
@@ -1444,30 +1444,30 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     {/* Line Items */}
                                                     {fpo.lineItems && fpo.lineItems.length > 0 && (
                                                         <div>
-                                                            <div className={`text-xs uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-amber-600'}`}>Line Items</div>
+                                                            <div className={`text-xs uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Line Items</div>
                                                             <div className={`rounded-xl border backdrop-blur-lg overflow-hidden ${isDark 
                                                                 ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
-                                                                : 'border-amber-200 bg-white shadow-amber-100/50'}`}>
+                                                                : 'border-gray-200 bg-white shadow-sm'}`}>
                                                                 <table className="min-w-full">
-                                                                    <thead className={isDark ? 'bg-slate-900/50' : 'bg-amber-50'}>
+                                                                    <thead className={isDark ? 'bg-slate-900/50' : 'bg-gray-50'}>
                                                                         <tr>
-                                                                            <th className={`px-3 py-2 text-left text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>#</th>
-                                                                            <th className={`px-3 py-2 text-left text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Product</th>
-                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Ordered</th>
-                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Received</th>
-                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Unit Price</th>
-                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Total</th>
+                                                                            <th className={`px-3 py-2 text-left text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>#</th>
+                                                                            <th className={`px-3 py-2 text-left text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Product</th>
+                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Ordered</th>
+                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Received</th>
+                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Unit Price</th>
+                                                                            <th className={`px-3 py-2 text-right text-xs font-medium uppercase ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Total</th>
                                                                         </tr>
                                                                     </thead>
-                                                                    <tbody className={`divide-y ${isDark ? 'divide-white/5' : 'divide-amber-100'}`}>
+                                                                    <tbody className={`divide-y ${isDark ? 'divide-white/5' : 'divide-gray-100'}`}>
                                                                         {fpo.lineItems.map((item: any, idx: number) => (
-                                                                            <tr key={idx} className={isDark ? 'hover:bg-slate-900/30' : 'hover:bg-amber-50/50'}>
+                                                                            <tr key={idx} className={isDark ? 'hover:bg-slate-900/30' : 'hover:bg-gray-50/50'}>
                                                                                 <td className={`px-3 py-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.line_number || idx + 1}</td>
                                                                                 <td className={`px-3 py-2 text-sm font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.product_id || 'N/A'}</td>
                                                                                 <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.quantity_ordered || 0}</td>
                                                                                 <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.quantity_received || 0}</td>
                                                                                 <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>${Number(item.unit_price || 0).toFixed(2)}</td>
-                                                                                <td className={`px-3 py-2 text-sm text-right font-mono font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>${Number(item.line_total || 0).toFixed(2)}</td>
+                                                                                <td className={`px-3 py-2 text-sm text-right font-mono font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>${Number(item.line_total || 0).toFixed(2)}</td>
                                                                             </tr>
                                                                         ))}
                                                                     </tbody>
@@ -1477,7 +1477,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                     )}
 
                                                     {/* Actions */}
-                                                    <div className={`flex items-center gap-2 pt-3 border-t ${isDark ? 'border-white/5' : 'border-amber-200'}`}>
+                                                    <div className={`flex items-center gap-2 pt-3 border-t ${isDark ? 'border-white/5' : 'border-gray-200'}`}>
                                                         <Button
                                                             onClick={() => {
                                                                 setFinaleTrackingModal({
@@ -1520,30 +1520,30 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 {viewMode !== 'unified' && (
                 <div className={`relative overflow-hidden rounded-2xl border shadow-lg ${isDark
                     ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_25px_70px_rgba(2,6,23,0.65)]'
-                    : 'border-amber-200 bg-gradient-to-br from-white via-amber-50/50 to-white shadow-amber-200/30'}`}>
+                    : 'border-gray-200 bg-white shadow-sm'}`}>
                     {/* Card overlay effect */}
                     <div className={`pointer-events-none absolute inset-0 ${isDark ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),rgba(15,23,42,0))]' : 'bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.1),rgba(255,255,255,0))]'}`} />
 
-                    <div className={`relative p-4 border-b ${isDark ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70 border-white/5' : 'bg-gradient-to-r from-amber-50/90 via-white/80 to-amber-50/90 border-amber-900/15'}`}>
-                        <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-amber-200/60'}`} />
+                    <div className={`relative p-4 border-b ${isDark ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70 border-white/5' : 'bg-gradient-to-r from-gray-50 via-white to-gray-50 border-gray-200'}`}>
+                        <div className={`pointer-events-none absolute inset-x-10 top-0 h-2 blur-2xl ${isDark ? 'opacity-70 bg-white/20' : 'opacity-80 bg-blue-200/60'}`} />
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                                <h2 className={`text-xl font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>Internal Purchase Orders</h2>
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDark ? 'bg-slate-800/50 text-gray-300 border border-slate-700' : 'bg-amber-100 text-amber-800 border border-amber-300'}`}>
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Internal Purchase Orders</h2>
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${isDark ? 'bg-slate-800/50 text-gray-300 border border-slate-700' : 'bg-gray-100 text-gray-700 border border-gray-300'}`}>
                                     {filteredPOCount} total
                                     {totalPOCount !== filteredPOCount && (
-                                        <span className={isDark ? 'text-gray-500 ml-1' : 'text-amber-600 ml-1'}>of {totalPOCount}</span>
+                                        <span className={isDark ? 'text-gray-500 ml-1' : 'text-gray-500 ml-1'}>of {totalPOCount}</span>
                                     )}
                                 </span>
                             </div>
                             <div className="flex items-center gap-3 flex-wrap">
                                 {/* Date Range Filter */}
-                                <div className={`flex items-center gap-1 rounded-lg p-1 border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-white/80 border-amber-200'}`}>
+                                <div className={`flex items-center gap-1 rounded-lg p-1 border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-white/80 border-gray-200'}`}>
                                     <Button
                                         onClick={() => setDateFilter('all')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === 'all'
                                             ? 'bg-accent-500 text-white'
-                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                             }`}
                                     >
                                         All Time
@@ -1552,7 +1552,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         onClick={() => setDateFilter('30days')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === '30days'
                                             ? 'bg-blue-500 text-white'
-                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                             }`}
                                     >
                                         30 Days
@@ -1561,7 +1561,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         onClick={() => setDateFilter('90days')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === '90days'
                                             ? 'bg-purple-500 text-white'
-                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                             }`}
                                     >
                                         90 Days
@@ -1570,21 +1570,21 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         onClick={() => setDateFilter('12months')}
                                         className={`px-3 py-1.5 text-xs rounded transition-colors ${dateFilter === '12months'
                                             ? 'bg-green-500 text-white'
-                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                             }`}
                                     >
                                         12 Months
                                     </Button>
                                 </div>
 
-                                <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-700' : 'bg-amber-200'}`} />
+                                <div className={`h-6 w-px mx-1 ${isDark ? 'bg-slate-700' : 'bg-gray-200'}`} />
 
-                                <div className={`flex items-center gap-1 rounded-lg p-1 border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-white/80 border-amber-200'}`}>
+                                <div className={`flex items-center gap-1 rounded-lg p-1 border ${isDark ? 'bg-slate-950/50 border-slate-800' : 'bg-white/80 border-gray-200'}`}>
                                     <Button
                                         onClick={() => setViewMode('list')}
                                         className={`p-1.5 rounded transition-colors ${viewMode === 'list'
-                                            ? isDark ? 'bg-slate-700 text-white' : 'bg-amber-200 text-amber-900'
-                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
+                                            ? isDark ? 'bg-slate-700 text-white' : 'bg-gray-200 text-gray-900'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                             }`}
                                         title="List View"
                                     >
@@ -1593,8 +1593,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     <Button
                                         onClick={() => setViewMode('card')}
                                         className={`p-1.5 rounded transition-colors ${viewMode === 'card'
-                                            ? isDark ? 'bg-slate-700 text-white' : 'bg-amber-200 text-amber-900'
-                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-amber-100'
+                                            ? isDark ? 'bg-slate-700 text-white' : 'bg-gray-200 text-gray-900'
+                                            : isDark ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                             }`}
                                         title="Card View"
                                     >
@@ -1608,20 +1608,20 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="relative overflow-x-auto max-h-[calc(100vh-320px)]">
                         {sortedPurchaseOrders.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-                                <div className={`rounded-full p-6 mb-4 ${isDark ? 'bg-gray-700/30' : 'bg-amber-100'}`}>
-                                    <DocumentTextIcon className={`w-16 h-16 ${isDark ? 'text-gray-500' : 'text-amber-400'}`} />
+                                <div className={`rounded-full p-6 mb-4 ${isDark ? 'bg-gray-700/30' : 'bg-gray-100'}`}>
+                                    <DocumentTextIcon className={`w-16 h-16 ${isDark ? 'text-gray-500' : 'text-blue-400'}`} />
                                 </div>
-                                <h3 className={`text-xl font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>
+                                <h3 className={`text-xl font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                     {purchaseOrders.length === 0 ? 'No Purchase Orders Yet' : 'No Matching Purchase Orders'}
                                 </h3>
-                                <p className={`mb-4 max-w-md ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>
+                                <p className={`mb-4 max-w-md ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>
                                     {purchaseOrders.length === 0
                                         ? "Get started by creating a purchase order manually or importing from your Finale inventory system."
                                         : `${purchaseOrders.length} purchase order${purchaseOrders.length === 1 ? '' : 's'} exist, but none match your current filters.`}
                                 </p>
                                 {purchaseOrders.length > 0 && (
-                                    <div className={`text-sm mb-4 space-y-1 ${isDark ? 'text-gray-500' : 'text-amber-600'}`}>
-                                        <div>Current filter: <span className={isDark ? 'text-gray-400' : 'text-amber-700'}>Date = {dateFilter === 'all' ? 'All Time' : dateFilter === '30days' ? 'Last 30 Days' : dateFilter === '90days' ? 'Last 90 Days' : 'Last 12 Months'}</span></div>
+                                    <div className={`text-sm mb-4 space-y-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                                        <div>Current filter: <span className={isDark ? 'text-gray-400' : 'text-blue-600'}>Date = {dateFilter === 'all' ? 'All Time' : dateFilter === '30days' ? 'Last 30 Days' : dateFilter === '90days' ? 'Last 90 Days' : 'Last 12 Months'}</span></div>
                                         {dateFilter !== 'all' && (
                                             <div className="flex gap-2 justify-center mt-3">
                                                 <Button
@@ -1649,7 +1649,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             }}
                                             className={`inline-flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium border ${isDark 
                                                 ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' 
-                                                : 'bg-white text-amber-800 hover:bg-amber-50 border-amber-300'}`}
+                                                : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
                                         >
                                             <FileTextIcon className="w-5 h-5" />
                                             Import from Finale
@@ -1658,23 +1658,23 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 )}
                             </div>
                         ) : viewMode === 'list' ? (
-                            <table className={`min-w-full divide-y ${isDark ? 'divide-slate-800' : 'divide-amber-200'}`}>
-                                <thead className={`sticky top-0 z-10 ${isDark ? 'bg-slate-950/50' : 'bg-amber-50/90'}`}>
+                            <table className={`min-w-full divide-y ${isDark ? 'divide-slate-800' : 'divide-gray-200'}`}>
+                                <thead className={`sticky top-0 z-10 ${isDark ? 'bg-slate-950/50' : 'bg-gray-50/90'}`}>
                                     <tr>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>PO Number</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Vendor</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Status</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Date Created</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Expected Date</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Tracking</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Total</th>
-                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-amber-700'}`}>Actions</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>PO Number</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Vendor</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Status</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Date Created</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Expected Date</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Tracking</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Total</th>
+                                        <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className={`divide-y ${isDark ? 'bg-slate-950/30 divide-slate-800/50' : 'bg-white/80 divide-amber-100'}`}>
+                                <tbody className={`divide-y ${isDark ? 'bg-slate-950/30 divide-slate-800/50' : 'bg-white/80 divide-gray-100'}`}>
                                     {sortedPurchaseOrders.map((po) => (
-                                        <tr key={po.id} className={`transition-colors duration-200 cursor-pointer ${isDark ? 'hover:bg-slate-900/50' : 'hover:bg-amber-50'}`} onClick={() => handleViewPODetail(po)}>
-                                            <td className={`px-6 py-3 whitespace-nowrap text-sm font-medium ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>{po.orderId || po.id}</td>
+                                        <tr key={po.id} className={`transition-colors duration-200 cursor-pointer ${isDark ? 'hover:bg-slate-900/50' : 'hover:bg-gray-50'}`} onClick={() => handleViewPODetail(po)}>
+                                            <td className={`px-6 py-3 whitespace-nowrap text-sm font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{po.orderId || po.id}</td>
                                             <td className={`px-6 py-1 whitespace-nowrap text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                 <div className="flex items-center gap-2">
                                                     <span>{vendorMap.get(po.vendorId ?? '')?.name || po.supplier || 'Unknown Vendor'}</span>
@@ -1774,7 +1774,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         <div className="flex items-start justify-between">
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <h3 className={`text-lg font-mono font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>{po.orderId || po.id}</h3>
+                                                    <h3 className={`text-lg font-mono font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>{po.orderId || po.id}</h3>
                                                     {po.followUpCount && po.followUpCount > 0 && (
                                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/20 text-sky-200 border border-sky-500/40">
                                                             FU {po.followUpCount}
@@ -1801,7 +1801,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             </div>
                                         </div>
 
-                                        <div className={`pt-3 border-t flex items-center justify-between ${isDark ? 'border-gray-700/50' : 'border-amber-200'}`}>
+                                        <div className={`pt-3 border-t flex items-center justify-between ${isDark ? 'border-gray-700/50' : 'border-gray-200'}`}>
                                             <div>
                                                 <div className={`text-xs uppercase ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Total</div>
                                                 <div className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>${formatPoTotal(po)}</div>
@@ -1813,7 +1813,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                         </div>
 
                                         {po.trackingNumber && (
-                                            <div className={`rounded p-2 text-xs ${isDark ? 'bg-gray-800/50' : 'bg-amber-50 border border-amber-200'}`}>
+                                            <div className={`rounded p-2 text-xs ${isDark ? 'bg-gray-800/50' : 'bg-gray-50 border border-gray-200'}`}>
                                                 <div className={`flex justify-between items-center mb-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                                                     <span>TRACKING</span>
                                                     <span>{po.trackingCarrier}</span>
@@ -1825,19 +1825,19 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                             </div>
                                         )}
 
-                                        <div className={`flex items-center justify-end gap-1 pt-2 border-t ${isDark ? 'border-gray-700/50' : 'border-amber-200'}`} onClick={(e) => e.stopPropagation()}>
+                                        <div className={`flex items-center justify-end gap-1 pt-2 border-t ${isDark ? 'border-gray-700/50' : 'border-gray-200'}`} onClick={(e) => e.stopPropagation()}>
                                             {canManagePOs && (
-                                                <Button onClick={() => handleEditTracking(po)} className={`p-2 text-accent-300 rounded ${isDark ? 'hover:bg-slate-800' : 'hover:bg-amber-100'}`} title="Update Tracking"><TruckIcon className="w-4 h-4" /></Button>
+                                                <Button onClick={() => handleEditTracking(po)} className={`p-2 text-accent-300 rounded ${isDark ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`} title="Update Tracking"><TruckIcon className="w-4 h-4" /></Button>
                                             )}
                                             {po.trackingNumber && (
-                                                <Button onClick={() => handleOpenTracking(po)} className={`p-2 text-green-300 rounded ${isDark ? 'hover:bg-slate-800' : 'hover:bg-amber-100'}`} title="Track"><TruckIcon className="w-4 h-4" /></Button>
+                                                <Button onClick={() => handleOpenTracking(po)} className={`p-2 text-green-300 rounded ${isDark ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`} title="Track"><TruckIcon className="w-4 h-4" /></Button>
                                             )}
                                             {canManagePOs && ['shipped', 'in_transit', 'out_for_delivery', 'delivered'].includes(po.trackingStatus || '') && (
-                                                <Button onClick={() => handleReceivePO(po)} className={`p-2 text-emerald-400 rounded ${isDark ? 'hover:bg-slate-800' : 'hover:bg-amber-100'}`} title="Receive"><CheckCircleIcon className="w-4 h-4" /></Button>
+                                                <Button onClick={() => handleReceivePO(po)} className={`p-2 text-emerald-400 rounded ${isDark ? 'hover:bg-slate-800' : 'hover:bg-gray-100'}`} title="Receive"><CheckCircleIcon className="w-4 h-4" /></Button>
                                             )}
-                                            <Button onClick={() => handleDownloadPdf(po)} className={`p-2 rounded ${isDark ? 'text-gray-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-amber-100'}`} title="PDF"><FileTextIcon className="w-4 h-4" /></Button>
-                                            <Button onClick={() => handleSendEmailClick(po)} className={`p-2 rounded ${isDark ? 'text-gray-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-amber-100'}`} title="Email"><MailIcon className="w-4 h-4" /></Button>
-                                            <Button onClick={() => handleOpenComm(po)} className={`p-2 rounded ${isDark ? 'text-gray-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-amber-100'}`} title="Thread"><DocumentTextIcon className="w-4 h-4" /></Button>
+                                            <Button onClick={() => handleDownloadPdf(po)} className={`p-2 rounded ${isDark ? 'text-gray-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-gray-100'}`} title="PDF"><FileTextIcon className="w-4 h-4" /></Button>
+                                            <Button onClick={() => handleSendEmailClick(po)} className={`p-2 rounded ${isDark ? 'text-gray-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-gray-100'}`} title="Email"><MailIcon className="w-4 h-4" /></Button>
+                                            <Button onClick={() => handleOpenComm(po)} className={`p-2 rounded ${isDark ? 'text-gray-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-gray-100'}`} title="Thread"><DocumentTextIcon className="w-4 h-4" /></Button>
                                         </div>
                                     </div>
                                 ))}
@@ -1916,7 +1916,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             placeholder="e.g., 1Z999AA10123456784"
                             className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${isDark
                                 ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:ring-cyan-500'
-                                : 'bg-white border-amber-200 text-gray-900 placeholder-gray-400 focus:ring-amber-500'
+                                : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:ring-blue-500'
                             }`}
                         />
                     </div>
@@ -1929,7 +1929,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             onChange={(e) => setFinaleTrackingInput(prev => ({ ...prev, carrier: e.target.value }))}
                             className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${isDark
                                 ? 'bg-gray-800 border-gray-700 text-white focus:ring-cyan-500'
-                                : 'bg-white border-amber-200 text-gray-900 focus:ring-amber-500'
+                                : 'bg-white border-gray-200 text-gray-900 focus:ring-blue-500'
                             }`}
                         >
                             <option value="">Select carrier...</option>
@@ -1951,7 +1951,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             onChange={(e) => setFinaleTrackingInput(prev => ({ ...prev, eta: e.target.value }))}
                             className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${isDark
                                 ? 'bg-gray-800 border-gray-700 text-white focus:ring-cyan-500'
-                                : 'bg-white border-amber-200 text-gray-900 focus:ring-amber-500'
+                                : 'bg-white border-gray-200 text-gray-900 focus:ring-blue-500'
                             }`}
                         />
                     </div>
@@ -1967,7 +1967,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                             disabled={!finaleTrackingInput.number || savingFinaleTracking}
                             className={`px-4 py-2 text-sm rounded-lg disabled:opacity-50 ${isDark
                                 ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
-                                : 'bg-amber-500 hover:bg-amber-600 text-white'
+                                : 'bg-gray-500 hover:bg-gray-600 text-white'
                             }`}
                         >
                             {savingFinaleTracking ? 'Saving...' : 'Save Tracking'}
@@ -2068,7 +2068,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                         {/* Need By Date */}
                         {selectedReqForApproval.needByDate && (
-                            <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                            <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
                                 <CalendarIcon className="w-4 h-4" />
                                 Need by: {new Date(selectedReqForApproval.needByDate).toLocaleDateString()}
                             </div>
@@ -2327,7 +2327,7 @@ const PurchasingCommandCenter: React.FC<PurchasingCommandCenterProps> = ({
                                     ))}
                                 </ul>
                             )}
-                            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                            <div className="rounded-lg border border-yellow-500/30 bg-gray-500/10 px-3 py-2 text-xs text-yellow-100">
                                 Keep vendors in the loop — add tracking or run nudges from the automation widget below.
                             </div>
                         </div>

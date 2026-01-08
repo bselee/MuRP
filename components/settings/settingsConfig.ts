@@ -61,7 +61,7 @@ export interface SettingsSectionConfig {
 // Section definitions - order matters for navigation
 export const settingsSections: SettingsSectionConfig[] = [
   // Account
-  { id: 'personalization', label: 'Personalization', group: 'Account' },
+  { id: 'personalization', label: 'Profile & Display', group: 'Account' },
   { id: 'billing', label: 'Billing & Subscription', group: 'Account' },
 
   // Team (admin only)
