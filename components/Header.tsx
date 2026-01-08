@@ -9,7 +9,6 @@ interface HeaderProps {
     currentUser: User;
     onLogout: () => void;
     isGlobalLoading: boolean;
-    showLogo: boolean;
     devModeActive?: boolean;
 }
 
@@ -17,7 +16,6 @@ const Header: React.FC<HeaderProps> = ({
     currentUser,
     onLogout,
     isGlobalLoading,
-    showLogo,
     devModeActive,
 }) => {
     const { resolvedTheme } = useTheme();
@@ -41,12 +39,8 @@ const Header: React.FC<HeaderProps> = ({
         : 'border-yellow-400/40 bg-yellow-400/10 text-yellow-200';
 
     return (
-        <header className={`h-16 backdrop-blur-sm border-b flex items-center justify-between px-4 sm:px-6 lg:px-8 flex-shrink-0 transition-colors duration-300 ${headerClasses}`}>
-            <div className="flex items-center gap-3 min-w-[120px]">
-                <div className={`text-4xl font-extrabold tracking-wide ${isLight ? 'text-black' : 'text-white'} ${showLogo ? '' : 'md:hidden'}`}>
-                    MuRP
-                </div>
-            </div>
+        <header className={`h-16 backdrop-blur-sm border-b flex items-center justify-end px-4 sm:px-6 lg:px-8 flex-shrink-0 transition-colors duration-300 ${headerClasses}`}>
+            {/* Logo removed - canonical location is Sidebar */}
             <div className="flex items-center space-x-4">
                 <span className={`text-xs hidden sm:block ${statusTextClass}`}>
                     {statusText}

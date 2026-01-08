@@ -1919,7 +1919,6 @@ const AppShell: React.FC = () => {
           currentUser={currentUser}
           onLogout={handleLogout}
           isGlobalLoading={isDataLoading}
-          showLogo={isSidebarCollapsed}
           devModeActive={permissions.isGodMode}
         />
 
