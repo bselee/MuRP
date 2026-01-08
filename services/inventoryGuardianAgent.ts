@@ -51,6 +51,11 @@ import {
   type InventoryKPIs,
   type PastDuePOLine,
 } from './inventoryKPIService';
+import {
+  analyzeSupplyChainRisks,
+  formatRiskSummaryForAgent,
+  type SupplyChainRiskSummary,
+} from './supplyChainRiskService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 Types
@@ -122,6 +127,8 @@ export interface StockHealthSummary {
   bom_alerts: StockLevelAlert[]; // Separate list for BOMs needing builds
   // Extended KPIs
   kpi_summary?: KPISummary;
+  // Supply Chain Risk Analysis (PAB-based)
+  supply_chain_risks?: SupplyChainRiskSummary;
 }
 
 export interface VelocityAnalysis {
@@ -551,6 +558,7 @@ export async function runInventoryGuardianAgent(
   velocity_alerts: VelocityAnalysis[];
   reorder_recommendations: Array<{ sku: string; product_name: string; current_reorder_point: number; recommended_reorder_point: number; reason: string }>;
   kpi_summary: KPISummary | null;
+  supply_chain_risks: SupplyChainRiskSummary | null;
   output: string[];
 }> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
@@ -559,11 +567,15 @@ export async function runInventoryGuardianAgent(
   output.push(`[${new Date().toISOString()}] Inventory Guardian starting health check...`);
   output.push(`  Target runway: ${cfg.target_days_of_stock} days | Critical threshold: ${cfg.critical_runway_days} days`);
 
-  // Run health check and KPI calculations in parallel
-  const [summary, kpiSummary] = await Promise.all([
+  // Run health check, KPI calculations, and supply chain risk analysis in parallel
+  const [summary, kpiSummary, supplyChainRisks] = await Promise.all([
     runInventoryHealthCheck(config),
     getKPISummary().catch(err => {
       console.error('[InventoryGuardian] KPI calculation failed:', err);
+      return null;
+    }),
+    analyzeSupplyChainRisks({ horizon_days: 60, include_bom_explosion: true }).catch(err => {
+      console.error('[InventoryGuardian] Supply chain risk analysis failed:', err);
       return null;
     })
   ]);
@@ -571,6 +583,11 @@ export async function runInventoryGuardianAgent(
   // Attach KPI summary to health summary
   if (kpiSummary) {
     summary.kpi_summary = kpiSummary;
+  }
+
+  // Attach supply chain risks to health summary
+  if (supplyChainRisks) {
+    summary.supply_chain_risks = supplyChainRisks;
   }
 
   // Summary line
@@ -719,6 +736,13 @@ export async function runInventoryGuardianAgent(
     output.push('');
   }
 
+  // === SUPPLY CHAIN RISK ANALYSIS (PAB-based) ===
+  if (supplyChainRisks && supplyChainRisks.items_needing_action > 0) {
+    output.push('');
+    const riskLines = formatRiskSummaryForAgent(supplyChainRisks);
+    output.push(...riskLines);
+  }
+
   output.push(`[${new Date().toISOString()}] Inventory Guardian complete`);
 
   return {
@@ -727,6 +751,7 @@ export async function runInventoryGuardianAgent(
     velocity_alerts: velocityAlerts,
     reorder_recommendations: recommendations,
     kpi_summary: kpiSummary,
+    supply_chain_risks: supplyChainRisks,
     output,
   };
 }

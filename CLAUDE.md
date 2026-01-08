@@ -202,6 +202,8 @@ The Stock Intelligence system provides data-driven purchasing guidance. **All da
 - `services/purchasingForecastingService.ts` - ROP calculations, purchasing advice
 - `services/forecastingService.ts` - Trend analysis, seasonal pattern detection
 - `services/stockoutPreventionAgent.ts` - Proactive stockout alerts
+- `services/inventoryKPIService.ts` - Comprehensive inventory KPIs (CLTR, CV, ABC/XYZ)
+- `services/supplyChainRiskService.ts` - Time-phased PAB analysis with BOM explosion
 
 **Data Filtering Rules (CRITICAL - Never Show Dropship Items):**
 Stock Intelligence should NEVER show dropship items to avoid confusing humans. Use layered filtering:
@@ -268,6 +270,58 @@ const trendDirection = trend30 > trend90 * 1.15 ? 'up' :
 - `pages/StockIntelligence.tsx` - Main dashboard with 6 tabs
 - `components/PurchasingGuidanceDashboard.tsx` - KPI cards and replenishment advice
 - `components/StockoutRiskWidget.tsx` - Risk visualization
+
+### Inventory KPI Framework
+
+Comprehensive KPIs calculated by `inventoryKPIService.ts`:
+
+| KPI | Formula | Interpretation |
+|-----|---------|----------------|
+| **CLTR** | runway / (lead_time + review_period) | <0.5 CRITICAL, 0.5-1.0 AT_RISK, 1.0-2.0 ADEQUATE, >2.0 HEALTHY |
+| **CV** | std_dev / mean | <0.5 X-class (predictable), 0.5-1.0 Y-class, >1.0 Z-class (erratic) |
+| **ABC** | Cumulative $ usage | A=80%, B=next 15%, C=remaining 5% |
+| **Safety Stock Attainment** | current_stock / safety_stock × 100 | <50% CRITICAL, 50-100% LOW, 100-150% OPTIMAL |
+| **Lead Time Bias** | actual_LT - planned_LT | Positive = vendors deliver late |
+| **Excess Inventory** | (stock - 90d runway) × unit_cost | Capital tied up above target |
+
+```typescript
+import { getKPISummary, calculateInventoryKPIs } from './services/inventoryKPIService';
+const summary = await getKPISummary();  // Returns aggregated KPIs
+const itemKPIs = await calculateInventoryKPIs();  // Returns per-SKU KPIs
+```
+
+### Supply Chain Risk Analysis (PAB-based)
+
+Time-phased Projected Available Balance analysis with BOM explosion. Located in `services/supplyChainRiskService.ts`.
+
+**Key Concepts:**
+- **PAB**: Projected Available Balance = Beginning + Receipts - Demand
+- **BOM Explosion**: Converts finished goods demand to component requirements (dependent demand)
+- **Runout Detection**: First day PAB goes negative
+- **SS Breach**: First day PAB drops below safety stock
+
+**Risk Types:**
+- `STOCKOUT`: PAB goes negative within horizon
+- `SS_BREACH`: PAB drops below safety stock
+- `COMPONENT_SHORT`: Component needed for BOMs running low
+- `PO_LATE`: Expected PO not yet received
+
+**Usage:**
+```typescript
+import { analyzeSupplyChainRisks, formatRiskSummaryForAgent } from './services/supplyChainRiskService';
+
+const risks = await analyzeSupplyChainRisks({
+  horizon_days: 60,
+  include_bom_explosion: true,
+});
+
+// Each risk has two-sentence output format:
+// risk.risk_statement: "SKU X will breach safety stock on DATE (Y days)"
+// risk.action_statement: "ACTION: Order N units by DATE to prevent stockout"
+```
+
+**Integration with Inventory Guardian:**
+The `inventoryGuardianAgent.ts` calls this service and includes PAB-based risk analysis in its output. All three analyses (health check, KPIs, supply chain risks) run in parallel.
 
 ### Compliance System
 
