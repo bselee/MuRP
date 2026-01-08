@@ -94,7 +94,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
             accountPath: envAccountPath,
             baseUrl: import.meta.env.VITE_FINALE_BASE_URL || 'https://app.finaleinventory.com',
           });
-          console.log('[FinaleSetupPanel] ✅ Auto-configured from environment variables');
+          console.log('[FinaleSetupPanel] Auto-configured from environment variables');
           
           // Check if auto-sync is running
           const { getAutoSyncStatus } = await import('../services/finaleAutoSync');
@@ -102,7 +102,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
           
           if (autoSyncStatus.initialized) {
             setAutoSyncEnabled(true);
-            addToast('✅ Auto-sync running from environment credentials', 'success');
+            addToast('Auto-sync running from environment credentials', 'success');
           }
         }
 
@@ -160,7 +160,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
       setTestResult(result);
 
       if (result.success) {
-        addToast('✅ Connection successful!', 'success');
+        addToast('Connection successful!', 'success');
         setCurrentStep('sync');
         
         // Save to localStorage
@@ -178,7 +178,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
         
         setIsConfigured(true);
       } else {
-        addToast('❌ Connection failed: ' + result.message, 'error');
+        addToast('Connection failed: ' + result.message, 'error');
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -186,7 +186,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
         success: false,
         message,
       });
-      addToast('❌ Connection failed: ' + message, 'error');
+      addToast('Connection failed: ' + message, 'error');
     } finally {
       setIsTesting(false);
     }
@@ -198,15 +198,15 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
     // Subscribe to sync status updates
     const unsubscribe = syncService.onStatusChange(setSyncStatus);
     
-    addToast('🚀 Starting initial sync...', 'info');
+    addToast('Starting initial sync...', 'info');
     
     try {
       await syncService.syncAll();
-      addToast('✅ Initial sync completed!', 'success');
+      addToast('Initial sync completed!', 'success');
       setCurrentStep('monitor');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sync failed';
-      addToast('❌ Sync failed: ' + message, 'error');
+      addToast('Sync failed: ' + message, 'error');
     }
     
     return () => unsubscribe();
@@ -221,7 +221,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
       setAutoSyncEnabled(false);
     } else {
       syncService.startAutoSync();
-      addToast('✅ Auto-sync enabled!', 'success');
+      addToast('Auto-sync enabled!', 'success');
       setAutoSyncEnabled(true);
     }
   };
@@ -234,7 +234,7 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
 
     const syncService = getFinaleSyncService();
     const sources = Array.from(selectedSyncSources);
-    addToast(`🔄 Starting sync for: ${sources.join(', ')}...`, 'info');
+    addToast(`Starting sync for: ${sources.join(', ')}...`, 'info');
     
     try {
       // Sync selected sources in order: vendors → inventory → BOMs
@@ -248,10 +248,10 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
         await syncService.syncBOMsFromCSV();
       }
       
-      addToast('✅ Sync completed!', 'success');
+      addToast('Sync completed!', 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Sync failed';
-      addToast('❌ Sync failed: ' + message, 'error');
+      addToast('Sync failed: ' + message, 'error');
       console.error('[FinaleSetupPanel] Sync error:', error);
     }
   };
@@ -356,13 +356,13 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
       setImportStats(result.stats);
 
       if (result.success) {
-        addToast(`✅ CSV import complete: ${result.stats.imported} imported, ${result.stats.updated} updated, ${result.stats.skipped} skipped`, 'success');
+        addToast(`CSV import complete: ${result.stats.imported} imported, ${result.stats.updated} updated, ${result.stats.skipped} skipped`, 'success');
       } else {
-        addToast(`❌ CSV import failed: ${result.error}`, 'error');
+        addToast(`CSV import failed: ${result.error}`, 'error');
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      addToast(`❌ CSV import failed: ${message}`, 'error');
+      addToast(`CSV import failed: ${message}`, 'error');
     } finally {
       setIsImportingCSV(false);
     }
@@ -419,15 +419,15 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
 
     try {
       // Test connection first
-      addToast('🔍 Testing Finale connection...', 'info');
+      addToast('Testing Finale connection...', 'info');
       const testResult = await finaleClient.testConnection();
       
       if (!testResult.success) {
-        addToast(`❌ Connection failed: ${testResult.message}`, 'error');
+        addToast(`Connection failed: ${testResult.message}`, 'error');
         return;
       }
 
-      addToast('✅ Connection successful, pulling POs...', 'info');
+      addToast('Connection successful, pulling POs...', 'info');
 
       // Pull POs from Finale API using the importer service
       const result = await finalePOImporter.importFromFinaleAPI();
@@ -439,13 +439,13 @@ const FinaleSetupPanel: React.FC<FinaleSetupPanelProps> = ({ addToast }) => {
       });
 
       if (result.success || result.imported > 0 || result.updated > 0) {
-        addToast(`✅ Finale pull complete: ${result.imported} imported, ${result.updated} updated, ${result.skipped} skipped`, 'success');
+        addToast(`Finale pull complete: ${result.imported} imported, ${result.updated} updated, ${result.skipped} skipped`, 'success');
       } else {
-        addToast(`❌ Finale pull failed: ${result.errors.length > 0 ? result.errors[0].error : 'No POs found'}`, 'error');
+        addToast(`Finale pull failed: ${result.errors.length > 0 ? result.errors[0].error : 'No POs found'}`, 'error');
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      addToast(`❌ Finale pull failed: ${message}`, 'error');
+      addToast(`Finale pull failed: ${message}`, 'error');
     } finally {
       setIsPullingFinale(false);
     }
