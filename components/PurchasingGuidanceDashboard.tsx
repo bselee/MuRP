@@ -107,21 +107,31 @@ export default function PurchasingGuidanceDashboard() {
                 ? forecasts.reduce((acc: number, f: any) => acc + (f.error_pct || 0), 0) / forecasts.length
                 : null;
 
-            // 3. Calculate real Vendor Reliability from PO data
+            // 3. Calculate real Vendor Reliability from Finale PO data
             let vendorReliability: number | null = null;
             try {
+                // Try to calculate from POs with both expected and actual dates
                 const { data: poData, error: poError } = await supabase
-                    .from('purchase_orders')
-                    .select('status, expected_date, received_at')
-                    .in('status', ['received', 'Fulfilled', 'partial']);
+                    .from('finale_purchase_orders')
+                    .select('status, expected_date, received_date, tracking_delivered_date')
+                    .eq('status', 'Completed')
+                    .not('expected_date', 'is', null);
 
                 if (!poError && poData && poData.length > 0) {
-                    const completedPOs = poData.length;
-                    const onTimePOs = poData.filter(po => {
-                        if (!po.expected_date || !po.received_at) return false;
-                        return new Date(po.received_at) <= new Date(po.expected_date);
-                    }).length;
-                    vendorReliability = completedPOs > 0 ? (onTimePOs / completedPOs) * 100 : null;
+                    // Count POs with actual delivery info
+                    const withDeliveryDate = poData.filter(po =>
+                        po.received_date || po.tracking_delivered_date
+                    );
+
+                    if (withDeliveryDate.length > 0) {
+                        const completedPOs = withDeliveryDate.length;
+                        const onTimePOs = withDeliveryDate.filter(po => {
+                            const actualDate = po.tracking_delivered_date || po.received_date;
+                            if (!po.expected_date || !actualDate) return false;
+                            return new Date(actualDate) <= new Date(po.expected_date);
+                        }).length;
+                        vendorReliability = completedPOs > 0 ? (onTimePOs / completedPOs) * 100 : null;
+                    }
                 }
             } catch (err) {
                 console.warn('Could not calculate vendor reliability:', err);
