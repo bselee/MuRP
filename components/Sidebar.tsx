@@ -165,17 +165,21 @@ const Sidebar: React.FC<SidebarProps> = ({
         isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
       } ${isCollapsed ? 'w-16' : 'w-64'}`}
     >
-      {/* Header with logo and toggle - h-16 (64px) for alignment */}
-      <div className={`h-16 flex items-center border-b relative ${
+      {/* Header with logo - h-16 (64px) for alignment */}
+      <div className={`h-16 flex items-center border-b ${
         isDark ? 'border-gray-800' : 'border-gray-200'
       }`}>
         <MuRPLogo collapsed={isCollapsed} />
+      </div>
+
+      {/* Collapse toggle - positioned below logo */}
+      <div className="relative">
         <button
           type="button"
           onClick={onToggle}
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!isCollapsed}
-          className={`absolute -right-3 top-1/2 -translate-y-1/2 rounded-full p-1 border transition-transform z-10 ${
+          className={`absolute -right-3 top-2 rounded-full p-1 border transition-transform z-10 ${
             isDark
               ? 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700'
               : 'bg-white border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-50 shadow-sm'
