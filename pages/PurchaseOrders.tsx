@@ -1082,13 +1082,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>📦 Purchase Orders</h2>
-                                <StatusBadge variant="primary" className="ml-2">
+                                <StatusBadge variant="primary">
                                     {finalePurchaseOrders.filter(fpo => {
                                         // Exclude dropship POs - only those with "DropshipPO" in the order ID
                                         const orderId = (fpo.orderId || '').toLowerCase();
                                         return !orderId.includes('dropshippo');
-                                    }).length} total
+                                    }).length} Finale POs
                                 </StatusBadge>
                                 {!showAllFinaleHistory && (
                                     <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>(Active only)</span>

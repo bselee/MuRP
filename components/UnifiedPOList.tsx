@@ -632,16 +632,25 @@ const UnifiedPOList: React.FC<UnifiedPOListProps> = ({
                   >
                     {/* PO # */}
                     <td className="px-4 py-4">
-                      <a
-                        href="#"
-                        onClick={(e) => { e.stopPropagation(); onViewDetails?.(po); }}
-                        className={`font-semibold hover:underline ${isDark ? 'text-white' : 'text-gray-900'}`}
-                      >
-                        {po.orderId}
-                      </a>
-                      <div className={`flex items-center gap-1 mt-0.5 ${isDark ? 'text-gray-500' : 'text-stone-300'}`}>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href="#"
+                          onClick={(e) => { e.stopPropagation(); onViewDetails?.(po); }}
+                          className={`font-semibold hover:underline ${isDark ? 'text-white' : 'text-gray-900'}`}
+                        >
+                          {po.orderId}
+                        </a>
+                        {po.source === 'internal' && (
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                            isDark ? 'bg-purple-900/40 text-purple-300 border border-purple-500/30' : 'bg-purple-100 text-purple-700'
+                          }`}>
+                            Internal
+                          </span>
+                        )}
+                      </div>
+                      <div className={`flex items-center gap-1 mt-0.5 ${isDark ? 'text-gray-500' : 'text-stone-400'}`}>
                         <PackageIcon className="w-3 h-3" />
-                        <span className="text-xs">{po.source === 'finale' ? 'Finale' : 'Internal'}</span>
+                        <span className="text-xs">{po.source === 'finale' ? 'Finale' : 'MuRP'}</span>
                       </div>
                     </td>
 
