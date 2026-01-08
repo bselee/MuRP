@@ -130,7 +130,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 /types/              # TypeScript type definitions
 /supabase/
   /functions/        # Edge functions (30 functions for webhooks, sync, automation)
-  /migrations/       # 153+ SQL migrations (strict 3-digit sequential numbering)
+  /migrations/       # 168+ SQL migrations (strict 3-digit sequential numbering)
 /e2e/                # Playwright E2E tests
 /tests/              # Unit tests
 ```

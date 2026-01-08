@@ -737,6 +737,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 />
                 {/* Purchasing Command Center moved to Agent Settings Modal */}
 
+                {/* Internal Requisitions Section - Hidden by default, available in Agent Settings modal
+                    Will be used for internal purchase requests starting with INT prefix
                 <div id="po-requisitions">
                     <RequisitionsSection
                         requisitions={requisitions}
@@ -753,6 +755,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         canActOnRequisition={permissions.canApproveRequisition}
                     />
                 </div>
+                */}
 
                 {/* Agent/Auto Controls moved to Modal */}
                 <Modal

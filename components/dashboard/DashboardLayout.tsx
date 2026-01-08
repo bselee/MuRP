@@ -65,8 +65,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </button>
         </div>
 
-        {/* Desktop header with collapse toggle */}
-        <div className={`hidden lg:flex items-center relative py-5 ${isCollapsed ? 'justify-center px-2' : 'gap-2 px-6'}`}>
+        {/* Desktop header with collapse toggle - h-12 is smaller than main sidebar h-14 */}
+        <div className={`hidden lg:flex items-center relative h-12 ${isCollapsed ? 'justify-center px-2' : 'gap-2 px-4'}`}>
           <HomeIcon className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
           {!isCollapsed && (
             <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -88,7 +88,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
 
         {/* Sidebar content */}
-        <div className="h-[calc(100%-4rem)] lg:h-[calc(100%-3.5rem)]">
+        <div className="h-[calc(100%-4rem)] lg:h-[calc(100%-3rem)]">
           {sidebar}
         </div>
       </aside>
