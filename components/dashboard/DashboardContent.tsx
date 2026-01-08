@@ -58,7 +58,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
           />
 
           {/* Stock guidance */}
-          <PurchasingGuidanceDashboard />
+          <PurchasingGuidanceDashboard onNavigateToPOs={() => setCurrentPage('Purchase Orders')} />
         </div>
       );
 

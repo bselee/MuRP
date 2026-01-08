@@ -3,7 +3,7 @@ import { getRigorousPurchasingAdvice, getForecastAccuracyMetrics } from '../serv
 import { detectInventoryAnomalies, type Anomaly } from '../services/aiPurchasingService';
 import { supabase } from '../lib/supabase/client';
 import { createPurchaseOrder, batchUpdateInventory } from '../hooks/useSupabaseMutations';
-import { MagicSparklesIcon, ShoppingCartIcon, CheckIcon, PlusIcon, CheckCircleIcon, XCircleIcon } from './icons';
+import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon } from './icons';
 import type { CreatePurchaseOrderInput } from '../types';
 
 interface AdviceItem {
@@ -26,7 +26,11 @@ interface AdviceItem {
     };
 }
 
-export default function PurchasingGuidanceDashboard() {
+interface PurchasingGuidanceDashboardProps {
+    onNavigateToPOs?: () => void;
+}
+
+export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: PurchasingGuidanceDashboardProps = {}) {
     const [advice, setAdvice] = useState<AdviceItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [metrics, setMetrics] = useState<any>({
@@ -703,107 +707,29 @@ export default function PurchasingGuidanceDashboard() {
                 )}
             </div>
 
-            {/* 4. ON ORDER - Items with POs (monitoring) */}
+            {/* Info card for items already on order */}
             {onOrder.length > 0 && (
-                <div className="bg-white rounded-xl shadow-sm border border-green-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-green-100 bg-green-50/50 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                                <CheckCircleIcon className="w-5 h-5 text-green-600" />
-                                On Order - Monitoring
-                                <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full ml-2">
-                                    {onOrder.length} items
-                                </span>
-                            </h3>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                        <div>
+                            <span className="text-sm font-medium text-green-800">
+                                {onOrder.length} item{onOrder.length !== 1 ? 's' : ''} already on order
+                            </span>
+                            <span className="text-xs text-green-600 ml-2">
+                                Track delivery status in Purchase Orders
+                            </span>
                         </div>
-                        <span className="text-xs text-slate-500">POs placed, awaiting delivery</span>
                     </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-green-50 text-slate-600 font-medium">
-                                <tr>
-                                    <th className="px-4 py-3">SKU / Product</th>
-                                    <th className="px-4 py-3">Vendor</th>
-                                    <th className="px-4 py-3 text-right">Stock</th>
-                                    <th className="px-4 py-3 text-right">Days Left</th>
-                                    <th className="px-4 py-3">PO #</th>
-                                    <th className="px-4 py-3">Est. Arrival</th>
-                                    <th className="px-4 py-3">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {onOrder.map((item, idx) => {
-                                    const daysRemaining = item.days_remaining ?? 999;
-                                    const expectedDate = item.linked_po?.expected_date ? new Date(item.linked_po.expected_date) : null;
-                                    const today = new Date();
-                                    const daysUntilArrival = expectedDate ? Math.ceil((expectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null;
-
-                                    // Determine if PO will arrive in time
-                                    const willArriveInTime = daysUntilArrival !== null && daysUntilArrival <= daysRemaining;
-                                    const isLate = daysUntilArrival !== null && daysUntilArrival > daysRemaining;
-
-                                    return (
-                                        <tr key={idx} className={`${isLate ? 'bg-amber-50' : 'bg-white'} hover:bg-slate-50/50 transition-colors`}>
-                                            <td className="px-4 py-3">
-                                                <div className="font-medium text-slate-900 font-mono text-xs">{item.sku}</div>
-                                                <div className="text-slate-500 text-xs max-w-[250px] truncate" title={item.name}>{item.name}</div>
-                                            </td>
-                                            <td className="px-4 py-3 text-xs text-slate-600 max-w-[120px] truncate">
-                                                {item.vendor_name || 'Unknown'}
-                                            </td>
-                                            <td className={`px-4 py-3 text-right font-medium ${item.current_status.stock === 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                                                {item.current_status.stock}
-                                            </td>
-                                            <td className={`px-4 py-3 text-right font-bold ${
-                                                daysRemaining <= 0 ? 'text-red-700' :
-                                                daysRemaining < 7 ? 'text-red-600' :
-                                                daysRemaining < 14 ? 'text-yellow-600' :
-                                                'text-slate-600'
-                                            }`}>
-                                                {daysRemaining <= 0 ? 'OUT' : daysRemaining}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className="font-medium text-green-700 font-mono text-xs">
-                                                    {item.linked_po?.po_number}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-xs">
-                                                {expectedDate ? (
-                                                    <div>
-                                                        <div className="font-medium text-slate-700">
-                                                            {expectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                                        </div>
-                                                        <div className="text-slate-400">
-                                                            {daysUntilArrival !== null && daysUntilArrival > 0 ? `in ${daysUntilArrival}d` : daysUntilArrival === 0 ? 'Today' : 'Past due'}
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-400">No date</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {willArriveInTime ? (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
-                                                        <CheckIcon className="w-3 h-3" />
-                                                        On Track
-                                                    </span>
-                                                ) : isLate ? (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full">
-                                                        May stockout before arrival
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 bg-slate-100 rounded-full">
-                                                        Pending
-                                                    </span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                    {onNavigateToPOs && (
+                        <button
+                            onClick={onNavigateToPOs}
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-700 hover:text-green-900 hover:bg-green-100 rounded-lg transition-colors"
+                        >
+                            View POs
+                            <ArrowRightIcon className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
             )}
 
