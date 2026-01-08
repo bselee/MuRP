@@ -68,14 +68,22 @@ const STATUS_PRIORITY: Record<string, number> = {
 const PROGRESS_STAGES = ['Ordered', 'Confirmed', 'Shipped', 'Transit', 'Delivered'];
 
 // Map status to progress index
+// IMPORTANT: Keep in sync with PODeliveryTimeline.tsx getStepStatus()
+// Progress stages: 0=Ordered, 1=Confirmed, 2=Shipped, 3=Transit, 4=Delivered
 function getProgressIndex(status: string | null): number {
   if (!status) return 0;
   const s = status.toLowerCase();
+  // Stage 4: Delivered - order has been received
   if (s === 'delivered' || s === 'received' || s === 'completed') return 4;
-  if (s === 'out_for_delivery') return 3;
-  if (s === 'in_transit' || s === 'shipped') return 3;
+  // Stage 3: Transit - package is in transit
+  if (s === 'out_for_delivery' || s === 'in_transit' || s === 'shipped' || s === 'partially_received') return 3;
+  // Stage 2: Shipped - label created, picked up
   if (s === 'label_created' || s === 'picked_up') return 2;
-  if (s === 'confirmed' || s === 'sent' || s === 'submitted' || s === 'committed') return 1;
+  // Stage 2: Vendor Confirmed - vendor has confirmed/committed to the order
+  if (s === 'confirmed' || s === 'committed' || s === 'processing') return 2;
+  // Stage 1: Ordered - sent to vendor, awaiting confirmation
+  if (s === 'sent' || s === 'submitted') return 1;
+  // Stage 0: Draft/Pending - not yet sent
   return 0;
 }
 

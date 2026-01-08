@@ -73,7 +73,7 @@ export const settingsSections: SettingsSectionConfig[] = [
   // Data & Integrations (admin only)
   { id: 'integrations', label: 'Company Integrations', group: 'Data', adminOnly: true },
   { id: 'api-keys', label: 'API Keys & Connections', group: 'Data', adminOnly: true },
-  { id: 'data-filters', label: 'Global Data Filters', group: 'Data', adminOnly: true },
+  { id: 'data-filters', label: 'Global Data Filtering', group: 'Data', adminOnly: true },
 
   // Operations
   { id: 'purchasing', label: 'Purchasing & Vendors', group: 'Operations', adminOnly: true },

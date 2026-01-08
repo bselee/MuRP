@@ -150,20 +150,22 @@ const PODeliveryTimeline: React.FC<PODeliveryTimelineProps> = ({
     const normalizedTracking = trackingStatus || 'awaiting_confirmation';
 
     // Map statuses to step completion
+    // IMPORTANT: Keep in sync with UnifiedPOList.tsx getProgressIndex()
+    // Steps: 1=Ordered, 2=Confirmed, 3=In Transit, 4=Delivered
     const stepMap: Record<string, number> = {
       // PO statuses
       'draft': 0,
       'pending': 0,
-      'submitted': 1,
-      'sent': 1,
-      'committed': 1,
-      'confirmed': 2,
+      'submitted': 1,  // Order sent, awaiting vendor confirmation
+      'sent': 1,       // Order sent, awaiting vendor confirmation
+      'committed': 2,  // Vendor confirmed (committed to order)
+      'confirmed': 2,  // Vendor confirmed
+      'processing': 2, // Vendor processing (implies confirmed)
       'partially_received': 3,
       'received': 4,
       'cancelled': -1,
       // Tracking statuses
       'awaiting_confirmation': 1,
-      'processing': 2,
       'shipped': 3,
       'in_transit': 3,
       'out_for_delivery': 3,
