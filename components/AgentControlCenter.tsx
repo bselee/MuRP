@@ -231,7 +231,8 @@ const AgentControlCenter: React.FC<AgentControlCenterProps> = ({
   const textColor = isDark ? 'text-gray-100' : 'text-gray-900';
   const mutedColor = isDark ? 'text-gray-400' : 'text-gray-500';
 
-  const hasActivity = activities.length > 0 || runningCount > 0;
+  // hasActivity should include pending reviews - don't say "All clear" if there are items needing review
+  const hasActivity = activities.length > 0 || runningCount > 0 || pendingReviewCount > 0;
   const needsAttention = pendingReviewCount > 0;
 
   if (loading) {
@@ -389,6 +390,23 @@ const AgentControlCenter: React.FC<AgentControlCenterProps> = ({
               <div className={`px-4 py-2 text-center ${mutedColor} text-xs`}>
                 +{activities.length - 5} more items
               </div>
+            )}
+          </div>
+        ) : pendingReviewCount > 0 ? (
+          // Has pending reviews but no recent activities - prompt user to view all
+          <div className="px-6 py-6 text-center">
+            <div className={`w-12 h-12 mx-auto mb-3 rounded-xl ${isDark ? 'bg-amber-500/20' : 'bg-amber-50'} flex items-center justify-center`}>
+              <ExclamationTriangleIcon className="w-6 h-6 text-amber-500" />
+            </div>
+            <p className={`text-sm font-medium ${textColor}`}>{pendingReviewCount} items need review</p>
+            <p className={`text-xs ${mutedColor} mt-1 mb-3`}>Older items are waiting for your attention</p>
+            {onViewAllActivity && (
+              <button
+                onClick={onViewAllActivity}
+                className="text-sm text-blue-500 hover:text-blue-400 font-medium"
+              >
+                View all activity →
+              </button>
             )}
           </div>
         ) : (

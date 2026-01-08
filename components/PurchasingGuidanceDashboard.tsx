@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { getRigorousPurchasingAdvice, getForecastAccuracyMetrics } from '../services/purchasingForecastingService';
 import { detectInventoryAnomalies, type Anomaly } from '../services/aiPurchasingService';
 import { supabase } from '../lib/supabase/client';
@@ -47,6 +47,13 @@ export default function PurchasingGuidanceDashboard() {
 
     // Toast notifications
     const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
+
+    // Ref for scrolling to replenishment section
+    const replenishmentRef = useRef<HTMLDivElement>(null);
+
+    const scrollToReplenishment = () => {
+        replenishmentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     // Add a toast notification
     const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -454,27 +461,29 @@ export default function PurchasingGuidanceDashboard() {
                     unit="SKUs"
                     trend={metrics.riskItems > 5 ? 'critical' : 'neutral'}
                     desc="Items below calculated ROP"
+                    onClick={metrics.riskItems > 0 ? scrollToReplenishment : undefined}
+                    clickHint={metrics.riskItems > 0 ? "View items to reorder" : undefined}
                 />
                 <KPICard
                     title="Forecast Accuracy"
                     value={metrics.accuracy}
                     unit="%"
                     trend={metrics.accuracy === 'N/A' ? 'neutral' : 'positive'}
-                    desc="1 - MAPE (Last 90 Days)"
+                    desc={metrics.accuracy === 'N/A' ? "No forecast data yet" : "1 - MAPE (Last 90 Days)"}
                 />
                 <KPICard
                     title="Vendor Reliability"
                     value={metrics.vendorReliability}
                     unit="%"
                     trend={metrics.vendorReliability === 'N/A' ? 'neutral' : (parseFloat(metrics.vendorReliability) >= 80 ? 'positive' : 'critical')}
-                    desc="On-Time Delivery Rate"
+                    desc={metrics.vendorReliability === 'N/A' ? "No completed POs with delivery dates" : "On-Time Delivery Rate"}
                 />
                 <KPICard
                     title="Capital Efficiency"
                     value={metrics.inventoryTurnover}
                     unit="Turns"
                     trend="neutral"
-                    desc="Inventory Turnover Rate"
+                    desc={metrics.inventoryTurnover === 'N/A' ? "No velocity data available" : "Inventory Turnover Rate"}
                 />
             </div>
 
@@ -519,7 +528,7 @@ export default function PurchasingGuidanceDashboard() {
             )}
 
             {/* 3. Actionable Reorder Advice */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div ref={replenishmentRef} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <h3 className="font-semibold text-slate-800 flex items-center gap-2">
@@ -721,11 +730,30 @@ export default function PurchasingGuidanceDashboard() {
     );
 }
 
-function KPICard({ title, value, unit, trend, desc }: any) {
+interface KPICardProps {
+    title: string;
+    value: string | number;
+    unit: string;
+    trend: 'critical' | 'positive' | 'neutral';
+    desc: string;
+    onClick?: () => void;
+    clickHint?: string;
+}
+
+function KPICard({ title, value, unit, trend, desc, onClick, clickHint }: KPICardProps) {
     const isCritical = trend === 'critical';
+    const isClickable = !!onClick;
 
     return (
-        <div className={`p-4 rounded-xl border ${isCritical ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'} shadow-sm`}>
+        <div
+            className={`p-4 rounded-xl border ${isCritical ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'} shadow-sm ${
+                isClickable ? 'cursor-pointer hover:shadow-md hover:border-blue-300 transition-all duration-200 group' : ''
+            }`}
+            onClick={onClick}
+            role={isClickable ? 'button' : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+            onKeyDown={isClickable ? (e) => e.key === 'Enter' && onClick?.() : undefined}
+        >
             <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{title}</div>
             <div className="flex items-baseline gap-1">
                 <span className={`text-2xl font-bold ${isCritical ? 'text-red-700' : 'text-slate-900'}`}>{value}</span>
@@ -734,6 +762,11 @@ function KPICard({ title, value, unit, trend, desc }: any) {
             <div className="mt-2 text-xs text-slate-400 truncate">
                 {desc}
             </div>
+            {isClickable && clickHint && (
+                <div className="mt-2 text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {clickHint} →
+                </div>
+            )}
         </div>
     );
 }
