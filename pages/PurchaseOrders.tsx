@@ -146,6 +146,10 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     // Modal state for three-way match review
     const [matchModalPO, setMatchModalPO] = useState<{ orderId: string; vendorName: string } | null>(null);
 
+    // Modal state for requisition approval
+    const [selectedReqForApproval, setSelectedReqForApproval] = useState<InternalRequisition | null>(null);
+    const [approvalType, setApprovalType] = useState<'manager' | 'ops'>('manager');
+
     // Date filter with localStorage persistence
     const [dateFilter, setDateFilter] = useState<'all' | '30days' | '90days' | '12months'>(() => {
         if (typeof window !== 'undefined') {
@@ -737,25 +741,180 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 />
                 {/* Purchasing Command Center moved to Agent Settings Modal */}
 
-                {/* Internal Requisitions Section - Hidden by default, available in Agent Settings modal
-                    Will be used for internal purchase requests starting with INT prefix
-                <div id="po-requisitions">
-                    <RequisitionsSection
-                        requisitions={requisitions}
-                        currentUser={currentUser}
-                        userMap={userMap}
-                        isAdminLike={isAdminLike}
-                        isOpen={isRequisitionsOpen}
-                        onToggle={() => setIsRequisitionsOpen(!isRequisitionsOpen)}
-                        onApprove={onApproveRequisition}
-                        onOpsApprove={onOpsApproveRequisition}
-                        onReject={onRejectRequisition}
-                        onCreate={() => setIsCreateReqModalOpen(true)}
-                        allowManualCreation={canSubmitRequisitions}
-                        canActOnRequisition={permissions.canApproveRequisition}
-                    />
-                </div>
-                */}
+                {/* Internal Requisitions - Card-based display matching Purchase Orders style */}
+                {viewMode !== 'unified' && requisitions.filter(r => !['Ordered', 'Fulfilled', 'Rejected'].includes(r.status)).length > 0 && (
+                    <div id="po-requisitions" className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-amber-800'}`}>📋 Internal Requisitions</h2>
+                                <StatusBadge variant="info" className="ml-2">
+                                    {requisitions.filter(r => !['Ordered', 'Fulfilled', 'Rejected'].includes(r.status)).length} pending
+                                </StatusBadge>
+                            </div>
+                            {canSubmitRequisitions && (
+                                <Button
+                                    onClick={() => setIsCreateReqModalOpen(true)}
+                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${isDark
+                                        ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                                        : 'bg-amber-600 hover:bg-amber-700 text-white'}`}
+                                >
+                                    + New Requisition
+                                </Button>
+                            )}
+                        </div>
+                        <div className="space-y-3">
+                            {requisitions
+                                .filter(r => !['Ordered', 'Fulfilled', 'Rejected'].includes(r.status))
+                                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                .map((req) => {
+                                    const reqNumber = `INT-${req.id.slice(0, 5).toUpperCase()}`;
+                                    const totalItems = req.items.reduce((sum, item) => sum + item.quantity, 0);
+                                    const requester = userMap.get(req.requesterId || '');
+                                    const canApprove = req.status === 'Pending' && (isAdminLike || (currentUser.role === 'Manager' && req.department === currentUser.department));
+                                    const canOpsApprove = (req.status === 'ManagerApproved' || req.status === 'OpsPending') && (isAdminLike || currentUser.department === 'Operations');
+
+                                    return (
+                                        <div
+                                            key={req.id}
+                                            className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${isDark
+                                                ? 'border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-950 shadow-[0_15px_40px_rgba(2,6,23,0.5)] hover:border-blue-500/40'
+                                                : 'border-blue-200/50 bg-gradient-to-br from-white/95 via-blue-50/30 to-white/95 shadow-[0_15px_40px_rgba(15,23,42,0.15)] hover:border-blue-300/60'
+                                            }`}
+                                        >
+                                            {/* Card overlay effect */}
+                                            <div className={`pointer-events-none absolute inset-0 ${isDark
+                                                ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.1),rgba(15,23,42,0))]'
+                                                : 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.6),rgba(219,234,254,0))]'
+                                            }`} />
+
+                                            {/* Header */}
+                                            <div className={`relative p-3 ${isDark
+                                                ? 'bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-slate-900/70'
+                                                : 'bg-gradient-to-r from-blue-50/90 via-white/80 to-blue-50/90'
+                                            }`}>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-4">
+                                                        <div>
+                                                            <div className={`text-lg font-semibold font-mono ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                                                                {reqNumber}
+                                                            </div>
+                                                            <div className={isDark ? 'text-sm text-gray-400' : 'text-sm text-gray-600'}>
+                                                                {requester?.name || 'System'} • {req.department}
+                                                            </div>
+                                                        </div>
+                                                        <StatusBadge status={req.status} size="sm">
+                                                            {formatStatusText(req.status)}
+                                                        </StatusBadge>
+                                                        {req.priority && req.priority !== 'normal' && (
+                                                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                                                                req.priority === 'urgent'
+                                                                    ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                                                    : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                                                            }`}>
+                                                                {req.priority}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="text-right">
+                                                            <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Created</div>
+                                                            <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                                {new Date(req.createdAt).toLocaleDateString()}
+                                                            </div>
+                                                        </div>
+                                                        {req.needByDate && (
+                                                            <div className="text-right">
+                                                                <div className={`text-xs uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>Need By</div>
+                                                                <div className={`text-sm ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                                                                    {new Date(req.needByDate).toLocaleDateString()}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        <div className="text-right">
+                                                            <div className={`text-xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                                                                {req.items.length} items
+                                                            </div>
+                                                            <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
+                                                                {totalItems} units total
+                                                            </div>
+                                                        </div>
+                                                        {/* Action Buttons */}
+                                                        <div className="flex items-center gap-2">
+                                                            {canApprove && (
+                                                                <Button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setSelectedReqForApproval(req);
+                                                                        setApprovalType('manager');
+                                                                    }}
+                                                                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-600 hover:bg-green-500 text-white transition-colors"
+                                                                >
+                                                                    Approve
+                                                                </Button>
+                                                            )}
+                                                            {canOpsApprove && (
+                                                                <Button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setSelectedReqForApproval(req);
+                                                                        setApprovalType('ops');
+                                                                    }}
+                                                                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition-colors"
+                                                                >
+                                                                    Ops Approve
+                                                                </Button>
+                                                            )}
+                                                            {(canApprove || canOpsApprove) && (
+                                                                <Button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        onRejectRequisition(req.id);
+                                                                    }}
+                                                                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${isDark
+                                                                        ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                                                                        : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                                                                    }`}
+                                                                >
+                                                                    Reject
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Items Preview */}
+                                            <div className={`px-3 py-2 border-t ${isDark ? 'border-slate-800/50' : 'border-blue-100'}`}>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {req.items.slice(0, 4).map((item, idx) => (
+                                                        <span key={idx} className={`px-2 py-1 text-xs rounded ${isDark
+                                                            ? 'bg-slate-800 text-gray-300'
+                                                            : 'bg-blue-50 text-blue-800'
+                                                        }`}>
+                                                            {item.quantity}x {item.name || item.sku}
+                                                        </span>
+                                                    ))}
+                                                    {req.items.length > 4 && (
+                                                        <span className={`px-2 py-1 text-xs rounded ${isDark
+                                                            ? 'bg-slate-700 text-gray-400'
+                                                            : 'bg-gray-100 text-gray-600'
+                                                        }`}>
+                                                            +{req.items.length - 4} more
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {req.notes && (
+                                                    <p className={`mt-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'}`}>
+                                                        {req.notes}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    </div>
+                )}
 
                 {/* Agent/Auto Controls moved to Modal */}
                 <Modal
@@ -1841,6 +2000,112 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     />
                 )
             }
+
+            {/* Requisition Approval Modal */}
+            {selectedReqForApproval && (
+                <Modal
+                    isOpen={!!selectedReqForApproval}
+                    onClose={() => setSelectedReqForApproval(null)}
+                    title={`${approvalType === 'manager' ? 'Approve' : 'Operations Approve'} Requisition`}
+                >
+                    <div className="space-y-4">
+                        {/* Requisition Header */}
+                        <div className={`rounded-lg p-4 ${isDark ? 'bg-slate-800' : 'bg-blue-50'}`}>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className={`text-xl font-bold font-mono ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                                        INT-{selectedReqForApproval.id.slice(0, 5).toUpperCase()}
+                                    </div>
+                                    <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                        {userMap.get(selectedReqForApproval.requesterId || '')?.name || 'System'} • {selectedReqForApproval.department}
+                                    </div>
+                                </div>
+                                <StatusBadge status={selectedReqForApproval.status} size="sm">
+                                    {formatStatusText(selectedReqForApproval.status)}
+                                </StatusBadge>
+                            </div>
+                        </div>
+
+                        {/* Items List */}
+                        <div>
+                            <h4 className={`text-sm font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                Requested Items ({selectedReqForApproval.items.length})
+                            </h4>
+                            <div className={`rounded-lg border max-h-48 overflow-y-auto ${isDark ? 'border-slate-700 bg-slate-900' : 'border-gray-200 bg-white'}`}>
+                                <table className="w-full text-sm">
+                                    <thead className={isDark ? 'bg-slate-800' : 'bg-gray-50'}>
+                                        <tr>
+                                            <th className={`px-3 py-2 text-left ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Item</th>
+                                            <th className={`px-3 py-2 text-right ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Qty</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {selectedReqForApproval.items.map((item, idx) => (
+                                            <tr key={idx} className={isDark ? 'border-t border-slate-700' : 'border-t border-gray-100'}>
+                                                <td className={`px-3 py-2 ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>
+                                                    <div>{item.name || item.sku}</div>
+                                                    {item.name && <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{item.sku}</div>}
+                                                </td>
+                                                <td className={`px-3 py-2 text-right font-medium ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                                                    {item.quantity}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Notes */}
+                        {selectedReqForApproval.notes && (
+                            <div>
+                                <h4 className={`text-sm font-semibold mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Notes</h4>
+                                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    {selectedReqForApproval.notes}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Need By Date */}
+                        {selectedReqForApproval.needByDate && (
+                            <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+                                <CalendarIcon className="w-4 h-4" />
+                                Need by: {new Date(selectedReqForApproval.needByDate).toLocaleDateString()}
+                            </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex justify-end gap-3 pt-2 border-t border-gray-200 dark:border-slate-700">
+                            <Button
+                                onClick={() => setSelectedReqForApproval(null)}
+                                className={`px-4 py-2 text-sm rounded-lg transition-colors ${isDark
+                                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                                }`}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    if (approvalType === 'manager') {
+                                        onApproveRequisition(selectedReqForApproval.id);
+                                    } else {
+                                        onOpsApproveRequisition(selectedReqForApproval.id);
+                                    }
+                                    setSelectedReqForApproval(null);
+                                    addToast(`Requisition INT-${selectedReqForApproval.id.slice(0, 5).toUpperCase()} approved`, 'success');
+                                }}
+                                className={`px-4 py-2 text-sm font-medium rounded-lg text-white transition-colors ${approvalType === 'manager'
+                                    ? 'bg-green-600 hover:bg-green-500'
+                                    : 'bg-purple-600 hover:bg-purple-500'
+                                }`}
+                            >
+                                {approvalType === 'manager' ? 'Approve Requisition' : 'Operations Approve'}
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
 
             {
                 selectedPoForReceive && (
