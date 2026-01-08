@@ -250,7 +250,7 @@ export default function TrustScoreDashboard() {
       {/* Recommendations */}
       {report.recommendations.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">📋 Recommendations</h3>
+          <h3 className="text-lg font-semibold text-blue-900 mb-3">Recommendations</h3>
           <ul className="space-y-2">
             {report.recommendations.map((rec, idx) => (
               <li key={idx} className="flex items-start gap-2 text-sm text-blue-800">

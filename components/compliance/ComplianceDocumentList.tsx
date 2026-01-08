@@ -28,21 +28,21 @@ interface ComplianceDocumentListProps {
 }
 
 const DOCUMENT_TYPE_ICONS: Record<ComplianceDocumentType, string> = {
-  artwork: '🎨',
-  label_proof: '🏷️',
-  certificate: '📜',
-  registration: '📋',
-  test_report: '🧪',
-  statute: '⚖️',
-  guidance: '📖',
-  letter: '✉️',
-  sds: '⚠️',
-  specification: '📐',
-  approval: '✅',
-  amendment: '📝',
-  renewal: '🔄',
-  audit_report: '📊',
-  other: '📄',
+  artwork: '',
+  label_proof: '',
+  certificate: '',
+  registration: '',
+  test_report: '',
+  statute: '',
+  guidance: '',
+  letter: '',
+  sds: '',
+  specification: '',
+  approval: '',
+  amendment: '',
+  renewal: '',
+  audit_report: '',
+  other: '',
 };
 
 const STATUS_COLORS: Record<ComplianceDocumentStatus, string> = {

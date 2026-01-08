@@ -391,7 +391,7 @@ export class GoogleSheetsSyncService {
       // Sheet 1: Inventory Data
       const inventoryData = [
         // Instructions row
-        ['📋 INSTRUCTIONS: Fill out your inventory below. Required: SKU, Name, Category, Quantity. Optional: Description, Reorder Point, Cost/Price, Supplier, UPC, Location, Notes.'],
+        ['INSTRUCTIONS: Fill out your inventory below. Required: SKU, Name, Category, Quantity. Optional: Description, Reorder Point, Cost/Price, Supplier, UPC, Location, Notes.'],
         ['🔄 TIP: Delete this instruction row before importing to MuRP. Use the "Import from Google Sheets" feature in Settings.'],
         [''],
         // Main header with data validation hints
@@ -430,7 +430,7 @@ export class GoogleSheetsSyncService {
         ['4. In MuRP Settings → Google Sheets → Import Inventory'],
         ['5. Select this spreadsheet and click Import'],
         [''],
-        ['📋 FIELD DESCRIPTIONS'],
+        ['FIELD DESCRIPTIONS'],
         ['SKU: Unique product identifier (e.g., ELEC-001, HW-001)'],
         ['Name: Product name (e.g., Arduino Uno R3)'],
         ['Description: Detailed product description'],

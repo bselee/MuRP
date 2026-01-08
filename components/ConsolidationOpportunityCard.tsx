@@ -38,7 +38,7 @@ export default function ConsolidationOpportunityCard({ opportunities, onApplyOpt
   if (!opportunities || opportunities.length === 0) {
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-blue-800 font-semibold">✅ All Optimized!</h3>
+        <h3 className="text-blue-800 font-semibold">All Optimized!</h3>
         <p className="text-blue-600 text-sm mt-1">No consolidation opportunities found. Your POs are already optimized.</p>
       </div>
     );
@@ -53,9 +53,9 @@ export default function ConsolidationOpportunityCard({ opportunities, onApplyOpt
   };
 
   const typeLabels = {
-    shipping_threshold: '📦 Free Shipping',
-    vendor_combine: '🔄 Combine Orders',
-    timing_optimization: '⏰ Timing',
+    shipping_threshold: 'Free Shipping',
+    vendor_combine: 'Combine Orders',
+    timing_optimization: 'Timing',
   };
 
   return (
@@ -65,13 +65,13 @@ export default function ConsolidationOpportunityCard({ opportunities, onApplyOpt
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-xl font-bold text-green-800">
-              💰 ${totalSavings.toFixed(2)} in Potential Savings
+              ${totalSavings.toFixed(2)} in Potential Savings
             </h3>
             <p className="text-sm text-green-600 mt-1">
               {opportunities.length} optimization {opportunities.length === 1 ? 'opportunity' : 'opportunities'} found
             </p>
           </div>
-          <div className="text-4xl">💡</div>
+          <div className="text-4xl font-bold text-green-600">$</div>
         </div>
       </div>
 
@@ -167,7 +167,7 @@ export default function ConsolidationOpportunityCard({ opportunities, onApplyOpt
                   onClick={() => onApplyOptimization(opp)}
                   className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium text-sm transition-colors"
                 >
-                  ✓ Add These Items to PO
+                  Add These Items to PO
                 </button>
               )}
               {onDismiss && (
@@ -183,7 +183,7 @@ export default function ConsolidationOpportunityCard({ opportunities, onApplyOpt
             {/* Additional Context */}
             {opp.urgency === 'high' && (
               <div className="mt-3 bg-red-50 border border-red-200 rounded p-2 text-xs text-red-700">
-                <strong>⚠️ High Urgency:</strong> Some of these items are approaching their reorder point. Consider ordering soon.
+                <strong>High Urgency:</strong> Some of these items are approaching their reorder point. Consider ordering soon.
               </div>
             )}
           </div>
@@ -193,7 +193,7 @@ export default function ConsolidationOpportunityCard({ opportunities, onApplyOpt
       {/* Summary Footer */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
         <p className="text-sm text-blue-800">
-          <strong>💡 Pro Tip:</strong> Consolidating orders can save on shipping costs and reduce the number of
+          <strong>Pro Tip:</strong> Consolidating orders can save on shipping costs and reduce the number of
           deliveries you need to process.
         </p>
       </div>

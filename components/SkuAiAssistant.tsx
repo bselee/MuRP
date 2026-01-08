@@ -108,7 +108,7 @@ What would you like to know about this SKU?`,
 
       return `Based on current data for SKU ${sku}:
 
-**Stock Status:** ${status === 'healthy' ? '✅ Healthy' : '⚠️ Low Stock'}
+**Stock Status:** ${status === 'healthy' ? 'Healthy' : 'Low Stock'}
 **Current Stock:** ${stock} units
 **Reorder Point:** ${reorderPoint} units
 
@@ -205,11 +205,11 @@ Would you like me to show detailed BOM dependencies or suggest inventory optimiz
     return `I understand you're asking about "${userInput}" for SKU ${sku}.
 
 Based on the available data, I can provide insights on:
-• 📊 Stock levels and reorder recommendations
-• 💰 Pricing analysis and margin optimization
-• 📈 Consumption trends and forecasting
-• 🏭 BOM usage and production impact
-• 🚚 Vendor performance and alternatives
+- Stock levels and reorder recommendations
+- Pricing analysis and margin optimization
+- Consumption trends and forecasting
+- BOM usage and production impact
+- Vendor performance and alternatives
 
 Could you please clarify what specific aspect you'd like me to analyze? For example:
 - "What's the current stock status?"

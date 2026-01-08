@@ -79,10 +79,10 @@ export default function ComplianceRiskCard({ result, productName, onViewDetails,
   };
 
   const severityIcons = {
-    critical: '🚨',
-    high: '⚠️',
-    medium: '⚡',
-    low: 'ℹ️',
+    critical: '',
+    high: '',
+    medium: '',
+    low: '',
   };
 
   return (
@@ -92,9 +92,9 @@ export default function ComplianceRiskCard({ result, productName, onViewDetails,
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h3 className={`text-xl font-bold ${colors.text}`}>
-              {result.overall_status === 'pass' ? '✅ Compliant' :
-               result.overall_status === 'warning' ? '⚠️ Review Needed' :
-               '❌ Non-Compliant'}
+              {result.overall_status === 'pass' ? 'Compliant' :
+               result.overall_status === 'warning' ? 'Review Needed' :
+               'Non-Compliant'}
             </h3>
             <span className={`px-2 py-1 rounded text-xs font-semibold ${riskColors[result.risk_level]}`}>
               {result.risk_level.toUpperCase()} RISK
@@ -131,7 +131,7 @@ export default function ComplianceRiskCard({ result, productName, onViewDetails,
       {result.violations.length > 0 && (
         <div className="mb-4">
           <h4 className="font-semibold text-red-800 mb-2 flex items-center gap-2">
-            🚨 Violations ({result.violations.length})
+            Violations ({result.violations.length})
           </h4>
           <div className="space-y-2">
             {result.violations.map((violation, idx) => (
@@ -171,7 +171,7 @@ export default function ComplianceRiskCard({ result, productName, onViewDetails,
       {result.warnings.length > 0 && (
         <div className="mb-4">
           <h4 className="font-semibold text-yellow-800 mb-2 flex items-center gap-2">
-            ⚠️ Warnings ({result.warnings.length})
+            Warnings ({result.warnings.length})
           </h4>
           <div className="space-y-2">
             {result.warnings.map((warning, idx) => (
@@ -194,7 +194,7 @@ export default function ComplianceRiskCard({ result, productName, onViewDetails,
       {result.recommendations.length > 0 && (
         <div>
           <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
-            💡 Recommendations ({result.recommendations.length})
+            Recommendations ({result.recommendations.length})
           </h4>
           <div className="space-y-1">
             {result.recommendations.map((rec, idx) => (

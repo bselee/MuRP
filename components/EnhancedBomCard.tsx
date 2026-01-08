@@ -507,7 +507,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
             {/* Artwork filename if available */}
             {labels.length > 0 && labels[0].fileName && (
               <div className={`text-[10px] mt-0.5 ${themeSwap('text-gray-600', 'text-gray-500')} truncate`}>
-                📄 {labels[0].fileName}
+                {labels[0].fileName}
               </div>
             )}
           </div>
@@ -1021,13 +1021,13 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                             {/* Stock Status */}
                             <div className="flex items-center gap-3 mt-2 text-xs">
                               <span className={`font-semibold ${available >= needed ? themeSwap('text-emerald-700', 'text-emerald-400') : themeSwap('text-rose-700', 'text-rose-400')}`}>
-                                {available >= needed ? '✓' : '✗'} Stock: {available} {c.unit}
+                                {available >= needed ? 'OK' : 'LOW'} Stock: {available} {c.unit}
                               </span>
                               {isLimiting && (
                                 <>
                                   <span className={dividerClass}>•</span>
                                   <span className={`px-2 py-0.5 rounded font-semibold text-[10px] ${limitingHighlight.badge}`}>
-                                    ⚠ {limitingHighlight.label}
+                                    {limitingHighlight.label}
                                   </span>
                                 </>
                               )}

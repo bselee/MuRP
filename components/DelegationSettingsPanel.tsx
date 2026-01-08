@@ -33,47 +33,47 @@ const TASK_TYPE_INFO: Record<DelegationTaskType, { label: string; description: s
   question: {
     label: 'Questions',
     description: 'Staff asking questions to managers/admins',
-    icon: '❓',
+    icon: '',
   },
   maintenance: {
     label: 'Maintenance Tasks',
     description: 'Equipment and facility maintenance work',
-    icon: '🔧',
+    icon: '',
   },
   build_order: {
     label: 'Build Orders',
     description: 'Production build assignments',
-    icon: '🏭',
+    icon: '',
   },
   bom_revision_approval: {
     label: 'BOM Revision Approvals',
     description: 'Bill of Materials change approvals',
-    icon: '📋',
+    icon: '',
   },
   artwork_approval: {
     label: 'Artwork Approvals',
     description: 'Label and artwork approval workflow',
-    icon: '🎨',
+    icon: '',
   },
   po_approval: {
     label: 'PO Approvals',
     description: 'Purchase Order approvals',
-    icon: '📦',
+    icon: '',
   },
   requisition_approval: {
     label: 'Requisition Approvals',
     description: 'Internal requisition approvals',
-    icon: '📝',
+    icon: '',
   },
   general_task: {
     label: 'General Tasks',
     description: 'Standard work items',
-    icon: '✅',
+    icon: '',
   },
   follow_up: {
     label: 'Follow Ups',
     description: 'Reminder and follow-up tasks',
-    icon: '🔔',
+    icon: '',
   },
 };
 

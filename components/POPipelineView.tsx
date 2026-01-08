@@ -243,7 +243,7 @@ const EmailTrackingIndicators: React.FC<{
           title="Tracking info found in email"
         >
           <TruckIcon className="w-2.5 h-2.5" />
-          <span>📧</span>
+          <span>Email</span>
         </div>
       )}
     </div>

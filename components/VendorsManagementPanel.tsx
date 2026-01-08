@@ -332,8 +332,8 @@ const VendorsManagementPanel: React.FC<VendorsManagementPanelProps> = ({ vendors
 
       {/* Footer note */}
       <div className="mt-4 text-xs text-gray-500">
-        <p>💡 Vendor data is automatically available for Purchase Order creation and email communications.</p>
-        <p className="mt-1">📊 Confidence scores are seeded with default value of 5/10 for all vendors.</p>
+        <p>Vendor data is automatically available for Purchase Order creation and email communications.</p>
+        <p className="mt-1">Confidence scores are seeded with default value of 5/10 for all vendors.</p>
       </div>
     </div>
   );

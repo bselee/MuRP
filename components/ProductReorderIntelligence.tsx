@@ -86,15 +86,15 @@ export default function ProductReorderIntelligence({ sku, productName }: Product
   const getStatusMessage = (status: string, daysRemaining: number) => {
     switch (status) {
       case 'OUT_OF_STOCK':
-        return '⚠️ OUT OF STOCK - Order immediately to avoid production delays';
+        return 'OUT OF STOCK - Order immediately to avoid production delays';
       case 'CRITICAL':
-        return `⚠️ CRITICAL - Only ${Math.ceil(daysRemaining)} days of stock remaining`;
+        return `CRITICAL - Only ${Math.ceil(daysRemaining)} days of stock remaining`;
       case 'REORDER_NOW':
-        return `📦 Time to reorder - ${Math.ceil(daysRemaining)} days until stockout`;
+        return `Time to reorder - ${Math.ceil(daysRemaining)} days until stockout`;
       case 'REORDER_SOON':
-        return `📅 Plan to reorder soon - ${Math.ceil(daysRemaining)} days of stock`;
+        return `Plan to reorder soon - ${Math.ceil(daysRemaining)} days of stock`;
       default:
-        return `✅ Stock levels healthy - ${Math.ceil(daysRemaining)} days supply`;
+        return `Stock levels healthy - ${Math.ceil(daysRemaining)} days supply`;
     }
   };
 
@@ -237,7 +237,7 @@ export default function ProductReorderIntelligence({ sku, productName }: Product
           {analytics.available_quantity <= analytics.suggested_reorder_point && (
             <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
               <div className="text-sm font-semibold text-yellow-300 mb-2">
-                📦 Recommended Order Quantity
+                Recommended Order Quantity
               </div>
               <div className="text-3xl font-bold text-yellow-400">
                 {Math.ceil(analytics.suggested_max_stock - analytics.available_quantity)} units

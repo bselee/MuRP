@@ -285,7 +285,7 @@ const AiAssistant: React.FC<AiAssistantProps> = ({
                 {/* SOP References */}
                 {msg.sopReferences && msg.sopReferences.length > 0 && (
                   <div className="mt-2 p-2 bg-blue-900/20 border border-blue-500/30 rounded-md">
-                    <p className="text-xs font-semibold text-blue-300 mb-1">📋 Referenced SOPs:</p>
+                    <p className="text-xs font-semibold text-blue-300 mb-1">Referenced SOPs:</p>
                     <div className="space-y-1">
                       {msg.sopReferences.map((sop, idx) => (
                         <div key={idx} className="text-xs text-blue-200">

@@ -301,7 +301,7 @@ export default function StateSelector({
                               <div className="mt-2 space-y-1">
                                 {state.registration_required && (
                                   <div className="text-xs text-amber-400">
-                                    📋 Registration required
+                                    Registration required
                                   </div>
                                 )}
                                 {state.key_focus_areas.length > 0 && (

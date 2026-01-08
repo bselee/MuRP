@@ -385,16 +385,16 @@ const FilterPresetManager: React.FC<FilterPresetManagerProps> = ({
 
                   <div className="space-y-1 text-xs text-gray-400 mb-3">
                     {preset.filters.categories.length > 0 && (
-                      <p>📂 {preset.filters.categories.length} categories selected</p>
+                      <p>{preset.filters.categories.length} categories selected</p>
                     )}
                     {preset.filters.vendors.length > 0 && (
-                      <p>🏢 {preset.filters.vendors.length} vendors selected</p>
+                      <p>{preset.filters.vendors.length} vendors selected</p>
                     )}
                     {preset.filters.bomFilter !== 'all' && (
-                      <p>📋 BOM filter: {preset.filters.bomFilter}</p>
+                      <p>BOM filter: {preset.filters.bomFilter}</p>
                     )}
                     {preset.filters.riskFilter !== 'all' && (
-                      <p>⚠️ Risk filter: {preset.filters.riskFilter}</p>
+                      <p>Risk filter: {preset.filters.riskFilter}</p>
                     )}
                   </div>
 

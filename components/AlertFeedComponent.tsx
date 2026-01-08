@@ -96,13 +96,13 @@ export default function AlertFeedComponent({ showResolved = false, limit = 50 }:
   const getPriorityIcon = (priority: string): string => {
     switch (priority) {
       case 'critical':
-        return '🚨';
+        return '';
       case 'high':
-        return '⚠️';
+        return '';
       case 'medium':
-        return '📋';
+        return '';
       default:
-        return '🔇';
+        return '';
     }
   };
 
@@ -232,7 +232,7 @@ export default function AlertFeedComponent({ showResolved = false, limit = 50 }:
 
       {alerts.length === 0 ? (
         <div className="text-center py-12 bg-green-50 border border-green-200 rounded-lg">
-          <div className="text-6xl mb-4">✅</div>
+          <div className="text-2xl font-bold text-green-700 mb-4">OK</div>
           <div className="text-xl font-semibold text-green-900">No Active Alerts</div>
           <div className="text-sm text-green-700 mt-2">
             All purchase orders are on track. The Air Traffic Controller is monitoring for delays.
@@ -244,7 +244,7 @@ export default function AlertFeedComponent({ showResolved = false, limit = 50 }:
           {groups.critical.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-red-900 mb-3 flex items-center gap-2">
-                🚨 CRITICAL ({groups.critical.length})
+                CRITICAL ({groups.critical.length})
               </h3>
               <div className="space-y-3">
                 {groups.critical.map((alert) => (
@@ -266,7 +266,7 @@ export default function AlertFeedComponent({ showResolved = false, limit = 50 }:
           {groups.high.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-orange-900 mb-3 flex items-center gap-2">
-                ⚠️ HIGH ({groups.high.length})
+                HIGH ({groups.high.length})
               </h3>
               <div className="space-y-3">
                 {groups.high.map((alert) => (
@@ -288,7 +288,7 @@ export default function AlertFeedComponent({ showResolved = false, limit = 50 }:
           {groups.medium.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-yellow-900 mb-3 flex items-center gap-2">
-                📋 MEDIUM ({groups.medium.length})
+                MEDIUM ({groups.medium.length})
               </h3>
               <div className="space-y-3">
                 {groups.medium.map((alert) => (
@@ -402,7 +402,7 @@ function AlertCard({
                   {item.current_stock} units, {item.days_until_stockout} days until stockout
                 </span>
                 {item.impact_level === 'critical' && (
-                  <span className="ml-2 text-red-600 font-semibold">⚠️ CRITICAL</span>
+                  <span className="ml-2 text-red-600 font-semibold">CRITICAL</span>
                 )}
               </div>
             ))}
@@ -435,13 +435,13 @@ function AlertCard({
               onClick={() => onSendEmail(alert)}
               className="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700"
             >
-              📧 Send Email
+              Send Email
             </button>
             <button
               onClick={() => onCopyEmail(alert)}
               className="px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded hover:bg-gray-700"
             >
-              {emailCopied ? '✓ Copied!' : '📋 Copy Email'}
+              {emailCopied ? 'Copied!' : 'Copy Email'}
             </button>
           </>
         )}
@@ -449,7 +449,7 @@ function AlertCard({
           onClick={() => onMarkResolved(alert)}
           className="px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700"
         >
-          ✓ Mark Resolved
+          Mark Resolved
         </button>
         <button
           onClick={() => onDismiss(alert)}

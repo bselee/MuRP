@@ -90,9 +90,9 @@ export default function BuildShortageTable({ result, onCreatePO, onViewBOM }: Pr
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h3 className={`text-2xl font-bold ${colors.text}`}>
-              {result.overall_status === 'ready' ? '✅ Build Ready' :
-               result.overall_status === 'caution' ? '⚠️ Build Possible (Caution)' :
-               '🚫 Build Blocked'}
+              {result.overall_status === 'ready' ? 'Build Ready' :
+               result.overall_status === 'caution' ? 'Build Possible (Caution)' :
+               'Build Blocked'}
             </h3>
             {onViewBOM && (
               <button
@@ -149,7 +149,7 @@ export default function BuildShortageTable({ result, onCreatePO, onViewBOM }: Pr
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-semibold text-red-800 text-lg flex items-center gap-2">
-              🚨 Critical Shortages - Order Immediately
+              Critical Shortages - Order Immediately
             </h4>
             {onCreatePO && (
               <button
@@ -199,7 +199,7 @@ export default function BuildShortageTable({ result, onCreatePO, onViewBOM }: Pr
       {result.warnings.length > 0 && (
         <div className="mb-6">
           <h4 className="font-semibold text-yellow-800 text-lg mb-3 flex items-center gap-2">
-            ⚠️ Warnings - Order Soon
+            Warnings - Order Soon
           </h4>
           <div className="bg-white border border-yellow-200 rounded-lg overflow-hidden">
             <table className="w-full text-sm">
@@ -238,7 +238,7 @@ export default function BuildShortageTable({ result, onCreatePO, onViewBOM }: Pr
       {result.feasible_items.length > 0 && (
         <details className="bg-white border border-green-200 rounded-lg p-4">
           <summary className="font-semibold text-green-800 cursor-pointer flex items-center gap-2">
-            ✅ Components In Stock ({result.feasible_items.length})
+            Components In Stock ({result.feasible_items.length})
           </summary>
           <div className="mt-3 space-y-1">
             {result.feasible_items.map((item, idx) => (
@@ -247,7 +247,7 @@ export default function BuildShortageTable({ result, onCreatePO, onViewBOM }: Pr
                   <span className="font-mono text-gray-500">{item.sku}</span> - {item.name}
                 </span>
                 <span className="text-green-600 font-medium">
-                  {item.available} / {item.required} ✓
+                  {item.available} / {item.required}
                 </span>
               </div>
             ))}

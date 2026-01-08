@@ -477,7 +477,7 @@ function generateBriefingSummary(
     if (overdueCount > 0) {
       lines.push(`⚠️ ${overdueCount} overdue POs need follow-up`);
     }
-    lines.push(`📦 ${openPOCount} open purchase orders`);
+    lines.push(`${openPOCount} open purchase orders`);
   }
 
   // Email summary
@@ -498,7 +498,7 @@ function generateBriefingSummary(
     if (criticalCount > 0) {
       lines.push(`\n🚨 ${criticalCount} critical actions need your approval`);
     } else {
-      lines.push(`\n📋 ${pendingActions.length} recommended actions`);
+      lines.push(`\n${pendingActions.length} recommended actions`);
     }
   }
 

@@ -746,7 +746,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                     <div id="po-requisitions" className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>📋 Internal Requisitions</h2>
+                                <h2 className={`text-xl font-semibold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Internal Requisitions</h2>
                                 <StatusBadge variant="info" className="ml-2">
                                     {requisitions.filter(r => !['Ordered', 'Fulfilled', 'Rejected'].includes(r.status)).length} pending
                                 </StatusBadge>

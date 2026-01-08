@@ -399,7 +399,7 @@ export function ThreeWayMatchModal({
             {matchData.discrepancies && matchData.discrepancies.length > 0 && (
               <div>
                 <div className={`text-sm font-semibold mb-3 ${textPrimary}`}>
-                  ⚠️ Discrepancies ({matchData.discrepancies.length})
+                  Discrepancies ({matchData.discrepancies.length})
                 </div>
                 <div className="space-y-2">
                   {matchData.discrepancies.map((disc, idx) => (
@@ -473,7 +473,7 @@ export function ThreeWayMatchModal({
                               ? item.variance_qty < 0 ? 'text-red-400' : 'text-yellow-400'
                               : 'text-green-400'
                           }`}>
-                            {item.variance_qty !== 0 ? (item.variance_qty > 0 ? '+' : '') + item.variance_qty : '✓'}
+                            {item.variance_qty !== 0 ? (item.variance_qty > 0 ? '+' : '') + item.variance_qty : 'OK'}
                           </td>
                         </tr>
                       ))}
@@ -491,7 +491,7 @@ export function ThreeWayMatchModal({
             {/* Recommendations */}
             {matchData.recommendations && matchData.recommendations.length > 0 && (
               <div className={`p-4 rounded-lg ${cardBg}`}>
-                <div className={`text-sm font-semibold mb-2 ${textPrimary}`}>💡 Recommendations</div>
+                <div className={`text-sm font-semibold mb-2 ${textPrimary}`}>Recommendations</div>
                 <ul className={`text-sm ${textSecondary} space-y-1`}>
                   {matchData.recommendations.map((rec, idx) => (
                     <li key={idx} className="flex items-start gap-2">
@@ -511,14 +511,14 @@ export function ThreeWayMatchModal({
                   onClick={() => handleResolve('dispute_filed')}
                   disabled={processing}
                 >
-                  📝 File Dispute
+                  File Dispute
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => handleResolve('backorder_created')}
                   disabled={processing}
                 >
-                  📦 Create Backorder
+                  Create Backorder
                 </Button>
                 <Button
                   variant="destructive"
@@ -531,7 +531,7 @@ export function ThreeWayMatchModal({
                   onClick={() => handleResolve('approved')}
                   disabled={processing}
                 >
-                  {processing ? 'Processing...' : '✓ Approve Payment'}
+                  {processing ? 'Processing...' : 'Approve Payment'}
                 </Button>
               </div>
             )}

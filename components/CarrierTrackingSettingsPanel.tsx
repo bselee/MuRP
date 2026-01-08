@@ -77,7 +77,7 @@ const CARRIERS: CarrierInfo[] = [
   {
     id: 'ups',
     name: 'UPS',
-    icon: '📦',
+    icon: '🚚',
     color: 'amber',
     registrationUrl: 'https://developer.ups.com/',
     freeTier: '500 requests/month',

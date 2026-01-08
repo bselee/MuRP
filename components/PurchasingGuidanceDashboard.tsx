@@ -553,7 +553,7 @@ export default function PurchasingGuidanceDashboard() {
                     <div className="p-12 text-center text-slate-400">Loading analysis...</div>
                 ) : advice.length === 0 ? (
                     <div className="p-12 text-center text-slate-500">
-                        <div className="mb-2 text-4xl">✅</div>
+                        <div className="mb-2 text-2xl font-bold text-green-500">OK</div>
                         No immediate reorder risks detected.<br />
                         <span className="text-sm opacity-75">All inventory positions are above calculated Reorder Points.</span>
                     </div>

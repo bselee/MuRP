@@ -266,7 +266,7 @@ const POTrackingDashboard: React.FC<POTrackingDashboardProps> = ({ addToast }) =
           <p className={`text-2xl font-semibold ${isDark ? 'text-green-300' : 'text-green-600'}`}>{summary.deliveredToday}</p>
         </div>
         <div className={`rounded-lg p-4 border ${pendingFollowups.length > 0 ? (isDark ? 'bg-amber-900/20 border-amber-500/50' : 'bg-amber-50 border-amber-300') : (isDark ? 'bg-gray-900/60 border-gray-700' : 'bg-gray-50 border-gray-200')}`}>
-          <p className={`text-sm ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>⚠️ Needs Follow-up</p>
+          <p className={`text-sm ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Needs Follow-up</p>
           <p className={`text-2xl font-semibold ${pendingFollowups.length > 0 ? (isDark ? 'text-amber-300' : 'text-amber-600') : (isDark ? 'text-gray-400' : 'text-gray-500')}`}>
             {pendingFollowups.length}
           </p>
@@ -351,7 +351,7 @@ const POTrackingDashboard: React.FC<POTrackingDashboardProps> = ({ addToast }) =
                         <span className={`text-xs uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{po.tracking_carrier || '—'}</span>
                       </div>
                     ) : emailData.has_email_tracking ? (
-                      <span className={`text-xs ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`}>📧 In email</span>
+                      <span className={`text-xs ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`}>In email</span>
                     ) : (
                       <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>—</span>
                     )}
@@ -377,14 +377,14 @@ const POTrackingDashboard: React.FC<POTrackingDashboardProps> = ({ addToast }) =
                     {hasEmailIntel ? (
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-1">
-                          <span className={`text-xs ${isDark ? '' : 'text-gray-600'}`}>📧 {emailData.email_count || 0}</span>
+                          <span className={`text-xs ${isDark ? '' : 'text-gray-600'}`}>{emailData.email_count || 0} emails</span>
                           {emailData.awaiting_response && (
                             <span className={`text-xs px-1 rounded ${isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Needs Reply</span>
                           )}
                         </div>
                         {emailData.last_vendor_reply && (
                           <span className={`text-xs ${isDark ? 'text-green-400' : 'text-green-600'}`}>
-                            ✓ Vendor replied {new Date(emailData.last_vendor_reply).toLocaleDateString()}
+                            Vendor replied {new Date(emailData.last_vendor_reply).toLocaleDateString()}
                           </span>
                         )}
                         {emailData.email_summary && (

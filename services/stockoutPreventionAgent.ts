@@ -563,7 +563,7 @@ export async function generatePurchaseRecommendations(): Promise<PurchaseRecomme
 
     // Add flow type context note if special order
     if (context?.flowType === 'special_order') {
-      notes.push('📋 Special Order item - verify customer commitment before ordering');
+      notes.push('Special Order item - verify customer commitment before ordering');
     }
 
     recommendations.push({
