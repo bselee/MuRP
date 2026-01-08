@@ -20,9 +20,9 @@
     --table-line-height: 1.4;
     --panel-light-surface: rgba(255, 255, 255, 0.92);
     --panel-light-muted-surface: rgba(255, 255, 255, 0.87);
-    --panel-light-border: rgba(89, 62, 25, 0.14);
-    --text-light-strong: #2b1a10;
-    --text-light-muted: #7c6b63;
+    --panel-light-border: #E5E7EB;
+    --text-light-strong: #111827;
+    --text-light-muted: #6B7280;
   }
 
   [data-theme='light'] {
@@ -122,8 +122,8 @@
   [data-theme='light'] textarea,
   [data-theme='light'] select {
     background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(12, 10, 9, 0.12);
-    color: #1a1814;
+    border-color: rgba(15, 23, 42, 0.12);
+    color: #111827;
     box-shadow: inset 0 0 18px rgba(15, 23, 42, 0.05);
   }
 

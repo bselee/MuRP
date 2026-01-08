@@ -108,6 +108,7 @@ const SettingsLayout: React.FC<SettingsLayoutProps> = ({
 
         {/* Content */}
         <div className="p-6 lg:p-8 max-w-4xl">
+          <h1 className={`text-2xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
           {children}
         </div>
       </main>
