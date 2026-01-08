@@ -423,7 +423,6 @@ export default function PurchasingGuidanceDashboard() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Purchasing Intelligence</h2>
-                    <p className="text-slate-500">Data-driven guidance based on Service Level targets (95% Confidence)</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <span className="flex items-center gap-2 text-xs font-medium text-purple-600 bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100">

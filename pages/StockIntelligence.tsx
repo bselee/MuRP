@@ -286,7 +286,6 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           <ChartBarIcon className="w-8 h-8 text-accent-400" />
           Stock Intelligence
         </h1>
-        <p className="text-gray-400 mt-1">Advanced analytics and predictive insights for inventory management</p>
       </div>
 
       {/* Key Metrics Summary */}
