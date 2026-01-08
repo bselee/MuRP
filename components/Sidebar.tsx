@@ -7,6 +7,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useTheme } from './ThemeProvider';
 import useModuleVisibility from '../hooks/useModuleVisibility';
 import UserSettingsDropdown from './UserSettingsDropdown';
+import MuRPLogo from './MuRPLogo';
 import type { SystemAlert } from '../lib/systemAlerts/SystemAlertContext';
 
 interface SidebarProps {
@@ -164,15 +165,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
       } ${isCollapsed ? 'w-16' : 'w-64'}`}
     >
-      {/* Header with logo and toggle */}
-      <div className={`h-14 flex items-center border-b relative ${
+      {/* Header with logo and toggle - h-16 (64px) for alignment */}
+      <div className={`h-16 flex items-center border-b relative ${
         isDark ? 'border-gray-800' : 'border-gray-200'
-      } ${isCollapsed ? 'justify-center' : 'px-4'}`}>
-        {!isCollapsed && (
-          <div className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-black'}`}>
-            MuRP
-          </div>
-        )}
+      }`}>
+        <MuRPLogo collapsed={isCollapsed} />
         <button
           type="button"
           onClick={onToggle}

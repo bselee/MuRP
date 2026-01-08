@@ -39,12 +39,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           fixed inset-y-0 left-0 z-50 transform transition-all duration-200 ease-in-out
           lg:relative lg:translate-x-0 lg:z-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          ${isCollapsed ? 'lg:w-14' : 'lg:w-56'} w-56
+          ${isCollapsed ? 'lg:w-16' : 'lg:w-56'} w-56
           ${isDark ? 'bg-gray-900 border-r border-gray-800' : 'bg-white border-r border-gray-200'}
         `}
       >
-        {/* Mobile header with close button */}
-        <div className="flex items-center justify-between px-4 py-4 lg:hidden">
+        {/* Mobile header with close button - h-16 (64px) */}
+        <div className={`flex items-center justify-between px-4 h-16 border-b lg:hidden ${
+          isDark ? 'border-gray-800' : 'border-gray-200'
+        }`}>
           <div className="flex items-center gap-2">
             <HomeIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
             <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -65,8 +67,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </button>
         </div>
 
-        {/* Desktop header with collapse toggle - h-12 is smaller than main sidebar h-14 */}
-        <div className={`hidden lg:flex items-center relative h-12 ${isCollapsed ? 'justify-center px-2' : 'gap-2 px-4'}`}>
+        {/* Desktop header with collapse toggle - h-16 (64px) matches main sidebar */}
+        <div className={`hidden lg:flex items-center relative h-16 border-b ${
+          isDark ? 'border-gray-800' : 'border-gray-200'
+        } ${isCollapsed ? 'justify-center px-2' : 'gap-2 px-4'}`}>
           <HomeIcon className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
           {!isCollapsed && (
             <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -88,7 +92,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
 
         {/* Sidebar content */}
-        <div className="h-[calc(100%-4rem)] lg:h-[calc(100%-3rem)]">
+        <div className="h-[calc(100%-4rem)] lg:h-[calc(100%-4rem)]">
           {sidebar}
         </div>
       </aside>
