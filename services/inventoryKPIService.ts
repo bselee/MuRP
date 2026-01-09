@@ -192,9 +192,11 @@ export function calculateCLTR(
   reviewPeriodDays: number = 7  // Weekly review default
 ): { cltr: number; status: CLTRStatus } {
   const denominator = leadTimeDays + reviewPeriodDays;
-  if (denominator === 0) return { cltr: 999, status: 'HEALTHY' };
+  if (denominator === 0) return { cltr: 10, status: 'HEALTHY' };
 
-  const cltr = runwayDays / denominator;
+  // Cap runway at 365 days to avoid extreme CLTR values for slow-moving items
+  const cappedRunway = Math.min(runwayDays, 365);
+  const cltr = Math.min(cappedRunway / denominator, 10); // Cap CLTR at 10
 
   let status: CLTRStatus;
   if (cltr < 0.5) status = 'CRITICAL';
@@ -429,8 +431,9 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
       const demandStdDev = params?.demand_std_dev || 0;
       const cv = calculateCV(demandStdDev, demandMean);
 
-      // Runway
-      const runway = demandMean > 0 ? Math.floor(stock / demandMean) : 999;
+      // Runway - cap at 365 days for display purposes
+      const rawRunway = demandMean > 0 ? Math.floor(stock / demandMean) : 999;
+      const runway = Math.min(rawRunway, 365);
 
       // CLTR
       const { cltr, status: cltrStatus } = calculateCLTR(runway, leadTime);
@@ -720,8 +723,11 @@ export async function getKPISummary(): Promise<KPISummary> {
   const belowSS = kpis.filter(k => k.safety_stock_attainment < 100);
 
   const totalExcess = kpis.reduce((sum, k) => sum + k.excess_inventory_value, 0);
-  const avgCltr = kpis.length > 0
-    ? kpis.reduce((sum, k) => sum + k.cltr, 0) / kpis.length
+  // Only include items with actual demand in CLTR average
+  // This gives a more meaningful average for active inventory
+  const itemsWithDemand = kpis.filter(k => k.demand_mean > 0);
+  const avgCltr = itemsWithDemand.length > 0
+    ? itemsWithDemand.reduce((sum, k) => sum + k.cltr, 0) / itemsWithDemand.length
     : 0;
   const avgCv = kpis.length > 0
     ? kpis.reduce((sum, k) => sum + k.cv, 0) / kpis.length
