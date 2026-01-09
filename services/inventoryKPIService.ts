@@ -500,13 +500,36 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
 }
 
 /**
- * Get past due PO lines - queries finale_po_line_items table for accurate line item data
+ * Line item structure from the embedded line_items JSONB column
+ */
+interface EmbeddedLineItem {
+  line_number?: string;
+  product_id?: string;
+  product_url?: string;
+  quantity_ordered?: string;
+  quantity_received?: string;
+  unit_price?: string;
+  line_total?: string;
+}
+
+/**
+ * Parse quantity from Finale format - handles numbers, strings, and "--" placeholders
+ */
+function parseQuantity(val: string | number | undefined | null): number {
+  if (val === undefined || val === null || val === '--' || val === '') return 0;
+  if (typeof val === 'number') return val;
+  const num = parseFloat(String(val).replace(/,/g, ''));
+  return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Get past due PO lines - extracts from embedded line_items JSONB column
  */
 export async function getPastDuePOLines(): Promise<PastDuePOLine[]> {
   const today = new Date().toISOString().split('T')[0];
 
   try {
-    // First get overdue POs - include all variations of status names (Finale uses various casings)
+    // Get overdue POs with their embedded line_items
     // Active statuses that mean PO is still open/awaiting receipt:
     // - Committed/COMMITTED - Order placed with vendor
     // - Draft/DRAFT - Order created but not yet sent
@@ -519,82 +542,58 @@ export async function getPastDuePOLines(): Promise<PastDuePOLine[]> {
         order_id,
         vendor_name,
         expected_date,
-        status
+        status,
+        line_items
       `)
       .or('status.ilike.committed,status.ilike.draft,status.ilike.submitted,status.ilike.%partial%')
       .lt('expected_date', today)
       .not('expected_date', 'is', null)
-      .order('expected_date', { ascending: true });
+      .order('expected_date', { ascending: true })
+      .limit(100);
 
     if (poError) throw poError;
     if (!overduePos || overduePos.length === 0) return [];
 
-    const poIds = overduePos.map(po => po.id);
-    const poMap = new Map(overduePos.map(po => [po.id, po]));
-
-    // Get line items for these POs with product info
-    const { data: lineItems, error: lineError } = await supabase
-      .from('finale_po_line_items')
-      .select(`
-        id,
-        po_id,
-        product_name,
-        quantity_ordered,
-        quantity_received,
-        unit_cost,
-        line_total,
-        finale_products!finale_po_line_items_product_id_fkey(
-          id,
-          product_id,
-          sku,
-          internal_name
-        )
-      `)
-      .in('po_id', poIds);
-
-    if (lineError) throw lineError;
-
     const pastDueLines: PastDuePOLine[] = [];
 
-    for (const line of lineItems || []) {
-      const po = poMap.get(line.po_id);
-      if (!po || !po.expected_date) continue;
+    for (const po of overduePos) {
+      if (!po.expected_date || !po.line_items) continue;
 
       const expectedDate = new Date(po.expected_date);
       const daysOverdue = Math.floor(
         (new Date().getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      // Get SKU from finale_products - the product_id field IS the SKU string
-      // Structure: { id: UUID, product_id: 'SKU-STRING', sku: 'alt-sku', internal_name: 'Name' }
-      const productInfo = line.finale_products as { id?: string; product_id?: string; sku?: string; internal_name?: string } | null;
+      // Parse embedded line_items array
+      const lineItems: EmbeddedLineItem[] = Array.isArray(po.line_items) ? po.line_items : [];
 
-      // SKU priority: finale_products.product_id (the SKU string) > finale_products.sku > product_name first word
-      const sku = productInfo?.product_id?.trim() ||
-                  productInfo?.sku?.trim() ||
-                  (line.product_name ? line.product_name.split(/[\s-]/)[0] : null) ||
-                  `LINE-${line.id?.slice(0, 8)}`;
+      for (const line of lineItems) {
+        // SKU is the product_id field
+        const sku = line.product_id?.trim() || `LINE-${line.line_number || '?'}`;
 
-      const productName = line.product_name?.trim() || productInfo?.internal_name?.trim() || sku;
+        // Parse quantities - handle "--" placeholders and comma-formatted numbers
+        const qtyOrdered = parseQuantity(line.quantity_ordered);
+        const qtyReceived = parseQuantity(line.quantity_received);
+        const qtyOutstanding = qtyOrdered - qtyReceived;
 
-      // Only include lines that still need receiving
-      const qtyOrdered = line.quantity_ordered || 0;
-      const qtyReceived = line.quantity_received || 0;
-      const qtyOutstanding = qtyOrdered - qtyReceived;
+        // Only include lines that still need receiving
+        if (qtyOutstanding <= 0) continue;
 
-      if (qtyOutstanding <= 0) continue;
+        // Parse unit price for value calculation
+        const unitPrice = parseQuantity(line.unit_price);
 
-      pastDueLines.push({
-        po_id: po.id,
-        po_number: po.order_id || 'Unknown',
-        vendor_name: po.vendor_name || 'Unknown',
-        sku: sku,
-        product_name: productName,
-        expected_date: expectedDate,
-        days_overdue: daysOverdue,
-        quantity: qtyOutstanding,
-        value: qtyOutstanding * (line.unit_cost || 0),
-      });
+        pastDueLines.push({
+          po_id: po.id,
+          po_number: po.order_id || 'Unknown',
+          vendor_name: po.vendor_name || 'Unknown',
+          sku: sku,
+          product_name: sku, // Use SKU as product name (Finale embeds only SKU)
+          expected_date: expectedDate,
+          days_overdue: daysOverdue,
+          quantity: qtyOutstanding,
+          value: qtyOutstanding * unitPrice,
+        });
+      }
     }
 
     return pastDueLines.sort((a, b) => b.days_overdue - a.days_overdue);
