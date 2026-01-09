@@ -26,6 +26,62 @@
  */
 
 import { supabase } from '../lib/supabase/client';
+import { getGlobalExcludedCategories, isGloballyExcludedCategory, DEFAULT_EXCLUDED_CATEGORIES } from '../hooks/useGlobalCategoryFilter';
+import { getGlobalExcludedSkus, isGloballyExcludedSku } from '../hooks/useGlobalSkuFilter';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GLOBAL EXCLUSION HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Default categories that should ALWAYS be excluded from KPI calculations
+ * regardless of localStorage state (for server-side safety)
+ */
+const ALWAYS_EXCLUDED_CATEGORIES = [
+  'dropship', 'drop ship', 'dropshipped', 'ds', 'drop-ship',
+  'deprecating', 'deprecated', 'discontinued',
+] as const;
+
+/**
+ * Check if an item should be excluded based on global filters
+ */
+function shouldExcludeItem(item: {
+  sku?: string | null;
+  name?: string | null;
+  category?: string | null;
+  is_dropship?: boolean | null;
+  status?: string | null;
+}): boolean {
+  // Exclude if is_dropship flag is true
+  if (item.is_dropship === true) return true;
+
+  // Exclude if status is not active
+  if (item.status && item.status.toLowerCase() !== 'active') return true;
+
+  const category = (item.category || '').toLowerCase().trim();
+
+  // Always exclude dropship/deprecated categories
+  if (ALWAYS_EXCLUDED_CATEGORIES.some(exc => category.includes(exc))) {
+    return true;
+  }
+
+  // Check global category exclusions (from localStorage if available)
+  try {
+    if (isGloballyExcludedCategory(item.category)) return true;
+  } catch {
+    // localStorage not available, use defaults
+    if (DEFAULT_EXCLUDED_CATEGORIES.some(exc => category === exc)) return true;
+  }
+
+  // Check global SKU exclusions
+  try {
+    if (isGloballyExcludedSku(item.sku)) return true;
+  } catch {
+    // localStorage not available, skip SKU exclusion
+  }
+
+  return false;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -297,6 +353,7 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
       .select(`
         sku,
         name,
+        category,
         stock,
         on_order,
         unit_cost,
@@ -314,6 +371,14 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
     if (invError) throw invError;
     if (!inventory || inventory.length === 0) return [];
 
+    // Apply global exclusion filters (categories, SKUs, dropship)
+    const filteredInventory = inventory.filter(item => !shouldExcludeItem(item));
+
+    if (filteredInventory.length === 0) {
+      console.log('[InventoryKPIService] All items filtered out by global exclusions');
+      return [];
+    }
+
     // Get purchasing parameters for demand stats
     const { data: purchParams } = await supabase
       .from('sku_purchasing_parameters')
@@ -324,7 +389,7 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
     // Calculate annual usage for ABC classification
     // Daily demand calculated from 30-day sales data
     const DEFAULT_LEAD_TIME = 14; // Default lead time in days if not specified
-    const itemsWithValue = inventory.map(item => {
+    const itemsWithValue = filteredInventory.map(item => {
       const dailyDemand = (item.sales_last_30_days || 0) / 30;
       const unitCost = item.unit_cost || 0;
       return {
@@ -441,17 +506,24 @@ export async function getPastDuePOLines(): Promise<PastDuePOLine[]> {
   const today = new Date().toISOString().split('T')[0];
 
   try {
-    // First get overdue POs
+    // First get overdue POs - include all variations of status names (Finale uses various casings)
+    // Active statuses that mean PO is still open/awaiting receipt:
+    // - Committed/COMMITTED - Order placed with vendor
+    // - Draft/DRAFT - Order created but not yet sent
+    // - SUBMITTED - Order submitted to vendor
+    // - PARTIALLY_RECEIVED/Partially Received - Some items received
     const { data: overduePos, error: poError } = await supabase
       .from('finale_purchase_orders')
       .select(`
         id,
         order_id,
         vendor_name,
-        expected_date
+        expected_date,
+        status
       `)
-      .in('status', ['Committed', 'Draft', 'SUBMITTED', 'PARTIALLY_RECEIVED'])
+      .or('status.ilike.committed,status.ilike.draft,status.ilike.submitted,status.ilike.%partial%')
       .lt('expected_date', today)
+      .not('expected_date', 'is', null)
       .order('expected_date', { ascending: true });
 
     if (poError) throw poError;
@@ -474,7 +546,8 @@ export async function getPastDuePOLines(): Promise<PastDuePOLine[]> {
         finale_products!finale_po_line_items_product_id_fkey(
           id,
           product_id,
-          name
+          sku,
+          internal_name
         )
       `)
       .in('po_id', poIds);
@@ -492,10 +565,17 @@ export async function getPastDuePOLines(): Promise<PastDuePOLine[]> {
         (new Date().getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      // Get SKU from finale_products or fall back to product_name
-      const productInfo = line.finale_products as any;
-      const sku = productInfo?.product_id || productInfo?.name || 'Unknown';
-      const productName = line.product_name || productInfo?.name || sku;
+      // Get SKU from finale_products - the product_id field IS the SKU string
+      // Structure: { id: UUID, product_id: 'SKU-STRING', sku: 'alt-sku', internal_name: 'Name' }
+      const productInfo = line.finale_products as { id?: string; product_id?: string; sku?: string; internal_name?: string } | null;
+
+      // SKU priority: finale_products.product_id (the SKU string) > finale_products.sku > product_name first word
+      const sku = productInfo?.product_id?.trim() ||
+                  productInfo?.sku?.trim() ||
+                  (line.product_name ? line.product_name.split(/[\s-]/)[0] : null) ||
+                  `LINE-${line.id?.slice(0, 8)}`;
+
+      const productName = line.product_name?.trim() || productInfo?.internal_name?.trim() || sku;
 
       // Only include lines that still need receiving
       const qtyOrdered = line.quantity_ordered || 0;

@@ -425,6 +425,23 @@ export async function messageExists(gmailMessageId: string): Promise<boolean> {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * Extract display name from email address (e.g., "John Doe <john@example.com>" -> "John Doe")
+ */
+function extractSenderName(senderEmail: string): string | null {
+  // Format: "Display Name <email@domain.com>"
+  const nameMatch = senderEmail.match(/^"?([^"<]+)"?\s*</);
+  if (nameMatch) {
+    return nameMatch[1].trim();
+  }
+  // Format: display.name@domain.com -> "Display Name"
+  const localPart = senderEmail.split('@')[0];
+  if (localPart && localPart.includes('.')) {
+    return localPart.split('.').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+  }
+  return null;
+}
+
+/**
  * Try to correlate an email to a PO using multiple strategies
  */
 export async function correlateEmailToPO(
@@ -443,18 +460,41 @@ export async function correlateEmailToPO(
     };
   }
 
-  // Strategy 2: Subject line PO number match
-  const subjectMatch = subject.match(/PO[-\s#]*(\d{4,})/i);
-  if (subjectMatch) {
-    const poNumber = `PO-${subjectMatch[1]}`;
-    const { data: po } = await supabase
-      .from('purchase_orders')
-      .select('id')
-      .eq('order_id', poNumber)
-      .single();
+  // Strategy 2: Subject line PO number match (check multiple formats)
+  const poPatterns = [
+    /PO[-\s#]*(\d{4,})/i,           // PO-12345, PO#12345, PO 12345
+    /Order[-\s#]*(\d{4,})/i,        // Order-12345
+    /Purchase\s+Order[-\s#]*(\d{4,})/i,  // Purchase Order 12345
+    /#(\d{5,})\b/,                   // Just #12345 (min 5 digits to avoid false positives)
+  ];
 
-    if (po) {
-      return { poId: po.id, confidence: 0.90, method: 'subject_match' };
+  for (const pattern of poPatterns) {
+    const subjectMatch = subject.match(pattern);
+    if (subjectMatch) {
+      const poNumber = subjectMatch[1];
+      // Try multiple PO number formats
+      const { data: po } = await supabase
+        .from('purchase_orders')
+        .select('id')
+        .or(`order_id.eq.PO-${poNumber},order_id.eq.${poNumber},order_id.ilike.%${poNumber}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (po) {
+        return { poId: po.id, confidence: 0.90, method: 'subject_match' };
+      }
+
+      // Also check finale_purchase_orders
+      const { data: finalePo } = await supabase
+        .from('finale_purchase_orders')
+        .select('id')
+        .or(`order_id.eq.${poNumber},order_id.ilike.%${poNumber}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (finalePo) {
+        return { poId: finalePo.id, confidence: 0.90, method: 'subject_match_finale' };
+      }
     }
   }
 
@@ -475,7 +515,7 @@ export async function correlateEmailToPO(
       .in('status', ['sent', 'confirmed', 'committed', 'processing'])
       .order('sent_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (recentPO) {
       return {
@@ -486,19 +526,85 @@ export async function correlateEmailToPO(
     }
   }
 
-  // Strategy 4: Body content search for PO number
-  if (bodyText) {
-    const bodyMatch = bodyText.match(/PO[-\s#]*(\d{4,})/i);
-    if (bodyMatch) {
-      const poNumber = `PO-${bodyMatch[1]}`;
-      const { data: po } = await supabase
-        .from('purchase_orders')
-        .select('id')
-        .eq('order_id', poNumber)
-        .single();
+  // Strategy 4: Vendor alias matching (NEW - matches "Soestern Packaging" to "Stock Bag Depot")
+  const senderName = extractSenderName(senderEmail);
+  if (senderName) {
+    const { data: aliasMatch } = await supabase.rpc('match_vendor_name', {
+      p_name: senderName,
+    });
 
-      if (po) {
-        return { poId: po.id, confidence: 0.80, method: 'body_match' };
+    if (aliasMatch && aliasMatch.length > 0) {
+      const vendorId = aliasMatch[0].vendor_id || aliasMatch[0].finale_vendor_id;
+      const matchScore = aliasMatch[0].match_score || 80;
+
+      if (vendorId) {
+        // Find recent open PO for this vendor - check both tables
+        const { data: recentPO } = await supabase
+          .from('purchase_orders')
+          .select('id')
+          .eq('vendor_id', vendorId)
+          .in('status', ['sent', 'confirmed', 'committed', 'processing'])
+          .order('sent_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recentPO) {
+          return {
+            poId: recentPO.id,
+            confidence: matchScore / 100 * 0.85,
+            method: 'vendor_alias',
+          };
+        }
+
+        // Also check finale POs by vendor name
+        const { data: finalePO } = await supabase
+          .from('finale_purchase_orders')
+          .select('id')
+          .eq('vendor_id', vendorId)
+          .in('status', ['Committed', 'Draft', 'SUBMITTED', 'PARTIALLY_RECEIVED'])
+          .order('order_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (finalePO) {
+          return {
+            poId: finalePO.id,
+            confidence: matchScore / 100 * 0.85,
+            method: 'vendor_alias_finale',
+          };
+        }
+      }
+    }
+  }
+
+  // Strategy 5: Body content search for PO number
+  if (bodyText) {
+    for (const pattern of poPatterns) {
+      const bodyMatch = bodyText.match(pattern);
+      if (bodyMatch) {
+        const poNumber = bodyMatch[1];
+        const { data: po } = await supabase
+          .from('purchase_orders')
+          .select('id')
+          .or(`order_id.eq.PO-${poNumber},order_id.eq.${poNumber},order_id.ilike.%${poNumber}`)
+          .limit(1)
+          .maybeSingle();
+
+        if (po) {
+          return { poId: po.id, confidence: 0.80, method: 'body_match' };
+        }
+
+        // Check finale POs
+        const { data: finalePo } = await supabase
+          .from('finale_purchase_orders')
+          .select('id')
+          .or(`order_id.eq.${poNumber},order_id.ilike.%${poNumber}`)
+          .limit(1)
+          .maybeSingle();
+
+        if (finalePo) {
+          return { poId: finalePo.id, confidence: 0.80, method: 'body_match_finale' };
+        }
       }
     }
   }
