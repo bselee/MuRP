@@ -271,6 +271,33 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const categoryDropdownRef = useRef<HTMLDivElement>(null);
     const vendorDropdownRef = useRef<HTMLDivElement>(null);
     const inventoryRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+
+    // Highlighted SKU from deep link navigation
+    const [highlightedSku, setHighlightedSku] = useState<string | null>(null);
+
+    // Check for highlighted SKU from localStorage on mount
+    useEffect(() => {
+        const storedSku = localStorage.getItem('highlightedSku');
+        if (storedSku) {
+            setHighlightedSku(storedSku);
+            localStorage.removeItem('highlightedSku');
+            // Clear any search filters to ensure the SKU is visible
+            setSearchTerm(storedSku);
+            // Scroll to the SKU after a short delay to allow rendering
+            setTimeout(() => {
+                const skuElement = document.querySelector(`[data-sku-id="${storedSku}"]`);
+                if (skuElement) {
+                    skuElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    skuElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+                    // Remove highlight after 3 seconds
+                    setTimeout(() => {
+                        setHighlightedSku(null);
+                        skuElement.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+                    }, 3000);
+                }
+            }, 200);
+        }
+    }, []);
     const previousSortConfigRef = useRef<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
     const cellDensityClass = `${CELL_DENSITY_MAP[rowDensity]} ${FONT_SCALE_MAP[fontScale]}`;
 
@@ -1397,6 +1424,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             columns={tableColumns}
                             data={processedInventory}
                             getRowKey={(item) => item.sku}
+                            getRowAttributes={(item) => ({ 'data-sku-id': item.sku })}
                             stickyHeader
                             hoverable
                             compact={rowDensity === 'compact' || rowDensity === 'ultra'}

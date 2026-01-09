@@ -58,7 +58,17 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
           />
 
           {/* Stock guidance */}
-          <PurchasingGuidanceDashboard onNavigateToPOs={() => setCurrentPage('Purchase Orders')} />
+          <PurchasingGuidanceDashboard
+            onNavigateToPOs={() => setCurrentPage('Purchase Orders')}
+            onNavigateToPO={(poNumber) => {
+              localStorage.setItem('highlightedPO', poNumber);
+              setCurrentPage('Purchase Orders');
+            }}
+            onNavigateToSku={(sku) => {
+              localStorage.setItem('highlightedSku', sku);
+              setCurrentPage('Inventory');
+            }}
+          />
         </div>
       );
 

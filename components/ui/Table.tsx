@@ -102,6 +102,11 @@ interface TableProps<T> {
    * Custom row className function
    */
   getRowClassName?: (row: T, index: number) => string;
+
+  /**
+   * Custom row attributes function (for data-* attributes, etc.)
+   */
+  getRowAttributes?: (row: T, index: number) => Record<string, string>;
 }
 
 /**
@@ -147,6 +152,7 @@ function Table<T>({
   className = '',
   loading = false,
   getRowClassName,
+  getRowAttributes,
 }: TableProps<T>) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
@@ -295,6 +301,7 @@ function Table<T>({
                   ${getRowClassName ? getRowClassName(row, index) : ''}
                   transition-colors
                 `}
+                {...(getRowAttributes ? getRowAttributes(row, index) : {})}
               >
                 {visibleColumns.map((column) => (
                   <td

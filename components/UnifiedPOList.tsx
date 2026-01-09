@@ -631,6 +631,7 @@ const UnifiedPOList: React.FC<UnifiedPOListProps> = ({
               return (
                 <React.Fragment key={`${po.source}-${po.id}`}>
                   <tr
+                    data-po-id={po.orderId}
                     className={`border-b transition-colors cursor-pointer group ${
                       isDark
                         ? 'border-gray-800 hover:bg-gray-900/40 text-gray-200'

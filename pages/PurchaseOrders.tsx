@@ -150,6 +150,31 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
     const [selectedReqForApproval, setSelectedReqForApproval] = useState<InternalRequisition | null>(null);
     const [approvalType, setApprovalType] = useState<'manager' | 'ops'>('manager');
 
+    // Highlighted PO from deep link navigation
+    const [highlightedPO, setHighlightedPO] = useState<string | null>(null);
+
+    // Check for highlighted PO from localStorage on mount
+    useEffect(() => {
+        const storedPO = localStorage.getItem('highlightedPO');
+        if (storedPO) {
+            setHighlightedPO(storedPO);
+            localStorage.removeItem('highlightedPO');
+            // Scroll to the PO after a short delay to allow rendering
+            setTimeout(() => {
+                const poElement = document.querySelector(`[data-po-id="${storedPO}"]`);
+                if (poElement) {
+                    poElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    poElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+                    // Remove highlight after 3 seconds
+                    setTimeout(() => {
+                        setHighlightedPO(null);
+                        poElement.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+                    }, 3000);
+                }
+            }, 200);
+        }
+    }, []);
+
     // Date filter with localStorage persistence
     const [dateFilter, setDateFilter] = useState<'all' | '30days' | '90days' | '12months'>(() => {
         if (typeof window !== 'undefined') {

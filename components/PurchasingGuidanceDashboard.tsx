@@ -32,9 +32,11 @@ interface AdviceItem {
 
 interface PurchasingGuidanceDashboardProps {
     onNavigateToPOs?: () => void;
+    onNavigateToPO?: (poNumber: string) => void;
+    onNavigateToSku?: (sku: string) => void;
 }
 
-export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: PurchasingGuidanceDashboardProps = {}) {
+export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigateToPO, onNavigateToSku }: PurchasingGuidanceDashboardProps = {}) {
     const [advice, setAdvice] = useState<AdviceItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [kpiSummary, setKpiSummary] = useState<KPISummary | null>(null);
@@ -750,6 +752,8 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                         setSelectedKPIItems(new Set());
                     }}
                     onNavigateToPOs={onNavigateToPOs}
+                    onNavigateToPO={onNavigateToPO}
+                    onNavigateToSku={onNavigateToSku}
                     selectedItems={selectedKPIItems}
                     onToggleSelect={toggleKPISelect}
                     onQuickOrder={handleKPIQuickOrder}
@@ -921,8 +925,17 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                                                     className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
                                                 />
                                             </td>
-                                            <td className="px-4 py-3">
-                                                <div className="font-medium text-white font-mono text-xs">{item.sku}</div>
+                                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                                {onNavigateToSku ? (
+                                                    <button
+                                                        onClick={() => onNavigateToSku(item.sku)}
+                                                        className="font-medium text-blue-400 hover:text-blue-300 hover:underline font-mono text-xs cursor-pointer text-left"
+                                                    >
+                                                        {item.sku}
+                                                    </button>
+                                                ) : (
+                                                    <div className="font-medium text-white font-mono text-xs">{item.sku}</div>
+                                                )}
                                                 <div className="text-slate-400 text-xs max-w-[300px] truncate" title={item.name}>{item.name}</div>
                                             </td>
                                             <td className="px-4 py-3 text-xs text-slate-400 max-w-[120px] truncate">
@@ -1090,6 +1103,8 @@ interface KPIItemPanelProps {
     kpiSummary: KPISummary;
     onClose: () => void;
     onNavigateToPOs?: () => void;
+    onNavigateToPO?: (poNumber: string) => void;
+    onNavigateToSku?: (sku: string) => void;
     selectedItems: Set<string>;
     onToggleSelect: (sku: string) => void;
     onQuickOrder: (item: InventoryKPIs) => void;
@@ -1098,7 +1113,7 @@ interface KPIItemPanelProps {
     scrollToReplenishment: () => void;
 }
 
-function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selectedItems, onToggleSelect, onQuickOrder, onCreatePOForSelected, isCreatingPO, scrollToReplenishment }: KPIItemPanelProps) {
+function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, onNavigateToPO, onNavigateToSku, selectedItems, onToggleSelect, onQuickOrder, onCreatePOForSelected, isCreatingPO, scrollToReplenishment }: KPIItemPanelProps) {
     const getPanelConfig = () => {
         switch (panelType) {
             case 'critical':
@@ -1186,15 +1201,37 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                         <tbody className="divide-y divide-slate-700/50">
                             {config.pastDueLines.map((line, idx) => (
                                 <tr key={idx} className="hover:bg-slate-700/30 text-slate-300">
-                                    <td className="px-6 py-3 font-mono text-xs font-medium text-white">{line.po_number}</td>
-                                    <td className="px-4 py-3 font-mono text-xs text-slate-300">{line.sku}</td>
+                                    <td className="px-6 py-3 font-mono text-xs font-medium">
+                                        {onNavigateToPO ? (
+                                            <button
+                                                onClick={() => onNavigateToPO(line.po_number)}
+                                                className="text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
+                                            >
+                                                {line.po_number}
+                                            </button>
+                                        ) : (
+                                            <span className="text-white">{line.po_number}</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3 font-mono text-xs">
+                                        {onNavigateToSku ? (
+                                            <button
+                                                onClick={() => onNavigateToSku(line.sku)}
+                                                className="text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
+                                            >
+                                                {line.sku}
+                                            </button>
+                                        ) : (
+                                            <span className="text-slate-300">{line.sku}</span>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3 text-xs text-slate-400 max-w-[150px] truncate">{line.vendor_name}</td>
                                     <td className="px-4 py-3 text-right font-medium text-red-400">{line.days_overdue}</td>
                                     <td className="px-4 py-3 text-right text-slate-300">{line.quantity}</td>
                                     <td className="px-6 py-3">
-                                        {onNavigateToPOs && (
+                                        {onNavigateToPO && (
                                             <button
-                                                onClick={onNavigateToPOs}
+                                                onClick={() => onNavigateToPO(line.po_number)}
                                                 className="text-xs text-blue-400 hover:text-blue-300 hover:underline"
                                             >
                                                 View PO
@@ -1253,7 +1290,18 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                                                 className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
                                             />
                                         </td>
-                                        <td className="px-4 py-3 font-mono text-xs font-medium text-white">{item.sku}</td>
+                                        <td className="px-4 py-3 font-mono text-xs font-medium" onClick={(e) => e.stopPropagation()}>
+                                            {onNavigateToSku ? (
+                                                <button
+                                                    onClick={() => onNavigateToSku(item.sku)}
+                                                    className="text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
+                                                >
+                                                    {item.sku}
+                                                </button>
+                                            ) : (
+                                                <span className="text-white">{item.sku}</span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 text-xs text-slate-400 max-w-[180px] truncate" title={item.product_name}>
                                             {item.product_name}
                                         </td>
