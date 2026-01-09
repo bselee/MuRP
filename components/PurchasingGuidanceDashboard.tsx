@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { getRigorousPurchasingAdvice, getForecastAccuracyMetrics } from '../services/purchasingForecastingService';
 import { detectInventoryAnomalies, type Anomaly } from '../services/aiPurchasingService';
+import { getKPISummary, type KPISummary } from '../services/inventoryKPIService';
 import { supabase } from '../lib/supabase/client';
 import { createPurchaseOrder, batchUpdateInventory } from '../hooks/useSupabaseMutations';
-import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon } from './icons';
+import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon, AlertTriangleIcon, TrendingUpIcon } from './icons';
 import type { CreatePurchaseOrderInput } from '../types';
 
 interface AdviceItem {
@@ -33,11 +34,19 @@ interface PurchasingGuidanceDashboardProps {
 export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: PurchasingGuidanceDashboardProps = {}) {
     const [advice, setAdvice] = useState<AdviceItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [kpiSummary, setKpiSummary] = useState<KPISummary | null>(null);
     const [metrics, setMetrics] = useState<any>({
         accuracy: null,
         riskItems: 0,
+        criticalItems: 0,
+        atRiskItems: 0,
         vendorReliability: null,
-        inventoryTurnover: null
+        inventoryTurnover: null,
+        excessValue: 0,
+        avgCltr: null,
+        pastDueLines: 0,
+        leadTimeBias: null,
+        safetyStockShortfall: 0,
     });
 
     const [agentInsights, setAgentInsights] = useState<{
@@ -112,69 +121,74 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
             const adviceData = await getRigorousPurchasingAdvice();
             setAdvice(adviceData);
 
-            // 2. Get Forecast Accuracy (Mock if empty)
-            const forecasts = await getForecastAccuracyMetrics();
-            const accuracy = forecasts.length > 0
-                ? forecasts.reduce((acc: number, f: any) => acc + (f.error_pct || 0), 0) / forecasts.length
-                : null;
-
-            // 3. Calculate real Vendor Reliability from Finale PO data
-            let vendorReliability: number | null = null;
+            // 2. Get comprehensive KPI Summary from inventoryKPIService
+            let kpis: KPISummary | null = null;
             try {
-                // Try to calculate from POs with both expected and actual dates
-                const { data: poData, error: poError } = await supabase
-                    .from('finale_purchase_orders')
-                    .select('status, expected_date, received_date, tracking_delivered_date')
-                    .eq('status', 'Completed')
-                    .not('expected_date', 'is', null);
-
-                if (!poError && poData && poData.length > 0) {
-                    // Count POs with actual delivery info
-                    const withDeliveryDate = poData.filter(po =>
-                        po.received_date || po.tracking_delivered_date
-                    );
-
-                    if (withDeliveryDate.length > 0) {
-                        const completedPOs = withDeliveryDate.length;
-                        const onTimePOs = withDeliveryDate.filter(po => {
-                            const actualDate = po.tracking_delivered_date || po.received_date;
-                            if (!po.expected_date || !actualDate) return false;
-                            return new Date(actualDate) <= new Date(po.expected_date);
-                        }).length;
-                        vendorReliability = completedPOs > 0 ? (onTimePOs / completedPOs) * 100 : null;
-                    }
-                }
+                kpis = await getKPISummary();
+                setKpiSummary(kpis);
+                console.log('📊 KPI Summary loaded:', kpis);
             } catch (err) {
-                console.warn('Could not calculate vendor reliability:', err);
+                console.error('Failed to load KPI summary:', err);
             }
 
-            // 4. Calculate Inventory Turnover from velocity data
+            // 3. Get Forecast Accuracy (if available)
+            let accuracy: number | null = null;
+            try {
+                const forecasts = await getForecastAccuracyMetrics();
+                accuracy = forecasts.length > 0
+                    ? forecasts.reduce((acc: number, f: any) => acc + (f.error_pct || 0), 0) / forecasts.length
+                    : null;
+            } catch (err) {
+                console.debug('Forecast metrics not available:', err);
+            }
+
+            // 4. Calculate Vendor Reliability from lead time bias
+            // If avg_lead_time_bias is near 0 or negative = reliable (on-time or early)
+            let vendorReliability: number | null = null;
+            if (kpis && kpis.avg_lead_time_bias !== undefined) {
+                // Convert bias to reliability: bias of 0 = 100%, bias of 7+ = ~50%
+                const biasImpact = Math.max(0, Math.min(50, kpis.avg_lead_time_bias * 7));
+                vendorReliability = 100 - biasImpact;
+            }
+
+            // 5. Calculate Inventory Turnover from actual inventory data
             let inventoryTurnover: number | null = null;
             try {
-                const { data: velocityData, error: velocityError } = await supabase
-                    .from('inventory_velocity_summary')
-                    .select('sales_velocity, stock')
+                const { data: inventoryData, error: invError } = await supabase
+                    .from('inventory_items')
+                    .select('sales_last_30_days, stock')
+                    .eq('status', 'active')
                     .gt('stock', 0);
 
-                if (!velocityError && velocityData && velocityData.length > 0) {
-                    const totalVelocity = velocityData.reduce((sum: number, item: { sales_velocity: number | null }) =>
-                        sum + (item.sales_velocity || 0), 0);
-                    const totalStock = velocityData.reduce((sum: number, item: { stock: number | null }) =>
+                if (!invError && inventoryData && inventoryData.length > 0) {
+                    // Calculate daily velocity from 30-day sales
+                    const totalDailyVelocity = inventoryData.reduce((sum: number, item: { sales_last_30_days: number | null }) =>
+                        sum + ((item.sales_last_30_days || 0) / 30), 0);
+                    const totalStock = inventoryData.reduce((sum: number, item: { stock: number | null }) =>
                         sum + (item.stock || 0), 0);
 
                     if (totalStock > 0) {
-                        inventoryTurnover = (totalVelocity * 365) / totalStock;
+                        // Annual turnover = (daily velocity * 365) / avg stock
+                        inventoryTurnover = (totalDailyVelocity * 365) / totalStock;
                     }
                 }
             } catch (err) {
-                console.debug('Velocity summary not available:', err);
+                console.debug('Inventory data not available for turnover:', err);
             }
 
+            // Build metrics object with KPI data
             setMetrics({
                 accuracy: accuracy ? (100 - accuracy).toFixed(1) : 'N/A',
                 riskItems: adviceData.length,
-                vendorReliability: vendorReliability !== null ? vendorReliability.toFixed(1) : 'N/A',
-                inventoryTurnover: inventoryTurnover !== null ? inventoryTurnover.toFixed(1) : 'N/A'
+                criticalItems: kpis?.items_critical_cltr || 0,
+                atRiskItems: kpis?.items_at_risk_cltr || 0,
+                avgCltr: kpis ? kpis.avg_cltr.toFixed(2) : 'N/A',
+                vendorReliability: vendorReliability !== null ? vendorReliability.toFixed(0) : 'N/A',
+                inventoryTurnover: inventoryTurnover !== null ? inventoryTurnover.toFixed(1) : 'N/A',
+                excessValue: kpis?.total_excess_value || 0,
+                pastDueLines: kpis?.total_past_due_lines || 0,
+                leadTimeBias: kpis ? kpis.avg_lead_time_bias.toFixed(1) : null,
+                safetyStockShortfall: kpis?.safety_stock_shortfall_items || 0,
             });
 
         } catch (err) {
@@ -465,13 +479,47 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
             {/* 2. KPI Cards - "The Control Panel" */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <KPICard
-                    title="Stockout Risk"
-                    value={metrics.riskItems}
+                    title="Critical CLTR"
+                    value={metrics.criticalItems}
                     unit="SKUs"
-                    trend={metrics.riskItems > 5 ? 'critical' : 'neutral'}
-                    desc="Items below calculated ROP"
-                    onClick={metrics.riskItems > 0 ? scrollToReplenishment : undefined}
-                    clickHint={metrics.riskItems > 0 ? "View items to reorder" : undefined}
+                    trend={metrics.criticalItems > 0 ? 'critical' : 'positive'}
+                    desc={metrics.criticalItems > 0 ? "Will stockout before order arrives" : "All items have adequate coverage"}
+                    onClick={metrics.criticalItems > 0 ? scrollToReplenishment : undefined}
+                    clickHint={metrics.criticalItems > 0 ? "View critical items" : undefined}
+                />
+                <KPICard
+                    title="At Risk"
+                    value={metrics.atRiskItems}
+                    unit="SKUs"
+                    trend={metrics.atRiskItems > 5 ? 'critical' : metrics.atRiskItems > 0 ? 'neutral' : 'positive'}
+                    desc={metrics.atRiskItems > 0 ? "CLTR 0.5-1.0: Order soon" : "No items at risk"}
+                    onClick={metrics.atRiskItems > 0 ? scrollToReplenishment : undefined}
+                    clickHint={metrics.atRiskItems > 0 ? "View at-risk items" : undefined}
+                />
+                <KPICard
+                    title="Past Due POs"
+                    value={metrics.pastDueLines}
+                    unit="Lines"
+                    trend={metrics.pastDueLines > 0 ? 'critical' : 'positive'}
+                    desc={metrics.pastDueLines > 0 ? `Lead time bias: ${metrics.leadTimeBias || 0} days` : "All POs on schedule"}
+                />
+                <KPICard
+                    title="Below Safety Stock"
+                    value={metrics.safetyStockShortfall}
+                    unit="SKUs"
+                    trend={metrics.safetyStockShortfall > 5 ? 'critical' : metrics.safetyStockShortfall > 0 ? 'neutral' : 'positive'}
+                    desc={metrics.safetyStockShortfall > 0 ? "Items below SS target" : "All items meet SS targets"}
+                />
+            </div>
+
+            {/* 2.5 Secondary metrics row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <KPICard
+                    title="Avg CLTR"
+                    value={metrics.avgCltr}
+                    unit=""
+                    trend={metrics.avgCltr === 'N/A' ? 'neutral' : parseFloat(metrics.avgCltr) >= 1.0 ? 'positive' : 'critical'}
+                    desc="Coverage-to-Lead-Time Ratio"
                 />
                 <KPICard
                     title="Forecast Accuracy"
@@ -485,14 +533,14 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                     value={metrics.vendorReliability}
                     unit="%"
                     trend={metrics.vendorReliability === 'N/A' ? 'neutral' : (parseFloat(metrics.vendorReliability) >= 80 ? 'positive' : 'critical')}
-                    desc={metrics.vendorReliability === 'N/A' ? "No completed POs with delivery dates" : "On-Time Delivery Rate"}
+                    desc={metrics.vendorReliability === 'N/A' ? "No lead time data" : "Based on lead time bias"}
                 />
                 <KPICard
-                    title="Capital Efficiency"
-                    value={metrics.inventoryTurnover}
-                    unit="Turns"
-                    trend="neutral"
-                    desc={metrics.inventoryTurnover === 'N/A' ? "No velocity data available" : "Inventory Turnover Rate"}
+                    title="Excess Inventory"
+                    value={metrics.excessValue > 1000 ? `$${(metrics.excessValue / 1000).toFixed(0)}K` : `$${metrics.excessValue.toFixed(0)}`}
+                    unit=""
+                    trend={metrics.excessValue > 10000 ? 'critical' : 'neutral'}
+                    desc="Capital above 90-day runway"
                 />
             </div>
 

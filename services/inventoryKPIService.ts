@@ -289,25 +289,24 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
 
   try {
     // Get inventory items with purchasing parameters
+    // Note: Using correct column names from actual schema
     const { data: inventory, error: invError } = await supabase
       .from('inventory_items')
       .select(`
         sku,
-        product_name,
         name,
-        available_quantity,
-        quantity_on_hand,
+        stock,
         on_order,
         unit_cost,
-        cost,
-        avg_daily_consumption,
-        lead_time_days,
         sales_last_30_days,
+        sales_last_60_days,
         sales_last_90_days,
         reorder_point,
-        is_active
+        moq,
+        status,
+        is_dropship
       `)
-      .eq('is_active', true)
+      .eq('status', 'active')
       .or('is_dropship.is.null,is_dropship.eq.false');
 
     if (invError) throw invError;
@@ -321,15 +320,17 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
     const paramMap = new Map(purchParams?.map(p => [p.sku, p]) || []);
 
     // Calculate annual usage for ABC classification
+    // Daily demand calculated from 30-day sales data
+    const DEFAULT_LEAD_TIME = 14; // Default lead time in days if not specified
     const itemsWithValue = inventory.map(item => {
-      const dailyDemand = item.avg_daily_consumption ||
-                          (item.sales_last_30_days || 0) / 30;
-      const unitCost = item.unit_cost || item.cost || 0;
+      const dailyDemand = (item.sales_last_30_days || 0) / 30;
+      const unitCost = item.unit_cost || 0;
       return {
         ...item,
         annualValue: dailyDemand * 365 * unitCost,
         dailyDemand,
-        unitCost
+        unitCost,
+        calculatedLeadTime: DEFAULT_LEAD_TIME
       };
     });
 
@@ -352,9 +353,9 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
     // Calculate KPIs for each item
     for (const item of itemsWithValue) {
       const params = paramMap.get(item.sku);
-      const stock = item.available_quantity || item.quantity_on_hand || 0;
+      const stock = item.stock || 0;
       const onOrder = item.on_order || 0;
-      const leadTime = item.lead_time_days || 14;
+      const leadTime = params?.lead_time_mean || item.calculatedLeadTime;
 
       // Demand metrics
       const demandMean = params?.demand_mean_daily || item.dailyDemand;
@@ -390,7 +391,7 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
 
       kpis.push({
         sku: item.sku,
-        product_name: item.product_name || item.name || item.sku,
+        product_name: item.name || item.sku,
 
         cltr,
         cltr_status: cltrStatus,

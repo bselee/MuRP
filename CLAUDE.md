@@ -52,7 +52,7 @@ supabase functions list                   # List deployed functions
 
 ### 4-Layer Schema System (CRITICAL)
 
-All data transformations follow this strict pattern: **Raw → Parsed → Database → Display**
+All data transformations follow this strict pattern: **Raw -> Parsed -> Database -> Display**
 
 1. **Raw**: External data (CSV columns, API responses) - unvalidated
 2. **Parsed**: Validated with Zod schemas, normalized to TypeScript types
@@ -63,8 +63,8 @@ All data transformations follow this strict pattern: **Raw → Parsed → Databa
 ```typescript
 // lib/schema/transformers.ts
 const rawVendor = { 'Name': 'ABC Co.', 'Email address 0': 'test@abc.com', ... };
-const parsed = transformVendorRawToParsed(rawVendor, 0);  // Raw → Parsed
-const dbData = transformVendorParsedToDatabase(parsed.data);  // Parsed → Database
+const parsed = transformVendorRawToParsed(rawVendor, 0);  // Raw -> Parsed
+const dbData = transformVendorParsedToDatabase(parsed.data);  // Parsed -> Database
 await supabase.from('vendors').insert(dbData);
 ```
 
@@ -74,8 +74,8 @@ All transformers return `ParseResult<T>` with `{ success, data?, errors[], warni
 
 Never call external APIs or AI providers directly. Always use service layers:
 
-- **AI Services**: Use `services/aiGatewayService.ts` → `generateAIResponse()` for tier-based routing
-- **Data Access**: Use `lib/dataService.ts` → `getInventoryData()`, `getVendorData()` for unified access
+- **AI Services**: Use `services/aiGatewayService.ts` -> `generateAIResponse()` for tier-based routing
+- **Data Access**: Use `lib/dataService.ts` -> `getInventoryData()`, `getVendorData()` for unified access
 - **Finale API**: Use `services/finaleIngestion.ts` with circuit breakers, rate limiting, retry logic
 - **Google APIs**: Use `services/googleSheetsService.ts`, `services/googleAuthService.ts`
 - **Compliance**: Use `services/complianceService.ts` for state regulatory logic
@@ -114,23 +114,25 @@ import ErrorBoundary from './components/ErrorBoundary';
 ### Directory Structure
 
 ```
-/components/          # React components (~100 files)
-  /admin/            # Admin-specific components
+/components/          # React components (217 total)
+  /admin/            # Admin-specific (AgentCommandCenter, WorkflowPanel, EmailTemplateEditor)
+  /settings/         # Settings page modules (SettingsLayout, SettingsSidebar, SettingsContent)
+  /compliance/       # Compliance UI components
   /ui/               # Reusable UI components
-/hooks/              # Custom React hooks (useSupabaseData, useModalState, etc.)
-/lib/                # Core utilities and modules
+/hooks/              # Custom React hooks (20 hooks)
+/lib/                # Core utilities and modules (32 files)
   /auth/             # Authentication logic
   /finale/           # Finale API client
   /google/           # Google API integrations
   /schema/           # Schema definitions and transformers (CRITICAL)
   /supabase/         # Supabase client configuration
   /sync/             # Data sync orchestration
-/pages/              # Page components (Dashboard, Inventory, PurchaseOrders, etc.)
-/services/           # Business logic (~109 services)
-/types/              # TypeScript type definitions
+/pages/              # Page components (27 pages)
+/services/           # Business logic (119 services, 55K+ lines)
+/types/              # TypeScript type definitions (10 files)
 /supabase/
-  /functions/        # Edge functions (30 functions for webhooks, sync, automation)
-  /migrations/       # 168+ SQL migrations (strict 3-digit sequential numbering)
+  /functions/        # Edge functions (32 functions for webhooks, sync, automation)
+  /migrations/       # 168 SQL migrations (strict 3-digit sequential numbering)
 /e2e/                # Playwright E2E tests
 /tests/              # Unit tests
 ```
@@ -149,7 +151,7 @@ ls supabase/migrations | sort | tail -1  # Check current highest number
 supabase migration new feature_name
 
 # 3. Rename to sequential number
-mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/154_feature_name.sql
+mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/169_feature_name.sql
 
 # 4. Test locally
 supabase db reset
@@ -162,8 +164,8 @@ supabase db push
 supabase gen types typescript --local > types/supabase.ts
 ```
 
-**WRONG**: `035_vendors.sql`, `037_inventory.sql` (skipped 036)
-**CORRECT**: `035_vendors.sql`, `036_inventory.sql`, `037_tracking.sql`
+**WRONG**: `165_vendors.sql`, `167_inventory.sql` (skipped 166)
+**CORRECT**: `165_vendors.sql`, `166_inventory.sql`, `167_tracking.sql`
 
 See `docs/MIGRATION_CONVENTIONS.md` for complete rules. Reviewers will reject misnumbered migrations.
 
@@ -176,7 +178,7 @@ All E2E tests use `?e2e=1` query param to bypass authentication:
 await page.goto('/vendors?e2e=1');  // Auto-logs in as DEV_DEFAULT_USER
 ```
 
-Pattern: `test.describe()` → `test.beforeEach()` → individual `test()` blocks. See `e2e/vendors.spec.ts` for examples.
+Pattern: `test.describe()` -> `test.beforeEach()` -> individual `test()` blocks. See `e2e/vendors.spec.ts` for examples.
 
 ### AI Gateway Integration
 
@@ -194,7 +196,50 @@ await generateAIResponse(messages, 'compliance', 'full-ai');
 
 **Never** instantiate `GoogleGenerativeAI` directly - always use `aiGatewayService.ts` to respect tier limits and enable automatic fallbacks.
 
-### Stock Intelligence & Forecasting System (CRITICAL)
+## Settings Page Architecture
+
+The Settings page uses a modular sidebar-based architecture with hash navigation:
+
+**Key Files:**
+- `components/settings/settingsConfig.ts` - Section definitions and permissions
+- `components/settings/SettingsLayout.tsx` - Responsive layout wrapper
+- `components/settings/SettingsSidebar.tsx` - Navigation sidebar
+- `components/settings/SettingsContent.tsx` - Dynamic content rendering
+
+**Pattern:**
+```typescript
+// settingsConfig.ts defines 23 sections in 10 groups
+export type SettingsSectionId = 'personalization' | 'billing' | 'team' | 'modules' | ...;
+
+// Sections are permission-gated
+{ id: 'team', label: 'Team & Permissions', group: 'Team', adminOnly: true }
+
+// URL hash navigation via useSettingsHash hook
+const [activeSection, setActiveSection] = useSettingsHash('personalization');
+```
+
+## Global Data Filtering System
+
+Persistent global filters applied across all pages (Inventory, Stock Intelligence, POs, BOMs):
+
+**Key Hooks:**
+- `hooks/useGlobalCategoryFilter.ts` - Exclude categories (deprecated, discontinued, dropship)
+- `hooks/useGlobalSkuFilter.ts` - Exclude specific SKUs
+
+**Storage Keys:**
+- `global-excluded-categories` - Array of excluded category names
+- `global-excluded-skus` - Array of excluded SKU IDs
+
+**Cross-Component Sync:**
+```typescript
+// Components listen for filter changes
+window.addEventListener('global-category-filter-changed', handleFilterChange);
+window.addEventListener('global-sku-filter-changed', handleFilterChange);
+```
+
+**Configuration UI:** Settings -> Data -> Global Data Filtering (`GlobalDataFilterPanel.tsx`)
+
+## Stock Intelligence & Forecasting System (CRITICAL)
 
 The Stock Intelligence system provides data-driven purchasing guidance. **All data must be real - no placeholder values.**
 
@@ -206,70 +251,23 @@ The Stock Intelligence system provides data-driven purchasing guidance. **All da
 - `services/supplyChainRiskService.ts` - Time-phased PAB analysis with BOM explosion
 
 **Data Filtering Rules (CRITICAL - Never Show Dropship Items):**
-Stock Intelligence should NEVER show dropship items to avoid confusing humans. Use layered filtering:
+Stock Intelligence should NEVER show dropship items. Use layered filtering:
 
-1. **Database-level filtering** (most reliable after migration 102):
+1. **Database-level filtering** (most reliable):
    - `is_dropship = false` column on `inventory_items`
-   - `stock_intelligence_items` view pre-filters all excluded items
+   - `stock_intelligence_items` view pre-filters excluded items
 
 2. **Application-level filtering** (belt and suspenders):
 ```typescript
-// 5-layer filter applied in all Stock Intelligence views
 const isExcludedItem = (item: InventoryItem): boolean => {
-  // FILTER 1: Explicit dropship flag
   if (item.isDropship === true) return true;
-
-  // FILTER 2: Dropship category (ds, drop ship, dropshipped, etc.)
   const category = (item.category || '').toLowerCase().trim();
   if (['dropship', 'drop ship', 'dropshipped', 'ds', 'drop-ship'].includes(category)) return true;
-
-  // FILTER 3: Dropship in name pattern
-  const name = (item.name || '').toLowerCase();
-  if (name.includes('dropship') || name.includes('drop ship')) return true;
-
-  // FILTER 4: Inactive items
   if (item.status && item.status.toLowerCase() !== 'active') return true;
-
-  // FILTER 5: Deprecating/Deprecated/Discontinued categories
   if (['deprecating', 'deprecated', 'discontinued'].includes(category)) return true;
-
   return false;
 };
 ```
-
-**Supabase Query Pattern:**
-```typescript
-const { data } = await supabase
-  .from('inventory_items')
-  .select('sku, name, stock, on_order, category, is_dropship, ...')
-  .eq('status', 'active')
-  .eq('is_dropship', false)  // Migration 102 adds this column
-  .not('category', 'ilike', '%deprecat%');
-```
-
-**Real-Time Metrics (NO PLACEHOLDERS):**
-- **Vendor Reliability**: Calculated from `purchase_orders` on-time delivery rate
-- **Forecast Accuracy**: Calculated from `forecasts` table (1 - MAPE)
-- **Inventory Turnover**: Calculated from `inventory_velocity_summary` view
-
-**Trend Calculation:**
-```typescript
-// 30-day vs 90-day velocity comparison
-const trend30 = (item.sales30Days || 0) / 30;
-const trend90 = (item.sales90Days || 0) / 90;
-const trendDirection = trend30 > trend90 * 1.15 ? 'up' :
-                       trend30 < trend90 * 0.85 ? 'down' : 'stable';
-```
-
-**Data Sources:**
-- Sales velocity: `finale_stock_history` → `inventory_velocity_summary`
-- ROP/Safety Stock: `sku_purchasing_parameters` table (Z-score methodology)
-- Forecast accuracy: `forecasts` table (predicted vs actual)
-
-**Key Components:**
-- `pages/StockIntelligence.tsx` - Main dashboard with 6 tabs
-- `components/PurchasingGuidanceDashboard.tsx` - KPI cards and replenishment advice
-- `components/StockoutRiskWidget.tsx` - Risk visualization
 
 ### Inventory KPI Framework
 
@@ -280,9 +278,9 @@ Comprehensive KPIs calculated by `inventoryKPIService.ts`:
 | **CLTR** | runway / (lead_time + review_period) | <0.5 CRITICAL, 0.5-1.0 AT_RISK, 1.0-2.0 ADEQUATE, >2.0 HEALTHY |
 | **CV** | std_dev / mean | <0.5 X-class (predictable), 0.5-1.0 Y-class, >1.0 Z-class (erratic) |
 | **ABC** | Cumulative $ usage | A=80%, B=next 15%, C=remaining 5% |
-| **Safety Stock Attainment** | current_stock / safety_stock × 100 | <50% CRITICAL, 50-100% LOW, 100-150% OPTIMAL |
+| **Safety Stock Attainment** | current_stock / safety_stock x 100 | <50% CRITICAL, 50-100% LOW, 100-150% OPTIMAL |
 | **Lead Time Bias** | actual_LT - planned_LT | Positive = vendors deliver late |
-| **Excess Inventory** | (stock - 90d runway) × unit_cost | Capital tied up above target |
+| **Excess Inventory** | (stock - 90d runway) x unit_cost | Capital tied up above target |
 
 ```typescript
 import { getKPISummary, calculateInventoryKPIs } from './services/inventoryKPIService';
@@ -320,111 +318,79 @@ const risks = await analyzeSupplyChainRisks({
 // risk.action_statement: "ACTION: Order N units by DATE to prevent stockout"
 ```
 
-**Integration with Inventory Guardian:**
-The `inventoryGuardianAgent.ts` calls this service and includes PAB-based risk analysis in its output. All three analyses (health check, KPIs, supply chain risks) run in parallel.
+### Classification Context Service
 
-### Compliance System
-
-Dedicated Compliance page (`/compliance`) for regulatory management with 5 tabs:
-
-**Key Components:**
-- `pages/Compliance.tsx` - Main compliance hub
-- `components/compliance/RegulatorySourcesPanel.tsx` - State regulatory agencies
-- `components/compliance/StateContactManager.tsx` - Agency contact info management
-- `components/compliance/RegulatoryQAPanel.tsx` - AI-powered regulatory Q&A
-- `components/compliance/DocumentAnalysisPanel.tsx` - Analyze letters from states
-- `components/compliance/ComplianceDocumentList.tsx` - Document library
-
-**Services:**
-- `services/regulatoryDataService.ts` - State sources, contact search, Q&A, document analysis
-- `services/complianceDocumentService.ts` - Document CRUD operations
-
-**Priority States:** CA, OR, WA, NY, TX, NM (configurable per user)
-
-### Ingredient Compliance System
-
-BOM ingredients are checked against state regulatory databases for compliance:
-
-**Key Tables** (migrations 121-122):
-- `ingredient_compliance_rules` - State-specific ingredient rules
-- `ingredient_compliance_checks` - Per-ingredient compliance status
-- `bom_compliance_summary` - Aggregated BOM compliance status
-
-**Key Components:**
-- `components/compliance/BOMIngredientCompliance.tsx` - Compliance checker UI
-- `services/ingredientComplianceService.ts` - Compliance validation logic
-
-### Theme System (Light/Dark Mode)
-
-All components must support both themes using the `useTheme()` hook:
+Centralized item classification for agents (`services/classificationContextService.ts`):
 
 ```typescript
-import { useTheme } from './components/ThemeProvider';
+// Every agent checks classification before acting
+const classification = await getItemClassification(sku);
+// Returns: flow_type, sop_rules, automation_level, allowed_actions
 
-const { isDark, theme, setTheme } = useTheme();
-
-// Theme-aware styling pattern
-const cardClass = isDark
-  ? "bg-gray-800/50 border-gray-700 text-white"
-  : "bg-white border-gray-200 text-gray-900 shadow-sm";
+// Flow types: standard, dropship, special_order, consignment, made_to_order, discontinued
+// Prevents agents from acting on excluded items
 ```
 
-**Key files:**
-- `components/ThemeProvider.tsx` - Context provider with `isDark` helper
-- Theme preference stored in localStorage as `murp-ui-theme`
-- Supports: `'light' | 'dark' | 'system'`
+## AI Agent System
 
-## Key Integrations
+### Agent Command Center (`pages/Admin.tsx` -> Agent Command Center tab)
 
-### Finale Inventory API
-- Complete integration in `services/finaleIngestion.ts`
-- Uses 3-layer security: Frontend (`services/secureApiClient.ts`) → Proxy (`supabase/functions/api-proxy/`) → Finale API
-- All data must be transformed through 4-layer schema system before use
-- Includes circuit breakers, rate limiting, exponential backoff
+View and configure 10+ AI agents with unified configuration:
 
-### MCP Server (`mcp-server/`)
-- Python-based compliance tools with tier support
-- OCR text extraction, state regulation scraping, compliance analysis
-- See `docs/MCP_SETUP_GUIDE.md` for configuration
+**Agent Services** (in `services/`):
+- `inventoryGuardianAgent.ts` - Stock level monitoring with runway-based logic
+- `stockoutPreventionAgent.ts` - Proactive stockout alerts
+- `vendorWatchdogAgent.ts` - Learns vendor behavior, adjusts lead times
+- `priceHunterAgent.ts` - Price trend tracking
+- `complianceValidationAgent.ts` - Regulatory compliance
+- `artworkApprovalAgent.ts` - Artwork workflow management
+- `trustScoreAgent.ts` - Agent performance tracking
+- `airTrafficControllerAgent.ts` - PO delay detection
+- `emailIntelligenceAgent.ts` - Email analysis
+- `poIntelligenceAgent.ts` - Purchase order intelligence
 
-### Google APIs
-- OAuth2 flow: `services/googleAuthService.ts`
-- Sheets: `services/googleSheetsService.ts` (batch updates only, never single-row)
-- Calendar: `services/googleCalendarService.ts`
-- Gmail: `services/googleGmailService.ts`
+**Autonomy Levels:**
+- `monitor` - Observe and report only
+- `assist` - Recommend actions for human approval
+- `autonomous` - Auto-execute within defined bounds
 
-### Edge Functions (30+ deployed)
+**Configuration:** All agent config stored in `agent_definitions` table (runtime adjustable)
 
-Located in `supabase/functions/`:
-- `api-proxy` - Secure backend proxy for external APIs
-- `auto-sync-finale` - Automated Finale data sync orchestrator
-- `sync-finale-graphql` - Direct Finale GraphQL sync (vendors, products, POs)
-- `nightly-ai-purchasing` - AI-powered purchasing automation
-- `po-email-monitor` - Purchase order email tracking
-- `billing-webhook` - Stripe webhook handler
-- `shopify-nightly-sync` - Shopify integration sync
-- `google-auth` - Google OAuth flow for Gmail, Sheets, Calendar
-- `email-inbox-poller` - Proactive email monitoring for PO tracking
-- `gmail-webhook` - Push notifications for new emails
-- `scheduled-agent-runner` - pg_cron triggered agent execution
-- `invoice-extractor` - Claude Vision AI for PDF/image invoice extraction
-- `three-way-match-runner` - Batch PO vs Invoice vs Receipt matching
-- And more for webhooks, notifications, sync operations
+### Workflow Orchestrator (`services/workflowOrchestrator.ts`)
 
-### Email Monitoring & PO Tracking
-
-**Email Connection Flow:**
-Users can connect Gmail accounts through Settings → Email Monitoring. Supports multiple inboxes:
-- **Purchasing Email**: For vendor communications, PO updates, tracking numbers
-- **Accounting Email**: For invoices, payment confirmations, financial docs
-
-**OAuth Architecture:**
+Chains multiple agents for end-to-end automation:
+```typescript
+const result = await runMorningBriefing(userId);
+// Runs: Inventory Guardian -> PO Intelligence -> Email Tracking -> Air Traffic Controller
+// Returns: { success, summary, pendingActions, autoExecutedActions, errors }
 ```
-User clicks "Connect" → Frontend calls google-auth/authorize
-→ User completes Google OAuth consent
-→ Callback stores tokens in email_inbox_configs + user_oauth_tokens
-→ email-inbox-poller runs every 5 mins to check for new emails
-→ Emails are parsed, correlated to POs, tracking extracted
+
+**Key Tables:**
+- `agent_definitions` - Unified agent configuration (autonomy, trust score, parameters)
+- `workflow_executions` - Workflow run logs for audit
+- `pending_actions_queue` - Actions proposed by agents awaiting approval
+- `agent_run_history` - Execution logs
+
+### pg_cron Scheduled Jobs
+
+| Job | Schedule | Purpose |
+|-----|----------|---------|
+| `finale-full-sync` | 1 AM, 1 PM UTC | Full Finale data sync |
+| `finale-po-sync` | :30 every hour | Hourly PO-only sync |
+| Stockout Prevention | 6:00 AM daily | Morning stockout check |
+| Vendor Watchdog | 7:00 AM daily | Vendor performance review |
+| Inventory Guardian | 2:00 AM nightly | Stock level monitoring |
+| PO Intelligence | Hourly 8AM-6PM Mon-Fri | Order status updates |
+| Invoice Extraction | Every 10 minutes | Process pending invoices |
+| Three-Way Match | Every 15 minutes | PO vs Invoice vs Receipt |
+
+## Email Monitoring & PO Tracking
+
+**OAuth Flow:**
+```
+User connects Gmail -> google-auth/authorize -> OAuth consent
+-> Tokens stored in email_inbox_configs + user_oauth_tokens
+-> email-inbox-poller runs every 5 mins -> Parse & correlate to POs
 ```
 
 **Key Tables:**
@@ -433,27 +399,7 @@ User clicks "Connect" → Frontend calls google-auth/authorize
 - `email_thread_messages` - Individual messages with extracted data
 - `email_tracking_alerts` - Alerts for delays, backorders, exceptions
 
-**Key Components:**
-- `components/settings/EmailConnectionCard.tsx` - OAuth connection UI
-- `supabase/functions/google-auth/index.ts` - OAuth flow handler
-- `supabase/functions/email-inbox-poller/index.ts` - Email sync engine
-
-### Direct Carrier Tracking (Free APIs)
-
-**Tracking Architecture** (CRITICAL - uses free carrier APIs, no subscription required):
-
-```
-EMAIL ARRIVES → email-inbox-poller (5 min) → REGEX EXTRACTION →
-CORRELATE TO PO → DIRECT CARRIER API CALL → CACHE RESULT →
-PODeliveryTimeline DISPLAYS AUTOMATICALLY
-```
-
-**Supported Carriers (Free Tiers):**
-- **USPS Web Tools API** - Free unlimited tracking with registration
-- **UPS Tracking API** - 500 requests/month free
-- **FedEx Track API** - 5000 requests/month free
-
-**Tracking Extraction Patterns** (`services/emailProcessingService.ts`):
+**Tracking Extraction Patterns:**
 ```typescript
 // UPS: 1Z followed by 16 alphanumeric
 /\b1Z[A-Z0-9]{16}\b/gi
@@ -468,212 +414,91 @@ PODeliveryTimeline DISPLAYS AUTOMATICALLY
 /\b(?:\d{10,11}|[A-Z]{3}\d{7,10})\b/gi
 ```
 
-**Key Tables:**
-- `tracking_cache` - Cached tracking results with TTL
-- `tracking_events` - Detailed checkpoint history
-- `carrier_api_usage` - API usage monitoring
-- `finale_purchase_orders.tracking_*` - Finale PO tracking columns
+### Email Template Editor
 
-**Key Services:**
-- `services/directCarrierTrackingService.ts` - Direct carrier API integration
-- `services/unifiedTrackingService.ts` - Orchestration of all tracking methods
-- `services/enhancedEmailTrackingService.ts` - Email-based tracking extraction
-- `services/emailProcessingService.ts` - Email parsing, tracking extraction
+Admin UI for editing PO follow-up email templates:
+- **Location**: Settings -> Email -> Email Templates
+- **Component**: `components/admin/EmailTemplateEditor.tsx`
+- **Data**: `po_followup_campaigns` and `po_followup_rules` tables
+- **Placeholders**: `{{po_number}}`, `{{vendor_name}}`, `{{order_date}}`, `{{order_age_days}}`, `{{expected_date}}`, `{{total_amount}}`
 
-**Required Settings for Carrier APIs (Optional):**
-```bash
-# In Settings → Carrier Tracking (Free)
-USPS User ID: Register at https://www.usps.com/business/web-tools-apis/
-UPS Client ID: Get from UPS Developer Portal
-UPS Client Secret: Get from UPS Developer Portal
-FedEx API Key: Get from FedEx Developer Portal
-FedEx Secret Key: Get from FedEx Developer Portal
-```
-
-**UI Components:**
-- `components/PODeliveryTimeline.tsx` - Visual tracking timeline
-- `components/CarrierTrackingSettingsPanel.tsx` - Carrier API configuration
-
-### PO Lifecycle Pipeline
-
-**Pipeline View** (`pages/PurchaseOrders.tsx` → Pipeline tab):
-Kanban-style visualization of PO lifecycle stages:
-
-```
-Draft → Sent → Confirmed → In Transit → Completed
-```
-
-**Key Components:**
-- `components/POPipelineView.tsx` - Full Kanban board with drag-drop stages
-- `components/POPipelineWidget.tsx` - Lightweight dashboard widget with stage counts
-- `components/StockoutCountdown.tsx` - Days until stockout indicator on PO cards
-
-**Stage Assignment Logic:**
-```typescript
-function getPOStage(po: FinalePurchaseOrderRecord): POPipelineStage {
-  if (status === 'RECEIVED' || status === 'COMPLETED') return 'completed';
-  if (po.trackingStatus === 'in_transit' || po.trackingStatus === 'out_for_delivery') return 'in_transit';
-  if (po.trackingNumber && po.trackingStatus !== 'delivered') return 'confirmed';
-  if (status === 'SUBMITTED' || status === 'PARTIALLY_RECEIVED') return 'sent';
-  return 'draft';
-}
-```
-
-### AI Agent System
-
-**Agent Command Center** (`pages/Admin.tsx` → Agent Command Center tab):
-- View and configure 10+ AI agents
-- Set autonomy levels: `monitor` | `assist` | `autonomous`
-- Track trust scores that evolve based on agent performance
-
-**Agent Services** (in `services/`):
-- `vendorWatchdogAgent.ts` - Learns vendor behavior, adjusts lead times
-- `stockoutPreventionAgent.ts` - Proactive stockout alerts
-- `inventoryGuardianAgent.ts` - Stock level monitoring
-- `priceHunterAgent.ts` - Price trend tracking
-- `complianceValidationAgent.ts` - Regulatory compliance
-- `artworkApprovalAgent.ts` - Artwork workflow management
-- `trustScoreAgent.ts` - Agent performance tracking
-
-**Workflow Orchestrator** (`services/workflowOrchestrator.ts`):
-Chains multiple agents together for end-to-end automation:
-```typescript
-// Example: Morning Briefing Workflow
-const result = await runMorningBriefing(userId);
-// Runs: Inventory Guardian → PO Intelligence → Email Tracking → Air Traffic Controller
-// Returns: { success, summary, pendingActions, autoExecutedActions, errors }
-```
-
-**Workflows Panel** (`components/admin/WorkflowPanel.tsx`):
-- Morning Briefing - Daily priority list
-- Process Vendor Emails - Auto-update POs from emails
-- Generate Purchase Orders - Create POs for items below ROP
-
-**Key Tables:**
-
-- `agent_definitions` - Unified agent configuration (autonomy, trust score, parameters, usage tracking)
-- `workflow_executions` - Workflow run logs for audit
-- `pending_actions_queue` - Actions proposed by agents awaiting approval/execution
-- `event_triggers` - Event-to-agent mappings for automated execution
-- `oauth_states` - CSRF protection for OAuth flows
-
-**Agent Execution Architecture:**
-
-```text
-Event/Trigger → eventBus.ts → agentExecutor.ts → agent_definitions (config)
-                     ↓                ↓
-              executeAgentByIdentifier()    →    capabilityExecutors (actions)
-                                                        ↓
-                                            actionExecutors.ts → pending_actions_queue
-```
-
-**pg_cron Scheduled Jobs** (Migrations 081, 125, 150):
-
-Autonomous execution via Supabase pg_cron:
-
-| Job | Schedule | Purpose |
-|-----|----------|---------|
-| `finale-full-sync` | 1 AM, 1 PM UTC | Full Finale data sync |
-| `finale-po-sync` | :30 every hour | Hourly PO-only sync |
-| Stockout Prevention | 6:00 AM daily | Morning stockout check |
-| Vendor Watchdog | 7:00 AM daily | Vendor performance review |
-| Inventory Guardian | 2:00 AM nightly | Stock level monitoring |
-| PO Intelligence | Hourly 8AM-6PM Mon-Fri | Order status updates |
-| Compliance Validator | Monday 9:00 AM | Weekly compliance check |
-| Tracking Cache Refresh | Every 30 minutes | Update active tracking info |
-| Invoice Extraction | Every 10 minutes | Process pending invoice attachments |
-| Three-Way Match | Every 15 minutes | PO vs Invoice vs Receipt verification |
-
-**Monitoring Sync Health (IMPORTANT):**
-```bash
-# Check sync state via API
-curl -s "https://mpuevsmtowyexhsqugkm.supabase.co/rest/v1/rpc/get_sync_stats" \
-  -H "apikey: $SUPABASE_ANON_KEY" | jq .
-
-# Manually trigger PO sync if needed
-curl -X POST "https://mpuevsmtowyexhsqugkm.supabase.co/functions/v1/sync-finale-graphql" \
-  -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"syncTypes": ["purchase_orders"]}'
-```
-
-**If sync stops working:** Check `finale_sync_state` table - if `last_po_sync` is stale (>2 hours old), cron jobs may need restoration (see migration 150).
-
-Triggers call `scheduled-agent-runner` edge function which executes the appropriate agent.
-
-### Invoice & Three-Way Match System (Migrations 126, 144-146, 152-153)
-
-**What is Three-Way Match?**
-Verifies vendor bills by comparing three documents before payment:
-
-| Document | What It Verifies | Table |
-|----------|-----------------|-------|
-| Purchase Order | What you agreed to buy | `finale_purchase_orders` + `finale_po_line_items` |
-| Receipt (GRN) | What you actually received | `po_receipt_events` |
-| Invoice | What vendor is charging | `vendor_invoice_documents` |
+## Invoice & Three-Way Match System
 
 **Flow:**
 ```
-Email Arrives → email-inbox-poller → Attachment Classification →
-Invoice Extraction (Claude Vision) → PO Matching → Three-Way Match →
+Email Arrives -> email-inbox-poller -> Attachment Classification ->
+Invoice Extraction (Claude Vision) -> PO Matching -> Three-Way Match ->
 Auto-Approve (95%+) OR Queue for Review (discrepancies)
 ```
 
 **Key Tables:**
 - `vendor_invoice_documents` - Extracted invoice data with match status
 - `po_three_way_matches` - Match results comparing PO vs Invoice vs Receipt
-- `po_backorders` - Shortage tracking from three-way match discrepancies
-- `email_attachments` - Classified attachments with `attachment_type` column
-- `po_receipt_events` - GRN events with timestamps (Migration 153)
-- `po_receipt_summary` - Aggregated receipt view by PO/SKU
+- `po_receipt_events` - GRN events with timestamps
+- `po_backorders` - Shortage tracking
 
-**Key Services:**
-- `services/invoiceExtractionService.ts` - Invoice data extraction with regex patterns
-- `services/threeWayMatchService.ts` - Match logic with configurable thresholds (uses `po_receipt_events` for receipt dates)
-- `services/invoiceProcessingService.ts` - Review workflow and AP forwarding
-
-**Edge Functions:**
-- `invoice-extractor` - Claude Vision AI for PDF/image invoice extraction
-- `three-way-match-runner` - Batch matching with auto-approval logic
-
-**Auto-Approval Thresholds (configurable):**
+**Auto-Approval Thresholds:**
 ```typescript
 const DEFAULT_THRESHOLDS = {
-  quantityTolerancePercent: 2,    // 2% quantity variance allowed
-  priceToleranceDollars: 0.50,    // $0.50 price variance per unit
-  totalTolerancePercent: 1,       // 1% total variance allowed
-  minMatchScoreForApproval: 95,   // 95% score for auto-approval
-  autoApproveMaxVariance: 50,     // Max $50 variance for auto-approval
+  quantityTolerancePercent: 2,
+  priceToleranceDollars: 0.50,
+  totalTolerancePercent: 1,
+  minMatchScoreForApproval: 95,
+  autoApproveMaxVariance: 50,
 };
 ```
 
-**UI Components:**
-- `components/InvoiceReviewModal.tsx` - Invoice review with variance approval
-- `components/ThreeWayMatchReviewQueue.tsx` - Discrepancy review queue (compact mode hides when empty)
+## Internal Requisitions System
 
-## Troubleshooting
+Internal POs with approval workflows:
+- **Location**: Purchase Orders page -> Internal Requisitions section
+- **Pattern**: Card-based view with approval modal
+- **Badge**: "Internal" badge distinguishes from vendor POs
+- **Workflow**: Create -> Approve -> Convert to PO (via GeneratePoModal)
 
-### Finale Sync Not Running
-If POs or products aren't syncing from Finale:
-1. Check sync state: Query `finale_sync_state` table - `last_po_sync` should be recent
-2. Verify cron jobs exist: They may disappear after migrations - see migration 150
-3. Manual sync: Call `sync-finale-graphql` edge function directly
-4. Check for schema mismatches: New columns in transformers may not exist in DB
+## Key Integrations
 
-### Security Lint Errors
-After migrations, run `supabase db lint` to check for:
-- **RLS Disabled**: Tables need `ENABLE ROW LEVEL SECURITY` + policies
-- **Security Definer Views**: Views should use SECURITY INVOKER (default)
-- See migrations 147-149 for patterns
+### Finale Inventory API
+- Complete integration in `services/finaleIngestion.ts`
+- 3-layer security: Frontend -> Proxy -> Finale API
+- Includes circuit breakers, rate limiting, exponential backoff
 
-### Edge Function Errors
-If edge functions return `[object Object]` errors:
-- The error object wasn't stringified properly
-- Fix: Use `JSON.stringify(error)` or check for `error instanceof Error`
+### Edge Functions (32 deployed)
+
+Located in `supabase/functions/`:
+- `api-proxy` - Secure backend proxy for external APIs
+- `auto-sync-finale` - Automated Finale data sync orchestrator
+- `sync-finale-graphql` - Direct Finale GraphQL sync
+- `email-inbox-poller` - Email monitoring (5 min interval)
+- `invoice-extractor` - Claude Vision AI extraction
+- `three-way-match-runner` - Batch matching
+- `po-followup-runner` - Automated vendor follow-ups
+- `scheduled-agent-runner` - pg_cron triggered agent execution
+- And 24 more...
+
+### Google APIs
+- OAuth2 flow: `services/googleAuthService.ts`
+- Sheets: `services/googleSheetsService.ts` (batch updates only)
+- Calendar: `services/googleCalendarService.ts`
+- Gmail: `services/googleGmailService.ts`
+
+## Theme System (Light/Dark Mode)
+
+All components must support both themes:
+
+```typescript
+import { useTheme } from './components/ThemeProvider';
+
+const { isDark, theme, setTheme, resolvedTheme } = useTheme();
+
+const cardClass = isDark
+  ? "bg-gray-800/50 border-gray-700 text-white"
+  : "bg-white border-gray-200 text-gray-900 shadow-sm";
+```
 
 ## Common Pitfalls
 
-### ❌ Don't Do This
+### Don't Do This
 
 ```typescript
 // Direct AI provider calls (bypasses tier system)
@@ -683,14 +508,14 @@ const genAI = new GoogleGenerativeAI(apiKey);  // WRONG
 // Direct Supabase queries in components
 const { data } = await supabase.from('vendors').select();  // WRONG - use hooks
 
-// Skipping schema transformation (data loss!)
+// Skipping schema transformation
 await supabase.from('vendors').insert(rawCsvData);  // WRONG - transform first
 
 // Breaking migration numbering
-// 090_feature.sql, 093_another.sql  // WRONG - skipped 091, 092
+// 165_feature.sql, 168_another.sql  // WRONG - skipped 166, 167
 ```
 
-### ✅ Do This Instead
+### Do This Instead
 
 ```typescript
 // Use tier-aware AI service
@@ -725,7 +550,7 @@ ls supabase/migrations | sort | tail -1
 - **Component wrapping**: All pages wrapped in `ErrorBoundary`
 - **State management**: React state only - no Redux/MobX/Zustand
 - **Imports**: Absolute imports from project root using `@/` alias
-- **Session tracking**: Log notable changes to `docs/SESSION_SUMMARY_2025-11-29_to_CURRENT.md` before ending sessions
+- **Session tracking**: Log notable changes to `docs/SESSION_SUMMARY_2025-11-29_to_CURRENT.md`
 
 ## TFR Protocol (Before Commits)
 
@@ -740,15 +565,12 @@ Only proceed to commit when all tests pass and build succeeds.
 
 ## Key Documentation References
 
-- `SCHEMA_ARCHITECTURE.md` - Complete 4-layer schema design (read before modifying data transformations)
+- `SCHEMA_ARCHITECTURE.md` - Complete 4-layer schema design
 - `docs/MIGRATION_CONVENTIONS.md` - Supabase migration numbering rules
 - `docs/CRITICAL_ARCHITECTURE.md` - Complete system architecture overview
-- `docs/AGENT_SKILL_MCP_ARCHITECTURE.md` - Claude agents, skills, and MCP server setup
-- `docs/USER_AI_ASSISTANT_DESIGN.md` - Design vision for AI-powered workflows
+- `docs/AGENT_SKILL_MCP_ARCHITECTURE.md` - Claude agents, skills, MCP server
 - `docs/WORKFLOW_AUTOMATION_AGENTS.md` - Agent orchestration patterns
-- `SUPABASE_DEPLOYMENT_GUIDE.md` - Deployment procedures
-- `API_INGESTION_SETUP.md` - API integration setup
-- `.github/copilot-instructions.md` - Comprehensive development guidelines including TFR protocol, Vercel deployment, and session management
+- `.github/copilot-instructions.md` - Development guidelines, TFR protocol, deployment
 
 ## Claude Code Skills & Agents
 
@@ -763,22 +585,3 @@ Only proceed to commit when all tests pass and build succeeds.
 - `schema-transformer-expert.md` - Expert in the 4-layer schema system
 
 Agents are automatically loaded by Claude Code and provide specialized context for domain-specific tasks.
-
-### Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`)
-Programmatic access to Claude Code capabilities for building autonomous agents:
-
-```typescript
-import { Agent } from '@anthropic-ai/claude-agent-sdk';
-
-const agent = new Agent({
-  model: 'claude-sonnet-4-20250514',
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-const result = await agent.run({
-  prompt: 'Analyze inventory and suggest ROP adjustments',
-  workingDirectory: process.cwd(),
-});
-```
-
-Use for building custom automation scripts that need file access, code editing, and command execution.
