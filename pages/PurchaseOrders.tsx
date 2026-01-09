@@ -1343,32 +1343,57 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className={`rounded-xl border backdrop-blur-lg p-4 ${isDark 
+                                                        <div className={`rounded-xl border backdrop-blur-lg p-4 ${isDark
                                                             ? 'border-white/10 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 shadow-[0_12px_30px_rgba(2,6,23,0.45)]'
                                                             : 'border-gray-200 bg-white shadow-sm'}`}>
                                                             <div className={`text-xs uppercase tracking-wider mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Financial Summary</div>
-                                                            <div className="space-y-1 text-sm">
-                                                                <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                                    <span>Subtotal:</span>
-                                                                    <span className="font-mono">${Number(fpo.subtotal || 0).toFixed(2)}</span>
-                                                                </div>
-                                                                {fpo.tax && Number(fpo.tax) > 0 && (
-                                                                    <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                                        <span>Tax:</span>
-                                                                        <span className="font-mono">${Number(fpo.tax).toFixed(2)}</span>
+                                                            {(() => {
+                                                                // Parse Finale values - handles "--" placeholders
+                                                                const parseFinaleNumber = (val: string | number | undefined | null): number => {
+                                                                    if (val === undefined || val === null || val === '--' || val === '') return 0;
+                                                                    if (typeof val === 'number') return val;
+                                                                    const num = parseFloat(String(val).replace(/,/g, ''));
+                                                                    return isNaN(num) ? 0 : num;
+                                                                };
+                                                                // Calculate subtotal from line items if stored value seems wrong
+                                                                const storedSubtotal = parseFinaleNumber(fpo.subtotal);
+                                                                const calcSubtotal = fpo.lineItems?.reduce((sum: number, item: any) => {
+                                                                    const qty = parseFinaleNumber(item.quantity_ordered);
+                                                                    const price = parseFinaleNumber(item.unit_price);
+                                                                    const lineTotal = parseFinaleNumber(item.line_total) || (qty * price);
+                                                                    return sum + lineTotal;
+                                                                }, 0) || 0;
+                                                                // Use calculated if it's higher and non-zero
+                                                                const subtotal = calcSubtotal > storedSubtotal ? calcSubtotal : storedSubtotal;
+                                                                const tax = parseFinaleNumber(fpo.tax);
+                                                                const shipping = parseFinaleNumber(fpo.shipping);
+                                                                const total = parseFinaleNumber(fpo.total) || (subtotal + tax + shipping);
+
+                                                                return (
+                                                                    <div className="space-y-1 text-sm">
+                                                                        <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                                            <span>Subtotal:</span>
+                                                                            <span className="font-mono">${subtotal.toFixed(2)}</span>
+                                                                        </div>
+                                                                        {tax > 0 && (
+                                                                            <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                                                <span>Tax:</span>
+                                                                                <span className="font-mono">${tax.toFixed(2)}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        {shipping > 0 && (
+                                                                            <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                                                <span>Shipping:</span>
+                                                                                <span className="font-mono">${shipping.toFixed(2)}</span>
+                                                                            </div>
+                                                                        )}
+                                                                        <div className={`flex justify-between font-semibold pt-2 border-t ${isDark ? 'text-blue-400 border-white/10' : 'text-blue-600 border-gray-200'}`}>
+                                                                            <span>Total:</span>
+                                                                            <span className="font-mono">${total.toFixed(2)}</span>
+                                                                        </div>
                                                                     </div>
-                                                                )}
-                                                                {fpo.shipping && Number(fpo.shipping) > 0 && (
-                                                                    <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                                        <span>Shipping:</span>
-                                                                        <span className="font-mono">${Number(fpo.shipping).toFixed(2)}</span>
-                                                                    </div>
-                                                                )}
-                                                                <div className={`flex justify-between font-semibold pt-2 border-t ${isDark ? 'text-blue-400 border-white/10' : 'text-blue-600 border-gray-200'}`}>
-                                                                    <span>Total:</span>
-                                                                    <span className="font-mono">${Number(fpo.total || 0).toFixed(2)}</span>
-                                                                </div>
-                                                            </div>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     </div>
 
@@ -1476,16 +1501,30 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody className={`divide-y ${isDark ? 'divide-white/5' : 'divide-gray-100'}`}>
-                                                                        {fpo.lineItems.map((item: any, idx: number) => (
-                                                                            <tr key={idx} className={isDark ? 'hover:bg-slate-900/30' : 'hover:bg-gray-50/50'}>
-                                                                                <td className={`px-3 py-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.line_number || idx + 1}</td>
-                                                                                <td className={`px-3 py-2 text-sm font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.product_id || 'N/A'}</td>
-                                                                                <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.quantity_ordered || 0}</td>
-                                                                                <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.quantity_received || 0}</td>
-                                                                                <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>${Number(item.unit_price || 0).toFixed(2)}</td>
-                                                                                <td className={`px-3 py-2 text-sm text-right font-mono font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>${Number(item.line_total || 0).toFixed(2)}</td>
-                                                                            </tr>
-                                                                        ))}
+                                                                        {fpo.lineItems.map((item: any, idx: number) => {
+                                                                            // Parse Finale values - handles "--" placeholders and comma-formatted numbers
+                                                                            const parseFinaleNumber = (val: string | number | undefined | null): number => {
+                                                                                if (val === undefined || val === null || val === '--' || val === '') return 0;
+                                                                                if (typeof val === 'number') return val;
+                                                                                const num = parseFloat(String(val).replace(/,/g, ''));
+                                                                                return isNaN(num) ? 0 : num;
+                                                                            };
+                                                                            const qtyOrdered = parseFinaleNumber(item.quantity_ordered);
+                                                                            const qtyReceived = parseFinaleNumber(item.quantity_received);
+                                                                            const unitPrice = parseFinaleNumber(item.unit_price);
+                                                                            const lineTotal = parseFinaleNumber(item.line_total) || (qtyOrdered * unitPrice);
+
+                                                                            return (
+                                                                                <tr key={idx} className={isDark ? 'hover:bg-slate-900/30' : 'hover:bg-gray-50/50'}>
+                                                                                    <td className={`px-3 py-2 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.line_number || idx + 1}</td>
+                                                                                    <td className={`px-3 py-2 text-sm font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.product_id || 'N/A'}</td>
+                                                                                    <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{qtyOrdered > 0 ? qtyOrdered.toLocaleString() : '—'}</td>
+                                                                                    <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{qtyReceived > 0 ? qtyReceived.toLocaleString() : '—'}</td>
+                                                                                    <td className={`px-3 py-2 text-sm text-right font-mono ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>${unitPrice.toFixed(2)}</td>
+                                                                                    <td className={`px-3 py-2 text-sm text-right font-mono font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>${lineTotal.toFixed(2)}</td>
+                                                                                </tr>
+                                                                            );
+                                                                        })}
                                                                     </tbody>
                                                                 </table>
                                                             </div>
