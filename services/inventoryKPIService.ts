@@ -391,9 +391,12 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
       const abcInfo = abcClassMap.get(item.sku) || { class: 'C' as ABCClass, cumPct: 100 };
       const xyzClass = getXYZClass(cv);
 
+      // Ensure SKU is never empty - use name as fallback, or generate from index
+      const effectiveSku = item.sku?.trim() || item.name?.split(' ')[0] || `ITEM-${kpis.length + 1}`;
+
       kpis.push({
-        sku: item.sku,
-        product_name: item.name || item.sku,
+        sku: effectiveSku,
+        product_name: item.name || effectiveSku,
 
         cltr,
         cltr_status: cltrStatus,
@@ -432,53 +435,86 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
 }
 
 /**
- * Get past due PO lines
+ * Get past due PO lines - queries finale_po_line_items table for accurate line item data
  */
 export async function getPastDuePOLines(): Promise<PastDuePOLine[]> {
   const today = new Date().toISOString().split('T')[0];
 
   try {
-    const { data: overduePos, error } = await supabase
+    // First get overdue POs
+    const { data: overduePos, error: poError } = await supabase
       .from('finale_purchase_orders')
       .select(`
         id,
         order_id,
         vendor_name,
-        expected_date,
-        line_items,
-        total
+        expected_date
       `)
       .in('status', ['Committed', 'Draft', 'SUBMITTED', 'PARTIALLY_RECEIVED'])
       .lt('expected_date', today)
       .order('expected_date', { ascending: true });
 
-    if (error) throw error;
+    if (poError) throw poError;
+    if (!overduePos || overduePos.length === 0) return [];
+
+    const poIds = overduePos.map(po => po.id);
+    const poMap = new Map(overduePos.map(po => [po.id, po]));
+
+    // Get line items for these POs with product info
+    const { data: lineItems, error: lineError } = await supabase
+      .from('finale_po_line_items')
+      .select(`
+        id,
+        po_id,
+        product_name,
+        quantity_ordered,
+        quantity_received,
+        unit_cost,
+        line_total,
+        finale_products!finale_po_line_items_product_id_fkey(
+          id,
+          product_id,
+          name
+        )
+      `)
+      .in('po_id', poIds);
+
+    if (lineError) throw lineError;
 
     const pastDueLines: PastDuePOLine[] = [];
 
-    for (const po of overduePos || []) {
-      if (!po.expected_date) continue;
+    for (const line of lineItems || []) {
+      const po = poMap.get(line.po_id);
+      if (!po || !po.expected_date) continue;
 
       const expectedDate = new Date(po.expected_date);
       const daysOverdue = Math.floor(
         (new Date().getTime() - expectedDate.getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      const lineItems = (po.line_items as any[]) || [];
+      // Get SKU from finale_products or fall back to product_name
+      const productInfo = line.finale_products as any;
+      const sku = productInfo?.product_id || productInfo?.name || 'Unknown';
+      const productName = line.product_name || productInfo?.name || sku;
 
-      for (const line of lineItems) {
-        pastDueLines.push({
-          po_id: po.id,
-          po_number: po.order_id,
-          vendor_name: po.vendor_name || 'Unknown',
-          sku: line.product_id || line.sku || 'Unknown',
-          product_name: line.product_name || line.description || line.product_id || 'Unknown',
-          expected_date: expectedDate,
-          days_overdue: daysOverdue,
-          quantity: line.quantity || 0,
-          value: (line.quantity || 0) * (line.unit_price || line.price || 0),
-        });
-      }
+      // Only include lines that still need receiving
+      const qtyOrdered = line.quantity_ordered || 0;
+      const qtyReceived = line.quantity_received || 0;
+      const qtyOutstanding = qtyOrdered - qtyReceived;
+
+      if (qtyOutstanding <= 0) continue;
+
+      pastDueLines.push({
+        po_id: po.id,
+        po_number: po.order_id || 'Unknown',
+        vendor_name: po.vendor_name || 'Unknown',
+        sku: sku,
+        product_name: productName,
+        expected_date: expectedDate,
+        days_overdue: daysOverdue,
+        quantity: qtyOutstanding,
+        value: qtyOutstanding * (line.unit_cost || 0),
+      });
     }
 
     return pastDueLines.sort((a, b) => b.days_overdue - a.days_overdue);

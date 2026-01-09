@@ -698,23 +698,23 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
             {/* 2. KPI Cards - "The Control Panel" */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <KPICard
-                    title="Critical CLTR"
+                    title="Stockout Imminent"
                     value={metrics.criticalItems}
                     unit="SKUs"
                     trend={metrics.criticalItems > 0 ? 'critical' : 'positive'}
-                    desc={metrics.criticalItems > 0 ? "Will stockout before order arrives" : "All items have adequate coverage"}
+                    desc={metrics.criticalItems > 0 ? "Order now - will run out before delivery" : "All items have adequate stock"}
                     onClick={metrics.criticalItems > 0 ? () => setExpandedPanel(expandedPanel === 'critical' ? null : 'critical') : undefined}
-                    clickHint={metrics.criticalItems > 0 ? "Click to view items" : undefined}
+                    clickHint={metrics.criticalItems > 0 ? "Click to view & order" : undefined}
                     isExpanded={expandedPanel === 'critical'}
                 />
                 <KPICard
-                    title="At Risk"
+                    title="Low Stock"
                     value={metrics.atRiskItems}
                     unit="SKUs"
                     trend={metrics.atRiskItems > 5 ? 'critical' : metrics.atRiskItems > 0 ? 'neutral' : 'positive'}
-                    desc={metrics.atRiskItems > 0 ? "CLTR 0.5-1.0: Order soon" : "No items at risk"}
+                    desc={metrics.atRiskItems > 0 ? "Order soon to prevent stockout" : "No items running low"}
                     onClick={metrics.atRiskItems > 0 ? () => setExpandedPanel(expandedPanel === 'at_risk' ? null : 'at_risk') : undefined}
-                    clickHint={metrics.atRiskItems > 0 ? "Click to view items" : undefined}
+                    clickHint={metrics.atRiskItems > 0 ? "Click to view & order" : undefined}
                     isExpanded={expandedPanel === 'at_risk'}
                 />
                 <KPICard
@@ -722,7 +722,7 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                     value={metrics.pastDueLines}
                     unit="Lines"
                     trend={metrics.pastDueLines > 0 ? 'critical' : 'positive'}
-                    desc={metrics.pastDueLines > 0 ? `Lead time bias: ${metrics.leadTimeBias || 0} days` : "All POs on schedule"}
+                    desc={metrics.pastDueLines > 0 ? "Expected deliveries not received" : "All POs on schedule"}
                     onClick={metrics.pastDueLines > 0 ? () => setExpandedPanel(expandedPanel === 'past_due' ? null : 'past_due') : undefined}
                     clickHint={metrics.pastDueLines > 0 ? "Click to view POs" : undefined}
                     isExpanded={expandedPanel === 'past_due'}
@@ -732,9 +732,9 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                     value={metrics.safetyStockShortfall}
                     unit="SKUs"
                     trend={metrics.safetyStockShortfall > 5 ? 'critical' : metrics.safetyStockShortfall > 0 ? 'neutral' : 'positive'}
-                    desc={metrics.safetyStockShortfall > 0 ? "Items below SS target" : "All items meet SS targets"}
+                    desc={metrics.safetyStockShortfall > 0 ? "Stock below buffer target" : "All items meet safety targets"}
                     onClick={metrics.safetyStockShortfall > 0 ? () => setExpandedPanel(expandedPanel === 'below_ss' ? null : 'below_ss') : undefined}
-                    clickHint={metrics.safetyStockShortfall > 0 ? "Click to view items" : undefined}
+                    clickHint={metrics.safetyStockShortfall > 0 ? "Click to view & order" : undefined}
                     isExpanded={expandedPanel === 'below_ss'}
                 />
             </div>
@@ -1102,8 +1102,8 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
         switch (panelType) {
             case 'critical':
                 return {
-                    title: 'Critical CLTR Items',
-                    subtitle: 'These items will stockout before a new order can arrive',
+                    title: 'Stockout Imminent - Order Now',
+                    subtitle: 'Stock will run out before replenishment can arrive at current demand rate',
                     items: kpiSummary.critical_cltr_items,
                     bgClass: 'bg-red-50 border-red-200',
                     headerClass: 'text-red-800',
@@ -1111,8 +1111,8 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                 };
             case 'at_risk':
                 return {
-                    title: 'At-Risk Items',
-                    subtitle: 'CLTR 0.5-1.0: Order soon to avoid stockout',
+                    title: 'Low Stock - Order Soon',
+                    subtitle: 'Running low on stock - order within the week to avoid stockout',
                     items: kpiSummary.at_risk_cltr_items,
                     bgClass: 'bg-amber-50 border-amber-200',
                     headerClass: 'text-amber-800',
@@ -1121,7 +1121,7 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
             case 'past_due':
                 return {
                     title: 'Past Due PO Lines',
-                    subtitle: 'These purchase order lines are overdue',
+                    subtitle: 'Purchase order lines that have not arrived by expected date',
                     items: null,
                     pastDueLines: kpiSummary.past_due_lines,
                     bgClass: 'bg-orange-50 border-orange-200',
@@ -1131,7 +1131,7 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
             case 'below_ss':
                 return {
                     title: 'Below Safety Stock',
-                    subtitle: 'Items below their safety stock target',
+                    subtitle: 'Current stock is below the safety buffer target',
                     items: kpiSummary.below_safety_stock_items,
                     bgClass: 'bg-yellow-50 border-yellow-200',
                     headerClass: 'text-yellow-800',
@@ -1188,7 +1188,7 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                                     <td className="px-6 py-3 font-mono text-xs font-medium">{line.po_number}</td>
                                     <td className="px-4 py-3 font-mono text-xs">{line.sku}</td>
                                     <td className="px-4 py-3 text-xs text-slate-600 max-w-[150px] truncate">{line.vendor_name}</td>
-                                    <td className="px-4 py-3 text-right font-medium text-red-600">{line.days_late}</td>
+                                    <td className="px-4 py-3 text-right font-medium text-red-600">{line.days_overdue}</td>
                                     <td className="px-4 py-3 text-right">{line.quantity}</td>
                                     <td className="px-6 py-3">
                                         {onNavigateToPOs && (
