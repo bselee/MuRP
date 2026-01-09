@@ -658,18 +658,18 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                         <div
                             key={toast.id}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-in slide-in-from-right duration-300 ${
-                                toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
-                                toast.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
-                                'bg-blue-50 border-blue-200 text-blue-800'
+                                toast.type === 'success' ? 'bg-green-900/50 border-green-500/30 text-green-300' :
+                                toast.type === 'error' ? 'bg-red-900/50 border-red-500/30 text-red-300' :
+                                'bg-blue-900/50 border-blue-500/30 text-blue-300'
                             }`}
                         >
-                            {toast.type === 'success' && <CheckCircleIcon className="w-5 h-5 text-green-500 flex-shrink-0" />}
-                            {toast.type === 'error' && <XCircleIcon className="w-5 h-5 text-red-500 flex-shrink-0" />}
-                            {toast.type === 'info' && <MagicSparklesIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />}
+                            {toast.type === 'success' && <CheckCircleIcon className="w-5 h-5 text-green-400 flex-shrink-0" />}
+                            {toast.type === 'error' && <XCircleIcon className="w-5 h-5 text-red-400 flex-shrink-0" />}
+                            {toast.type === 'info' && <MagicSparklesIcon className="w-5 h-5 text-blue-400 flex-shrink-0" />}
                             <span className="text-sm font-medium">{toast.message}</span>
                             <button
                                 onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
-                                className="ml-auto text-gray-400 hover:text-gray-600"
+                                className="ml-auto text-slate-400 hover:text-slate-200"
                             >
                                 ×
                             </button>
@@ -681,14 +681,15 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
             {/* 1. Header & Context */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Purchasing Intelligence</h2>
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Stock Intelligence</h2>
+                    <p className="text-sm text-slate-400 mt-1">Stock levels and reorder guidance</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-2 text-xs font-medium text-purple-600 bg-purple-50 px-3 py-1.5 rounded-full border border-purple-100">
+                    <span className="flex items-center gap-2 text-xs font-medium text-purple-300 bg-purple-900/30 px-3 py-1.5 rounded-full border border-purple-500/30">
                         <MagicSparklesIcon className="w-3 h-3" />
                         AI Agent Active
                     </span>
-                    <span className="text-xs text-slate-400 flex items-center gap-1">
+                    <span className="text-xs text-slate-500 flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                         Live Updates
                     </span>
@@ -792,37 +793,37 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
 
             {/* 2.5 Agent Insights Section */}
             {(agentInsights.critical.length > 0 || agentInsights.warning.length > 0) && (
-                <div className="bg-gradient-to-br from-purple-50 to-white rounded-xl shadow-sm border border-purple-100 p-6 relative overflow-hidden">
+                <div className="bg-gradient-to-br from-purple-900/20 to-slate-800/50 rounded-xl border border-purple-500/20 p-6 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <MagicSparklesIcon className="w-24 h-24 text-purple-500" />
+                        <MagicSparklesIcon className="w-24 h-24 text-purple-400" />
                     </div>
 
-                    <h3 className="font-semibold text-purple-900 flex items-center gap-2 mb-4">
-                        <MagicSparklesIcon className="w-5 h-5 text-purple-600" />
+                    <h3 className="font-semibold text-purple-300 flex items-center gap-2 mb-4">
+                        <MagicSparklesIcon className="w-5 h-5 text-purple-400" />
                         Agent Insights & Anomalies
                     </h3>
 
                     <div className="grid gap-3">
                         {agentInsights.critical.map((insight, idx) => (
-                            <div key={`crit-${idx}`} className="bg-white border-l-4 border-red-500 rounded-r-lg p-3 shadow-sm flex items-start gap-3">
-                                <div className="text-red-500 mt-1">
+                            <div key={`crit-${idx}`} className="bg-slate-800/50 border-l-4 border-red-500 rounded-r-lg p-3 flex items-start gap-3">
+                                <div className="text-red-400 mt-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
                                 </div>
                                 <div>
-                                    <div className="font-medium text-slate-900 text-sm">{insight.description} ({insight.sku})</div>
-                                    <div className="text-slate-600 text-xs mt-1">{insight.issue}</div>
+                                    <div className="font-medium text-white text-sm">{insight.description} ({insight.sku})</div>
+                                    <div className="text-slate-400 text-xs mt-1">{insight.issue}</div>
                                     <div className="text-slate-500 text-xs mt-1 italic">Suggested: {insight.action}</div>
                                 </div>
                             </div>
                         ))}
                         {agentInsights.warning.map((insight, idx) => (
-                            <div key={`warn-${idx}`} className="bg-white border-l-4 border-amber-400 rounded-r-lg p-3 shadow-sm flex items-start gap-3">
-                                <div className="text-amber-500 mt-1">
+                            <div key={`warn-${idx}`} className="bg-slate-800/50 border-l-4 border-amber-500 rounded-r-lg p-3 flex items-start gap-3">
+                                <div className="text-amber-400 mt-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
                                 </div>
                                 <div>
-                                    <div className="font-medium text-slate-900 text-sm">{insight.description} ({insight.sku})</div>
-                                    <div className="text-slate-600 text-xs mt-1">{insight.issue}</div>
+                                    <div className="font-medium text-white text-sm">{insight.description} ({insight.sku})</div>
+                                    <div className="text-slate-400 text-xs mt-1">{insight.issue}</div>
                                 </div>
                             </div>
                         ))}
@@ -831,20 +832,20 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
             )}
 
             {/* 3. ACTION REQUIRED - Items needing POs */}
-            <div ref={replenishmentRef} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div ref={replenishmentRef} className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                        <h3 className="font-semibold text-white flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                             Action Required: Order Now
                             {needsOrder.length > 0 && (
-                                <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-full ml-2">
+                                <span className="text-xs font-medium text-red-400 bg-red-900/30 px-2 py-1 rounded-full ml-2">
                                     {needsOrder.length} items
                                 </span>
                             )}
                         </h3>
                         {selectedCount > 0 && (
-                            <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                            <span className="text-xs font-medium text-blue-400 bg-blue-900/30 px-2 py-1 rounded-full">
                                 {selectedCount} selected
                             </span>
                         )}
@@ -854,7 +855,7 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                             <button
                                 onClick={handleCreatePO}
                                 disabled={isCreatingPO}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                             >
                                 <ShoppingCartIcon className="w-4 h-4" />
                                 {isCreatingPO ? 'Creating...' : `Create PO (${selectedCount})`}
@@ -864,24 +865,24 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                 </div>
 
                 {loading ? (
-                    <div className="p-12 text-center text-slate-400">Loading analysis...</div>
+                    <div className="p-12 text-center text-slate-500">Loading analysis...</div>
                 ) : needsOrder.length === 0 ? (
-                    <div className="p-8 text-center text-slate-500">
-                        <div className="mb-2 text-2xl font-bold text-green-500">OK</div>
+                    <div className="p-8 text-center text-slate-400">
+                        <div className="mb-2 text-2xl font-bold text-green-400">OK</div>
                         No items need ordering right now.<br />
                         <span className="text-sm opacity-75">All at-risk items already have POs placed.</span>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-red-50 text-slate-600 font-medium">
+                            <thead className="bg-slate-900/50 text-slate-400 font-medium">
                                 <tr>
                                     <th className="px-4 py-3 w-10">
                                         <input
                                             type="checkbox"
                                             checked={allSelected}
                                             onChange={toggleSelectAll}
-                                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
                                             title="Select all items"
                                         />
                                     </th>
@@ -894,18 +895,18 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                                     <th className="px-4 py-3 w-24"></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-slate-700/50">
                                 {needsOrder.map((item, idx) => {
                                     const daysRemaining = item.days_remaining ?? 999;
                                     const isSelected = selectedItems.has(item.sku);
-                                    const rowClass = daysRemaining <= 0 ? 'bg-red-100' :
-                                        daysRemaining < 7 ? 'bg-red-50' :
-                                        daysRemaining < 14 ? 'bg-yellow-50' : '';
+                                    const rowClass = daysRemaining <= 0 ? 'bg-red-900/20' :
+                                        daysRemaining < 7 ? 'bg-red-900/10' :
+                                        daysRemaining < 14 ? 'bg-yellow-900/10' : '';
 
                                     return (
                                         <tr
                                             key={idx}
-                                            className={`${rowClass} ${isSelected ? 'ring-2 ring-inset ring-blue-300' : ''} hover:bg-slate-50/50 transition-colors cursor-pointer`}
+                                            className={`${rowClass} ${isSelected ? 'ring-2 ring-inset ring-blue-500/30 bg-blue-900/20' : ''} hover:bg-slate-700/30 transition-colors cursor-pointer`}
                                             onClick={(e) => {
                                                 if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'BUTTON') {
                                                     toggleSelect(item.sku);
@@ -917,45 +918,45 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                                                     type="checkbox"
                                                     checked={isSelected}
                                                     onChange={() => toggleSelect(item.sku)}
-                                                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
-                                                <div className="font-medium text-slate-900 font-mono text-xs">{item.sku}</div>
-                                                <div className="text-slate-500 text-xs max-w-[300px] truncate" title={item.name}>{item.name}</div>
+                                                <div className="font-medium text-white font-mono text-xs">{item.sku}</div>
+                                                <div className="text-slate-400 text-xs max-w-[300px] truncate" title={item.name}>{item.name}</div>
                                             </td>
-                                            <td className="px-4 py-3 text-xs text-slate-600 max-w-[120px] truncate">
+                                            <td className="px-4 py-3 text-xs text-slate-400 max-w-[120px] truncate">
                                                 {item.vendor_name || 'Unknown'}
                                             </td>
-                                            <td className={`px-4 py-3 text-right font-medium ${item.current_status.stock === 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                                            <td className={`px-4 py-3 text-right font-medium ${item.current_status.stock === 0 ? 'text-red-400' : 'text-slate-300'}`}>
                                                 {item.current_status.stock}
                                             </td>
                                             <td className={`px-4 py-3 text-right font-bold ${
-                                                daysRemaining <= 0 ? 'text-red-700' :
-                                                daysRemaining < 7 ? 'text-red-600' :
-                                                daysRemaining < 14 ? 'text-yellow-600' :
-                                                'text-slate-600'
+                                                daysRemaining <= 0 ? 'text-red-400' :
+                                                daysRemaining < 7 ? 'text-red-400' :
+                                                daysRemaining < 14 ? 'text-yellow-400' :
+                                                'text-slate-400'
                                             }`}>
                                                 {daysRemaining <= 0 ? 'OUT' : daysRemaining}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span className={`px-2 py-0.5 text-xs rounded ${
                                                     item.item_type === 'Manufactured'
-                                                        ? 'bg-purple-100 text-purple-700'
-                                                        : 'bg-blue-100 text-blue-700'
+                                                        ? 'bg-purple-900/30 text-purple-300'
+                                                        : 'bg-blue-900/30 text-blue-300'
                                                 }`}>
                                                     {item.item_type === 'Manufactured' ? 'Mfg' : 'Purch'}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 text-right">
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900/30 text-blue-300">
                                                     +{item.recommendation.quantity}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                                 <button
                                                     onClick={() => handleQuickOrder(item)}
-                                                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded transition-colors"
+                                                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-400 hover:text-white hover:bg-blue-600 border border-blue-500/30 hover:border-blue-500 rounded transition-colors"
                                                     title={`Quick order ${item.recommendation.quantity} units`}
                                                 >
                                                     <PlusIcon className="w-3 h-3" />
@@ -972,11 +973,11 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
 
                 {/* Batch action footer when items selected */}
                 {selectedCount > 0 && (
-                    <div className="px-6 py-3 bg-blue-50 border-t border-blue-100 flex items-center justify-between">
-                        <div className="text-sm text-blue-700">
+                    <div className="px-6 py-3 bg-blue-900/20 border-t border-slate-700 flex items-center justify-between">
+                        <div className="text-sm text-blue-300">
                             <strong>{selectedCount}</strong> item{selectedCount !== 1 ? 's' : ''} selected
                             {Object.keys(getSelectedByVendor()).length > 1 && (
-                                <span className="ml-2 text-blue-500">
+                                <span className="ml-2 text-blue-400">
                                     ({Object.keys(getSelectedByVendor()).length} vendors)
                                 </span>
                             )}
@@ -984,14 +985,14 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setSelectedItems(new Set())}
-                                className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded transition-colors"
+                                className="px-3 py-1.5 text-sm text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded transition-colors"
                             >
                                 Clear
                             </button>
                             <button
                                 onClick={handleCreatePO}
                                 disabled={isCreatingPO}
-                                className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                             >
                                 <ShoppingCartIcon className="w-4 h-4" />
                                 Create Purchase Order{Object.keys(getSelectedByVendor()).length > 1 ? 's' : ''}
@@ -1003,14 +1004,14 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
 
             {/* Info card for items already on order */}
             {onOrder.length > 0 && (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+                <div className="bg-green-900/20 border border-green-500/30 rounded-xl p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                        <CheckCircleIcon className="w-5 h-5 text-green-400" />
                         <div>
-                            <span className="text-sm font-medium text-green-800">
+                            <span className="text-sm font-medium text-green-300">
                                 {onOrder.length} item{onOrder.length !== 1 ? 's' : ''} already on order
                             </span>
-                            <span className="text-xs text-green-600 ml-2">
+                            <span className="text-xs text-green-400 ml-2">
                                 Track delivery status in Purchase Orders
                             </span>
                         </div>
@@ -1018,7 +1019,7 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                     {onNavigateToPOs && (
                         <button
                             onClick={onNavigateToPOs}
-                            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-700 hover:text-green-900 hover:bg-green-100 rounded-lg transition-colors"
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-400 hover:text-green-300 hover:bg-green-900/30 rounded-lg transition-colors"
                         >
                             View POs
                             <ArrowRightIcon className="w-4 h-4" />
@@ -1050,12 +1051,12 @@ function KPICard({ title, value, unit, trend, desc, onClick, clickHint, isExpand
         <div
             className={`p-4 rounded-xl border ${
                 isExpanded
-                    ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-200'
+                    ? 'bg-blue-900/30 border-blue-500 ring-2 ring-blue-500/30'
                     : isCritical
-                        ? 'bg-red-50 border-red-200'
-                        : 'bg-white border-slate-200'
-            } shadow-sm ${
-                isClickable ? 'cursor-pointer hover:shadow-md hover:border-blue-300 transition-all duration-200 group' : ''
+                        ? 'bg-red-900/20 border-red-500/30'
+                        : 'bg-slate-800/50 border-slate-700'
+            } ${
+                isClickable ? 'cursor-pointer hover:bg-slate-700/50 hover:border-slate-600 transition-all duration-200 group' : ''
             }`}
             onClick={onClick}
             role={isClickable ? 'button' : undefined}
@@ -1063,19 +1064,19 @@ function KPICard({ title, value, unit, trend, desc, onClick, clickHint, isExpand
             onKeyDown={isClickable ? (e) => e.key === 'Enter' && onClick?.() : undefined}
         >
             <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</div>
-                {isExpanded && <ChevronUpIcon className="w-4 h-4 text-blue-500" />}
-                {!isExpanded && isClickable && <ChevronDownIcon className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100" />}
+                <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</div>
+                {isExpanded && <ChevronUpIcon className="w-4 h-4 text-blue-400" />}
+                {!isExpanded && isClickable && <ChevronDownIcon className="w-4 h-4 text-slate-500 opacity-0 group-hover:opacity-100" />}
             </div>
             <div className="flex items-baseline gap-1 mt-1">
-                <span className={`text-2xl font-bold ${isCritical && !isExpanded ? 'text-red-700' : 'text-slate-900'}`}>{value}</span>
-                <span className="text-sm text-slate-400 font-medium">{unit}</span>
+                <span className={`text-2xl font-bold ${isCritical && !isExpanded ? 'text-red-400' : 'text-white'}`}>{value}</span>
+                <span className="text-sm text-slate-500 font-medium">{unit}</span>
             </div>
-            <div className="mt-2 text-xs text-slate-400 truncate">
+            <div className="mt-2 text-xs text-slate-500 truncate">
                 {desc}
             </div>
             {isClickable && clickHint && !isExpanded && (
-                <div className="mt-2 text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="mt-2 text-xs text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
                     {clickHint}
                 </div>
             )}
@@ -1105,8 +1106,8 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                     title: 'Stockout Imminent - Order Now',
                     subtitle: 'Stock will run out before replenishment can arrive at current demand rate',
                     items: kpiSummary.critical_cltr_items,
-                    bgClass: 'bg-red-50 border-red-200',
-                    headerClass: 'text-red-800',
+                    bgClass: 'bg-red-900/20 border-red-500/30',
+                    headerClass: 'text-red-400',
                     totalCount: kpiSummary.items_critical_cltr,
                 };
             case 'at_risk':
@@ -1114,8 +1115,8 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                     title: 'Low Stock - Order Soon',
                     subtitle: 'Running low on stock - order within the week to avoid stockout',
                     items: kpiSummary.at_risk_cltr_items,
-                    bgClass: 'bg-amber-50 border-amber-200',
-                    headerClass: 'text-amber-800',
+                    bgClass: 'bg-amber-900/20 border-amber-500/30',
+                    headerClass: 'text-amber-400',
                     totalCount: kpiSummary.items_at_risk_cltr,
                 };
             case 'past_due':
@@ -1124,8 +1125,8 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                     subtitle: 'Purchase order lines that have not arrived by expected date',
                     items: null,
                     pastDueLines: kpiSummary.past_due_lines,
-                    bgClass: 'bg-orange-50 border-orange-200',
-                    headerClass: 'text-orange-800',
+                    bgClass: 'bg-orange-900/20 border-orange-500/30',
+                    headerClass: 'text-orange-400',
                     totalCount: kpiSummary.total_past_due_lines,
                 };
             case 'below_ss':
@@ -1133,8 +1134,8 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                     title: 'Below Safety Stock',
                     subtitle: 'Current stock is below the safety buffer target',
                     items: kpiSummary.below_safety_stock_items,
-                    bgClass: 'bg-yellow-50 border-yellow-200',
-                    headerClass: 'text-yellow-800',
+                    bgClass: 'bg-yellow-900/20 border-yellow-500/30',
+                    headerClass: 'text-yellow-400',
                     totalCount: kpiSummary.safety_stock_shortfall_items,
                 };
             default:
@@ -1148,7 +1149,7 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
     return (
         <div className={`rounded-xl border ${config.bgClass} overflow-hidden animate-in slide-in-from-top duration-300`}>
             {/* Header */}
-            <div className="px-6 py-4 border-b border-inherit flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
                 <div>
                     <h3 className={`font-semibold ${config.headerClass}`}>
                         {config.title}
@@ -1162,7 +1163,7 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                 </div>
                 <button
                     onClick={onClose}
-                    className="p-1.5 rounded-lg hover:bg-white/50 transition-colors text-slate-500 hover:text-slate-700"
+                    className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors text-slate-400 hover:text-slate-200"
                 >
                     <XCircleIcon className="w-5 h-5" />
                 </button>
@@ -1172,8 +1173,8 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
             <div className="max-h-[400px] overflow-y-auto">
                 {panelType === 'past_due' && config.pastDueLines ? (
                     <table className="w-full text-sm">
-                        <thead className="bg-white/50 sticky top-0">
-                            <tr className="text-left text-xs text-slate-500 uppercase">
+                        <thead className="bg-slate-800/50 sticky top-0">
+                            <tr className="text-left text-xs text-slate-400 uppercase">
                                 <th className="px-6 py-2">PO Number</th>
                                 <th className="px-4 py-2">SKU</th>
                                 <th className="px-4 py-2">Vendor</th>
@@ -1182,19 +1183,19 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                                 <th className="px-6 py-2"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-inherit">
+                        <tbody className="divide-y divide-slate-700/50">
                             {config.pastDueLines.map((line, idx) => (
-                                <tr key={idx} className="hover:bg-white/30">
-                                    <td className="px-6 py-3 font-mono text-xs font-medium">{line.po_number}</td>
-                                    <td className="px-4 py-3 font-mono text-xs">{line.sku}</td>
-                                    <td className="px-4 py-3 text-xs text-slate-600 max-w-[150px] truncate">{line.vendor_name}</td>
-                                    <td className="px-4 py-3 text-right font-medium text-red-600">{line.days_overdue}</td>
-                                    <td className="px-4 py-3 text-right">{line.quantity}</td>
+                                <tr key={idx} className="hover:bg-slate-700/30 text-slate-300">
+                                    <td className="px-6 py-3 font-mono text-xs font-medium text-white">{line.po_number}</td>
+                                    <td className="px-4 py-3 font-mono text-xs text-slate-300">{line.sku}</td>
+                                    <td className="px-4 py-3 text-xs text-slate-400 max-w-[150px] truncate">{line.vendor_name}</td>
+                                    <td className="px-4 py-3 text-right font-medium text-red-400">{line.days_overdue}</td>
+                                    <td className="px-4 py-3 text-right text-slate-300">{line.quantity}</td>
                                     <td className="px-6 py-3">
                                         {onNavigateToPOs && (
                                             <button
                                                 onClick={onNavigateToPOs}
-                                                className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                                className="text-xs text-blue-400 hover:text-blue-300 hover:underline"
                                             >
                                                 View PO
                                             </button>
@@ -1206,8 +1207,8 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                     </table>
                 ) : config.items && config.items.length > 0 ? (
                     <table className="w-full text-sm">
-                        <thead className="bg-white/50 sticky top-0">
-                            <tr className="text-left text-xs text-slate-500 uppercase">
+                        <thead className="bg-slate-800/50 sticky top-0">
+                            <tr className="text-left text-xs text-slate-400 uppercase">
                                 <th className="px-3 py-2 w-10">
                                     <input
                                         type="checkbox"
@@ -1222,7 +1223,7 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                                                 }
                                             });
                                         }}
-                                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                        className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
                                         title="Select all"
                                     />
                                 </th>
@@ -1235,13 +1236,13 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                                 <th className="px-4 py-2 w-24"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-inherit">
+                        <tbody className="divide-y divide-slate-700/50">
                             {config.items.map((item, idx) => {
                                 const isSelected = selectedItems.has(item.sku);
                                 return (
                                     <tr
                                         key={idx}
-                                        className={`hover:bg-white/30 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/50 ring-1 ring-inset ring-blue-200' : ''}`}
+                                        className={`hover:bg-slate-700/30 cursor-pointer transition-colors text-slate-300 ${isSelected ? 'bg-blue-900/20 ring-1 ring-inset ring-blue-500/30' : ''}`}
                                         onClick={() => onToggleSelect(item.sku)}
                                     >
                                         <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
@@ -1249,31 +1250,31 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                                                 type="checkbox"
                                                 checked={isSelected}
                                                 onChange={() => onToggleSelect(item.sku)}
-                                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
                                             />
                                         </td>
-                                        <td className="px-4 py-3 font-mono text-xs font-medium">{item.sku}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-600 max-w-[180px] truncate" title={item.product_name}>
+                                        <td className="px-4 py-3 font-mono text-xs font-medium text-white">{item.sku}</td>
+                                        <td className="px-4 py-3 text-xs text-slate-400 max-w-[180px] truncate" title={item.product_name}>
                                             {item.product_name}
                                         </td>
-                                        <td className={`px-4 py-3 text-right font-medium ${item.current_stock === 0 ? 'text-red-600' : ''}`}>
+                                        <td className={`px-4 py-3 text-right font-medium ${item.current_stock === 0 ? 'text-red-400' : 'text-slate-300'}`}>
                                             {item.current_stock}
                                         </td>
                                         <td className={`px-4 py-3 text-right font-medium ${
-                                            item.runway_days <= 7 ? 'text-red-600' :
-                                            item.runway_days <= 14 ? 'text-amber-600' : ''
+                                            item.runway_days <= 7 ? 'text-red-400' :
+                                            item.runway_days <= 14 ? 'text-amber-400' : 'text-slate-300'
                                         }`}>
                                             {item.runway_days > 365 ? '365+' : item.runway_days}d
                                         </td>
                                         <td className={`px-4 py-3 text-right font-bold ${
-                                            item.cltr < 0.5 ? 'text-red-600' :
-                                            item.cltr < 1.0 ? 'text-amber-600' : 'text-green-600'
+                                            item.cltr < 0.5 ? 'text-red-400' :
+                                            item.cltr < 1.0 ? 'text-amber-400' : 'text-green-400'
                                         }`}>
                                             {item.cltr.toFixed(2)}
                                         </td>
                                         <td className={`px-4 py-3 text-right ${
-                                            item.safety_stock_attainment < 50 ? 'text-red-600' :
-                                            item.safety_stock_attainment < 100 ? 'text-amber-600' : 'text-green-600'
+                                            item.safety_stock_attainment < 50 ? 'text-red-400' :
+                                            item.safety_stock_attainment < 100 ? 'text-amber-400' : 'text-green-400'
                                         }`}>
                                             {Math.round(item.safety_stock_attainment)}%
                                         </td>
@@ -1281,7 +1282,7 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                                             <button
                                                 onClick={() => onQuickOrder(item)}
                                                 disabled={isCreatingPO}
-                                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded transition-colors disabled:opacity-50"
+                                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-400 hover:text-white hover:bg-blue-600 border border-blue-500/30 hover:border-blue-500 rounded transition-colors disabled:opacity-50"
                                                 title="Create PO for this item"
                                             >
                                                 <PlusIcon className="w-3 h-3" />
@@ -1302,12 +1303,12 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
 
             {/* Footer with actions */}
             {panelType !== 'past_due' && config.items && config.items.length > 0 && (
-                <div className="px-6 py-3 border-t border-inherit bg-white/30">
+                <div className="px-6 py-3 border-t border-slate-700 bg-slate-800/30">
                     {/* Selection info and batch action */}
                     {selectedItems.size > 0 ? (
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-blue-700">
+                                <span className="text-sm font-medium text-blue-400">
                                     {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
                                 </span>
                                 <button
@@ -1318,7 +1319,7 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                                             }
                                         });
                                     }}
-                                    className="text-xs text-slate-500 hover:text-slate-700"
+                                    className="text-xs text-slate-500 hover:text-slate-300"
                                 >
                                     Clear
                                 </button>
@@ -1326,7 +1327,7 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={scrollToReplenishment}
-                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors"
                                 >
                                     View Full Workflow
                                     <ArrowRightIcon className="w-3 h-3" />
@@ -1334,7 +1335,7 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                                 <button
                                     onClick={onCreatePOForSelected}
                                     disabled={isCreatingPO}
-                                    className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                    className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                                 >
                                     <ShoppingCartIcon className="w-4 h-4" />
                                     {isCreatingPO ? 'Creating...' : `Create PO (${selectedItems.size})`}
@@ -1345,19 +1346,19 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selecte
                         <div className="flex items-center justify-between">
                             <span className="text-xs text-slate-500">
                                 {config.items.length} item{config.items.length !== 1 ? 's' : ''} shown
-                                <span className="ml-2 text-slate-400">- Select items to create PO</span>
+                                <span className="ml-2 text-slate-600">- Select items to create PO</span>
                             </span>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={scrollToReplenishment}
-                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors"
                                 >
                                     View Full Workflow
                                     <ArrowRightIcon className="w-3 h-3" />
                                 </button>
                                 <button
                                     onClick={onClose}
-                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 hover:bg-slate-700 rounded-lg transition-colors"
                                 >
                                     Close
                                 </button>
