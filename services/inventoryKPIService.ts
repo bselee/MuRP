@@ -110,9 +110,11 @@ export interface KPISummary {
   abc_distribution: { A: number; B: number; C: number };
   xyz_distribution: { X: number; Y: number; Z: number };
 
-  // Top items
+  // Item arrays for actionable display
   past_due_lines: PastDuePOLine[];
   critical_cltr_items: InventoryKPIs[];
+  at_risk_cltr_items: InventoryKPIs[];
+  below_safety_stock_items: InventoryKPIs[];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -626,6 +628,11 @@ export async function getKPISummary(): Promise<KPISummary> {
     xyzDist[k.xyz_class]++;
   }
 
+  // Sort items by urgency (lowest CLTR first for critical/at-risk)
+  const sortedCritical = [...criticalCltr].sort((a, b) => a.cltr - b.cltr);
+  const sortedAtRisk = [...atRiskCltr].sort((a, b) => a.cltr - b.cltr);
+  const sortedBelowSS = [...belowSS].sort((a, b) => a.safety_stock_attainment - b.safety_stock_attainment);
+
   return {
     items_critical_cltr: criticalCltr.length,
     items_at_risk_cltr: atRiskCltr.length,
@@ -646,8 +653,11 @@ export async function getKPISummary(): Promise<KPISummary> {
     abc_distribution: abcDist,
     xyz_distribution: xyzDist,
 
-    past_due_lines: pastDueLines.slice(0, 10),
-    critical_cltr_items: criticalCltr.slice(0, 10),
+    // Full item arrays sorted by urgency (limited to top 50 for performance)
+    past_due_lines: pastDueLines.slice(0, 50),
+    critical_cltr_items: sortedCritical.slice(0, 50),
+    at_risk_cltr_items: sortedAtRisk.slice(0, 50),
+    below_safety_stock_items: sortedBelowSS.slice(0, 50),
   };
 }
 

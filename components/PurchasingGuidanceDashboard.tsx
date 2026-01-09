@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { getRigorousPurchasingAdvice, getForecastAccuracyMetrics } from '../services/purchasingForecastingService';
 import { detectInventoryAnomalies, type Anomaly } from '../services/aiPurchasingService';
-import { getKPISummary, type KPISummary } from '../services/inventoryKPIService';
+import { getKPISummary, type KPISummary, type InventoryKPIs, type PastDuePOLine } from '../services/inventoryKPIService';
 import { supabase } from '../lib/supabase/client';
 import { createPurchaseOrder, batchUpdateInventory } from '../hooks/useSupabaseMutations';
-import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon, AlertTriangleIcon, TrendingUpIcon } from './icons';
+import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon, AlertTriangleIcon, TrendingUpIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
 import type { CreatePurchaseOrderInput } from '../types';
+
+// Type for expanded KPI panel
+type ExpandedPanel = 'critical' | 'at_risk' | 'past_due' | 'below_ss' | null;
 
 interface AdviceItem {
     sku: string;
@@ -54,9 +57,15 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
         warning: Anomaly[];
     }>({ critical: [], warning: [] });
 
-    // Selection state for batch actions
+    // KPI detail panel state
+    const [expandedPanel, setExpandedPanel] = useState<ExpandedPanel>(null);
+
+    // Selection state for batch actions (main replenishment table)
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
     const [isCreatingPO, setIsCreatingPO] = useState(false);
+
+    // Selection state for KPI panel items
+    const [selectedKPIItems, setSelectedKPIItems] = useState<Set<string>>(new Set());
 
     // Toast notifications
     const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
@@ -423,6 +432,216 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
         }
     };
 
+    // Create PO for a KPI item (requires vendor lookup)
+    const handleKPIQuickOrder = async (item: InventoryKPIs) => {
+        setIsCreatingPO(true);
+        try {
+            // Look up vendor for this SKU from inventory_items
+            const { data: invItem, error: invError } = await supabase
+                .from('inventory_items')
+                .select('vendor_id, vendors!inventory_items_vendor_id_fkey(id, name)')
+                .eq('sku', item.sku)
+                .maybeSingle();
+
+            if (invError) {
+                console.error('[handleKPIQuickOrder] Error looking up vendor:', invError);
+                addToast(`Error looking up vendor for ${item.sku}`, 'error');
+                return;
+            }
+
+            const vendorId = invItem?.vendor_id;
+            const vendorName = (invItem?.vendors as any)?.name || 'Unknown Vendor';
+
+            if (!vendorId) {
+                addToast(`No vendor assigned to ${item.sku}. Please assign a vendor first.`, 'error');
+                return;
+            }
+
+            // Calculate suggested order quantity based on runway and lead time
+            const dailyDemand = item.demand_mean || 1;
+            const targetDays = 60; // 60 days of coverage
+            const currentCoverage = item.runway_days;
+            const suggestedQty = Math.max(1, Math.ceil((targetDays - currentCoverage) * dailyDemand));
+
+            const orderId = generateOrderId();
+            const result = await createPurchaseOrder({
+                vendorId,
+                items: [{
+                    sku: item.sku,
+                    name: item.product_name,
+                    quantity: suggestedQty,
+                    unitCost: item.unit_cost || 0,
+                }],
+                notes: `Quick order from Stock Intelligence - CLTR: ${item.cltr.toFixed(2)} (${item.cltr_status})`,
+                orderId,
+                supplier: vendorName,
+                status: 'Pending',
+                orderDate: new Date().toISOString().split('T')[0],
+            });
+
+            if (result.success) {
+                // Update on_order quantity
+                await batchUpdateInventory([{
+                    sku: item.sku,
+                    stockDelta: 0,
+                    onOrderDelta: suggestedQty,
+                }]);
+
+                addToast(`Created ${orderId} for ${item.sku} (${suggestedQty} units)`, 'success');
+                // Reload data to reflect new on_order quantities
+                loadData(true);
+                // Clear from KPI selection
+                setSelectedKPIItems(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(item.sku);
+                    return newSet;
+                });
+            } else {
+                addToast(`Failed to create PO: ${result.error}`, 'error');
+            }
+        } catch (err) {
+            console.error('Failed to create quick order from KPI:', err);
+            addToast('Unexpected error creating quick order', 'error');
+        } finally {
+            setIsCreatingPO(false);
+        }
+    };
+
+    // Create POs for all selected KPI items (batch)
+    const handleCreatePOFromKPIItems = async () => {
+        if (selectedKPIItems.size === 0) return;
+
+        setIsCreatingPO(true);
+        let successCount = 0;
+        let errorCount = 0;
+        const createdPOs: string[] = [];
+
+        try {
+            // Get all items that need ordering
+            const allItems = [
+                ...(kpiSummary?.critical_cltr_items || []),
+                ...(kpiSummary?.at_risk_cltr_items || []),
+                ...(kpiSummary?.below_safety_stock_items || []),
+            ];
+
+            const itemsToOrder = allItems.filter(item => selectedKPIItems.has(item.sku));
+
+            // Look up vendors for all SKUs
+            const skus = itemsToOrder.map(item => item.sku);
+            const { data: invItems, error: invError } = await supabase
+                .from('inventory_items')
+                .select('sku, vendor_id, vendors!inventory_items_vendor_id_fkey(id, name)')
+                .in('sku', skus);
+
+            if (invError) {
+                addToast('Error looking up vendors', 'error');
+                setIsCreatingPO(false);
+                return;
+            }
+
+            // Create map of SKU -> vendor info
+            const vendorMap = new Map<string, { vendorId: string; vendorName: string }>();
+            (invItems || []).forEach(inv => {
+                if (inv.vendor_id) {
+                    vendorMap.set(inv.sku, {
+                        vendorId: inv.vendor_id,
+                        vendorName: (inv.vendors as any)?.name || 'Unknown',
+                    });
+                }
+            });
+
+            // Group items by vendor
+            const byVendor = new Map<string, { vendorId: string; vendorName: string; items: InventoryKPIs[] }>();
+            for (const item of itemsToOrder) {
+                const vendor = vendorMap.get(item.sku);
+                if (!vendor) {
+                    errorCount++;
+                    addToast(`No vendor for ${item.sku}`, 'error');
+                    continue;
+                }
+
+                if (!byVendor.has(vendor.vendorId)) {
+                    byVendor.set(vendor.vendorId, { vendorId: vendor.vendorId, vendorName: vendor.vendorName, items: [] });
+                }
+                byVendor.get(vendor.vendorId)!.items.push(item);
+            }
+
+            // Create one PO per vendor
+            for (const [vendorId, vendorData] of byVendor) {
+                const orderId = generateOrderId();
+                const poItems = vendorData.items.map(item => {
+                    const dailyDemand = item.demand_mean || 1;
+                    const targetDays = 60;
+                    const suggestedQty = Math.max(1, Math.ceil((targetDays - item.runway_days) * dailyDemand));
+                    return {
+                        sku: item.sku,
+                        name: item.product_name,
+                        quantity: suggestedQty,
+                        unitCost: item.unit_cost || 0,
+                    };
+                });
+
+                const result = await createPurchaseOrder({
+                    vendorId,
+                    items: poItems,
+                    notes: `Batch order from Stock Intelligence dashboard`,
+                    orderId,
+                    supplier: vendorData.vendorName,
+                    status: 'Pending',
+                    orderDate: new Date().toISOString().split('T')[0],
+                });
+
+                if (result.success) {
+                    createdPOs.push(orderId);
+                    successCount++;
+
+                    // Update on_order quantities
+                    await batchUpdateInventory(
+                        poItems.map(pi => ({
+                            sku: pi.sku,
+                            stockDelta: 0,
+                            onOrderDelta: pi.quantity,
+                        }))
+                    );
+                } else {
+                    errorCount++;
+                    console.error(`Failed to create PO for ${vendorData.vendorName}:`, result.error);
+                }
+            }
+
+            if (successCount > 0) {
+                addToast(
+                    `Created ${successCount} PO${successCount > 1 ? 's' : ''}: ${createdPOs.join(', ')}`,
+                    'success'
+                );
+                setSelectedKPIItems(new Set());
+                loadData(true);
+            }
+
+            if (errorCount > 0) {
+                addToast(`Failed to process ${errorCount} item${errorCount > 1 ? 's' : ''}`, 'error');
+            }
+        } catch (err) {
+            console.error('Failed to create batch PO from KPI:', err);
+            addToast('Unexpected error creating POs', 'error');
+        } finally {
+            setIsCreatingPO(false);
+        }
+    };
+
+    // Toggle KPI item selection
+    const toggleKPISelect = (sku: string) => {
+        setSelectedKPIItems(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(sku)) {
+                newSet.delete(sku);
+            } else {
+                newSet.add(sku);
+            }
+            return newSet;
+        });
+    };
+
     // Split advice into items needing action vs items already on order
     const needsOrder = advice.filter(item => !item.linked_po);
     const onOrder = advice.filter(item => !!item.linked_po);
@@ -484,8 +703,9 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                     unit="SKUs"
                     trend={metrics.criticalItems > 0 ? 'critical' : 'positive'}
                     desc={metrics.criticalItems > 0 ? "Will stockout before order arrives" : "All items have adequate coverage"}
-                    onClick={metrics.criticalItems > 0 ? scrollToReplenishment : undefined}
-                    clickHint={metrics.criticalItems > 0 ? "View critical items" : undefined}
+                    onClick={metrics.criticalItems > 0 ? () => setExpandedPanel(expandedPanel === 'critical' ? null : 'critical') : undefined}
+                    clickHint={metrics.criticalItems > 0 ? "Click to view items" : undefined}
+                    isExpanded={expandedPanel === 'critical'}
                 />
                 <KPICard
                     title="At Risk"
@@ -493,8 +713,9 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                     unit="SKUs"
                     trend={metrics.atRiskItems > 5 ? 'critical' : metrics.atRiskItems > 0 ? 'neutral' : 'positive'}
                     desc={metrics.atRiskItems > 0 ? "CLTR 0.5-1.0: Order soon" : "No items at risk"}
-                    onClick={metrics.atRiskItems > 0 ? scrollToReplenishment : undefined}
-                    clickHint={metrics.atRiskItems > 0 ? "View at-risk items" : undefined}
+                    onClick={metrics.atRiskItems > 0 ? () => setExpandedPanel(expandedPanel === 'at_risk' ? null : 'at_risk') : undefined}
+                    clickHint={metrics.atRiskItems > 0 ? "Click to view items" : undefined}
+                    isExpanded={expandedPanel === 'at_risk'}
                 />
                 <KPICard
                     title="Past Due POs"
@@ -502,6 +723,9 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                     unit="Lines"
                     trend={metrics.pastDueLines > 0 ? 'critical' : 'positive'}
                     desc={metrics.pastDueLines > 0 ? `Lead time bias: ${metrics.leadTimeBias || 0} days` : "All POs on schedule"}
+                    onClick={metrics.pastDueLines > 0 ? () => setExpandedPanel(expandedPanel === 'past_due' ? null : 'past_due') : undefined}
+                    clickHint={metrics.pastDueLines > 0 ? "Click to view POs" : undefined}
+                    isExpanded={expandedPanel === 'past_due'}
                 />
                 <KPICard
                     title="Below Safety Stock"
@@ -509,8 +733,30 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs }: Purchas
                     unit="SKUs"
                     trend={metrics.safetyStockShortfall > 5 ? 'critical' : metrics.safetyStockShortfall > 0 ? 'neutral' : 'positive'}
                     desc={metrics.safetyStockShortfall > 0 ? "Items below SS target" : "All items meet SS targets"}
+                    onClick={metrics.safetyStockShortfall > 0 ? () => setExpandedPanel(expandedPanel === 'below_ss' ? null : 'below_ss') : undefined}
+                    clickHint={metrics.safetyStockShortfall > 0 ? "Click to view items" : undefined}
+                    isExpanded={expandedPanel === 'below_ss'}
                 />
             </div>
+
+            {/* Expanded KPI Item Panel */}
+            {expandedPanel && kpiSummary && (
+                <KPIItemPanel
+                    panelType={expandedPanel}
+                    kpiSummary={kpiSummary}
+                    onClose={() => {
+                        setExpandedPanel(null);
+                        setSelectedKPIItems(new Set());
+                    }}
+                    onNavigateToPOs={onNavigateToPOs}
+                    selectedItems={selectedKPIItems}
+                    onToggleSelect={toggleKPISelect}
+                    onQuickOrder={handleKPIQuickOrder}
+                    onCreatePOForSelected={handleCreatePOFromKPIItems}
+                    isCreatingPO={isCreatingPO}
+                    scrollToReplenishment={scrollToReplenishment}
+                />
+            )}
 
             {/* 2.5 Secondary metrics row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -793,15 +1039,22 @@ interface KPICardProps {
     desc: string;
     onClick?: () => void;
     clickHint?: string;
+    isExpanded?: boolean;
 }
 
-function KPICard({ title, value, unit, trend, desc, onClick, clickHint }: KPICardProps) {
+function KPICard({ title, value, unit, trend, desc, onClick, clickHint, isExpanded }: KPICardProps) {
     const isCritical = trend === 'critical';
     const isClickable = !!onClick;
 
     return (
         <div
-            className={`p-4 rounded-xl border ${isCritical ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'} shadow-sm ${
+            className={`p-4 rounded-xl border ${
+                isExpanded
+                    ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-200'
+                    : isCritical
+                        ? 'bg-red-50 border-red-200'
+                        : 'bg-white border-slate-200'
+            } shadow-sm ${
                 isClickable ? 'cursor-pointer hover:shadow-md hover:border-blue-300 transition-all duration-200 group' : ''
             }`}
             onClick={onClick}
@@ -809,17 +1062,308 @@ function KPICard({ title, value, unit, trend, desc, onClick, clickHint }: KPICar
             tabIndex={isClickable ? 0 : undefined}
             onKeyDown={isClickable ? (e) => e.key === 'Enter' && onClick?.() : undefined}
         >
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">{title}</div>
-            <div className="flex items-baseline gap-1">
-                <span className={`text-2xl font-bold ${isCritical ? 'text-red-700' : 'text-slate-900'}`}>{value}</span>
+            <div className="flex items-center justify-between">
+                <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</div>
+                {isExpanded && <ChevronUpIcon className="w-4 h-4 text-blue-500" />}
+                {!isExpanded && isClickable && <ChevronDownIcon className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100" />}
+            </div>
+            <div className="flex items-baseline gap-1 mt-1">
+                <span className={`text-2xl font-bold ${isCritical && !isExpanded ? 'text-red-700' : 'text-slate-900'}`}>{value}</span>
                 <span className="text-sm text-slate-400 font-medium">{unit}</span>
             </div>
             <div className="mt-2 text-xs text-slate-400 truncate">
                 {desc}
             </div>
-            {isClickable && clickHint && (
+            {isClickable && clickHint && !isExpanded && (
                 <div className="mt-2 text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {clickHint} →
+                    {clickHint}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// KPI Item Panel - Shows actionable items when a KPI card is clicked
+interface KPIItemPanelProps {
+    panelType: ExpandedPanel;
+    kpiSummary: KPISummary;
+    onClose: () => void;
+    onNavigateToPOs?: () => void;
+    selectedItems: Set<string>;
+    onToggleSelect: (sku: string) => void;
+    onQuickOrder: (item: InventoryKPIs) => void;
+    onCreatePOForSelected: () => void;
+    isCreatingPO: boolean;
+    scrollToReplenishment: () => void;
+}
+
+function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, selectedItems, onToggleSelect, onQuickOrder, onCreatePOForSelected, isCreatingPO, scrollToReplenishment }: KPIItemPanelProps) {
+    const getPanelConfig = () => {
+        switch (panelType) {
+            case 'critical':
+                return {
+                    title: 'Critical CLTR Items',
+                    subtitle: 'These items will stockout before a new order can arrive',
+                    items: kpiSummary.critical_cltr_items,
+                    bgClass: 'bg-red-50 border-red-200',
+                    headerClass: 'text-red-800',
+                    totalCount: kpiSummary.items_critical_cltr,
+                };
+            case 'at_risk':
+                return {
+                    title: 'At-Risk Items',
+                    subtitle: 'CLTR 0.5-1.0: Order soon to avoid stockout',
+                    items: kpiSummary.at_risk_cltr_items,
+                    bgClass: 'bg-amber-50 border-amber-200',
+                    headerClass: 'text-amber-800',
+                    totalCount: kpiSummary.items_at_risk_cltr,
+                };
+            case 'past_due':
+                return {
+                    title: 'Past Due PO Lines',
+                    subtitle: 'These purchase order lines are overdue',
+                    items: null,
+                    pastDueLines: kpiSummary.past_due_lines,
+                    bgClass: 'bg-orange-50 border-orange-200',
+                    headerClass: 'text-orange-800',
+                    totalCount: kpiSummary.total_past_due_lines,
+                };
+            case 'below_ss':
+                return {
+                    title: 'Below Safety Stock',
+                    subtitle: 'Items below their safety stock target',
+                    items: kpiSummary.below_safety_stock_items,
+                    bgClass: 'bg-yellow-50 border-yellow-200',
+                    headerClass: 'text-yellow-800',
+                    totalCount: kpiSummary.safety_stock_shortfall_items,
+                };
+            default:
+                return null;
+        }
+    };
+
+    const config = getPanelConfig();
+    if (!config) return null;
+
+    return (
+        <div className={`rounded-xl border ${config.bgClass} overflow-hidden animate-in slide-in-from-top duration-300`}>
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-inherit flex items-center justify-between">
+                <div>
+                    <h3 className={`font-semibold ${config.headerClass}`}>
+                        {config.title}
+                        {config.totalCount > 50 && (
+                            <span className="ml-2 text-xs font-normal text-slate-500">
+                                (showing top 50 of {config.totalCount})
+                            </span>
+                        )}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">{config.subtitle}</p>
+                </div>
+                <button
+                    onClick={onClose}
+                    className="p-1.5 rounded-lg hover:bg-white/50 transition-colors text-slate-500 hover:text-slate-700"
+                >
+                    <XCircleIcon className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Items Table */}
+            <div className="max-h-[400px] overflow-y-auto">
+                {panelType === 'past_due' && config.pastDueLines ? (
+                    <table className="w-full text-sm">
+                        <thead className="bg-white/50 sticky top-0">
+                            <tr className="text-left text-xs text-slate-500 uppercase">
+                                <th className="px-6 py-2">PO Number</th>
+                                <th className="px-4 py-2">SKU</th>
+                                <th className="px-4 py-2">Vendor</th>
+                                <th className="px-4 py-2 text-right">Days Late</th>
+                                <th className="px-4 py-2 text-right">Qty</th>
+                                <th className="px-6 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-inherit">
+                            {config.pastDueLines.map((line, idx) => (
+                                <tr key={idx} className="hover:bg-white/30">
+                                    <td className="px-6 py-3 font-mono text-xs font-medium">{line.po_number}</td>
+                                    <td className="px-4 py-3 font-mono text-xs">{line.sku}</td>
+                                    <td className="px-4 py-3 text-xs text-slate-600 max-w-[150px] truncate">{line.vendor_name}</td>
+                                    <td className="px-4 py-3 text-right font-medium text-red-600">{line.days_late}</td>
+                                    <td className="px-4 py-3 text-right">{line.quantity}</td>
+                                    <td className="px-6 py-3">
+                                        {onNavigateToPOs && (
+                                            <button
+                                                onClick={onNavigateToPOs}
+                                                className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                            >
+                                                View PO
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : config.items && config.items.length > 0 ? (
+                    <table className="w-full text-sm">
+                        <thead className="bg-white/50 sticky top-0">
+                            <tr className="text-left text-xs text-slate-500 uppercase">
+                                <th className="px-3 py-2 w-10">
+                                    <input
+                                        type="checkbox"
+                                        checked={config.items.every(item => selectedItems.has(item.sku))}
+                                        onChange={() => {
+                                            const allSelected = config.items!.every(item => selectedItems.has(item.sku));
+                                            config.items!.forEach(item => {
+                                                if (allSelected) {
+                                                    onToggleSelect(item.sku);
+                                                } else if (!selectedItems.has(item.sku)) {
+                                                    onToggleSelect(item.sku);
+                                                }
+                                            });
+                                        }}
+                                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                        title="Select all"
+                                    />
+                                </th>
+                                <th className="px-4 py-2">SKU</th>
+                                <th className="px-4 py-2">Product</th>
+                                <th className="px-4 py-2 text-right">Stock</th>
+                                <th className="px-4 py-2 text-right">Runway</th>
+                                <th className="px-4 py-2 text-right">CLTR</th>
+                                <th className="px-4 py-2 text-right">Safety %</th>
+                                <th className="px-4 py-2 w-24"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-inherit">
+                            {config.items.map((item, idx) => {
+                                const isSelected = selectedItems.has(item.sku);
+                                return (
+                                    <tr
+                                        key={idx}
+                                        className={`hover:bg-white/30 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/50 ring-1 ring-inset ring-blue-200' : ''}`}
+                                        onClick={() => onToggleSelect(item.sku)}
+                                    >
+                                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => onToggleSelect(item.sku)}
+                                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            />
+                                        </td>
+                                        <td className="px-4 py-3 font-mono text-xs font-medium">{item.sku}</td>
+                                        <td className="px-4 py-3 text-xs text-slate-600 max-w-[180px] truncate" title={item.product_name}>
+                                            {item.product_name}
+                                        </td>
+                                        <td className={`px-4 py-3 text-right font-medium ${item.current_stock === 0 ? 'text-red-600' : ''}`}>
+                                            {item.current_stock}
+                                        </td>
+                                        <td className={`px-4 py-3 text-right font-medium ${
+                                            item.runway_days <= 7 ? 'text-red-600' :
+                                            item.runway_days <= 14 ? 'text-amber-600' : ''
+                                        }`}>
+                                            {item.runway_days > 365 ? '365+' : item.runway_days}d
+                                        </td>
+                                        <td className={`px-4 py-3 text-right font-bold ${
+                                            item.cltr < 0.5 ? 'text-red-600' :
+                                            item.cltr < 1.0 ? 'text-amber-600' : 'text-green-600'
+                                        }`}>
+                                            {item.cltr.toFixed(2)}
+                                        </td>
+                                        <td className={`px-4 py-3 text-right ${
+                                            item.safety_stock_attainment < 50 ? 'text-red-600' :
+                                            item.safety_stock_attainment < 100 ? 'text-amber-600' : 'text-green-600'
+                                        }`}>
+                                            {Math.round(item.safety_stock_attainment)}%
+                                        </td>
+                                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                onClick={() => onQuickOrder(item)}
+                                                disabled={isCreatingPO}
+                                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-200 hover:border-blue-600 rounded transition-colors disabled:opacity-50"
+                                                title="Create PO for this item"
+                                            >
+                                                <PlusIcon className="w-3 h-3" />
+                                                Order
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                ) : (
+                    <div className="p-8 text-center text-slate-500">
+                        No items to display
+                    </div>
+                )}
+            </div>
+
+            {/* Footer with actions */}
+            {panelType !== 'past_due' && config.items && config.items.length > 0 && (
+                <div className="px-6 py-3 border-t border-inherit bg-white/30">
+                    {/* Selection info and batch action */}
+                    {selectedItems.size > 0 ? (
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm font-medium text-blue-700">
+                                    {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected
+                                </span>
+                                <button
+                                    onClick={() => {
+                                        config.items!.forEach(item => {
+                                            if (selectedItems.has(item.sku)) {
+                                                onToggleSelect(item.sku);
+                                            }
+                                        });
+                                    }}
+                                    className="text-xs text-slate-500 hover:text-slate-700"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={scrollToReplenishment}
+                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    View Full Workflow
+                                    <ArrowRightIcon className="w-3 h-3" />
+                                </button>
+                                <button
+                                    onClick={onCreatePOForSelected}
+                                    disabled={isCreatingPO}
+                                    className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    <ShoppingCartIcon className="w-4 h-4" />
+                                    {isCreatingPO ? 'Creating...' : `Create PO (${selectedItems.size})`}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500">
+                                {config.items.length} item{config.items.length !== 1 ? 's' : ''} shown
+                                <span className="ml-2 text-slate-400">- Select items to create PO</span>
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={scrollToReplenishment}
+                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    View Full Workflow
+                                    <ArrowRightIcon className="w-3 h-3" />
+                                </button>
+                                <button
+                                    onClick={onClose}
+                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
