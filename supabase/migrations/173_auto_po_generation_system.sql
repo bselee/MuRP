@@ -138,9 +138,10 @@ CREATE POLICY agent_autonomy_audit_admin ON public.agent_autonomy_audit
 -- PO APPROVAL THRESHOLDS SETTING
 -- ═══════════════════════════════════════════════════════════════════════════
 
-INSERT INTO public.app_settings (setting_key, setting_value, description, created_at, updated_at)
+INSERT INTO public.app_settings (setting_key, setting_category, setting_value, description, created_at, updated_at)
 VALUES (
     'po_approval_thresholds',
+    'purchasing',
     '{
         "autoApproveLimit": 1000,
         "managerApprovalLimit": 10000,
@@ -157,9 +158,10 @@ ON CONFLICT (setting_key) DO NOTHING;
 -- AGENT GLOBAL EXCLUSIONS SETTING
 -- ═══════════════════════════════════════════════════════════════════════════
 
-INSERT INTO public.app_settings (setting_key, setting_value, description, created_at, updated_at)
+INSERT INTO public.app_settings (setting_key, setting_category, setting_value, description, created_at, updated_at)
 VALUES (
     'agent_global_exclusions',
+    'agent',
     '{
         "categories": ["dropship", "discontinued", "deprecated", "Deprecating"],
         "skus": [],

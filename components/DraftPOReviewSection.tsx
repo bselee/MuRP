@@ -17,6 +17,7 @@ import Button from '@/components/ui/Button';
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase/client';
 import { ChevronDownIcon, CheckCircleIcon, XCircleIcon, BotIcon } from './icons';
+import { calculateInventoryKPIs, type InventoryItemKPI } from '../services/inventoryKPIService';
 
 interface DraftPO {
   id: string;
@@ -49,9 +50,11 @@ const DraftPOReviewSection: React.FC<DraftPOReviewSectionProps> = ({ onApprove, 
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(true);
   const [expandedPO, setExpandedPO] = useState<string | null>(null);
+  const [kpiMap, setKpiMap] = useState<Map<string, { abc: 'A' | 'B' | 'C'; xyz: 'X' | 'Y' | 'Z' }>>(new Map());
 
   useEffect(() => {
     fetchDraftPOs();
+    fetchKpiData();
 
     // Subscribe to changes
     const channel = supabase
@@ -74,6 +77,19 @@ const DraftPOReviewSection: React.FC<DraftPOReviewSectionProps> = ({ onApprove, 
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const fetchKpiData = async () => {
+    try {
+      const kpis = await calculateInventoryKPIs();
+      const map = new Map<string, { abc: 'A' | 'B' | 'C'; xyz: 'X' | 'Y' | 'Z' }>();
+      kpis.forEach(kpi => {
+        map.set(kpi.sku, { abc: kpi.abc_class, xyz: kpi.xyz_class });
+      });
+      setKpiMap(map);
+    } catch (error) {
+      console.error('[DraftPOReviewSection] Error fetching KPI data:', error);
+    }
+  };
 
   const fetchDraftPOs = async () => {
     try {
@@ -296,6 +312,7 @@ const DraftPOReviewSection: React.FC<DraftPOReviewSectionProps> = ({ onApprove, 
                     <thead>
                       <tr className="text-left text-xs text-gray-400">
                         <th className="py-2">SKU</th>
+                        <th className="py-2 text-center">Class</th>
                         <th className="py-2">Item Name</th>
                         <th className="py-2 text-right">Quantity</th>
                         <th className="py-2 text-right">Unit Cost</th>
@@ -303,17 +320,42 @@ const DraftPOReviewSection: React.FC<DraftPOReviewSectionProps> = ({ onApprove, 
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                      {po.items.map((item, idx) => (
-                        <tr key={idx} className="text-gray-300">
-                          <td className="py-2 font-mono text-xs">{item.inventory_sku}</td>
-                          <td className="py-2">{item.item_name}</td>
-                          <td className="py-2 text-right">{item.quantity_ordered}</td>
-                          <td className="py-2 text-right">${item.unit_cost.toFixed(2)}</td>
-                          <td className="py-2 text-right font-semibold">
-                            ${(item.quantity_ordered * item.unit_cost).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
+                      {po.items.map((item, idx) => {
+                        const classification = kpiMap.get(item.inventory_sku);
+                        return (
+                          <tr key={idx} className="text-gray-300">
+                            <td className="py-2 font-mono text-xs">{item.inventory_sku}</td>
+                            <td className="py-2 text-center">
+                              {classification ? (
+                                <>
+                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    classification.abc === 'A' ? 'bg-purple-500/20 text-purple-300 ring-1 ring-purple-500/30' :
+                                    classification.abc === 'B' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/30' :
+                                    'bg-slate-500/20 text-slate-400 ring-1 ring-slate-500/30'
+                                  }`} title={`ABC: ${classification.abc}`}>
+                                    {classification.abc}
+                                  </span>
+                                  <span className={`ml-0.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    classification.xyz === 'X' ? 'bg-green-500/20 text-green-300 ring-1 ring-green-500/30' :
+                                    classification.xyz === 'Y' ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30' :
+                                    'bg-red-500/20 text-red-300 ring-1 ring-red-500/30'
+                                  }`} title={`XYZ: ${classification.xyz}`}>
+                                    {classification.xyz}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-gray-500 text-xs">--</span>
+                              )}
+                            </td>
+                            <td className="py-2">{item.item_name}</td>
+                            <td className="py-2 text-right">{item.quantity_ordered}</td>
+                            <td className="py-2 text-right">${item.unit_cost.toFixed(2)}</td>
+                            <td className="py-2 text-right font-semibold">
+                              ${(item.quantity_ordered * item.unit_cost).toFixed(2)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

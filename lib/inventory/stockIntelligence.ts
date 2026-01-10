@@ -6,6 +6,9 @@ export interface StockoutRisk {
   daysUntilStockout: number;
   riskLevel: 'critical' | 'high' | 'medium' | 'low';
   trendDirection: 'up' | 'down' | 'stable';
+  // ABC/XYZ classification (optional, added when KPI data available)
+  abcClass?: 'A' | 'B' | 'C';
+  xyzClass?: 'X' | 'Y' | 'Z';
 }
 
 export interface VendorPerformance {

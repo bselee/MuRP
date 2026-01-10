@@ -37,6 +37,7 @@ import UpdateTrackingModal from '../components/UpdateTrackingModal';
 import { subscribeToPoDrafts } from '../lib/poDraftBridge';
 import { supabase } from '../lib/supabase/client';
 import { generatePoPdf } from '../services/pdfService';
+import { openPoPrintView } from '../services/poHtmlTemplate';
 import { usePermissions } from '../hooks/usePermissions';
 import { runFollowUpAutomation } from '../services/followUpService';
 import { getGoogleGmailService } from '../services/googleGmailService';
@@ -508,15 +509,23 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         return calculatedTotal.toFixed(2);
     };
 
-    const handleDownloadPdf = (po: PurchaseOrder) => {
+    const handleDownloadPdf = async (po: PurchaseOrder) => {
         if (!po.vendorId) {
             addToast(`Could not generate PDF: Vendor not linked for ${po.orderId || po.id}`, 'error');
             return;
         }
         const vendor = vendorMap.get(po.vendorId);
         if (vendor) {
-            generatePoPdf(po, vendor);
-            addToast(`Downloaded ${(po.orderId || po.id)}.pdf`, 'success');
+            try {
+                // Open professional HTML template in print view
+                await openPoPrintView(po, vendor);
+                addToast(`Opened print view for ${(po.orderId || po.id)} - use Print/Save as PDF`, 'success');
+            } catch (error) {
+                console.error('PDF generation error:', error);
+                // Fallback to legacy PDF if print view fails
+                generatePoPdf(po, vendor);
+                addToast(`Downloaded ${(po.orderId || po.id)}.pdf (legacy)`, 'success');
+            }
         } else {
             addToast(`Could not generate PDF: Vendor not found for ${po.orderId || po.id}`, 'error');
         }
@@ -1649,14 +1658,24 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                                         vendor = vendors.find(v => v.name?.toLowerCase().trim() === vendorNameLower);
                                                                     }
                                                                     if (vendor) {
-                                                                        await generatePoPdf(poForPdf, vendor);
-                                                                        addToast(`Downloaded ${fpo.orderId}.pdf`, 'success');
+                                                                        // Open professional HTML template in print view
+                                                                        await openPoPrintView(poForPdf, vendor);
+                                                                        addToast(`Opened print view for ${fpo.orderId} - use Print/Save as PDF`, 'success');
                                                                     } else {
                                                                         addToast(`Could not generate PDF: Vendor "${fpo.vendorName}" not found in system`, 'error');
                                                                     }
                                                                 } catch (err) {
                                                                     console.error('PDF generation error:', err);
-                                                                    addToast(`PDF generation failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+                                                                    // Fallback to legacy PDF
+                                                                    try {
+                                                                        const vendor = fpo.vendorId ? vendorMap.get(fpo.vendorId) : undefined;
+                                                                        if (vendor) {
+                                                                            generatePoPdf(poForPdf, vendor);
+                                                                            addToast(`Downloaded ${fpo.orderId}.pdf (legacy)`, 'success');
+                                                                        }
+                                                                    } catch {
+                                                                        addToast(`PDF generation failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
+                                                                    }
                                                                 }
                                                             }}
                                                             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ${isDark

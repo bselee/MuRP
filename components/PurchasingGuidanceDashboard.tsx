@@ -1268,6 +1268,7 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, onNavig
                                 <th className="px-4 py-2">Product</th>
                                 <th className="px-4 py-2 text-right">Stock</th>
                                 <th className="px-4 py-2 text-right">Runway</th>
+                                <th className="px-4 py-2 text-center">Class</th>
                                 <th className="px-4 py-2 text-right">CLTR</th>
                                 <th className="px-4 py-2 text-right">Safety %</th>
                                 <th className="px-4 py-2 w-24"></th>
@@ -1313,6 +1314,22 @@ function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, onNavig
                                             item.runway_days <= 14 ? 'text-amber-400' : 'text-slate-300'
                                         }`}>
                                             {item.runway_days > 365 ? '365+' : item.runway_days}d
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                                item.abc_class === 'A' ? 'bg-purple-500/20 text-purple-300 ring-1 ring-purple-500/30' :
+                                                item.abc_class === 'B' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/30' :
+                                                'bg-slate-500/20 text-slate-400 ring-1 ring-slate-500/30'
+                                            }`} title={`ABC: ${item.abc_class} (${item.abc_class === 'A' ? '80% of value' : item.abc_class === 'B' ? '15% of value' : '5% of value'})`}>
+                                                {item.abc_class}
+                                            </span>
+                                            <span className={`ml-0.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                                item.xyz_class === 'X' ? 'bg-green-500/20 text-green-300 ring-1 ring-green-500/30' :
+                                                item.xyz_class === 'Y' ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30' :
+                                                'bg-red-500/20 text-red-300 ring-1 ring-red-500/30'
+                                            }`} title={`XYZ: ${item.xyz_class} (${item.xyz_class === 'X' ? 'Predictable' : item.xyz_class === 'Y' ? 'Variable' : 'Erratic'} demand)`}>
+                                                {item.xyz_class}
+                                            </span>
                                         </td>
                                         <td className={`px-4 py-3 text-right font-bold ${
                                             item.cltr < 0.5 ? 'text-red-400' :

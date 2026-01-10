@@ -27,6 +27,7 @@ import SemanticSearchSettings from '../SemanticSearchSettings';
 import SOPSettingsPanel from '../SOPSettingsPanel';
 import EmailTrackingSettingsPanel from '../EmailTrackingSettingsPanel';
 import EmailProcessingLog from './EmailProcessingLog';
+import EmailBrandingPanel from './EmailBrandingPanel';
 import DocumentTemplatesPanel from '../DocumentTemplatesPanel';
 import AiSettingsPanel from '../AiSettingsPanel';
 import AIProviderPanel from '../AIProviderPanel';
@@ -498,6 +499,14 @@ Thank you!`
         <>
           <SectionHeader title="Inbox Monitoring" description="Configure email inbox monitoring for PO tracking" />
           <EmailTrackingSettingsPanel addToast={addToast} />
+        </>
+      );
+
+    case 'email-branding':
+      return (
+        <>
+          <SectionHeader title="Email Branding" description="Customize your company's email templates and branding" />
+          <EmailBrandingPanel addToast={addToast} />
         </>
       );
 

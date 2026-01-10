@@ -2,6 +2,8 @@ import Button from '@/components/ui/Button';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase/client';
 import { aiTemplateGenerator } from '../services/aiTemplateGenerator';
+import { generatePoPdf } from '../services/pdfService';
+import type { PurchaseOrder, Vendor } from '../types';
 import {
   BotIcon,
   SaveIcon,
