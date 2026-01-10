@@ -28,6 +28,11 @@
 import { supabase } from '../lib/supabase/client';
 import { getGlobalExcludedCategories, isGloballyExcludedCategory, DEFAULT_EXCLUDED_CATEGORIES } from '../hooks/useGlobalCategoryFilter';
 import { getGlobalExcludedSkus, isGloballyExcludedSku } from '../hooks/useGlobalSkuFilter';
+import {
+  SERVICE_LEVEL_Z_SCORES,
+  calculateSafetyStock as calculateAdvancedSafetyStock,
+  calculateReorderPoint as calculateAdvancedROP,
+} from './advancedForecastingEngine';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // GLOBAL EXCLUSION HELPERS
@@ -443,9 +448,34 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
         stock, onOrder, demandMean
       );
 
-      // Safety stock
-      const safetyStock = params?.calculated_safety_stock ||
-                          Math.ceil(demandMean * leadTime * 0.5); // 50% of lead time demand
+      // Safety stock using ABC-class-based service levels
+      // A items: 98% (z=2.05), B items: 95% (z=1.65), C items: 90% (z=1.28)
+      const abcInfo = abcClassMap.get(item.sku) || { class: 'C' as ABCClass, cumPct: 100 };
+
+      // Use advanced safety stock calculation if we have demand variance data
+      // Otherwise fall back to existing params or estimate
+      let safetyStock: number;
+      if (params?.calculated_safety_stock) {
+        // Use pre-calculated value from sku_purchasing_parameters
+        safetyStock = params.calculated_safety_stock;
+      } else if (demandStdDev > 0) {
+        // Calculate using ABC-based z-scores and lead time variability
+        // Estimate lead time std dev as 20% of mean (typical vendor variability)
+        const leadTimeStdDev = leadTime * 0.2;
+        const ssResult = calculateAdvancedSafetyStock(
+          abcInfo.class,
+          demandMean,
+          demandStdDev,
+          leadTime,
+          leadTimeStdDev
+        );
+        safetyStock = ssResult.safetyStock;
+      } else {
+        // Fallback: use ABC-based multiplier of lead time demand
+        const zScore = SERVICE_LEVEL_Z_SCORES[abcInfo.class].z;
+        safetyStock = Math.ceil(demandMean * leadTime * (zScore / 3)); // Approximate
+      }
+
       const ssAttainment = calculateSafetyStockAttainment(stock, safetyStock);
 
       // Lead time bias
@@ -455,8 +485,7 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
       // Excess inventory
       const excess = calculateExcessInventoryValue(stock, demandMean, item.unitCost);
 
-      // Classification
-      const abcInfo = abcClassMap.get(item.sku) || { class: 'C' as ABCClass, cumPct: 100 };
+      // Classification (abcInfo already fetched above for safety stock)
       const xyzClass = getXYZClass(cv);
 
       // Ensure SKU is never empty - use name as fallback, or generate from index

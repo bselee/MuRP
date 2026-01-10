@@ -1,8 +1,8 @@
 import type { User, InventoryItem, Vendor, PurchaseOrder } from '../../types';
 import type { Page } from '../../App';
 
-// Tab IDs for URL hash fragments
-export type DashboardTabId = 'overview' | 'stock-intelligence';
+// Tab IDs for URL hash fragments (simplified - only overview now)
+export type DashboardTabId = 'overview';
 
 export interface DashboardTabConfig {
   id: DashboardTabId;
@@ -10,10 +10,9 @@ export interface DashboardTabConfig {
   shortLabel: string;
 }
 
-// Tab definitions
+// Tab definitions (Stock Intelligence removed - redundant with overview content)
 export const dashboardTabs: DashboardTabConfig[] = [
   { id: 'overview', label: 'Overview', shortLabel: 'Overview' },
-  { id: 'stock-intelligence', label: 'Stock Intelligence', shortLabel: 'Stock Intel' },
 ];
 
 // Props passed to Dashboard page - used by DashboardContent

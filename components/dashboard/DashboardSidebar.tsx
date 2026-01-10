@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
-import { HomeIcon, ChartBarIcon } from '../icons';
+import { HomeIcon } from '../icons';
 import type { DashboardTabId } from './dashboardConfig';
 import { dashboardTabs } from './dashboardConfig';
 
@@ -13,7 +13,6 @@ interface DashboardSidebarProps {
 
 const tabIcons: Record<DashboardTabId, React.ReactNode> = {
   'overview': <HomeIcon className="w-5 h-5" />,
-  'stock-intelligence': <ChartBarIcon className="w-5 h-5" />,
 };
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({

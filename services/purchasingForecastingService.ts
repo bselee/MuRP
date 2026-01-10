@@ -1,4 +1,10 @@
 import { supabase } from '../lib/supabase/client';
+import {
+  SERVICE_LEVEL_Z_SCORES,
+  calculateSafetyStock as calculateAdvancedSafetyStock,
+  calculateReorderPoint as calculateAdvancedROP,
+  type ABCClass,
+} from './advancedForecastingEngine';
 
 export interface Forecast {
     id: string;
@@ -65,7 +71,8 @@ export async function getRigorousPurchasingAdvice() {
       vendor_id,
       sales_last_30_days,
       sales_last_90_days,
-      reorder_point
+      reorder_point,
+      unit_cost
     `)
         .eq('status', 'active')
         .neq('category', 'Deprecating')
@@ -112,6 +119,30 @@ export async function getRigorousPurchasingAdvice() {
 
     const vendorMap = new Map(vendors?.map(v => [v.id, v.name]) || []);
     const dropshipVendors = new Set(vendors?.filter(v => v.is_dropship_vendor).map(v => v.id) || []);
+
+    // Calculate ABC classification for all items based on annual $ usage
+    // This determines service level z-scores for safety stock
+    const itemsWithValue = data.map((item: any) => {
+        const dailyDemand = (item.sales_last_30_days || 0) / 30;
+        const unitCost = item.unit_cost || 0;
+        const annualValue = dailyDemand * 365 * unitCost;
+        return { ...item, dailyDemand, unitCost, annualValue };
+    });
+
+    // Sort by annual value for ABC classification
+    const sortedByValue = [...itemsWithValue].sort((a, b) => b.annualValue - a.annualValue);
+    const totalAnnualValue = sortedByValue.reduce((sum, item) => sum + item.annualValue, 0);
+
+    // Build ABC class map: A=top 80%, B=next 15%, C=remaining 5%
+    const abcClassMap = new Map<string, ABCClass>();
+    let cumulativeValue = 0;
+    for (const item of sortedByValue) {
+        cumulativeValue += item.annualValue;
+        const cumPct = totalAnnualValue > 0 ? (cumulativeValue / totalAnnualValue) * 100 : 100;
+        if (cumPct <= 80) abcClassMap.set(item.sku, 'A');
+        else if (cumPct <= 95) abcClassMap.set(item.sku, 'B');
+        else abcClassMap.set(item.sku, 'C');
+    }
 
     // Filter and process items
     return data
@@ -167,9 +198,36 @@ export async function getRigorousPurchasingAdvice() {
             const availableStock = (item.stock || 0) + (item.on_order || 0);
             const daysRemaining = dailyDemand > 0 ? Math.floor(availableStock / dailyDemand) : 999;
 
-            // Use reorder_point from Finale if available, otherwise estimate
+            // Get ABC class for this item (determines service level)
+            const abcClass = abcClassMap.get(item.sku) || 'C';
+            const { z: zScore, level: serviceLevel } = SERVICE_LEVEL_Z_SCORES[abcClass];
+
+            // Lead time with estimated variability
             const leadTime = item.lead_time_days || 14; // Default 14 days
-            const rop = item.reorder_point || Math.ceil(dailyDemand * leadTime * 1.5); // 1.5x safety factor
+            const leadTimeStdDev = leadTime * 0.2; // 20% variability estimate
+
+            // Calculate demand variability from 30 vs 90 day sales
+            const sales30 = item.sales_last_30_days || 0;
+            const sales90 = item.sales_last_90_days || 0;
+            const daily30 = sales30 / 30;
+            const daily90 = sales90 / 90;
+            // Estimate demand std dev from difference between periods
+            const demandStdDev = daily90 > 0 ? Math.abs(daily30 - daily90) * 1.5 : dailyDemand * 0.3;
+
+            // Calculate safety stock using ABC-based service levels
+            // Formula: SS = z × √(LT × σ_demand² + D² × σ_LT²)
+            const ssResult = calculateAdvancedSafetyStock(
+                abcClass,
+                dailyDemand,
+                demandStdDev,
+                leadTime,
+                leadTimeStdDev
+            );
+            const safetyStock = ssResult.safetyStock;
+
+            // Calculate ROP using forecasted demand
+            // Use Finale reorder_point if available, otherwise calculate
+            const rop = item.reorder_point || calculateAdvancedROP(dailyDemand, leadTime, safetyStock);
 
             // Suggested order quantity
             const deficit = Math.max(0, rop - availableStock);
@@ -203,10 +261,12 @@ export async function getRigorousPurchasingAdvice() {
                 },
                 parameters: {
                     rop: rop,
-                    safety_stock: Math.ceil(dailyDemand * 7), // 1 week safety
+                    safety_stock: safetyStock,
                     daily_demand: dailyDemand,
                     lead_time: leadTime,
-                    service_level: '95%'
+                    service_level: `${Math.round(serviceLevel * 100)}%`,
+                    abc_class: abcClass,
+                    z_score: zScore,
                 },
                 recommendation: {
                     action: daysRemaining <= 0 ? 'URGENT' : daysRemaining < 7 ? 'Order Now' : 'Reorder Soon',

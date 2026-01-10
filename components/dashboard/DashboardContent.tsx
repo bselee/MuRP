@@ -1,12 +1,8 @@
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
-import Button from '../ui/Button';
-import PageHeader from '../ui/PageHeader';
-import { HomeIcon, ClipboardDocumentListIcon } from '../icons';
-import SystemHealthWidget from '../SystemHealthWidget';
+import { HomeIcon } from '../icons';
 import AgentControlCenter from '../AgentControlCenter';
 import PurchasingGuidanceDashboard from '../PurchasingGuidanceDashboard';
-import StockIntelligence from '../../pages/StockIntelligence';
 import type { DashboardTabId, DashboardPageProps } from './dashboardConfig';
 
 interface DashboardContentProps extends DashboardPageProps {
@@ -24,70 +20,38 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
 
-  switch (activeTab) {
-    case 'overview':
-      return (
-        <div className="space-y-6">
-          <PageHeader
-            title="Dashboard"
-            description="Stock levels and reorder guidance"
-            icon={<HomeIcon />}
-            actions={
-              <div className="flex items-center gap-3">
-                <SystemHealthWidget
-                  compact
-                  onNavigateToSettings={() => setCurrentPage('Settings')}
-                />
-                <Button
-                  onClick={() => setCurrentPage('Purchase Orders')}
-                  size="sm"
-                  leftIcon={<ClipboardDocumentListIcon className="w-4 h-4" aria-hidden="true" />}
-                >
-                  View Reorder Queue
-                </Button>
-              </div>
-            }
-          />
+  return (
+    <div className="space-y-6 p-6">
+      {/* Simple header */}
+      <div className="flex items-center gap-3">
+        <HomeIcon className={`w-6 h-6 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+        <h1 className={`text-2xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          Dashboard
+        </h1>
+      </div>
 
-          {/* Agent Control Center */}
-          <AgentControlCenter
-            onViewAllActivity={() => setCurrentPage('Agent Command Center')}
-            onNavigateToInventory={(sku) => {
-              console.log('[Dashboard] SKU click:', sku);
-            }}
-          />
+      {/* Agent Control Center */}
+      <AgentControlCenter
+        onViewAllActivity={() => setCurrentPage('Agent Command Center')}
+        onNavigateToInventory={(sku) => {
+          console.log('[Dashboard] SKU click:', sku);
+        }}
+      />
 
-          {/* Stock guidance */}
-          <PurchasingGuidanceDashboard
-            onNavigateToPOs={() => setCurrentPage('Purchase Orders')}
-            onNavigateToPO={(poNumber) => {
-              localStorage.setItem('highlightedPO', poNumber);
-              setCurrentPage('Purchase Orders');
-            }}
-            onNavigateToSku={(sku) => {
-              localStorage.setItem('highlightedSku', sku);
-              setCurrentPage('Inventory');
-            }}
-          />
-        </div>
-      );
-
-    case 'stock-intelligence':
-      return (
-        <StockIntelligence
-          inventory={inventory}
-          vendors={vendors}
-          purchaseOrders={purchaseOrders}
-        />
-      );
-
-    default:
-      return (
-        <div className={`text-center py-12 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-          <p>Tab not found</p>
-        </div>
-      );
-  }
+      {/* Stock guidance */}
+      <PurchasingGuidanceDashboard
+        onNavigateToPOs={() => setCurrentPage('Purchase Orders')}
+        onNavigateToPO={(poNumber) => {
+          localStorage.setItem('highlightedPO', poNumber);
+          setCurrentPage('Purchase Orders');
+        }}
+        onNavigateToSku={(sku) => {
+          localStorage.setItem('highlightedSku', sku);
+          setCurrentPage('Inventory');
+        }}
+      />
+    </div>
+  );
 };
 
 export default DashboardContent;

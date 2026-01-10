@@ -56,6 +56,16 @@ import {
   formatRiskSummaryForAgent,
   type SupplyChainRiskSummary,
 } from './supplyChainRiskService';
+import {
+  canExecuteAutonomously,
+  logAutonomyCheck,
+  type AutonomyCheck,
+  type AutonomyCheckResult,
+} from './agentAutonomyGate';
+import {
+  triggerAutoPOGeneration,
+  type AutoPOResult,
+} from './autoPOGenerationService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 Types
@@ -546,21 +556,31 @@ export async function getReorderPointRecommendations(): Promise<Array<{
   }
 }
 
-/**
- * Main agent run function - called by UI and scheduler
- * Returns detailed runway-based analysis with velocity trends and KPIs
- */
-export async function runInventoryGuardianAgent(
-  config: Partial<InventoryGuardianConfig> = {}
-): Promise<{
+export interface InventoryGuardianResult {
   success: boolean;
   summary: StockHealthSummary;
   velocity_alerts: VelocityAnalysis[];
   reorder_recommendations: Array<{ sku: string; product_name: string; current_reorder_point: number; recommended_reorder_point: number; reason: string }>;
   kpi_summary: KPISummary | null;
   supply_chain_risks: SupplyChainRiskSummary | null;
+  auto_po_result?: AutoPOResult;
+  autonomy_check?: AutonomyCheckResult;
   output: string[];
-}> {
+}
+
+/**
+ * Main agent run function - called by UI and scheduler
+ * Returns detailed runway-based analysis with velocity trends and KPIs
+ *
+ * Autonomy Levels:
+ * - monitor: Only observe and report (no PO creation)
+ * - assist: Create PO drafts for human approval
+ * - autonomous: Create and auto-approve POs within bounds
+ */
+export async function runInventoryGuardianAgent(
+  config: Partial<InventoryGuardianConfig> = {},
+  options: { enableAutoPO?: boolean; dryRun?: boolean; agentId?: string } = {}
+): Promise<InventoryGuardianResult> {
   const cfg = { ...DEFAULT_CONFIG, ...config };
   const output: string[] = [];
 
@@ -743,6 +763,106 @@ export async function runInventoryGuardianAgent(
     output.push(...riskLines);
   }
 
+  // === AUTONOMOUS PO GENERATION ===
+  let autoPOResult: AutoPOResult | undefined;
+  let autonomyCheck: AutonomyCheckResult | undefined;
+
+  // Only trigger auto-PO if enabled and there are critical/warning items
+  const criticalPurchasedAlerts = summary.alerts.filter(
+    a => (a.severity === 'COOKED' || a.severity === 'CRITICAL') && a.item_category === 'PURCHASED'
+  );
+
+  if (options.enableAutoPO && criticalPurchasedAlerts.length > 0) {
+    output.push('');
+    output.push('=== AUTONOMOUS PO GENERATION ===');
+
+    // Estimate total PO value for autonomy check
+    const estimatedValue = criticalPurchasedAlerts.reduce((sum, a) => sum + a.estimated_cost, 0);
+
+    // Check if agent can execute autonomously
+    const agentId = options.agentId || 'inventory-guardian';
+    const check: AutonomyCheck = {
+      agentId,
+      action: 'create_po',
+      targetValue: estimatedValue,
+    };
+
+    autonomyCheck = await canExecuteAutonomously(check);
+
+    if (autonomyCheck.allowed) {
+      output.push(`Autonomy check PASSED: ${autonomyCheck.reason}`);
+      output.push(`  Trust score: ${(autonomyCheck.trustScore || 0).toFixed(2)}`);
+      output.push(`  Estimated PO value: $${estimatedValue.toLocaleString()}`);
+
+      if (!options.dryRun) {
+        // Trigger auto-PO generation
+        autoPOResult = await triggerAutoPOGeneration(agentId, {
+          dryRun: false,
+          maxDraftsPerRun: 10,
+        });
+
+        if (autoPOResult.success) {
+          output.push('');
+          output.push(`PO Drafts created: ${autoPOResult.draftsCreated}`);
+          output.push(`  Auto-approved: ${autoPOResult.draftsAutoApproved}`);
+          output.push(`  Pending approval: ${autoPOResult.draftsPendingApproval}`);
+          output.push(`  Total value: $${autoPOResult.totalValue.toLocaleString()}`);
+
+          // Log the autonomous action
+          await logAutonomyCheck(check, autonomyCheck, true, 'success');
+          await logAgentAction(
+            agentId,
+            null,
+            'auto_po_created',
+            `Created ${autoPOResult.draftsCreated} PO drafts worth $${autoPOResult.totalValue.toLocaleString()}`,
+            null,
+            {
+              drafts_created: autoPOResult.draftsCreated,
+              auto_approved: autoPOResult.draftsAutoApproved,
+              pending_approval: autoPOResult.draftsPendingApproval,
+              total_value: autoPOResult.totalValue,
+            }
+          );
+        } else {
+          output.push('');
+          output.push(`PO generation encountered errors:`);
+          autoPOResult.errors.forEach(err => output.push(`  - ${err}`));
+          await logAutonomyCheck(check, autonomyCheck, true, 'failure');
+        }
+      } else {
+        output.push('');
+        output.push(`[DRY RUN] Would create PO drafts for ${criticalPurchasedAlerts.length} critical items`);
+      }
+    } else {
+      output.push(`Autonomy check BLOCKED: ${autonomyCheck.reason}`);
+      output.push(`  Requires approval level: ${autonomyCheck.requiresApproval || 'manager'}`);
+      output.push(`  Agent will create draft POs for human review`);
+
+      // Log blocked autonomy check
+      await logAutonomyCheck(check, autonomyCheck, false, 'rejected');
+
+      if (!options.dryRun) {
+        // Still create drafts but they'll require approval
+        autoPOResult = await triggerAutoPOGeneration(agentId, {
+          dryRun: false,
+          maxDraftsPerRun: 10,
+        });
+
+        if (autoPOResult.success && autoPOResult.draftsCreated > 0) {
+          output.push('');
+          output.push(`Draft POs created for review: ${autoPOResult.draftsCreated}`);
+          output.push(`  All require approval: ${autoPOResult.draftsPendingApproval}`);
+          output.push(`  Total value: $${autoPOResult.totalValue.toLocaleString()}`);
+        }
+      }
+    }
+  } else if (options.enableAutoPO) {
+    output.push('');
+    output.push('=== AUTONOMOUS PO GENERATION ===');
+    output.push('No critical purchased items needing PO generation');
+  }
+
+  output.push('');
   output.push(`[${new Date().toISOString()}] Inventory Guardian complete`);
 
   return {
@@ -752,6 +872,8 @@ export async function runInventoryGuardianAgent(
     reorder_recommendations: recommendations,
     kpi_summary: kpiSummary,
     supply_chain_risks: supplyChainRisks,
+    auto_po_result: autoPOResult,
+    autonomy_check: autonomyCheck,
     output,
   };
 }

@@ -16,7 +16,7 @@ import type {
     POTrackingStatus,
     RequisitionRequestOptions,
 } from '../types';
-import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon, Squares2X2Icon, ListBulletIcon, AlertTriangleIcon, ClipboardDocumentListIcon } from '../components/icons';
+import { MailIcon, FileTextIcon, ChevronDownIcon, BotIcon, CheckCircleIcon, XCircleIcon, TruckIcon, DocumentTextIcon, CalendarIcon, SettingsIcon, Squares2X2Icon, ListBulletIcon, AlertTriangleIcon, ClipboardDocumentListIcon, LinkIcon, ClipboardIcon, XMarkIcon } from '../components/icons';
 import PODeliveryTimeline from '../components/PODeliveryTimeline';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CreatePoModal from '../components/CreatePoModal';
@@ -152,6 +152,67 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
     // Highlighted PO from deep link navigation
     const [highlightedPO, setHighlightedPO] = useState<string | null>(null);
+
+    // Share link modal state
+    const [shareLink, setShareLink] = useState<{
+        isOpen: boolean;
+        url: string;
+        token: string;
+        expiresAt?: string;
+        loading: boolean;
+        error?: string;
+    }>({ isOpen: false, url: '', token: '', loading: false });
+
+    // Generate shareable link for a Finale PO
+    const generateShareLink = async (finalePoId: string) => {
+        setShareLink({ isOpen: true, url: '', token: '', loading: true });
+
+        try {
+            const { data, error } = await supabase.rpc('create_po_share_link', {
+                p_finale_po_id: finalePoId,
+                p_expires_in_days: 30,
+                p_show_pricing: true,
+                p_show_notes: false,
+                p_show_tracking: true,
+            });
+
+            if (error) throw error;
+
+            const result = data?.[0];
+            if (result) {
+                const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+                const fullUrl = `${baseUrl}${result.share_url}`;
+                setShareLink({
+                    isOpen: true,
+                    url: fullUrl,
+                    token: result.share_token,
+                    expiresAt: result.expires_at,
+                    loading: false,
+                });
+            } else {
+                throw new Error('No share link returned');
+            }
+        } catch (err: any) {
+            console.error('[PurchaseOrders] Share link error:', err);
+            setShareLink(prev => ({
+                ...prev,
+                loading: false,
+                error: err?.message || 'Failed to generate share link',
+            }));
+        }
+    };
+
+    // Copy share link to clipboard
+    const copyShareLink = async () => {
+        if (shareLink.url) {
+            try {
+                await navigator.clipboard.writeText(shareLink.url);
+                addToast('Share link copied to clipboard!', 'success');
+            } catch {
+                addToast('Failed to copy to clipboard', 'error');
+            }
+        }
+    };
 
     // Check for highlighted PO from localStorage on mount
     useEffect(() => {
@@ -1599,6 +1660,16 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                             <FileTextIcon className="w-3.5 h-3.5" />
                                                             Download PDF
                                                         </Button>
+                                                        <Button
+                                                            onClick={() => generateShareLink(fpo.id)}
+                                                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ${isDark
+                                                                ? 'bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 border border-purple-600/30'
+                                                                : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+                                                            }`}
+                                                        >
+                                                            <LinkIcon className="w-3.5 h-3.5" />
+                                                            Share Link
+                                                        </Button>
                                                     </div>
 
                                                     {/* Metadata */}
@@ -2278,6 +2349,95 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                         setMatchModalPO(null);
                     }}
                 />
+            )}
+
+            {/* Share Link Modal */}
+            {shareLink.isOpen && (
+                <Modal
+                    isOpen={shareLink.isOpen}
+                    onClose={() => setShareLink(prev => ({ ...prev, isOpen: false }))}
+                    title="Share Purchase Order"
+                >
+                    <div className={`space-y-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                        {shareLink.loading ? (
+                            <div className="flex items-center justify-center py-8">
+                                <div className={`animate-spin rounded-full h-8 w-8 border-b-2 ${isDark ? 'border-purple-400' : 'border-purple-600'}`}></div>
+                                <span className="ml-3">Generating share link...</span>
+                            </div>
+                        ) : shareLink.error ? (
+                            <div className={`p-4 rounded-lg ${isDark ? 'bg-red-900/30 border border-red-700' : 'bg-red-50 border border-red-200'}`}>
+                                <p className={`text-sm ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                                    {shareLink.error}
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    Share this link with your vendor. They can view the PO without logging in.
+                                </p>
+
+                                {/* Share URL */}
+                                <div className={`flex items-center gap-2 p-3 rounded-lg font-mono text-sm ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-gray-100 border border-gray-200'}`}>
+                                    <input
+                                        type="text"
+                                        readOnly
+                                        value={shareLink.url}
+                                        className={`flex-1 bg-transparent outline-none ${isDark ? 'text-purple-400' : 'text-purple-700'}`}
+                                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                                    />
+                                    <Button
+                                        onClick={copyShareLink}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded transition-colors ${isDark
+                                            ? 'bg-purple-600/20 text-purple-400 hover:bg-purple-600/30'
+                                            : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                        }`}
+                                    >
+                                        <ClipboardIcon className="w-4 h-4" />
+                                        Copy
+                                    </Button>
+                                </div>
+
+                                {/* Expiration info */}
+                                {shareLink.expiresAt && (
+                                    <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                                        This link expires on {new Date(shareLink.expiresAt).toLocaleDateString()}
+                                    </p>
+                                )}
+
+                                {/* Features info */}
+                                <div className={`p-3 rounded-lg text-xs space-y-1 ${isDark ? 'bg-slate-800/50 border border-slate-700' : 'bg-gray-50 border border-gray-200'}`}>
+                                    <p className="font-medium mb-2">Link features:</p>
+                                    <p>• Vendor can view PO details without login</p>
+                                    <p>• Access is tracked (views, timestamps)</p>
+                                    <p>• Pricing and tracking info included</p>
+                                    <p>• Link can be revoked at any time</p>
+                                </div>
+
+                                {/* Action buttons */}
+                                <div className="flex justify-end gap-3 pt-2">
+                                    <Button
+                                        onClick={() => setShareLink(prev => ({ ...prev, isOpen: false }))}
+                                        className={`px-4 py-2 text-sm rounded-lg transition-colors ${isDark
+                                            ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                                            : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                                        }`}
+                                    >
+                                        Close
+                                    </Button>
+                                    <Button
+                                        onClick={() => {
+                                            copyShareLink();
+                                            setShareLink(prev => ({ ...prev, isOpen: false }));
+                                        }}
+                                        className={`px-4 py-2 text-sm font-medium rounded-lg text-white transition-colors bg-purple-600 hover:bg-purple-500`}
+                                    >
+                                        Copy & Close
+                                    </Button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </Modal>
             )}
         </>
     );

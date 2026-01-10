@@ -12,7 +12,6 @@ const routes: RouteCheck[] = [
     path: '/',
     assert: async (page) => {
       await expect(page.getByRole('heading', { name: /Dashboard/i })).toBeVisible();
-      await expect(page.getByRole('button', { name: /View Reorder Queue/i })).toBeVisible();
     },
   },
   {

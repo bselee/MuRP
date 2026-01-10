@@ -40,6 +40,7 @@ import AuthCallback from './pages/AuthCallback';
 import ResetPassword from './pages/ResetPassword';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import PublicPOView from './pages/PublicPOView';
 import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
 import { usePermissions } from './hooks/usePermissions';
@@ -1872,6 +1873,11 @@ const AppShell: React.FC = () => {
 
   if (currentPath === '/terms') {
     return <TermsOfService />;
+  }
+
+  // Public PO view - shareable links for vendors
+  if (currentPath.startsWith('/po/')) {
+    return <PublicPOView />;
   }
 
   if (authLoading || checkingOnboarding) {
