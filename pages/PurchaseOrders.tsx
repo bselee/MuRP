@@ -1617,39 +1617,46 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                                             {fpo.trackingNumber ? 'Edit Tracking' : 'Add Tracking'}
                                                         </Button>
                                                         <Button
-                                                            onClick={() => {
-                                                                // Convert Finale PO to PurchaseOrder format for PDF generation
-                                                                const parseFinaleNumber = (val: string | number | undefined | null): number => {
-                                                                    if (val === undefined || val === null || val === '--' || val === '') return 0;
-                                                                    if (typeof val === 'number') return val;
-                                                                    const num = parseFloat(String(val).replace(/,/g, ''));
-                                                                    return isNaN(num) ? 0 : num;
-                                                                };
-                                                                const poForPdf: PurchaseOrder = {
-                                                                    id: fpo.id,
-                                                                    orderId: fpo.orderId,
-                                                                    vendorId: fpo.vendorId,
-                                                                    status: fpo.status?.toLowerCase() || 'pending',
-                                                                    orderDate: fpo.orderDate,
-                                                                    expectedDate: fpo.expectedDate,
-                                                                    items: fpo.lineItems?.map((item: any) => ({
-                                                                        sku: item.product_id || '',
-                                                                        name: item.product_id || '',
-                                                                        quantity: parseFinaleNumber(item.quantity_ordered),
-                                                                        unitCost: parseFinaleNumber(item.unit_price),
-                                                                    })) || [],
-                                                                    total: parseFinaleNumber(fpo.total),
-                                                                    notes: fpo.publicNotes || fpo.privateNotes || '',
-                                                                };
-                                                                // Find vendor by vendorId or by name match
-                                                                const vendor = fpo.vendorId
-                                                                    ? vendorMap.get(fpo.vendorId)
-                                                                    : vendors.find(v => v.name === fpo.vendorName);
-                                                                if (vendor) {
-                                                                    generatePoPdf(poForPdf, vendor);
-                                                                    addToast(`Downloaded ${fpo.orderId}.pdf`, 'success');
-                                                                } else {
-                                                                    addToast(`Could not generate PDF: Vendor not found`, 'error');
+                                                            onClick={async () => {
+                                                                try {
+                                                                    // Convert Finale PO to PurchaseOrder format for PDF generation
+                                                                    const parseFinaleNumber = (val: string | number | undefined | null): number => {
+                                                                        if (val === undefined || val === null || val === '--' || val === '') return 0;
+                                                                        if (typeof val === 'number') return val;
+                                                                        const num = parseFloat(String(val).replace(/,/g, ''));
+                                                                        return isNaN(num) ? 0 : num;
+                                                                    };
+                                                                    const poForPdf: PurchaseOrder = {
+                                                                        id: fpo.id,
+                                                                        orderId: fpo.orderId,
+                                                                        vendorId: fpo.vendorId,
+                                                                        status: fpo.status?.toLowerCase() || 'pending',
+                                                                        orderDate: fpo.orderDate,
+                                                                        expectedDate: fpo.expectedDate,
+                                                                        items: fpo.lineItems?.map((item: any) => ({
+                                                                            sku: item.product_id || '',
+                                                                            name: item.product_id || '',
+                                                                            quantity: parseFinaleNumber(item.quantity_ordered),
+                                                                            unitCost: parseFinaleNumber(item.unit_price),
+                                                                        })) || [],
+                                                                        total: parseFinaleNumber(fpo.total),
+                                                                        notes: fpo.publicNotes || fpo.privateNotes || '',
+                                                                    };
+                                                                    // Find vendor by vendorId or by name match (case-insensitive)
+                                                                    let vendor = fpo.vendorId ? vendorMap.get(fpo.vendorId) : undefined;
+                                                                    if (!vendor && fpo.vendorName) {
+                                                                        const vendorNameLower = fpo.vendorName.toLowerCase().trim();
+                                                                        vendor = vendors.find(v => v.name?.toLowerCase().trim() === vendorNameLower);
+                                                                    }
+                                                                    if (vendor) {
+                                                                        await generatePoPdf(poForPdf, vendor);
+                                                                        addToast(`Downloaded ${fpo.orderId}.pdf`, 'success');
+                                                                    } else {
+                                                                        addToast(`Could not generate PDF: Vendor "${fpo.vendorName}" not found in system`, 'error');
+                                                                    }
+                                                                } catch (err) {
+                                                                    console.error('PDF generation error:', err);
+                                                                    addToast(`PDF generation failed: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error');
                                                                 }
                                                             }}
                                                             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-colors ${isDark
