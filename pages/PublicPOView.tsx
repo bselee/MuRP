@@ -7,8 +7,6 @@
  */
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { generatePoPdf } from '../services/pdfService';
-import type { PurchaseOrder } from '../types';
 
 interface POData {
   type: 'internal' | 'finale';
@@ -108,34 +106,9 @@ const PublicPOView: React.FC = () => {
   }, [token]);
 
   const handleDownloadPdf = async () => {
-    if (!poData) return;
-
-    const poForPdf: PurchaseOrder = {
-      id: poData.po_id,
-      orderId: poData.order_id,
-      vendorId: '',
-      status: poData.status?.toLowerCase() || 'pending',
-      orderDate: poData.order_date,
-      expectedDate: poData.expected_date,
-      items: poData.items?.map((item) => ({
-        sku: item.product_id || item.sku || '',
-        name: item.name || item.product_id || '',
-        quantity: item.quantity_ordered || item.quantity || 0,
-        unitCost: item.unit_price || item.unitCost || 0,
-      })) || [],
-      total: poData.total || 0,
-      notes: poData.notes || '',
-    };
-
-    const vendor = {
-      id: '',
-      name: poData.vendor_name || 'Vendor',
-      email: '',
-      phone: '',
-      address: '',
-    };
-
-    generatePoPdf(poForPdf, vendor as any);
+    // Use the browser's print dialog to save as PDF
+    // This uses the page's professional template styling
+    window.print();
 
     // Log PDF download
     if (token && sessionId) {

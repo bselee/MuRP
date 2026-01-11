@@ -7,7 +7,8 @@ import type {
     CreatePurchaseOrderItemInput,
 } from '../types';
 import Modal from './Modal';
-import { PlusCircleIcon, TrashIcon, BotIcon } from './icons';
+import { PlusCircleIcon, TrashIcon, BotIcon, EyeIcon } from './icons';
+import POLivePreview from './POLivePreview';
 
 interface CreatePoModalProps {
     isOpen: boolean;
@@ -68,6 +69,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
     const [suggestedMeta, setSuggestedMeta] = useState<Record<string, SuggestionMeta>>({});
     const [trackingNumber, setTrackingNumber] = useState('');
     const [trackingCarrier, setTrackingCarrier] = useState('');
+    const [showPreview, setShowPreview] = useState(false);
 
     const initializedVendorRef = useRef<string | null>(null);
 
@@ -333,6 +335,29 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
     const sourceLabel = initialData?.sourceLabel;
     const vendorLocked = initialData?.vendorLocked;
 
+    // Get selected vendor for preview
+    const selectedVendor = useMemo(() =>
+        vendors.find(v => v.id === selectedVendorId),
+    [vendors, selectedVendorId]);
+
+    // Preview data for live preview component
+    const previewData = useMemo(() => ({
+        poNumber: 'DRAFT',
+        vendorId: selectedVendorId,
+        vendorName: selectedVendor?.name,
+        orderDate: new Date().toISOString().split('T')[0],
+        expectedDate,
+        paymentTerms: selectedVendor?.paymentTerms || 'Net 30',
+        notes,
+        items: poItems.map(item => ({
+            sku: item.sku,
+            name: item.name,
+            quantity: item.quantity,
+            unitCost: item.unitCost,
+            unit: 'ea',
+        })),
+    }), [selectedVendorId, selectedVendor, expectedDate, notes, poItems]);
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Create New Purchase Order">
             <div className="space-y-6">
@@ -460,6 +485,27 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                         placeholder="Add any special instructions for this order..."
                     />
                 </div>
+
+                {/* Live Preview Section */}
+                {selectedVendorId && poItems.length > 0 && (
+                    <div className="border-t border-gray-700 pt-4">
+                        <button
+                            onClick={() => setShowPreview(!showPreview)}
+                            className="flex items-center gap-2 text-sm text-accent-400 hover:text-accent-300 transition-colors"
+                        >
+                            <EyeIcon className="w-4 h-4" />
+                            {showPreview ? 'Hide Preview' : 'Preview Purchase Order'}
+                        </button>
+                        {showPreview && (
+                            <div className="mt-4">
+                                <POLivePreview
+                                    data={previewData}
+                                    vendor={selectedVendor}
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="flex justify-end pt-6 border-t border-gray-700">
                     <Button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</Button>

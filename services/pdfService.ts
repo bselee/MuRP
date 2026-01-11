@@ -1,5 +1,6 @@
 import type { PurchaseOrder, Vendor, InventoryItem } from '../types';
 import { templateService } from './templateService';
+import { openPoPrintView as openProfessionalPoPrintView } from './poHtmlTemplate';
 
 declare const jspdf: any;
 
@@ -241,6 +242,15 @@ const buildPoPdf = async (po: PurchaseOrder, vendor: Vendor) => {
 export const generatePoPdf = async (po: PurchaseOrder, vendor: Vendor) => {
     const { doc, fileName } = await buildPoPdf(po, vendor);
     doc.save(fileName);
+};
+
+/**
+ * Open the professional HTML template in a new window for printing.
+ * This is the preferred method for generating PO PDFs - uses the
+ * professional template design with DM Sans font and clean styling.
+ */
+export const openPoPrintView = async (po: PurchaseOrder, vendor: Vendor) => {
+    return openProfessionalPoPrintView(po, vendor);
 };
 
 export const getPoPdfAttachment = async (po: PurchaseOrder, vendor: Vendor) => {

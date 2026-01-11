@@ -69,6 +69,7 @@ import {
   Pencil,
   Play,
   Plus,
+  Printer,
   PlusCircle,
   QrCode,
   RefreshCcw,
@@ -153,6 +154,7 @@ export const ChevronDoubleLeftIcon = wrapIcon(ChevronsLeft);
 export const InformationCircleIcon = wrapIcon(Info);
 export const WrenchScrewdriverIcon = wrapIcon(Wrench);
 export const PencilIcon = wrapIcon(Pencil);
+export const PrinterIcon = wrapIcon(Printer);
 export const TrashIcon = wrapIcon(Trash2);
 export const ClipboardListIcon = wrapIcon(ClipboardList);
 export const PhotoIcon = wrapIcon(Image);
