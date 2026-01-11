@@ -7,7 +7,7 @@ import type {
     CreatePurchaseOrderItemInput,
 } from '../types';
 import Modal from './Modal';
-import { PlusCircleIcon, TrashIcon, BotIcon, EyeIcon, LightBulbIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
+import { PlusCircleIcon, TrashIcon, BotIcon, EyeIcon, LightBulbIcon, ChevronDownIcon, ChevronUpIcon, SendIcon, SaveIcon } from './icons';
 import POLivePreview from './POLivePreview';
 import POSuggestionCard, { type POSuggestion } from './POSuggestionCard';
 import { generateVendorSuggestions, getSuggestionsBreakdown } from '../services/poSuggestionService';
@@ -71,7 +71,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
     const [suggestedMeta, setSuggestedMeta] = useState<Record<string, SuggestionMeta>>({});
     const [trackingNumber, setTrackingNumber] = useState('');
     const [trackingCarrier, setTrackingCarrier] = useState('');
-    const [showPreview, setShowPreview] = useState(false);
+    const [showPreview, setShowPreview] = useState(true); // Default to showing preview
     const [showSuggestions, setShowSuggestions] = useState(true);
     const [aiSuggestions, setAiSuggestions] = useState<POSuggestion[]>([]);
     const [dismissedSkus, setDismissedSkus] = useState<Set<string>>(new Set());
@@ -287,7 +287,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
         setItemToAdd('');
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (status: 'Pending' | 'Submitted' = 'Pending') => {
         if (!selectedVendorId || poItems.length === 0) {
             return;
         }
@@ -315,6 +315,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                 requisitionIds: requisitionIds.length ? requisitionIds : undefined,
                 trackingNumber: trackingNumber || undefined,
                 trackingCarrier: trackingCarrier || undefined,
+                status, // Pass status to indicate draft vs submitted
             });
         } finally {
             setIsSubmitting(false);
@@ -587,35 +588,82 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                 </div>
 
                 {/* Live Preview Section */}
-                {selectedVendorId && poItems.length > 0 && (
-                    <div className="border-t border-gray-700 pt-4">
+                {selectedVendorId && (
+                    <div className="border border-gray-700/50 bg-gray-800/30 rounded-xl overflow-hidden">
+                        {/* Preview Header */}
                         <button
                             onClick={() => setShowPreview(!showPreview)}
-                            className="flex items-center gap-2 text-sm text-accent-400 hover:text-accent-300 transition-colors"
+                            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-700/30 transition-colors"
                         >
-                            <EyeIcon className="w-4 h-4" />
-                            {showPreview ? 'Hide Preview' : 'Preview Purchase Order'}
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-accent-600/20 rounded-lg">
+                                    <EyeIcon className="w-5 h-5 text-accent-400" />
+                                </div>
+                                <div className="text-left">
+                                    <h3 className="font-semibold text-white text-sm">Document Preview</h3>
+                                    <p className="text-xs text-gray-400">
+                                        {poItems.length === 0 ? 'Add items to preview your PO' : `${poItems.length} item${poItems.length !== 1 ? 's' : ''} • ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(poItems.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0))}`}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {poItems.length > 0 && (
+                                    <span className="text-xs text-accent-400 bg-accent-500/10 px-2 py-1 rounded-full">
+                                        Live
+                                    </span>
+                                )}
+                                {showPreview ? (
+                                    <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+                                ) : (
+                                    <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+                                )}
+                            </div>
                         </button>
+
+                        {/* Preview Content */}
                         {showPreview && (
-                            <div className="mt-4">
-                                <POLivePreview
-                                    data={previewData}
-                                    vendor={selectedVendor}
-                                />
+                            <div className="border-t border-gray-700/50">
+                                {poItems.length > 0 ? (
+                                    <POLivePreview
+                                        data={previewData}
+                                        vendor={selectedVendor}
+                                    />
+                                ) : (
+                                    <div className="p-8 text-center">
+                                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-700/50 flex items-center justify-center">
+                                            <EyeIcon className="w-8 h-8 text-gray-500" />
+                                        </div>
+                                        <p className="text-gray-400 text-sm">Select items to see your purchase order preview</p>
+                                        <p className="text-gray-500 text-xs mt-1">The document will update in real-time as you make changes</p>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
                 )}
 
-                <div className="flex justify-end pt-6 border-t border-gray-700">
-                    <Button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors mr-3">Cancel</Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={!selectedVendorId || poItems.length === 0 || isSubmitting}
-                        className="bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
-                    >
-                        Create Purchase Order
+                <div className="flex items-center justify-between pt-6 border-t border-gray-700">
+                    <Button onClick={onClose} className="bg-gray-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-500 transition-colors">
+                        Cancel
                     </Button>
+                    <div className="flex items-center gap-3">
+                        <Button
+                            onClick={() => handleSubmit('Pending')}
+                            disabled={!selectedVendorId || poItems.length === 0 || isSubmitting}
+                            className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+                        >
+                            <SaveIcon className="w-4 h-4" />
+                            Save as Draft
+                        </Button>
+                        <Button
+                            onClick={() => handleSubmit('Submitted')}
+                            disabled={!selectedVendorId || poItems.length === 0 || isSubmitting}
+                            className="flex items-center gap-2 bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+                        >
+                            <SendIcon className="w-4 h-4" />
+                            Create & Send
+                        </Button>
+                    </div>
                 </div>
             </div>
         </Modal>
