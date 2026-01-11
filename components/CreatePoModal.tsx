@@ -7,8 +7,10 @@ import type {
     CreatePurchaseOrderItemInput,
 } from '../types';
 import Modal from './Modal';
-import { PlusCircleIcon, TrashIcon, BotIcon, EyeIcon } from './icons';
+import { PlusCircleIcon, TrashIcon, BotIcon, EyeIcon, LightBulbIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
 import POLivePreview from './POLivePreview';
+import POSuggestionCard, { type POSuggestion } from './POSuggestionCard';
+import { generateVendorSuggestions, getSuggestionsBreakdown } from '../services/poSuggestionService';
 
 interface CreatePoModalProps {
     isOpen: boolean;
@@ -70,6 +72,9 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
     const [trackingNumber, setTrackingNumber] = useState('');
     const [trackingCarrier, setTrackingCarrier] = useState('');
     const [showPreview, setShowPreview] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(true);
+    const [aiSuggestions, setAiSuggestions] = useState<POSuggestion[]>([]);
+    const [dismissedSkus, setDismissedSkus] = useState<Set<string>>(new Set());
 
     const initializedVendorRef = useRef<string | null>(null);
 
@@ -329,8 +334,55 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
             setTrackingNumber('');
             setTrackingCarrier('');
             initializedVendorRef.current = null;
+            setAiSuggestions([]);
+            setDismissedSkus(new Set());
+            setShowSuggestions(true);
         }
     }, [isOpen]);
+
+    // Generate AI suggestions when vendor changes
+    useEffect(() => {
+        if (!selectedVendorId || !isOpen) {
+            setAiSuggestions([]);
+            return;
+        }
+
+        const existingSkus = new Set(poItems.map(item => item.sku));
+        const allDismissed = new Set([...existingSkus, ...dismissedSkus]);
+        const suggestions = generateVendorSuggestions(vendorInventory, allDismissed, {
+            maxSuggestions: 8,
+            includeOptional: true,
+        });
+        setAiSuggestions(suggestions);
+    }, [selectedVendorId, vendorInventory, poItems, dismissedSkus, isOpen]);
+
+    // Handle accepting a suggestion (add to PO items)
+    const handleAcceptSuggestion = useCallback((suggestion: POSuggestion) => {
+        setPoItems(prev => [
+            ...prev,
+            {
+                sku: suggestion.sku,
+                name: suggestion.name,
+                quantity: suggestion.quantity,
+                unitCost: suggestion.unitCost,
+            },
+        ]);
+        setSuggestedMeta(prev => ({
+            ...prev,
+            [suggestion.sku]: {
+                label: suggestion.reason.replace(/_/g, ' '),
+                detail: suggestion.reasoning,
+            },
+        }));
+    }, []);
+
+    // Handle dismissing a suggestion
+    const handleDismissSuggestion = useCallback((sku: string) => {
+        setDismissedSkus(prev => new Set([...prev, sku]));
+    }, []);
+
+    // Suggestion counts for header
+    const suggestionBreakdown = useMemo(() => getSuggestionsBreakdown(aiSuggestions), [aiSuggestions]);
 
     const sourceLabel = initialData?.sourceLabel;
     const vendorLocked = initialData?.vendorLocked;
@@ -394,6 +446,54 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                         />
                     </div>
                 </div>
+
+                {/* AI Suggestions Panel */}
+                {selectedVendorId && aiSuggestions.length > 0 && (
+                    <div className="border border-accent-500/30 bg-accent-900/20 rounded-lg overflow-hidden">
+                        {/* Suggestions Header */}
+                        <button
+                            onClick={() => setShowSuggestions(!showSuggestions)}
+                            className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent-800/20 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-1.5 bg-accent-600/30 rounded-lg">
+                                    <LightBulbIcon className="w-5 h-5 text-accent-400" />
+                                </div>
+                                <div className="text-left">
+                                    <h3 className="font-semibold text-white text-sm">AI Recommendations</h3>
+                                    <p className="text-xs text-gray-400">
+                                        {aiSuggestions.length} items suggested based on stock levels
+                                        {suggestionBreakdown.critical > 0 && (
+                                            <span className="ml-2 text-red-400">• {suggestionBreakdown.critical} critical</span>
+                                        )}
+                                        {suggestionBreakdown.high > 0 && (
+                                            <span className="ml-2 text-orange-400">• {suggestionBreakdown.high} high priority</span>
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                            {showSuggestions ? (
+                                <ChevronUpIcon className="w-5 h-5 text-gray-400" />
+                            ) : (
+                                <ChevronDownIcon className="w-5 h-5 text-gray-400" />
+                            )}
+                        </button>
+
+                        {/* Suggestions List */}
+                        {showSuggestions && (
+                            <div className="p-4 pt-0 space-y-3 max-h-[400px] overflow-y-auto">
+                                {aiSuggestions.map(suggestion => (
+                                    <POSuggestionCard
+                                        key={suggestion.sku}
+                                        suggestion={suggestion}
+                                        onAccept={handleAcceptSuggestion}
+                                        onDismiss={handleDismissSuggestion}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
