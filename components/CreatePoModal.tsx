@@ -535,11 +535,18 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                                     <p className="text-sm font-medium text-white">{item.name}</p>
                                     <p className="text-xs text-gray-400">{item.sku} • Unit Cost: ${item.unitCost.toFixed(2)}</p>
                                     {suggestedMeta[item.sku] && (
-                                        <p className="text-xs text-accent-300 flex items-center gap-1 mt-1">
-                                            <BotIcon className="w-3.5 h-3.5" />
-                                            <span className="font-semibold">{suggestedMeta[item.sku].label}</span>
-                                            <span className="text-accent-200/80">· {suggestedMeta[item.sku].detail}</span>
-                                        </p>
+                                        <div className="flex items-center gap-2 mt-1.5">
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-accent-500/20 text-accent-300 px-1.5 py-0.5 rounded">
+                                                <BotIcon className="w-3 h-3" />
+                                                AI Suggested
+                                            </span>
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded">
+                                                User Added
+                                            </span>
+                                            <span className="text-[10px] text-gray-400">
+                                                {suggestedMeta[item.sku].label}
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
                                 <input
