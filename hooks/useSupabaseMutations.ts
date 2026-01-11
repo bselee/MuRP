@@ -39,14 +39,18 @@ export async function createPurchaseOrder(po: CreatePurchaseOrderInput): Promise
       .eq('id', po.vendorId)
       .single();
 
-    // 2. Insert PO header
+    // Determine status and set appropriate timestamps
+    const normalizedStatus = statusMap[po.status] || 'draft';
+    const now = new Date().toISOString();
+
+    // 2. Insert PO header with status-specific timestamps
     const { data: newPO, error: poError } = await supabase
       .from('purchase_orders')
       .insert({
         order_id: po.orderId || po.id,
         vendor_id: po.vendorId ?? null,
         supplier_name: vendor?.name || po.supplier || 'Unknown Vendor',
-        status: statusMap[po.status] || 'draft',
+        status: normalizedStatus,
         order_date: po.orderDate || po.createdAt,
         expected_date: po.estimatedReceiveDate || po.expectedDate,
         internal_notes: po.vendorNotes || po.notes,
@@ -56,7 +60,11 @@ export async function createPurchaseOrder(po: CreatePurchaseOrderInput): Promise
         tracking_number: po.trackingNumber || null,
         tracking_carrier: po.trackingCarrier || null,
         tracking_status: 'awaiting_confirmation',
-        record_created: new Date().toISOString(),
+        record_created: now,
+        // Set sent_at if PO is being created in 'sent' status
+        sent_at: normalizedStatus === 'sent' ? now : null,
+        // Set committed_at if PO is being created in 'committed' status
+        committed_at: normalizedStatus === 'committed' ? now : null,
       } as any)
       .select('id')
       .single();
@@ -207,12 +215,25 @@ export async function updatePurchaseOrderStatus(
       .or(`order_id.eq.${id},id.eq.${id}`)
       .maybeSingle();
 
+    // Build update payload with status-specific timestamps
+    const updatePayload: Record<string, any> = {
+      status: normalizedStatus,
+      record_last_updated: new Date().toISOString(),
+    };
+
+    // Set sent_at timestamp when transitioning to 'sent' status
+    if (normalizedStatus === 'sent' && poData?.status !== 'sent') {
+      updatePayload.sent_at = new Date().toISOString();
+    }
+
+    // Set committed_at timestamp when transitioning to 'committed' status
+    if (normalizedStatus === 'committed' && poData?.status !== 'committed') {
+      updatePayload.committed_at = new Date().toISOString();
+    }
+
     const { error } = await supabase
       .from('purchase_orders')
-      .update({
-        status: normalizedStatus,
-        record_last_updated: new Date().toISOString()
-      } as any)
+      .update(updatePayload as any)
       .or(`order_id.eq.${id},id.eq.${id}`);
 
     if (error) throw error;
