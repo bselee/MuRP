@@ -321,6 +321,9 @@ export function generateVendorSuggestions(
         targetDays,
         abcClass: item.abcClass as 'A' | 'B' | 'C' | undefined,
         xyzClass: item.xyzClass as 'X' | 'Y' | 'Z' | undefined,
+        leadTimeDays: leadTime,
+        velocityTrend: velocity.trend === 'accelerating' ? 'up' : velocity.trend === 'decelerating' ? 'down' : 'stable',
+        trendPercent: velocity.trendPercent > 0 ? velocity.trendPercent : undefined,
       },
     });
   }

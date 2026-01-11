@@ -33,6 +33,9 @@ export interface POSuggestion {
     targetDays?: number;
     abcClass?: 'A' | 'B' | 'C';
     xyzClass?: 'X' | 'Y' | 'Z';
+    leadTimeDays?: number;
+    velocityTrend?: 'up' | 'stable' | 'down';
+    trendPercent?: number;
   };
   urgencyLevel: 'critical' | 'high' | 'medium' | 'low';
 }
@@ -89,6 +92,57 @@ const formatCurrency = (amount: number): string => {
   return `$${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 };
 
+/**
+ * Generate quick reason tags based on suggestion details
+ * Shows at-a-glance intelligence: "<30 days", "Long lead", "Sales ↑ 35%"
+ */
+function getQuickTags(suggestion: POSuggestion): Array<{ label: string; color: string }> {
+  const tags: Array<{ label: string; color: string }> = [];
+  const { details, reason } = suggestion;
+  const daysOfCover = details.daysOfCover ?? 999;
+  const leadTime = details.leadTimeDays ?? 14;
+
+  // Coverage-based tags (most important)
+  if (daysOfCover < 7) {
+    tags.push({ label: `${Math.round(daysOfCover)}d left`, color: 'bg-red-500/30 text-red-300 border border-red-500/40' });
+  } else if (daysOfCover < 14) {
+    tags.push({ label: `<2 wks`, color: 'bg-orange-500/20 text-orange-300' });
+  } else if (daysOfCover < 30) {
+    tags.push({ label: `<30 days`, color: 'bg-amber-500/20 text-amber-300' });
+  } else if (daysOfCover < 60) {
+    tags.push({ label: `<60 days`, color: 'bg-yellow-500/20 text-yellow-300' });
+  }
+
+  // Lead time risk
+  if (leadTime >= 21) {
+    tags.push({ label: `${leadTime}d lead`, color: 'bg-orange-500/20 text-orange-300' });
+  } else if (daysOfCover < leadTime * 1.5) {
+    tags.push({ label: 'Lead time risk', color: 'bg-red-500/20 text-red-300' });
+  }
+
+  // Velocity trend (sales uptick)
+  if (details.velocityTrend === 'up' && details.trendPercent) {
+    tags.push({ label: `↑ ${Math.round(details.trendPercent)}%`, color: 'bg-green-500/20 text-green-300' });
+  }
+
+  // Below ROP
+  if (reason === 'below_rop') {
+    tags.push({ label: 'Below ROP', color: 'bg-red-500/20 text-red-300' });
+  }
+
+  // ABC priority tag for A-items
+  if (details.abcClass === 'A') {
+    tags.push({ label: 'A-item', color: 'bg-purple-500/20 text-purple-300' });
+  }
+
+  // High velocity indicator
+  if (details.dailyVelocity && details.dailyVelocity >= 10) {
+    tags.push({ label: `${details.dailyVelocity.toFixed(0)}/day`, color: 'bg-blue-500/20 text-blue-300' });
+  }
+
+  return tags.slice(0, 5); // Max 5 tags
+}
+
 const POSuggestionCard: React.FC<POSuggestionCardProps> = ({
   suggestion,
   onAccept,
@@ -98,6 +152,7 @@ const POSuggestionCard: React.FC<POSuggestionCardProps> = ({
   const config = urgencyConfig[suggestion.urgencyLevel];
   const { details } = suggestion;
   const lineTotal = suggestion.quantity * suggestion.unitCost;
+  const quickTags = getQuickTags(suggestion);
 
   return (
     <div className={`rounded-lg border ${config.border} ${config.bg} p-4 transition-all hover:shadow-lg`}>
@@ -137,18 +192,26 @@ const POSuggestionCard: React.FC<POSuggestionCardProps> = ({
         </span>
       </div>
 
-      {/* Reason Badge */}
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-xs font-medium text-gray-300 bg-gray-700/50 px-2 py-1 rounded">
+      {/* Quick Reason Tags */}
+      <div className="flex flex-wrap items-center gap-1.5 mb-3">
+        {quickTags.map((tag, idx) => (
+          <span key={idx} className={`text-[10px] font-semibold px-2 py-0.5 rounded ${tag.color}`}>
+            {tag.label}
+          </span>
+        ))}
+        <span className="text-[10px] font-medium text-gray-400 bg-gray-700/40 px-2 py-0.5 rounded">
           {reasonLabels[suggestion.reason]}
         </span>
       </div>
 
-      {/* Reasoning Text */}
-      <div className="flex items-start gap-2 mb-4 p-2.5 bg-gray-800/30 rounded-md">
-        <LightBulbIcon className="w-4 h-4 text-accent-400 flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-gray-300 leading-relaxed">{suggestion.reasoning}</p>
-      </div>
+      {/* Reasoning Text - Collapsible for space */}
+      <details className="mb-3 group">
+        <summary className="flex items-center gap-2 cursor-pointer text-xs text-gray-400 hover:text-gray-300">
+          <LightBulbIcon className="w-3.5 h-3.5 text-accent-400" />
+          <span>Why this suggestion?</span>
+        </summary>
+        <p className="mt-2 text-xs text-gray-300 leading-relaxed pl-5">{suggestion.reasoning}</p>
+      </details>
 
       {/* Stock Details */}
       <div className="grid grid-cols-4 gap-2 mb-4 text-center">
