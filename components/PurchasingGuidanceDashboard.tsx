@@ -5,6 +5,7 @@ import { getKPISummary, type KPISummary, type InventoryKPIs, type PastDuePOLine 
 import { analyzeSupplyChainRisks, type SupplyChainRisk } from '../services/supplyChainRiskService';
 import { supabase } from '../lib/supabase/client';
 import { createPurchaseOrder, batchUpdateInventory } from '../hooks/useSupabaseMutations';
+import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
 import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon, AlertTriangleIcon, TrendingUpIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
 import type { CreatePurchaseOrderInput } from '../types';
 import SupplyChainRiskPanel from './SupplyChainRiskPanel';
@@ -94,6 +95,9 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
 
     // Out of stock items
     const [stockoutItems, setStockoutItems] = useState<StockoutItem[]>([]);
+
+    // Global SKU filter - exclude SKUs marked as "do not reorder"
+    const { isExcluded: isSkuExcluded } = useGlobalSkuFilter();
 
     // Ref for scrolling to replenishment section
     const replenishmentRef = useRef<HTMLDivElement>(null);
@@ -276,9 +280,11 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
         });
     };
 
-    // Toggle all items (only items needing orders, not ones already on PO)
+    // Toggle all items (only items needing orders, not ones already on PO, excluding globally excluded SKUs)
     const toggleSelectAll = () => {
-        const needsOrderSkus = advice.filter(item => !item.linked_po).map(item => item.sku);
+        const needsOrderSkus = advice
+            .filter(item => !item.linked_po && !isSkuExcluded(item.sku))
+            .map(item => item.sku);
         if (selectedItems.size === needsOrderSkus.length && needsOrderSkus.length > 0) {
             setSelectedItems(new Set());
         } else {
@@ -748,9 +754,14 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
         });
     };
 
+    // Filter out globally excluded SKUs first
+    const filteredAdvice = advice.filter(item => !isSkuExcluded(item.sku));
+    const filteredStockouts = stockoutItems.filter(item => !isSkuExcluded(item.sku));
+    const filteredRisks = supplyChainRisks.filter(risk => !isSkuExcluded(risk.sku));
+
     // Split advice into items needing action vs items already on order
-    const needsOrder = advice.filter(item => !item.linked_po);
-    const onOrder = advice.filter(item => !!item.linked_po);
+    const needsOrder = filteredAdvice.filter(item => !item.linked_po);
+    const onOrder = filteredAdvice.filter(item => !!item.linked_po);
 
     const selectedCount = selectedItems.size;
     const allSelected = selectedCount === needsOrder.length && needsOrder.length > 0;
@@ -940,9 +951,9 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
             )}
 
             {/* Supply Chain Risk Panel - Two-sentence format with action menu */}
-            {(supplyChainRisks.length > 0 || risksLoading) && (
+            {(filteredRisks.length > 0 || risksLoading) && (
                 <SupplyChainRiskPanel
-                    risks={supplyChainRisks}
+                    risks={filteredRisks}
                     loading={risksLoading}
                     maxItems={5}
                     onCreatePO={handleCreatePOFromRisk}
@@ -954,9 +965,9 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
             )}
 
             {/* Out of Stock Contingency Card */}
-            {stockoutItems.length > 0 && (
+            {filteredStockouts.length > 0 && (
                 <StockoutContingencyCard
-                    items={stockoutItems}
+                    items={filteredStockouts}
                     onNavigateToSku={onNavigateToSku}
                     onNavigateToPO={onNavigateToPO}
                     onCreatePO={handleCreatePOFromRisk}
