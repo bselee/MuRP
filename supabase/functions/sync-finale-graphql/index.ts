@@ -693,7 +693,7 @@ serve(async (req) => {
       let hasMore = true;
       let cursor: string | null = null;
 
-      while (hasMore && allProducts.length < 2000) {
+      while (hasMore && allProducts.length < 10000) {
         const data = await graphqlQuery(PRODUCTS_QUERY, { first: 100, after: cursor });
         const connection = data.productViewConnection;
 
