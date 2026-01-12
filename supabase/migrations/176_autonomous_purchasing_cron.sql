@@ -140,7 +140,15 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Schedule the autonomous purchasing workflow to run daily at 6 AM UTC
--- This calls an edge function that runs the full workflow
+-- First unschedule if exists, then schedule fresh
+DO $$
+BEGIN
+    -- Remove existing job if it exists
+    PERFORM cron.unschedule('autonomous-purchasing-daily');
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END $$;
+
 SELECT cron.schedule(
     'autonomous-purchasing-daily',
     '0 6 * * *',  -- 6:00 AM UTC daily
@@ -160,9 +168,17 @@ SELECT cron.schedule(
         )
     );
     $$
-) ON CONFLICT (jobname) DO UPDATE SET schedule = '0 6 * * *';
+);
 
 -- Also run a lighter check at noon for critical items only
+DO $$
+BEGIN
+    -- Remove existing job if it exists
+    PERFORM cron.unschedule('autonomous-purchasing-midday');
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END $$;
+
 SELECT cron.schedule(
     'autonomous-purchasing-midday',
     '0 12 * * 1-5',  -- 12:00 PM UTC, weekdays only
@@ -183,7 +199,7 @@ SELECT cron.schedule(
         )
     );
     $$
-) ON CONFLICT (jobname) DO UPDATE SET schedule = '0 12 * * 1-5';
+);
 
 -- Add comment
 COMMENT ON TABLE agent_action_audit IS 'Audit trail for all autonomous agent actions';
