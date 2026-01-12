@@ -254,10 +254,10 @@ WHERE created_at > NOW() - INTERVAL '7 days';
    - Overall quality percentage
    - Specific issue flagging
 
-4. **docs/AGENT_PRODUCTION_ASSESSMENT.md**
-   - Comprehensive agent output examples
-   - Shows realistic production scenarios
-   - Explains what each agent does
+4. **docs/AGENT_SYSTEM.md**
+   - Complete agent system architecture
+   - Agent catalog with configuration
+   - Testing framework and effectiveness metrics
 
 ---
 

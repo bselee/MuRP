@@ -568,7 +568,7 @@ Only proceed to commit when all tests pass and build succeeds.
 - `SCHEMA_ARCHITECTURE.md` - Complete 4-layer schema design
 - `docs/MIGRATION_CONVENTIONS.md` - Supabase migration numbering rules
 - `docs/CRITICAL_ARCHITECTURE.md` - Complete system architecture overview
-- `docs/AGENT_SKILL_MCP_ARCHITECTURE.md` - Claude agents, skills, MCP server
+- `docs/AGENT_SYSTEM.md` - Complete agent system architecture and configuration
 - `docs/WORKFLOW_AUTOMATION_AGENTS.md` - Agent orchestration patterns
 - `.github/copilot-instructions.md` - Development guidelines, TFR protocol, deployment
 
