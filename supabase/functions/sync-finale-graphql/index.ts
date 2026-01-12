@@ -217,21 +217,37 @@ const PURCHASE_ORDERS_QUERY = `
 function calculateTotalStock(node: any): number {
   const stockFields = [
     'stockMain',      // 10000 - BuildASoil main
-    'stockMfg',       // 10003 - Manufacturing  
+    'stockMfg',       // 10003 - Manufacturing
     'stockShipping',  // 10005 - BuildASoil Shipping (PRIMARY for stock assessment)
     'stock59',        // 10059
     'stock109',       // 10109
   ];
-  
+
   let total = 0;
+  const breakdown: Record<string, number> = {};
+
   for (const field of stockFields) {
     const value = node[field];
-    if (value) {
-      total += parseFloat(value) || 0;
+    const parsed = parseFloat(value) || 0;
+    breakdown[field] = parsed;
+    if (parsed > 0) {
+      total += parsed;
     }
   }
+
+  // Log first 10 products with non-zero stock for debugging
+  if (total > 0 && !calculateTotalStock.debuggedProducts) {
+    calculateTotalStock.debuggedProducts = 0;
+  }
+  if (total > 0 && calculateTotalStock.debuggedProducts < 10) {
+    console.log(`[Sync] Stock breakdown for ${node.productId}:`, breakdown, `total=${total}`);
+    calculateTotalStock.debuggedProducts++;
+  }
+
   return total;
 }
+// Track how many products we've logged
+(calculateTotalStock as any).debuggedProducts = 0;
 
 // Get shipping stock only (BuildASoil Shipping - 10005)
 // This is the most accurate for manual stock assessment per user request
@@ -316,14 +332,17 @@ function transformProduct(node: any): any {
 // Transform GraphQL product to inventory_items table (for app compatibility)
 function transformToInventoryItem(node: any): any {
   if (!node.productId) return null;
-  
+
   // Skip inactive and Deprecating products
   if (!isActiveProduct(node)) return null;
-  
-  // Use BuildASoil Shipping (10005) as PRIMARY stock reference
-  // This is the most accurate for manual stock assessment
-  const shippingStock = getShippingStock(node);
+
+  // Calculate total stock from ALL facilities
   const totalStock = calculateTotalStock(node);
+
+  // Debug logging for stock values
+  if (totalStock > 0) {
+    console.log(`[Sync] Product ${node.productId}: totalStock=${totalStock}`);
+  }
 
   return {
     sku: node.productId,
@@ -331,9 +350,8 @@ function transformToInventoryItem(node: any): any {
     category: node.category || 'Uncategorized',
     reorder_point: node.stdReorderLevel ? Math.round(parseFloat(node.stdReorderLevel)) : 0,
     moq: node.stdReorderQuantity ? Math.round(parseFloat(node.stdReorderQuantity)) : 1,
-    // Use shipping stock as primary (most accurate for assessment)
-    // Fall back to total if shipping is 0
-    stock: Math.round(shippingStock > 0 ? shippingStock : totalStock),
+    // Use TOTAL stock from all facilities (not just shipping)
+    stock: Math.round(totalStock),
     on_order: 0, // Will be calculated from PO sync
     updated_at: new Date().toISOString(),
   };
