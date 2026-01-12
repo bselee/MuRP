@@ -109,7 +109,6 @@ const PRODUCTS_QUERY = `
           stockShipping: stockColumnQuantityOnHandUnitsBuildasoilorganicsapifacility10005
           stock59: stockColumnQuantityOnHandUnitsBuildasoilorganicsapifacility10059
           stock109: stockColumnQuantityOnHandUnitsBuildasoilorganicsapifacility10109
-          dropshipped: customFieldDropshipped
         }
         cursor
       }
