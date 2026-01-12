@@ -575,32 +575,46 @@ const UnifiedPOList: React.FC<UnifiedPOListProps> = ({
     }
   };
 
-  // Summary stats
+  // Summary stats - actionable procurement metrics
   const stats = useMemo(() => {
     const all = [...internalPOs, ...finalePOs.filter(fpo => !(fpo.orderId || '').toLowerCase().includes('dropshippo'))];
+    const now = new Date();
+
     return {
       total: all.length,
-      atRisk: all.filter(p => {
-        const status = (('trackingStatus' in p && p.trackingStatus) || ('status' in p && p.status) || '').toLowerCase();
-        return status === 'exception' || status === 'delayed';
+      // Past Due - expected date passed but not received
+      pastDue: all.filter(p => {
+        const status = (('status' in p && p.status) || '').toLowerCase();
+        // Skip if already received/completed
+        if (['received', 'completed', 'delivered', 'cancelled'].includes(status)) return false;
+        // Check expected date
+        const expectedDate = ('expectedDate' in p && p.expectedDate) || ('expectedDeliveryDate' in p && p.expectedDeliveryDate);
+        if (!expectedDate) return false;
+        const expected = new Date(expectedDate);
+        return expected < now;
       }).length,
-      outForDelivery: all.filter(p => {
-        const status = (('trackingStatus' in p && p.trackingStatus) || ('status' in p && p.status) || '').toLowerCase();
-        return status === 'out_for_delivery';
+      // In Transit - actively moving
+      inTransit: all.filter(p => {
+        const trackingStatus = (('trackingStatus' in p && p.trackingStatus) || '').toLowerCase();
+        const status = (('status' in p && p.status) || '').toLowerCase();
+        return trackingStatus === 'in_transit' || trackingStatus === 'shipped' ||
+               trackingStatus === 'out_for_delivery' || status === 'shipped';
       }).length,
-      deliveredToday: all.filter(p => {
-        const status = (('trackingStatus' in p && p.trackingStatus) || ('status' in p && p.status) || '').toLowerCase();
-        if (status !== 'delivered' && status !== 'received') return false;
-        const deliveryDate = ('trackingDeliveredDate' in p && p.trackingDeliveredDate) || ('receivedDate' in p && p.receivedDate);
-        if (!deliveryDate) return false;
-        const d = new Date(deliveryDate);
-        const now = new Date();
-        return d.toDateString() === now.toDateString();
+      // Awaiting Shipment - confirmed but not shipped
+      awaitingShipment: all.filter(p => {
+        const status = (('status' in p && p.status) || '').toLowerCase();
+        const trackingStatus = (('trackingStatus' in p && p.trackingStatus) || '').toLowerCase();
+        const isConfirmed = ['confirmed', 'committed', 'processing'].includes(status);
+        const notShipped = !trackingStatus || trackingStatus === 'awaiting_confirmation' || trackingStatus === 'pending';
+        return isConfirmed && notShipped;
       }).length,
-      needsFollowup: all.filter(p => {
+      // Needs Action - exceptions, follow-ups, issues
+      needsAction: all.filter(p => {
+        const trackingStatus = (('trackingStatus' in p && p.trackingStatus) || '').toLowerCase();
+        const hasException = trackingStatus === 'exception' || trackingStatus === 'delayed';
         const hasEmail = 'emailAwaitingResponse' in p && p.emailAwaitingResponse;
         const needsFollow = 'needsFollowup' in p && p.needsFollowup;
-        return hasEmail || needsFollow;
+        return hasException || hasEmail || needsFollow;
       }).length,
     };
   }, [internalPOs, finalePOs]);
@@ -643,27 +657,60 @@ const UnifiedPOList: React.FC<UnifiedPOListProps> = ({
     <div className={`rounded-xl border overflow-hidden ${
       isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-stone-200'
     }`}>
-      {/* Status Cards */}
+      {/* Status Cards - Actionable PO Metrics */}
       <div className={`grid grid-cols-4 gap-4 p-5 border-b ${isDark ? 'border-gray-700' : 'border-stone-100'}`}>
-        <div className={`p-4 rounded-xl ${isDark ? 'bg-red-900/20 border border-red-800/30' : 'bg-red-50 border border-red-100'}`}>
-          <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>At Risk</div>
-          <div className={`text-2xl font-bold ${isDark ? 'text-red-400' : 'text-red-500'}`}>{stats.atRisk}</div>
-        </div>
-        <div className={`p-4 rounded-xl ${isDark ? 'bg-amber-900/20 border border-amber-800/30' : 'bg-amber-50 border border-amber-100'}`}>
-          <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>Out for Delivery</div>
-          <div className={`text-2xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-500'}`}>{stats.outForDelivery}</div>
-        </div>
-        <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20 border border-emerald-800/30' : 'bg-emerald-50 border border-emerald-100'}`}>
-          <div className={`text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>Delivered Today</div>
-          <div className={`text-2xl font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-500'}`}>{stats.deliveredToday}</div>
-        </div>
-        <div className={`p-4 rounded-xl ${isDark ? 'bg-yellow-900/20 border border-yellow-800/30' : 'bg-yellow-50 border border-yellow-100'}`}>
+        <button
+          onClick={() => setFilterStatus('needs_attention')}
+          className={`p-4 rounded-xl text-left transition-all hover:scale-[1.02] ${
+            isDark ? 'bg-red-900/20 border border-red-800/30 hover:border-red-600' : 'bg-red-50 border border-red-100 hover:border-red-300'
+          } ${stats.pastDue > 0 ? 'ring-2 ring-red-500/50' : ''}`}
+        >
+          <div className={`flex items-center gap-1 text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>
+            <AlertTriangleIcon className={`w-3 h-3 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
+            Past Due
+          </div>
+          <div className={`text-2xl font-bold ${isDark ? 'text-red-400' : 'text-red-500'}`}>{stats.pastDue}</div>
+          <div className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-stone-400'}`}>Expected but not received</div>
+        </button>
+        <button
+          onClick={() => setFilterStatus('active')}
+          className={`p-4 rounded-xl text-left transition-all hover:scale-[1.02] ${
+            isDark ? 'bg-blue-900/20 border border-blue-800/30 hover:border-blue-600' : 'bg-blue-50 border border-blue-100 hover:border-blue-300'
+          }`}
+        >
+          <div className={`flex items-center gap-1 text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>
+            <TruckIcon className={`w-3 h-3 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+            In Transit
+          </div>
+          <div className={`text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-500'}`}>{stats.inTransit}</div>
+          <div className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-stone-400'}`}>Shipped, on the way</div>
+        </button>
+        <button
+          onClick={() => setFilterStatus('active')}
+          className={`p-4 rounded-xl text-left transition-all hover:scale-[1.02] ${
+            isDark ? 'bg-amber-900/20 border border-amber-800/30 hover:border-amber-600' : 'bg-amber-50 border border-amber-100 hover:border-amber-300'
+          }`}
+        >
+          <div className={`flex items-center gap-1 text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>
+            <ClockIcon className={`w-3 h-3 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
+            Awaiting Shipment
+          </div>
+          <div className={`text-2xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-500'}`}>{stats.awaitingShipment}</div>
+          <div className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-stone-400'}`}>Confirmed, not shipped</div>
+        </button>
+        <button
+          onClick={() => setFilterStatus('needs_attention')}
+          className={`p-4 rounded-xl text-left transition-all hover:scale-[1.02] ${
+            isDark ? 'bg-yellow-900/20 border border-yellow-800/30 hover:border-yellow-600' : 'bg-yellow-50 border border-yellow-100 hover:border-yellow-300'
+          } ${stats.needsAction > 0 ? 'ring-2 ring-yellow-500/50' : ''}`}
+        >
           <div className={`flex items-center gap-1 text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-stone-500'}`}>
             <AlertTriangleIcon className={`w-3 h-3 ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`} />
-            Needs Follow-up
+            Needs Action
           </div>
-          <div className={`text-2xl font-bold ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>{stats.needsFollowup}</div>
-        </div>
+          <div className={`text-2xl font-bold ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>{stats.needsAction}</div>
+          <div className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-stone-400'}`}>Exceptions & follow-ups</div>
+        </button>
       </div>
 
       {/* Filter Bar */}

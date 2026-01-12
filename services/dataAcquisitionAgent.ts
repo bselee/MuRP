@@ -13,7 +13,7 @@
  */
 
 import { transformInventoryBatch, transformVendorsBatch, transformBOMsBatch } from '../lib/schema/transformers';
-import { getFinaleSync Service } from './finaleSyncService';
+import { getFinaleSyncService } from './finaleSyncService';
 import { getGoogleSheetsSyncService } from './googleSheetsSyncService';
 import { supabase } from '../lib/supabase/client';
 

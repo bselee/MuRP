@@ -29,6 +29,8 @@ interface CreatePoModalProps {
         trackingNumber?: string;
         trackingCarrier?: string;
     };
+    /** Show AI suggestions panel - only for unsent/uncommitted POs (default: true) */
+    showAiSuggestions?: boolean;
 }
 
 type PoItem = {
@@ -60,6 +62,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
     inventory,
     onCreatePo,
     initialData,
+    showAiSuggestions = true, // Only show for unsent/uncommitted POs
 }) => {
     const [selectedVendorId, setSelectedVendorId] = useState<string>('');
     const [poItems, setPoItems] = useState<PoItem[]>([]);
@@ -83,6 +86,11 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
     [inventory, selectedVendorId]);
     
     const inventoryMap = useMemo(() => new Map(inventory.map(i => [i.sku, i])), [inventory]);
+
+    // Filter out vendors with numeric-only names (invalid/placeholder entries)
+    const validVendors = useMemo(() =>
+        vendors.filter(v => v.name && !/^\d+$/.test(v.name.trim())),
+    [vendors]);
 
     const normalizeInitialItems = useCallback(
         (items?: CreatePurchaseOrderItemInput[] | null): PoItem[] =>
@@ -431,7 +439,7 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                             className="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-accent-500 focus:border-accent-500 sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             <option value="" disabled>Select a vendor</option>
-                            {vendors.map(vendor => (
+                            {validVendors.map(vendor => (
                                 <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
                             ))}
                         </select>
@@ -448,8 +456,8 @@ const CreatePoModal: React.FC<CreatePoModalProps> = ({
                     </div>
                 </div>
 
-                {/* AI Suggestions Panel */}
-                {selectedVendorId && aiSuggestions.length > 0 && (
+                {/* AI Suggestions Panel - Only show for unsent/uncommitted POs */}
+                {showAiSuggestions && selectedVendorId && aiSuggestions.length > 0 && (
                     <div className="border border-accent-500/30 bg-accent-900/20 rounded-lg overflow-hidden">
                         {/* Suggestions Header */}
                         <button

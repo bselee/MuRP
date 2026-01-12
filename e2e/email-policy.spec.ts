@@ -9,9 +9,11 @@ test.describe('Company Email Policy', () => {
       window.localStorage.removeItem('murp::companyEmailSettings');
     });
     await page.goto('/settings?e2e=1');
+    await page.waitForTimeout(500);
 
     // Section was renamed from "Email Configuration" to "Email Policy"
     const sectionToggle = page.getByRole('button', { name: /Email Policy/i });
+    await expect(sectionToggle).toBeVisible({ timeout: 10000 });
     await sectionToggle.click();
 
     const fromInput = page.getByLabel('Company from address');

@@ -853,6 +853,374 @@ function mapWorkflowPriorityToDbPriority(priority: string): 'low' | 'normal' | '
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🚀 END-TO-END AUTONOMOUS PURCHASING WORKFLOW
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Full autonomous purchasing workflow that chains all agents together.
+ *
+ * Workflow Chain:
+ * 1. Inventory Guardian → Detect items at/below ROP
+ * 2. Stockout Prevention → Prioritize by criticality and ABC class
+ * 3. Auto-PO Generation → Create draft POs with vendor pricing
+ * 4. Three-Way Match Check → Verify vendor reliability from past matches
+ * 5. Autonomy Gate → Check if POs can be auto-approved
+ * 6. PO Intelligence → Send approved POs and queue others for review
+ * 7. Air Traffic Controller → Add to monitoring queue
+ *
+ * This workflow runs daily or on-demand and provides complete visibility
+ * into the autonomous purchasing decisions.
+ */
+export async function runAutonomousPurchasingWorkflow(
+  userId: string,
+  options?: {
+    dryRun?: boolean;
+    maxPOs?: number;
+    vendorFilter?: string[];
+    abcClassFilter?: ('A' | 'B' | 'C')[];
+  }
+): Promise<WorkflowResult> {
+  const startTime = new Date();
+  const agentConfigs = await getAgentConfigs();
+  const agentResults: AgentWorkResult[] = [];
+  const pendingActions: PendingAction[] = [];
+  const autoExecutedActions: ExecutedAction[] = [];
+  const errors: string[] = [];
+
+  console.log('[AutonomousPurchasing] Starting workflow...');
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Step 1: Inventory Guardian - Detect items needing reorder
+  // ─────────────────────────────────────────────────────────────────────────
+  const guardianConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.INVENTORY_GUARDIAN);
+
+  let reorderItems: any[] = [];
+  try {
+    const { getRigorousPurchasingAdvice } = await import('./purchasingForecastingService');
+    reorderItems = await getRigorousPurchasingAdvice();
+
+    // Filter by ABC class if specified
+    if (options?.abcClassFilter?.length) {
+      reorderItems = reorderItems.filter(item =>
+        options.abcClassFilter!.includes(item.parameters?.abc_class)
+      );
+    }
+
+    // Filter by vendor if specified
+    if (options?.vendorFilter?.length) {
+      reorderItems = reorderItems.filter(item =>
+        options.vendorFilter!.includes(item.vendor_id)
+      );
+    }
+
+    agentResults.push({
+      agent: WORKFLOW_AGENT_IDS.INVENTORY_GUARDIAN,
+      success: true,
+      autonomyLevel: guardianConfig?.autonomy_level || 'monitor',
+      findings: {
+        totalItemsScanned: reorderItems.length,
+        itemsBelowROP: reorderItems.filter(i => i.days_remaining <= 14).length,
+        criticalItems: reorderItems.filter(i => i.days_remaining <= 0).length,
+        byAbcClass: {
+          A: reorderItems.filter(i => i.parameters?.abc_class === 'A').length,
+          B: reorderItems.filter(i => i.parameters?.abc_class === 'B').length,
+          C: reorderItems.filter(i => i.parameters?.abc_class === 'C').length,
+        },
+      },
+      actionsProposed: [],
+      actionsExecuted: [],
+    });
+  } catch (err: any) {
+    errors.push(`Inventory Guardian: ${err.message}`);
+    agentResults.push({
+      agent: WORKFLOW_AGENT_IDS.INVENTORY_GUARDIAN,
+      success: false,
+      autonomyLevel: guardianConfig?.autonomy_level || 'monitor',
+      findings: {},
+      actionsProposed: [],
+      actionsExecuted: [],
+      error: err.message,
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Step 2: Stockout Prevention - Prioritize critical items
+  // ─────────────────────────────────────────────────────────────────────────
+  const stockoutConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.STOCKOUT_PREVENTION);
+
+  const criticalItems = reorderItems.filter(i =>
+    i.days_remaining <= 7 || i.recommendation?.action === 'URGENT'
+  );
+
+  const prioritizedItems = [
+    ...criticalItems.sort((a, b) => a.days_remaining - b.days_remaining),
+    ...reorderItems
+      .filter(i => !criticalItems.includes(i))
+      .sort((a, b) => {
+        // A class items first, then by days remaining
+        const aClass = a.parameters?.abc_class || 'C';
+        const bClass = b.parameters?.abc_class || 'C';
+        if (aClass !== bClass) return aClass.localeCompare(bClass);
+        return a.days_remaining - b.days_remaining;
+      }),
+  ];
+
+  agentResults.push({
+    agent: WORKFLOW_AGENT_IDS.STOCKOUT_PREVENTION,
+    success: true,
+    autonomyLevel: stockoutConfig?.autonomy_level || 'monitor',
+    findings: {
+      criticalCount: criticalItems.length,
+      prioritizedCount: prioritizedItems.length,
+      estimatedStockoutValue: criticalItems.reduce(
+        (sum, i) => sum + (i.parameters?.unit_cost || 0) * (i.recommendation?.quantity || 0),
+        0
+      ),
+    },
+    actionsProposed: [],
+    actionsExecuted: [],
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Step 3: Auto-PO Generation - Create draft POs
+  // ─────────────────────────────────────────────────────────────────────────
+  const poConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.PO_INTELLIGENCE);
+
+  let draftsCreated = 0;
+  let draftsAutoApproved = 0;
+  const draftsByVendor: Record<string, any> = {};
+
+  try {
+    const { triggerAutoPOGeneration } = await import('./autoPOGenerationService');
+    const { canExecuteAutonomously } = await import('./agentAutonomyGate');
+
+    const autoPOResult = await triggerAutoPOGeneration(
+      poConfig?.identifier || 'inventory-guardian',
+      {
+        dryRun: options?.dryRun,
+        vendorFilter: options?.vendorFilter,
+        maxDraftsPerRun: options?.maxPOs || 10,
+      }
+    );
+
+    draftsCreated = autoPOResult.draftsCreated;
+    draftsAutoApproved = autoPOResult.draftsAutoApproved;
+
+    // Check autonomy gate for each draft
+    for (const draft of autoPOResult.drafts) {
+      const canAuto = await canExecuteAutonomously({
+        agentId: poConfig?.identifier || 'po-intelligence',
+        action: 'create_po',
+        targetValue: draft.estimatedTotal,
+        targetVendorId: draft.vendorId,
+        context: { draftId: draft.id, itemCount: draft.items.length },
+      });
+
+      if (canAuto.allowed && !canAuto.requiresApproval) {
+        autoExecutedActions.push({
+          id: `po-${draft.id}`,
+          agent: WORKFLOW_AGENT_IDS.PO_INTELLIGENCE,
+          type: 'create_po',
+          description: `Auto-created PO for ${draft.vendorName} ($${draft.estimatedTotal.toFixed(2)})`,
+          executedAt: new Date(),
+          result: {
+            draftId: draft.id,
+            vendorId: draft.vendorId,
+            total: draft.estimatedTotal,
+            itemCount: draft.items.length,
+          },
+        });
+      } else {
+        pendingActions.push({
+          id: `review-po-${draft.id}`,
+          agent: WORKFLOW_AGENT_IDS.PO_INTELLIGENCE,
+          type: 'create_po',
+          description: `Review PO for ${draft.vendorName} ($${draft.estimatedTotal.toFixed(2)})`,
+          priority: draft.items.some((i: any) => i.daysRemaining <= 0) ? 'critical' :
+                   draft.items.some((i: any) => i.daysRemaining <= 7) ? 'high' : 'medium',
+          data: {
+            draftId: draft.id,
+            vendorId: draft.vendorId,
+            vendorName: draft.vendorName,
+            items: draft.items,
+            total: draft.estimatedTotal,
+          },
+          suggestedAction: canAuto.reason,
+          requiresConfirmation: true,
+        });
+      }
+
+      draftsByVendor[draft.vendorId] = draft;
+    }
+
+    agentResults.push({
+      agent: WORKFLOW_AGENT_IDS.PO_INTELLIGENCE,
+      success: true,
+      autonomyLevel: poConfig?.autonomy_level || 'monitor',
+      findings: {
+        draftsCreated,
+        draftsAutoApproved,
+        draftsPendingApproval: draftsCreated - draftsAutoApproved,
+        totalValue: autoPOResult.totalValue,
+        vendorCount: Object.keys(draftsByVendor).length,
+      },
+      actionsProposed: pendingActions.filter(a => a.agent === WORKFLOW_AGENT_IDS.PO_INTELLIGENCE),
+      actionsExecuted: autoExecutedActions.filter(a => a.agent === WORKFLOW_AGENT_IDS.PO_INTELLIGENCE),
+    });
+  } catch (err: any) {
+    errors.push(`Auto-PO Generation: ${err.message}`);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Step 4: Vendor Watchdog - Check vendor reliability
+  // ─────────────────────────────────────────────────────────────────────────
+  const watchdogConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.VENDOR_WATCHDOG);
+
+  const vendorReliability: Record<string, { matchScore: number; onTimeRate: number }> = {};
+
+  try {
+    // Get average match scores and on-time rates for involved vendors
+    for (const vendorId of Object.keys(draftsByVendor)) {
+      const { data: matches } = await supabase
+        .from('po_three_way_matches')
+        .select('overall_score')
+        .eq('vendor_id', vendorId)
+        .order('matched_at', { ascending: false })
+        .limit(10);
+
+      const avgScore = matches?.length
+        ? matches.reduce((sum, m) => sum + (m.overall_score || 0), 0) / matches.length
+        : 50; // Default 50% if no history
+
+      vendorReliability[vendorId] = {
+        matchScore: avgScore,
+        onTimeRate: 0.85, // Placeholder - would come from actual delivery tracking
+      };
+    }
+
+    agentResults.push({
+      agent: WORKFLOW_AGENT_IDS.VENDOR_WATCHDOG,
+      success: true,
+      autonomyLevel: watchdogConfig?.autonomy_level || 'monitor',
+      findings: {
+        vendorsChecked: Object.keys(vendorReliability).length,
+        vendorReliability,
+        flaggedVendors: Object.entries(vendorReliability)
+          .filter(([_, v]) => v.matchScore < 80)
+          .map(([id]) => id),
+      },
+      actionsProposed: [],
+      actionsExecuted: [],
+    });
+  } catch (err: any) {
+    errors.push(`Vendor Watchdog: ${err.message}`);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Step 5: Air Traffic Controller - Add to monitoring queue
+  // ─────────────────────────────────────────────────────────────────────────
+  const atcConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.TRAFFIC_CONTROLLER);
+
+  agentResults.push({
+    agent: WORKFLOW_AGENT_IDS.TRAFFIC_CONTROLLER,
+    success: true,
+    autonomyLevel: atcConfig?.autonomy_level || 'monitor',
+    findings: {
+      newPOsToMonitor: autoExecutedActions.filter(a => a.type === 'create_po').length,
+      pendingPOsToWatch: pendingActions.filter(a => a.type === 'create_po').length,
+    },
+    actionsProposed: [],
+    actionsExecuted: [],
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Compile Summary
+  // ─────────────────────────────────────────────────────────────────────────
+  const completedAt = new Date();
+  const summary = generatePurchasingSummary(
+    reorderItems.length,
+    criticalItems.length,
+    draftsCreated,
+    draftsAutoApproved,
+    pendingActions.length,
+    autoExecutedActions.length,
+    errors.length
+  );
+
+  // Log workflow execution
+  try {
+    await supabase.from('workflow_executions').insert({
+      workflow_name: 'autonomous_purchasing',
+      user_id: userId,
+      started_at: startTime,
+      completed_at: completedAt,
+      success: errors.length === 0,
+      summary,
+      pending_actions_count: pendingActions.length,
+      auto_executed_count: autoExecutedActions.length,
+      errors: errors.length > 0 ? errors : null,
+    });
+  } catch (err) {
+    console.warn('Could not log workflow execution');
+  }
+
+  console.log(`[AutonomousPurchasing] Completed: ${draftsCreated} drafts, ${draftsAutoApproved} auto-approved`);
+
+  return {
+    success: errors.length === 0,
+    workflow: 'autonomous_purchasing',
+    startedAt: startTime,
+    completedAt,
+    agentResults,
+    summary,
+    pendingActions,
+    autoExecutedActions,
+    errors,
+  };
+}
+
+/**
+ * Generate human-readable summary of purchasing workflow
+ */
+function generatePurchasingSummary(
+  totalItems: number,
+  criticalItems: number,
+  draftsCreated: number,
+  draftsAutoApproved: number,
+  pendingCount: number,
+  autoExecutedCount: number,
+  errorCount: number
+): string {
+  const lines: string[] = [];
+
+  lines.push(`📦 Autonomous Purchasing Workflow Complete`);
+  lines.push('');
+
+  if (criticalItems > 0) {
+    lines.push(`🔴 ${criticalItems} critical stockout risks identified`);
+  }
+  lines.push(`📋 ${totalItems} items analyzed for reorder`);
+
+  if (draftsCreated > 0) {
+    lines.push(`📝 ${draftsCreated} PO drafts created`);
+    if (draftsAutoApproved > 0) {
+      lines.push(`✅ ${draftsAutoApproved} POs auto-approved and ready to send`);
+    }
+    if (pendingCount > 0) {
+      lines.push(`⏳ ${pendingCount} POs awaiting your approval`);
+    }
+  } else {
+    lines.push(`✅ No immediate reorders needed`);
+  }
+
+  if (errorCount > 0) {
+    lines.push(`⚠️ ${errorCount} issues encountered`);
+  }
+
+  return lines.join('\n');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 📤 Exports
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -861,5 +1229,6 @@ export default {
   runMorningBriefing,
   runEmailProcessingWorkflow,
   runPOCreationWorkflow,
+  runAutonomousPurchasingWorkflow,
   executePendingAction,
 };

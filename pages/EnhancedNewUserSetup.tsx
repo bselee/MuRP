@@ -125,13 +125,26 @@ const SAMPLE_INVENTORY_DATA = [
   ['', '', '', '', '', '', '', '', '', '', '', ''],
 ];
 
+// Data source types
+type DataSourceChoice = 'finale' | 'google_sheets' | 'csv' | 'skip' | null;
+
 const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSetupComplete }) => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(0);
-    const totalSteps = 5; // Increased from 3 to 5 for data onboarding
+    const totalSteps = 6; // 0: Preferences, 1: Data Source Choice, 2-4: Setup flow, 5: Password
+
+    // Data source selection
+    const [dataSource, setDataSource] = useState<DataSourceChoice>(null);
+
+    // Finale API state
+    const [finaleApiKey, setFinaleApiKey] = useState('');
+    const [finaleApiSecret, setFinaleApiSecret] = useState('');
+    const [finaleAccountPath, setFinaleAccountPath] = useState('');
+    const [finaleConnected, setFinaleConnected] = useState(false);
+    const [finaleTesting, setFinaleTesting] = useState(false);
 
     // Google integration state
     const [googleConnected, setGoogleConnected] = useState(false);
@@ -360,6 +373,47 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
         window.location.href = `/${page.toLowerCase()}`;
     };
 
+    // Handle Finale API connection test
+    const handleFinaleTest = async () => {
+        if (!finaleApiKey || !finaleApiSecret || !finaleAccountPath) {
+            setError('Please fill in all Finale API fields.');
+            return;
+        }
+
+        try {
+            setFinaleTesting(true);
+            setError('');
+
+            // Save credentials to localStorage
+            localStorage.setItem('finale_api_key', finaleApiKey);
+            localStorage.setItem('finale_api_secret', finaleApiSecret);
+            localStorage.setItem('finale_account_path', finaleAccountPath);
+
+            // Test connection via API proxy
+            const response = await fetch('/api/finale/test-connection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    apiKey: finaleApiKey,
+                    apiSecret: finaleApiSecret,
+                    accountPath: finaleAccountPath,
+                }),
+            });
+
+            if (response.ok) {
+                setFinaleConnected(true);
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to connect to Finale');
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to test Finale connection. Check your credentials.');
+            setFinaleConnected(false);
+        } finally {
+            setFinaleTesting(false);
+        }
+    };
+
     // Define roleMessaging based on user role
     const roleMessaging = roleCopy[user.role] ?? roleCopy.Staff;
 
@@ -369,10 +423,19 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
     const canProceedToNext = () => {
         switch (step) {
             case 0: return true; // Preferences always allow next
-            case 1: return googleConnected; // Must connect Google
-            case 2: return !!sheetsTemplateUrl; // Must create template
-            case 3: return importComplete; // Must complete import
-            case 4: return true; // Password step
+            case 1: return dataSource !== null; // Must choose data source
+            case 2: // Setup step depends on data source
+                if (dataSource === 'finale') return finaleConnected;
+                if (dataSource === 'google_sheets') return googleConnected;
+                if (dataSource === 'csv' || dataSource === 'skip') return true;
+                return false;
+            case 3: // Import step
+                if (dataSource === 'google_sheets') return !!sheetsTemplateUrl;
+                return true; // Finale auto-syncs, CSV/skip proceed
+            case 4: // Final data step
+                if (dataSource === 'google_sheets') return importComplete;
+                return true;
+            case 5: return true; // Password step
             default: return false;
         }
     };
@@ -441,49 +504,230 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
         );
       }
 
+      // Step 1: Choose Your Data Source
       if (step === 1) {
         return (
           <div className="space-y-6">
             <div className="text-center space-y-3">
-              <h2 className="text-2xl font-bold text-white">Connect Your Google Account</h2>
+              <h2 className="text-2xl font-bold text-white">Choose Your Data Source</h2>
               <p className="text-sm text-gray-400">
-                Let's get you set up with working inventory data. Start by connecting Google Workspace.
+                How would you like to import your inventory data? You can always add more sources later.
               </p>
             </div>
 
-            <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-emerald-500/20 p-3">
-                  <CloudUploadIcon className="w-6 h-6 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Google Workspace Integration</h3>
-                  <p className="text-sm text-gray-400">Connect to import/export data and create backups</p>
-                </div>
-              </div>
-
-              {googleConnected ? (
-                <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
-                    <span className="text-sm font-semibold text-emerald-200">Connected to Google Workspace</span>
+            <div className="grid gap-4">
+              {/* Finale API - Primary Option */}
+              <button
+                onClick={() => setDataSource('finale')}
+                className={`w-full text-left rounded-xl border-2 p-5 transition-all ${
+                  dataSource === 'finale'
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-gray-700 bg-gray-900/50 hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`rounded-full p-3 ${dataSource === 'finale' ? 'bg-blue-500/20' : 'bg-gray-800'}`}>
+                    <TruckIcon className={`w-6 h-6 ${dataSource === 'finale' ? 'text-blue-400' : 'text-gray-400'}`} />
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">{googleEmail}</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-4">
-                    <h4 className="text-sm font-semibold text-white mb-2">What you'll get:</h4>
-                    <ul className="text-xs text-gray-400 space-y-1">
-                      <li>• Import inventory from Google Sheets</li>
-                      <li>• Export data for sharing and backups</li>
-                      <li>• Automatic backups after syncs</li>
-                      <li>• Collaborate with your team</li>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-white">Finale Inventory API</h3>
+                      <span className="px-2 py-0.5 text-xs font-medium bg-blue-500/20 text-blue-300 rounded-full">Recommended</span>
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Connect directly to your Finale account for automatic sync of inventory, vendors, BOMs, and purchase orders.
+                    </p>
+                    <ul className="text-xs text-gray-500 mt-2 space-y-1">
+                      <li>• Real-time sync every 5 minutes</li>
+                      <li>• Import vendors, inventory, and BOMs</li>
+                      <li>• Automatic PO tracking</li>
                     </ul>
                   </div>
+                  {dataSource === 'finale' && <CheckCircleIcon className="w-6 h-6 text-blue-400" />}
+                </div>
+              </button>
 
-                  <Button
-                    onClick={handleGoogleConnect}
+              {/* Google Sheets */}
+              <button
+                onClick={() => setDataSource('google_sheets')}
+                className={`w-full text-left rounded-xl border-2 p-5 transition-all ${
+                  dataSource === 'google_sheets'
+                    ? 'border-emerald-500 bg-emerald-500/10'
+                    : 'border-gray-700 bg-gray-900/50 hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`rounded-full p-3 ${dataSource === 'google_sheets' ? 'bg-emerald-500/20' : 'bg-gray-800'}`}>
+                    <DocumentTextIcon className={`w-6 h-6 ${dataSource === 'google_sheets' ? 'text-emerald-400' : 'text-gray-400'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-white">Google Sheets</h3>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Import from a Google spreadsheet. Great for starting fresh or migrating from Excel.
+                    </p>
+                    <ul className="text-xs text-gray-500 mt-2 space-y-1">
+                      <li>• We'll create a template for you</li>
+                      <li>• Add your data in familiar spreadsheet format</li>
+                      <li>• One-click import back to MuRP</li>
+                    </ul>
+                  </div>
+                  {dataSource === 'google_sheets' && <CheckCircleIcon className="w-6 h-6 text-emerald-400" />}
+                </div>
+              </button>
+
+              {/* CSV Upload */}
+              <button
+                onClick={() => setDataSource('csv')}
+                className={`w-full text-left rounded-xl border-2 p-5 transition-all ${
+                  dataSource === 'csv'
+                    ? 'border-purple-500 bg-purple-500/10'
+                    : 'border-gray-700 bg-gray-900/50 hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`rounded-full p-3 ${dataSource === 'csv' ? 'bg-purple-500/20' : 'bg-gray-800'}`}>
+                    <CloudUploadIcon className={`w-6 h-6 ${dataSource === 'csv' ? 'text-purple-400' : 'text-gray-400'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-white">Upload CSV File</h3>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Upload a CSV export from your existing inventory system.
+                    </p>
+                  </div>
+                  {dataSource === 'csv' && <CheckCircleIcon className="w-6 h-6 text-purple-400" />}
+                </div>
+              </button>
+
+              {/* Skip for now */}
+              <button
+                onClick={() => setDataSource('skip')}
+                className={`w-full text-left rounded-xl border-2 p-4 transition-all ${
+                  dataSource === 'skip'
+                    ? 'border-gray-500 bg-gray-500/10'
+                    : 'border-gray-700/50 bg-gray-900/30 hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm ${dataSource === 'skip' ? 'text-gray-300' : 'text-gray-500'}`}>
+                    Skip for now — I'll set this up later in Settings
+                  </span>
+                  {dataSource === 'skip' && <CheckCircleIcon className="w-5 h-5 text-gray-400" />}
+                </div>
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // Step 2: Connect chosen data source
+      if (step === 2) {
+        // Finale API Setup
+        if (dataSource === 'finale') {
+          return (
+            <div className="space-y-6">
+              <div className="text-center space-y-3">
+                <h2 className="text-2xl font-bold text-white">Connect Finale Inventory</h2>
+                <p className="text-sm text-gray-400">
+                  Enter your Finale API credentials to sync your data automatically.
+                </p>
+              </div>
+
+              <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-6 space-y-4">
+                {finaleConnected ? (
+                  <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
+                      <span className="text-sm font-semibold text-emerald-200">Connected to Finale!</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Your credentials have been verified. Data will sync automatically.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">API Key</label>
+                        <input
+                          type="text"
+                          value={finaleApiKey}
+                          onChange={(e) => setFinaleApiKey(e.target.value)}
+                          placeholder="Your Finale API key"
+                          className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">API Secret</label>
+                        <input
+                          type="password"
+                          value={finaleApiSecret}
+                          onChange={(e) => setFinaleApiSecret(e.target.value)}
+                          placeholder="Your Finale API secret"
+                          className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Account Path</label>
+                        <input
+                          type="text"
+                          value={finaleAccountPath}
+                          onChange={(e) => setFinaleAccountPath(e.target.value)}
+                          placeholder="account/12345/facility/67890"
+                          className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Find this in Finale under Settings → API Access
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={handleFinaleTest}
+                      loading={finaleTesting}
+                      className="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      {finaleTesting ? 'Testing Connection...' : 'Test & Connect'}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        // Google Sheets Setup (moved from old step 1)
+        if (dataSource === 'google_sheets') {
+          return (
+            <div className="space-y-6">
+              <div className="text-center space-y-3">
+                <h2 className="text-2xl font-bold text-white">Connect Your Google Account</h2>
+                <p className="text-sm text-gray-400">
+                  Let's get you set up with working inventory data. Start by connecting Google Workspace.
+                </p>
+              </div>
+
+              <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-6 space-y-4">
+                {googleConnected ? (
+                  <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
+                      <span className="text-sm font-semibold text-emerald-200">Connected to Google Workspace</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">{googleEmail}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-4">
+                      <h4 className="text-sm font-semibold text-white mb-2">What you'll get:</h4>
+                      <ul className="text-xs text-gray-400 space-y-1">
+                        <li>• Import inventory from Google Sheets</li>
+                        <li>• Export data for sharing and backups</li>
+                        <li>• Automatic backups after syncs</li>
+                      </ul>
+                    </div>
+
+                    <Button
+                      onClick={handleGoogleConnect}
                     className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 font-semibold py-3 px-4 rounded-md hover:bg-gray-200 transition-colors"
                     loading={loading}
                   >
@@ -497,105 +741,195 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
         );
       }
 
-      if (step === 2) {
-        return (
-          <div className="space-y-6">
-            <div className="text-center space-y-3">
-              <h2 className="text-2xl font-bold text-white">Create Your Inventory Template</h2>
-              <p className="text-sm text-gray-400">
-                We'll create a comprehensive Google Sheet with sample data, instructions, and formatting to get you started.
-              </p>
-            </div>
-
-            <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-blue-500/20 p-3">
-                  <DocumentTextIcon className="w-6 h-6 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Professional Inventory Template</h3>
-                  <p className="text-sm text-gray-400">4-sheet workbook with samples, instructions, and validation</p>
-                </div>
+        // CSV upload path - show simple message
+        if (dataSource === 'csv' || dataSource === 'skip') {
+          return (
+            <div className="space-y-6">
+              <div className="text-center space-y-3">
+                <h2 className="text-2xl font-bold text-white">
+                  {dataSource === 'csv' ? 'CSV Upload Ready' : 'Setup Data Source Later'}
+                </h2>
+                <p className="text-sm text-gray-400">
+                  {dataSource === 'csv'
+                    ? 'You can upload your inventory CSV file from the Settings page after completing setup.'
+                    : "No problem! You can connect your data source anytime from Settings → Integrations."
+                  }
+                </p>
               </div>
 
-              {sheetsTemplateUrl ? (
+              <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-6">
                 <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4">
                   <div className="flex items-center gap-2">
                     <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
-                    <span className="text-sm font-semibold text-emerald-200">Template Created!</span>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Your comprehensive template is ready with sample data and instructions.
-                  </p>
-                  <div className="flex gap-2 mt-3">
-                    <a
-                      href={sheetsTemplateUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md transition-colors"
-                    >
-                      Open in Google Sheets
-                    </a>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(sheetsTemplateUrl)}
-                      className="text-xs bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-md transition-colors"
-                    >
-                      Copy Link
-                    </button>
+                    <span className="text-sm font-semibold text-emerald-200">
+                      {dataSource === 'csv' ? 'CSV import will be available in Settings' : 'You can set up data sources later'}
+                    </span>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-4">
-                      <h4 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                        <DocumentTextIcon className="w-4 h-4 text-blue-400" />
-                        Inventory Sheet
-                      </h4>
-                      <ul className="text-xs text-gray-400 space-y-1">
-                        <li>• 12-column format with validation</li>
-                        <li>• Sample products across 4 categories</li>
-                        <li>• 20+ empty rows for your data</li>
-                        <li>• Frozen headers and auto-sizing</li>
-                      </ul>
-                    </div>
-                    <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-4">
-                      <h4 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                        <LightBulbIcon className="w-4 h-4 text-yellow-400" />
-                        Instructions & Help
-                      </h4>
-                      <ul className="text-xs text-gray-400 space-y-1">
-                        <li>• Step-by-step import guide</li>
-                        <li>• Field descriptions and tips</li>
-                        <li>• Troubleshooting section</li>
-                        <li>• Category suggestions</li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-4">
-                    <h4 className="text-sm font-semibold text-purple-200 mb-2">🚀 Pro Features Coming Soon</h4>
-                    <p className="text-xs text-gray-300">
-                      Paid tiers will include automated supplier sync, multi-location tracking, and advanced reporting.
-                      <a href="#" className="text-purple-300 hover:text-purple-200 ml-1 underline">Learn more →</a>
-                    </p>
-                  </div>
-
-                  <Button
-                    onClick={handleCreateSheetsTemplate}
-                    className="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-blue-700 transition-colors"
-                    loading={loading}
-                  >
-                    {loading ? 'Creating template...' : 'Create Professional Template'}
-                  </Button>
-                </div>
-              )}
+              </div>
             </div>
-          </div>
-        );
+          );
+        }
+
+        return null;
       }
 
+      // Step 3: Different flows for different data sources
       if (step === 3) {
+        // Finale API: Show sync confirmation
+        if (dataSource === 'finale') {
+          return (
+            <div className="space-y-6">
+              <div className="text-center space-y-3">
+                <h2 className="text-2xl font-bold text-white">Your Data is Syncing</h2>
+                <p className="text-sm text-gray-400">
+                  MuRP is now connected to your Finale account. Your inventory data will sync automatically.
+                </p>
+              </div>
+
+              <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-6 space-y-4">
+                <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
+                    <span className="text-sm font-semibold text-emerald-200">Finale API Connected</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Your inventory, vendors, BOMs, and purchase orders will sync automatically every 5 minutes.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <PackageIcon className="w-4 h-4 text-blue-400" />
+                      <span className="text-sm font-medium text-white">Inventory</span>
+                    </div>
+                    <p className="text-xs text-gray-400">SKUs, stock levels, costs</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TruckIcon className="w-4 h-4 text-purple-400" />
+                      <span className="text-sm font-medium text-white">Vendors</span>
+                    </div>
+                    <p className="text-xs text-gray-400">Suppliers and contacts</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DocumentTextIcon className="w-4 h-4 text-emerald-400" />
+                      <span className="text-sm font-medium text-white">Purchase Orders</span>
+                    </div>
+                    <p className="text-xs text-gray-400">Open and historical POs</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CalculatorIcon className="w-4 h-4 text-amber-400" />
+                      <span className="text-sm font-medium text-white">BOMs</span>
+                    </div>
+                    <p className="text-xs text-gray-400">Bills of materials</p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500 text-center">
+                  Initial sync may take a few minutes depending on your data volume.
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        // Google Sheets: Create template
+        if (dataSource === 'google_sheets') {
+          return (
+            <div className="space-y-6">
+              <div className="text-center space-y-3">
+                <h2 className="text-2xl font-bold text-white">Create Your Inventory Template</h2>
+                <p className="text-sm text-gray-400">
+                  We'll create a comprehensive Google Sheet with sample data, instructions, and formatting to get you started.
+                </p>
+              </div>
+
+              <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-blue-500/20 p-3">
+                    <DocumentTextIcon className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Professional Inventory Template</h3>
+                    <p className="text-sm text-gray-400">4-sheet workbook with samples, instructions, and validation</p>
+                  </div>
+                </div>
+
+                {sheetsTemplateUrl ? (
+                  <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
+                      <span className="text-sm font-semibold text-emerald-200">Template Created!</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Your comprehensive template is ready with sample data and instructions.
+                    </p>
+                    <div className="flex gap-2 mt-3">
+                      <a
+                        href={sheetsTemplateUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md transition-colors"
+                      >
+                        Open in Google Sheets
+                      </a>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(sheetsTemplateUrl)}
+                        className="text-xs bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-md transition-colors"
+                      >
+                        Copy Link
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-4">
+                        <h4 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                          <DocumentTextIcon className="w-4 h-4 text-blue-400" />
+                          Inventory Sheet
+                        </h4>
+                        <ul className="text-xs text-gray-400 space-y-1">
+                          <li>• 12-column format with validation</li>
+                          <li>• Sample products across 4 categories</li>
+                          <li>• 20+ empty rows for your data</li>
+                          <li>• Frozen headers and auto-sizing</li>
+                        </ul>
+                      </div>
+                      <div className="rounded-lg border border-gray-600 bg-gray-800/50 p-4">
+                        <h4 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                          <LightBulbIcon className="w-4 h-4 text-yellow-400" />
+                          Instructions & Help
+                        </h4>
+                        <ul className="text-xs text-gray-400 space-y-1">
+                          <li>• Step-by-step import guide</li>
+                          <li>• Field descriptions and tips</li>
+                          <li>• Troubleshooting section</li>
+                          <li>• Category suggestions</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={handleCreateSheetsTemplate}
+                      className="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-md hover:bg-blue-700 transition-colors"
+                      loading={loading}
+                    >
+                      {loading ? 'Creating template...' : 'Create Professional Template'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        // CSV or Skip: Feature showcase (general features)
+        if (dataSource === 'csv' || dataSource === 'skip') {
         return (
           <div className="space-y-6">
             <div className="text-center space-y-3">
@@ -710,9 +1044,92 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
             </div>
           </div>
         );
+        }
+
+        // Fallback for step 3
+        return null;
       }
 
       if (step === 4) {
+        // Finale: Ready to go
+        if (dataSource === 'finale') {
+          return (
+            <div className="space-y-6">
+              <div className="text-center space-y-3">
+                <h2 className="text-2xl font-bold text-white">You're All Set!</h2>
+                <p className="text-sm text-gray-400">
+                  Your Finale data is syncing. Just one more step to secure your account.
+                </p>
+              </div>
+
+              <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-6 space-y-4">
+                <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
+                    <span className="text-sm font-semibold text-emerald-200">Setup Nearly Complete</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Your inventory, vendors, and purchase orders will appear in MuRP as the sync completes.
+                  </p>
+                </div>
+
+                <div className="text-center">
+                  <p className="text-sm text-gray-400 mb-2">What you'll be able to do:</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <CheckCircleIcon className="w-4 h-4 text-emerald-400" />
+                      View real-time inventory
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <CheckCircleIcon className="w-4 h-4 text-emerald-400" />
+                      Track purchase orders
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <CheckCircleIcon className="w-4 h-4 text-emerald-400" />
+                      Manage vendor contacts
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                      <CheckCircleIcon className="w-4 h-4 text-emerald-400" />
+                      Get stock intelligence
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // CSV or Skip: Ready to finish
+        if (dataSource === 'csv' || dataSource === 'skip') {
+          return (
+            <div className="space-y-6">
+              <div className="text-center space-y-3">
+                <h2 className="text-2xl font-bold text-white">Almost Done!</h2>
+                <p className="text-sm text-gray-400">
+                  {dataSource === 'csv'
+                    ? 'You can upload your CSV file from Settings after completing setup.'
+                    : 'You can connect a data source anytime from Settings.'}
+                </p>
+              </div>
+
+              <div className="bg-gray-900/50 border border-gray-700 rounded-xl p-6 space-y-4">
+                <div className="rounded-lg border border-blue-500/40 bg-blue-500/10 p-4">
+                  <div className="flex items-center gap-2">
+                    <LightBulbIcon className="w-5 h-5 text-blue-400" />
+                    <span className="text-sm font-semibold text-blue-200">Next Steps After Setup</span>
+                  </div>
+                  <ul className="text-xs text-gray-400 mt-2 space-y-1">
+                    <li>• Go to Settings → Integrations to connect your data source</li>
+                    <li>• Upload CSV files or connect Google Sheets</li>
+                    <li>• Start tracking inventory and purchase orders</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Google Sheets: Import data
         return (
           <div className="space-y-6">
             <div className="text-center space-y-3">

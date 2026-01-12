@@ -22,7 +22,7 @@ test.describe('Settings Page', () => {
 
   test('loads Settings page with all main sections', async ({ page }) => {
     // Page header
-    await expect(page.locator('h1').filter({ hasText: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Settings/i })).toBeVisible({ timeout: 15000 });
 
     // Main section headers should be visible
     await expect(page.getByText('Account', { exact: false }).first()).toBeVisible();

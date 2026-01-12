@@ -19,14 +19,26 @@ interface AdviceItem {
     current_status: {
         stock: number;
         on_order: number;
+        total_position?: number;
     };
     linked_po?: {
         po_number: string;
         expected_date: string;
-    };
+    } | null;
     item_type: string;
+    parameters?: {
+        rop: number;
+        safety_stock: number;
+        daily_demand: number;
+        lead_time: number;
+        service_level: string;
+        abc_class: 'A' | 'B' | 'C';
+        z_score: number;
+    };
     recommendation: {
+        action?: string;
         quantity: number;
+        reason?: string;
     };
 }
 
@@ -892,10 +904,11 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
                                     </th>
                                     <th className="px-4 py-3">SKU / Product</th>
                                     <th className="px-4 py-3">Vendor</th>
+                                    <th className="px-4 py-3 text-center">ABC</th>
                                     <th className="px-4 py-3 text-right">Stock</th>
+                                    <th className="px-4 py-3 text-right">On Order</th>
                                     <th className="px-4 py-3 text-right">Days Left</th>
-                                    <th className="px-4 py-3">Type</th>
-                                    <th className="px-4 py-3 text-right">Suggested Qty</th>
+                                    <th className="px-4 py-3 text-right">Order Qty</th>
                                     <th className="px-4 py-3 w-24"></th>
                                 </tr>
                             </thead>
@@ -941,8 +954,28 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
                                             <td className="px-4 py-3 text-xs text-slate-400 max-w-[120px] truncate">
                                                 {item.vendor_name || 'Unknown'}
                                             </td>
+                                            <td className="px-4 py-3 text-center">
+                                                {item.parameters?.abc_class && (
+                                                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold ${
+                                                        item.parameters.abc_class === 'A' ? 'bg-purple-500/30 text-purple-300 ring-1 ring-purple-500/50' :
+                                                        item.parameters.abc_class === 'B' ? 'bg-blue-500/30 text-blue-300 ring-1 ring-blue-500/50' :
+                                                        'bg-slate-500/30 text-slate-400'
+                                                    }`} title={`ABC Class: ${item.parameters.abc_class} - ${item.parameters.abc_class === 'A' ? 'High value (80%)' : item.parameters.abc_class === 'B' ? 'Medium (15%)' : 'Low (5%)'}`}>
+                                                        {item.parameters.abc_class}
+                                                    </span>
+                                                )}
+                                            </td>
                                             <td className={`px-4 py-3 text-right font-medium ${item.current_status.stock === 0 ? 'text-red-400' : 'text-slate-300'}`}>
                                                 {item.current_status.stock}
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                {item.current_status.on_order > 0 ? (
+                                                    <span className="text-green-400 font-medium" title={item.linked_po ? `PO: ${item.linked_po.po_number}` : undefined}>
+                                                        {item.current_status.on_order}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-500">—</span>
+                                                )}
                                             </td>
                                             <td className={`px-4 py-3 text-right font-bold ${
                                                 daysRemaining <= 0 ? 'text-red-400' :
@@ -952,17 +985,12 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
                                             }`}>
                                                 {daysRemaining <= 0 ? 'OUT' : daysRemaining}
                                             </td>
-                                            <td className="px-4 py-3">
-                                                <span className={`px-2 py-0.5 text-xs rounded ${
-                                                    item.item_type === 'Manufactured'
-                                                        ? 'bg-purple-900/30 text-purple-300'
-                                                        : 'bg-blue-900/30 text-blue-300'
-                                                }`}>
-                                                    {item.item_type === 'Manufactured' ? 'Mfg' : 'Purch'}
-                                                </span>
-                                            </td>
                                             <td className="px-4 py-3 text-right">
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900/30 text-blue-300">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                    item.recommendation.action === 'URGENT' ? 'bg-red-900/50 text-red-300 ring-1 ring-red-500/50' :
+                                                    item.recommendation.action === 'Order Now' ? 'bg-amber-900/30 text-amber-300' :
+                                                    'bg-blue-900/30 text-blue-300'
+                                                }`} title={item.recommendation.reason}>
                                                     +{item.recommendation.quantity}
                                                 </span>
                                             </td>

@@ -3,6 +3,8 @@ import { useTheme } from '../components/ThemeProvider';
 import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge, { formatStatusText } from '@/components/ui/StatusBadge';
+import EmptyStateGuidance from '../components/EmptyStateGuidance';
+import useDataSourceStatus from '../hooks/useDataSourceStatus';
 import type {
     PurchaseOrder,
     Vendor,
@@ -98,6 +100,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
         requisitions, users, onApproveRequisition, onOpsApproveRequisition, onRejectRequisition, onCreateRequisition,
         onConnectGoogle, showAllFinaleHistory, setShowAllFinaleHistory,
     } = props;
+
+    // Check data source status for empty state guidance
+    const { status: dataSourceStatus, loading: statusLoading } = useDataSourceStatus(currentUser?.id);
 
     const [isCreatePoModalOpen, setIsCreatePoModalOpen] = useState(false);
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -306,6 +311,24 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
         fetchMatchStatuses();
     }, [finalePurchaseOrders]);
+
+    // Merge match status data into finalePurchaseOrders for UnifiedPOList
+    const finalePOsWithMatchData = useMemo(() => {
+        if (!finalePurchaseOrders || finalePurchaseOrders.length === 0) return finalePurchaseOrders;
+
+        return finalePurchaseOrders.map(fpo => {
+            const matchInfo = matchStatuses[fpo.orderId];
+            if (matchInfo) {
+                return {
+                    ...fpo,
+                    matchStatus: matchInfo.status as 'matched' | 'partial_match' | 'mismatch' | 'pending' | null,
+                    matchScore: matchInfo.score,
+                    hasDiscrepancies: matchInfo.hasDiscrepancies,
+                };
+            }
+            return fpo;
+        });
+    }, [finalePurchaseOrders, matchStatuses]);
 
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
@@ -1112,7 +1135,7 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 {viewMode === 'unified' && (
                     <UnifiedPOList
                         internalPOs={purchaseOrders}
-                        finalePOs={finalePurchaseOrders}
+                        finalePOs={finalePOsWithMatchData}
                         onViewDetails={(po) => {
                             if (po.source === 'internal') {
                                 const internalPo = purchaseOrders.find(p => p.id === po.id);
@@ -1158,6 +1181,9 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     setIsEmailModalOpen(true);
                                 }
                             }
+                        }}
+                        onViewMatch={(orderId, vendorName) => {
+                            setMatchModalPO({ orderId, vendorName });
                         }}
                         addToast={addToast}
                     />
@@ -1803,56 +1829,92 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
 
                     <div className="relative overflow-x-auto max-h-[calc(100vh-320px)]">
                         {sortedPurchaseOrders.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-                                <div className={`rounded-full p-6 mb-4 ${isDark ? 'bg-gray-700/30' : 'bg-gray-100'}`}>
-                                    <DocumentTextIcon className={`w-16 h-16 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                            purchaseOrders.length === 0 && dataSourceStatus?.syncState === 'not_configured' ? (
+                                // No data source configured - show onboarding guidance
+                                <EmptyStateGuidance
+                                    type="not_configured"
+                                    context="purchase_orders"
+                                    onAction={(action) => {
+                                        if (action === 'settings_integrations' || action === 'settings' || action === 'setup_finale' || action === 'setup_sheets' || action === 'upload_csv') {
+                                            addToast('Navigate to Settings to configure your data source', 'info');
+                                        } else if (action === 'create_po') {
+                                            setIsCreatePoModalOpen(true);
+                                        }
+                                    }}
+                                />
+                            ) : purchaseOrders.length === 0 && dataSourceStatus?.syncState === 'configured_not_synced' ? (
+                                // Data source configured but waiting for sync
+                                <EmptyStateGuidance
+                                    type="configured_empty"
+                                    context="purchase_orders"
+                                    onAction={(action) => {
+                                        if (action === 'create_po') {
+                                            setIsCreatePoModalOpen(true);
+                                        } else if (action === 'settings_integrations') {
+                                            addToast('Navigate to Settings to check sync status', 'info');
+                                        }
+                                    }}
+                                />
+                            ) : purchaseOrders.length === 0 && dataSourceStatus?.hasAnyDataSource ? (
+                                // Data source synced but no POs - ready to create
+                                <EmptyStateGuidance
+                                    type="synced_empty"
+                                    context="purchase_orders"
+                                    onAction={(action) => {
+                                        if (action === 'create_po') {
+                                            setIsCreatePoModalOpen(true);
+                                        } else if (action === 'settings_integrations') {
+                                            addToast('Navigate to Settings to sync more data', 'info');
+                                        }
+                                    }}
+                                />
+                            ) : purchaseOrders.length > 0 ? (
+                                // Has POs but filters returned none
+                                <EmptyStateGuidance
+                                    type="no_results"
+                                    context="purchase_orders"
+                                    onAction={(action) => {
+                                        if (action === 'clear_filters') {
+                                            setDateFilter('all');
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                // Fallback - show original empty state
+                                <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                                    <div className={`rounded-full p-6 mb-4 ${isDark ? 'bg-gray-700/30' : 'bg-gray-100'}`}>
+                                        <DocumentTextIcon className={`w-16 h-16 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                                    </div>
+                                    <h3 className={`text-xl font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                        No Purchase Orders Yet
+                                    </h3>
+                                    <p className={`mb-4 max-w-md ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                        Get started by creating a purchase order manually or importing from your Finale inventory system.
+                                    </p>
+                                    {canManagePOs && (
+                                        <div className="flex gap-3">
+                                            <Button
+                                                onClick={() => setIsCreatePoModalOpen(true)}
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-600 transition-colors font-medium"
+                                            >
+                                                <DocumentTextIcon className="w-5 h-5" />
+                                                Create Purchase Order
+                                            </Button>
+                                            <Button
+                                                onClick={async () => {
+                                                    addToast('💡 To import from Finale, configure API credentials in Settings → Finale Integration', 'info');
+                                                }}
+                                                className={`inline-flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium border ${isDark
+                                                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600'
+                                                    : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+                                            >
+                                                <FileTextIcon className="w-5 h-5" />
+                                                Import from Finale
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
-                                <h3 className={`text-xl font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                    {purchaseOrders.length === 0 ? 'No Purchase Orders Yet' : 'No Matching Purchase Orders'}
-                                </h3>
-                                <p className={`mb-4 max-w-md ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                                    {purchaseOrders.length === 0
-                                        ? "Get started by creating a purchase order manually or importing from your Finale inventory system."
-                                        : `${purchaseOrders.length} purchase order${purchaseOrders.length === 1 ? '' : 's'} exist, but none match your current filters.`}
-                                </p>
-                                {purchaseOrders.length > 0 && (
-                                    <div className={`text-sm mb-4 space-y-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                                        <div>Current filter: <span className={isDark ? 'text-gray-400' : 'text-gray-700'}>Date = {dateFilter === 'all' ? 'All Time' : dateFilter === '30days' ? 'Last 30 Days' : dateFilter === '90days' ? 'Last 90 Days' : 'Last 12 Months'}</span></div>
-                                        {dateFilter !== 'all' && (
-                                            <div className="flex gap-2 justify-center mt-3">
-                                                <Button
-                                                    onClick={() => setDateFilter('all')}
-                                                    className="px-3 py-1.5 text-xs bg-accent-500 text-white rounded hover:bg-accent-600"
-                                                >
-                                                    Show All Time
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {purchaseOrders.length === 0 && canManagePOs && (
-                                    <div className="flex gap-3">
-                                        <Button
-                                            onClick={() => setIsCreatePoModalOpen(true)}
-                                            className="inline-flex items-center gap-2 px-4 py-2 bg-accent-500 text-white rounded-md hover:bg-accent-600 transition-colors font-medium"
-                                        >
-                                            <DocumentTextIcon className="w-5 h-5" />
-                                            Create Purchase Order
-                                        </Button>
-                                        <Button
-                                            onClick={async () => {
-                                                addToast('💡 To import from Finale, configure API credentials in Settings → Finale Integration', 'info');
-                                            }}
-                                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-medium border ${isDark 
-                                                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-gray-600' 
-                                                : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
-                                        >
-                                            <FileTextIcon className="w-5 h-5" />
-                                            Import from Finale
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
+                            )
                         ) : viewMode === 'list' ? (
                             <table className={`min-w-full divide-y ${isDark ? 'divide-slate-800' : 'divide-gray-200'}`}>
                                 <thead className={`sticky top-0 z-10 ${isDark ? 'bg-slate-950/50' : 'bg-gray-50/90'}`}>

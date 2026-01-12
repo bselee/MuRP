@@ -3,7 +3,7 @@ import { useTheme } from '../components/ThemeProvider';
 import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import Table, { type Column } from '@/components/ui/Table';
-import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults, PurchaseOrder } from '../types';
+import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults, PurchaseOrder, User } from '../types';
 import { useUserPreferences, type RowDensity, type FontScale } from '../components/UserPreferencesProvider';
 import {
     SearchIcon,
@@ -25,6 +25,8 @@ import FilterPresetManager, { type FilterPreset } from '../components/FilterPres
 import { exportToCsv, exportToJson, exportToXls } from '../services/exportService';
 import { generateInventoryPdf } from '../services/pdfService';
 import LoadingOverlay from '../components/LoadingOverlay';
+import EmptyStateGuidance, { type EmptyStateType } from '../components/EmptyStateGuidance';
+import useDataSourceStatus from '../hooks/useDataSourceStatus';
 import {
     normalizeCategory,
     buildVendorNameMap,
@@ -47,6 +49,8 @@ interface InventoryProps {
     onNavigateToProduct?: (sku: string) => void;
     purchaseOrders?: PurchaseOrder[];
     loading?: boolean;
+    currentUser?: User;
+    setCurrentPage?: (page: string) => void;
 }
 
 type ColumnKey =
@@ -203,11 +207,12 @@ const SortableHeader: React.FC<{
     );
 };
 
-const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom, onQuickRequest, onNavigateToProduct, purchaseOrders = [], loading = false }) => {
+const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom, onQuickRequest, onNavigateToProduct, purchaseOrders = [], loading = false, currentUser, setCurrentPage }) => {
     const { rowDensity, fontScale } = useUserPreferences();
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
     const { isExcluded: isSkuExcluded } = useGlobalSkuFilter();
+    const { status: dataSourceStatus, loading: statusLoading } = useDataSourceStatus(currentUser?.id);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
         const saved = localStorage.getItem('inventory-selected-categories');
@@ -1166,6 +1171,60 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     };
     const formatDemandRate = (value?: number) => (value !== undefined ? value.toFixed(1) : '—');
 
+    // Determine empty state type for guidance based on sync state
+    const getEmptyStateType = (): EmptyStateType | null => {
+        if (loading || statusLoading) return 'loading';
+        if (!dataSourceStatus) return null;
+        if (inventory.length === 0) {
+            // Use syncState to distinguish between different empty scenarios
+            switch (dataSourceStatus.syncState) {
+                case 'not_configured':
+                    return 'not_configured';
+                case 'configured_not_synced':
+                    return 'configured_empty'; // Waiting for sync
+                case 'synced_empty':
+                case 'synced_with_data': // Shouldn't hit this but fallback
+                    return 'synced_empty';
+                default:
+                    return 'configured_empty';
+            }
+        }
+        if (processedInventory.length === 0) return 'no_results';
+        return null;
+    };
+
+    const emptyStateType = getEmptyStateType();
+
+    // Handler for empty state actions
+    const handleEmptyStateAction = (action: string) => {
+        switch (action) {
+            case 'settings_integrations':
+            case 'settings':
+            case 'setup_finale':
+            case 'setup_sheets':
+            case 'upload_csv':
+                setCurrentPage?.('Settings');
+                break;
+            case 'add_item':
+                // Could open an add item modal in the future
+                setIsImportExportModalOpen(true);
+                break;
+            case 'clear_filters':
+                setSearchTerm('');
+                setSelectedCategories(new Set());
+                setSelectedVendors(new Set());
+                setBomFilter('all');
+                setFilters({ status: '' });
+                setRiskFilter('all');
+                break;
+            case 'retry':
+                window.location.reload();
+                break;
+            default:
+                break;
+        }
+    };
+
     return (
         <>
             {loading && <LoadingOverlay />}
@@ -1471,20 +1530,34 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             </div>
                         </div>
                     </CollapsibleSection>
-                    {/* Inventory Table */}
-                    <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden`}>
-                        <Table
-                            columns={tableColumns}
-                            data={processedInventory}
-                            getRowKey={(item) => item.sku}
-                            getRowAttributes={(item) => ({ 'data-sku-id': item.sku })}
-                            stickyHeader
-                            hoverable
-                            compact={rowDensity === 'compact' || rowDensity === 'ultra'}
-                            loading={loading}
-                            emptyMessage="No inventory items found"
+                    {/* Inventory Table or Empty State */}
+                    {emptyStateType && ['not_configured', 'configured_empty', 'loading'].includes(emptyStateType) ? (
+                        <EmptyStateGuidance
+                            type={emptyStateType}
+                            context="inventory"
+                            onAction={handleEmptyStateAction}
                         />
-                    </div>
+                    ) : emptyStateType === 'no_results' ? (
+                        <EmptyStateGuidance
+                            type="no_results"
+                            context="inventory"
+                            onAction={handleEmptyStateAction}
+                        />
+                    ) : (
+                        <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden`}>
+                            <Table
+                                columns={tableColumns}
+                                data={processedInventory}
+                                getRowKey={(item) => item.sku}
+                                getRowAttributes={(item) => ({ 'data-sku-id': item.sku })}
+                                stickyHeader
+                                hoverable
+                                compact={rowDensity === 'compact' || rowDensity === 'ultra'}
+                                loading={loading}
+                                emptyMessage="No inventory items found"
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
 

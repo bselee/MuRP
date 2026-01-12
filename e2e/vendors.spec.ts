@@ -10,12 +10,12 @@ test.describe('Vendors Page', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the vendors page and enable e2e mode to bypass login
     await page.goto('/vendors?e2e=1');
-    await expect(page.locator('h1')).toContainText('Vendors');
+    await expect(page.getByRole('heading', { name: /Vendors/i })).toBeVisible({ timeout: 15000 });
   });
 
   test('should display the Vendors page header', async ({ page }) => {
     // Check for the page title
-    await expect(page.locator('h1')).toContainText('Vendors');
+    await expect(page.getByRole('heading', { name: /Vendors/i })).toBeVisible();
 
     // Check for the "Add New Vendor" button
     await expect(page.getByRole('button', { name: /add new vendor/i })).toBeVisible();
@@ -239,12 +239,12 @@ test.describe('Vendors Page', () => {
 test.describe('Vendors Page - Accessibility', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/vendors?e2e=1');
-    await expect(page.locator('h1')).toContainText('Vendors');
+    await expect(page.getByRole('heading', { name: /Vendors/i })).toBeVisible({ timeout: 15000 });
   });
 
   test('should have proper semantic HTML', async ({ page }) => {
-    // Check for proper heading hierarchy
-    const h1 = page.locator('h1');
+    // Check for proper heading hierarchy - be specific to avoid multiple h1 elements
+    const h1 = page.getByRole('heading', { name: /Vendors/i });
     await expect(h1).toBeVisible();
 
     // Check for table structure
@@ -277,7 +277,7 @@ test.describe('Vendors Page - Performance', () => {
     const startTime = Date.now();
 
     await page.goto('/vendors?e2e=1');
-    await expect(page.locator('h1')).toContainText('Vendors');
+    await expect(page.getByRole('heading', { name: /Vendors/i })).toBeVisible({ timeout: 15000 });
 
     // Wait for vendors to be visible
     await page.waitForSelector('table tbody tr', { timeout: 5000 });
