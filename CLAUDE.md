@@ -384,6 +384,26 @@ const result = await runMorningBriefing(userId);
 | Invoice Extraction | Every 10 minutes | Process pending invoices |
 | Three-Way Match | Every 15 minutes | PO vs Invoice vs Receipt |
 
+**Vault Configuration (Required for Scheduled Syncs):**
+
+Scheduled jobs use `trigger_auto_sync()` which requires the service role key in Supabase Vault:
+
+1. Go to Supabase Dashboard → Database → Extensions → Vault
+2. Add secret with **exact name**: `supabase_service_role_key`
+3. Value: Your project's service role key
+
+Without this, scheduled syncs will fail with "No service role key configured".
+
+**Key Functions:**
+- `trigger_auto_sync(sync_type)` - Triggers edge function via HTTP
+- `should_run_sync(sync_type)` - Rate limiting (prevents overlapping syncs)
+- `get_sync_stats()` - Returns last sync times and counts
+
+**Sync State Tracking:**
+- `finale_sync_state` - Tracks last sync times per type
+- `finale_sync_changes` - Delta sync change tracking
+- `sync_dashboard` view - Monitoring dashboard
+
 ## Email Monitoring & PO Tracking
 
 **OAuth Flow:**
