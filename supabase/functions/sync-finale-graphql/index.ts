@@ -541,29 +541,67 @@ async function batchUpsert(supabase: any, table: string, data: any[], conflictCo
 // MAIN HANDLER
 // ===========================================
 serve(async (req) => {
+  // Immediate debug response for diagnosis
+  console.log('[Sync] Function invoked');
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    // Debug: Log credential status immediately
+    console.log('[Sync] Checking credentials...');
+    console.log(`[Sync] FINALE_API_KEY: ${FINALE_API_KEY ? 'SET' : 'MISSING'}`);
+    console.log(`[Sync] FINALE_API_SECRET: ${FINALE_API_SECRET ? 'SET' : 'MISSING'}`);
+    console.log(`[Sync] FINALE_ACCOUNT_PATH: ${FINALE_ACCOUNT_PATH || 'MISSING'}`);
+    console.log(`[Sync] FINALE_BASE_URL: ${FINALE_BASE_URL || 'MISSING'}`);
+    console.log(`[Sync] SUPABASE_URL: ${SUPABASE_URL ? 'SET' : 'MISSING'}`);
+    console.log(`[Sync] SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING'}`);
+
     // Parse request body for sync options
     let syncTypes: string[] = ['vendors', 'products', 'purchase_orders'];
+    let limit: number | undefined;
     try {
       const body = await req.json();
       if (body.syncTypes && Array.isArray(body.syncTypes)) {
         syncTypes = body.syncTypes;
       }
+      if (body.limit) {
+        limit = body.limit;
+      }
+      // Quick test mode - return credential status only
+      if (body.test === true) {
+        return new Response(
+          JSON.stringify({
+            test: true,
+            credentials: {
+              FINALE_API_KEY: FINALE_API_KEY ? 'SET' : 'MISSING',
+              FINALE_API_SECRET: FINALE_API_SECRET ? 'SET' : 'MISSING',
+              FINALE_ACCOUNT_PATH: FINALE_ACCOUNT_PATH || 'MISSING',
+              SUPABASE_URL: SUPABASE_URL ? 'SET' : 'MISSING',
+            },
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     } catch {
       // No body or invalid JSON, use defaults
     }
-    
+
     console.log(`[Sync] Starting GraphQL sync for: ${syncTypes.join(', ')}...`);
     const startTime = Date.now();
 
     // Validate credentials
     if (!FINALE_API_KEY || !FINALE_API_SECRET || !FINALE_ACCOUNT_PATH) {
       return new Response(
-        JSON.stringify({ error: 'Missing Finale credentials' }),
+        JSON.stringify({
+          error: 'Missing Finale credentials',
+          details: {
+            FINALE_API_KEY: FINALE_API_KEY ? 'SET' : 'MISSING',
+            FINALE_API_SECRET: FINALE_API_SECRET ? 'SET' : 'MISSING',
+            FINALE_ACCOUNT_PATH: FINALE_ACCOUNT_PATH || 'MISSING',
+          }
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
