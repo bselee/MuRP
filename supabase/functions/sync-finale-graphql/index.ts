@@ -109,6 +109,7 @@ const PRODUCTS_QUERY = `
           stockShipping: stockColumnQuantityOnHandUnitsBuildasoilorganicsapifacility10005
           stock59: stockColumnQuantityOnHandUnitsBuildasoilorganicsapifacility10059
           stock109: stockColumnQuantityOnHandUnitsBuildasoilorganicsapifacility10109
+          dropshipped: customFieldDropshipped
         }
         cursor
       }
@@ -329,23 +330,31 @@ function transformProduct(node: any): any {
   };
 }
 
-// Check if product is dropship based on category or notes
+// Check if product is dropship based on Finale's Dropshipped custom field, category, or notes
 function isDropshipProduct(node: any): boolean {
-  const category = (node.category || '').toLowerCase();
-  const notes = (node.notes || '').toLowerCase();
-  const description = (node.description || '').toLowerCase();
+  // PRIMARY: Check Finale's "Dropshipped" custom field (Yes/No)
+  const dropshippedField = node.dropshipped;
+  if (dropshippedField) {
+    const value = String(dropshippedField).toLowerCase().trim();
+    if (value === 'yes' || value === 'true' || value === '1') {
+      return true;
+    }
+  }
 
-  // Check category for dropship indicators
+  // FALLBACK: Check category for dropship indicators
+  const category = (node.category || '').toLowerCase();
   if (category.includes('dropship') || category.includes('drop ship') || category.includes('drop-ship')) {
     return true;
   }
 
-  // Check notes for dropship indicators
+  // FALLBACK: Check notes for dropship indicators
+  const notes = (node.notes || '').toLowerCase();
   if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) {
     return true;
   }
 
-  // Check description for dropship indicators
+  // FALLBACK: Check description for dropship indicators
+  const description = (node.description || '').toLowerCase();
   if (description.includes('dropship') || description.includes('drop ship')) {
     return true;
   }
