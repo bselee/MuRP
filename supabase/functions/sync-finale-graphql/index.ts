@@ -329,6 +329,30 @@ function transformProduct(node: any): any {
   };
 }
 
+// Check if product is dropship based on category or notes
+function isDropshipProduct(node: any): boolean {
+  const category = (node.category || '').toLowerCase();
+  const notes = (node.notes || '').toLowerCase();
+  const description = (node.description || '').toLowerCase();
+
+  // Check category for dropship indicators
+  if (category.includes('dropship') || category.includes('drop ship') || category.includes('drop-ship')) {
+    return true;
+  }
+
+  // Check notes for dropship indicators
+  if (notes.includes('dropship') || notes.includes('drop ship') || notes.includes('drop-ship')) {
+    return true;
+  }
+
+  // Check description for dropship indicators
+  if (description.includes('dropship') || description.includes('drop ship')) {
+    return true;
+  }
+
+  return false;
+}
+
 // Transform GraphQL product to inventory_items table (for app compatibility)
 function transformToInventoryItem(node: any): any {
   if (!node.productId) return null;
@@ -336,12 +360,15 @@ function transformToInventoryItem(node: any): any {
   // Skip inactive and Deprecating products
   if (!isActiveProduct(node)) return null;
 
+  // Detect dropship status
+  const isDropship = isDropshipProduct(node);
+
   // Calculate total stock from ALL facilities
   const totalStock = calculateTotalStock(node);
 
   // Debug logging for stock values
   if (totalStock > 0) {
-    console.log(`[Sync] Product ${node.productId}: totalStock=${totalStock}`);
+    console.log(`[Sync] Product ${node.productId}: totalStock=${totalStock}${isDropship ? ' (DROPSHIP)' : ''}`);
   }
 
   return {
@@ -353,6 +380,8 @@ function transformToInventoryItem(node: any): any {
     // Use TOTAL stock from all facilities (not just shipping)
     stock: Math.round(totalStock),
     on_order: 0, // Will be calculated from PO sync
+    // Mark dropship items so app can filter them out
+    is_dropship: isDropship,
     updated_at: new Date().toISOString(),
   };
 }
