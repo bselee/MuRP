@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from './ThemeProvider';
 import RiskActionMenu from './RiskActionMenu';
 import type { SupplyChainRisk, SupplyChainRiskSummary, RiskSeverity } from '../services/supplyChainRiskService';
+import type { DismissReason, SnoozeOptions } from '../hooks/useSkuDismissals';
 
 interface SupplyChainRiskPanelProps {
   risks: SupplyChainRisk[];
@@ -12,6 +13,8 @@ interface SupplyChainRiskPanelProps {
   onMarkForReview?: (sku: string) => void;
   onViewHistory?: (sku: string) => void;
   onNavigateToSku?: (sku: string) => void;
+  onDismiss?: (sku: string, reason: DismissReason, notes?: string) => void;
+  onSnooze?: (sku: string, duration: SnoozeOptions['duration'], notes?: string) => void;
   maxItems?: number;
 }
 
@@ -79,6 +82,8 @@ export default function SupplyChainRiskPanel({
   onMarkForReview,
   onViewHistory,
   onNavigateToSku,
+  onDismiss,
+  onSnooze,
   maxItems = 10,
 }: SupplyChainRiskPanelProps) {
   const { resolvedTheme } = useTheme();
@@ -248,6 +253,8 @@ export default function SupplyChainRiskPanel({
                   onAdjustROP={onAdjustROP}
                   onMarkForReview={onMarkForReview}
                   onViewHistory={onViewHistory}
+                  onDismiss={onDismiss}
+                  onSnooze={onSnooze}
                 />
               </div>
             </div>

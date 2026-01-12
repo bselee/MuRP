@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTheme } from './ThemeProvider';
 import RiskActionMenu from './RiskActionMenu';
+import type { DismissReason, SnoozeOptions } from '../hooks/useSkuDismissals';
 
 export interface StockoutItem {
   sku: string;
@@ -28,6 +29,8 @@ interface StockoutContingencyCardProps {
   onCreatePO?: (sku: string, qty: number) => void;
   onAdjustROP?: (sku: string) => void;
   onMarkForReview?: (sku: string) => void;
+  onDismiss?: (sku: string, reason: DismissReason, notes?: string) => void;
+  onSnooze?: (sku: string, duration: SnoozeOptions['duration'], notes?: string) => void;
 }
 
 export default function StockoutContingencyCard({
@@ -38,6 +41,8 @@ export default function StockoutContingencyCard({
   onCreatePO,
   onAdjustROP,
   onMarkForReview,
+  onDismiss,
+  onSnooze,
 }: StockoutContingencyCardProps) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
@@ -219,6 +224,8 @@ export default function StockoutContingencyCard({
                   onCreatePO={onCreatePO}
                   onAdjustROP={onAdjustROP}
                   onMarkForReview={onMarkForReview}
+                  onDismiss={onDismiss}
+                  onSnooze={onSnooze}
                 />
               </div>
 

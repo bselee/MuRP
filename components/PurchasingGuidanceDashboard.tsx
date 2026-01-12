@@ -6,6 +6,7 @@ import { analyzeSupplyChainRisks, type SupplyChainRisk } from '../services/suppl
 import { supabase } from '../lib/supabase/client';
 import { createPurchaseOrder, batchUpdateInventory } from '../hooks/useSupabaseMutations';
 import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
+import { useSkuDismissals, type DismissReason, type SnoozeOptions } from '../hooks/useSkuDismissals';
 import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon, AlertTriangleIcon, TrendingUpIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
 import type { CreatePurchaseOrderInput } from '../types';
 import SupplyChainRiskPanel from './SupplyChainRiskPanel';
@@ -98,6 +99,9 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
 
     // Global SKU filter - exclude SKUs marked as "do not reorder"
     const { isExcluded: isSkuExcluded } = useGlobalSkuFilter();
+
+    // SKU dismissals - dismiss with reason or snooze for later
+    const { isDismissed, dismissSku, snoozeSku, refresh: refreshDismissals } = useSkuDismissals();
 
     // Ref for scrolling to replenishment section
     const replenishmentRef = useRef<HTMLDivElement>(null);
@@ -755,9 +759,35 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
     };
 
     // Filter out globally excluded SKUs first
-    const filteredAdvice = advice.filter(item => !isSkuExcluded(item.sku));
-    const filteredStockouts = stockoutItems.filter(item => !isSkuExcluded(item.sku));
-    const filteredRisks = supplyChainRisks.filter(risk => !isSkuExcluded(risk.sku));
+    // Filter out globally excluded and dismissed/snoozed SKUs
+    const isHiddenSku = useCallback((sku: string) => isSkuExcluded(sku) || isDismissed(sku), [isSkuExcluded, isDismissed]);
+    const filteredAdvice = advice.filter(item => !isHiddenSku(item.sku));
+    const filteredStockouts = stockoutItems.filter(item => !isHiddenSku(item.sku));
+    const filteredRisks = supplyChainRisks.filter(risk => !isHiddenSku(risk.sku));
+
+    // Handlers for dismiss and snooze actions
+    const handleDismiss = useCallback(async (sku: string, reason: DismissReason, notes?: string) => {
+        const success = await dismissSku(sku, { reason, notes });
+        if (success) {
+            addToast(`${sku} dismissed (${reason})`, 'success');
+        } else {
+            addToast(`Failed to dismiss ${sku}`, 'error');
+        }
+    }, [dismissSku, addToast]);
+
+    const handleSnooze = useCallback(async (sku: string, duration: SnoozeOptions['duration'], notes?: string) => {
+        const success = await snoozeSku(sku, { duration, notes });
+        if (success) {
+            const durationLabel = duration === 'tomorrow' ? 'tomorrow' :
+                duration === '3days' ? '3 days' :
+                duration === '1week' ? '1 week' :
+                duration === '2weeks' ? '2 weeks' :
+                duration === '1month' ? '1 month' : duration;
+            addToast(`${sku} snoozed for ${durationLabel}`, 'success');
+        } else {
+            addToast(`Failed to snooze ${sku}`, 'error');
+        }
+    }, [snoozeSku, addToast]);
 
     // Split advice into items needing action vs items already on order
     const needsOrder = filteredAdvice.filter(item => !item.linked_po);
@@ -801,15 +831,9 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
                     <h2 className="text-2xl font-bold text-white tracking-tight">Stock Intelligence</h2>
                     <p className="text-sm text-slate-400 mt-1">Stock levels and reorder guidance</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-2 text-xs font-medium text-purple-300 bg-purple-900/30 px-3 py-1.5 rounded-full border border-purple-500/30">
-                        <MagicSparklesIcon className="w-3 h-3" />
-                        AI Agent Active
-                    </span>
-                    <span className="text-xs text-slate-500 flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                        Live Updates
-                    </span>
+                <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <span className="text-xs text-slate-500">Agents Live</span>
                 </div>
             </div>
 
@@ -961,6 +985,8 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
                     onMarkForReview={(sku) => addToast(`${sku} marked for review`, 'success')}
                     onViewHistory={onNavigateToSku}
                     onNavigateToSku={onNavigateToSku}
+                    onDismiss={handleDismiss}
+                    onSnooze={handleSnooze}
                 />
             )}
 
@@ -973,6 +999,8 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
                     onCreatePO={handleCreatePOFromRisk}
                     onAdjustROP={(sku) => addToast(`Adjust ROP for ${sku} - feature coming soon`, 'info')}
                     onMarkForReview={(sku) => addToast(`${sku} marked for review`, 'success')}
+                    onDismiss={handleDismiss}
+                    onSnooze={handleSnooze}
                 />
             )}
 
