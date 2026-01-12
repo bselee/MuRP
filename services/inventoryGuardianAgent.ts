@@ -286,53 +286,33 @@ export async function runInventoryHealthCheck(
 
   try {
     // Get all items visible in Stock Intelligence (respects classification rules)
-    // Uses stock_intelligence_items view which pre-filters:
-    // - Dropship items (excluded)
-    // - Consignment items (excluded)
-    // - Made-to-order items (excluded)
-    // - Discontinued items (excluded)
-    // - Manually excluded items (excluded)
-    // - Items with stock_intel_override that are included
+    // Uses correct column names from inventory_items schema
     const { data: inventory, error } = await supabase
-      .from('stock_intelligence_items')  // USE VIEW - respects all classification rules
+      .from('inventory_items')
       .select(`
         id,
         sku,
-        product_name,
         name,
-        available_quantity,
-        quantity_on_hand,
+        category,
+        stock,
+        on_order,
         reorder_point,
-        max_stock_level,
         unit_cost,
-        cost,
-        avg_daily_consumption,
-        lead_time_days,
+        sales_last_30_days,
         item_flow_type,
         stock_intel_exclude,
-        is_dropship
+        is_dropship,
+        status
       `)
-      .order('available_quantity', { ascending: true });
+      .eq('status', 'active')
+      .or('is_dropship.is.null,is_dropship.eq.false')
+      .or('item_flow_type.is.null,item_flow_type.eq.standard')
+      .or('stock_intel_exclude.is.null,stock_intel_exclude.eq.false')
+      .order('stock', { ascending: true });
 
     if (error) {
-      // Fallback: If view doesn't exist yet, use old query with basic filters
-      console.warn('[InventoryGuardian] stock_intelligence_items view not available, using fallback');
-      const { data: fallbackInventory, error: fallbackError } = await supabase
-        .from('inventory_items')
-        .select(`
-          id, sku, product_name, name, available_quantity, quantity_on_hand,
-          reorder_point, max_stock_level, unit_cost, cost, avg_daily_consumption, lead_time_days
-        `)
-        .eq('is_active', true)
-        .or('is_dropship.is.null,is_dropship.eq.false')
-        .or('item_flow_type.is.null,item_flow_type.eq.standard')
-        .or('stock_intel_exclude.is.null,stock_intel_exclude.eq.false');
-
-      if (fallbackError) throw fallbackError;
-      if (!fallbackInventory) return getEmptySummary();
-
-      // Process fallback inventory
-      return processInventoryForHealthCheck(fallbackInventory, cfg);
+      console.error('[InventoryGuardian] Query failed:', error);
+      throw error;
     }
 
     if (!inventory) return getEmptySummary();
@@ -378,8 +358,8 @@ export async function analyzeVelocityChanges(
     // Get ACTIVE inventory items with stock info
     const { data: inventory } = await supabase
       .from('inventory_items')
-      .select('sku, product_name, name, available_quantity, avg_daily_consumption, lead_time_days')
-      .eq('is_active', true);
+      .select('sku, name, stock, sales_last_30_days')
+      .eq('status', 'active');
 
     if (!inventory) return [];
 
@@ -433,7 +413,7 @@ export async function analyzeVelocityChanges(
       const trend = getVelocityTrend(changePct);
 
       // Calculate runway impact
-      const currentStock = item.available_quantity || 0;
+      const currentStock = item.stock || 0;
       const currentRunway = avg7d > 0 ? Math.floor(currentStock / avg7d) : 999;
       const historicalRunway = avg30d > 0 ? Math.floor(currentStock / avg30d) : 999;
       const runwayDiff = currentRunway - historicalRunway;
@@ -461,7 +441,7 @@ export async function analyzeVelocityChanges(
 
       analyses.push({
         sku: item.sku,
-        product_name: item.product_name || item.name || item.sku,
+        product_name: item.name || item.sku,
         avg_daily_90d: avg90d,
         avg_daily_30d: avg30d,
         avg_daily_7d: avg7d,
@@ -512,26 +492,24 @@ export async function getReorderPointRecommendations(): Promise<Array<{
       .from('inventory_items')
       .select(`
         sku,
-        product_name,
         name,
         reorder_point,
-        avg_daily_consumption,
-        lead_time_days
+        sales_last_30_days
       `)
-      .eq('is_active', true);  // CRITICAL: Only fetch active items
+      .eq('status', 'active');
 
     if (!inventory) return [];
 
+    const DEFAULT_LEAD_TIME = 14;
     for (const item of inventory) {
-      const dailyConsumption = item.avg_daily_consumption || 0;
-      const leadTime = item.lead_time_days || 14;
+      const dailyConsumption = (item.sales_last_30_days || 0) / 30;
       const currentROP = item.reorder_point || 0;
-      
+
       if (dailyConsumption === 0) continue;
 
       // Recommended ROP = (Daily Consumption × Lead Time) × Safety Factor (1.2)
-      const recommendedROP = Math.ceil(dailyConsumption * leadTime * 1.2);
-      
+      const recommendedROP = Math.ceil(dailyConsumption * DEFAULT_LEAD_TIME * 1.2);
+
       const difference = Math.abs(recommendedROP - currentROP);
       const diffPct = currentROP > 0 ? (difference / currentROP) * 100 : 100;
 
@@ -539,7 +517,7 @@ export async function getReorderPointRecommendations(): Promise<Array<{
       if (diffPct > 20) {
         recommendations.push({
           sku: item.sku,
-          product_name: item.product_name || item.name || item.sku,
+          product_name: item.name || item.sku,
           current_reorder_point: currentROP,
           recommended_reorder_point: recommendedROP,
           reason: recommendedROP > currentROP
@@ -901,13 +879,14 @@ function processInventoryForHealthCheck(
   let totalValue = 0;
   let atRiskValue = 0;
 
+  const DEFAULT_LEAD_TIME = 14;
   for (const item of inventory) {
-    const stock = item.available_quantity || item.quantity_on_hand || 0;
+    const stock = item.stock || 0;
     const reorderPoint = item.reorder_point || 0;
-    const dailyConsumption = item.avg_daily_consumption || 0;
-    const leadTime = item.lead_time_days || 14;
-    const unitCost = item.unit_cost || item.cost || 0;
-    const productName = item.product_name || item.name || item.sku;
+    const dailyConsumption = (item.sales_last_30_days || 0) / 30;
+    const leadTime = DEFAULT_LEAD_TIME;
+    const unitCost = item.unit_cost || 0;
+    const productName = item.name || item.sku;
 
     // Determine if this is a manufactured item (BOM/finished good)
     const itemFlowType = item.item_flow_type || '';

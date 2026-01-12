@@ -23,7 +23,6 @@ export type SettingsSectionId =
   // Email
   | 'email-policy'
   | 'email-monitoring'
-  | 'email-branding'
   | 'email-log'
   // Communication
   | 'templates'
@@ -85,7 +84,6 @@ export const settingsSections: SettingsSectionConfig[] = [
   // Email
   { id: 'email-policy', label: 'Email Policy', group: 'Email' },
   { id: 'email-monitoring', label: 'Inbox Monitoring', group: 'Email', adminOnly: true },
-  { id: 'email-branding', label: 'Email Branding', group: 'Email', adminOnly: true },
   { id: 'email-log', label: 'Activity Log', group: 'Email', adminOnly: true },
 
   // Communication (admin only)

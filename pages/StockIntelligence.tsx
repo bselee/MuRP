@@ -32,7 +32,6 @@ import {
 import AlertsPanel from '../components/AlertsPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import { getCriticalStockoutAlerts, type StockoutAlert } from '../services/stockoutPreventionAgent';
-import { calculateInventoryKPIs, type InventoryItemKPI } from '../services/inventoryKPIService';
 
 interface StockIntelligenceProps {
   inventory: InventoryItem[];
@@ -48,9 +47,6 @@ interface StockoutRisk {
   forecastAccuracy?: number;
   trendDirection: 'up' | 'down' | 'stable';
   seasonalFactor?: number;
-  // ABC/XYZ classification
-  abcClass?: 'A' | 'B' | 'C';
-  xyzClass?: 'X' | 'Y' | 'Z';
 }
 
 interface VendorPerformance {
@@ -71,8 +67,6 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
   const [vendorPerformances, setVendorPerformances] = useState<VendorPerformance[]>([]);
   // Agent alerts - used for consistent summary cards that match the widget
   const [agentAlerts, setAgentAlerts] = useState<StockoutAlert[]>([]);
-  // KPI data for ABC/XYZ classification
-  const [kpiData, setKpiData] = useState<Map<string, InventoryItemKPI>>(new Map());
 
   // Filter out items based on classification settings
   // CRITICAL: Stock Intelligence respects per-item overrides, reorder_method, and global rules
@@ -261,39 +255,13 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
   }, [vendors, purchaseOrders]);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Fetch KPI data for ABC/XYZ classification
-        const kpis = await calculateInventoryKPIs();
-        const kpiMap = new Map<string, InventoryItemKPI>();
-        kpis.forEach(kpi => kpiMap.set(kpi.sku, kpi));
-        setKpiData(kpiMap);
-
-        // Merge ABC/XYZ classification with stockout risks
-        const risksWithClassification = calculateStockoutRisks.map(risk => {
-          const kpi = kpiMap.get(risk.sku);
-          return {
-            ...risk,
-            abcClass: kpi?.abc_class as 'A' | 'B' | 'C' | undefined,
-            xyzClass: kpi?.xyz_class as 'X' | 'Y' | 'Z' | undefined,
-          };
-        });
-        setStockoutRisks(risksWithClassification);
-        setVendorPerformances(calculateVendorPerformance);
-
-        // Fetch agent alerts for consistent summary cards
-        const alerts = await getCriticalStockoutAlerts();
-        setAgentAlerts(alerts);
-      } catch (error) {
-        console.error('Error loading stock intelligence data:', error);
-        // Fall back to basic risks without classification
-        setStockoutRisks(calculateStockoutRisks);
-        setVendorPerformances(calculateVendorPerformance);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
+    setStockoutRisks(calculateStockoutRisks);
+    setVendorPerformances(calculateVendorPerformance);
+    // Fetch agent alerts for consistent summary cards
+    getCriticalStockoutAlerts().then(alerts => {
+      setAgentAlerts(alerts);
+      setLoading(false);
+    });
   }, [calculateStockoutRisks, calculateVendorPerformance]);
 
   if (!permissions.canViewInventory) {

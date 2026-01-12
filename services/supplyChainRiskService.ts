@@ -149,6 +149,7 @@ const DEFAULT_CONFIG: SupplyChainRiskConfig = {
 
 /**
  * Load inventory items with current positions
+ * Uses correct column names from inventory_items schema
  */
 async function loadInventoryPositions(): Promise<Map<string, {
   sku: string;
@@ -164,40 +165,42 @@ async function loadInventoryPositions(): Promise<Map<string, {
     .from('inventory_items')
     .select(`
       sku,
-      product_name,
       name,
-      available_quantity,
-      quantity_on_hand,
+      stock,
       on_order,
-      avg_daily_consumption,
       sales_last_30_days,
       reorder_point,
-      lead_time_days,
       unit_cost,
-      cost,
-      is_active,
+      status,
       is_dropship
     `)
-    .eq('is_active', true)
+    .eq('status', 'active')
     .or('is_dropship.is.null,is_dropship.eq.false');
 
   if (error) throw error;
 
+  // Get lead times from purchasing parameters
+  const { data: purchParams } = await supabase
+    .from('sku_purchasing_parameters')
+    .select('sku, lead_time_mean');
+
+  const leadTimeMap = new Map(purchParams?.map(p => [p.sku, p.lead_time_mean]) || []);
+
+  const DEFAULT_LEAD_TIME = 14;
   const map = new Map();
   for (const item of data || []) {
-    const dailyDemand = item.avg_daily_consumption ||
-                        (item.sales_last_30_days || 0) / 30;
-    const leadTime = item.lead_time_days || 14;
+    const dailyDemand = (item.sales_last_30_days || 0) / 30;
+    const leadTime = leadTimeMap.get(item.sku) || DEFAULT_LEAD_TIME;
 
     map.set(item.sku, {
       sku: item.sku,
-      name: item.product_name || item.name || item.sku,
-      stock: item.available_quantity || item.quantity_on_hand || 0,
+      name: item.name || item.sku,
+      stock: item.stock || 0,
       on_order: item.on_order || 0,
       daily_demand: dailyDemand,
       safety_stock: item.reorder_point || Math.ceil(dailyDemand * leadTime * 0.5),
       lead_time_days: leadTime,
-      unit_cost: item.unit_cost || item.cost || 0,
+      unit_cost: item.unit_cost || 0,
     });
   }
 
@@ -298,19 +301,24 @@ async function loadBOMStructures(): Promise<Map<string, BOMComponent[]>> {
  * Load finished goods demand for BOM explosion
  */
 async function loadFinishedGoodsDemand(): Promise<Map<string, number>> {
+  // Get BOM parent SKUs first
+  const { data: bomSkus } = await supabase
+    .from('bom_items')
+    .select('sku')
+    .eq('is_finished_product', true);
+
+  if (!bomSkus || bomSkus.length === 0) return new Map();
+
   const { data, error } = await supabase
     .from('inventory_items')
-    .select('sku, avg_daily_consumption, sales_last_30_days')
-    .in('sku', (await supabase
-      .from('bom_items')
-      .select('sku')
-      .eq('is_finished_product', true)).data?.map(b => b.sku) || []);
+    .select('sku, sales_last_30_days')
+    .in('sku', bomSkus.map(b => b.sku));
 
   if (error) throw error;
 
   const map = new Map<string, number>();
   for (const item of data || []) {
-    const demand = item.avg_daily_consumption || (item.sales_last_30_days || 0) / 30;
+    const demand = (item.sales_last_30_days || 0) / 30;
     if (demand > 0) map.set(item.sku, demand);
   }
 

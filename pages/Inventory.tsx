@@ -3,7 +3,7 @@ import { useTheme } from '../components/ThemeProvider';
 import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
 import Table, { type Column } from '@/components/ui/Table';
-import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults, PurchaseOrder, User } from '../types';
+import type { InventoryItem, BillOfMaterials, Vendor, QuickRequestDefaults, PurchaseOrder } from '../types';
 import { useUserPreferences, type RowDensity, type FontScale } from '../components/UserPreferencesProvider';
 import {
     SearchIcon,
@@ -25,8 +25,6 @@ import FilterPresetManager, { type FilterPreset } from '../components/FilterPres
 import { exportToCsv, exportToJson, exportToXls } from '../services/exportService';
 import { generateInventoryPdf } from '../services/pdfService';
 import LoadingOverlay from '../components/LoadingOverlay';
-import EmptyStateGuidance, { type EmptyStateType } from '../components/EmptyStateGuidance';
-import useDataSourceStatus from '../hooks/useDataSourceStatus';
 import {
     normalizeCategory,
     buildVendorNameMap,
@@ -38,7 +36,6 @@ import {
 } from '../lib/inventory/utils';
 import { computeStockoutRisks, computeVendorPerformance } from '@/lib/inventory/stockIntelligence';
 import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
-import { calculateInventoryKPIs, type InventoryItemKPI } from '../services/inventoryKPIService';
 
 interface InventoryProps {
     inventory: InventoryItem[];
@@ -49,13 +46,10 @@ interface InventoryProps {
     onNavigateToProduct?: (sku: string) => void;
     purchaseOrders?: PurchaseOrder[];
     loading?: boolean;
-    currentUser?: User;
-    setCurrentPage?: (page: string) => void;
 }
 
 type ColumnKey =
     | 'sku'
-    | 'class'
     | 'name'
     | 'category'
     | 'stock'
@@ -80,7 +74,6 @@ interface ColumnConfig {
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
     { key: 'sku', label: 'SKU', visible: true, sortable: true },
-    { key: 'class', label: 'Class', visible: true, sortable: false },
     { key: 'name', label: 'Description', visible: true, sortable: true },
     { key: 'category', label: 'Category', visible: true, sortable: true },
     { key: 'stock', label: 'Stock', visible: true, sortable: true },
@@ -99,7 +92,6 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
 
 const COLUMN_WIDTH_CLASSES: Partial<Record<ColumnKey, string>> = {
     sku: 'w-28 max-w-[7rem]',
-    class: 'w-16 max-w-[5rem]',
     name: 'min-w-[14rem] max-w-[22rem]',
     category: 'max-w-[10rem]',
     stock: 'w-28',
@@ -207,12 +199,11 @@ const SortableHeader: React.FC<{
     );
 };
 
-const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom, onQuickRequest, onNavigateToProduct, purchaseOrders = [], loading = false, currentUser, setCurrentPage }) => {
+const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavigateToBom, onQuickRequest, onNavigateToProduct, purchaseOrders = [], loading = false }) => {
     const { rowDensity, fontScale } = useUserPreferences();
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme !== 'light';
     const { isExcluded: isSkuExcluded } = useGlobalSkuFilter();
-    const { status: dataSourceStatus, loading: statusLoading } = useDataSourceStatus(currentUser?.id);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
         const saved = localStorage.getItem('inventory-selected-categories');
@@ -280,36 +271,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const categoryDropdownRef = useRef<HTMLDivElement>(null);
     const vendorDropdownRef = useRef<HTMLDivElement>(null);
     const inventoryRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
-
-    // ABC/XYZ classification data from KPI service
-    const [kpiMap, setKpiMap] = useState<Map<string, { abc: 'A' | 'B' | 'C'; xyz: 'X' | 'Y' | 'Z' }>>(new Map());
-
-    // Highlighted SKU from deep link navigation
-    const [highlightedSku, setHighlightedSku] = useState<string | null>(null);
-
-    // Check for highlighted SKU from localStorage on mount
-    useEffect(() => {
-        const storedSku = localStorage.getItem('highlightedSku');
-        if (storedSku) {
-            setHighlightedSku(storedSku);
-            localStorage.removeItem('highlightedSku');
-            // Clear any search filters to ensure the SKU is visible
-            setSearchTerm(storedSku);
-            // Scroll to the SKU after a short delay to allow rendering
-            setTimeout(() => {
-                const skuElement = document.querySelector(`[data-sku-id="${storedSku}"]`);
-                if (skuElement) {
-                    skuElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    skuElement.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
-                    // Remove highlight after 3 seconds
-                    setTimeout(() => {
-                        setHighlightedSku(null);
-                        skuElement.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
-                    }, 3000);
-                }
-            }, 200);
-        }
-    }, []);
     const previousSortConfigRef = useRef<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
     const cellDensityClass = `${CELL_DENSITY_MAP[rowDensity]} ${FONT_SCALE_MAP[fontScale]}`;
 
@@ -329,25 +290,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 }
             }, 100);
             localStorage.removeItem('selectedInventorySku');
-        }
-    }, [inventory]);
-
-    // Fetch ABC/XYZ classification data
-    useEffect(() => {
-        const fetchKpiData = async () => {
-            try {
-                const kpis = await calculateInventoryKPIs();
-                const map = new Map<string, { abc: 'A' | 'B' | 'C'; xyz: 'X' | 'Y' | 'Z' }>();
-                kpis.forEach(kpi => {
-                    map.set(kpi.sku, { abc: kpi.abc_class, xyz: kpi.xyz_class });
-                });
-                setKpiMap(map);
-            } catch (error) {
-                console.error('[Inventory] Error fetching KPI data:', error);
-            }
-        };
-        if (inventory.length > 0) {
-            fetchKpiData();
         }
     }, [inventory]);
 
@@ -923,33 +865,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             {item.sku}
                         </div>
                     );
-                case 'class': {
-                    const classification = kpiMap.get(item.sku);
-                    return (
-                        <div className="flex items-center gap-0.5">
-                            {classification ? (
-                                <>
-                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                        classification.abc === 'A' ? 'bg-purple-500/20 text-purple-300 ring-1 ring-purple-500/30' :
-                                        classification.abc === 'B' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/30' :
-                                        'bg-slate-500/20 text-slate-400 ring-1 ring-slate-500/30'
-                                    }`} title={`ABC: ${classification.abc} (${classification.abc === 'A' ? '80% of value' : classification.abc === 'B' ? '15% of value' : '5% of value'})`}>
-                                        {classification.abc}
-                                    </span>
-                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                        classification.xyz === 'X' ? 'bg-green-500/20 text-green-300 ring-1 ring-green-500/30' :
-                                        classification.xyz === 'Y' ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30' :
-                                        'bg-red-500/20 text-red-300 ring-1 ring-red-500/30'
-                                    }`} title={`XYZ: ${classification.xyz} (${classification.xyz === 'X' ? 'Predictable' : classification.xyz === 'Y' ? 'Variable' : 'Erratic'} demand)`}>
-                                        {classification.xyz}
-                                    </span>
-                                </>
-                            ) : (
-                                <span className="text-gray-500 text-xs">--</span>
-                            )}
-                        </div>
-                    );
-                }
                 case 'itemType':
                     return insight ? (
                         <span
@@ -1170,60 +1085,6 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         none: 'No Trend Data',
     };
     const formatDemandRate = (value?: number) => (value !== undefined ? value.toFixed(1) : '—');
-
-    // Determine empty state type for guidance based on sync state
-    const getEmptyStateType = (): EmptyStateType | null => {
-        if (loading || statusLoading) return 'loading';
-        if (!dataSourceStatus) return null;
-        if (inventory.length === 0) {
-            // Use syncState to distinguish between different empty scenarios
-            switch (dataSourceStatus.syncState) {
-                case 'not_configured':
-                    return 'not_configured';
-                case 'configured_not_synced':
-                    return 'configured_empty'; // Waiting for sync
-                case 'synced_empty':
-                case 'synced_with_data': // Shouldn't hit this but fallback
-                    return 'synced_empty';
-                default:
-                    return 'configured_empty';
-            }
-        }
-        if (processedInventory.length === 0) return 'no_results';
-        return null;
-    };
-
-    const emptyStateType = getEmptyStateType();
-
-    // Handler for empty state actions
-    const handleEmptyStateAction = (action: string) => {
-        switch (action) {
-            case 'settings_integrations':
-            case 'settings':
-            case 'setup_finale':
-            case 'setup_sheets':
-            case 'upload_csv':
-                setCurrentPage?.('Settings');
-                break;
-            case 'add_item':
-                // Could open an add item modal in the future
-                setIsImportExportModalOpen(true);
-                break;
-            case 'clear_filters':
-                setSearchTerm('');
-                setSelectedCategories(new Set());
-                setSelectedVendors(new Set());
-                setBomFilter('all');
-                setFilters({ status: '' });
-                setRiskFilter('all');
-                break;
-            case 'retry':
-                window.location.reload();
-                break;
-            default:
-                break;
-        }
-    };
 
     return (
         <>
@@ -1530,34 +1391,19 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             </div>
                         </div>
                     </CollapsibleSection>
-                    {/* Inventory Table or Empty State */}
-                    {emptyStateType && ['not_configured', 'configured_empty', 'loading'].includes(emptyStateType) ? (
-                        <EmptyStateGuidance
-                            type={emptyStateType}
-                            context="inventory"
-                            onAction={handleEmptyStateAction}
+                    {/* Inventory Table */}
+                    <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden`}>
+                        <Table
+                            columns={tableColumns}
+                            data={processedInventory}
+                            getRowKey={(item) => item.sku}
+                            stickyHeader
+                            hoverable
+                            compact={rowDensity === 'compact' || rowDensity === 'ultra'}
+                            loading={loading}
+                            emptyMessage="No inventory items found"
                         />
-                    ) : emptyStateType === 'no_results' ? (
-                        <EmptyStateGuidance
-                            type="no_results"
-                            context="inventory"
-                            onAction={handleEmptyStateAction}
-                        />
-                    ) : (
-                        <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden`}>
-                            <Table
-                                columns={tableColumns}
-                                data={processedInventory}
-                                getRowKey={(item) => item.sku}
-                                getRowAttributes={(item) => ({ 'data-sku-id': item.sku })}
-                                stickyHeader
-                                hoverable
-                                compact={rowDensity === 'compact' || rowDensity === 'ultra'}
-                                loading={loading}
-                                emptyMessage="No inventory items found"
-                            />
-                        </div>
-                    )}
+                    </div>
                 </div>
             </div>
 
