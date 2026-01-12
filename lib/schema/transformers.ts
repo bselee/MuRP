@@ -475,8 +475,8 @@ export function transformInventoryRawToParsed(
         console.log('[Inventory Transform] CSV Columns available:', Object.keys(raw));
         console.log('[Inventory Transform] Full raw data sample:', raw);
         // Show values for stock-related columns
-        const stockCols = ['Units in stock', 'In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'];
-        console.log('[Inventory Transform] Stock column values:', 
+        const stockCols = ['QoH units', 'QoH', 'Units in stock', 'In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'];
+        console.log('[Inventory Transform] Stock column values:',
           Object.fromEntries(stockCols.map(col => [col, raw[col]])));
       }
     } catch (debugError) {
@@ -484,8 +484,9 @@ export function transformInventoryRawToParsed(
     }
 
     // Extract stock quantities (Finale specific columns)
+    // "QoH units" is the primary column name in Finale exports
     const stockRaw = extractFirst(raw, [
-      'Units in stock', 'In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'
+      'QoH units', 'QoH', 'Units in stock', 'In Stock', 'In stock', 'Units In Stock', 'Quantity On Hand', 'Stock', 'stock', 'Quantity'
     ]);
     const stock = Math.floor(parseNumber(stockRaw, 0)); // Round down to integer
     
@@ -523,10 +524,13 @@ export function transformInventoryRawToParsed(
     const qtyToOrder = Math.floor(parseNumber(qtyToOrderRaw, 0));
 
     // Extract sales velocity (Finale specific)
+    // "Consumption velocity (configurable)" is the column name in Finale exports
     const salesVelocityRaw = extractFirst(raw, [
+      'Consumption velocity (configurable)',
+      'Consumption velocity',
       'BuildASoil sales velocity',
-      'productSalesVelocityConsolidate', 
-      'Sales Velocity', 
+      'productSalesVelocityConsolidate',
+      'Sales Velocity',
       'sales_velocity'
     ]);
     const salesVelocity = parseNumber(salesVelocityRaw, 0);

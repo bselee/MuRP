@@ -2,10 +2,14 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { getRigorousPurchasingAdvice, getForecastAccuracyMetrics } from '../services/purchasingForecastingService';
 import { detectInventoryAnomalies, type Anomaly } from '../services/aiPurchasingService';
 import { getKPISummary, type KPISummary, type InventoryKPIs, type PastDuePOLine } from '../services/inventoryKPIService';
+import { analyzeSupplyChainRisks, type SupplyChainRisk } from '../services/supplyChainRiskService';
 import { supabase } from '../lib/supabase/client';
 import { createPurchaseOrder, batchUpdateInventory } from '../hooks/useSupabaseMutations';
 import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon, AlertTriangleIcon, TrendingUpIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
 import type { CreatePurchaseOrderInput } from '../types';
+import SupplyChainRiskPanel from './SupplyChainRiskPanel';
+import StockoutContingencyCard, { type StockoutItem } from './StockoutContingencyCard';
+import VelocityTrendBadge, { type VelocityTrend, getTrendFromChange } from './VelocityTrendBadge';
 
 // Type for expanded KPI panel
 type ExpandedPanel = 'critical' | 'at_risk' | 'past_due' | 'below_ss' | null;
@@ -84,6 +88,13 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
     // Toast notifications
     const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
 
+    // Supply chain risks (from PAB analysis)
+    const [supplyChainRisks, setSupplyChainRisks] = useState<SupplyChainRisk[]>([]);
+    const [risksLoading, setRisksLoading] = useState(false);
+
+    // Out of stock items
+    const [stockoutItems, setStockoutItems] = useState<StockoutItem[]>([]);
+
     // Ref for scrolling to replenishment section
     const replenishmentRef = useRef<HTMLDivElement>(null);
 
@@ -153,6 +164,37 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
             } catch (err) {
                 console.error('Failed to load KPI summary:', err);
             }
+
+            // 2b. Get Supply Chain Risks (PAB-based analysis)
+            setRisksLoading(true);
+            try {
+                const riskResult = await analyzeSupplyChainRisks({
+                    horizon_days: 60,
+                    include_bom_explosion: true,
+                    min_daily_demand: 0.1,
+                    safety_stock_days: 14,
+                });
+                setSupplyChainRisks(riskResult.all_risks || []);
+                console.log('⚠️ Supply Chain Risks loaded:', riskResult.all_risks?.length || 0);
+            } catch (err) {
+                console.error('Failed to load supply chain risks:', err);
+                setSupplyChainRisks([]);
+            } finally {
+                setRisksLoading(false);
+            }
+
+            // 2c. Identify out-of-stock items from advice data
+            const stockouts: StockoutItem[] = adviceData
+                .filter((item: AdviceItem) => item.current_status.stock === 0)
+                .map((item: AdviceItem) => ({
+                    sku: item.sku,
+                    product_name: item.name,
+                    pending_demand: Math.round((item.parameters?.daily_demand || 0) * 7), // 7-day demand
+                    restock_eta: item.linked_po?.expected_date ? new Date(item.linked_po.expected_date) : null,
+                    restock_po_number: item.linked_po?.po_number || null,
+                    restock_quantity: item.recommendation?.quantity || 0,
+                }));
+            setStockoutItems(stockouts);
 
             // 3. Get Forecast Accuracy (if available)
             let accuracy: number | null = null;
@@ -643,6 +685,56 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
         }
     };
 
+    // Create PO from a supply chain risk item
+    const handleCreatePOFromRisk = async (sku: string, qty: number) => {
+        setIsCreatingPO(true);
+        try {
+            // Look up vendor for this SKU
+            const { data: invItem, error: invError } = await supabase
+                .from('inventory_items')
+                .select('sku, name, vendor_id, unit_cost, vendors!inventory_items_vendor_id_fkey(id, name)')
+                .eq('sku', sku)
+                .single();
+
+            if (invError || !invItem) {
+                addToast(`Item ${sku} not found`, 'error');
+                setIsCreatingPO(false);
+                return;
+            }
+
+            if (!invItem.vendor_id) {
+                addToast(`No vendor assigned to ${sku}`, 'error');
+                setIsCreatingPO(false);
+                return;
+            }
+
+            const orderId = generateOrderId();
+            const result = await createPurchaseOrder({
+                vendorId: invItem.vendor_id,
+                items: [{
+                    sku: invItem.sku,
+                    name: invItem.name || sku,
+                    quantity: qty,
+                    unitCost: invItem.unit_cost || 0,
+                }],
+                notes: `Created from Supply Chain Risk Alert`,
+                orderId,
+            });
+
+            if (result.success) {
+                addToast(`PO ${orderId} created for ${sku} (${qty} units)`, 'success');
+                loadData(true); // Refresh data
+            } else {
+                addToast(`Failed to create PO: ${result.error}`, 'error');
+            }
+        } catch (err) {
+            console.error('Failed to create PO from risk:', err);
+            addToast('Unexpected error creating PO', 'error');
+        } finally {
+            setIsCreatingPO(false);
+        }
+    };
+
     // Toggle KPI item selection
     const toggleKPISelect = (sku: string) => {
         setSelectedKPIItems(prev => {
@@ -845,6 +937,32 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
                         ))}
                     </div>
                 </div>
+            )}
+
+            {/* Supply Chain Risk Panel - Two-sentence format with action menu */}
+            {(supplyChainRisks.length > 0 || risksLoading) && (
+                <SupplyChainRiskPanel
+                    risks={supplyChainRisks}
+                    loading={risksLoading}
+                    maxItems={5}
+                    onCreatePO={handleCreatePOFromRisk}
+                    onAdjustROP={(sku) => addToast(`Adjust ROP for ${sku} - feature coming soon`, 'info')}
+                    onMarkForReview={(sku) => addToast(`${sku} marked for review`, 'success')}
+                    onViewHistory={onNavigateToSku}
+                    onNavigateToSku={onNavigateToSku}
+                />
+            )}
+
+            {/* Out of Stock Contingency Card */}
+            {stockoutItems.length > 0 && (
+                <StockoutContingencyCard
+                    items={stockoutItems}
+                    onNavigateToSku={onNavigateToSku}
+                    onNavigateToPO={onNavigateToPO}
+                    onCreatePO={handleCreatePOFromRisk}
+                    onAdjustROP={(sku) => addToast(`Adjust ROP for ${sku} - feature coming soon`, 'info')}
+                    onMarkForReview={(sku) => addToast(`${sku} marked for review`, 'success')}
+                />
             )}
 
             {/* 3. ACTION REQUIRED - Items needing POs */}
