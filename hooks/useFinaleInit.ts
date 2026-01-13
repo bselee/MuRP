@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { finaleSyncService } from '../services/finaleSyncService';
+import { getFinaleSyncService } from '../services/finaleSyncService';
 
 /**
  * Hook to initialize Finale Sync Service with credentials from storage
@@ -12,9 +12,10 @@ export const useFinaleInit = () => {
     const password = localStorage.getItem('FINALE_PASSWORD');
 
     if (accountPath && username && password) {
-      if (!finaleSyncService.isConfigured()) {
+      const syncService = getFinaleSyncService();
+      if (!syncService.isConfigured()) {
           console.log('[useFinaleInit] Initializing Finale Sync Service from saved credentials');
-          finaleSyncService.setCredentials(username, password, accountPath);
+          syncService.setCredentials(username, password, accountPath);
       }
     }
   }, []);

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from '@/components/ui/Button';
 import { useTheme } from './ThemeProvider';
-import { finaleSyncService } from '../services/finaleSyncService';
+import { getFinaleSyncService } from '../services/finaleSyncService';
 
 interface FinaleSetupModalProps {
   isOpen: boolean;
@@ -50,7 +50,7 @@ const FinaleSetupModal: React.FC<FinaleSetupModalProps> = ({ isOpen, onClose, on
 
     // Initialize service
     if (accountPath && username && password) {
-        finaleSyncService.setCredentials(username, password, accountPath);
+        getFinaleSyncService().setCredentials(username, password, accountPath);
     }
 
     onSave();

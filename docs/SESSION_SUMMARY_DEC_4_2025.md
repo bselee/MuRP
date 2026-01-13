@@ -8,3 +8,4 @@
 - Created: `hooks/useFinaleInit.ts` to initialize sync service from stored credentials.
 - Modified: `App.tsx` to use `useFinaleInit`.
 
+- **Verification**: User confirmed Finale data is currently passing to Supabase successfully.
