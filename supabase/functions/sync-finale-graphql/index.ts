@@ -737,76 +737,9 @@ serve(async (req) => {
         const activeSKUs = new Set(Array.from(uniqueInventory.keys()));
         console.log(`[Sync] Active products count: ${activeSKUs.size}`);
 
-        // CRITICAL: Deactivate BOMs whose finished_sku is not in active inventory
-        // This keeps BOMs in sync with inventory active status
-        try {
-          // Get all BOMs with their finished_sku
-          const { data: allBoms, error: bomFetchError } = await supabase
-            .from('boms')
-            .select('id, finished_sku, name, is_active');
-
-          if (bomFetchError) {
-            console.warn('[Sync] Warning fetching BOMs for deactivation:', bomFetchError.message);
-          } else if (allBoms && allBoms.length > 0) {
-            // Find BOMs whose finished_sku is NOT in active inventory
-            const bomsToDeactivate = allBoms.filter(bom => {
-              if (!bom.finished_sku) return false;
-              const skuUpper = bom.finished_sku.toUpperCase().trim();
-              // Check if SKU exists in active inventory (case-insensitive)
-              const isActive = Array.from(activeSKUs).some(
-                activeSku => activeSku.toUpperCase().trim() === skuUpper
-              );
-              return !isActive && bom.is_active === true;
-            });
-
-            // Find BOMs to reactivate (finished_sku IS in active inventory but BOM is inactive)
-            const bomsToActivate = allBoms.filter(bom => {
-              if (!bom.finished_sku) return false;
-              const skuUpper = bom.finished_sku.toUpperCase().trim();
-              const isActive = Array.from(activeSKUs).some(
-                activeSku => activeSku.toUpperCase().trim() === skuUpper
-              );
-              return isActive && bom.is_active === false;
-            });
-
-            if (bomsToDeactivate.length > 0) {
-              const idsToDeactivate = bomsToDeactivate.map(b => b.id);
-              console.log(`[Sync] Deactivating ${bomsToDeactivate.length} BOMs with inactive SKUs:`,
-                bomsToDeactivate.slice(0, 5).map(b => `${b.finished_sku} (${b.name})`));
-
-              const { error: deactivateError } = await supabase
-                .from('boms')
-                .update({ is_active: false })
-                .in('id', idsToDeactivate);
-
-              if (deactivateError) {
-                console.warn('[Sync] Warning deactivating BOMs:', deactivateError.message);
-              } else {
-                console.log(`[Sync] ✅ Deactivated ${bomsToDeactivate.length} BOMs`);
-              }
-            }
-
-            if (bomsToActivate.length > 0) {
-              const idsToActivate = bomsToActivate.map(b => b.id);
-              console.log(`[Sync] Reactivating ${bomsToActivate.length} BOMs with active SKUs`);
-
-              const { error: activateError } = await supabase
-                .from('boms')
-                .update({ is_active: true })
-                .in('id', idsToActivate);
-
-              if (activateError) {
-                console.warn('[Sync] Warning reactivating BOMs:', activateError.message);
-              } else {
-                console.log(`[Sync] ✅ Reactivated ${bomsToActivate.length} BOMs`);
-              }
-            }
-
-            console.log(`[Sync] BOM sync: ${allBoms.filter(b => b.is_active).length} active, ${bomsToDeactivate.length} deactivated, ${bomsToActivate.length} reactivated`);
-          }
-        } catch (bomError) {
-          console.error('[Sync] Error syncing BOM active status:', bomError);
-        }
+        // NOTE: BOM active status is NOT synced from inventory SKUs
+        // because BOM finished_sku format differs from inventory sku format.
+        // BOMs are managed independently through the Finale BOM sync.
 
         results.push({
           dataType: 'products',
