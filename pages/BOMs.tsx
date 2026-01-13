@@ -401,6 +401,39 @@ const BOMs: React.FC<BOMsProps> = ({
     };
   }, [boms]);
 
+  // Track inactive SKUs fetched from database
+  const [inactiveSkus, setInactiveSkus] = useState<Set<string>>(new Set());
+
+  // Fetch inactive SKUs from database (these are filtered out of the normal inventory hook)
+  useEffect(() => {
+    const fetchInactiveSkus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('inventory_items')
+          .select('sku')
+          .eq('is_active', false);
+
+        if (error) {
+          console.error('[BOMs] Error fetching inactive SKUs:', error);
+          return;
+        }
+
+        const skuSet = new Set(
+          (data || [])
+            .map(item => item.sku?.toUpperCase?.().trim())
+            .filter(Boolean) as string[]
+        );
+
+        console.log(`[BOMs] Loaded ${skuSet.size} inactive SKUs from database`);
+        setInactiveSkus(skuSet);
+      } catch (err) {
+        console.error('[BOMs] Failed to fetch inactive SKUs:', err);
+      }
+    };
+
+    fetchInactiveSkus();
+  }, []);
+
   // Normalize BOMs so missing component arrays don't hide entire records
   // Also filter out BOMs whose finished SKU is globally excluded or inactive
   const filteredBoms = useMemo(() => {
@@ -431,6 +464,12 @@ const BOMs: React.FC<BOMsProps> = ({
 
       const skuUpper = bom.finishedSku.toUpperCase().trim();
 
+      // Check if SKU is marked inactive in database
+      if (inactiveSkus.has(skuUpper)) {
+        console.log(`[BOMs] Filtering out "${bom.name}" - SKU "${bom.finishedSku}" is inactive in database`);
+        return false;
+      }
+
       // Check global SKU exclusions (direct from localStorage)
       if (excludedSkusFromStorage.has(skuUpper)) {
         console.log(`[BOMs] Filtering out "${bom.name}" - SKU "${bom.finishedSku}" is globally excluded`);
@@ -440,13 +479,6 @@ const BOMs: React.FC<BOMsProps> = ({
       // Also check hook-based exclusions as backup
       if (isSkuGloballyExcluded(bom.finishedSku)) {
         console.log(`[BOMs] Filtering out "${bom.name}" - SKU "${bom.finishedSku}" excluded via hook`);
-        return false;
-      }
-
-      // Check if underlying inventory item is inactive
-      const invItem = invLookup.get(skuUpper);
-      if (invItem && invItem.status && invItem.status.toLowerCase() !== 'active') {
-        console.log(`[BOMs] Filtering out "${bom.name}" - inventory status is "${invItem.status}"`);
         return false;
       }
 
@@ -463,7 +495,7 @@ const BOMs: React.FC<BOMsProps> = ({
       console.warn(`[BOMs] ${missingComponentCount} BOM(s) have no component list yet, showing them with 0 components.`);
     }
     return afterGlobalFilter;
-  }, [boms, inventory, isSkuGloballyExcluded]);
+  }, [boms, inventory, isSkuGloballyExcluded, inactiveSkus]);
 
   // Create inventory lookup map for O(1) access
   const inventoryMap = useMemo(() => {

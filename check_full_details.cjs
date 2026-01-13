@@ -7,13 +7,20 @@ const supabase = createClient(url, key);
 
 (async () => {
   const skus = ['CGT103', 'CGT104'];
-  console.log(`Checking inventory status for: ${skus.join(', ')}`);
   
-  const { data, error } = await supabase
+  // Inventory Items
+  const { data: items } = await supabase
     .from('inventory_items')
-    .select('sku, is_active, status, is_dropship, category')
+    .select('sku, category, status')
     .in('sku', skus);
+    
+  console.log('Inventory Items:', items);
 
-  if (error) console.error(error);
-  else console.log(JSON.stringify(data, null, 2));
+  // BOMs
+  const { data: boms } = await supabase
+    .from('boms')
+    .select('finished_sku, category, is_active')
+    .in('finished_sku', skus);
+    
+  console.log('BOMs:', boms);
 })();
