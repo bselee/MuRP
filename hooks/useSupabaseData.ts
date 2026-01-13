@@ -30,13 +30,9 @@ import type {
 import { mockBOMs, mockUsers } from '../types';
 import { isE2ETesting } from '../lib/auth/guards';
 import { isGloballyExcludedCategory, getGlobalExcludedCategories } from './useGlobalCategoryFilter';
-import { isGloballyExcludedSku, getGlobalExcludedSkus } from './useGlobalSkuFilter';
-import { isGloballyExcludedVendor, getGlobalExcludedVendors } from './useGlobalVendorFilter';
 
 // Re-export for backward compatibility
 export { isGloballyExcludedCategory as isExcludedCategory } from './useGlobalCategoryFilter';
-export { isGloballyExcludedSku } from './useGlobalSkuFilter';
-export { isGloballyExcludedVendor } from './useGlobalVendorFilter';
 
 // ============================================================================
 // TYPES
@@ -264,25 +260,15 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
         };
       });
 
-      // Global filters - exclude categories, SKUs, and vendors marked in Settings
-      const excludedCategories = getGlobalExcludedCategories();
-      const excludedSkus = getGlobalExcludedSkus();
-
+      // Global category filter - exclude categories marked in Settings
+      const excludedSet = getGlobalExcludedCategories();
       const filtered = transformed.filter(item => {
-        // Filter by excluded SKUs
-        if (item.sku && excludedSkus.has(item.sku.toUpperCase().trim())) {
-          return false;
-        }
-
-        // Filter by excluded categories
-        if (item.category && excludedCategories.has(item.category.toLowerCase().trim())) {
-          return false;
-        }
-
-        return true;
+        // Items with no category should NOT be filtered out
+        if (!item.category) return true;
+        return !excludedSet.has(item.category.toLowerCase().trim());
       });
 
-      console.log(`[useSupabaseInventory] Total: ${transformed.length}, After global filters: ${filtered.length} (excluded ${excludedSkus.size} SKUs, ${excludedCategories.size} categories)`);
+      console.log(`[useSupabaseInventory] Total: ${transformed.length}, After global filter: ${filtered.length}, Excluded categories:`, Array.from(excludedSet));
       
       setData(filtered);
     } catch (err) {
@@ -316,13 +302,12 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
 
     setChannel(newChannel);
 
-    // Listen for global filter changes to refetch with new exclusions
+    // Listen for global category filter changes to refetch with new exclusions
     const handleFilterChange = () => {
-      console.log('[useSupabaseInventory] Global filter changed, refetching...');
+      console.log('[useSupabaseInventory] Global category filter changed, refetching...');
       fetchInventory();
     };
     window.addEventListener('global-category-filter-changed', handleFilterChange);
-    window.addEventListener('global-sku-filter-changed', handleFilterChange);
 
     // Cleanup
     return () => {
@@ -330,7 +315,6 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
         supabase.removeChannel(newChannel);
       }
       window.removeEventListener('global-category-filter-changed', handleFilterChange);
-      window.removeEventListener('global-sku-filter-changed', handleFilterChange);
     };
   }, [fetchInventory]);
 
@@ -533,16 +517,7 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
         isDropshipVendor: row.is_dropship_vendor || false,
       }));
 
-      // Global vendor filter - exclude vendors marked in Settings
-      const excludedVendors = getGlobalExcludedVendors();
-      const filtered = transformed.filter(vendor => {
-        if (!vendor.name) return true;
-        return !excludedVendors.has(vendor.name.toLowerCase().trim());
-      });
-
-      console.log(`[useSupabaseVendors] Total: ${transformed.length}, After global filter: ${filtered.length}, Excluded vendors: ${excludedVendors.size}`);
-
-      setData(filtered);
+      setData(transformed);
     } catch (err) {
       console.error('[useSupabaseVendors] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch vendors'));
@@ -574,19 +549,11 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
 
     setChannel(newChannel);
 
-    // Listen for global vendor filter changes to refetch with new exclusions
-    const handleFilterChange = () => {
-      console.log('[useSupabaseVendors] Global vendor filter changed, refetching...');
-      fetchVendors();
-    };
-    window.addEventListener('global-vendor-filter-changed', handleFilterChange);
-
     // Cleanup
     return () => {
       if (newChannel) {
         supabase.removeChannel(newChannel);
       }
-      window.removeEventListener('global-vendor-filter-changed', handleFilterChange);
     };
   }, [fetchVendors]);
 
@@ -734,23 +701,11 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
 
       console.log(`[useSupabaseBOMs] After inventory filter: ${activeFiltered.length}/${transformed.length} BOMs have active SKUs`);
 
-      // Step 4: Apply global category and SKU filters
-      const excludedCategories = getGlobalExcludedCategories();
-      const excludedSkus = getGlobalExcludedSkus();
+      // Step 4: Apply global category filter
+      const excludedSet = getGlobalExcludedCategories();
+      const filtered = activeFiltered.filter(bom => !isGloballyExcludedCategory(bom.category));
 
-      const filtered = activeFiltered.filter(bom => {
-        // Filter by excluded SKU (finished SKU)
-        if (bom.finishedSku && excludedSkus.has(bom.finishedSku.toUpperCase().trim())) {
-          return false;
-        }
-        // Filter by excluded category
-        if (isGloballyExcludedCategory(bom.category)) {
-          return false;
-        }
-        return true;
-      });
-
-      console.log(`[useSupabaseBOMs] Final: ${filtered.length} BOMs (filtered ${excludedCategories.size} categories, ${excludedSkus.size} SKUs)`);
+      console.log(`[useSupabaseBOMs] Final: ${filtered.length} BOMs (after category filter), Excluded categories:`, Array.from(excludedSet));
 
       setData(filtered);
     } catch (err) {
@@ -790,13 +745,12 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
 
     setChannel(newChannel);
 
-    // Listen for global filter changes to refetch with new exclusions
+    // Listen for global category filter changes to refetch with new exclusions
     const handleFilterChange = () => {
-      console.log('[useSupabaseBOMs] Global filter changed, refetching...');
+      console.log('[useSupabaseBOMs] Global category filter changed, refetching...');
       fetchBOMs();
     };
     window.addEventListener('global-category-filter-changed', handleFilterChange);
-    window.addEventListener('global-sku-filter-changed', handleFilterChange);
 
     // Cleanup
     return () => {
@@ -804,7 +758,6 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
         supabase.removeChannel(newChannel);
       }
       window.removeEventListener('global-category-filter-changed', handleFilterChange);
-      window.removeEventListener('global-sku-filter-changed', handleFilterChange);
     };
   }, [fetchBOMs]);
 
