@@ -30,6 +30,7 @@ import type {
 import { mockBOMs, mockUsers } from '../types';
 import { isE2ETesting } from '../lib/auth/guards';
 import { isGloballyExcludedCategory, getGlobalExcludedCategories } from './useGlobalCategoryFilter';
+import { getGlobalExcludedSkus } from './useGlobalSkuFilter';
 
 // Re-export for backward compatibility
 export { isGloballyExcludedCategory as isExcludedCategory } from './useGlobalCategoryFilter';
@@ -658,12 +659,19 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       }
 
       // Create a Set of active SKUs for fast lookup
-      // CRITICAL FIX: Also exclude items that are hidden by global category filters
+      // CRITICAL FIX: Also exclude items that are hidden by global category OR SKU filters
       // If an item is hidden from inventory, its BOM should also be hidden
+      const excludedSkus = getGlobalExcludedSkus();
       const activeSKUs = new Set((activeInventory || [])
-        .filter((item: any) => !isGloballyExcludedCategory(item.category))
+        .filter((item: any) => {
+          // Exclude if category is globally excluded
+          if (isGloballyExcludedCategory(item.category)) return false;
+          // Exclude if SKU is globally excluded
+          if (item.sku && excludedSkus.has(item.sku.toUpperCase().trim())) return false;
+          return true;
+        })
         .map((item: any) => item.sku?.toLowerCase?.() || item.sku));
-      console.log(`[useSupabaseBOMs] Found ${activeSKUs.size} active inventory SKUs`);
+      console.log(`[useSupabaseBOMs] Found ${activeSKUs.size} active inventory SKUs (after global filters)`);
 
       // Step 2: Fetch BOMs with is_active = true
       const { data: boms, error: fetchError } = await supabase
@@ -749,12 +757,13 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
 
     setChannel(newChannel);
 
-    // Listen for global category filter changes to refetch with new exclusions
+    // Listen for global filter changes to refetch with new exclusions
     const handleFilterChange = () => {
-      console.log('[useSupabaseBOMs] Global category filter changed, refetching...');
+      console.log('[useSupabaseBOMs] Global filter changed, refetching...');
       fetchBOMs();
     };
     window.addEventListener('global-category-filter-changed', handleFilterChange);
+    window.addEventListener('global-sku-filter-changed', handleFilterChange);
 
     // Cleanup
     return () => {
@@ -762,6 +771,7 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
         supabase.removeChannel(newChannel);
       }
       window.removeEventListener('global-category-filter-changed', handleFilterChange);
+      window.removeEventListener('global-sku-filter-changed', handleFilterChange);
     };
   }, [fetchBOMs]);
 
