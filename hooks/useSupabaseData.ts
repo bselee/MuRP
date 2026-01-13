@@ -650,7 +650,7 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       // Step 1: Get all active inventory SKUs (the source of truth for active products)
       const { data: activeInventory, error: invError } = await supabase
         .from('inventory_items')
-        .select('sku')
+        .select('sku, category')
         .eq('is_active', true);
 
       if (invError) {
@@ -658,7 +658,11 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       }
 
       // Create a Set of active SKUs for fast lookup
-      const activeSKUs = new Set((activeInventory || []).map((item: any) => item.sku?.toLowerCase?.() || item.sku));
+      // CRITICAL FIX: Also exclude items that are hidden by global category filters
+      // If an item is hidden from inventory, its BOM should also be hidden
+      const activeSKUs = new Set((activeInventory || [])
+        .filter((item: any) => !isGloballyExcludedCategory(item.category))
+        .map((item: any) => item.sku?.toLowerCase?.() || item.sku));
       console.log(`[useSupabaseBOMs] Found ${activeSKUs.size} active inventory SKUs`);
 
       // Step 2: Fetch BOMs with is_active = true
