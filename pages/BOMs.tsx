@@ -401,49 +401,22 @@ const BOMs: React.FC<BOMsProps> = ({
     };
   }, [boms]);
 
-  // Build Set of active inventory SKUs from the inventory prop
-  // The inventory prop is already filtered to is_active=true by useSupabaseInventory
-  const activeInventorySkus = useMemo(() => {
-    const skuSet = new Set<string>();
-    inventory.forEach(item => {
-      if (item.sku) {
-        skuSet.add(item.sku.toUpperCase().trim());
-      }
-    });
-    return skuSet;
-  }, [inventory]);
-
-  // Filter BOMs: ONLY show if finished_sku exists in active inventory
+  // Normalize BOMs - ensure components array exists
+  // Filter only by global category/SKU exclusions (database handles is_active)
   const filteredBoms = useMemo(() => {
     const normalized = boms.map((bom) => ({
       ...bom,
       components: Array.isArray(bom.components) ? bom.components : [],
     }));
 
-    // Simple rule: BOM's finished_sku must exist in inventory
+    // Only filter by global SKU exclusions - database already filtered is_active=true
     const filtered = normalized.filter((bom) => {
-      if (!bom.finishedSku) return false; // No SKU = don't show
-
-      const skuUpper = bom.finishedSku.toUpperCase().trim();
-
-      // Must be in active inventory
-      if (!activeInventorySkus.has(skuUpper)) {
-        console.log(`[BOMs] Hiding "${bom.name}" - SKU "${bom.finishedSku}" not in inventory`);
-        return false;
-      }
-
-      // Also check global SKU exclusions
-      if (isSkuGloballyExcluded(bom.finishedSku)) {
-        console.log(`[BOMs] Hiding "${bom.name}" - SKU "${bom.finishedSku}" globally excluded`);
-        return false;
-      }
-
-      return true;
+      if (!bom.finishedSku) return true;
+      return !isSkuGloballyExcluded(bom.finishedSku);
     });
 
-    console.log(`[BOMs] Showing ${filtered.length}/${normalized.length} BOMs (${activeInventorySkus.size} active inventory SKUs)`);
     return filtered;
-  }, [boms, activeInventorySkus, isSkuGloballyExcluded]);
+  }, [boms, isSkuGloballyExcluded]);
 
   // Create inventory lookup map for O(1) access
   const inventoryMap = useMemo(() => {
