@@ -30,6 +30,7 @@ import type {
 import { mockBOMs, mockUsers } from '../types';
 import { isE2ETesting } from '../lib/auth/guards';
 import { isGloballyExcludedCategory, getGlobalExcludedCategories } from './useGlobalCategoryFilter';
+import { getGlobalExcludedSkus } from './useGlobalSkuFilter';
 
 // Re-export for backward compatibility
 export { isGloballyExcludedCategory as isExcludedCategory } from './useGlobalCategoryFilter';
@@ -729,10 +730,22 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       console.log(`[useSupabaseBOMs] After inventory filter: ${activeFiltered.length}/${transformed.length} BOMs have active SKUs`);
 
       // Step 4: Apply global category filter
-      const excludedSet = getGlobalExcludedCategories();
-      const filtered = activeFiltered.filter(bom => !isGloballyExcludedCategory(bom.category));
+      const excludedCategories = getGlobalExcludedCategories();
+      const afterCategoryFilter = activeFiltered.filter(bom => !isGloballyExcludedCategory(bom.category));
+      console.log(`[useSupabaseBOMs] After category filter: ${afterCategoryFilter.length} BOMs`);
 
-      console.log(`[useSupabaseBOMs] Final: ${filtered.length} BOMs (after category filter), Excluded categories:`, Array.from(excludedSet));
+      // Step 5: Apply global SKU filter
+      const excludedSkus = getGlobalExcludedSkus();
+      const filtered = afterCategoryFilter.filter(bom => {
+        if (!bom.finishedSku) return true;
+        const isExcluded = excludedSkus.has(bom.finishedSku.toUpperCase().trim());
+        if (isExcluded) {
+          console.log(`[useSupabaseBOMs] Filtering out BOM "${bom.name}" - SKU "${bom.finishedSku}" is globally excluded`);
+        }
+        return !isExcluded;
+      });
+
+      console.log(`[useSupabaseBOMs] Final: ${filtered.length} BOMs (excluded ${excludedCategories.size} categories, ${excludedSkus.size} SKUs)`);
 
       setData(filtered);
     } catch (err) {
