@@ -623,12 +623,14 @@ export function useSupabaseVendor(id: string): UseSupabaseSingleResult<Vendor> {
 /**
  * Fetch and subscribe to BOMs (Bill of Materials)
  * Real-time updates when BOMs change in database
- * 
+ *
  * FILTERING LOGIC:
- * BOMs are finished goods with a finished_sku. A BOM should only show if:
- * 1. The BOM itself has is_active = true
- * 2. The finished_sku exists in active inventory_items
- * 3. The BOM's category is not globally excluded
+ * 1. BOM has is_active = true (database filter)
+ * 2. BOM category is not globally excluded
+ * 3. BOM SKU is not globally excluded
+ *
+ * NOTE: We do NOT filter by inventory existence - BOMs may exist for products
+ * that haven't been synced or don't have inventory items yet.
  */
 export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
   const [data, setData] = useState<BillOfMaterials[]>([]);
@@ -648,55 +650,7 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       setLoading(true);
       setError(null);
 
-      // Step 1: Get all active inventory SKUs (the source of truth for active products)
-      // Use pagination to ensure we get ALL items, avoiding the 1000-row API limit
-      let allActiveInventory: any[] = [];
-      let page = 0;
-      const pageSize = 1000;
-      let hasMoreInventory = true;
-
-      // Safety counter to prevent infinite loops
-      let loopCount = 0;
-      const MAX_LOOPS = 20; // Max 20k items
-
-      while (hasMoreInventory && loopCount < MAX_LOOPS) {
-        loopCount++;
-        const { data: pageData, error: pageError } = await supabase
-          .from('inventory_items')
-          .select('sku, category')
-          .eq('is_active', true)
-          .range(page * pageSize, (page + 1) * pageSize - 1);
-
-        if (pageError) {
-          console.error('[useSupabaseBOMs] Failed to fetch active inventory page:', pageError);
-          break;
-        }
-
-        if (pageData && pageData.length > 0) {
-          console.log(`[useSupabaseBOMs] Page ${page}: fetched ${pageData.length} items`);
-          allActiveInventory = allActiveInventory.concat(pageData);
-          
-          if (pageData.length < pageSize) {
-            hasMoreInventory = false;
-          } else {
-            page++;
-          }
-        } else {
-          hasMoreInventory = false;
-        }
-      }
-      
-      console.log(`[useSupabaseBOMs] Fetched ${allActiveInventory.length} active inventory items for validation`);
-
-      // Create a Set of active SKUs for fast lookup
-      // We explicitly exclude items that are globally excluded by category
-      const activeSKUs = new Set((allActiveInventory || [])
-        .filter((item: any) => !isGloballyExcludedCategory(item.category))
-        .map((item: any) => item.sku?.toLowerCase?.() || item.sku));
-      
-      console.log(`[useSupabaseBOMs] Found ${activeSKUs.size} active+visible inventory SKUs`);
-
-      // Step 2: Fetch BOMs with is_active = true
+      // Step 1: Fetch BOMs with is_active = true
       const { data: boms, error: fetchError } = await supabase
         .from('boms')
         .select('*')
@@ -704,6 +658,8 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
         .order('name');
 
       if (fetchError) throw fetchError;
+
+      console.log(`[useSupabaseBOMs] Fetched ${boms?.length || 0} active BOMs from database`);
 
       // Transform from snake_case to camelCase
       const transformed: BillOfMaterials[] = (boms || []).map((bom: any) => ({
@@ -723,32 +679,18 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
         notes: bom.notes || '',
       }));
 
-      // Step 3: Filter BOMs - only show if finished_sku is in active inventory
-      const activeFiltered = transformed.filter(bom => {
-        if (!bom.finishedSku) return false; // No SKU = can't verify active status
-        const skuLower = bom.finishedSku.toLowerCase();
-        const isActive = activeSKUs.has(skuLower);
-        if (!isActive) {
-          // console.log(`[useSupabaseBOMs] Filtering out BOM "${bom.name}" - SKU "${bom.finishedSku}" not in active inventory`);
-        }
-        return isActive;
-      });
+      // Step 2: Apply global category filter
+      const afterCategoryFilter = transformed.filter(bom => !isGloballyExcludedCategory(bom.category));
+      console.log(`[useSupabaseBOMs] After category filter: ${afterCategoryFilter.length} BOMs`);
 
-      console.log(`[useSupabaseBOMs] After inventory filter: ${activeFiltered.length}/${transformed.length} BOMs have active SKUs`);
-
-      // Step 4: Apply global category filter (Double check on BOM category itself)
-      const excludedCategories = getGlobalExcludedCategories();
-      const afterCategoryFilter = activeFiltered.filter(bom => !isGloballyExcludedCategory(bom.category));
-      console.log(`[useSupabaseBOMs] After BOM category filter: ${afterCategoryFilter.length} BOMs`);
-
-      // Step 5: Apply global SKU filter
+      // Step 3: Apply global SKU filter
       const excludedSkus = getGlobalExcludedSkus();
       const filtered = afterCategoryFilter.filter(bom => {
         if (!bom.finishedSku) return true;
         return !excludedSkus.has(bom.finishedSku.toUpperCase().trim());
       });
 
-      console.log(`[useSupabaseBOMs] Final: ${filtered.length} BOMs`);
+      console.log(`[useSupabaseBOMs] Final: ${filtered.length} BOMs (excluded ${excludedSkus.size} SKUs)`);
 
       setData(filtered);
     } catch (err) {

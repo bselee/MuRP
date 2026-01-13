@@ -401,42 +401,7 @@ const BOMs: React.FC<BOMsProps> = ({
     };
   }, [boms]);
 
-  // Track active SKUs from database (Finale sync skips inactive products entirely)
-  const [activeSkus, setActiveSkus] = useState<Set<string>>(new Set());
-  const [activeSkusLoaded, setActiveSkusLoaded] = useState(false);
-
-  // Fetch all active inventory SKUs from database
-  // NOTE: Finale sync skips inactive products, so they don't exist in inventory_items
-  // If a BOM's finishedSku is NOT in this set, it's for an inactive/deprecated product
-  useEffect(() => {
-    const fetchActiveSkus = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('inventory_items')
-          .select('sku')
-          .eq('is_active', true);
-
-        if (error) {
-          console.error('[BOMs] Error fetching active SKUs:', error);
-          return;
-        }
-
-        const skuSet = new Set(
-          (data || [])
-            .map(item => item.sku?.toUpperCase?.().trim())
-            .filter(Boolean) as string[]
-        );
-
-        console.log(`[BOMs] Loaded ${skuSet.size} active SKUs from database`);
-        setActiveSkus(skuSet);
-        setActiveSkusLoaded(true);
-      } catch (err) {
-        console.error('[BOMs] Failed to fetch active SKUs:', err);
-      }
-    };
-
-    fetchActiveSkus();
-  }, []);
+  // No longer fetching active SKUs - the data layer (useSupabaseBOMs) handles this
 
   // Normalize BOMs so missing component arrays don't hide entire records
   // Also filter out BOMs whose finished SKU is globally excluded or inactive
@@ -462,19 +427,11 @@ const BOMs: React.FC<BOMsProps> = ({
       }
     } catch {}
 
-    // Filter out BOMs that should be hidden
+    // Filter out BOMs that should be hidden (global exclusions only - data layer handles inactive filtering)
     const afterGlobalFilter = normalized.filter((bom) => {
       if (!bom.finishedSku) return true;
 
       const skuUpper = bom.finishedSku.toUpperCase().trim();
-
-      // Check if SKU exists in active inventory
-      // NOTE: Finale sync skips inactive/deprecated products entirely
-      // So if a SKU doesn't exist in activeSkus, it's an inactive product
-      if (activeSkusLoaded && !activeSkus.has(skuUpper)) {
-        console.log(`[BOMs] Filtering out "${bom.name}" - SKU "${bom.finishedSku}" not in active inventory (likely inactive in Finale)`);
-        return false;
-      }
 
       // Check global SKU exclusions (direct from localStorage)
       if (excludedSkusFromStorage.has(skuUpper)) {
@@ -501,7 +458,7 @@ const BOMs: React.FC<BOMsProps> = ({
       console.warn(`[BOMs] ${missingComponentCount} BOM(s) have no component list yet, showing them with 0 components.`);
     }
     return afterGlobalFilter;
-  }, [boms, inventory, isSkuGloballyExcluded, activeSkus, activeSkusLoaded]);
+  }, [boms, inventory, isSkuGloballyExcluded]);
 
   // Create inventory lookup map for O(1) access
   const inventoryMap = useMemo(() => {
