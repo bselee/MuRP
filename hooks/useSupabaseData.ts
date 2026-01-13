@@ -30,7 +30,6 @@ import type {
 import { mockBOMs, mockUsers } from '../types';
 import { isE2ETesting } from '../lib/auth/guards';
 import { isGloballyExcludedCategory, getGlobalExcludedCategories } from './useGlobalCategoryFilter';
-import { getGlobalExcludedSkus } from './useGlobalSkuFilter';
 
 // Re-export for backward compatibility
 export { isGloballyExcludedCategory as isExcludedCategory } from './useGlobalCategoryFilter';
@@ -659,19 +658,11 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       }
 
       // Create a Set of active SKUs for fast lookup
-      // CRITICAL FIX: Also exclude items that are hidden by global category OR SKU filters
-      // If an item is hidden from inventory, its BOM should also be hidden
-      const excludedSkus = getGlobalExcludedSkus();
+      // Apply global category filter - if inventory item's category is excluded, hide its BOM too
       const activeSKUs = new Set((activeInventory || [])
-        .filter((item: any) => {
-          // Exclude if category is globally excluded
-          if (isGloballyExcludedCategory(item.category)) return false;
-          // Exclude if SKU is globally excluded
-          if (item.sku && excludedSkus.has(item.sku.toUpperCase().trim())) return false;
-          return true;
-        })
+        .filter((item: any) => !isGloballyExcludedCategory(item.category))
         .map((item: any) => item.sku?.toLowerCase?.() || item.sku));
-      console.log(`[useSupabaseBOMs] Found ${activeSKUs.size} active inventory SKUs (after global filters)`);
+      console.log(`[useSupabaseBOMs] Found ${activeSKUs.size} active inventory SKUs (after category filter)`);
 
       // Step 2: Fetch BOMs with is_active = true
       const { data: boms, error: fetchError } = await supabase
