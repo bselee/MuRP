@@ -12,7 +12,6 @@ import type { CreatePurchaseOrderInput } from '../types';
 import SupplyChainRiskPanel from './SupplyChainRiskPanel';
 import StockoutContingencyCard, { type StockoutItem } from './StockoutContingencyCard';
 import VelocityTrendBadge, { type VelocityTrend, getTrendFromChange } from './VelocityTrendBadge';
-import Modal from './Modal';
 
 // Type for expanded KPI panel
 type ExpandedPanel = 'critical' | 'at_risk' | 'past_due' | 'below_ss' | null;
@@ -84,8 +83,15 @@ export default function PurchasingGuidanceDashboard({
         warning: Anomaly[];
     }>({ critical: [], warning: [] });
 
-    // KPI detail panel state
+    // KPI detail panel state - Default to null, auto-open when data loads
     const [expandedPanel, setExpandedPanel] = useState<ExpandedPanel>(null);
+
+    // Auto-open critical panel when data loads
+    useEffect(() => {
+        if (kpiSummary && kpiSummary.items_critical_cltr > 0) {
+            setExpandedPanel('critical');
+        }
+    }, [kpiSummary]);
 
     // Selection state for batch actions (main replenishment table)
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -816,32 +822,6 @@ export default function PurchasingGuidanceDashboard({
 
     return (
         <div className="space-y-6 relative">
-            <Modal 
-                isOpen={!!expandedPanel}
-                onClose={() => setExpandedPanel(null)}
-                title={currentPanelConfig?.title || 'KPI Details'}
-                subtitle={currentPanelConfig?.subtitle}
-                size="large"
-            >
-                {expandedPanel && kpiSummary && (
-                    <KPIItemPanel
-                        panelType={expandedPanel}
-                        kpiSummary={kpiSummary}
-                        onClose={() => setExpandedPanel(null)}
-                        onNavigateToPOs={onNavigateToPOs}
-                        onNavigateToPO={onNavigateToPO}
-                        onNavigateToSku={onNavigateToSku}
-                        selectedItems={selectedKPIItems}
-                        onToggleSelect={toggleKPISelect}
-                        onQuickOrder={handleKPIQuickOrder}
-                        onCreatePOForSelected={handleCreatePOFromKPIItems}
-                        isCreatingPO={isCreatingPO}
-                        scrollToReplenishment={scrollToReplenishment}
-                        isModal={true}
-                    />
-                )}
-            </Modal>
-
             {/* Toast notifications */}
             {toasts.length > 0 && (
                 <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md">
@@ -951,6 +931,28 @@ export default function PurchasingGuidanceDashboard({
                     // onClick={metrics.excessValue > 0 ? () => setExpandedPanel('overstock') : undefined} 
                 />
             </div>
+
+            {/* Expanded KPI Item Panel - Inline below Row 2 */}
+            {expandedPanel && kpiSummary && (
+                <KPIItemPanel
+                    panelType={expandedPanel}
+                    kpiSummary={kpiSummary}
+                    onClose={() => {
+                        setExpandedPanel(null);
+                        setSelectedKPIItems(new Set());
+                    }}
+                    onNavigateToPOs={onNavigateToPOs}
+                    onNavigateToPO={onNavigateToPO}
+                    onNavigateToSku={onNavigateToSku}
+                    selectedItems={selectedKPIItems}
+                    onToggleSelect={toggleKPISelect}
+                    onQuickOrder={handleKPIQuickOrder}
+                    onCreatePOForSelected={handleCreatePOFromKPIItems}
+                    isCreatingPO={isCreatingPO}
+                    scrollToReplenishment={scrollToReplenishment}
+                    isModal={false}
+                />
+            )}
 
             {/* 2.5 Agent Insights Section */}
             {(agentInsights.critical.length > 0 || agentInsights.warning.length > 0) && (
