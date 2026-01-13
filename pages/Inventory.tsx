@@ -223,7 +223,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         return (localStorage.getItem('inventory-bom-filter') as any) || 'all';
     });
     const [filters, setFilters] = useState({ status: '' });
-    const [riskFilter, setRiskFilter] = useState<'all' | 'needs-order'>('all');
+    const [riskFilter, setRiskFilter] = useState<'all' | 'needs-order' | 'critical' | 'at-risk' | 'overstock'>('all');
     const [sortConfig, setSortConfig] = useState<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
     const [showRecentOnly, setShowRecentOnly] = useState(() => {
         const saved = localStorage.getItem('inventory-show-recent-only');
@@ -283,6 +283,44 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const previousSortConfigRef = useRef<{ key: SortKeys; direction: 'ascending' | 'descending' } | null>(null);
     const cellDensityClass = `${CELL_DENSITY_MAP[rowDensity]} ${FONT_SCALE_MAP[fontScale]}`;
 
+    // Handle Dashboard Filters
+    useEffect(() => {
+        const dashboardFilter = localStorage.getItem('inventoryDashboardFilter');
+        if (dashboardFilter) {
+            console.log('[Inventory] Applying dashboard filter:', dashboardFilter);
+            
+            // Reset all filters first to ensure clean state
+            setRiskFilter('all');
+            setFilters({ status: '' });
+            setSearchTerm('');
+            
+            switch (dashboardFilter) {
+                case 'out_of_stock':
+                    setFilters({ status: 'Out of Stock' });
+                    break;
+                case 'low_stock':
+                    setFilters({ status: 'Low Stock' });
+                    break;
+                case 'critical':
+                    setRiskFilter('critical');
+                    break;
+                case 'at_risk':
+                    setRiskFilter('at-risk');
+                    break;
+                case 'overstock':
+                    setRiskFilter('overstock');
+                    break;
+                case 'needs_order':
+                    setRiskFilter('needs-order');
+                    break;
+                default:
+                    console.warn('Unknown dashboard filter:', dashboardFilter);
+            }
+            
+            // Clear used filter
+            localStorage.removeItem('inventoryDashboardFilter');
+        }
+    }, []);
 
     // Navigation from BOM page - auto-scroll to inventory item
     useEffect(() => {
@@ -702,6 +740,31 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         }
         if (riskFilter === 'needs-order') {
             filteredItems = filteredItems.filter(item => demandInsights.get(item.sku)?.needsOrder);
+        } else if (riskFilter === 'critical') {
+            filteredItems = filteredItems.filter(item => {
+                const insight = demandInsights.get(item.sku);
+                if (!insight) return false;
+                // CLTR < 0.5 or Stock = 0
+                if (item.stock <= 0) return true;
+                const buffer = (insight.vendorLeadTime || 14) + 7;
+                return (insight.runwayDays / buffer) < 0.5;
+            });
+        } else if (riskFilter === 'at-risk') {
+            filteredItems = filteredItems.filter(item => {
+                const insight = demandInsights.get(item.sku);
+                if (!insight) return false;
+                // CLTR between 0.5 and 1.0
+                const buffer = (insight.vendorLeadTime || 14) + 7;
+                const cltr = insight.runwayDays / buffer;
+                return cltr >= 0.5 && cltr < 1.0;
+            });
+        } else if (riskFilter === 'overstock') {
+            filteredItems = filteredItems.filter(item => {
+                const insight = demandInsights.get(item.sku);
+                if (!insight) return false;
+                // Runway > 90 days (matches excess inventory metric)
+                return insight.runwayDays > 90;
+            });
         }
 
         // Vendor filter with exclusion support

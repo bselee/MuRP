@@ -1,22 +1,20 @@
 ---
 name: deploy
-description: Build the project, commit all changes, and deploy to main via the claude/merge-to-main branch. Use when deploying changes to production.
+description: Build the project, commit all changes, and deploy directly to main. Use when deploying changes to production.
 allowed-tools: Bash, Read, Glob, Write, Edit
 ---
 
 # Deploy to Main
 
-Automates the complete deployment workflow for pushing changes to main.
+Automates the complete deployment workflow for pushing changes to production.
 
 ## Workflow
 
 1. **Build**: Run `npm run build` to ensure no compilation errors
 2. **Status Check**: Check git status for uncommitted changes
 3. **Commit**: Commit changes with a descriptive message
-4. **Push**: Push to the current branch
-5. **Merge Branch**: Checkout and merge into `claude/merge-to-main` branch
-6. **Deploy**: Push to trigger PR creation and deployment
-7. **Confirm**: Provide PR URL and deployment status
+4. **Deploy**: Push directly to main to trigger production deployment
+5. **Confirm**: Provide deployment status
 
 ## Commands
 
@@ -32,13 +30,8 @@ git log --oneline -3
 git add -A
 git commit -m "chore: <descriptive message>"
 
-# Push current branch
-git push -u origin <branch>
-
-# Merge to deployment branch
-git checkout claude/merge-to-main
-git merge <branch> -m "chore: merge for deployment"
-git push -u origin claude/merge-to-main
+# Push directly to main
+git push origin main
 ```
 
 ## When to Use

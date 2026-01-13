@@ -52,9 +52,15 @@ interface PurchasingGuidanceDashboardProps {
     onNavigateToPOs?: () => void;
     onNavigateToPO?: (poNumber: string) => void;
     onNavigateToSku?: (sku: string) => void;
+    onNavigateToInventoryFilter?: (filter: string) => void;
 }
 
-export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigateToPO, onNavigateToSku }: PurchasingGuidanceDashboardProps = {}) {
+export default function PurchasingGuidanceDashboard({ 
+    onNavigateToPOs, 
+    onNavigateToPO, 
+    onNavigateToSku,
+    onNavigateToInventoryFilter 
+}: PurchasingGuidanceDashboardProps = {}) {
     const [advice, setAdvice] = useState<AdviceItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [kpiSummary, setKpiSummary] = useState<KPISummary | null>(null);
@@ -845,9 +851,8 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
                     unit="SKUs"
                     trend={metrics.criticalItems > 0 ? 'critical' : 'positive'}
                     desc={metrics.criticalItems > 0 ? "Order now - will run out before delivery" : "All items have adequate stock"}
-                    onClick={metrics.criticalItems > 0 ? () => setExpandedPanel(expandedPanel === 'critical' ? null : 'critical') : undefined}
-                    clickHint={metrics.criticalItems > 0 ? "Click to view & order" : undefined}
-                    isExpanded={expandedPanel === 'critical'}
+                    onClick={metrics.criticalItems > 0 && onNavigateToInventoryFilter ? () => onNavigateToInventoryFilter('critical') : undefined}
+                    clickHint={metrics.criticalItems > 0 ? "Click to view in Inventory" : undefined}
                 />
                 <KPICard
                     title="Low Stock"
@@ -855,9 +860,8 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
                     unit="SKUs"
                     trend={metrics.atRiskItems > 5 ? 'critical' : metrics.atRiskItems > 0 ? 'neutral' : 'positive'}
                     desc={metrics.atRiskItems > 0 ? "Order soon to prevent stockout" : "No items running low"}
-                    onClick={metrics.atRiskItems > 0 ? () => setExpandedPanel(expandedPanel === 'at_risk' ? null : 'at_risk') : undefined}
-                    clickHint={metrics.atRiskItems > 0 ? "Click to view & order" : undefined}
-                    isExpanded={expandedPanel === 'at_risk'}
+                    onClick={metrics.atRiskItems > 0 && onNavigateToInventoryFilter ? () => onNavigateToInventoryFilter('at_risk') : undefined}
+                    clickHint={metrics.atRiskItems > 0 ? "Click to view in Inventory" : undefined}
                 />
                 <KPICard
                     title="Past Due POs"
@@ -865,9 +869,8 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
                     unit="Lines"
                     trend={metrics.pastDueLines > 0 ? 'critical' : 'positive'}
                     desc={metrics.pastDueLines > 0 ? "Expected deliveries not received" : "All POs on schedule"}
-                    onClick={metrics.pastDueLines > 0 ? () => setExpandedPanel(expandedPanel === 'past_due' ? null : 'past_due') : undefined}
-                    clickHint={metrics.pastDueLines > 0 ? "Click to view POs" : undefined}
-                    isExpanded={expandedPanel === 'past_due'}
+                    onClick={metrics.pastDueLines > 0 && onNavigateToPOs ? onNavigateToPOs : undefined}
+                    clickHint={metrics.pastDueLines > 0 ? "Click to view Purchase Orders" : undefined}
                 />
                 <KPICard
                     title="Below Safety Stock"
@@ -875,9 +878,8 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
                     unit="SKUs"
                     trend={metrics.safetyStockShortfall > 5 ? 'critical' : metrics.safetyStockShortfall > 0 ? 'neutral' : 'positive'}
                     desc={metrics.safetyStockShortfall > 0 ? "Stock below buffer target" : "All items meet safety targets"}
-                    onClick={metrics.safetyStockShortfall > 0 ? () => setExpandedPanel(expandedPanel === 'below_ss' ? null : 'below_ss') : undefined}
+                    onClick={metrics.safetyStockShortfall > 0 && onNavigateToInventoryFilter ? () => onNavigateToInventoryFilter('needs_order') : undefined}
                     clickHint={metrics.safetyStockShortfall > 0 ? "Click to view & order" : undefined}
-                    isExpanded={expandedPanel === 'below_ss'}
                 />
             </div>
 

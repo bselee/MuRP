@@ -56,6 +56,10 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
           localStorage.setItem('highlightedSku', sku);
           setCurrentPage('Inventory');
         }}
+        onNavigateToInventoryFilter={(filter) => {
+            localStorage.setItem('inventoryDashboardFilter', filter);
+            setCurrentPage('Inventory');
+        }}
       />
     </div>
   );
