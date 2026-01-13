@@ -12,6 +12,7 @@ import type { CreatePurchaseOrderInput } from '../types';
 import SupplyChainRiskPanel from './SupplyChainRiskPanel';
 import StockoutContingencyCard, { type StockoutItem } from './StockoutContingencyCard';
 import VelocityTrendBadge, { type VelocityTrend, getTrendFromChange } from './VelocityTrendBadge';
+import Modal from './Modal';
 
 // Type for expanded KPI panel
 type ExpandedPanel = 'critical' | 'at_risk' | 'past_due' | 'below_ss' | null;
@@ -809,9 +810,38 @@ export default function PurchasingGuidanceDashboard({
 
     const selectedCount = selectedItems.size;
     const allSelected = selectedCount === needsOrder.length && needsOrder.length > 0;
+    
+    // Calculate modal title and subtitle if panel is expanded
+    const currentPanelConfig = expandedPanel && kpiSummary ? getKPIPanelConfig(expandedPanel, kpiSummary) : null;
 
     return (
         <div className="space-y-6 relative">
+            <Modal 
+                isOpen={!!expandedPanel}
+                onClose={() => setExpandedPanel(null)}
+                title={currentPanelConfig?.title || 'KPI Details'}
+                subtitle={currentPanelConfig?.subtitle}
+                size="large"
+            >
+                {expandedPanel && kpiSummary && (
+                    <KPIItemPanel
+                        panelType={expandedPanel}
+                        kpiSummary={kpiSummary}
+                        onClose={() => setExpandedPanel(null)}
+                        onNavigateToPOs={onNavigateToPOs}
+                        onNavigateToPO={onNavigateToPO}
+                        onNavigateToSku={onNavigateToSku}
+                        selectedItems={selectedKPIItems}
+                        onToggleSelect={toggleKPISelect}
+                        onQuickOrder={handleKPIQuickOrder}
+                        onCreatePOForSelected={handleCreatePOFromKPIItems}
+                        isCreatingPO={isCreatingPO}
+                        scrollToReplenishment={scrollToReplenishment}
+                        isModal={true}
+                    />
+                )}
+            </Modal>
+
             {/* Toast notifications */}
             {toasts.length > 0 && (
                 <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md">
@@ -859,8 +889,7 @@ export default function PurchasingGuidanceDashboard({
                     unit="SKUs"
                     trend={metrics.criticalItems > 0 ? 'critical' : 'positive'}
                     desc={metrics.criticalItems > 0 ? "Order now - will run out before delivery" : "All items have adequate stock"}
-                    onClick={metrics.criticalItems > 0 && onNavigateToInventoryFilter ? () => onNavigateToInventoryFilter('critical') : undefined}
-                    clickHint={metrics.criticalItems > 0 ? "Click to view in Inventory" : undefined}
+                    onClick={metrics.criticalItems > 0 ? () => setExpandedPanel('critical') : undefined}
                 />
                 <KPICard
                     title="Low Stock"
@@ -868,8 +897,7 @@ export default function PurchasingGuidanceDashboard({
                     unit="SKUs"
                     trend={metrics.atRiskItems > 5 ? 'critical' : metrics.atRiskItems > 0 ? 'neutral' : 'positive'}
                     desc={metrics.atRiskItems > 0 ? "Order soon to prevent stockout" : "No items running low"}
-                    onClick={metrics.atRiskItems > 0 && onNavigateToInventoryFilter ? () => onNavigateToInventoryFilter('at_risk') : undefined}
-                    clickHint={metrics.atRiskItems > 0 ? "Click to view in Inventory" : undefined}
+                    onClick={metrics.atRiskItems > 0 ? () => setExpandedPanel('at_risk') : undefined}
                 />
                 <KPICard
                     title="Past Due POs"
@@ -877,8 +905,8 @@ export default function PurchasingGuidanceDashboard({
                     unit="Lines"
                     trend={metrics.pastDueLines > 0 ? 'critical' : 'positive'}
                     desc={metrics.pastDueLines > 0 ? "Expected deliveries not received" : "All POs on schedule"}
-                    onClick={metrics.pastDueLines > 0 && onNavigateToPOs ? onNavigateToPOs : undefined}
-                    clickHint={metrics.pastDueLines > 0 ? "Click to view Purchase Orders" : undefined}
+                    onClick={metrics.pastDueLines > 0 ? () => setExpandedPanel('past_due') : undefined}
+                    clickHint={metrics.pastDueLines > 0 ? "Click to view Past Due Lines" : undefined}
                 />
                 <KPICard
                     title="Below Safety Stock"
@@ -886,31 +914,9 @@ export default function PurchasingGuidanceDashboard({
                     unit="SKUs"
                     trend={metrics.safetyStockShortfall > 5 ? 'critical' : metrics.safetyStockShortfall > 0 ? 'neutral' : 'positive'}
                     desc={metrics.safetyStockShortfall > 0 ? "Stock below buffer target" : "All items meet safety targets"}
-                    onClick={metrics.safetyStockShortfall > 0 && onNavigateToInventoryFilter ? () => onNavigateToInventoryFilter('needs_order') : undefined}
-                    clickHint={metrics.safetyStockShortfall > 0 ? "Click to view & order" : undefined}
+                    onClick={metrics.safetyStockShortfall > 0 ? () => setExpandedPanel('below_ss') : undefined}
                 />
             </div>
-
-            {/* Expanded KPI Item Panel */}
-            {expandedPanel && kpiSummary && (
-                <KPIItemPanel
-                    panelType={expandedPanel}
-                    kpiSummary={kpiSummary}
-                    onClose={() => {
-                        setExpandedPanel(null);
-                        setSelectedKPIItems(new Set());
-                    }}
-                    onNavigateToPOs={onNavigateToPOs}
-                    onNavigateToPO={onNavigateToPO}
-                    onNavigateToSku={onNavigateToSku}
-                    selectedItems={selectedKPIItems}
-                    onToggleSelect={toggleKPISelect}
-                    onQuickOrder={handleKPIQuickOrder}
-                    onCreatePOForSelected={handleCreatePOFromKPIItems}
-                    isCreatingPO={isCreatingPO}
-                    scrollToReplenishment={scrollToReplenishment}
-                />
-            )}
 
             {/* 2.5 Secondary metrics row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -941,8 +947,8 @@ export default function PurchasingGuidanceDashboard({
                     unit=""
                     trend={metrics.excessValue > 10000 ? 'critical' : 'neutral'}
                     desc="Capital above 90-day runway"
-                    onClick={metrics.excessValue > 0 && onNavigateToInventoryFilter ? () => onNavigateToInventoryFilter('overstock') : undefined}
-                    clickHint={metrics.excessValue > 0 ? "Click to view in Inventory" : undefined}
+                    // Overstock drill-down temp disabled until KPIItemPanel supports it
+                    // onClick={metrics.excessValue > 0 ? () => setExpandedPanel('overstock') : undefined} 
                 />
             </div>
 
@@ -1310,6 +1316,53 @@ function KPICard({ title, value, unit, trend, desc, onClick, clickHint, isExpand
     );
 }
 
+// KPI Panel Configuration Helper
+const getKPIPanelConfig = (panelType: ExpandedPanel, kpiSummary: KPISummary | null) => {
+    if (!kpiSummary || !panelType) return null;
+    
+    switch (panelType) {
+        case 'critical':
+            return {
+                title: 'Stockout Imminent - Order Now',
+                subtitle: 'Stock will run out before replenishment can arrive at current demand rate',
+                items: kpiSummary.critical_cltr_items,
+                bgClass: 'bg-red-900/20 border-red-500/30',
+                headerClass: 'text-red-400',
+                totalCount: kpiSummary.items_critical_cltr,
+            };
+        case 'at_risk':
+            return {
+                title: 'Low Stock - Order Soon',
+                subtitle: 'Running low on stock - order within the week to avoid stockout',
+                items: kpiSummary.at_risk_cltr_items,
+                bgClass: 'bg-amber-900/20 border-amber-500/30',
+                headerClass: 'text-amber-400',
+                totalCount: kpiSummary.items_at_risk_cltr,
+            };
+        case 'past_due':
+            return {
+                title: 'Past Due PO Lines',
+                subtitle: 'Purchase order lines that have not arrived by expected date',
+                items: null,
+                pastDueLines: kpiSummary.past_due_lines,
+                bgClass: 'bg-orange-900/20 border-orange-500/30',
+                headerClass: 'text-orange-400',
+                totalCount: kpiSummary.total_past_due_lines,
+            };
+        case 'below_ss':
+            return {
+                title: 'Below Safety Stock',
+                subtitle: 'Current stock is below the safety buffer target',
+                items: kpiSummary.below_safety_stock_items,
+                bgClass: 'bg-yellow-900/20 border-yellow-500/30',
+                headerClass: 'text-yellow-400',
+                totalCount: kpiSummary.safety_stock_shortfall_items,
+            };
+        default:
+            return null;
+    }
+};
+
 // KPI Item Panel - Shows actionable items when a KPI card is clicked
 interface KPIItemPanelProps {
     panelType: ExpandedPanel;
@@ -1324,78 +1377,55 @@ interface KPIItemPanelProps {
     onCreatePOForSelected: () => void;
     isCreatingPO: boolean;
     scrollToReplenishment: () => void;
+    isModal?: boolean;
 }
 
-function KPIItemPanel({ panelType, kpiSummary, onClose, onNavigateToPOs, onNavigateToPO, onNavigateToSku, selectedItems, onToggleSelect, onQuickOrder, onCreatePOForSelected, isCreatingPO, scrollToReplenishment }: KPIItemPanelProps) {
-    const getPanelConfig = () => {
-        switch (panelType) {
-            case 'critical':
-                return {
-                    title: 'Stockout Imminent - Order Now',
-                    subtitle: 'Stock will run out before replenishment can arrive at current demand rate',
-                    items: kpiSummary.critical_cltr_items,
-                    bgClass: 'bg-red-900/20 border-red-500/30',
-                    headerClass: 'text-red-400',
-                    totalCount: kpiSummary.items_critical_cltr,
-                };
-            case 'at_risk':
-                return {
-                    title: 'Low Stock - Order Soon',
-                    subtitle: 'Running low on stock - order within the week to avoid stockout',
-                    items: kpiSummary.at_risk_cltr_items,
-                    bgClass: 'bg-amber-900/20 border-amber-500/30',
-                    headerClass: 'text-amber-400',
-                    totalCount: kpiSummary.items_at_risk_cltr,
-                };
-            case 'past_due':
-                return {
-                    title: 'Past Due PO Lines',
-                    subtitle: 'Purchase order lines that have not arrived by expected date',
-                    items: null,
-                    pastDueLines: kpiSummary.past_due_lines,
-                    bgClass: 'bg-orange-900/20 border-orange-500/30',
-                    headerClass: 'text-orange-400',
-                    totalCount: kpiSummary.total_past_due_lines,
-                };
-            case 'below_ss':
-                return {
-                    title: 'Below Safety Stock',
-                    subtitle: 'Current stock is below the safety buffer target',
-                    items: kpiSummary.below_safety_stock_items,
-                    bgClass: 'bg-yellow-900/20 border-yellow-500/30',
-                    headerClass: 'text-yellow-400',
-                    totalCount: kpiSummary.safety_stock_shortfall_items,
-                };
-            default:
-                return null;
-        }
-    };
-
-    const config = getPanelConfig();
+function KPIItemPanel({ 
+    panelType, 
+    kpiSummary, 
+    onClose, 
+    onNavigateToPOs, 
+    onNavigateToPO, 
+    onNavigateToSku, 
+    selectedItems, 
+    onToggleSelect, 
+    onQuickOrder, 
+    onCreatePOForSelected, 
+    isCreatingPO, 
+    scrollToReplenishment,
+    isModal = false 
+}: KPIItemPanelProps) {
+    const config = getKPIPanelConfig(panelType, kpiSummary);
     if (!config) return null;
 
+    const containerClass = isModal
+        ? "min-h-[400px]"
+        : `rounded-xl border ${config.bgClass} overflow-hidden animate-in slide-in-from-top duration-300`;
+
     return (
-        <div className={`rounded-xl border ${config.bgClass} overflow-hidden animate-in slide-in-from-top duration-300`}>
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
-                <div>
-                    <h3 className={`font-semibold ${config.headerClass}`}>
-                        {config.title}
-                        {config.totalCount > 50 && (
-                            <span className="ml-2 text-xs font-normal text-slate-500">
-                                (showing top 50 of {config.totalCount})
-                            </span>
-                        )}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">{config.subtitle}</p>
+        <div className={containerClass}>
+            {/* Header - Only hide if in modal */}
+            {!isModal && (
+                <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+                    <div>
+                        <h3 className={`font-semibold ${config.headerClass}`}>
+                            {config.title}
+                            {config.totalCount > 50 && (
+                                <span className="ml-2 text-xs font-normal text-slate-500">
+                                    (showing top 50 of {config.totalCount})
+                                </span>
+                            )}
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">{config.subtitle}</p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors text-slate-400 hover:text-slate-200"
+                    >
+                        <XCircleIcon className="w-5 h-5" />
+                    </button>
                 </div>
-                <button
-                    onClick={onClose}
-                    className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors text-slate-400 hover:text-slate-200"
-                >
-                    <XCircleIcon className="w-5 h-5" />
-                </button>
-            </div>
+            )}
 
             {/* Items Table */}
             <div className="max-h-[400px] overflow-y-auto">

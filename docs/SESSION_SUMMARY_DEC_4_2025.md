@@ -9,3 +9,6 @@
 - Modified: `App.tsx` to use `useFinaleInit`.
 
 - **Verification**: User confirmed Finale data is currently passing to Supabase successfully.
+- **Enhancement**: Implemented `KPIFilterModal` to display inventory details directly on the Dashboard instead of navigating away.
+- **Feature**: Updated Dashboard metrics cards (Stockouts, Low Stock, Overstock) to open this modal with filtered data.
+- **Fix**: Ensured correct logic matching `inventoryKPIService` is used for filtering items in the modal.
