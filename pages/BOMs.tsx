@@ -401,20 +401,23 @@ const BOMs: React.FC<BOMsProps> = ({
     };
   }, [boms]);
 
-  // Track inactive SKUs fetched from database
-  const [inactiveSkus, setInactiveSkus] = useState<Set<string>>(new Set());
+  // Track active SKUs from database (Finale sync skips inactive products entirely)
+  const [activeSkus, setActiveSkus] = useState<Set<string>>(new Set());
+  const [activeSkusLoaded, setActiveSkusLoaded] = useState(false);
 
-  // Fetch inactive SKUs from database (these are filtered out of the normal inventory hook)
+  // Fetch all active inventory SKUs from database
+  // NOTE: Finale sync skips inactive products, so they don't exist in inventory_items
+  // If a BOM's finishedSku is NOT in this set, it's for an inactive/deprecated product
   useEffect(() => {
-    const fetchInactiveSkus = async () => {
+    const fetchActiveSkus = async () => {
       try {
         const { data, error } = await supabase
           .from('inventory_items')
           .select('sku')
-          .eq('is_active', false);
+          .eq('is_active', true);
 
         if (error) {
-          console.error('[BOMs] Error fetching inactive SKUs:', error);
+          console.error('[BOMs] Error fetching active SKUs:', error);
           return;
         }
 
@@ -424,14 +427,15 @@ const BOMs: React.FC<BOMsProps> = ({
             .filter(Boolean) as string[]
         );
 
-        console.log(`[BOMs] Loaded ${skuSet.size} inactive SKUs from database`);
-        setInactiveSkus(skuSet);
+        console.log(`[BOMs] Loaded ${skuSet.size} active SKUs from database`);
+        setActiveSkus(skuSet);
+        setActiveSkusLoaded(true);
       } catch (err) {
-        console.error('[BOMs] Failed to fetch inactive SKUs:', err);
+        console.error('[BOMs] Failed to fetch active SKUs:', err);
       }
     };
 
-    fetchInactiveSkus();
+    fetchActiveSkus();
   }, []);
 
   // Normalize BOMs so missing component arrays don't hide entire records
@@ -464,9 +468,11 @@ const BOMs: React.FC<BOMsProps> = ({
 
       const skuUpper = bom.finishedSku.toUpperCase().trim();
 
-      // Check if SKU is marked inactive in database
-      if (inactiveSkus.has(skuUpper)) {
-        console.log(`[BOMs] Filtering out "${bom.name}" - SKU "${bom.finishedSku}" is inactive in database`);
+      // Check if SKU exists in active inventory
+      // NOTE: Finale sync skips inactive/deprecated products entirely
+      // So if a SKU doesn't exist in activeSkus, it's an inactive product
+      if (activeSkusLoaded && !activeSkus.has(skuUpper)) {
+        console.log(`[BOMs] Filtering out "${bom.name}" - SKU "${bom.finishedSku}" not in active inventory (likely inactive in Finale)`);
         return false;
       }
 
@@ -495,7 +501,7 @@ const BOMs: React.FC<BOMsProps> = ({
       console.warn(`[BOMs] ${missingComponentCount} BOM(s) have no component list yet, showing them with 0 components.`);
     }
     return afterGlobalFilter;
-  }, [boms, inventory, isSkuGloballyExcluded, inactiveSkus]);
+  }, [boms, inventory, isSkuGloballyExcluded, activeSkus, activeSkusLoaded]);
 
   // Create inventory lookup map for O(1) access
   const inventoryMap = useMemo(() => {
