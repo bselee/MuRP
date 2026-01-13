@@ -220,134 +220,126 @@ const SystemHealthBanner: React.FC<SystemHealthBannerProps> = ({ onNavigateToSet
   const visibleAlerts = useMemo(() => {
     const dbAlerts = alerts.filter(a => !dismissed.has(a.id));
 
-    // Only include CRITICAL context alerts - NOT sync failures
-    // Sync status is visible via DataSyncIndicator, not the banner
+    // Map context alerts
     const mappedContextAlerts: HealthAlert[] = contextAlerts
-      .filter(alert => {
-        // Skip all sync-related alerts - they're handled by DataSyncIndicator
-        if (alert.source.includes('sync') || alert.source === 'google-sheets') return false;
-        // Only show critical alerts
-        if (alert.severity !== 'critical') return false;
-        return true;
-      })
-      .map(alert => ({
-        id: alert.id,
-        alert_type: 'integration_error',
-        severity: alert.severity,
-        title: `Alert: ${alert.source}`,
-        message: alert.message,
-        component: alert.source,
-        context_data: {},
-        created_at: alert.timestamp || new Date().toISOString(),
-        user_dismissed: false
-      }));
+      .map(alert => {
+        const isSync = alert.source.includes('sync') || alert.source === 'google-sheets';
+         // Force sync alerts to be treated as non-critical warnings for the banner
+         // This moves them from the big red banner to the minimal indicator
+        const effectiveSeverity = isSync ? 'warning' : alert.severity;
+        
+        return {
+            id: alert.id,
+            alert_type: isSync ? 'sync_failure' : 'integration_error',
+            severity: effectiveSeverity,
+            title: isSync && alert.source === 'google-sheets' ? 'Sheets Sync' : `Alert: ${alert.source}`,
+            message: alert.message,
+            component: alert.source,
+            context_data: {},
+            created_at: alert.timestamp || new Date().toISOString(),
+            user_dismissed: false
+        };
+      });
 
     return [...mappedContextAlerts, ...dbAlerts];
   }, [alerts, contextAlerts, dismissed]);
 
-  if (visibleAlerts.length === 0) {
+  // Separate alerts
+  const criticalAlert = visibleAlerts.find(a => a.severity === 'critical');
+  const minimalAlert = !criticalAlert ? visibleAlerts[0] : null;
+
+  if (!criticalAlert && !minimalAlert) {
     return null;
   }
 
-  const primaryAlert = visibleAlerts[0];
-  const additionalCount = visibleAlerts.length - 1;
-  const styles = getSeverityStyles(primaryAlert.severity);
-
-  return (
-    <div className={`${styles.banner} border-b shadow-lg`}>
-      <div className="max-w-7xl mx-auto px-4 py-3">
-        {/* Primary Alert */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className={`${styles.icon} flex-shrink-0`}>
-              {primaryAlert.severity === 'critical' ? (
-                <XCircleIcon className="w-6 h-6" />
-              ) : (
-                getIcon(primaryAlert.alert_type)
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className={`font-semibold ${styles.text}`}>
-                  {primaryAlert.title}
-                </span>
-                {additionalCount > 0 && (
+  // --- 1. CRITICAL BANNER (Big Red) ---
+  if (criticalAlert) {
+      const styles = getSeverityStyles(criticalAlert.severity);
+      return (
+        <div className={`${styles.banner} border-b shadow-lg`}>
+          <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className={`${styles.icon} flex-shrink-0`}>
+                  <XCircleIcon className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className={`font-semibold ${styles.text}`}>
+                    {criticalAlert.title}
+                  </span>
+                  <p className={`text-sm ${styles.text} opacity-90 truncate`}>
+                    {criticalAlert.message}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {onNavigateToSettings && (
                   <button
-                    onClick={() => setExpanded(!expanded)}
-                    className={`text-xs ${styles.text} opacity-80 hover:opacity-100`}
+                    onClick={onNavigateToSettings}
+                    className={`${styles.button} px-3 py-1.5 rounded text-sm font-medium transition-colors`}
                   >
-                    +{additionalCount} more
+                    Fix
                   </button>
                 )}
+                <button 
+                  onClick={() => handleDismiss(criticalAlert.id)}
+                  className={`p-1 rounded hover:bg-black/10 transition-colors ${styles.text}`}
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
               </div>
-              <p className={`text-sm ${styles.text} opacity-90 truncate`}>
-                {primaryAlert.message}
-              </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className={`text-xs ${styles.text} opacity-70`}>
-              {formatTimeAgo(primaryAlert.created_at)}
-            </span>
-
-            {onNavigateToSettings && (
-              <button
-                onClick={onNavigateToSettings}
-                className={`${styles.button} px-3 py-1.5 rounded text-sm font-medium transition-colors`}
-              >
-                {getActionText(primaryAlert.alert_type)}
-              </button>
-            )}
-
-            <button
-              onClick={() => handleDismiss(primaryAlert.id)}
-              className={`${styles.text} opacity-70 hover:opacity-100 p-1`}
-              title="Dismiss"
-            >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
-          </div>
         </div>
+      );
+  }
 
-        {/* Expanded Additional Alerts */}
-        {expanded && additionalCount > 0 && (
-          <div className="mt-3 pt-3 border-t border-white/20 space-y-2">
-            {visibleAlerts.slice(1).map(alert => (
-              <div
-                key={alert.id}
-                className="flex items-center justify-between gap-3 text-sm"
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className={`${styles.icon} opacity-80`}>
-                    {getIcon(alert.alert_type)}
-                  </span>
-                  <span className={`${styles.text} font-medium`}>
-                    {alert.title}
-                  </span>
-                  <span className={`${styles.text} opacity-70 truncate`}>
-                    - {alert.message}
-                  </span>
+  // --- 2. MINIMAL INDICATOR (Floating Pill) ---
+  if (minimalAlert) {
+      const isError = minimalAlert.severity === 'error' || minimalAlert.severity === 'critical';
+      const isWarning = minimalAlert.severity === 'warning';
+      
+      // Determine colors
+      let bgClass = 'bg-white dark:bg-gray-800';
+      let indicatorClass = 'bg-blue-500';
+      if (isError) indicatorClass = 'bg-red-500';
+      else if (isWarning) indicatorClass = 'bg-amber-500';
+
+      return (
+        <div className="absolute top-20 right-6 z-50 pointer-events-none flex justify-end">
+             <div className="pointer-events-auto bg-white/95 dark:bg-gray-800/95 backdrop-blur shadow-lg border border-gray-200 dark:border-gray-700 rounded-full pl-2 pr-3 py-1.5 flex items-center gap-3 max-w-sm animate-in fade-in slide-in-from-right-8 duration-500">
+                <div className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${indicatorClass} ${isError ? 'animate-pulse' : ''}`} />
+                
+                <div className="flex flex-col min-w-0">
+                     <span className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px]">
+                        {minimalAlert.message}
+                     </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs ${styles.text} opacity-60`}>
-                    {formatTimeAgo(alert.created_at)}
-                  </span>
-                  <button
-                    onClick={() => handleDismiss(alert.id)}
-                    className={`${styles.text} opacity-60 hover:opacity-100`}
-                  >
-                    <XMarkIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+
+                 <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1 flex-shrink-0" />
+                 
+                 <div className="flex items-center gap-2 flex-shrink-0">
+                    {onNavigateToSettings && (
+                        <button
+                            onClick={onNavigateToSettings}
+                            className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                        Check
+                        </button>
+                    )}
+                    <button
+                        onClick={() => handleDismiss(minimalAlert.id)}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                        <XMarkIcon className="w-4 h-4" />
+                    </button>
+                 </div>
+             </div>
+        </div>
+      );
+  }
+
+  return null;
 };
 
 export default SystemHealthBanner;

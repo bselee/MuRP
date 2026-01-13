@@ -2117,3 +2117,18 @@ orderViewConnection(
 **Vercel Deployment:**
 - Production deployed successfully: https://murp-oidyn9iv1-will-selees-projects.vercel.app
 
+
+### Session Update: 2026-01-13 18:38
+
+**UI Adjustments:**
+- Refactored `SystemHealthBanner.tsx` to support "minimal" alert mode.
+- Sync health alerts (e.g., BOM sync) now display as a discreet floating pill instead of a critical banner.
+- Preserved critical error visibility while reducing visual noise for operational sync status.
+
+**Critical Fixes:**
+- **Proxy Implementation**: Added missing `getBOMs` handler in `api-proxy/index.ts` which was causing BOM sync failures.
+- **BOM Sync Robustness**: Updated `FinaleBasicAuthClient.ts` and `FinaleSyncService.ts` to explicitly pass the BOM Report URL to the proxy, handling cases where server-side env vars might be missing.
+- **Dependencies**: Added `csv` module import to Edge Function for server-side parsing.
+
+**Deployment Note:**
+- The `api-proxy` Edge Function requires redeployment: `supabase functions deploy api-proxy`.

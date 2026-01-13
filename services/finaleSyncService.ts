@@ -605,7 +605,7 @@ export class FinaleSyncService {
       const rawBOMs = await this.rateLimiter.schedule(async () => {
         return await this.circuitBreaker.execute(async () => {
           return await retryWithBackoff(
-            async () => await this.client.getBOMs(),
+            async () => await this.client.getBOMs(bomReportUrl || undefined),
             {
               maxAttempts: this.config.maxRetries,
               baseDelayMs: this.config.retryDelayMs,

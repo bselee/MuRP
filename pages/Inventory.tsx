@@ -15,7 +15,8 @@ import {
     EyeSlashIcon,
     BookmarkIcon,
     BellIcon,
-    PlusCircleIcon
+    PlusCircleIcon,
+    MagicSparklesIcon
 } from '../components/icons';
 import { UploadCloud, Download } from 'lucide-react';
 import CollapsibleSection from '../components/CollapsibleSection';
@@ -240,6 +241,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
     const [categorySearchTerm, setCategorySearchTerm] = useState('');
     const [vendorSearchTerm, setVendorSearchTerm] = useState('');
+    const [isStockIntelligenceOpen, setIsStockIntelligenceOpen] = useState(true);
 
     // Filter preset system state
     const [categoryConfig, setCategoryConfig] = useState<Record<string, CategoryConfig>>(() => {
@@ -1093,6 +1095,16 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
     };
     const formatDemandRate = (value?: number) => (value !== undefined ? value.toFixed(1) : '—');
 
+    // Compute stock intelligence stats for the summary banner
+    const stockCurrentStats = useMemo(() => {
+        const risks = computeStockoutRisks(inventory);
+        return {
+            critical: risks.filter(r => r.riskLevel === 'critical'),
+            high: risks.filter(r => r.riskLevel === 'high'),
+            all: risks
+        };
+    }, [inventory]);
+
     return (
         <>
             {loading && <LoadingOverlay />}
@@ -1158,6 +1170,65 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     />
                 ) : (
                     <div className="space-y-6">
+                        {/* Stock Intelligence Summary Banner */}
+                        {(stockCurrentStats.critical.length > 0 || stockCurrentStats.high.length > 0) && (
+                            <CollapsibleSection
+                                title="Stock Intelligence Findings"
+                                icon={<MagicSparklesIcon className="w-5 h-5 text-purple-400" />}
+                                variant="default"
+                                isOpen={isStockIntelligenceOpen}
+                                onToggle={() => setIsStockIntelligenceOpen(!isStockIntelligenceOpen)}
+                            >
+                                <div className="bg-gradient-to-r from-purple-900/10 to-transparent p-4 rounded-lg border border-purple-500/20">
+                                    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                                        <div className="space-y-1">
+                                            <h3 className={`font-semibold ${isDark ? 'text-purple-200' : 'text-purple-900'}`}>
+                                                Agent Analysis Results
+                                            </h3>
+                                            <p className={`text-sm ${isDark ? 'text-purple-300/70' : 'text-purple-700/70'}`}>
+                                                Found {stockCurrentStats.critical.length} critical and {stockCurrentStats.high.length} high-risk items based on current sales velocity.
+                                            </p>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            {stockCurrentStats.critical.length > 0 && (
+                                                <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-full">
+                                                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                                    <span className="text-red-400 font-medium text-sm">{stockCurrentStats.critical.length} Critical</span>
+                                                </div>
+                                            )}
+                                            {stockCurrentStats.high.length > 0 && (
+                                                <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-full">
+                                                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                                    <span className="text-amber-400 font-medium text-sm">{stockCurrentStats.high.length} High Risk</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Quick Actions / Suggestions */}
+                                    <div className="mt-4 pt-4 border-t border-purple-500/20 flex gap-2 overflow-x-auto pb-1">
+                                         {stockCurrentStats.critical.slice(0, 5).map(risk => (
+                                              <button 
+                                                key={risk.sku}
+                                                onClick={() => {
+                                                    setSearchTerm(risk.sku);
+                                                    // optionally scroll to item
+                                                }}
+                                                className="flex-shrink-0 bg-slate-800/50 hover:bg-slate-700 border border-red-500/30 rounded px-3 py-1 text-xs text-red-300 transition-colors flex items-center gap-2"
+                                              >
+                                                <span>{risk.sku}</span>
+                                                <span className="opacity-50">|</span>
+                                                <span>{risk.daysUntilStockout} days left</span>
+                                              </button>
+                                         ))}
+                                         {stockCurrentStats.critical.length > 5 && (
+                                            <span className="text-xs text-purple-400 self-center pl-2">+{stockCurrentStats.critical.length - 5} more</span>
+                                         )}
+                                    </div>
+                                </div>
+                            </CollapsibleSection>
+                        )}
+
                         <CollapsibleSection
                         title="Search & Filters"
                         icon={<AdjustmentsHorizontalIcon className={`w-6 h-6 ${isDark ? 'text-blue-400' : 'text-gray-500'}`} />}

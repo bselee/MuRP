@@ -948,24 +948,40 @@ export default function PurchasingGuidanceDashboard({ onNavigateToPOs, onNavigat
 
                     <div className="grid gap-3">
                         {agentInsights.critical.map((insight, idx) => (
-                            <div key={`crit-${idx}`} className="bg-slate-800/50 border-l-4 border-red-500 rounded-r-lg p-3 flex items-start gap-3">
+                            <div key={`crit-${idx}`} className="bg-slate-800/50 border-l-4 border-red-500 rounded-r-lg p-3 flex items-start gap-3 group hover:bg-slate-800 transition-colors">
                                 <div className="text-red-400 mt-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
                                 </div>
-                                <div>
-                                    <div className="font-medium text-white text-sm">{insight.description} ({insight.sku})</div>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="font-medium text-white text-sm">{insight.description}</div>
+                                        <button 
+                                            onClick={() => onNavigateToSku?.(insight.sku)}
+                                            className="text-xs text-purple-400 hover:text-purple-300 underline"
+                                        >
+                                            ({insight.sku})
+                                        </button>
+                                    </div>
                                     <div className="text-slate-400 text-xs mt-1">{insight.issue}</div>
                                     <div className="text-slate-500 text-xs mt-1 italic">Suggested: {insight.action}</div>
                                 </div>
                             </div>
                         ))}
                         {agentInsights.warning.map((insight, idx) => (
-                            <div key={`warn-${idx}`} className="bg-slate-800/50 border-l-4 border-amber-500 rounded-r-lg p-3 flex items-start gap-3">
+                            <div key={`warn-${idx}`} className="bg-slate-800/50 border-l-4 border-amber-500 rounded-r-lg p-3 flex items-start gap-3 group hover:bg-slate-800 transition-colors">
                                 <div className="text-amber-400 mt-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
                                 </div>
-                                <div>
-                                    <div className="font-medium text-white text-sm">{insight.description} ({insight.sku})</div>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="font-medium text-white text-sm">{insight.description}</div>
+                                        <button 
+                                            onClick={() => onNavigateToSku?.(insight.sku)}
+                                            className="text-xs text-purple-400 hover:text-purple-300 underline"
+                                        >
+                                            ({insight.sku})
+                                        </button>
+                                    </div>
                                     <div className="text-slate-400 text-xs mt-1">{insight.issue}</div>
                                 </div>
                             </div>

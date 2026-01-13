@@ -13,6 +13,7 @@
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { parse } from 'https://deno.land/std@0.168.0/encoding/csv.ts'
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 interface ApiProxyRequest {
@@ -286,6 +287,32 @@ async function handleFinaleRequest(
       }
 
       return { data: allPurchaseOrders }
+    }
+
+    case 'getBOMs': {
+      // Use URL passed from client (if any) or fallback to env var
+      const reportUrl = (params?.url as string) || Deno.env.get('FINALE_BOM_REPORT_URL')
+      
+      if (!reportUrl) {
+        throw new Error('FINALE_BOM_REPORT_URL not configured')
+      }
+
+      console.log(`Fetching BOM report from: ${reportUrl?.substring(0, 50)}...`) // Don't log full token-bearing URL
+      
+      const response = await fetch(reportUrl)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch BOM report: ${response.status} ${response.statusText}`)
+      }
+
+      const csvContent = await response.text()
+      // Parse CSV using Deno std lib
+      const result = await parse(csvContent, { 
+        skipFirstRow: true, 
+        columns: true 
+      })
+      
+      return result
     }
 
     case 'syncAll': {
