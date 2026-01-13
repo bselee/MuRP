@@ -2132,3 +2132,34 @@ orderViewConnection(
 
 **Deployment Note:**
 - The `api-proxy` Edge Function requires redeployment: `supabase functions deploy api-proxy`.
+
+### Session: 2026-01-13 19:41
+**Changes Made:**
+- Refactored `PurchasingGuidanceDashboard.tsx` to use internal `KPIItemPanel` inside a `Modal` wrapper.
+- Deleted `components/KPIFilterModal.tsx` (redundant/inferior logic).
+- Updated KPI Cards (Stockout, At Risk, Past Due, Below SS) to open the internal modal instead of navigating away.
+
+**Key Decisions:**
+- Replaced the external `KPIFilterModal` which re-fetched raw data with simple queries. The internal `KPIItemPanel` now reuses the rich, pre-calculated data from `inventoryKPIService` (CLTR, Lead Time Bias, etc.).
+- Wrapped the panel in a generic `Modal` component to satisfy the "stay on dashboard" UX requirement.
+
+**Status:**
+- Dashboard drill-downs now align perfectly with the summary metrics.
+- "Excess Inventory" drill-down temporarily disabled until supported by the panel logic.
+
+### Dashboard UX Update: 2026-01-13 20:08
+**Changes Made:**
+- **Inline Drill-down**: Removed `Modal` wrapper from KPI details. Detailed data tables now appear directly below the metrics cards for better visibility and context retention.
+- **Default View**: Dashboard now loads with the "Critical" (Stockout Imminent) panel expanded by default.
+- **Metrics Consistency**: Continued using internal `KPIItemPanel` to ensure drill-down data matches summary card counts perfectly (sharing `inventoryKPIService` logic).
+
+**Files Modified:**
+- `components/PurchasingGuidanceDashboard.tsx`: Moved `KPIItemPanel` below secondary metrics row. Set initial state of `expandedPanel` to 'critical'.
+
+### Dashbard Fix: 2026-01-13 20:18
+**Fixed:**
+- **Initial Load Issue**: Fixed a regression where forcing `expandedPanel = 'critical'` before data load could cause premature rendering attempts of the detail panel. Changed initial state to `null` and added a `useEffect` to auto-expand only *after* data is confirmed loaded and populated.
+- **Import Cleanup**: Removed commented out imports that were causing confusion (and could cause errors if uncommented by accident).
+
+**Files Modified:**
+- `components/PurchasingGuidanceDashboard.tsx`: Reset state initialization, added logic to safely auto-expand "Critical" items upon data arrival.

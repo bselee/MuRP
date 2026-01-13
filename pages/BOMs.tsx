@@ -402,19 +402,60 @@ const BOMs: React.FC<BOMsProps> = ({
   }, [boms]);
 
   // Normalize BOMs so missing component arrays don't hide entire records
-  // Also filter out BOMs whose finished SKU is globally excluded
+  // Also filter out BOMs whose finished SKU is globally excluded or inactive
   const filteredBoms = useMemo(() => {
     const normalized = boms.map((bom) => ({
       ...bom,
       components: Array.isArray(bom.components) ? bom.components : [],
     }));
 
-    // Filter out BOMs whose finished SKU is globally excluded
-    const afterGlobalFilter = normalized.filter((bom) => !isSkuGloballyExcluded(bom.finishedSku));
+    // Build inventory lookup for status checking
+    const invLookup = new Map<string, InventoryItem>();
+    inventory.forEach(item => invLookup.set(item.sku?.toUpperCase?.() || '', item));
+
+    // Get excluded SKUs directly from localStorage for reliability
+    let excludedSkusFromStorage = new Set<string>();
+    try {
+      const saved = localStorage.getItem('global-excluded-skus');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          excludedSkusFromStorage = new Set(parsed.map((s: string) => s.toUpperCase().trim()));
+        }
+      }
+    } catch {}
+
+    // Filter out BOMs that should be hidden
+    const afterGlobalFilter = normalized.filter((bom) => {
+      if (!bom.finishedSku) return true;
+
+      const skuUpper = bom.finishedSku.toUpperCase().trim();
+
+      // Check global SKU exclusions (direct from localStorage)
+      if (excludedSkusFromStorage.has(skuUpper)) {
+        console.log(`[BOMs] Filtering out "${bom.name}" - SKU "${bom.finishedSku}" is globally excluded`);
+        return false;
+      }
+
+      // Also check hook-based exclusions as backup
+      if (isSkuGloballyExcluded(bom.finishedSku)) {
+        console.log(`[BOMs] Filtering out "${bom.name}" - SKU "${bom.finishedSku}" excluded via hook`);
+        return false;
+      }
+
+      // Check if underlying inventory item is inactive
+      const invItem = invLookup.get(skuUpper);
+      if (invItem && invItem.status && invItem.status.toLowerCase() !== 'active') {
+        console.log(`[BOMs] Filtering out "${bom.name}" - inventory status is "${invItem.status}"`);
+        return false;
+      }
+
+      return true;
+    });
 
     const excludedCount = normalized.length - afterGlobalFilter.length;
     if (excludedCount > 0) {
-      console.info(`[BOMs] ${excludedCount} BOM(s) hidden due to globally excluded finished SKU.`);
+      console.info(`[BOMs] ${excludedCount} BOM(s) hidden due to exclusions or inactive status.`);
     }
 
     const missingComponentCount = afterGlobalFilter.filter((bom) => bom.components.length === 0).length;
@@ -422,7 +463,7 @@ const BOMs: React.FC<BOMsProps> = ({
       console.warn(`[BOMs] ${missingComponentCount} BOM(s) have no component list yet, showing them with 0 components.`);
     }
     return afterGlobalFilter;
-  }, [boms, isSkuGloballyExcluded]);
+  }, [boms, inventory, isSkuGloballyExcluded]);
 
   // Create inventory lookup map for O(1) access
   const inventoryMap = useMemo(() => {
