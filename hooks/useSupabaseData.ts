@@ -736,11 +736,14 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
 
       // Step 5: Apply global SKU filter
       const excludedSkus = getGlobalExcludedSkus();
+      console.log(`[useSupabaseBOMs] Excluded SKUs from localStorage:`, Array.from(excludedSkus));
+
       const filtered = afterCategoryFilter.filter(bom => {
         if (!bom.finishedSku) return true;
-        const isExcluded = excludedSkus.has(bom.finishedSku.toUpperCase().trim());
+        const skuUpper = bom.finishedSku.toUpperCase().trim();
+        const isExcluded = excludedSkus.has(skuUpper);
         if (isExcluded) {
-          console.log(`[useSupabaseBOMs] Filtering out BOM "${bom.name}" - SKU "${bom.finishedSku}" is globally excluded`);
+          console.log(`[useSupabaseBOMs] ✓ Filtering out BOM "${bom.name}" - SKU "${skuUpper}" is in excluded list`);
         }
         return !isExcluded;
       });
