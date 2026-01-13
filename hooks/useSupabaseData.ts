@@ -648,21 +648,45 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       setError(null);
 
       // Step 1: Get all active inventory SKUs (the source of truth for active products)
-      const { data: activeInventory, error: invError } = await supabase
-        .from('inventory_items')
-        .select('sku, category')
-        .eq('is_active', true);
+      // Use pagination to ensure we get ALL items, avoiding the 1000-row API limit
+      let allActiveInventory: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMoreInventory = true;
 
-      if (invError) {
-        console.error('[useSupabaseBOMs] Failed to fetch active inventory:', invError);
+      while (hasMoreInventory) {
+        const { data: pageData, error: pageError } = await supabase
+          .from('inventory_items')
+          .select('sku, category')
+          .eq('is_active', true)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (pageError) {
+          console.error('[useSupabaseBOMs] Failed to fetch active inventory page:', pageError);
+          break;
+        }
+
+        if (pageData && pageData.length > 0) {
+          allActiveInventory = allActiveInventory.concat(pageData);
+          // If we got fewer items than requested, we've reached the end
+          if (pageData.length < pageSize) {
+            hasMoreInventory = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMoreInventory = false;
+        }
       }
+      
+      console.log(`[useSupabaseBOMs] Fetched ${allActiveInventory.length} active inventory items for validation`);
 
       // Create a Set of active SKUs for fast lookup
-      // Apply global category filter - if inventory item's category is excluded, hide its BOM too
-      const activeSKUs = new Set((activeInventory || [])
-        .filter((item: any) => !isGloballyExcludedCategory(item.category))
+      // NOTE: We do NOT filter by category here - only by is_active status
+      // Category filtering happens later on the BOM's own category
+      const activeSKUs = new Set((allActiveInventory || [])
         .map((item: any) => item.sku?.toLowerCase?.() || item.sku));
-      console.log(`[useSupabaseBOMs] Found ${activeSKUs.size} active inventory SKUs (after category filter)`);
+      console.log(`[useSupabaseBOMs] Found ${activeSKUs.size} active inventory SKUs`);
 
       // Step 2: Fetch BOMs with is_active = true
       const { data: boms, error: fetchError } = await supabase
