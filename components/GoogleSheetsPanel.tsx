@@ -38,6 +38,21 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
     return window.localStorage.getItem('google_sheets_auto_backup') === 'true';
   });
 
+  // Scheduled sync state
+  type SyncFrequency = 'twice_daily' | 'hourly' | 'daily' | 'disabled';
+  const [scheduledSyncEnabled, setScheduledSyncEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('google_sheets_scheduled_sync') === 'true';
+  });
+  const [syncFrequency, setSyncFrequency] = useState<SyncFrequency>(() => {
+    if (typeof window === 'undefined') return 'twice_daily';
+    return (window.localStorage.getItem('google_sheets_sync_frequency') as SyncFrequency) || 'twice_daily';
+  });
+  const [scheduledSpreadsheetUrl, setScheduledSpreadsheetUrl] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return window.localStorage.getItem('google_sheets_scheduled_url') || '';
+  });
+
   const authService = getGoogleAuthService();
   const syncService = getGoogleSheetsSyncService();
   const sheetsService = getGoogleSheetsService();
@@ -240,6 +255,44 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
     );
   };
 
+  const handleToggleScheduledSync = async (enabled: boolean) => {
+    if (enabled && !isConnected) {
+      const connected = await ensureGoogleWorkspace();
+      if (!connected) return;
+    }
+
+    // In a real implementation, we would validate the URL here
+    if (enabled && !scheduledSpreadsheetUrl) {
+      addToast('Please enter a valid Google Sheets URL first', 'error');
+      // But we allow enabling to show the UI state for now, just warn
+    }
+
+    setScheduledSyncEnabled(enabled);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('google_sheets_scheduled_sync', String(enabled));
+    }
+    
+    if (enabled) {
+       addToast(`Scheduled sync enabled (${syncFrequency})`, 'success');
+    } else {
+       addToast('Scheduled sync disabled', 'info');
+    }
+  };
+
+  const handleSyncFrequencyChange = (freq: 'daily' | 'hourly' | 'weekly') => {
+    setSyncFrequency(freq);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('google_sheets_sync_frequency', freq);
+    }
+  };
+
+  const handleScheduledUrlChange = (url: string) => {
+    setScheduledSpreadsheetUrl(url);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('google_sheets_scheduled_url', url);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
@@ -392,6 +445,49 @@ const GoogleSheetsPanel: React.FC<GoogleSheetsPanelProps> = ({ addToast }) => {
                   )}
                 </div>
               )}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                 <div>
+                    <h4 className="text-lg font-semibold text-white">Scheduled Sync</h4>
+                    <p className="text-sm text-gray-400">Keep Sheets updated automatically</p>
+                 </div>
+                 <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={scheduledSyncEnabled}
+                      onChange={(e) => handleToggleScheduledSync(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="h-6 w-11 rounded-full bg-gray-700 peer-checked:bg-emerald-500/70 transition-all after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5"></div>
+                  </label>
+              </div>
+              
+              <div className={`space-y-3 pt-2 transition-all duration-300 ${scheduledSyncEnabled ? 'opacity-100' : 'opacity-50 pointer-events-none grayscale'}`}>
+                  <div>
+                      <label className="block text-xs font-medium text-gray-400">Target Spreadsheet URL</label>
+                      <input 
+                          type="text" 
+                          className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50 placeholder-gray-600"
+                          placeholder="https://docs.google.com/spreadsheets/d/..."
+                          value={scheduledSpreadsheetUrl}
+                          onChange={(e) => handleScheduledUrlChange(e.target.value)}
+                      />
+                  </div>
+                  <div>
+                      <label className="block text-xs font-medium text-gray-400">Frequency</label>
+                      <select 
+                          value={syncFrequency}
+                          onChange={(e) => handleSyncFrequencyChange(e.target.value as any)}
+                          className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                      >
+                          <option value="daily">Daily (2:00 AM CST)</option>
+                          <option value="hourly">Hourly</option>
+                          <option value="weekly">Weekly (Sundays)</option>
+                      </select>
+                  </div>
+              </div>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-gray-900/50 p-6 space-y-4">

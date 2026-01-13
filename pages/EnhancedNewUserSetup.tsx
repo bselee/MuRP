@@ -384,7 +384,7 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
             setFinaleTesting(true);
             setError('');
 
-            // Save credentials to localStorage
+            // Save credentials to localStorage (for immediate use)
             localStorage.setItem('finale_api_key', finaleApiKey);
             localStorage.setItem('finale_api_secret', finaleApiSecret);
             localStorage.setItem('finale_account_path', finaleAccountPath);
@@ -401,6 +401,33 @@ const EnhancedNewUserSetup: React.FC<EnhancedNewUserSetupProps> = ({ user, onSet
             });
 
             if (response.ok) {
+                // Store credentials server-side for scheduled syncs
+                try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session?.access_token) {
+                        const storeResponse = await fetch(
+                            `${import.meta.env.VITE_SUPABASE_URL || 'https://mpuevsmtowyexhsqugkm.supabase.co'}/functions/v1/store-finale-credentials`,
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${session.access_token}`,
+                                },
+                                body: JSON.stringify({
+                                    apiKey: finaleApiKey,
+                                    apiSecret: finaleApiSecret,
+                                    accountPath: finaleAccountPath,
+                                }),
+                            }
+                        );
+                        const storeResult = await storeResponse.json();
+                        console.log('[Onboarding] Credentials stored:', storeResult.message);
+                    }
+                } catch (storeError) {
+                    // Non-critical error - credentials still work from localStorage
+                    console.warn('[Onboarding] Could not store credentials server-side:', storeError);
+                }
+
                 setFinaleConnected(true);
             } else {
                 const errorData = await response.json();

@@ -541,23 +541,11 @@ async function batchUpsert(supabase: any, table: string, data: any[], conflictCo
 // MAIN HANDLER
 // ===========================================
 serve(async (req) => {
-  // Immediate debug response for diagnosis
-  console.log('[Sync] Function invoked');
-
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Debug: Log credential status immediately
-    console.log('[Sync] Checking credentials...');
-    console.log(`[Sync] FINALE_API_KEY: ${FINALE_API_KEY ? 'SET' : 'MISSING'}`);
-    console.log(`[Sync] FINALE_API_SECRET: ${FINALE_API_SECRET ? 'SET' : 'MISSING'}`);
-    console.log(`[Sync] FINALE_ACCOUNT_PATH: ${FINALE_ACCOUNT_PATH || 'MISSING'}`);
-    console.log(`[Sync] FINALE_BASE_URL: ${FINALE_BASE_URL || 'MISSING'}`);
-    console.log(`[Sync] SUPABASE_URL: ${SUPABASE_URL ? 'SET' : 'MISSING'}`);
-    console.log(`[Sync] SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING'}`);
-
     // Parse request body for sync options
     let syncTypes: string[] = ['vendors', 'products', 'purchase_orders'];
     let limit: number | undefined;
@@ -569,17 +557,16 @@ serve(async (req) => {
       if (body.limit) {
         limit = body.limit;
       }
-      // Quick test mode - return credential status only
+      // Quick test mode - return configuration status (no actual values)
       if (body.test === true) {
+        const configured = !!(FINALE_API_KEY && FINALE_API_SECRET && FINALE_ACCOUNT_PATH);
         return new Response(
           JSON.stringify({
             test: true,
-            credentials: {
-              FINALE_API_KEY: FINALE_API_KEY ? 'SET' : 'MISSING',
-              FINALE_API_SECRET: FINALE_API_SECRET ? 'SET' : 'MISSING',
-              FINALE_ACCOUNT_PATH: FINALE_ACCOUNT_PATH || 'MISSING',
-              SUPABASE_URL: SUPABASE_URL ? 'SET' : 'MISSING',
-            },
+            configured,
+            message: configured
+              ? 'Finale credentials are configured'
+              : 'Finale credentials are missing - check edge function secrets',
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -596,11 +583,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: 'Missing Finale credentials',
-          details: {
-            FINALE_API_KEY: FINALE_API_KEY ? 'SET' : 'MISSING',
-            FINALE_API_SECRET: FINALE_API_SECRET ? 'SET' : 'MISSING',
-            FINALE_ACCOUNT_PATH: FINALE_ACCOUNT_PATH || 'MISSING',
-          }
+          message: 'Configure FINALE_API_KEY, FINALE_API_SECRET, and FINALE_ACCOUNT_PATH in edge function secrets',
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

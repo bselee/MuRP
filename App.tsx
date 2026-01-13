@@ -3,6 +3,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import AiAssistant from './components/AiAssistant';
+import ConfigurationGate from './components/ConfigurationGate';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import Header from './components/Header';
@@ -2029,11 +2030,13 @@ const AppShell: React.FC = () => {
 
 const App: React.FC = () => (
   <ThemeProvider>
-    <UserPreferencesProvider>
-      <SystemAlertProvider>
-        <AppShell />
-      </SystemAlertProvider>
-    </UserPreferencesProvider>
+    <ConfigurationGate>
+      <UserPreferencesProvider>
+        <SystemAlertProvider>
+          <AppShell />
+        </SystemAlertProvider>
+      </UserPreferencesProvider>
+    </ConfigurationGate>
   </ThemeProvider>
 );
 

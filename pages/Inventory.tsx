@@ -17,6 +17,7 @@ import {
     BellIcon,
     PlusCircleIcon
 } from '../components/icons';
+import { UploadCloud, Download } from 'lucide-react';
 import CollapsibleSection from '../components/CollapsibleSection';
 import ImportExportModal from '../components/ImportExportModal';
 import CategoryManagementModal, { type CategoryConfig } from '../components/CategoryManagementModal';
@@ -25,6 +26,9 @@ import FilterPresetManager, { type FilterPreset } from '../components/FilterPres
 import { exportToCsv, exportToJson, exportToXls } from '../services/exportService';
 import { generateInventoryPdf } from '../services/pdfService';
 import LoadingOverlay from '../components/LoadingOverlay';
+import InventoryEmptyState from '../components/InventoryEmptyState';
+import AddInventoryItemModal from '../components/AddInventoryItemModal';
+import InventorySetupWizard from '../components/InventorySetupWizard';
 import {
     normalizeCategory,
     buildVendorNameMap,
@@ -46,6 +50,7 @@ interface InventoryProps {
     onNavigateToProduct?: (sku: string) => void;
     purchaseOrders?: PurchaseOrder[];
     loading?: boolean;
+    onRefresh?: () => void;
 }
 
 type ColumnKey =
@@ -224,6 +229,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         // Default to FALSE - showing all items is the expected default behavior
         return saved ? JSON.parse(saved) : false;
     });
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isSetupWizardOpen, setIsSetupWizardOpen] = useState(false);
     const [suggestions, setSuggestions] = useState<InventoryItem[]>([]);
     const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -1097,6 +1104,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     actions={
                         <div className="flex gap-2 flex-shrink-0 flex-wrap">
                             <Button
+                                onClick={() => setIsAddModalOpen(true)}
+                                className="flex items-center gap-2 bg-green-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-green-700 transition-colors text-sm shadow-sm"
+                            >
+                                <PlusCircleIcon className="w-4 h-4" />
+                                <span className="hidden sm:inline">Add Item</span>
+                            </Button>
+                            <Button
                                 onClick={() => setIsPresetManagerOpen(true)}
                                 className={`flex items-center gap-2 font-semibold py-2 px-3 rounded-md transition-colors text-sm ${activePresetId
                                     ? 'bg-accent-500 text-white hover:bg-accent-600'
@@ -1120,18 +1134,31 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 <span className="hidden sm:inline">Columns</span>
                             </Button>
                             <Button
-                                onClick={() => setIsImportExportModalOpen(true)}
+                                onClick={() => setIsSetupWizardOpen(true)}
                                 className="flex items-center gap-2 bg-accent-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-accent-600 transition-colors text-sm"
                             >
-                                <ArrowsUpDownIcon className="w-4 h-4" />
-                                <span className="hidden sm:inline">Import / Export</span>
+                                <UploadCloud className="w-4 h-4" />
+                                <span className="hidden sm:inline">Import</span>
+                            </Button>
+                            <Button
+                                onClick={() => setIsImportExportModalOpen(true)}
+                                className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-600 transition-colors text-sm"
+                            >
+                                <Download className="w-4 h-4" />
+                                <span className="hidden sm:inline">Export</span>
                             </Button>
                         </div>
                     }
                 />
 
-                <div className="space-y-6">
-                    <CollapsibleSection
+                {inventory.length === 0 && !loading ? (
+                    <InventoryEmptyState
+                        onAddManual={() => setIsAddModalOpen(true)}
+                        onImport={() => setIsSetupWizardOpen(true)}
+                    />
+                ) : (
+                    <div className="space-y-6">
+                        <CollapsibleSection
                         title="Search & Filters"
                         icon={<AdjustmentsHorizontalIcon className={`w-6 h-6 ${isDark ? 'text-blue-400' : 'text-gray-500'}`} />}
                         variant="card"
@@ -1404,8 +1431,25 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             emptyMessage="No inventory items found"
                         />
                     </div>
-                </div>
+                  </div>
+                )}
             </div>
+
+            {isAddModalOpen && (
+                <AddInventoryItemModal
+                    isOpen={isAddModalOpen}
+                    onClose={() => setIsAddModalOpen(false)}
+                    onSuccess={() => {
+                        // Optimistic update or refetch?
+                        // Usually hooks handle refetch if we use mutate, but here we used mutation directly.
+                        // Assuming the parent component or a context triggers refetch, OR we should trigger it.
+                        // Inventory page receives `inventory` as prop. It likely updates via real-time subscription in App.tsx.
+                        // So just closing is fine.
+                    }}
+                    vendors={vendors}
+                    categories={Array.from(new Set(inventory.map(i => normalizeCategory(i.category)))).sort()}
+                />
+            )}
 
             {isColumnModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1469,6 +1513,19 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                 onExportJson={handleExportJson}
                 onExportXls={handleExportXls}
             />
+
+            {isSetupWizardOpen && (
+                <InventorySetupWizard
+                    onClose={() => setIsSetupWizardOpen(false)}
+                    onComplete={() => {
+                        setIsSetupWizardOpen(false);
+                    }}
+                    onManualEntry={() => {
+                        setIsSetupWizardOpen(false);
+                        setIsAddModalOpen(true);
+                    }}
+                />
+            )}
 
             <CategoryManagementModal
                 isOpen={isCategoryManagementOpen}

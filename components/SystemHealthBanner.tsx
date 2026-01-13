@@ -10,8 +10,9 @@
  * Principle: Systems should never fail silently
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase/client';
+import { useSystemAlerts } from '../lib/systemAlerts/SystemAlertContext';
 import {
   ExclamationTriangleIcon,
   XCircleIcon,
@@ -40,6 +41,7 @@ interface SystemHealthBannerProps {
 }
 
 const SystemHealthBanner: React.FC<SystemHealthBannerProps> = ({ onNavigateToSettings }) => {
+  const { alerts: contextAlerts, dismissAlert: dismissContextAlert } = useSystemAlerts();
   const [alerts, setAlerts] = useState<HealthAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
@@ -93,10 +95,17 @@ const SystemHealthBanner: React.FC<SystemHealthBannerProps> = ({ onNavigateToSet
   }, [fetchAlerts]);
 
   const handleDismiss = async (alertId: string) => {
+    // Handle context alerts (presumed transient or managed by context)
+    if (contextAlerts.some(a => a.id === alertId)) {
+      dismissContextAlert(alertId);
+      return;
+    }
+
     setDismissed(prev => new Set([...prev, alertId]));
 
     try {
       await supabase
+
         .from('system_health_alerts')
         .update({ user_dismissed: true, dismissed_at: new Date().toISOString() })
         .eq('id', alertId);
@@ -194,9 +203,26 @@ const SystemHealthBanner: React.FC<SystemHealthBannerProps> = ({ onNavigateToSet
   };
 
   // Filter out dismissed alerts
-  const visibleAlerts = alerts.filter(a => !dismissed.has(a.id));
+  const visibleAlerts = useMemo(() => {
+    const dbAlerts = alerts.filter(a => !dismissed.has(a.id));
+    
+    // Map context alerts to HealthAlert format
+    const mappedContextAlerts: HealthAlert[] = contextAlerts.map(alert => ({
+      id: alert.id,
+      alert_type: alert.source.includes('sync') || alert.source === 'google-sheets' ? 'sync_failure' : 'integration_error',
+      severity: alert.severity,
+      title: alert.source === 'google-sheets' ? 'Google Sheets Sync Issue' : `Alert: ${alert.source}`,
+      message: alert.message,
+      component: alert.source,
+      context_data: {},
+      created_at: alert.timestamp || new Date().toISOString(),
+      user_dismissed: false
+    }));
 
-  if (loading || visibleAlerts.length === 0) {
+    return [...mappedContextAlerts, ...dbAlerts];
+  }, [alerts, contextAlerts, dismissed]);
+
+  if (visibleAlerts.length === 0) {
     return null;
   }
 

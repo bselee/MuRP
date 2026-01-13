@@ -1,7 +1,8 @@
 /**
  * Supabase Client
- * 
- * Initialized Supabase client for frontend use with TypeScript types
+ *
+ * Initialized Supabase client for frontend use with TypeScript types.
+ * Fails fast if environment variables are missing.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -18,27 +19,38 @@ const supabaseAnonKey = (
   ''
 ).trim();
 
-// Don't throw during module initialization - let app render error UI instead
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('[Supabase Client] Missing environment variables:', {
-    hasUrl: !!supabaseUrl,
-    hasKey: !!supabaseAnonKey,
-    urlValue: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'undefined',
-    availableEnvVars: Object.keys(import.meta.env),
-  });
-  console.error('[Supabase Client] App will not function correctly without proper configuration');
+/**
+ * Configuration status for the app to check
+ */
+export const supabaseConfigStatus = {
+  isConfigured: !!(supabaseUrl && supabaseAnonKey),
+  missingUrl: !supabaseUrl,
+  missingKey: !supabaseAnonKey,
+};
+
+// Log configuration issues in development only
+if (!supabaseConfigStatus.isConfigured && import.meta.env.DEV) {
+  console.error(
+    '[Supabase] Missing environment variables. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
+  );
 }
 
-// Create client only if we have valid credentials
-// This prevents blank screen if env vars are missing - app can show error UI
+// In production, fail fast with a clear error
+if (!supabaseConfigStatus.isConfigured && import.meta.env.PROD) {
+  throw new Error(
+    'Supabase configuration missing. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.'
+  );
+}
+
+// Create client - in dev mode, allow placeholder for component rendering tests
 // CRITICAL: Only create ONE client instance to avoid "Multiple GoTrueClient instances" warning
 export const supabase = createClient<Database>(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key',
   {
     auth: {
-      persistSession: !!(supabaseUrl && supabaseAnonKey),
-      autoRefreshToken: !!(supabaseUrl && supabaseAnonKey),
+      persistSession: supabaseConfigStatus.isConfigured,
+      autoRefreshToken: supabaseConfigStatus.isConfigured,
     },
   }
 );

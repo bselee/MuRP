@@ -393,6 +393,10 @@ export async function createInventoryItem(item: InventoryItem): Promise<{ succes
         reorder_point: item.reorderPoint,
         vendor_id: item.vendorId,
         moq: item.moq,
+        unit_cost: item.unitCost,
+        unit_price: item.unitPrice,
+        description: item.description,
+        is_active: true,
       });
 
     if (error) throw error;
