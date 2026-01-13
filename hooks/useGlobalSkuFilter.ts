@@ -78,17 +78,9 @@ export function useGlobalSkuFilter(): UseGlobalSkuFilterResult {
     return () => window.removeEventListener('global-sku-filter-changed', handleFilterChange);
   }, []);
 
-  // Persist to localStorage whenever exclusions change
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(excludedSkus)));
-      window.dispatchEvent(new CustomEvent('global-sku-filter-changed', {
-        detail: { excludedSkus: Array.from(excludedSkus) }
-      }));
-    } catch (err) {
-      console.warn('[useGlobalSkuFilter] Failed to save exclusions:', err);
-    }
-  }, [excludedSkus]);
+  // NOTE: We do NOT persist or dispatch events here - that's done by GlobalDataFilterPanel.
+  // This hook only reads from localStorage and listens for external changes.
+  // If we dispatch here, it creates a circular loop with the listener above.
 
   const isExcluded = useCallback((sku: string | null | undefined): boolean => {
     if (!sku) return false;
