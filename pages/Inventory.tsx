@@ -289,11 +289,18 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
         if (dashboardFilter) {
             console.log('[Inventory] Applying dashboard filter:', dashboardFilter);
             
-            // Reset all filters first to ensure clean state
+            // 🛑 CRITICAL: Reset ALL other filters when coming from dashboard
+            // This prevents "hidden" filters (vendor/category/preset) from hiding the target items
             setRiskFilter('all');
             setFilters({ status: '' });
             setSearchTerm('');
+            setSelectedCategories(new Set());
+            setSelectedVendors(new Set());
+            setBomFilter('all');
+            setActivePresetId(null);
+            setShowRecentOnly(false);
             
+            // Apply the specific requested filter
             switch (dashboardFilter) {
                 case 'out_of_stock':
                     setFilters({ status: 'Out of Stock' });
@@ -317,8 +324,10 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     console.warn('Unknown dashboard filter:', dashboardFilter);
             }
             
-            // Clear used filter
+            // Clear used filter immediately so it doesn't persist on reload
             localStorage.removeItem('inventoryDashboardFilter');
+            // Also clear selected SKU to prevent conflicting scroll actions
+            localStorage.removeItem('selectedInventorySku');
         }
     }, []);
 

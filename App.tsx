@@ -45,6 +45,7 @@ import PublicPOView from './pages/PublicPOView';
 import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
 import { usePermissions } from './hooks/usePermissions';
+import { useFinaleInit } from './hooks/useFinaleInit';
 import useSyncErrorNotifications from './hooks/useSyncErrorNotifications';
 import { pageToPath, pathToPage, getPathForPage, getPageFromPath, applyLegacyRedirects } from './lib/routing';
 import {
@@ -137,6 +138,9 @@ export type ToastInfo = {
 // CHECKLIST_DISMISS_SNOOZE_MS removed - Guided Launch feature disabled
 
 const AppShell: React.FC = () => {
+  // Initialize Finale credentials from local storage
+  useFinaleInit();
+
   const { user: currentUser, loading: authLoading, signOut: authSignOut, refreshProfile } = useAuth();
   const permissions = usePermissions();
   const { resolvedTheme } = useTheme();

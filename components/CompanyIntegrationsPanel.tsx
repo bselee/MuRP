@@ -30,6 +30,7 @@ import {
   ExternalLinkIcon,
 } from './icons';
 import { getGoogleAuthService } from '../services/googleAuthService';
+import FinaleSetupModal from './FinaleSetupModal';
 
 interface CompanyIntegrationsPanelProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -88,6 +89,7 @@ const CompanyIntegrationsPanel: React.FC<CompanyIntegrationsPanelProps> = ({ add
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [configuringDataSource, setConfiguringDataSource] = useState(false);
   const [showDataSourceOptions, setShowDataSourceOptions] = useState(false);
+  const [showFinaleModal, setShowFinaleModal] = useState(false);
 
   // Form states
   const [sheetsUrl, setSheetsUrl] = useState('');
@@ -471,8 +473,7 @@ const CompanyIntegrationsPanel: React.FC<CompanyIntegrationsPanelProps> = ({ add
                     href="#finale-setup"
                     onClick={(e) => {
                       e.preventDefault();
-                      // Navigate to Finale setup panel or trigger modal
-                      addToast('Configure Finale API in the Finale Setup tab', 'info');
+                      setShowFinaleModal(true);
                     }}
                     className="text-sm text-blue-500 hover:text-blue-400 font-medium flex items-center gap-1"
                   >
@@ -813,6 +814,15 @@ const CompanyIntegrationsPanel: React.FC<CompanyIntegrationsPanelProps> = ({ add
           </p>
         </div>
       </div>
+      
+      <FinaleSetupModal
+        isOpen={showFinaleModal}
+        onClose={() => setShowFinaleModal(false)}
+        onSave={() => {
+            loadStatus();
+            addToast('Finale Configuration Saved', 'success');
+        }}
+      />
     </div>
   );
 };

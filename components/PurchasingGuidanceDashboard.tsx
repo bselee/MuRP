@@ -719,12 +719,19 @@ export default function PurchasingGuidanceDashboard({
             }
 
             if (!invItem.vendor_id) {
+                // If no vendor ID, try to find vendor ID via name match if vendor name exists in vendors object
+                // If still fail...
                 addToast(`No vendor assigned to ${sku}`, 'error');
                 setIsCreatingPO(false);
                 return;
             }
 
             const orderId = generateOrderId();
+            
+            // Fix: Construct supplier name safely
+            // @ts-ignore - Supabase type for joined relation might be tricky
+            const supplierName = invItem.vendors?.name || 'Unknown Supplier';
+
             const result = await createPurchaseOrder({
                 vendorId: invItem.vendor_id,
                 items: [{
@@ -735,6 +742,7 @@ export default function PurchasingGuidanceDashboard({
                 }],
                 notes: `Created from Supply Chain Risk Alert`,
                 orderId,
+                supplier: supplierName
             });
 
             if (result.success) {
@@ -745,7 +753,7 @@ export default function PurchasingGuidanceDashboard({
             }
         } catch (err) {
             console.error('Failed to create PO from risk:', err);
-            addToast('Unexpected error creating PO', 'error');
+            addToast('Unexpected error creating PO from risk', 'error');
         } finally {
             setIsCreatingPO(false);
         }
@@ -933,6 +941,8 @@ export default function PurchasingGuidanceDashboard({
                     unit=""
                     trend={metrics.excessValue > 10000 ? 'critical' : 'neutral'}
                     desc="Capital above 90-day runway"
+                    onClick={metrics.excessValue > 0 && onNavigateToInventoryFilter ? () => onNavigateToInventoryFilter('overstock') : undefined}
+                    clickHint={metrics.excessValue > 0 ? "Click to view in Inventory" : undefined}
                 />
             </div>
 
