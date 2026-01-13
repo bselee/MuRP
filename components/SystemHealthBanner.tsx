@@ -3,11 +3,21 @@
  * SYSTEM HEALTH BANNER
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * Displays a prominent banner when system health issues need user attention.
- * This component ensures users are NEVER left in the dark about system failures.
+ * Displays a banner ONLY for truly critical system issues that need immediate attention.
  *
- * Part of: Solid UX Initiative
- * Principle: Systems should never fail silently
+ * Design principle: Don't cry wolf
+ * - Sync failures are shown in DataSyncIndicator, NOT here
+ * - Only CRITICAL alerts appear in this banner
+ * - Users should trust that if this banner appears, it's important
+ *
+ * What DOES show here:
+ * - OAuth token expired (can't authenticate)
+ * - Critical integration failures
+ *
+ * What does NOT show here:
+ * - Sync failures (handled by DataSyncIndicator)
+ * - Data staleness (informational)
+ * - Warnings or errors (not critical)
  */
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
@@ -49,15 +59,18 @@ const SystemHealthBanner: React.FC<SystemHealthBannerProps> = ({ onNavigateToSet
 
   const fetchAlerts = useCallback(async () => {
     try {
+      // Only show CRITICAL alerts in the banner
+      // Regular sync failures should NOT interrupt the user - they can check sync status
       const { data, error } = await supabase
         .from('system_health_alerts')
         .select('*')
         .eq('is_resolved', false)
         .eq('user_dismissed', false)
-        .in('severity', ['warning', 'error', 'critical'])
-        .order('severity', { ascending: false })
+        .eq('severity', 'critical') // ONLY critical - not warnings or errors
+        .not('alert_type', 'eq', 'sync_failure') // Never show sync failures in banner
+        .not('alert_type', 'eq', 'data_stale') // Data staleness is informational
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(5);
 
       if (error) {
         console.error('[SystemHealthBanner] Failed to fetch alerts:', error);
@@ -202,22 +215,32 @@ const SystemHealthBanner: React.FC<SystemHealthBannerProps> = ({ onNavigateToSet
     return 'Just now';
   };
 
-  // Filter out dismissed alerts
+  // Filter out dismissed alerts and non-critical issues
+  // Banner should ONLY show things that truly need immediate attention
   const visibleAlerts = useMemo(() => {
     const dbAlerts = alerts.filter(a => !dismissed.has(a.id));
-    
-    // Map context alerts to HealthAlert format
-    const mappedContextAlerts: HealthAlert[] = contextAlerts.map(alert => ({
-      id: alert.id,
-      alert_type: alert.source.includes('sync') || alert.source === 'google-sheets' ? 'sync_failure' : 'integration_error',
-      severity: alert.severity,
-      title: alert.source === 'google-sheets' ? 'Google Sheets Sync Issue' : `Alert: ${alert.source}`,
-      message: alert.message,
-      component: alert.source,
-      context_data: {},
-      created_at: alert.timestamp || new Date().toISOString(),
-      user_dismissed: false
-    }));
+
+    // Only include CRITICAL context alerts - NOT sync failures
+    // Sync status is visible via DataSyncIndicator, not the banner
+    const mappedContextAlerts: HealthAlert[] = contextAlerts
+      .filter(alert => {
+        // Skip all sync-related alerts - they're handled by DataSyncIndicator
+        if (alert.source.includes('sync') || alert.source === 'google-sheets') return false;
+        // Only show critical alerts
+        if (alert.severity !== 'critical') return false;
+        return true;
+      })
+      .map(alert => ({
+        id: alert.id,
+        alert_type: 'integration_error',
+        severity: alert.severity,
+        title: `Alert: ${alert.source}`,
+        message: alert.message,
+        component: alert.source,
+        context_data: {},
+        created_at: alert.timestamp || new Date().toISOString(),
+        user_dismissed: false
+      }));
 
     return [...mappedContextAlerts, ...dbAlerts];
   }, [alerts, contextAlerts, dismissed]);
