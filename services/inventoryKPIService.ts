@@ -132,6 +132,10 @@ export interface InventoryKPIs {
   on_order: number;
   unit_cost: number;
   annual_usage_value: number;      // For ABC calculation
+
+  // Vendor
+  vendor_id: string | null;
+  vendor_name: string | null;
 }
 
 export interface PastDuePOLine {
@@ -370,7 +374,12 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
         reorder_point,
         moq,
         status,
-        is_dropship
+        is_dropship,
+        vendor_id,
+        vendors:vendor_id (
+          id,
+          name
+        )
       `)
       .eq('status', 'active')
       .or('is_dropship.is.null,is_dropship.eq.false');
@@ -521,6 +530,9 @@ export async function calculateInventoryKPIs(): Promise<InventoryKPIs[]> {
         on_order: onOrder,
         unit_cost: item.unitCost,
         annual_usage_value: item.annualValue,
+
+        vendor_id: item.vendor_id || null,
+        vendor_name: (item.vendors as any)?.name || null,
       });
     }
 

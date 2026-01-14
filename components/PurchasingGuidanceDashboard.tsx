@@ -1841,6 +1841,7 @@ function KPIItemPanel({
                                 </th>
                                 <th className="px-4 py-2">SKU</th>
                                 <th className="px-4 py-2">Product</th>
+                                <th className="px-4 py-2">Vendor</th>
                                 <th className="px-4 py-2 text-right">Stock</th>
                                 <th className="px-4 py-2 text-right">Runway</th>
                                 <th className="px-4 py-2 text-center">Class</th>
@@ -1880,6 +1881,9 @@ function KPIItemPanel({
                                         </td>
                                         <td className="px-4 py-3 text-xs text-slate-400 max-w-[180px] truncate" title={item.product_name}>
                                             {item.product_name}
+                                        </td>
+                                        <td className="px-4 py-3 text-xs text-slate-400 max-w-[120px] truncate" title={item.vendor_name || 'No vendor'}>
+                                            {item.vendor_name || '—'}
                                         </td>
                                         <td className={`px-4 py-3 text-right font-medium ${item.current_stock === 0 ? 'text-red-400' : 'text-slate-300'}`}>
                                             {item.current_stock}
