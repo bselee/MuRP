@@ -115,7 +115,9 @@ const BuildMetricsBanner: React.FC<{
   isDark: boolean;
   isOpen: boolean;
   onToggle: () => void;
-}> = ({ isDark, isOpen, onToggle }) => {
+  onFilterChange: (filter: BuildabilityFilter) => void;
+  onSelectSku: (sku: string) => void;
+}> = ({ isDark, isOpen, onToggle, onFilterChange, onSelectSku }) => {
   const { data, loading, error, urgentCount, blockedCount, readyCount } = useBuildReadiness();
 
   // Get top urgent items for display
@@ -170,47 +172,52 @@ const BuildMetricsBanner: React.FC<{
         </div>
       ) : (
         <div className={`${isDark ? 'bg-gray-800/50' : 'bg-white border border-gray-200'} rounded-lg p-4`}>
-          {/* Summary Stats */}
+          {/* Summary Stats - Clickable to filter */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
             <MetricCard
               label="Total BOMs"
               value={totalBoms}
               isDark={isDark}
+              onClick={() => onFilterChange('all')}
             />
             <MetricCard
               label="Build Urgent"
               value={urgentCount}
               isDark={isDark}
               variant={urgentCount > 0 ? 'danger' : 'default'}
+              onClick={() => onFilterChange('near-oos')}
             />
             <MetricCard
               label="Blocked"
               value={blockedCount}
               isDark={isDark}
               variant={blockedCount > 0 ? 'warning' : 'default'}
+              onClick={() => onFilterChange('not-buildable')}
             />
             <MetricCard
               label="Ready to Build"
               value={readyCount}
               isDark={isDark}
               variant="success"
+              onClick={() => onFilterChange('buildable')}
             />
           </div>
 
-          {/* Urgent Items List */}
+          {/* Urgent Items List - Clickable to navigate */}
           {urgentItems.length > 0 && (
             <div>
               <h4 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                Urgent Builds (≤7 days coverage)
+                Urgent Builds (≤7 days coverage) - Click to view
               </h4>
               <div className="flex flex-wrap gap-2">
                 {urgentItems.map(item => (
-                  <div
+                  <button
                     key={item.sku}
-                    className={`px-3 py-1.5 rounded-md text-sm ${
+                    onClick={() => onSelectSku(item.sku)}
+                    className={`px-3 py-1.5 rounded-md text-sm cursor-pointer transition-all hover:scale-105 ${
                       isDark
-                        ? 'bg-red-900/30 border border-red-700 text-red-300'
-                        : 'bg-red-50 border border-red-200 text-red-700'
+                        ? 'bg-red-900/30 border border-red-700 text-red-300 hover:bg-red-900/50'
+                        : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'
                     }`}
                   >
                     <span className="font-mono font-medium">{item.sku}</span>
@@ -222,12 +229,15 @@ const BuildMetricsBanner: React.FC<{
                         • blocked
                       </span>
                     )}
-                  </div>
+                  </button>
                 ))}
                 {urgentCount > urgentItems.length && (
-                  <span className={`px-3 py-1.5 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <button
+                    onClick={() => onFilterChange('near-oos')}
+                    className={`px-3 py-1.5 text-sm cursor-pointer hover:underline ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+                  >
                     +{urgentCount - urgentItems.length} more
-                  </span>
+                  </button>
                 )}
               </div>
             </div>
@@ -251,7 +261,8 @@ const MetricCard: React.FC<{
   value: number;
   isDark: boolean;
   variant?: 'default' | 'danger' | 'warning' | 'success';
-}> = ({ label, value, isDark, variant = 'default' }) => {
+  onClick?: () => void;
+}> = ({ label, value, isDark, variant = 'default', onClick }) => {
   const variantStyles = {
     default: isDark ? 'text-white' : 'text-gray-900',
     danger: 'text-red-500',
@@ -260,7 +271,12 @@ const MetricCard: React.FC<{
   };
 
   return (
-    <div className={`p-3 rounded-lg ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
+    <div
+      onClick={onClick}
+      className={`p-3 rounded-lg ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} ${
+        onClick ? 'cursor-pointer hover:ring-2 hover:ring-accent-500 transition-all' : ''
+      }`}
+    >
       <p className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase`}>
         {label}
       </p>
@@ -1143,7 +1159,23 @@ const BOMs: React.FC<BOMsProps> = ({
       )}
 
       {/* Build Metrics Dashboard */}
-      <BuildMetricsBanner isDark={isDark} isOpen={isAlertsOpen} onToggle={() => setIsAlertsOpen(!isAlertsOpen)} />
+      <BuildMetricsBanner
+        isDark={isDark}
+        isOpen={isAlertsOpen}
+        onToggle={() => setIsAlertsOpen(!isAlertsOpen)}
+        onFilterChange={(filter) => {
+          setBuildabilityFilter(filter);
+          localStorage.setItem('bomStatusFilter', filter);
+        }}
+        onSelectSku={(sku) => {
+          setSearchQuery(sku);
+          // Scroll to search results
+          setTimeout(() => {
+            const element = document.querySelector(`[data-sku="${sku}"]`);
+            element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        }}
+      />
 
       {/* Compliance Dashboard - Coming Soon */}
       {/* TODO: Load all compliance records for dashboard view */}
@@ -1369,12 +1401,13 @@ const BOMs: React.FC<BOMsProps> = ({
                   )}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {boms.map(bom => (
-                      <BomCard
-                        key={bom.id}
-                        bom={bom}
-                        labels={allLabelsMap.get(bom.id) || []}
-                        complianceRecords={allComplianceMap.get(bom.id) || []}
-                      />
+                      <div key={bom.id} data-sku={bom.finishedSku}>
+                        <BomCard
+                          bom={bom}
+                          labels={allLabelsMap.get(bom.id) || []}
+                          complianceRecords={allComplianceMap.get(bom.id) || []}
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -1417,6 +1450,7 @@ const BOMs: React.FC<BOMsProps> = ({
                       return (
                         <tr
                           key={bom.id}
+                          data-sku={bom.finishedSku}
                           ref={(el) => {
                             if (el) bomRefs.current.set(bom.id, el);
                           }}
