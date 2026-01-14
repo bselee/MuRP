@@ -1726,23 +1726,78 @@ interface KPIItemPanelProps {
     isModal?: boolean;
 }
 
-function KPIItemPanel({ 
-    panelType, 
-    kpiSummary, 
-    onClose, 
-    onNavigateToPOs, 
-    onNavigateToPO, 
-    onNavigateToSku, 
-    selectedItems, 
-    onToggleSelect, 
-    onQuickOrder, 
-    onCreatePOForSelected, 
-    isCreatingPO, 
+function KPIItemPanel({
+    panelType,
+    kpiSummary,
+    onClose,
+    onNavigateToPOs,
+    onNavigateToPO,
+    onNavigateToSku,
+    selectedItems,
+    onToggleSelect,
+    onQuickOrder,
+    onCreatePOForSelected,
+    isCreatingPO,
     scrollToReplenishment,
-    isModal = false 
+    isModal = false
 }: KPIItemPanelProps) {
+    const [viewMode, setViewMode] = useState<'flat' | 'vendor'>('flat');
+    const [expandedVendors, setExpandedVendors] = useState<Set<string>>(new Set());
+
     const config = getKPIPanelConfig(panelType, kpiSummary);
     if (!config) return null;
+
+    // Group items by vendor
+    const vendorGroups = React.useMemo(() => {
+        if (!config.items) return [];
+        const groups = new Map<string, typeof config.items>();
+        config.items.forEach(item => {
+            const vendor = item.vendor_name || 'Unknown Vendor';
+            if (!groups.has(vendor)) {
+                groups.set(vendor, []);
+            }
+            groups.get(vendor)!.push(item);
+        });
+        return Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length);
+    }, [config.items]);
+
+    // Auto-expand all vendors when switching to vendor view
+    React.useEffect(() => {
+        if (viewMode === 'vendor' && expandedVendors.size === 0 && vendorGroups.length > 0) {
+            setExpandedVendors(new Set(vendorGroups.map(([vendor]) => vendor)));
+        }
+    }, [viewMode, vendorGroups, expandedVendors.size]);
+
+    const toggleVendorExpanded = (vendor: string) => {
+        setExpandedVendors(prev => {
+            const next = new Set(prev);
+            if (next.has(vendor)) next.delete(vendor);
+            else next.add(vendor);
+            return next;
+        });
+    };
+
+    const selectAllFromVendor = (vendor: string) => {
+        const vendorItems = config.items?.filter(item => (item.vendor_name || 'Unknown Vendor') === vendor) || [];
+        const vendorSkus = vendorItems.map(item => item.sku);
+        const allSelected = vendorSkus.every(sku => selectedItems.has(sku));
+        vendorSkus.forEach(sku => {
+            if (allSelected !== selectedItems.has(sku) || !allSelected) {
+                onToggleSelect(sku);
+            }
+        });
+    };
+
+    const isVendorFullySelected = (vendor: string) => {
+        const vendorItems = config.items?.filter(item => (item.vendor_name || 'Unknown Vendor') === vendor) || [];
+        return vendorItems.length > 0 && vendorItems.every(item => selectedItems.has(item.sku));
+    };
+
+    const isVendorPartiallySelected = (vendor: string) => {
+        const vendorItems = config.items?.filter(item => (item.vendor_name || 'Unknown Vendor') === vendor) || [];
+        const selectedCount = vendorItems.filter(item => selectedItems.has(item.sku)).length;
+        return selectedCount > 0 && selectedCount < vendorItems.length;
+    };
 
     const containerClass = isModal
         ? "min-h-[400px]"
@@ -1750,7 +1805,7 @@ function KPIItemPanel({
 
     return (
         <div className={containerClass}>
-            {/* Header - Only hide if in modal */}
+            {/* Header with view toggle */}
             {!isModal && (
                 <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
                     <div>
@@ -1764,12 +1819,40 @@ function KPIItemPanel({
                         </h3>
                         <p className="text-xs text-slate-500 mt-0.5">{config.subtitle}</p>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors text-slate-400 hover:text-slate-200"
-                    >
-                        <XCircleIcon className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        {/* View Mode Toggle */}
+                        {config.items && config.items.length > 0 && panelType !== 'past_due' && (
+                            <div className="flex items-center bg-slate-900/50 rounded-lg p-1">
+                                <button
+                                    onClick={() => setViewMode('flat')}
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                        viewMode === 'flat' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-300'
+                                    }`}
+                                >
+                                    <ListBulletIcon className="w-3.5 h-3.5" />
+                                    List
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('vendor')}
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                        viewMode === 'vendor' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-300'
+                                    }`}
+                                >
+                                    <BuildingOffice2Icon className="w-3.5 h-3.5" />
+                                    By Vendor
+                                    {vendorGroups.length > 0 && (
+                                        <span className="ml-1 px-1 py-0.5 bg-slate-600 rounded text-[10px]">{vendorGroups.length}</span>
+                                    )}
+                                </button>
+                            </div>
+                        )}
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 rounded-lg hover:bg-slate-700 transition-colors text-slate-400 hover:text-slate-200"
+                        >
+                            <XCircleIcon className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -1832,83 +1915,170 @@ function KPIItemPanel({
                         </tbody>
                     </table>
                 ) : config.items && config.items.length > 0 ? (
-                    <table className="w-full text-sm">
-                        <thead className="bg-slate-800/50 sticky top-0">
-                            <tr className="text-left text-xs text-slate-400 uppercase">
-                                <th className="px-3 py-2 w-10">
-                                    <input
-                                        type="checkbox"
-                                        checked={config.items.every(item => selectedItems.has(item.sku))}
-                                        onChange={() => {
-                                            const allSelected = config.items!.every(item => selectedItems.has(item.sku));
-                                            config.items!.forEach(item => {
-                                                if (allSelected) {
-                                                    onToggleSelect(item.sku);
-                                                } else if (!selectedItems.has(item.sku)) {
-                                                    onToggleSelect(item.sku);
-                                                }
-                                            });
-                                        }}
-                                        className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
-                                        title="Select all"
-                                    />
-                                </th>
-                                <th className="px-4 py-2">SKU</th>
-                                <th className="px-4 py-2">Product</th>
-                                <th className="px-4 py-2">Vendor</th>
-                                <th className="px-4 py-2 text-right">Stock</th>
-                                <th className="px-4 py-2 text-right">Runway</th>
-                                <th className="px-4 py-2 text-center">Class</th>
-                                <th className="px-4 py-2 text-right">CLTR</th>
-                                <th className="px-4 py-2 text-right">Safety %</th>
-                                <th className="px-4 py-2 w-24"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-700/50">
-                            {config.items.map((item, idx) => {
-                                const isSelected = selectedItems.has(item.sku);
+                    viewMode === 'vendor' ? (
+                        /* VENDOR GROUPED VIEW */
+                        <div className="divide-y divide-slate-700/50">
+                            {vendorGroups.map(([vendor, items]) => {
+                                const isExpanded = expandedVendors.has(vendor);
+                                const isFullySelected = isVendorFullySelected(vendor);
+                                const isPartially = isVendorPartiallySelected(vendor);
+                                const criticalCount = items.filter(item => item.runway_days <= 7).length;
+
                                 return (
-                                    <tr
-                                        key={idx}
-                                        className={`hover:bg-slate-700/30 cursor-pointer transition-colors text-slate-300 ${isSelected ? 'bg-blue-900/20 ring-1 ring-inset ring-blue-500/30' : ''}`}
-                                        onClick={() => onToggleSelect(item.sku)}
-                                    >
-                                        <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                                            <input
-                                                type="checkbox"
-                                                checked={isSelected}
-                                                onChange={() => onToggleSelect(item.sku)}
-                                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3 font-mono text-xs font-medium" onClick={(e) => e.stopPropagation()}>
-                                            {onNavigateToSku ? (
-                                                <button
-                                                    onClick={() => onNavigateToSku(item.sku)}
-                                                    className="text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
-                                                >
-                                                    {item.sku}
-                                                </button>
-                                            ) : (
-                                                <span className="text-white">{item.sku}</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs text-slate-400 max-w-[180px] truncate" title={item.product_name}>
-                                            {item.product_name}
-                                        </td>
-                                        <td className="px-4 py-3 text-xs text-slate-400 max-w-[120px] truncate" title={item.vendor_name || 'No vendor'}>
-                                            {item.vendor_name || '—'}
-                                        </td>
-                                        <td className={`px-4 py-3 text-right font-medium ${item.current_stock === 0 ? 'text-red-400' : 'text-slate-300'}`}>
-                                            {item.current_stock}
-                                        </td>
-                                        <td className={`px-4 py-3 text-right font-medium ${
-                                            item.runway_days <= 7 ? 'text-red-400' :
-                                            item.runway_days <= 14 ? 'text-amber-400' : 'text-slate-300'
-                                        }`}>
-                                            {item.runway_days > 365 ? '365+' : item.runway_days}d
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
+                                    <div key={vendor} className="bg-slate-800/30">
+                                        <div
+                                            className={`px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-700/30 transition-colors ${isFullySelected ? 'bg-blue-900/20' : ''}`}
+                                            onClick={() => toggleVendorExpanded(vendor)}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isFullySelected}
+                                                    ref={el => { if (el) el.indeterminate = isPartially; }}
+                                                    onChange={(e) => { e.stopPropagation(); selectAllFromVendor(vendor); }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                                                />
+                                                <BuildingOffice2Icon className="w-5 h-5 text-slate-400" />
+                                                <div>
+                                                    <span className="font-medium text-white">{vendor}</span>
+                                                    <span className="ml-2 text-xs text-slate-400">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+                                                    {criticalCount > 0 && (
+                                                        <span className="ml-2 text-xs text-red-400 bg-red-900/30 px-1.5 py-0.5 rounded">{criticalCount} critical</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {isExpanded ? <ChevronUpIcon className="w-5 h-5 text-slate-400" /> : <ChevronDownIcon className="w-5 h-5 text-slate-400" />}
+                                            </div>
+                                        </div>
+                                        {isExpanded && (
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-slate-900/30 text-slate-500 text-xs">
+                                                    <tr>
+                                                        <th className="px-4 py-2 w-10"></th>
+                                                        <th className="px-4 py-2">SKU / Product</th>
+                                                        <th className="px-4 py-2 text-right">Stock</th>
+                                                        <th className="px-4 py-2 text-right">Runway</th>
+                                                        <th className="px-4 py-2 text-center">Class</th>
+                                                        <th className="px-4 py-2 text-right">CLTR</th>
+                                                        <th className="px-4 py-2 w-20"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-700/30">
+                                                    {items.map((item, idx) => {
+                                                        const isSelected = selectedItems.has(item.sku);
+                                                        return (
+                                                            <tr key={idx} className={`hover:bg-slate-700/20 cursor-pointer ${isSelected ? 'bg-blue-900/10' : ''}`} onClick={() => onToggleSelect(item.sku)}>
+                                                                <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
+                                                                    <input type="checkbox" checked={isSelected} onChange={() => onToggleSelect(item.sku)} className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500" />
+                                                                </td>
+                                                                <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
+                                                                    {onNavigateToSku ? (
+                                                                        <button onClick={() => onNavigateToSku(item.sku)} className="font-medium text-blue-400 hover:underline font-mono text-xs">{item.sku}</button>
+                                                                    ) : (
+                                                                        <span className="font-medium text-white font-mono text-xs">{item.sku}</span>
+                                                                    )}
+                                                                    <div className="text-slate-400 text-xs truncate max-w-[200px]">{item.product_name}</div>
+                                                                </td>
+                                                                <td className={`px-4 py-2 text-right ${item.current_stock === 0 ? 'text-red-400' : 'text-slate-300'}`}>{item.current_stock}</td>
+                                                                <td className={`px-4 py-2 text-right font-medium ${item.runway_days <= 7 ? 'text-red-400' : item.runway_days <= 14 ? 'text-amber-400' : 'text-slate-300'}`}>{item.runway_days}d</td>
+                                                                <td className="px-4 py-2 text-center">
+                                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${item.abc_class === 'A' ? 'bg-purple-500/20 text-purple-300' : item.abc_class === 'B' ? 'bg-blue-500/20 text-blue-300' : 'bg-slate-500/20 text-slate-400'}`}>{item.abc_class}{item.xyz_class}</span>
+                                                                </td>
+                                                                <td className={`px-4 py-2 text-right font-bold ${item.cltr < 0.5 ? 'text-red-400' : item.cltr < 1.0 ? 'text-amber-400' : 'text-green-400'}`}>{item.cltr.toFixed(2)}</td>
+                                                                <td className="px-4 py-2" onClick={e => e.stopPropagation()}>
+                                                                    <button onClick={() => onQuickOrder(item)} disabled={isCreatingPO} className="px-2 py-1 text-xs bg-blue-600/80 hover:bg-blue-500 text-white rounded">Order</button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        /* FLAT LIST VIEW */
+                        <table className="w-full text-sm">
+                            <thead className="bg-slate-800/50 sticky top-0">
+                                <tr className="text-left text-xs text-slate-400 uppercase">
+                                    <th className="px-3 py-2 w-10">
+                                        <input
+                                            type="checkbox"
+                                            checked={config.items.every(item => selectedItems.has(item.sku))}
+                                            onChange={() => {
+                                                const allSelected = config.items!.every(item => selectedItems.has(item.sku));
+                                                config.items!.forEach(item => {
+                                                    if (allSelected) {
+                                                        onToggleSelect(item.sku);
+                                                    } else if (!selectedItems.has(item.sku)) {
+                                                        onToggleSelect(item.sku);
+                                                    }
+                                                });
+                                            }}
+                                            className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                                            title="Select all"
+                                        />
+                                    </th>
+                                    <th className="px-4 py-2">SKU</th>
+                                    <th className="px-4 py-2">Product</th>
+                                    <th className="px-4 py-2">Vendor</th>
+                                    <th className="px-4 py-2 text-right">Stock</th>
+                                    <th className="px-4 py-2 text-right">Runway</th>
+                                    <th className="px-4 py-2 text-center">Class</th>
+                                    <th className="px-4 py-2 text-right">CLTR</th>
+                                    <th className="px-4 py-2 text-right">Safety %</th>
+                                    <th className="px-4 py-2 w-24"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-700/50">
+                                {config.items.map((item, idx) => {
+                                    const isSelected = selectedItems.has(item.sku);
+                                    return (
+                                        <tr
+                                            key={idx}
+                                            className={`hover:bg-slate-700/30 cursor-pointer transition-colors text-slate-300 ${isSelected ? 'bg-blue-900/20 ring-1 ring-inset ring-blue-500/30' : ''}`}
+                                            onClick={() => onToggleSelect(item.sku)}
+                                        >
+                                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => onToggleSelect(item.sku)}
+                                                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                                                />
+                                            </td>
+                                            <td className="px-4 py-3 font-mono text-xs font-medium" onClick={(e) => e.stopPropagation()}>
+                                                {onNavigateToSku ? (
+                                                    <button
+                                                        onClick={() => onNavigateToSku(item.sku)}
+                                                        className="text-blue-400 hover:text-blue-300 hover:underline cursor-pointer"
+                                                    >
+                                                        {item.sku}
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-white">{item.sku}</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-xs text-slate-400 max-w-[180px] truncate" title={item.product_name}>
+                                                {item.product_name}
+                                            </td>
+                                            <td className="px-4 py-3 text-xs text-slate-400 max-w-[120px] truncate" title={item.vendor_name || 'No vendor'}>
+                                                {item.vendor_name || '—'}
+                                            </td>
+                                            <td className={`px-4 py-3 text-right font-medium ${item.current_stock === 0 ? 'text-red-400' : 'text-slate-300'}`}>
+                                                {item.current_stock}
+                                            </td>
+                                            <td className={`px-4 py-3 text-right font-medium ${
+                                                item.runway_days <= 7 ? 'text-red-400' :
+                                                item.runway_days <= 14 ? 'text-amber-400' : 'text-slate-300'
+                                            }`}>
+                                                {item.runway_days > 365 ? '365+' : item.runway_days}d
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
                                             <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                                 item.abc_class === 'A' ? 'bg-purple-500/20 text-purple-300 ring-1 ring-purple-500/30' :
                                                 item.abc_class === 'B' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/30' :
@@ -1952,6 +2122,7 @@ function KPIItemPanel({
                             })}
                         </tbody>
                     </table>
+                    )
                 ) : (
                     <div className="p-8 text-center text-slate-500">
                         No items to display
