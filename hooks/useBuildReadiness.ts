@@ -61,51 +61,87 @@ export function useBuildReadiness(options: UseBuildReadinessOptions = {}): UseBu
     setError(null);
 
     try {
-      // LIGHTWEIGHT QUERY: Only fetch counts and urgent items, not full dataset
-      // This prevents browser lockup from heavy view materialization
-      const { data: buildability, error: buildError } = await supabase
-        .from('mrp_buildability_summary')
-        .select('parent_sku, parent_description, parent_category, buildable_units, finished_stock, daily_demand, days_of_coverage, limiting_component_sku, limiting_component_name, limiting_component_builds, total_components, avg_component_cost, build_action')
-        .order('days_of_coverage', { ascending: true })
-        .limit(25); // Reduced limit - only need top urgent items
+      // FAST QUERY: Use simple boms + inventory join instead of slow materialized view
+      // The mrp_buildability_summary view has cascading CTEs that can take 30+ seconds
+      const { data: bomsData, error: bomsError } = await supabase
+        .from('boms')
+        .select(`
+          finished_sku,
+          name,
+          category,
+          components
+        `)
+        .eq('is_active', true)
+        .limit(100);
 
-      if (buildError) {
-        // If view doesn't exist, return empty data gracefully
-        if (buildError.code === '42P01' || buildError.message?.includes('does not exist')) {
-          console.warn('MRP views not yet created - showing empty build metrics');
-          setData([]);
-          setHasFetched(true);
-          return;
-        }
-        throw buildError;
+      if (bomsError) {
+        throw bomsError;
       }
 
-      // Transform to BuildReadinessItem without extra queries
-      const readinessItems: BuildReadinessItem[] = (buildability || []).map(item => ({
-        sku: item.parent_sku,
-        description: item.parent_description || item.parent_sku,
-        category: item.parent_category || 'Unknown',
-        canBuild: (item.buildable_units || 0) > 0,
-        maxBuildQty: item.buildable_units || 0,
-        finishedStock: item.finished_stock || 0,
-        dailyDemand: item.daily_demand || 0,
-        daysOfCoverage: item.days_of_coverage || 999,
-        shortComponents: [], // Skip detailed component queries for performance
-        limitingComponent: item.limiting_component_sku ? {
-          sku: item.limiting_component_sku,
-          description: item.limiting_component_name || item.limiting_component_sku,
-          required: 0,
-          available: item.limiting_component_builds || 0,
-          shortage: 0,
-          vendor: null,
-          leadTime: 14,
-        } : null,
-        buildAction: (item.build_action || 'NO_DEMAND') as BuildReadinessItem['buildAction'],
-        componentCount: item.total_components || 0,
-        totalComponentCost: item.avg_component_cost || 0,
-      }));
+      if (!bomsData || bomsData.length === 0) {
+        setData([]);
+        setHasFetched(true);
+        return;
+      }
 
-      setData(readinessItems);
+      // Get inventory data for these BOMs
+      const skus = bomsData.map(b => b.finished_sku);
+      const { data: inventoryData } = await supabase
+        .from('inventory_items')
+        .select('sku, stock, sales_last_30_days')
+        .in('sku', skus);
+
+      const inventoryMap = new Map(
+        (inventoryData || []).map(i => [i.sku, i])
+      );
+
+      // Transform to BuildReadinessItem with basic calculations
+      const readinessItems: BuildReadinessItem[] = bomsData.map(bom => {
+        const inv = inventoryMap.get(bom.finished_sku);
+        const stock = inv?.stock || 0;
+        const sales30d = inv?.sales_last_30_days || 0;
+        const dailyDemand = sales30d / 30;
+        const componentCount = Array.isArray(bom.components) ? bom.components.length : 0;
+
+        // Simple days of coverage calculation
+        const daysOfCoverage = dailyDemand > 0 ? Math.floor(stock / dailyDemand) : 999;
+
+        // Determine build action based on coverage
+        let buildAction: BuildReadinessItem['buildAction'] = 'ADEQUATE';
+        if (dailyDemand <= 0) {
+          buildAction = 'NO_DEMAND';
+        } else if (daysOfCoverage <= 7) {
+          buildAction = 'BUILD_URGENT';
+        } else if (daysOfCoverage <= 21) {
+          buildAction = 'BUILD_SOON';
+        }
+
+        return {
+          sku: bom.finished_sku,
+          description: bom.name || bom.finished_sku,
+          category: bom.category || 'Unknown',
+          canBuild: componentCount > 0, // Simplified - has components
+          maxBuildQty: 0, // Would need component stock check - skip for performance
+          finishedStock: stock,
+          dailyDemand,
+          daysOfCoverage,
+          shortComponents: [],
+          limitingComponent: null, // Skip for performance
+          buildAction,
+          componentCount,
+          totalComponentCost: 0, // Skip for performance
+        };
+      });
+
+      // Sort by urgency (BUILD_URGENT first, then BUILD_SOON, then by days of coverage)
+      readinessItems.sort((a, b) => {
+        const priority = { BUILD_URGENT: 0, BUILD_SOON: 1, ADEQUATE: 2, NO_DEMAND: 3 };
+        const priorityDiff = priority[a.buildAction] - priority[b.buildAction];
+        if (priorityDiff !== 0) return priorityDiff;
+        return a.daysOfCoverage - b.daysOfCoverage;
+      });
+
+      setData(readinessItems.slice(0, 25)); // Return top 25
       setHasFetched(true);
     } catch (err) {
       console.error('Build readiness fetch error:', err);
