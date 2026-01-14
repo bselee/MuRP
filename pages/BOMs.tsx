@@ -111,6 +111,12 @@ const readStoredCategoryConfig = (): Record<string, CategoryConfig> => {
   return saved ? JSON.parse(saved) : {};
 };
 
+const readStoredVendorFilter = (): Set<string> => {
+  if (typeof window === 'undefined') return new Set();
+  const saved = localStorage.getItem('bom-selected-vendors');
+  return saved ? new Set(JSON.parse(saved)) : new Set();
+};
+
 // Build Metrics Banner - LIGHTWEIGHT version that only loads on expand
 // Uses lazy loading to prevent browser lockup from expensive MRP view queries
 const BuildMetricsBanner: React.FC<{
@@ -389,6 +395,11 @@ const BOMs: React.FC<BOMsProps> = ({
   const [componentFilter, setComponentFilter] = useState<{ sku: string; componentName?: string } | null>(null);
   const [isCategoryManagementOpen, setIsCategoryManagementOpen] = useState(false);
   const [categoryConfig, setCategoryConfig] = useState<Record<string, CategoryConfig>>(() => readStoredCategoryConfig());
+  // Vendor filter state
+  const [selectedVendors, setSelectedVendors] = useState<Set<string>>(() => readStoredVendorFilter());
+  const [isVendorDropdownOpen, setIsVendorDropdownOpen] = useState(false);
+  const [vendorSearchTerm, setVendorSearchTerm] = useState('');
+  const vendorDropdownRef = useRef<HTMLDivElement>(null);
   // Already declared above, remove duplicate declarations
   
   // Persist filter preferences
@@ -399,8 +410,9 @@ const BOMs: React.FC<BOMsProps> = ({
       localStorage.setItem('bomGroupBy', groupBy);
       localStorage.setItem('bom-selected-categories', JSON.stringify(Array.from(selectedCategories)));
       localStorage.setItem('bom-category-config', JSON.stringify(categoryConfig));
+      localStorage.setItem('bom-selected-vendors', JSON.stringify(Array.from(selectedVendors)));
     }
-  }, [buildabilityFilter, sortBy, groupBy, selectedCategories, categoryConfig]);
+  }, [buildabilityFilter, sortBy, groupBy, selectedCategories, categoryConfig, selectedVendors]);
 
   const bomLookupBySku = useMemo(() => {
     const map = new Map<string, BillOfMaterials>();
@@ -919,8 +931,59 @@ const BOMs: React.FC<BOMsProps> = ({
     setSelectedCategories(new Set());
   };
 
-  // Click outside to close category dropdown
-  // Already declared above, remove duplicate declarations
+  // Get unique vendors from BOM component inventory items
+  const vendors = useMemo(() => {
+    const vendorSet = new Set<string>();
+    filteredBoms.forEach(bom => {
+      bom.components?.forEach(component => {
+        const invItem = inventoryMap.get(component.sku);
+        if (invItem?.vendorName) {
+          vendorSet.add(invItem.vendorName);
+        }
+      });
+    });
+    return Array.from(vendorSet).sort();
+  }, [filteredBoms, inventoryMap]);
+
+  // Filtered vendors for search
+  const filteredVendors = useMemo(() => {
+    if (!vendorSearchTerm.trim()) return vendors;
+    const search = vendorSearchTerm.toLowerCase();
+    return vendors.filter(vendor => vendor.toLowerCase().includes(search));
+  }, [vendors, vendorSearchTerm]);
+
+  // Vendor selection handlers
+  const toggleVendor = (vendor: string) => {
+    const newSelection = new Set(selectedVendors);
+    if (newSelection.has(vendor)) {
+      newSelection.delete(vendor);
+    } else {
+      newSelection.add(vendor);
+    }
+    setSelectedVendors(newSelection);
+  };
+
+  const selectAllVendors = () => {
+    setSelectedVendors(new Set(vendors));
+  };
+
+  const clearAllVendors = () => {
+    setSelectedVendors(new Set());
+  };
+
+  // Click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+      if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target as Node)) {
+        setIsVendorDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Apply search, filters, and sorting
   const processedBoms = useMemo(() => {
@@ -932,23 +995,37 @@ const BOMs: React.FC<BOMsProps> = ({
       );
     }
 
-    // Search filter
+    // Search filter - includes vendor names
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(bom =>
         bom.name.toLowerCase().includes(query) ||
         bom.finishedSku.toLowerCase().includes(query) ||
         bom.category?.toLowerCase().includes(query) ||
-        bom.components.some(c =>
-          c.name.toLowerCase().includes(query) ||
-          c.sku.toLowerCase().includes(query)
-        )
+        bom.components.some(c => {
+          const invItem = inventoryMap.get(c.sku);
+          return (
+            c.name.toLowerCase().includes(query) ||
+            c.sku.toLowerCase().includes(query) ||
+            invItem?.vendorName?.toLowerCase().includes(query)
+          );
+        })
       );
     }
 
     // Category filter
     if (selectedCategories.size > 0) {
       result = result.filter(bom => bom.category && selectedCategories.has(bom.category));
+    }
+
+    // Vendor filter - filter BOMs that have at least one component from selected vendors
+    if (selectedVendors.size > 0) {
+      result = result.filter(bom => {
+        return bom.components?.some(component => {
+          const invItem = inventoryMap.get(component.sku);
+          return invItem?.vendorName && selectedVendors.has(invItem.vendorName);
+        });
+      });
     }
 
     // Buildability filter
@@ -1247,7 +1324,7 @@ const BOMs: React.FC<BOMsProps> = ({
               <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
               <input
                 type="text"
-                placeholder="Search by SKU, name, category, or component..."
+                placeholder="Search by SKU, name, category, component, or vendor..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={`w-full pl-10 pr-4 py-2.5 ${isDark ? 'bg-gray-900 border-gray-700 text-white placeholder-gray-500' : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400'} border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent`}
@@ -1363,6 +1440,74 @@ const BOMs: React.FC<BOMsProps> = ({
                           </label>
                         );
                       })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Multi-select Vendor Filter */}
+            <div ref={vendorDropdownRef} className={`relative ${isVendorDropdownOpen ? 'z-40' : 'z-20'}`}>
+              <Button
+                onClick={() => setIsVendorDropdownOpen(!isVendorDropdownOpen)}
+                className={`min-w-[160px] ${isDark ? 'bg-gray-700 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'} rounded-xl px-4 py-2.5 focus:ring-accent-500 focus:border-accent-500 border text-left flex justify-between items-center relative ${selectedVendors.size > 0 ? 'ring-2 ring-accent-500/50' : ''}`}
+              >
+                {selectedVendors.size > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent-500 rounded-full"></span>
+                )}
+                <span className="truncate">
+                  {selectedVendors.size === 0
+                    ? 'All Vendors'
+                    : selectedVendors.size === vendors.length
+                    ? 'All Vendors'
+                    : `${selectedVendors.size} vendor${selectedVendors.size > 1 ? 's' : ''}`}
+                </span>
+                <ChevronDownIcon className="w-4 h-4 ml-2" />
+              </Button>
+              {isVendorDropdownOpen && (
+                <div className={`absolute z-[100] w-64 mt-1 border-2 ${isDark ? 'border-gray-500 bg-gray-900' : 'border-gray-300 bg-white'} rounded-md shadow-2xl max-h-80 overflow-hidden`}>
+                  <div className={`sticky top-0 p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-gray-200 bg-gray-50'} flex gap-2`}>
+                    <Button
+                      onClick={selectAllVendors}
+                      className={`text-xs text-accent-400 hover:text-accent-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-gray-200'} rounded`}
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      onClick={clearAllVendors}
+                      className={`text-xs ${isDark ? 'text-gray-400 hover:text-white bg-gray-600' : 'text-gray-600 hover:text-gray-900 bg-gray-200'} px-2 py-1 rounded`}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                  <div className={`sticky top-[44px] p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
+                    <input
+                      type="text"
+                      value={vendorSearchTerm}
+                      onChange={(e) => setVendorSearchTerm(e.target.value)}
+                      placeholder="Search vendors..."
+                      className={`w-full ${isDark ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'} text-sm rounded px-3 py-1.5 focus:ring-2 focus:ring-accent-500 focus:outline-none border`}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div className="max-h-60 overflow-auto">
+                    {filteredVendors.length === 0 ? (
+                      <div className={`p-3 text-center ${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>No vendors found</div>
+                    ) : (
+                      filteredVendors.map(vendor => (
+                        <label
+                          key={vendor}
+                          className={`flex items-center p-2 ${isDark ? 'hover:bg-gray-700 bg-gray-900' : 'hover:bg-gray-100 bg-white'} cursor-pointer`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedVendors.has(vendor)}
+                            onChange={() => toggleVendor(vendor)}
+                            className={`w-4 h-4 mr-2 rounded ${isDark ? 'border-gray-500' : 'border-gray-400'} text-accent-500 focus:ring-accent-500`}
+                          />
+                          <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'} truncate`} title={vendor}>{vendor}</span>
+                        </label>
+                      ))
                     )}
                   </div>
                 </div>
