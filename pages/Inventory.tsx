@@ -1308,8 +1308,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                         isOpen={isFiltersOpen}
                         onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
                     >
-                        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50/80'} backdrop-blur-sm rounded-lg p-6 space-y-6`}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50/80'} backdrop-blur-sm rounded-lg p-6 space-y-6 overflow-visible`}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end overflow-visible">
                                 <div className="relative lg:col-span-1">
                                     <label htmlFor="search-inventory" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>Search by name or SKU</label>
                                     <div className="relative">
