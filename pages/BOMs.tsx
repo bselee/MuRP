@@ -13,26 +13,16 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions, QuickRequestDefaults, ComponentSwapMap, BomRevisionRequestOptions, PurchaseOrder } from '../types';
 import type { ComplianceStatus } from '../types/regulatory';
 import {
-  PencilIcon,
   ChevronDownIcon,
-  EyeIcon,
   MagnifyingGlassIcon,
   AdjustmentsHorizontalIcon,
   Squares2X2Icon,
   ListBulletIcon,
-  ExclamationTriangleIcon,
-  ShieldCheckIcon,
-  PackageIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  XCircleIcon
+  PackageIcon
 } from '../components/icons';
-import { useBuildReadiness } from '../hooks/useBuildReadiness';
 import CollapsibleSection from '../components/CollapsibleSection';
 import BomEditModal from '../components/BomEditModal';
 import BomDetailModal from '../components/BomDetailModal';
-import ComplianceDashboard from '../components/ComplianceDashboard';
-import ComplianceDetailModal from '../components/ComplianceDetailModal';
 import EnhancedBomCard from '../components/EnhancedBomCard';
 import CreateRequisitionModal from '../components/CreateRequisitionModal';
 import ScheduleBuildModal from '../components/ScheduleBuildModal';
@@ -43,7 +33,6 @@ import CategoryManagementModal, { type CategoryConfig } from '../components/Cate
 import { useLimitingSKUOnOrder } from '../hooks/useLimitingSKUOnOrder';
 import { useTheme } from '../components/ThemeProvider';
 import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
-import LoadingSpinner from '../components/LoadingSpinner';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability' | 'category' | 'velocity' | 'runway';
@@ -115,231 +104,6 @@ const readStoredVendorFilter = (): Set<string> => {
   if (typeof window === 'undefined') return new Set();
   const saved = localStorage.getItem('bom-selected-vendors');
   return saved ? new Set(JSON.parse(saved)) : new Set();
-};
-
-// Build Metrics Banner - LIGHTWEIGHT version that only loads on expand
-// Uses lazy loading to prevent browser lockup from expensive MRP view queries
-const BuildMetricsBanner: React.FC<{
-  isDark: boolean;
-  isOpen: boolean;
-  onToggle: () => void;
-  onFilterChange: (filter: BuildabilityFilter) => void;
-  onSelectSku: (sku: string) => void;
-  bomCount: number; // Pass from parent to avoid extra query
-}> = ({ isDark, isOpen, onToggle, onFilterChange, onSelectSku, bomCount }) => {
-  // LAZY LOADING: Only fetch when user expands the section
-  const { data, loading, error, urgentCount, blockedCount, readyCount, refetch } = useBuildReadiness({ lazy: true });
-  const hasFetched = data !== null;
-
-  // Fetch data when section is opened for the first time
-  useEffect(() => {
-    if (isOpen && !hasFetched && !loading) {
-      refetch();
-    }
-  }, [isOpen, hasFetched, loading, refetch]);
-
-  // Get top urgent items for display (limit to 5 for performance)
-  const urgentItems = useMemo(() => {
-    if (!data) return [];
-    return data
-      .filter(d => d.buildAction === 'BUILD_URGENT')
-      .slice(0, 5);
-  }, [data]);
-
-  // Dynamic title with status badges
-  const titleWithBadges = hasFetched ? (
-    <span className="flex items-center gap-3">
-      Build Metrics
-      {urgentCount > 0 && (
-        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs font-medium">
-          {urgentCount} urgent
-        </span>
-      )}
-      {blockedCount > 0 && (
-        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium">
-          {blockedCount} blocked
-        </span>
-      )}
-    </span>
-  ) : loading ? (
-    <span className="flex items-center gap-2">
-      Build Metrics
-      <span className="text-xs text-gray-400 animate-pulse">loading...</span>
-    </span>
-  ) : (
-    'Build Metrics'
-  );
-
-  return (
-    <CollapsibleSection
-      title={typeof titleWithBadges === 'string' ? titleWithBadges : 'Build Metrics'}
-      icon={<PackageIcon className={`w-6 h-6 ${hasFetched && urgentCount > 0 ? 'text-amber-400' : 'text-green-400'}`} />}
-      variant="card"
-      isOpen={isOpen}
-      onToggle={onToggle}
-      count={hasFetched ? urgentCount : undefined}
-    >
-      {!hasFetched && !loading ? (
-        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg p-6 text-center`}>
-          <PackageIcon className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
-          <p className={`mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Analyze build readiness and component shortages
-          </p>
-          <button
-            onClick={refetch}
-            className="px-4 py-2 rounded-md bg-accent-500 hover:bg-accent-600 text-white font-medium transition-colors"
-          >
-            Load Build Metrics
-          </button>
-        </div>
-      ) : loading ? (
-        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg p-8`}>
-          <div className="flex flex-col items-center justify-center min-h-[120px]">
-            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className={`mt-4 text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              Analyzing build readiness...
-            </p>
-            <p className={`mt-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-              Checking component availability and build status
-            </p>
-          </div>
-        </div>
-      ) : error ? (
-        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg p-4 text-center`}>
-          <div className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Build metrics unavailable - MRP views may not be configured yet
-          </div>
-        </div>
-      ) : (
-        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-white border border-gray-200'} rounded-lg p-4`}>
-          {/* Summary Stats - Clickable to filter BOM list */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-            <MetricCard
-              label="Total BOMs"
-              value={bomCount}
-              isDark={isDark}
-              onClick={() => onFilterChange('all')}
-            />
-            <MetricCard
-              label="Build Urgent"
-              value={urgentCount}
-              isDark={isDark}
-              variant={urgentCount > 0 ? 'danger' : 'default'}
-              onClick={() => onFilterChange('near-oos')}
-            />
-            <MetricCard
-              label="Blocked"
-              value={blockedCount}
-              isDark={isDark}
-              variant={blockedCount > 0 ? 'warning' : 'default'}
-              onClick={() => onFilterChange('not-buildable')}
-            />
-            <MetricCard
-              label="Ready to Build"
-              value={readyCount}
-              isDark={isDark}
-              variant="success"
-              onClick={() => onFilterChange('buildable')}
-            />
-          </div>
-
-          {/* Urgent Items - Direct action buttons */}
-          {urgentItems.length > 0 && (
-            <div className={`border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} pt-4`}>
-              <h4 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-3`}>
-                <ExclamationTriangleIcon className="w-4 h-4 inline mr-1.5 text-amber-500" />
-                Urgent: ≤7 days coverage — click to view details
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {urgentItems.map(item => (
-                  <button
-                    key={item.sku}
-                    onClick={() => onSelectSku(item.sku)}
-                    className={`group px-3 py-2 rounded-lg text-sm cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md ${
-                      isDark
-                        ? 'bg-red-900/30 border border-red-700 text-red-300 hover:bg-red-900/50'
-                        : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-semibold">{item.sku}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                        isDark ? 'bg-red-800/50 text-red-200' : 'bg-red-200 text-red-800'
-                      }`}>
-                        {item.daysOfCoverage}d left
-                      </span>
-                      {!item.canBuild && (
-                        <span className={`px-1.5 py-0.5 rounded text-xs ${
-                          isDark ? 'bg-amber-800/50 text-amber-200' : 'bg-amber-200 text-amber-800'
-                        }`}>
-                          blocked
-                        </span>
-                      )}
-                    </div>
-                    <div className={`text-xs mt-1 truncate max-w-[200px] ${isDark ? 'text-red-400/70' : 'text-red-600/70'}`}>
-                      {item.description}
-                    </div>
-                  </button>
-                ))}
-                {urgentCount > urgentItems.length && (
-                  <button
-                    onClick={() => onFilterChange('near-oos')}
-                    className={`px-3 py-2 rounded-lg text-sm border-2 border-dashed transition-colors ${
-                      isDark
-                        ? 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300'
-                        : 'border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-600'
-                    }`}
-                  >
-                    +{urgentCount - urgentItems.length} more urgent
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {urgentItems.length === 0 && hasFetched && (
-            <div className={`text-center py-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              <CheckCircleIcon className="w-8 h-8 mx-auto mb-2 text-green-500" />
-              <p className="text-sm font-medium">All builds have adequate coverage</p>
-              <p className="text-xs mt-1">No immediate action required</p>
-            </div>
-          )}
-        </div>
-      )}
-    </CollapsibleSection>
-  );
-};
-
-// Metric Card subcomponent
-const MetricCard: React.FC<{
-  label: string;
-  value: number;
-  isDark: boolean;
-  variant?: 'default' | 'danger' | 'warning' | 'success';
-  onClick?: () => void;
-}> = ({ label, value, isDark, variant = 'default', onClick }) => {
-  const variantStyles = {
-    default: isDark ? 'text-white' : 'text-gray-900',
-    danger: 'text-red-500',
-    warning: 'text-amber-500',
-    success: 'text-green-500',
-  };
-
-  return (
-    <div
-      onClick={onClick}
-      className={`p-3 rounded-lg ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} ${
-        onClick ? 'cursor-pointer hover:ring-2 hover:ring-accent-500 transition-all' : ''
-      }`}
-    >
-      <p className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase`}>
-        {label}
-      </p>
-      <p className={`text-2xl font-bold ${variantStyles[variant]}`}>
-        {value}
-      </p>
-    </div>
-  );
 };
 
 const BOMs: React.FC<BOMsProps> = ({
@@ -423,9 +187,7 @@ const BOMs: React.FC<BOMsProps> = ({
   // Already declared above, remove duplicate declarations
   
   // Collapsible sections state
-  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [isComplianceOpen, setIsComplianceOpen] = useState(false);
 
   // Page-level data fetching for labels and compliance records to avoid N+1 query problem
   const [allLabelsMap, setAllLabelsMap] = useState<Map<string, any[]>>(new Map());
@@ -1284,29 +1046,6 @@ const BOMs: React.FC<BOMsProps> = ({
           }}
         />
       )}
-
-      {/* Build Metrics Dashboard */}
-      <BuildMetricsBanner
-        isDark={isDark}
-        isOpen={isAlertsOpen}
-        onToggle={() => setIsAlertsOpen(!isAlertsOpen)}
-        onFilterChange={(filter) => {
-          setBuildabilityFilter(filter);
-          localStorage.setItem('bomStatusFilter', filter);
-        }}
-        onSelectSku={(sku) => {
-          setSearchQuery(sku);
-          // Scroll to search results
-          setTimeout(() => {
-            const element = document.querySelector(`[data-sku="${sku}"]`);
-            element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 100);
-        }}
-        bomCount={boms.length}
-      />
-
-      {/* Compliance Dashboard - Coming Soon */}
-      {/* TODO: Load all compliance records for dashboard view */}
 
       {/* Search, Filters, and Controls */}
       <CollapsibleSection
