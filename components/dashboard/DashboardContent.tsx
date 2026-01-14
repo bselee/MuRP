@@ -57,9 +57,16 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
           setCurrentPage('Inventory');
         }}
         onNavigateToInventoryFilter={(filter) => {
-            localStorage.setItem('inventoryDashboardFilter', filter);
-            setCurrentPage('Inventory');
+          localStorage.setItem('inventoryDashboardFilter', filter);
+          setCurrentPage('Inventory');
         }}
+        onNavigateToBOMs={(filter) => {
+          if (filter) {
+            localStorage.setItem('bomDashboardFilter', filter);
+          }
+          setCurrentPage('BOMs');
+        }}
+        onNavigateToVendors={() => setCurrentPage('Vendors')}
       />
     </div>
   );

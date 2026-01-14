@@ -54,13 +54,17 @@ interface PurchasingGuidanceDashboardProps {
     onNavigateToPO?: (poNumber: string) => void;
     onNavigateToSku?: (sku: string) => void;
     onNavigateToInventoryFilter?: (filter: string) => void;
+    onNavigateToBOMs?: (filter?: string) => void;
+    onNavigateToVendors?: () => void;
 }
 
-export default function PurchasingGuidanceDashboard({ 
-    onNavigateToPOs, 
-    onNavigateToPO, 
+export default function PurchasingGuidanceDashboard({
+    onNavigateToPOs,
+    onNavigateToPO,
     onNavigateToSku,
-    onNavigateToInventoryFilter 
+    onNavigateToInventoryFilter,
+    onNavigateToBOMs,
+    onNavigateToVendors
 }: PurchasingGuidanceDashboardProps = {}) {
     const [advice, setAdvice] = useState<AdviceItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -994,6 +998,8 @@ export default function PurchasingGuidanceDashboard({
                     unit=""
                     trend={metrics.avgCltr === 'N/A' ? 'neutral' : parseFloat(metrics.avgCltr) >= 1.0 ? 'positive' : 'critical'}
                     desc="Coverage-to-Lead-Time Ratio"
+                    onClick={onNavigateToInventoryFilter ? () => onNavigateToInventoryFilter('cltr') : undefined}
+                    clickHint="View by CLTR"
                 />
                 <KPICard
                     title="Forecast Accuracy"
@@ -1003,11 +1009,13 @@ export default function PurchasingGuidanceDashboard({
                     desc={metrics.accuracy === 'N/A' ? "No forecast data yet" : "1 - MAPE (Last 90 Days)"}
                 />
                 <KPICard
-                    title="Vendor Reliability"
-                    value={metrics.vendorReliability}
-                    unit="%"
-                    trend={metrics.vendorReliability === 'N/A' ? 'neutral' : (parseFloat(metrics.vendorReliability) >= 80 ? 'positive' : 'critical')}
-                    desc={metrics.vendorReliability === 'N/A' ? "No lead time data" : "Based on lead time bias"}
+                    title="Inventory Turnover"
+                    value={metrics.inventoryTurnover || 'N/A'}
+                    unit={metrics.inventoryTurnover ? 'x/yr' : ''}
+                    trend={metrics.inventoryTurnover === null ? 'neutral' : metrics.inventoryTurnover >= 4 ? 'positive' : 'critical'}
+                    desc={metrics.inventoryTurnover === null ? "Calculating..." : "Annual stock rotation rate"}
+                    onClick={onNavigateToInventoryFilter ? () => onNavigateToInventoryFilter('turnover') : undefined}
+                    clickHint="View inventory"
                 />
                 <KPICard
                     title="Excess Inventory"
@@ -1015,8 +1023,8 @@ export default function PurchasingGuidanceDashboard({
                     unit=""
                     trend={metrics.excessValue > 10000 ? 'critical' : 'neutral'}
                     desc="Capital above 90-day runway"
-                    // Overstock drill-down temp disabled until KPIItemPanel supports it
-                    // onClick={metrics.excessValue > 0 ? () => setExpandedPanel('overstock') : undefined}
+                    onClick={onNavigateToInventoryFilter ? () => onNavigateToInventoryFilter('excess') : undefined}
+                    clickHint="View excess stock"
                 />
             </div>
 
@@ -1024,34 +1032,40 @@ export default function PurchasingGuidanceDashboard({
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <KPICard
                     title="BOMs Need Build"
-                    value={buildReadinessLoading ? '...' : bomUrgentCount}
+                    value={bomUrgentCount}
                     unit="urgent"
                     trend={bomUrgentCount > 0 ? 'critical' : 'positive'}
-                    desc={buildReadinessLoading ? 'Checking build status...' : bomUrgentCount > 0 ? 'Finished goods low on stock' : 'All BOMs have adequate coverage'}
+                    desc={bomUrgentCount > 0 ? 'Finished goods low on stock' : 'All BOMs have adequate coverage'}
+                    onClick={onNavigateToBOMs ? () => onNavigateToBOMs('urgent') : undefined}
+                    clickHint="View urgent BOMs"
                 />
                 <KPICard
                     title="BOMs Ready to Build"
-                    value={buildReadinessLoading ? '...' : bomReadyCount}
+                    value={bomReadyCount}
                     unit="BOMs"
                     trend="neutral"
-                    desc={buildReadinessLoading ? 'Checking component availability...' : 'Have components in stock'}
+                    desc="Have components in stock"
+                    onClick={onNavigateToBOMs ? () => onNavigateToBOMs('ready') : undefined}
+                    clickHint="View buildable BOMs"
                 />
                 <KPICard
                     title="Total BOMs"
-                    value={buildReadinessLoading ? '...' : (buildReadinessData?.length || 0)}
+                    value={buildReadinessData?.length || 0}
                     unit="active"
                     trend="neutral"
                     desc="Active product recipes"
+                    onClick={onNavigateToBOMs ? () => onNavigateToBOMs() : undefined}
+                    clickHint="View all BOMs"
                 />
-                <div className="p-4 rounded-xl border bg-slate-800/30 border-slate-700/50 flex items-center gap-3">
-                    <PackageIcon className="w-8 h-8 text-slate-500" />
-                    <div>
-                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">Build Queue</div>
-                        <div className="text-sm text-slate-400 mt-1">
-                            {buildReadinessLoading ? 'Loading...' : 'View BOMs page for details'}
-                        </div>
-                    </div>
-                </div>
+                <KPICard
+                    title="Vendor Reliability"
+                    value={metrics.vendorReliability}
+                    unit="%"
+                    trend={metrics.vendorReliability === 'N/A' ? 'neutral' : (parseFloat(metrics.vendorReliability) >= 80 ? 'positive' : 'critical')}
+                    desc={metrics.vendorReliability === 'N/A' ? "No lead time data" : "Based on lead time performance"}
+                    onClick={onNavigateToVendors}
+                    clickHint="View vendors"
+                />
             </div>
 
             {/* Expanded KPI Item Panel - Inline below Row 2 */}
