@@ -7,7 +7,8 @@ import { supabase } from '../lib/supabase/client';
 import { createPurchaseOrder, batchUpdateInventory } from '../hooks/useSupabaseMutations';
 import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
 import { useSkuDismissals, type DismissReason, type SnoozeOptions } from '../hooks/useSkuDismissals';
-import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon, AlertTriangleIcon, TrendingUpIcon, ChevronDownIcon, ChevronUpIcon, ListBulletIcon, UserGroupIcon, BuildingOffice2Icon } from './icons';
+import { useBuildReadiness } from '../hooks/useBuildReadiness';
+import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon, AlertTriangleIcon, TrendingUpIcon, ChevronDownIcon, ChevronUpIcon, ListBulletIcon, UserGroupIcon, BuildingOffice2Icon, PackageIcon } from './icons';
 import type { CreatePurchaseOrderInput } from '../types';
 import SupplyChainRiskPanel from './SupplyChainRiskPanel';
 import StockoutContingencyCard, { type StockoutItem } from './StockoutContingencyCard';
@@ -115,6 +116,14 @@ export default function PurchasingGuidanceDashboard({
 
     // SKU dismissals - dismiss with reason or snooze for later
     const { isDismissed, dismissSku, snoozeSku, refresh: refreshDismissals } = useSkuDismissals();
+
+    // BOM Build Readiness - shows which BOMs need attention
+    const {
+        data: buildReadinessData,
+        loading: buildReadinessLoading,
+        urgentCount: bomUrgentCount,
+        readyCount: bomReadyCount
+    } = useBuildReadiness();
 
     // Ref for scrolling to replenishment section
     const replenishmentRef = useRef<HTMLDivElement>(null);
@@ -1007,8 +1016,42 @@ export default function PurchasingGuidanceDashboard({
                     trend={metrics.excessValue > 10000 ? 'critical' : 'neutral'}
                     desc="Capital above 90-day runway"
                     // Overstock drill-down temp disabled until KPIItemPanel supports it
-                    // onClick={metrics.excessValue > 0 ? () => setExpandedPanel('overstock') : undefined} 
+                    // onClick={metrics.excessValue > 0 ? () => setExpandedPanel('overstock') : undefined}
                 />
+            </div>
+
+            {/* 2.6 BOM Build Metrics - Third metrics row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <KPICard
+                    title="BOMs Need Build"
+                    value={buildReadinessLoading ? '...' : bomUrgentCount}
+                    unit="urgent"
+                    trend={bomUrgentCount > 0 ? 'critical' : 'positive'}
+                    desc={buildReadinessLoading ? 'Checking build status...' : bomUrgentCount > 0 ? 'Finished goods low on stock' : 'All BOMs have adequate coverage'}
+                />
+                <KPICard
+                    title="BOMs Ready to Build"
+                    value={buildReadinessLoading ? '...' : bomReadyCount}
+                    unit="BOMs"
+                    trend="neutral"
+                    desc={buildReadinessLoading ? 'Checking component availability...' : 'Have components in stock'}
+                />
+                <KPICard
+                    title="Total BOMs"
+                    value={buildReadinessLoading ? '...' : (buildReadinessData?.length || 0)}
+                    unit="active"
+                    trend="neutral"
+                    desc="Active product recipes"
+                />
+                <div className="p-4 rounded-xl border bg-slate-800/30 border-slate-700/50 flex items-center gap-3">
+                    <PackageIcon className="w-8 h-8 text-slate-500" />
+                    <div>
+                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">Build Queue</div>
+                        <div className="text-sm text-slate-400 mt-1">
+                            {buildReadinessLoading ? 'Loading...' : 'View BOMs page for details'}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Expanded KPI Item Panel - Inline below Row 2 */}
@@ -1185,7 +1228,11 @@ export default function PurchasingGuidanceDashboard({
                 </div>
 
                 {loading ? (
-                    <div className="p-12 text-center text-slate-500">Loading analysis...</div>
+                    <div className="p-12 flex flex-col items-center justify-center">
+                        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p className="mt-4 text-sm font-medium text-slate-400">Analyzing inventory levels...</p>
+                        <p className="mt-1 text-xs text-slate-500">Calculating reorder points and lead times</p>
+                    </div>
                 ) : needsOrder.length === 0 ? (
                     <div className="p-8 text-center text-slate-400">
                         <div className="mb-2 text-2xl font-bold text-green-400">OK</div>
