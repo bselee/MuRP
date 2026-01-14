@@ -3,13 +3,17 @@
 -- Runs every 4 hours to detect critical shortages and create draft POs
 -- ============================================================================
 
+-- Add MRP tracking columns to finale_sync_state
+ALTER TABLE finale_sync_state
+ADD COLUMN IF NOT EXISTS last_mrp_shortage_check_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS last_mrp_forecast_update_at TIMESTAMPTZ;
+
 -- Function to call the shortage check via edge function
 CREATE OR REPLACE FUNCTION trigger_mrp_shortage_check()
 RETURNS void AS $$
 DECLARE
   v_service_role_key TEXT;
   v_supabase_url TEXT;
-  v_response JSONB;
 BEGIN
   -- Get service role key from vault
   SELECT decrypted_secret INTO v_service_role_key
@@ -31,25 +35,14 @@ BEGIN
   -- Log the attempt
   RAISE NOTICE 'Triggering MRP shortage check at %', NOW();
 
-  -- The actual shortage detection is done in the application layer
-  -- This function just logs the scheduled run for monitoring
-  INSERT INTO finale_sync_state (sync_type, last_sync_at, status, records_processed)
-  VALUES ('mrp_shortage_check', NOW(), 'completed', 0)
-  ON CONFLICT (sync_type)
-  DO UPDATE SET
-    last_sync_at = NOW(),
-    status = 'completed';
+  -- Update sync state
+  UPDATE finale_sync_state
+  SET last_mrp_shortage_check_at = NOW(),
+      updated_at = NOW()
+  WHERE id = 'main';
 
 EXCEPTION WHEN OTHERS THEN
   RAISE WARNING 'MRP shortage check failed: %', SQLERRM;
-
-  INSERT INTO finale_sync_state (sync_type, last_sync_at, status, error_message)
-  VALUES ('mrp_shortage_check', NOW(), 'failed', SQLERRM)
-  ON CONFLICT (sync_type)
-  DO UPDATE SET
-    last_sync_at = NOW(),
-    status = 'failed',
-    error_message = SQLERRM;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -86,41 +79,30 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- MRP SYNC STATE TRACKING
--- Track when MRP processes last ran
--- ============================================================================
-
--- Ensure mrp_shortage_check sync type exists
-INSERT INTO finale_sync_state (sync_type, last_sync_at, status)
-VALUES ('mrp_shortage_check', '2000-01-01', 'pending')
-ON CONFLICT (sync_type) DO NOTHING;
-
-INSERT INTO finale_sync_state (sync_type, last_sync_at, status)
-VALUES ('mrp_forecast_update', '2000-01-01', 'pending')
-ON CONFLICT (sync_type) DO NOTHING;
-
--- ============================================================================
 -- HELPER VIEW: MRP Process Status
 -- ============================================================================
 
 CREATE OR REPLACE VIEW mrp_process_status AS
 SELECT
-  sync_type,
-  last_sync_at,
-  status,
-  records_processed,
-  error_message,
-  -- Time since last run
-  EXTRACT(EPOCH FROM (NOW() - last_sync_at)) / 3600 AS hours_since_run,
-  -- Status indicator
+  'main' AS process_id,
+  last_mrp_shortage_check_at,
+  last_mrp_forecast_update_at,
+  last_full_sync_at,
+  last_po_sync_at,
+  -- Time since last MRP shortage check
   CASE
-    WHEN status = 'failed' THEN 'ERROR'
-    WHEN EXTRACT(EPOCH FROM (NOW() - last_sync_at)) > 14400 THEN 'OVERDUE'  -- 4+ hours
-    WHEN EXTRACT(EPOCH FROM (NOW() - last_sync_at)) > 7200 THEN 'WARNING'   -- 2+ hours
+    WHEN last_mrp_shortage_check_at IS NULL THEN 'NEVER_RUN'
+    WHEN EXTRACT(EPOCH FROM (NOW() - last_mrp_shortage_check_at)) > 14400 THEN 'OVERDUE'
+    WHEN EXTRACT(EPOCH FROM (NOW() - last_mrp_shortage_check_at)) > 7200 THEN 'WARNING'
     ELSE 'OK'
-  END AS health_status
+  END AS mrp_shortage_health,
+  -- Hours since run
+  CASE
+    WHEN last_mrp_shortage_check_at IS NOT NULL
+    THEN ROUND(EXTRACT(EPOCH FROM (NOW() - last_mrp_shortage_check_at)) / 3600, 1)
+    ELSE NULL
+  END AS hours_since_shortage_check
 FROM finale_sync_state
-WHERE sync_type IN ('mrp_shortage_check', 'mrp_forecast_update', 'full', 'po_only')
-ORDER BY last_sync_at DESC;
+WHERE id = 'main';
 
 COMMENT ON VIEW mrp_process_status IS 'Health status of MRP scheduled processes';

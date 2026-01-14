@@ -54,84 +54,53 @@ export function useBuildReadiness(): UseBuildReadinessReturn {
     setError(null);
 
     try {
-      // Fetch from mrp_buildability_summary view
+      // Single query to get buildability summary - no N+1 queries
       const { data: buildability, error: buildError } = await supabase
         .from('mrp_buildability_summary')
         .select('*')
-        .order('days_of_coverage', { ascending: true });
+        .order('days_of_coverage', { ascending: true })
+        .limit(50); // Limit to prevent overload
 
-      if (buildError) throw buildError;
-
-      // For each item, get component shortfalls
-      const readinessItems: BuildReadinessItem[] = [];
-
-      for (const item of buildability || []) {
-        // Get component details from mrp_bom_intelligence
-        const { data: components } = await supabase
-          .from('mrp_bom_intelligence')
-          .select('*')
-          .eq('parent_sku', item.parent_sku);
-
-        // Calculate shortages
-        const shortComponents: ShortComponent[] = [];
-        let limitingComponent: ShortComponent | null = null;
-
-        for (const comp of components || []) {
-          const available = comp.component_stock || 0;
-          const qtyPer = comp.qty_per_parent || 1;
-
-          // Calculate how many we need for 30 days of builds
-          const dailyDemand = item.daily_demand || 0;
-          const requiredFor30Days = Math.ceil(dailyDemand * 30 * qtyPer);
-          const shortage = Math.max(0, requiredFor30Days - available);
-
-          if (shortage > 0) {
-            const shortComp: ShortComponent = {
-              sku: comp.component_sku,
-              description: comp.component_description || comp.component_sku,
-              required: requiredFor30Days,
-              available,
-              shortage,
-              vendor: comp.vendor_name || null,
-              leadTime: comp.lead_time_days || 14,
-            };
-            shortComponents.push(shortComp);
-          }
-
-          // Track limiting component
-          if (comp.component_sku === item.limiting_component_sku) {
-            limitingComponent = {
-              sku: comp.component_sku,
-              description: comp.component_description || comp.component_sku,
-              required: qtyPer,
-              available,
-              shortage: 0,
-              vendor: comp.vendor_name || null,
-              leadTime: comp.lead_time_days || 14,
-            };
-          }
+      if (buildError) {
+        // If view doesn't exist, return empty data gracefully
+        if (buildError.code === '42P01' || buildError.message?.includes('does not exist')) {
+          console.warn('MRP views not yet created - showing empty build metrics');
+          setData([]);
+          return;
         }
-
-        readinessItems.push({
-          sku: item.parent_sku,
-          description: item.parent_description || item.parent_sku,
-          category: item.parent_category || 'Unknown',
-          canBuild: item.buildable_units > 0,
-          maxBuildQty: item.buildable_units || 0,
-          finishedStock: item.finished_stock || 0,
-          dailyDemand: item.daily_demand || 0,
-          daysOfCoverage: item.days_of_coverage || 999,
-          shortComponents: shortComponents.sort((a, b) => b.shortage - a.shortage),
-          limitingComponent,
-          buildAction: item.build_action as BuildReadinessItem['buildAction'],
-          componentCount: item.total_components || 0,
-          totalComponentCost: item.avg_component_cost || 0,
-        });
+        throw buildError;
       }
+
+      // Transform to BuildReadinessItem without extra queries
+      const readinessItems: BuildReadinessItem[] = (buildability || []).map(item => ({
+        sku: item.parent_sku,
+        description: item.parent_description || item.parent_sku,
+        category: item.parent_category || 'Unknown',
+        canBuild: (item.buildable_units || 0) > 0,
+        maxBuildQty: item.buildable_units || 0,
+        finishedStock: item.finished_stock || 0,
+        dailyDemand: item.daily_demand || 0,
+        daysOfCoverage: item.days_of_coverage || 999,
+        shortComponents: [], // Skip detailed component queries for performance
+        limitingComponent: item.limiting_component_sku ? {
+          sku: item.limiting_component_sku,
+          description: item.limiting_component_name || item.limiting_component_sku,
+          required: 0,
+          available: item.limiting_component_builds || 0,
+          shortage: 0,
+          vendor: null,
+          leadTime: 14,
+        } : null,
+        buildAction: (item.build_action || 'NO_DEMAND') as BuildReadinessItem['buildAction'],
+        componentCount: item.total_components || 0,
+        totalComponentCost: item.avg_component_cost || 0,
+      }));
 
       setData(readinessItems);
     } catch (err) {
+      console.error('Build readiness fetch error:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
+      setData([]); // Set empty data on error to prevent re-fetching loop
     } finally {
       setLoading(false);
     }

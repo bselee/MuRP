@@ -116,7 +116,7 @@ const BuildMetricsBanner: React.FC<{
   isOpen: boolean;
   onToggle: () => void;
 }> = ({ isDark, isOpen, onToggle }) => {
-  const { data, loading, urgentCount, blockedCount, readyCount } = useBuildReadiness();
+  const { data, loading, error, urgentCount, blockedCount, readyCount } = useBuildReadiness();
 
   // Get top urgent items for display
   const urgentItems = useMemo(() => {
@@ -160,6 +160,12 @@ const BuildMetricsBanner: React.FC<{
         <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg p-4 text-center`}>
           <div className={`animate-pulse ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             Loading build metrics...
+          </div>
+        </div>
+      ) : error ? (
+        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg p-4 text-center`}>
+          <div className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            Build metrics unavailable - MRP views may not be configured yet
           </div>
         </div>
       ) : (
