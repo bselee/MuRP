@@ -1,3 +1,79 @@
+### Session: 2026-01-14 (MRP Cascade System + Performance Fix)
+
+**Summary:** Implemented comprehensive MRP cascade system with build readiness tracking, purchase recommendations, and component coverage timeline. Added 13,000+ lines of new code including services, components, hooks, migrations, and a full test suite (357 tests). **Fixed critical performance issue** causing browser lockup when loading Build Metrics.
+
+**Critical Performance Fix - Build Metrics Browser Lockup:**
+- **Problem**: Build Metrics banner was loading expensive MRP view queries on every page load, causing Chrome to lock up
+- **Solution**: Implemented lazy loading with improved UX
+- **Changes to `useBuildReadiness.ts`**:
+  - Added `lazy` option - defers fetch until user explicitly triggers it
+  - Reduced query limit from 50 to 25 rows (only need top urgent items for display)
+  - Explicit column selection to reduce data transfer
+- **Changes to `BOMs.tsx` BuildMetricsBanner**:
+  - Data only fetches when user expands the section (not on page mount)
+  - Added proper loading spinner with "Analyzing build readiness..." message
+  - "Click to load" button when collapsed, auto-loads when expanded
+  - Urgent items now show SKU, days left, blocked status, and description
+  - Clicking metric cards filters BOM list immediately
+  - Clicking urgent items scrolls to that specific BOM
+
+**Major Accomplishments:**
+
+1. **MRP Cascade System Core**
+   - **bomIntelligenceService.ts** (1,266 lines): Shortage detection, build feasibility analysis, cascading requirements
+   - **useBuildReadiness hook**: Single-query build status data with lazy loading option
+   - **useComponentCoverage hook**: 13-week coverage timeline for components
+   - **usePurchaseRecommendations hook**: Vendor order queue with consolidation
+
+2. **New Components**
+   - **BuildReadinessMatrix.tsx** (456 lines): Matrix view of BOM buildability status
+   - **ComponentCoverageTimeline.tsx** (435 lines): Week-by-week coverage heatmap with CSV export
+   - **VendorOrderQueue.tsx** (415 lines): Purchase recommendations grouped by vendor with PO generation
+
+3. **BOMs Page Enhancements**
+   - Replaced Critical Alerts with Build Metrics dashboard
+   - Added clickable metric cards that filter BOM list (Urgent, Blocked, Ready to Build)
+   - Urgent items list now navigates directly to specific BOM
+   - Shows real-time counts: Total BOMs, Build Urgent, Blocked, Ready to Build
+
+4. **Database Migrations (182-185)**
+   - **182**: `mrp_finished_goods_forecast` view - Forecast-driven demand planning
+   - **183**: `mrp_bom_intelligence` view - Buildability summary with component status
+   - **184**: `mrp_purchase_recommendations` view - Vendor-grouped purchase suggestions
+   - **185**: pg_cron job for automatic shortage checks every 4 hours
+
+5. **Comprehensive Test Suite** (tests/murp-tests/)
+   - **357 tests passing** across all modules
+   - Reorder calculations: ROP, safety stock, EOQ, runway, CLTR (837 lines)
+   - Vendor analysis: Lead times, performance metrics, consolidation (760 lines)
+   - Timezone-aware dates: Business days, DST handling, Denver cutoffs (652 lines)
+   - BOM explosion: Multi-level builds, component consumption (415 lines)
+   - Real-world scenarios: BuildaSoil fixtures with actual data patterns (484 lines)
+
+**Files Created/Modified:**
+- Services: `bomIntelligenceService.ts` (+1,266 lines)
+- Components: `BuildReadinessMatrix.tsx`, `ComponentCoverageTimeline.tsx`, `VendorOrderQueue.tsx` (+1,306 lines)
+- Hooks: `useBuildReadiness.ts` (added lazy loading), `useComponentCoverage.ts`, `usePurchaseRecommendations.ts` (+455 lines)
+- Migrations: 182-185 (+829 lines SQL)
+- Tests: Full test suite with fixtures and helpers (+5,000+ lines)
+- Pages: `BOMs.tsx` enhanced with lazy-loaded interactive metrics dashboard
+
+**Bug Fixes:**
+- **CRITICAL**: Fixed browser lockup caused by Build Metrics loading on page mount (lazy loading)
+- Fixed N+1 query issue in useBuildReadiness hook (single batch query instead)
+- Fixed `isDark` theme property access (use `resolvedTheme === 'dark'`)
+- Added graceful degradation when MRP views don't exist
+- Fixed migration 185 to use correct finale_sync_state schema
+- Added query limits to prevent overload
+
+**System Status:**
+- 🔄 **MRP System**: Active with 4-hour shortage checks via pg_cron
+- 🔄 **Build Tracking**: Real-time buildability status for all BOMs
+- 🔄 **Database**: Migrations 1-185 applied
+- 🔄 **Testing**: 357 tests passing (comprehensive MRP coverage)
+
+---
+
 ### Session: 2026-01-07 (Session Resumption & Milestone Push)
 
 **Summary:** Successfully resumed development session, verified system integrity, and pushed latest changes to GitHub. All tests passing (50/50), build clean, ready for continued development.

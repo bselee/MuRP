@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase/client';
 import { createPurchaseOrder, batchUpdateInventory } from '../hooks/useSupabaseMutations';
 import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
 import { useSkuDismissals, type DismissReason, type SnoozeOptions } from '../hooks/useSkuDismissals';
-import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon, AlertTriangleIcon, TrendingUpIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
+import { MagicSparklesIcon, ShoppingCartIcon, PlusIcon, CheckCircleIcon, XCircleIcon, ArrowRightIcon, AlertTriangleIcon, TrendingUpIcon, ChevronDownIcon, ChevronUpIcon, ListBulletIcon, UserGroupIcon, BuildingOffice2Icon } from './icons';
 import type { CreatePurchaseOrderInput } from '../types';
 import SupplyChainRiskPanel from './SupplyChainRiskPanel';
 import StockoutContingencyCard, { type StockoutItem } from './StockoutContingencyCard';
@@ -810,9 +810,88 @@ export default function PurchasingGuidanceDashboard({
         }
     }, [snoozeSku, addToast]);
 
+    // View mode: flat list or grouped by vendor
+    const [viewMode, setViewMode] = useState<'flat' | 'vendor'>('flat');
+
+    // Track which vendor groups are expanded (default all expanded)
+    const [expandedVendors, setExpandedVendors] = useState<Set<string>>(new Set());
+
     // Split advice into items needing action vs items already on order
     const needsOrder = filteredAdvice.filter(item => !item.linked_po);
     const onOrder = filteredAdvice.filter(item => !!item.linked_po);
+
+    // Group items by vendor for vendor view mode
+    const vendorGroups = React.useMemo(() => {
+        const groups = new Map<string, AdviceItem[]>();
+        needsOrder.forEach(item => {
+            const vendor = item.vendor_name || 'Unknown Vendor';
+            if (!groups.has(vendor)) {
+                groups.set(vendor, []);
+            }
+            groups.get(vendor)!.push(item);
+        });
+        // Sort vendors by total items (most items first) and then by name
+        return Array.from(groups.entries())
+            .sort((a, b) => {
+                // First by count (descending)
+                const countDiff = b[1].length - a[1].length;
+                if (countDiff !== 0) return countDiff;
+                // Then alphabetically
+                return a[0].localeCompare(b[0]);
+            });
+    }, [needsOrder]);
+
+    // Initialize all vendors as expanded when switching to vendor view
+    useEffect(() => {
+        if (viewMode === 'vendor' && expandedVendors.size === 0 && vendorGroups.length > 0) {
+            setExpandedVendors(new Set(vendorGroups.map(([vendor]) => vendor)));
+        }
+    }, [viewMode, vendorGroups, expandedVendors.size]);
+
+    // Toggle vendor group expansion
+    const toggleVendorExpanded = useCallback((vendor: string) => {
+        setExpandedVendors(prev => {
+            const next = new Set(prev);
+            if (next.has(vendor)) {
+                next.delete(vendor);
+            } else {
+                next.add(vendor);
+            }
+            return next;
+        });
+    }, []);
+
+    // Select all items from a specific vendor
+    const selectAllFromVendor = useCallback((vendor: string) => {
+        const vendorItems = needsOrder.filter(item => (item.vendor_name || 'Unknown Vendor') === vendor);
+        const vendorSkus = vendorItems.map(item => item.sku);
+        const allVendorSelected = vendorSkus.every(sku => selectedItems.has(sku));
+
+        setSelectedItems(prev => {
+            const next = new Set(prev);
+            if (allVendorSelected) {
+                // Deselect all from this vendor
+                vendorSkus.forEach(sku => next.delete(sku));
+            } else {
+                // Select all from this vendor
+                vendorSkus.forEach(sku => next.add(sku));
+            }
+            return next;
+        });
+    }, [needsOrder, selectedItems]);
+
+    // Check if all items from a vendor are selected
+    const isVendorFullySelected = useCallback((vendor: string) => {
+        const vendorItems = needsOrder.filter(item => (item.vendor_name || 'Unknown Vendor') === vendor);
+        return vendorItems.length > 0 && vendorItems.every(item => selectedItems.has(item.sku));
+    }, [needsOrder, selectedItems]);
+
+    // Check if some items from a vendor are selected
+    const isVendorPartiallySelected = useCallback((vendor: string) => {
+        const vendorItems = needsOrder.filter(item => (item.vendor_name || 'Unknown Vendor') === vendor);
+        const selectedCount = vendorItems.filter(item => selectedItems.has(item.sku)).length;
+        return selectedCount > 0 && selectedCount < vendorItems.length;
+    }, [needsOrder, selectedItems]);
 
     const selectedCount = selectedItems.size;
     const allSelected = selectedCount === needsOrder.length && needsOrder.length > 0;
@@ -1060,6 +1139,38 @@ export default function PurchasingGuidanceDashboard({
                         )}
                     </div>
                     <div className="flex items-center gap-3">
+                        {/* View Mode Toggle */}
+                        <div className="flex items-center bg-slate-900/50 rounded-lg p-1">
+                            <button
+                                onClick={() => setViewMode('flat')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                                    viewMode === 'flat'
+                                        ? 'bg-slate-700 text-white'
+                                        : 'text-slate-400 hover:text-slate-300'
+                                }`}
+                                title="Flat list view"
+                            >
+                                <ListBulletIcon className="w-4 h-4" />
+                                List
+                            </button>
+                            <button
+                                onClick={() => setViewMode('vendor')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                                    viewMode === 'vendor'
+                                        ? 'bg-slate-700 text-white'
+                                        : 'text-slate-400 hover:text-slate-300'
+                                }`}
+                                title="Group by vendor"
+                            >
+                                <BuildingOffice2Icon className="w-4 h-4" />
+                                By Vendor
+                                {vendorGroups.length > 0 && (
+                                    <span className="ml-1 px-1.5 py-0.5 bg-slate-600 rounded text-[10px]">
+                                        {vendorGroups.length}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
                         {selectedCount > 0 && (
                             <button
                                 onClick={handleCreatePO}
@@ -1081,7 +1192,179 @@ export default function PurchasingGuidanceDashboard({
                         No items need ordering right now.<br />
                         <span className="text-sm opacity-75">All at-risk items already have POs placed.</span>
                     </div>
+                ) : viewMode === 'vendor' ? (
+                    /* VENDOR GROUPED VIEW */
+                    <div className="divide-y divide-slate-700/50">
+                        {vendorGroups.map(([vendor, items]) => {
+                            const isExpanded = expandedVendors.has(vendor);
+                            const isFullySelected = isVendorFullySelected(vendor);
+                            const isPartiallySelected = isVendorPartiallySelected(vendor);
+                            const vendorSelectedCount = items.filter(item => selectedItems.has(item.sku)).length;
+                            const totalOrderQty = items.reduce((sum, item) => sum + (item.recommendation?.quantity || 0), 0);
+                            const criticalCount = items.filter(item => (item.days_remaining ?? 999) <= 7).length;
+
+                            return (
+                                <div key={vendor} className="bg-slate-800/30">
+                                    {/* Vendor Header */}
+                                    <div
+                                        className={`px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-slate-700/30 transition-colors ${
+                                            isFullySelected ? 'bg-blue-900/20' : ''
+                                        }`}
+                                        onClick={() => toggleVendorExpanded(vendor)}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={isFullySelected}
+                                                ref={el => {
+                                                    if (el) el.indeterminate = isPartiallySelected;
+                                                }}
+                                                onChange={(e) => {
+                                                    e.stopPropagation();
+                                                    selectAllFromVendor(vendor);
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                                                title={`Select all from ${vendor}`}
+                                            />
+                                            <BuildingOffice2Icon className="w-5 h-5 text-slate-400" />
+                                            <div>
+                                                <span className="font-medium text-white">{vendor}</span>
+                                                <span className="ml-2 text-xs text-slate-400">
+                                                    {items.length} item{items.length !== 1 ? 's' : ''}
+                                                </span>
+                                                {criticalCount > 0 && (
+                                                    <span className="ml-2 text-xs text-red-400 bg-red-900/30 px-1.5 py-0.5 rounded">
+                                                        {criticalCount} critical
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            {vendorSelectedCount > 0 && (
+                                                <span className="text-xs text-blue-400">
+                                                    {vendorSelectedCount} selected
+                                                </span>
+                                            )}
+                                            <span className="text-xs text-slate-500">
+                                                Total qty: {totalOrderQty.toLocaleString()}
+                                            </span>
+                                            {isExpanded ? (
+                                                <ChevronUpIcon className="w-5 h-5 text-slate-400" />
+                                            ) : (
+                                                <ChevronDownIcon className="w-5 h-5 text-slate-400" />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Vendor Items Table */}
+                                    {isExpanded && (
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-slate-900/30 text-slate-500 text-xs">
+                                                <tr>
+                                                    <th className="px-4 py-2 w-10"></th>
+                                                    <th className="px-4 py-2">SKU / Product</th>
+                                                    <th className="px-4 py-2 text-center">ABC</th>
+                                                    <th className="px-4 py-2 text-right">Stock</th>
+                                                    <th className="px-4 py-2 text-right">On Order</th>
+                                                    <th className="px-4 py-2 text-right">Days Left</th>
+                                                    <th className="px-4 py-2 text-right">Order Qty</th>
+                                                    <th className="px-4 py-2 w-24"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-700/30">
+                                                {items.map((item, idx) => {
+                                                    const daysRemaining = item.days_remaining ?? 999;
+                                                    const isSelected = selectedItems.has(item.sku);
+                                                    const rowClass = daysRemaining <= 0 ? 'bg-red-900/20' :
+                                                        daysRemaining < 7 ? 'bg-red-900/10' :
+                                                        daysRemaining < 14 ? 'bg-yellow-900/10' : '';
+
+                                                    return (
+                                                        <tr
+                                                            key={idx}
+                                                            className={`${rowClass} ${isSelected ? 'ring-1 ring-inset ring-blue-500/30 bg-blue-900/10' : ''} hover:bg-slate-700/20 transition-colors cursor-pointer`}
+                                                            onClick={(e) => {
+                                                                if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'BUTTON') {
+                                                                    toggleSelect(item.sku);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isSelected}
+                                                                    onChange={() => toggleSelect(item.sku)}
+                                                                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                                                                />
+                                                            </td>
+                                                            <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                                                                {onNavigateToSku ? (
+                                                                    <button
+                                                                        onClick={() => onNavigateToSku(item.sku)}
+                                                                        className="font-medium text-blue-400 hover:text-blue-300 hover:underline font-mono text-xs cursor-pointer text-left"
+                                                                    >
+                                                                        {item.sku}
+                                                                    </button>
+                                                                ) : (
+                                                                    <div className="font-medium text-white font-mono text-xs">{item.sku}</div>
+                                                                )}
+                                                                <div className="text-slate-400 text-xs max-w-[250px] truncate" title={item.name}>{item.name}</div>
+                                                            </td>
+                                                            <td className="px-4 py-2 text-center">
+                                                                {item.parameters?.abc_class && (
+                                                                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-xs font-bold ${
+                                                                        item.parameters.abc_class === 'A' ? 'bg-purple-500/30 text-purple-300' :
+                                                                        item.parameters.abc_class === 'B' ? 'bg-blue-500/30 text-blue-300' :
+                                                                        'bg-slate-500/30 text-slate-400'
+                                                                    }`}>
+                                                                        {item.parameters.abc_class}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td className={`px-4 py-2 text-right font-medium ${item.current_status.stock === 0 ? 'text-red-400' : 'text-slate-300'}`}>
+                                                                {item.current_status.stock}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-right">
+                                                                {item.current_status.on_order > 0 ? (
+                                                                    <span className="text-green-400 font-medium">{item.current_status.on_order}</span>
+                                                                ) : (
+                                                                    <span className="text-slate-500">—</span>
+                                                                )}
+                                                            </td>
+                                                            <td className={`px-4 py-2 text-right font-bold ${
+                                                                daysRemaining <= 0 ? 'text-red-400' :
+                                                                daysRemaining < 7 ? 'text-red-400' :
+                                                                daysRemaining < 14 ? 'text-yellow-400' :
+                                                                'text-slate-400'
+                                                            }`}>
+                                                                {daysRemaining <= 0 ? 'OUT' : daysRemaining}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-right font-medium text-blue-300">
+                                                                {item.recommendation?.quantity || '—'}
+                                                            </td>
+                                                            <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                                                                <button
+                                                                    onClick={() => handleQuickOrder(item)}
+                                                                    disabled={isCreatingPO}
+                                                                    className="px-2 py-1 text-xs bg-green-600/80 hover:bg-green-500 text-white rounded transition-colors disabled:opacity-50"
+                                                                    title="Create single-item PO"
+                                                                >
+                                                                    Order
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 ) : (
+                    /* FLAT LIST VIEW */
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-900/50 text-slate-400 font-medium">

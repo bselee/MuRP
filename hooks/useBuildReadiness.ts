@@ -44,28 +44,37 @@ export interface UseBuildReadinessReturn {
   readyCount: number;
 }
 
-export function useBuildReadiness(): UseBuildReadinessReturn {
+export interface UseBuildReadinessOptions {
+  /** If true, don't fetch automatically on mount - wait for manual fetch */
+  lazy?: boolean;
+}
+
+export function useBuildReadiness(options: UseBuildReadinessOptions = {}): UseBuildReadinessReturn {
+  const { lazy = false } = options;
   const [data, setData] = useState<BuildReadinessItem[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!lazy); // Not loading if lazy
   const [error, setError] = useState<Error | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const fetchBuildReadiness = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Single query to get buildability summary - no N+1 queries
+      // LIGHTWEIGHT QUERY: Only fetch counts and urgent items, not full dataset
+      // This prevents browser lockup from heavy view materialization
       const { data: buildability, error: buildError } = await supabase
         .from('mrp_buildability_summary')
-        .select('*')
+        .select('parent_sku, parent_description, parent_category, buildable_units, finished_stock, daily_demand, days_of_coverage, limiting_component_sku, limiting_component_name, limiting_component_builds, total_components, avg_component_cost, build_action')
         .order('days_of_coverage', { ascending: true })
-        .limit(50); // Limit to prevent overload
+        .limit(25); // Reduced limit - only need top urgent items
 
       if (buildError) {
         // If view doesn't exist, return empty data gracefully
         if (buildError.code === '42P01' || buildError.message?.includes('does not exist')) {
           console.warn('MRP views not yet created - showing empty build metrics');
           setData([]);
+          setHasFetched(true);
           return;
         }
         throw buildError;
@@ -97,18 +106,23 @@ export function useBuildReadiness(): UseBuildReadinessReturn {
       }));
 
       setData(readinessItems);
+      setHasFetched(true);
     } catch (err) {
       console.error('Build readiness fetch error:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
       setData([]); // Set empty data on error to prevent re-fetching loop
+      setHasFetched(true);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchBuildReadiness();
-  }, [fetchBuildReadiness]);
+    // Only auto-fetch if not lazy mode
+    if (!lazy) {
+      fetchBuildReadiness();
+    }
+  }, [lazy, fetchBuildReadiness]);
 
   // Calculate summary metrics
   const urgentCount = data?.filter(d => d.buildAction === 'BUILD_URGENT').length || 0;

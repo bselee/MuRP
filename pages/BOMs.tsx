@@ -43,6 +43,7 @@ import CategoryManagementModal, { type CategoryConfig } from '../components/Cate
 import { useLimitingSKUOnOrder } from '../hooks/useLimitingSKUOnOrder';
 import { useTheme } from '../components/ThemeProvider';
 import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability' | 'category' | 'velocity' | 'runway';
@@ -110,58 +111,91 @@ const readStoredCategoryConfig = (): Record<string, CategoryConfig> => {
   return saved ? JSON.parse(saved) : {};
 };
 
-// Build Metrics Banner - Shows MRP build intelligence summary
+// Build Metrics Banner - LIGHTWEIGHT version that only loads on expand
+// Uses lazy loading to prevent browser lockup from expensive MRP view queries
 const BuildMetricsBanner: React.FC<{
   isDark: boolean;
   isOpen: boolean;
   onToggle: () => void;
   onFilterChange: (filter: BuildabilityFilter) => void;
   onSelectSku: (sku: string) => void;
-}> = ({ isDark, isOpen, onToggle, onFilterChange, onSelectSku }) => {
-  const { data, loading, error, urgentCount, blockedCount, readyCount } = useBuildReadiness();
+  bomCount: number; // Pass from parent to avoid extra query
+}> = ({ isDark, isOpen, onToggle, onFilterChange, onSelectSku, bomCount }) => {
+  // LAZY LOADING: Only fetch when user expands the section
+  const { data, loading, error, urgentCount, blockedCount, readyCount, refetch } = useBuildReadiness({ lazy: true });
+  const hasFetched = data !== null;
 
-  // Get top urgent items for display
+  // Fetch data when section is opened for the first time
+  useEffect(() => {
+    if (isOpen && !hasFetched && !loading) {
+      refetch();
+    }
+  }, [isOpen, hasFetched, loading, refetch]);
+
+  // Get top urgent items for display (limit to 5 for performance)
   const urgentItems = useMemo(() => {
     if (!data) return [];
     return data
       .filter(d => d.buildAction === 'BUILD_URGENT')
-      .slice(0, 8);
+      .slice(0, 5);
   }, [data]);
 
-  const totalBoms = data?.length || 0;
+  // Dynamic title with status badges
+  const titleWithBadges = hasFetched ? (
+    <span className="flex items-center gap-3">
+      Build Metrics
+      {urgentCount > 0 && (
+        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs font-medium">
+          {urgentCount} urgent
+        </span>
+      )}
+      {blockedCount > 0 && (
+        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium">
+          {blockedCount} blocked
+        </span>
+      )}
+    </span>
+  ) : loading ? (
+    <span className="flex items-center gap-2">
+      Build Metrics
+      <span className="text-xs text-gray-400 animate-pulse">loading...</span>
+    </span>
+  ) : (
+    'Build Metrics'
+  );
 
   return (
     <CollapsibleSection
-      title="Build Metrics"
-      icon={<PackageIcon className={`w-6 h-6 ${urgentCount > 0 ? 'text-amber-400' : 'text-green-400'}`} />}
+      title={typeof titleWithBadges === 'string' ? titleWithBadges : 'Build Metrics'}
+      icon={<PackageIcon className={`w-6 h-6 ${hasFetched && urgentCount > 0 ? 'text-amber-400' : 'text-green-400'}`} />}
       variant="card"
       isOpen={isOpen}
       onToggle={onToggle}
-      badge={
-        <div className="flex items-center gap-3 ml-4">
-          {urgentCount > 0 && (
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/20 text-red-400 text-sm font-medium">
-              <ExclamationTriangleIcon className="w-4 h-4" />
-              {urgentCount} Urgent
-            </span>
-          )}
-          {blockedCount > 0 && (
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-medium">
-              <XCircleIcon className="w-4 h-4" />
-              {blockedCount} Blocked
-            </span>
-          )}
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/20 text-green-400 text-sm font-medium">
-            <CheckCircleIcon className="w-4 h-4" />
-            {readyCount} Ready
-          </span>
-        </div>
-      }
+      count={hasFetched ? urgentCount : undefined}
     >
-      {loading ? (
-        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg p-4 text-center`}>
-          <div className={`animate-pulse ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Loading build metrics...
+      {!hasFetched && !loading ? (
+        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg p-6 text-center`}>
+          <PackageIcon className={`w-12 h-12 mx-auto mb-3 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+          <p className={`mb-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            Analyze build readiness and component shortages
+          </p>
+          <button
+            onClick={refetch}
+            className="px-4 py-2 rounded-md bg-accent-500 hover:bg-accent-600 text-white font-medium transition-colors"
+          >
+            Load Build Metrics
+          </button>
+        </div>
+      ) : loading ? (
+        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg p-8`}>
+          <div className="flex flex-col items-center justify-center min-h-[120px]">
+            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className={`mt-4 text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              Analyzing build readiness...
+            </p>
+            <p className={`mt-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+              Checking component availability and build status
+            </p>
           </div>
         </div>
       ) : error ? (
@@ -172,11 +206,11 @@ const BuildMetricsBanner: React.FC<{
         </div>
       ) : (
         <div className={`${isDark ? 'bg-gray-800/50' : 'bg-white border border-gray-200'} rounded-lg p-4`}>
-          {/* Summary Stats - Clickable to filter */}
+          {/* Summary Stats - Clickable to filter BOM list */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
             <MetricCard
               label="Total BOMs"
-              value={totalBoms}
+              value={bomCount}
               isDark={isDark}
               onClick={() => onFilterChange('all')}
             />
@@ -203,50 +237,65 @@ const BuildMetricsBanner: React.FC<{
             />
           </div>
 
-          {/* Urgent Items List - Clickable to navigate */}
+          {/* Urgent Items - Direct action buttons */}
           {urgentItems.length > 0 && (
-            <div>
-              <h4 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
-                Urgent Builds (≤7 days coverage) - Click to view
+            <div className={`border-t ${isDark ? 'border-gray-700' : 'border-gray-200'} pt-4`}>
+              <h4 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-3`}>
+                <ExclamationTriangleIcon className="w-4 h-4 inline mr-1.5 text-amber-500" />
+                Urgent: ≤7 days coverage — click to view details
               </h4>
               <div className="flex flex-wrap gap-2">
                 {urgentItems.map(item => (
                   <button
                     key={item.sku}
                     onClick={() => onSelectSku(item.sku)}
-                    className={`px-3 py-1.5 rounded-md text-sm cursor-pointer transition-all hover:scale-105 ${
+                    className={`group px-3 py-2 rounded-lg text-sm cursor-pointer transition-all hover:scale-[1.02] hover:shadow-md ${
                       isDark
                         ? 'bg-red-900/30 border border-red-700 text-red-300 hover:bg-red-900/50'
                         : 'bg-red-50 border border-red-200 text-red-700 hover:bg-red-100'
                     }`}
                   >
-                    <span className="font-mono font-medium">{item.sku}</span>
-                    <span className={`ml-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                      {item.daysOfCoverage}d
-                    </span>
-                    {!item.canBuild && (
-                      <span className={`ml-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                        • blocked
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-semibold">{item.sku}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                        isDark ? 'bg-red-800/50 text-red-200' : 'bg-red-200 text-red-800'
+                      }`}>
+                        {item.daysOfCoverage}d left
                       </span>
-                    )}
+                      {!item.canBuild && (
+                        <span className={`px-1.5 py-0.5 rounded text-xs ${
+                          isDark ? 'bg-amber-800/50 text-amber-200' : 'bg-amber-200 text-amber-800'
+                        }`}>
+                          blocked
+                        </span>
+                      )}
+                    </div>
+                    <div className={`text-xs mt-1 truncate max-w-[200px] ${isDark ? 'text-red-400/70' : 'text-red-600/70'}`}>
+                      {item.description}
+                    </div>
                   </button>
                 ))}
                 {urgentCount > urgentItems.length && (
                   <button
                     onClick={() => onFilterChange('near-oos')}
-                    className={`px-3 py-1.5 text-sm cursor-pointer hover:underline ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
+                    className={`px-3 py-2 rounded-lg text-sm border-2 border-dashed transition-colors ${
+                      isDark
+                        ? 'border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300'
+                        : 'border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-600'
+                    }`}
                   >
-                    +{urgentCount - urgentItems.length} more
+                    +{urgentCount - urgentItems.length} more urgent
                   </button>
                 )}
               </div>
             </div>
           )}
 
-          {urgentItems.length === 0 && (
+          {urgentItems.length === 0 && hasFetched && (
             <div className={`text-center py-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
               <CheckCircleIcon className="w-8 h-8 mx-auto mb-2 text-green-500" />
-              <p className="text-sm">All builds have adequate coverage</p>
+              <p className="text-sm font-medium">All builds have adequate coverage</p>
+              <p className="text-xs mt-1">No immediate action required</p>
             </div>
           )}
         </div>
@@ -306,7 +355,8 @@ const BOMs: React.FC<BOMsProps> = ({
   onQuickRequest,
   onNavigateToPurchaseOrders
 }) => {
-  const { isDark } = useTheme();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   const { isExcluded: isSkuGloballyExcluded } = useGlobalSkuFilter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedBom, setSelectedBom] = useState<BillOfMaterials | null>(null);
@@ -1175,6 +1225,7 @@ const BOMs: React.FC<BOMsProps> = ({
             element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }, 100);
         }}
+        bomCount={boms.length}
       />
 
       {/* Compliance Dashboard - Coming Soon */}
