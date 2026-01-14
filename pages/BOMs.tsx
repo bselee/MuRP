@@ -1316,8 +1316,8 @@ const BOMs: React.FC<BOMsProps> = ({
         isOpen={isFiltersOpen}
         onToggle={() => setIsFiltersOpen(!isFiltersOpen)}
       >
-        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-lg p-4 ${!isDark ? 'border border-gray-200 shadow-sm' : ''}`}>
-          <div className="flex flex-col lg:flex-row gap-4">
+        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} backdrop-blur-sm rounded-lg p-4 ${!isDark ? 'border border-gray-200 shadow-sm' : ''} overflow-visible`}>
+          <div className="flex flex-col lg:flex-row gap-4 overflow-visible">
           {/* Search Bar */}
           <div className="flex-1">
             <div className="relative">
@@ -1343,7 +1343,7 @@ const BOMs: React.FC<BOMsProps> = ({
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 overflow-visible">
             {/* Buildability Filter */}
             <select
               value={buildabilityFilter}

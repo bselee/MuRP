@@ -87,7 +87,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
     return (
       <section
         id={id}
-        className="glass-panel overflow-hidden scroll-mt-20"
+        className="glass-panel overflow-visible scroll-mt-20"
       >
         <Button
           variant="ghost"
