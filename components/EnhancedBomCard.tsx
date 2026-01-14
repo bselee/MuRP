@@ -8,6 +8,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTheme } from './ThemeProvider';
 import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
+import { useGlobalCategoryFilter } from '../hooks/useGlobalCategoryFilter';
 import type { BillOfMaterials, InventoryItem, Label, ComplianceRecord, ComponentSwapMap } from '../types';
 import type { LimitingSKUOnOrder } from '../hooks/useLimitingSKUOnOrder';
 import {
@@ -132,6 +133,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
 }) => {
   const { resolvedTheme } = useTheme();
   const { isExcluded: isSkuGloballyExcluded } = useGlobalSkuFilter();
+  const { isExcluded: isCategoryGloballyExcluded } = useGlobalCategoryFilter();
   const isLightTheme = resolvedTheme === 'light';
   const themeSwap = (light: string, dark: string) => (isLightTheme ? light : dark);
   const glassTile = themeSwap(LIGHT_GLASS_TILE, DARK_GLASS_TILE);
@@ -251,6 +253,21 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   // Check if any component is inactive
   const hasInactiveComponents = inactiveComponentSkus.size > 0;
 
+  // Track which components have excluded categories (e.g., Deprecating)
+  const excludedCategoryComponentSkus = useMemo(() => {
+    const excluded = new Set<string>();
+    (bom.components || []).forEach(component => {
+      const inventoryItem = inventoryMap.get(component.sku);
+      if (inventoryItem?.category && isCategoryGloballyExcluded(inventoryItem.category)) {
+        excluded.add(component.sku);
+      }
+    });
+    return excluded;
+  }, [bom.components, inventoryMap, isCategoryGloballyExcluded]);
+
+  // Check if any component has excluded category
+  const hasExcludedCategoryComponents = excludedCategoryComponentSkus.size > 0;
+
   // Excluded component row styles
   const excludedComponentRowClass = themeSwap(
     'bg-amber-50 border-2 border-amber-400 border-dashed',
@@ -269,6 +286,16 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
   const inactiveBadgeClass = themeSwap(
     'px-2 py-0.5 rounded text-xs bg-slate-200 text-slate-700 border border-slate-400 font-semibold',
     'px-2 py-0.5 rounded text-xs bg-slate-700/60 text-slate-300 border border-slate-500 font-semibold'
+  );
+
+  // Excluded category component row styles (e.g., Deprecating category)
+  const excludedCategoryRowClass = themeSwap(
+    'bg-rose-50 border-2 border-rose-400 border-dashed opacity-75',
+    'bg-rose-900/20 border-2 border-rose-600/50 border-dashed opacity-75'
+  );
+  const excludedCategoryBadgeClass = themeSwap(
+    'px-2 py-0.5 rounded text-xs bg-rose-100 text-rose-700 border border-rose-400 font-semibold',
+    'px-2 py-0.5 rounded text-xs bg-rose-900/40 text-rose-300 border border-rose-600 font-semibold'
   );
 
   // Determine display mode
@@ -953,16 +980,21 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                   // Check if this component is inactive (not in active inventory)
                   const isInactiveComponent = inactiveComponentSkus.has(c.sku);
 
+                  // Check if this component's category is excluded (e.g., Deprecating)
+                  const isCategoryExcluded = excludedCategoryComponentSkus.has(c.sku);
+
                   const rowClass = isGloballyExcluded
                     ? excludedComponentRowClass
-                    : isInactiveComponent
-                      ? inactiveComponentRowClass
-                      : isLimiting
-                        ? limitingHighlight.row
-                        : themeSwap(
-                            'bg-white/80 border border-emerald-600/10 hover:border-emerald-600/30 hover:bg-emerald-50/50',
-                            'bg-slate-900/50 border border-emerald-500/10 hover:border-emerald-500/30 hover:bg-emerald-950/20'
-                          );
+                    : isCategoryExcluded
+                      ? excludedCategoryRowClass
+                      : isInactiveComponent
+                        ? inactiveComponentRowClass
+                        : isLimiting
+                          ? limitingHighlight.row
+                          : themeSwap(
+                              'bg-white/80 border border-emerald-600/10 hover:border-emerald-600/30 hover:bg-emerald-50/50',
+                              'bg-slate-900/50 border border-emerald-500/10 hover:border-emerald-500/30 hover:bg-emerald-950/20'
+                            );
 
                   return (
                     <div
@@ -978,15 +1010,20 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                                 'flex-shrink-0 w-7 h-7 rounded-full bg-amber-100 border border-amber-400 flex items-center justify-center text-xs font-bold text-amber-800',
                                 'flex-shrink-0 w-7 h-7 rounded-full bg-amber-950/50 border border-amber-600/40 flex items-center justify-center text-xs font-bold text-amber-300'
                               )
-                            : isInactiveComponent
+                            : isCategoryExcluded
                               ? themeSwap(
-                                  'flex-shrink-0 w-7 h-7 rounded-full bg-slate-200 border border-slate-400 flex items-center justify-center text-xs font-bold text-slate-600',
-                                  'flex-shrink-0 w-7 h-7 rounded-full bg-slate-700/50 border border-slate-600/40 flex items-center justify-center text-xs font-bold text-slate-400'
+                                  'flex-shrink-0 w-7 h-7 rounded-full bg-rose-100 border border-rose-400 flex items-center justify-center text-xs font-bold text-rose-700',
+                                  'flex-shrink-0 w-7 h-7 rounded-full bg-rose-900/50 border border-rose-600/40 flex items-center justify-center text-xs font-bold text-rose-300'
                                 )
-                              : themeSwap(
-                                  'flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center text-xs font-bold text-emerald-800',
-                                  'flex-shrink-0 w-7 h-7 rounded-full bg-emerald-950/50 border border-emerald-600/40 flex items-center justify-center text-xs font-bold text-emerald-300'
-                                )
+                              : isInactiveComponent
+                                ? themeSwap(
+                                    'flex-shrink-0 w-7 h-7 rounded-full bg-slate-200 border border-slate-400 flex items-center justify-center text-xs font-bold text-slate-600',
+                                    'flex-shrink-0 w-7 h-7 rounded-full bg-slate-700/50 border border-slate-600/40 flex items-center justify-center text-xs font-bold text-slate-400'
+                                  )
+                                : themeSwap(
+                                    'flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 border border-emerald-300 flex items-center justify-center text-xs font-bold text-emerald-800',
+                                    'flex-shrink-0 w-7 h-7 rounded-full bg-emerald-950/50 border border-emerald-600/40 flex items-center justify-center text-xs font-bold text-emerald-300'
+                                  )
                           }>
                             {idx + 1}
                           </div>
@@ -1002,15 +1039,21 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                                 </span>
                               )}
                               {/* Inactive badge - component not in active inventory */}
-                              {isInactiveComponent && !isGloballyExcluded && (
+                              {isInactiveComponent && !isGloballyExcluded && !isCategoryExcluded && (
                                 <span className={inactiveBadgeClass} title="This SKU is not in active inventory">
                                   INACTIVE
+                                </span>
+                              )}
+                              {/* Category excluded badge - component has excluded category (e.g., Deprecating) */}
+                              {isCategoryExcluded && !isGloballyExcluded && (
+                                <span className={excludedCategoryBadgeClass} title={`This component has category "${componentItem?.category}" which is globally excluded`}>
+                                  {componentItem?.category?.toUpperCase() || 'EXCLUDED'}
                                 </span>
                               )}
                               {onNavigateToInventory ? (
                                 <Button
                                   onClick={() => onNavigateToInventory(c.sku)}
-                                  className={`${(isGloballyExcluded || isInactiveComponent) ? 'line-through opacity-70 ' : ''}${themeSwap(
+                                  className={`${(isGloballyExcluded || isInactiveComponent || isCategoryExcluded) ? 'line-through opacity-70 ' : ''}${themeSwap(
                                     'font-bold font-mono text-sm text-emerald-700 hover:text-emerald-600 underline decoration-dotted',
                                     'font-bold font-mono text-sm text-emerald-400 hover:text-emerald-300 underline decoration-dotted'
                                   )}`}
@@ -1018,7 +1061,7 @@ const EnhancedBomCard: React.FC<EnhancedBomCardProps> = ({
                                   {c.sku}
                                 </Button>
                               ) : (
-                                <span className={`${(isGloballyExcluded || isInactiveComponent) ? 'line-through opacity-70 ' : ''}${themeSwap('font-bold font-mono text-sm text-emerald-800', 'font-bold font-mono text-sm text-emerald-300')}`}>{c.sku}</span>
+                                <span className={`${(isGloballyExcluded || isInactiveComponent || isCategoryExcluded) ? 'line-through opacity-70 ' : ''}${themeSwap('font-bold font-mono text-sm text-emerald-800', 'font-bold font-mono text-sm text-emerald-300')}`}>{c.sku}</span>
                               )}
                               {componentItem?.description && (
                                 <span className={themeSwap('text-xs text-gray-600 italic', 'text-xs text-gray-400 italic')}>
