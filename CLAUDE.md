@@ -114,12 +114,12 @@ import ErrorBoundary from './components/ErrorBoundary';
 ### Directory Structure
 
 ```
-/components/          # React components (217 total)
+/components/          # React components (238 total)
   /admin/            # Admin-specific (AgentCommandCenter, WorkflowPanel, EmailTemplateEditor)
   /settings/         # Settings page modules (SettingsLayout, SettingsSidebar, SettingsContent)
   /compliance/       # Compliance UI components
   /ui/               # Reusable UI components
-/hooks/              # Custom React hooks (20 hooks)
+/hooks/              # Custom React hooks (23 hooks)
 /lib/                # Core utilities and modules (32 files)
   /auth/             # Authentication logic
   /finale/           # Finale API client
@@ -127,12 +127,12 @@ import ErrorBoundary from './components/ErrorBoundary';
   /schema/           # Schema definitions and transformers (CRITICAL)
   /supabase/         # Supabase client configuration
   /sync/             # Data sync orchestration
-/pages/              # Page components (27 pages)
-/services/           # Business logic (119 services, 55K+ lines)
+/pages/              # Page components (28 pages)
+/services/           # Business logic (130 services, 60K+ lines)
 /types/              # TypeScript type definitions (10 files)
 /supabase/
-  /functions/        # Edge functions (32 functions for webhooks, sync, automation)
-  /migrations/       # 168 SQL migrations (strict 3-digit sequential numbering)
+  /functions/        # Edge functions (31 functions for webhooks, sync, automation)
+  /migrations/       # 175 SQL migrations (strict 3-digit sequential numbering)
 /e2e/                # Playwright E2E tests
 /tests/              # Unit tests
 ```
@@ -151,7 +151,7 @@ ls supabase/migrations | sort | tail -1  # Check current highest number
 supabase migration new feature_name
 
 # 3. Rename to sequential number
-mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/169_feature_name.sql
+mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/176_feature_name.sql
 
 # 4. Test locally
 supabase db reset
@@ -225,16 +225,19 @@ Persistent global filters applied across all pages (Inventory, Stock Intelligenc
 **Key Hooks:**
 - `hooks/useGlobalCategoryFilter.ts` - Exclude categories (deprecated, discontinued, dropship)
 - `hooks/useGlobalSkuFilter.ts` - Exclude specific SKUs
+- `hooks/useGlobalVendorFilter.ts` - Exclude specific vendors
 
 **Storage Keys:**
 - `global-excluded-categories` - Array of excluded category names
 - `global-excluded-skus` - Array of excluded SKU IDs
+- `global-excluded-vendors` - Array of excluded vendor names
 
 **Cross-Component Sync:**
 ```typescript
 // Components listen for filter changes
 window.addEventListener('global-category-filter-changed', handleFilterChange);
 window.addEventListener('global-sku-filter-changed', handleFilterChange);
+window.addEventListener('global-vendor-filter-changed', handleFilterChange);
 ```
 
 **Configuration UI:** Settings -> Data -> Global Data Filtering (`GlobalDataFilterPanel.tsx`)
@@ -595,7 +598,7 @@ Only proceed to commit when all tests pass and build succeeds.
 ## Claude Code Skills & Agents
 
 ### Available Skills (in `.claude/skills/`)
-- `/deploy` - Build, commit, and deploy to main via claude/merge-to-main branch
+- `/deploy` - Build, commit, and push directly to main for production deployment
 - `/code-review` - Review code for quality, security, and best practices
 - `/security-review` - Security audit for vulnerabilities and compliance
 
