@@ -6,6 +6,7 @@ import PageHeader from '@/components/ui/PageHeader';
  * Combines:
  * - Inventory integration from main (buildability, stock levels, limiting components)
  * - Compliance features from our branch (dashboard, alerts, data sheets)
+ * - MRP Build Intelligence metrics
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -21,8 +22,12 @@ import {
   ListBulletIcon,
   ExclamationTriangleIcon,
   ShieldCheckIcon,
-  PackageIcon
+  PackageIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  XCircleIcon
 } from '../components/icons';
+import { useBuildReadiness } from '../hooks/useBuildReadiness';
 import CollapsibleSection from '../components/CollapsibleSection';
 import BomEditModal from '../components/BomEditModal';
 import BomDetailModal from '../components/BomDetailModal';
@@ -104,6 +109,162 @@ const readStoredCategoryConfig = (): Record<string, CategoryConfig> => {
   const saved = localStorage.getItem('bom-category-config');
   return saved ? JSON.parse(saved) : {};
 };
+
+// Build Metrics Banner - Shows MRP build intelligence summary
+const BuildMetricsBanner: React.FC<{
+  isDark: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+}> = ({ isDark, isOpen, onToggle }) => {
+  const { data, loading, urgentCount, blockedCount, readyCount } = useBuildReadiness();
+
+  // Get top urgent items for display
+  const urgentItems = useMemo(() => {
+    if (!data) return [];
+    return data
+      .filter(d => d.buildAction === 'BUILD_URGENT')
+      .slice(0, 8);
+  }, [data]);
+
+  const totalBoms = data?.length || 0;
+
+  return (
+    <CollapsibleSection
+      title="Build Metrics"
+      icon={<PackageIcon className={`w-6 h-6 ${urgentCount > 0 ? 'text-amber-400' : 'text-green-400'}`} />}
+      variant="card"
+      isOpen={isOpen}
+      onToggle={onToggle}
+      badge={
+        <div className="flex items-center gap-3 ml-4">
+          {urgentCount > 0 && (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/20 text-red-400 text-sm font-medium">
+              <ExclamationTriangleIcon className="w-4 h-4" />
+              {urgentCount} Urgent
+            </span>
+          )}
+          {blockedCount > 0 && (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-medium">
+              <XCircleIcon className="w-4 h-4" />
+              {blockedCount} Blocked
+            </span>
+          )}
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/20 text-green-400 text-sm font-medium">
+            <CheckCircleIcon className="w-4 h-4" />
+            {readyCount} Ready
+          </span>
+        </div>
+      }
+    >
+      {loading ? (
+        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-gray-50'} rounded-lg p-4 text-center`}>
+          <div className={`animate-pulse ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            Loading build metrics...
+          </div>
+        </div>
+      ) : (
+        <div className={`${isDark ? 'bg-gray-800/50' : 'bg-white border border-gray-200'} rounded-lg p-4`}>
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+            <MetricCard
+              label="Total BOMs"
+              value={totalBoms}
+              isDark={isDark}
+            />
+            <MetricCard
+              label="Build Urgent"
+              value={urgentCount}
+              isDark={isDark}
+              variant={urgentCount > 0 ? 'danger' : 'default'}
+            />
+            <MetricCard
+              label="Blocked"
+              value={blockedCount}
+              isDark={isDark}
+              variant={blockedCount > 0 ? 'warning' : 'default'}
+            />
+            <MetricCard
+              label="Ready to Build"
+              value={readyCount}
+              isDark={isDark}
+              variant="success"
+            />
+          </div>
+
+          {/* Urgent Items List */}
+          {urgentItems.length > 0 && (
+            <div>
+              <h4 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                Urgent Builds (≤7 days coverage)
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {urgentItems.map(item => (
+                  <div
+                    key={item.sku}
+                    className={`px-3 py-1.5 rounded-md text-sm ${
+                      isDark
+                        ? 'bg-red-900/30 border border-red-700 text-red-300'
+                        : 'bg-red-50 border border-red-200 text-red-700'
+                    }`}
+                  >
+                    <span className="font-mono font-medium">{item.sku}</span>
+                    <span className={`ml-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                      {item.daysOfCoverage}d
+                    </span>
+                    {!item.canBuild && (
+                      <span className={`ml-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                        • blocked
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {urgentCount > urgentItems.length && (
+                  <span className={`px-3 py-1.5 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    +{urgentCount - urgentItems.length} more
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {urgentItems.length === 0 && (
+            <div className={`text-center py-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              <CheckCircleIcon className="w-8 h-8 mx-auto mb-2 text-green-500" />
+              <p className="text-sm">All builds have adequate coverage</p>
+            </div>
+          )}
+        </div>
+      )}
+    </CollapsibleSection>
+  );
+};
+
+// Metric Card subcomponent
+const MetricCard: React.FC<{
+  label: string;
+  value: number;
+  isDark: boolean;
+  variant?: 'default' | 'danger' | 'warning' | 'success';
+}> = ({ label, value, isDark, variant = 'default' }) => {
+  const variantStyles = {
+    default: isDark ? 'text-white' : 'text-gray-900',
+    danger: 'text-red-500',
+    warning: 'text-amber-500',
+    success: 'text-green-500',
+  };
+
+  return (
+    <div className={`p-3 rounded-lg ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
+      <p className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'} uppercase`}>
+        {label}
+      </p>
+      <p className={`text-2xl font-bold ${variantStyles[variant]}`}>
+        {value}
+      </p>
+    </div>
+  );
+};
+
 const BOMs: React.FC<BOMsProps> = ({
   boms,
   inventory,
@@ -975,40 +1136,8 @@ const BOMs: React.FC<BOMsProps> = ({
         />
       )}
 
-      {/* Critical Alerts Banner */}
-      {criticalBoms.length > 0 && (
-        <CollapsibleSection
-          title={`Critical Alerts (${criticalBoms.length})`}
-          icon={<ExclamationTriangleIcon className="w-6 h-6 text-red-400" />}
-          variant="card"
-          isOpen={isAlertsOpen}
-          onToggle={() => setIsAlertsOpen(!isAlertsOpen)}
-        >
-          <div className={`${isDark ? 'bg-red-900/20 border-red-700' : 'bg-red-50 border-red-300'} border-2 rounded-lg p-4`}>
-            <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-sm mb-3`}>
-              {criticalBoms.length} product{criticalBoms.length > 1 ? 's' : ''} cannot be built and have zero inventory
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {criticalBoms.map(bom => (
-                <Button
-                  key={bom.id}
-                  onClick={() => {
-                    const element = bomRefs.current.get(bom.id);
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      element.classList.add('ring-2', 'ring-red-500');
-                      setTimeout(() => element.classList.remove('ring-2', 'ring-red-500'), 2000);
-                    }
-                  }}
-                  className="px-3 py-1.5 bg-red-900/40 hover:bg-red-900/60 text-red-300 text-sm rounded-md border border-red-700 transition-colors"
-                >
-                  {bom.finishedSku}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </CollapsibleSection>
-      )}
+      {/* Build Metrics Dashboard */}
+      <BuildMetricsBanner isDark={isDark} isOpen={isAlertsOpen} onToggle={() => setIsAlertsOpen(!isAlertsOpen)} />
 
       {/* Compliance Dashboard - Coming Soon */}
       {/* TODO: Load all compliance records for dashboard view */}

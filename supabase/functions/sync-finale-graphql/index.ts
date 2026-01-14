@@ -67,7 +67,8 @@ async function graphqlQuery(query: string, variables: Record<string, any> = {}) 
 
 // ===========================================
 // PRODUCTS QUERY - Verified field names from introspection
-// Note: supplier1/2/3 are party types, productBomList is a String (not queryable)
+// Note: supplier1/2/3 are party types
+// productBomList is a String field containing JSON array of BOM components
 // Stock columns are per-facility: stockColumnQuantityOnHandUnitsBuildasoilorganicsapifacility{ID}
 // Valid facilities from error: 10000, 10003, 10005, 10059, 10109
 // ===========================================
@@ -90,6 +91,7 @@ const PRODUCTS_QUERY = `
           manufacturer
           mfgProductId
           universalProductCode
+          productBomList
           supplier1 {
             partyId
             partyUrl
@@ -749,6 +751,150 @@ serve(async (req) => {
         });
 
         console.log(`[Sync] ✅ Products: ${uniqueProducts.size} in ${Date.now() - productsStart}ms`);
+
+        // ==========================================
+        // EXTRACT BOMs FROM productBomList (GraphQL data)
+        // ==========================================
+        try {
+          const bomsStart = Date.now();
+          console.log('[Sync] Extracting BOMs from GraphQL productBomList...');
+
+          const allBoms: any[] = [];
+          const bomTypeCounts: Record<string, number> = {};
+
+          for (const product of allProducts) {
+            if (!product.productBomList) continue;
+
+            // Skip inactive/deprecating products
+            if (!isActiveProduct(product)) continue;
+
+            // Parse the productBomList - format is "SKU: qty, SKU: qty, ..."
+            const bomListStr = product.productBomList;
+            if (!bomListStr || typeof bomListStr !== 'string' || bomListStr.trim() === '') continue;
+
+            // Parse the comma-separated pairs
+            const bomPairs = bomListStr.split(',').map((s: string) => s.trim()).filter((s: string) => s);
+            if (bomPairs.length === 0) continue;
+
+            // Transform BOM components
+            for (const pair of bomPairs) {
+              // Format is "SKU: quantity" or "SKU:quantity"
+              const match = pair.match(/^(.+?):\s*(.+)$/);
+              if (!match) continue;
+
+              const componentSku = match[1].trim();
+              const quantity = parseFloat(match[2].trim()) || 1;
+              if (!componentSku) continue;
+
+              // Since this is from productBomList (not productAssocList), categorize as Packaging/Kit
+              const bomType = 'PACKAGING_COMPONENT';
+              bomTypeCounts[bomType] = (bomTypeCounts[bomType] || 0) + 1;
+
+              const bomUrl = `${product.productUrl}/bom/${componentSku}`;
+
+              allBoms.push({
+                finale_bom_url: bomUrl,
+                bom_id: `${product.productId}-${componentSku}`,
+                parent_product_url: product.productUrl,
+                parent_name: product.description || product.productId,
+                parent_sku: product.productId,
+                component_product_url: null, // Not available from productBomList string format
+                component_name: componentSku, // SKU only, name will be enriched from products table
+                component_sku: componentSku,
+                quantity_per: quantity,
+                quantity_per_parent: quantity,
+                effective_quantity: quantity,
+                bom_type: bomType,
+                status: 'Active',
+                raw_data: { sku: componentSku, quantity, source: 'productBomList' },
+                synced_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
+            }
+          }
+
+          console.log(`[Sync] BOM types found in GraphQL:`, JSON.stringify(bomTypeCounts));
+
+          if (allBoms.length > 0) {
+            // Deduplicate by finale_bom_url
+            const uniqueBoms = new Map<string, any>();
+            for (const bom of allBoms) {
+              uniqueBoms.set(bom.finale_bom_url, bom);
+            }
+
+            await batchUpsert(supabase, 'finale_boms', Array.from(uniqueBoms.values()), 'finale_bom_url');
+
+            // Also sync to boms (app) table
+            const bomsByParent = new Map<string, any[]>();
+            for (const bom of Array.from(uniqueBoms.values())) {
+              if (!bomsByParent.has(bom.parent_sku)) {
+                bomsByParent.set(bom.parent_sku, []);
+              }
+              bomsByParent.get(bom.parent_sku)!.push(bom);
+            }
+
+            // Map Finale association types to readable categories
+            const mapBomTypeToCategory = (bomType: string): string => {
+              const typeMap: Record<string, string> = {
+                'MANUF_COMPONENT': 'Manufacturing',
+                'PACKAGING_COMPONENT': 'Packaging',
+                'BUNDLE_COMPONENT': 'Bundle/Kit',
+                'KIT_COMPONENT': 'Bundle/Kit',
+                'ASSEMBLY_COMPONENT': 'Assembly',
+                'PRODUCT_VARIANT': 'Variant',
+                'KITTING': 'Packaging',
+                'PACKAGING': 'Packaging',
+                'MANUFACTURING': 'Manufacturing',
+              };
+              return typeMap[bomType] || bomType || 'Unknown';
+            };
+
+            const appBoms: any[] = [];
+            for (const [parentSku, components] of bomsByParent) {
+              const firstComponent = components[0];
+              const bomComponents = components.map(c => ({
+                sku: c.component_sku,
+                name: c.component_name || c.component_sku,
+                quantity: c.quantity_per || 1,
+                unit: 'each',
+              }));
+
+              appBoms.push({
+                finished_sku: parentSku,
+                name: firstComponent.parent_name || parentSku,
+                description: `Assembly with ${components.length} components`,
+                category: mapBomTypeToCategory(firstComponent.bom_type),
+                yield_quantity: 1,
+                components: bomComponents,
+                artwork: [],
+                packaging: {},
+                barcode: '',
+                data_source: 'finale_graphql',
+                last_sync_at: new Date().toISOString(),
+                sync_status: 'synced',
+                is_active: true,
+                updated_at: new Date().toISOString(),
+              });
+            }
+
+            if (appBoms.length > 0) {
+              await batchUpsert(supabase, 'boms', appBoms, 'finished_sku');
+            }
+
+            results.push({
+              dataType: 'boms_graphql',
+              success: true,
+              itemCount: uniqueBoms.size,
+              duration: Date.now() - bomsStart,
+            });
+
+            console.log(`[Sync] ✅ BOMs from GraphQL: ${uniqueBoms.size} components, ${appBoms.length} assemblies in ${Date.now() - bomsStart}ms`);
+          } else {
+            console.log('[Sync] No BOMs found in productBomList');
+          }
+        } catch (bomError) {
+          console.error('[Sync] BOM extraction failed:', bomError);
+        }
       }
     } catch (error) {
       console.error('[Sync] Products sync failed:', error);

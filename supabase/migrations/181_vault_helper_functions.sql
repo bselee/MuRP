@@ -69,24 +69,51 @@ COMMENT ON FUNCTION create_vault_secret_if_not_exists IS 'Creates a secret in Su
 -- Add onboarding_completed tracking
 -- ============================================================================
 -- Track whether user has completed data source setup
+-- Note: Only add columns if users table exists (may not exist in all environments)
 DO $$
 BEGIN
-  IF NOT EXISTS (
+  -- Check if users table exists first
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = 'users'
+    AND table_schema = 'public'
+  ) THEN
+    -- Add onboarding_data_source column if it doesn't exist
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'users'
+      AND column_name = 'onboarding_data_source'
+    ) THEN
+      ALTER TABLE users ADD COLUMN onboarding_data_source TEXT;
+    END IF;
+
+    -- Add onboarding_completed_at column if it doesn't exist
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'users'
+      AND column_name = 'onboarding_completed_at'
+    ) THEN
+      ALTER TABLE users ADD COLUMN onboarding_completed_at TIMESTAMPTZ;
+    END IF;
+  END IF;
+END $$;
+
+-- Only add comments if columns exist
+DO $$
+BEGIN
+  IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'users'
     AND column_name = 'onboarding_data_source'
   ) THEN
-    ALTER TABLE users ADD COLUMN onboarding_data_source TEXT;
+    COMMENT ON COLUMN users.onboarding_data_source IS 'Data source chosen during onboarding: finale, google_sheets, csv, skip';
   END IF;
 
-  IF NOT EXISTS (
+  IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'users'
     AND column_name = 'onboarding_completed_at'
   ) THEN
-    ALTER TABLE users ADD COLUMN onboarding_completed_at TIMESTAMPTZ;
+    COMMENT ON COLUMN users.onboarding_completed_at IS 'Timestamp when user completed onboarding';
   END IF;
 END $$;
-
-COMMENT ON COLUMN users.onboarding_data_source IS 'Data source chosen during onboarding: finale, google_sheets, csv, skip';
-COMMENT ON COLUMN users.onboarding_completed_at IS 'Timestamp when user completed onboarding';

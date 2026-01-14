@@ -240,41 +240,40 @@ function transformOrder(order: any): any {
 function extractBomsFromProduct(product: any, accountPath: string): any[] {
   const boms: any[] = [];
   const productAssocList = product.productAssocList || [];
-  
+
   for (const assoc of productAssocList) {
-    // Only process MANUF_COMPONENT type (manufacturing BOMs)
-    if (assoc.productAssocTypeId !== 'MANUF_COMPONENT') {
-      continue;
-    }
-    
+    // Process ALL association types (MANUF_COMPONENT, PACKAGING_COMPONENT, BUNDLE_COMPONENT, etc.)
+    // Products are already filtered for Deprecating category and inactive status
+    const assocType = assoc.productAssocTypeId || 'UNKNOWN';
+
     const items = assoc.productAssocItemList || [];
     for (const item of items) {
       if (!item.productId) continue;
-      
+
       // Create unique BOM URL for this parent-component pair
       const bomUrl = `/${accountPath}/api/bom/${product.productId}/${item.productId}`;
-      
+
       boms.push({
         finale_bom_url: bomUrl,
         bom_id: `${product.productId}-${item.productId}`,
-        
+
         // Parent (what we're building)
         parent_product_url: product.productUrl || `/${accountPath}/api/product/${product.productId}`,
         parent_name: product.internalName || product.productId,
         parent_sku: product.productId,
-        
+
         // Component (what goes into it)
         component_product_url: item.productUrl || `/${accountPath}/api/product/${item.productId}`,
         component_name: item.itemDescription || item.productId,
         component_sku: item.productId,
-        
+
         // Quantities
         quantity_per: item.quantity || 1,
         quantity_per_parent: item.quantity || 1,
         effective_quantity: item.quantity || 1,
-        
-        // Metadata
-        bom_type: 'MANUFACTURING',
+
+        // Metadata - preserve the actual association type from Finale
+        bom_type: assocType,
         status: 'Active',
         raw_data: item,
         synced_at: new Date().toISOString(),
@@ -282,7 +281,7 @@ function extractBomsFromProduct(product: any, accountPath: string): any[] {
       });
     }
   }
-  
+
   return boms;
 }
 
@@ -568,6 +567,24 @@ serve(async (req) => {
               bomsByParent.get(parentSku)!.push(bom);
             }
             
+            // Map Finale association types to readable categories
+            const mapBomTypeToCategory = (bomType: string): string => {
+              const typeMap: Record<string, string> = {
+                'MANUF_COMPONENT': 'Manufacturing',
+                'PACKAGING_COMPONENT': 'Packaging',
+                'BUNDLE_COMPONENT': 'Bundle/Kit',
+                'KIT_COMPONENT': 'Bundle/Kit',
+                'ASSEMBLY_COMPONENT': 'Assembly',
+                'PRODUCT_VARIANT': 'Variant',
+                'SUBSTITUTE': 'Substitute',
+                'ACCESSORY': 'Accessory',
+                'UPGRADE': 'Upgrade',
+                'CROSS_SELL': 'Cross-Sell',
+                'UP_SELL': 'Up-Sell',
+              };
+              return typeMap[bomType] || bomType || 'Unknown';
+            };
+
             // Transform to boms table format
             const appBoms: any[] = [];
             for (const [parentSku, components] of bomsByParent) {
@@ -578,12 +595,15 @@ serve(async (req) => {
                 quantity: c.quantity_per || 1,
                 unit: 'each',
               }));
-              
+
+              // Use actual BOM type from Finale instead of hardcoding
+              const category = mapBomTypeToCategory(firstComponent.bom_type);
+
               appBoms.push({
                 finished_sku: parentSku,
                 name: firstComponent.parent_name || parentSku,
                 description: `Assembly with ${components.length} components`,
-                category: 'Manufacturing',
+                category: category,
                 yield_quantity: 1,
                 components: bomComponents, // JSONB array
                 artwork: [],
@@ -597,6 +617,13 @@ serve(async (req) => {
             }
             
             if (appBoms.length > 0) {
+              // Log BOM type distribution
+              const typeCounts = appBoms.reduce((acc: Record<string, number>, bom) => {
+                acc[bom.category] = (acc[bom.category] || 0) + 1;
+                return acc;
+              }, {});
+              console.log('[Sync] BOM types imported:', JSON.stringify(typeCounts));
+
               // Add is_active: true to all synced BOMs
               const appBomsWithActive = appBoms.map(bom => ({
                 ...bom,
