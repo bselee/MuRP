@@ -1608,50 +1608,54 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                     <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-md w-full max-h-[80vh] flex flex-col`}>
                         <div className={`p-6 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
                             <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Manage Columns</h2>
-                            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-blue-600'} mt-1`}>Show/hide and reorder columns</p>
+                            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>Show/hide and reorder columns</p>
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 space-y-2">
                             {columns.map((col, index) => (
                                 <div key={col.key} className={`flex items-center gap-3 p-3 ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-lg`}>
                                     <div className="flex flex-col gap-1">
-                                        <Button
+                                        <button
+                                            type="button"
                                             onClick={() => moveColumn(index, 'up')}
                                             disabled={index === 0}
-                                            className={`p-1 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200'} rounded disabled:opacity-30 disabled:cursor-not-allowed`}
+                                            className={`p-1 rounded disabled:opacity-30 disabled:cursor-not-allowed ${isDark ? 'hover:bg-gray-600 text-gray-300' : 'hover:bg-gray-200 text-gray-600'}`}
                                         >
-                                            <ChevronUpIcon className={`w-4 h-4 ${isDark ? 'text-gray-300' : 'text-blue-600'}`} />
-                                        </Button>
-                                        <Button
+                                            <ChevronUpIcon className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            type="button"
                                             onClick={() => moveColumn(index, 'down')}
                                             disabled={index === columns.length - 1}
-                                            className={`p-1 ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200'} rounded disabled:opacity-30 disabled:cursor-not-allowed`}
+                                            className={`p-1 rounded disabled:opacity-30 disabled:cursor-not-allowed ${isDark ? 'hover:bg-gray-600 text-gray-300' : 'hover:bg-gray-200 text-gray-600'}`}
                                         >
-                                            <ChevronDownIcon className={`w-4 h-4 ${isDark ? 'text-gray-300' : 'text-blue-600'}`} />
-                                        </Button>
+                                            <ChevronDownIcon className="w-4 h-4" />
+                                        </button>
                                     </div>
-                                    <Button
+                                    <button
+                                        type="button"
                                         onClick={() => toggleColumn(col.key)}
-                                        className="flex-1 flex items-center gap-3 text-left"
+                                        className={`flex-1 flex items-center gap-3 text-left px-3 py-2 rounded-lg ${isDark ? 'hover:bg-gray-600' : 'hover:bg-gray-200'}`}
                                     >
                                         {col.visible ? (
-                                            <EyeIcon className="w-5 h-5 text-green-400" />
+                                            <EyeIcon className="w-5 h-5 text-green-500" />
                                         ) : (
-                                            <EyeSlashIcon className="w-5 h-5 text-gray-500" />
+                                            <EyeSlashIcon className="w-5 h-5 text-gray-400" />
                                         )}
                                         <span className={`text-sm font-medium ${col.visible ? (isDark ? 'text-white' : 'text-gray-900') : 'text-gray-500'}`}>
                                             {col.label}
                                         </span>
-                                    </Button>
+                                    </button>
                                 </div>
                             ))}
                         </div>
                         <div className={`p-6 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-                            <Button
+                            <button
+                                type="button"
                                 onClick={() => setIsColumnModalOpen(false)}
-                                className="w-full bg-accent-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-accent-600 transition-colors"
+                                className={`w-full font-semibold py-2 px-4 rounded-md transition-colors ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-900 hover:bg-gray-300'}`}
                             >
                                 Done
-                            </Button>
+                            </button>
                         </div>
                     </div>
                 </div>
