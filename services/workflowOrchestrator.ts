@@ -1221,6 +1221,295 @@ function generatePurchasingSummary(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🤖 RUBE MCP ENHANCED WORKFLOWS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Run Rube-enhanced email workflow using MCP tools
+ *
+ * This workflow uses Rube's Gmail parsing tools for more intelligent
+ * email analysis than basic regex extraction:
+ * - Semantic understanding of PO status updates
+ * - Multi-carrier tracking extraction
+ * - Vendor pattern recognition
+ * - ETA confidence scoring
+ */
+export async function runRubeEmailWorkflow(userId: string): Promise<WorkflowResult> {
+  const startTime = new Date();
+  const agentConfigs = await getAgentConfigs();
+  const agentResults: AgentWorkResult[] = [];
+  const pendingActions: PendingAction[] = [];
+  const autoExecutedActions: ExecutedAction[] = [];
+  const errors: string[] = [];
+
+  // Import Rube service dynamically
+  let rubeService: typeof import('./rubeService') | null = null;
+  try {
+    rubeService = await import('./rubeService');
+  } catch {
+    return {
+      success: false,
+      workflow: 'rube_email',
+      startedAt: startTime,
+      completedAt: new Date(),
+      agentResults: [],
+      summary: 'Rube service not available',
+      pendingActions: [],
+      autoExecutedActions: [],
+      errors: ['Could not load Rube service'],
+    };
+  }
+
+  // Check if Rube is configured
+  if (!rubeService.isRubeConfigured()) {
+    return {
+      success: false,
+      workflow: 'rube_email',
+      startedAt: startTime,
+      completedAt: new Date(),
+      agentResults: [],
+      summary: 'Rube MCP not configured. Go to Settings → AI → MCP Tools & Rube to set up.',
+      pendingActions: [],
+      autoExecutedActions: [],
+      errors: ['VITE_RUBE_MCP_URL and VITE_RUBE_AUTH_TOKEN not configured'],
+    };
+  }
+
+  const emailConfig = agentConfigs.get(WORKFLOW_AGENT_IDS.EMAIL_TRACKING);
+
+  try {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Step 1: Use Rube to parse Gmail for PO updates
+    // ─────────────────────────────────────────────────────────────────────────
+    console.log('[RubeEmailWorkflow] Parsing Gmail for PO updates...');
+
+    const parseResult = await rubeService.parseGmailForPOUpdates({
+      query: 'subject:(PO OR "purchase order" OR shipping OR tracking OR invoice)',
+      maxResults: 50,
+      sinceDays: 7,
+    });
+
+    if (!parseResult.success) {
+      errors.push(`Gmail parsing failed: ${parseResult.error}`);
+    } else {
+      const parsedEmails = parseResult.result as Array<{
+        po_number?: string;
+        tracking_number?: string;
+        shipping_status?: string;
+        eta?: string;
+        vendor?: string;
+        message_id?: string;
+        subject?: string;
+        confidence?: number;
+      }>;
+
+      const highConfidenceUpdates = (parsedEmails || []).filter(
+        e => e.confidence && e.confidence > 0.7
+      );
+
+      // ─────────────────────────────────────────────────────────────────────────
+      // Step 2: Process high-confidence updates
+      // ─────────────────────────────────────────────────────────────────────────
+      for (const update of highConfidenceUpdates) {
+        if (update.po_number && (update.tracking_number || update.eta)) {
+          const action: PendingAction = {
+            id: `rube-update-${update.po_number}-${Date.now()}`,
+            agent: WORKFLOW_AGENT_IDS.EMAIL_TRACKING,
+            type: 'update_po_tracking',
+            description: `Update PO ${update.po_number}: ${update.shipping_status || 'status update'}`,
+            priority: update.shipping_status === 'delivered' ? 'high' : 'medium',
+            data: {
+              poNumber: update.po_number,
+              trackingNumber: update.tracking_number,
+              eta: update.eta,
+              status: update.shipping_status,
+              vendor: update.vendor,
+              confidence: update.confidence,
+              source: 'rube_mcp',
+            },
+            suggestedAction: update.tracking_number
+              ? `Update tracking to ${update.tracking_number}`
+              : `Update ETA to ${update.eta}`,
+            requiresConfirmation: !shouldAutoExecute(emailConfig),
+          };
+
+          if (shouldAutoExecute(emailConfig) && update.confidence && update.confidence > 0.9) {
+            // Auto-execute for very high confidence updates
+            try {
+              await supabase
+                .from('purchase_orders')
+                .update({
+                  tracking_number: update.tracking_number || undefined,
+                  expected_date: update.eta || undefined,
+                  tracking_status: update.shipping_status || undefined,
+                  last_tracking_update: new Date().toISOString(),
+                })
+                .eq('po_number', update.po_number);
+
+              autoExecutedActions.push({
+                id: action.id,
+                agent: WORKFLOW_AGENT_IDS.EMAIL_TRACKING,
+                type: 'update_po_tracking',
+                description: action.description,
+                executedAt: new Date(),
+                result: {
+                  poNumber: update.po_number,
+                  trackingNumber: update.tracking_number,
+                  confidence: update.confidence,
+                },
+              });
+            } catch (err: any) {
+              errors.push(`Failed to update PO ${update.po_number}: ${err.message}`);
+              pendingActions.push(action);
+            }
+          } else {
+            pendingActions.push(action);
+          }
+        }
+      }
+
+      agentResults.push({
+        agent: WORKFLOW_AGENT_IDS.EMAIL_TRACKING,
+        success: true,
+        autonomyLevel: emailConfig?.autonomy_level || 'assist',
+        findings: {
+          totalParsed: parsedEmails?.length || 0,
+          highConfidenceCount: highConfidenceUpdates.length,
+          trackingUpdates: highConfidenceUpdates.filter(u => u.tracking_number).length,
+          etaUpdates: highConfidenceUpdates.filter(u => u.eta).length,
+          parsedByRube: true,
+        },
+        actionsProposed: pendingActions.filter(a => a.agent === WORKFLOW_AGENT_IDS.EMAIL_TRACKING),
+        actionsExecuted: autoExecutedActions.filter(a => a.agent === WORKFLOW_AGENT_IDS.EMAIL_TRACKING),
+      });
+    }
+  } catch (err: any) {
+    errors.push(`Rube Email Workflow: ${err.message}`);
+  }
+
+  const completedAt = new Date();
+
+  return {
+    success: errors.length === 0,
+    workflow: 'rube_email',
+    startedAt: startTime,
+    completedAt,
+    agentResults,
+    summary: `Rube parsed ${agentResults[0]?.findings?.totalParsed || 0} emails, ` +
+             `${autoExecutedActions.length} auto-updated, ${pendingActions.length} need review`,
+    pendingActions,
+    autoExecutedActions,
+    errors,
+  };
+}
+
+/**
+ * Send daily PO summary via Rube to Slack
+ *
+ * Uses Rube's Slack tools for rich formatting and interactive messages.
+ */
+export async function sendRubeDailySummary(options: {
+  channel: string;
+  userId: string;
+}): Promise<{ success: boolean; error?: string }> {
+  // Import Rube service dynamically
+  let rubeService: typeof import('./rubeService') | null = null;
+  try {
+    rubeService = await import('./rubeService');
+  } catch {
+    return { success: false, error: 'Rube service not available' };
+  }
+
+  if (!rubeService.isRubeConfigured()) {
+    return { success: false, error: 'Rube MCP not configured' };
+  }
+
+  try {
+    // Gather PO stats
+    const { data: openPOs } = await supabase
+      .from('purchase_orders')
+      .select('id, status, expected_date')
+      .in('status', ['draft', 'sent', 'confirmed', 'processing', 'shipped']);
+
+    const { data: overduePOs } = await supabase
+      .from('purchase_orders')
+      .select('id')
+      .in('status', ['sent', 'confirmed', 'processing'])
+      .lt('expected_date', new Date().toISOString());
+
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    const { data: shippingToday } = await supabase
+      .from('purchase_orders')
+      .select('id')
+      .eq('status', 'processing')
+      .gte('expected_date', todayStr)
+      .lt('expected_date', new Date(today.getTime() + 86400000).toISOString().split('T')[0]);
+
+    const { data: arrivingToday } = await supabase
+      .from('purchase_orders')
+      .select('id')
+      .eq('status', 'shipped')
+      .gte('expected_date', todayStr)
+      .lt('expected_date', new Date(today.getTime() + 86400000).toISOString().split('T')[0]);
+
+    // Get critical stock items
+    const { getCriticalStockoutAlerts } = await import('./stockoutPreventionAgent');
+    const alerts = await getCriticalStockoutAlerts();
+    const criticalItems = alerts
+      .filter(a => a.severity === 'CRITICAL')
+      .slice(0, 5)
+      .map(a => `${a.sku}: ${a.days_until_stockout}d runway`);
+
+    // Send via Rube
+    const result = await rubeService.sendDailyPOSummary({
+      channel: options.channel,
+      data: {
+        openPOs: openPOs?.length || 0,
+        overdueCount: overduePOs?.length || 0,
+        shippingToday: shippingToday?.length || 0,
+        arrivingToday: arrivingToday?.length || 0,
+        criticalItems,
+      },
+    });
+
+    return { success: result.success, error: result.error };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Sync PO status from email using Rube's parsing
+ *
+ * This is a targeted lookup for a specific PO number, using
+ * Rube to search Gmail for related updates.
+ */
+export async function syncPOFromEmailViaRube(poNumber: string): Promise<{
+  success: boolean;
+  updates?: {
+    status?: string;
+    tracking?: string;
+    eta?: string;
+  };
+  error?: string;
+}> {
+  let rubeService: typeof import('./rubeService') | null = null;
+  try {
+    rubeService = await import('./rubeService');
+  } catch {
+    return { success: false, error: 'Rube service not available' };
+  }
+
+  if (!rubeService.isRubeConfigured()) {
+    return { success: false, error: 'Rube MCP not configured' };
+  }
+
+  return rubeService.syncPOStatusFromEmail(poNumber);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 📤 Exports
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1231,4 +1520,8 @@ export default {
   runPOCreationWorkflow,
   runAutonomousPurchasingWorkflow,
   executePendingAction,
+  // Rube-enhanced workflows
+  runRubeEmailWorkflow,
+  sendRubeDailySummary,
+  syncPOFromEmailViaRube,
 };

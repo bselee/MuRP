@@ -32,6 +32,7 @@ import DocumentTemplatesPanel from '../DocumentTemplatesPanel';
 import SlackIntegrationPanel from './SlackIntegrationPanel';
 import AiSettingsPanel from '../AiSettingsPanel';
 import AIProviderPanel from '../AIProviderPanel';
+import MCPToolsPanel from './MCPToolsPanel';
 import WorkflowHistoryLog from './WorkflowHistoryLog';
 import ShopifyIntegrationPanel from '../ShopifyIntegrationPanel';
 import { MCPServerPanel } from '../MCPServerPanel';
@@ -557,6 +558,14 @@ Thank you!`
               </SettingsCard>
             )}
           </div>
+        </>
+      );
+
+    case 'mcp-tools':
+      return (
+        <>
+          <SectionHeader title="MCP Tools & Rube" description="Connect AI agents to external tools via MCP" />
+          <MCPToolsPanel addToast={addToast} />
         </>
       );
 

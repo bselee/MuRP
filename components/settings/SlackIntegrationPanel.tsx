@@ -6,10 +6,10 @@
  * Comprehensive Slack setup including:
  * - Company workspace configuration
  * - Channel routing by alert type
- * - User-specific channel overrides
- * - Composio/Rube integration setup
  * - Quality gate configuration
  * - Alert queue management
+ *
+ * Note: Rube MCP tools are now configured in Settings -> AI -> MCP Tools & Rube
  */
 
 import React, { useState, useEffect } from 'react';
@@ -24,9 +24,8 @@ import {
   HashtagIcon,
   BellIcon,
   ShieldCheckIcon,
-  LinkIcon,
 } from '@/components/icons';
-import { testSlackConnection, getSlackStatus, isComposioConfigured } from '@/services/slackService';
+import { testSlackConnection, getSlackStatus } from '@/services/slackService';
 import {
   getQualityGateConfig,
   saveQualityGateConfig,
@@ -37,7 +36,6 @@ import {
   type QualityGateConfig,
   type AlertQueueItem,
 } from '@/services/slackQualityGate';
-import { isRubeMCPConfigured, listRubeMCPTools } from '@/services/composioService';
 import { supabase } from '@/lib/supabase/client';
 
 // ============================================================================
@@ -74,7 +72,7 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
   const { isDark } = useTheme();
 
   // State
-  const [activeTab, setActiveTab] = useState<'setup' | 'channels' | 'quality' | 'composio' | 'queue'>('setup');
+  const [activeTab, setActiveTab] = useState<'setup' | 'channels' | 'quality' | 'queue'>('setup');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -97,12 +95,9 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
   // Connection status
   const [connectionStatus, setConnectionStatus] = useState<{
     webhookConfigured: boolean;
-    composioConfigured: boolean;
-    rubeMCPConfigured: boolean;
     lastTested?: string;
     testResult?: boolean;
-  }>({ webhookConfigured: false, composioConfigured: false, rubeMCPConfigured: false });
-  const [rubeMCPTools, setRubeMCPTools] = useState<Array<{ name: string; description?: string }>>([]);
+  }>({ webhookConfigured: false });
 
   // Load configuration on mount
   useEffect(() => {
@@ -137,18 +132,7 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
 
       // Check connection status
       const status = await getSlackStatus();
-      const rubeConfigured = isRubeMCPConfigured();
-      setConnectionStatus({
-        ...status,
-        composioConfigured: isComposioConfigured(),
-        rubeMCPConfigured: rubeConfigured,
-      });
-
-      // Load Rube MCP tools if configured
-      if (rubeConfigured) {
-        const tools = await listRubeMCPTools();
-        setRubeMCPTools(tools);
-      }
+      setConnectionStatus(status);
     } catch (error) {
       console.error('Failed to load Slack configuration:', error);
     } finally {
@@ -326,10 +310,6 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
         <button className={tabClass(activeTab === 'quality')} onClick={() => setActiveTab('quality')}>
           <ShieldCheckIcon className="w-4 h-4 inline mr-1" />
           Quality Gate
-        </button>
-        <button className={tabClass(activeTab === 'composio')} onClick={() => setActiveTab('composio')}>
-          <LinkIcon className="w-4 h-4 inline mr-1" />
-          Composio/Rube
         </button>
         <button className={tabClass(activeTab === 'queue')} onClick={() => setActiveTab('queue')}>
           <BellIcon className="w-4 h-4 inline mr-1" />
@@ -628,177 +608,6 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
           <div className="flex justify-end pt-4">
             <Button onClick={saveQualitySettings} disabled={saving}>
               {saving ? 'Saving...' : 'Save Quality Settings'}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'composio' && (
-        <div className={cardClass}>
-          <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Rube MCP & Composio Integration
-          </h3>
-          <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Connect AI agents to external tools via MCP (Model Context Protocol).
-          </p>
-
-          {/* Rube MCP Status - Primary integration */}
-          <div className={`p-4 rounded-lg mb-4 ${connectionStatus.rubeMCPConfigured
-            ? isDark ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-emerald-50 border border-emerald-200'
-            : isDark ? 'bg-gray-900' : 'bg-gray-50'
-          }`}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`w-3 h-3 rounded-full ${connectionStatus.rubeMCPConfigured ? 'bg-emerald-400' : 'bg-gray-400'}`} />
-              <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                Rube MCP Server
-              </span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                connectionStatus.rubeMCPConfigured
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-600'
-              }`}>
-                {connectionStatus.rubeMCPConfigured ? 'Connected' : 'Not Configured'}
-              </span>
-            </div>
-
-            {connectionStatus.rubeMCPConfigured ? (
-              <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                <p className="mb-2">AI agents can now use Rube tools for:</p>
-                <ul className="list-disc list-inside space-y-1 mb-3">
-                  <li>Gmail parsing and PO status extraction</li>
-                  <li>Sending emails and Slack messages</li>
-                  <li>Recipe execution on demand</li>
-                  <li>Two-way data sync with MuRP</li>
-                </ul>
-                {rubeMCPTools.length > 0 && (
-                  <div className={`mt-3 p-3 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-                    <p className={`text-xs font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Available Tools ({rubeMCPTools.length}):
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {rubeMCPTools.slice(0, 8).map(tool => (
-                        <span key={tool.name} className={`text-xs px-2 py-1 rounded ${
-                          isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {tool.name}
-                        </span>
-                      ))}
-                      {rubeMCPTools.length > 8 && (
-                        <span className={`text-xs px-2 py-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                          +{rubeMCPTools.length - 8} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                <p className="mb-2">To connect Rube MCP:</p>
-                <ol className="list-decimal list-inside space-y-2">
-                  <li>
-                    Go to{' '}
-                    <a
-                      href="https://rube.app/mcp"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-cyan-400 hover:underline font-medium"
-                    >
-                      rube.app/mcp
-                    </a>
-                  </li>
-                  <li>Copy the MCP URL: <code className={`px-1 rounded text-xs ${isDark ? 'bg-gray-800' : 'bg-gray-200'}`}>https://rube.app/mcp</code></li>
-                  <li>Copy the Authorization token (JWT)</li>
-                  <li>Add to your environment:
-                    <div className={`mt-1 p-2 rounded text-xs font-mono ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                      VITE_RUBE_MCP_URL=https://rube.app/mcp<br />
-                      VITE_RUBE_AUTH_TOKEN=eyJhb...your-token
-                    </div>
-                  </li>
-                  <li>Restart the application</li>
-                </ol>
-              </div>
-            )}
-          </div>
-
-          {/* Composio Status - Secondary */}
-          <div className={`p-4 rounded-lg mb-4 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`w-3 h-3 rounded-full ${connectionStatus.composioConfigured ? 'bg-emerald-400' : 'bg-gray-400'}`} />
-              <span className={isDark ? 'text-white' : 'text-gray-900'}>
-                Composio API (Optional)
-              </span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                connectionStatus.composioConfigured
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-600'
-              }`}>
-                {connectionStatus.composioConfigured ? 'Connected' : 'Not Configured'}
-              </span>
-            </div>
-
-            {connectionStatus.composioConfigured ? (
-              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                <p>Advanced Slack features enabled via Composio.</p>
-              </div>
-            ) : (
-              <div className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                <p>
-                  Optional: Get API key at{' '}
-                  <a
-                    href="https://platform.composio.dev"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-cyan-400 hover:underline"
-                  >
-                    platform.composio.dev
-                  </a>
-                  {' '}for interactive Slack buttons.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className={`flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                <input
-                  type="checkbox"
-                  checked={workspaceConfig.composio_enabled}
-                  onChange={(e) => setWorkspaceConfig(prev => ({
-                    ...prev,
-                    composio_enabled: e.target.checked,
-                  }))}
-                  className="rounded border-gray-600"
-                  disabled={!connectionStatus.composioConfigured}
-                />
-                <span>Enable Composio features (requires API key)</span>
-              </label>
-            </div>
-
-            {workspaceConfig.composio_enabled && (
-              <div className={`p-4 border rounded-lg ${isDark ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-cyan-300 bg-cyan-50'}`}>
-                <h4 className={`font-medium mb-2 ${isDark ? 'text-cyan-300' : 'text-cyan-700'}`}>
-                  Rube Recipe Integration
-                </h4>
-                <p className={`text-sm mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Create Rube recipes that push data to MuRP or pull inventory/PO status on demand.
-                </p>
-                <div className="space-y-2 text-sm">
-                  <div className={isDark ? 'text-gray-300' : 'text-gray-700'}>
-                    <strong>Recipe → MuRP:</strong> POST to <code className="px-1 bg-gray-800 rounded text-xs">/rube-webhook</code>
-                  </div>
-                  <div className={isDark ? 'text-gray-300' : 'text-gray-700'}>
-                    <strong>MuRP → Slack:</strong> Use Composio MCP tools for interactive messages
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end pt-4">
-            <Button onClick={saveWorkspaceConfig} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Settings'}
             </Button>
           </div>
         </div>

@@ -29,6 +29,7 @@ export type SettingsSectionId =
   | 'slack'
   // AI
   | 'ai-assistant'
+  | 'mcp-tools'
   | 'workflow-log'
   // Sales
   | 'shopify'
@@ -93,6 +94,7 @@ export const settingsSections: SettingsSectionConfig[] = [
 
   // AI
   { id: 'ai-assistant', label: 'AI Assistant', group: 'AI' },
+  { id: 'mcp-tools', label: 'MCP Tools & Rube', group: 'AI', adminOnly: true },
   { id: 'workflow-log', label: 'Workflow History', group: 'AI', adminOnly: true },
 
   // Sales (feature-gated)
