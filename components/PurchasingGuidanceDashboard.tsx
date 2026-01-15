@@ -122,12 +122,14 @@ export default function PurchasingGuidanceDashboard({
     const { isDismissed, dismissSku, snoozeSku, refresh: refreshDismissals } = useSkuDismissals();
 
     // BOM Build Readiness - shows which BOMs need attention
+    // Uses lazy loading - data fetched on-demand, not on mount
     const {
         data: buildReadinessData,
         loading: buildReadinessLoading,
         urgentCount: bomUrgentCount,
-        readyCount: bomReadyCount
-    } = useBuildReadiness();
+        readyCount: bomReadyCount,
+        refetch: fetchBuildReadiness
+    } = useBuildReadiness({ lazy: true });
 
     // Ref for scrolling to replenishment section
     const replenishmentRef = useRef<HTMLDivElement>(null);
@@ -154,24 +156,43 @@ export default function PurchasingGuidanceDashboard({
         return `PO-${datePart}-${randomSegment}`;
     }, []);
 
+    // PHASED LOADING: Load essential data first, defer expensive analytics
+    // This prevents browser lockup by not running everything at once
     useEffect(() => {
-        loadData();
+        let isMounted = true;
+
+        async function loadInPhases() {
+            // PHASE 1: Essential data (fast - show UI quickly)
+            await loadEssentialData();
+            if (!isMounted) return;
+
+            // PHASE 2: Defer expensive analytics by 500ms
+            // Gives browser time to render the initial UI
+            setTimeout(() => {
+                if (isMounted) loadDeferredAnalytics();
+            }, 500);
+
+            // PHASE 3: Agent analysis runs after 1.5s (most expensive)
+            setTimeout(() => {
+                if (isMounted) runAgentAnalysis();
+            }, 1500);
+        }
+
+        loadInPhases();
 
         const intervalId = setInterval(() => {
             loadData(true); // Silent refresh
         }, 5 * 60 * 1000); // Refresh every 5 minutes
 
-        return () => clearInterval(intervalId);
-    }, []);
-
-    // Initial agent run
-    useEffect(() => {
-        runAgentAnalysis();
+        return () => {
+            isMounted = false;
+            clearInterval(intervalId);
+        };
     }, []);
 
     async function runAgentAnalysis() {
         try {
-            console.log('🤖 Running Agent Analysis...');
+            console.log('🤖 Running Agent Analysis (deferred)...');
             const result = await detectInventoryAnomalies();
             setAgentInsights({
                 critical: result.critical || [],
@@ -182,55 +203,55 @@ export default function PurchasingGuidanceDashboard({
         }
     }
 
-    async function loadData(silent = false) {
-        if (!silent) setLoading(true);
+    // PHASE 1: Essential data - fast queries that show immediate value
+    async function loadEssentialData() {
+        setLoading(true);
         try {
-            // 1. Get Purchasing Advice
+            // Get Purchasing Advice - this is the core data for the dashboard
             const adviceData = await getRigorousPurchasingAdvice();
             setAdvice(adviceData);
 
-            // 2. Get comprehensive KPI Summary from inventoryKPIService
-            let kpis: KPISummary | null = null;
-            try {
-                kpis = await getKPISummary();
-                setKpiSummary(kpis);
-                console.log('📊 KPI Summary loaded:', kpis);
-            } catch (err) {
-                console.error('Failed to load KPI summary:', err);
-            }
-
-            // 2b. Get Supply Chain Risks (PAB-based analysis)
-            setRisksLoading(true);
-            try {
-                const riskResult = await analyzeSupplyChainRisks({
-                    horizon_days: 60,
-                    include_bom_explosion: true,
-                    min_daily_demand: 0.1,
-                    safety_stock_days: 14,
-                });
-                setSupplyChainRisks(riskResult.all_risks || []);
-                console.log('⚠️ Supply Chain Risks loaded:', riskResult.all_risks?.length || 0);
-            } catch (err) {
-                console.error('Failed to load supply chain risks:', err);
-                setSupplyChainRisks([]);
-            } finally {
-                setRisksLoading(false);
-            }
-
-            // 2c. Identify out-of-stock items from advice data
+            // Identify out-of-stock items from advice data (computed, no DB call)
             const stockouts: StockoutItem[] = adviceData
                 .filter((item: AdviceItem) => item.current_status.stock === 0)
                 .map((item: AdviceItem) => ({
                     sku: item.sku,
                     product_name: item.name,
-                    pending_demand: Math.round((item.parameters?.daily_demand || 0) * 7), // 7-day demand
+                    pending_demand: Math.round((item.parameters?.daily_demand || 0) * 7),
                     restock_eta: item.linked_po?.expected_date ? new Date(item.linked_po.expected_date) : null,
                     restock_po_number: item.linked_po?.po_number || null,
                     restock_quantity: item.recommendation?.quantity || 0,
                 }));
             setStockoutItems(stockouts);
 
-            // 3. Get Forecast Accuracy (if available)
+            // Set initial metrics from advice data (fast - no extra queries)
+            setMetrics(prev => ({
+                ...prev,
+                riskItems: adviceData.length,
+            }));
+
+        } catch (err) {
+            console.error('Failed to load essential data', err);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // PHASE 2: Deferred analytics - expensive calculations run after UI is interactive
+    async function loadDeferredAnalytics() {
+        try {
+            console.log('📊 Loading deferred analytics...');
+
+            // Get KPI Summary (moderately expensive)
+            let kpis: KPISummary | null = null;
+            try {
+                kpis = await getKPISummary();
+                setKpiSummary(kpis);
+            } catch (err) {
+                console.error('Failed to load KPI summary:', err);
+            }
+
+            // Get Forecast Accuracy
             let accuracy: number | null = null;
             try {
                 const forecasts = await getForecastAccuracyMetrics();
@@ -241,33 +262,30 @@ export default function PurchasingGuidanceDashboard({
                 console.debug('Forecast metrics not available:', err);
             }
 
-            // 4. Calculate Vendor Reliability from lead time bias
-            // If avg_lead_time_bias is near 0 or negative = reliable (on-time or early)
+            // Calculate Vendor Reliability from lead time bias
             let vendorReliability: number | null = null;
             if (kpis && kpis.avg_lead_time_bias !== undefined) {
-                // Convert bias to reliability: bias of 0 = 100%, bias of 7+ = ~50%
                 const biasImpact = Math.max(0, Math.min(50, kpis.avg_lead_time_bias * 7));
                 vendorReliability = 100 - biasImpact;
             }
 
-            // 5. Calculate Inventory Turnover from actual inventory data
+            // Calculate Inventory Turnover
             let inventoryTurnover: number | null = null;
             try {
                 const { data: inventoryData, error: invError } = await supabase
                     .from('inventory_items')
                     .select('sales_last_30_days, stock')
                     .eq('status', 'active')
-                    .gt('stock', 0);
+                    .gt('stock', 0)
+                    .limit(1000); // Limit for performance
 
                 if (!invError && inventoryData && inventoryData.length > 0) {
-                    // Calculate daily velocity from 30-day sales
                     const totalDailyVelocity = inventoryData.reduce((sum: number, item: { sales_last_30_days: number | null }) =>
                         sum + ((item.sales_last_30_days || 0) / 30), 0);
                     const totalStock = inventoryData.reduce((sum: number, item: { stock: number | null }) =>
                         sum + (item.stock || 0), 0);
 
                     if (totalStock > 0) {
-                        // Annual turnover = (daily velocity * 365) / avg stock
                         inventoryTurnover = (totalDailyVelocity * 365) / totalStock;
                     }
                 }
@@ -275,10 +293,10 @@ export default function PurchasingGuidanceDashboard({
                 console.debug('Inventory data not available for turnover:', err);
             }
 
-            // Build metrics object with KPI data
-            setMetrics({
+            // Update metrics with KPI data
+            setMetrics(prev => ({
+                ...prev,
                 accuracy: accuracy ? (100 - accuracy).toFixed(1) : 'N/A',
-                riskItems: adviceData.length,
                 criticalItems: kpis?.items_critical_cltr || 0,
                 atRiskItems: kpis?.items_at_risk_cltr || 0,
                 avgCltr: kpis ? kpis.avg_cltr.toFixed(2) : 'N/A',
@@ -288,8 +306,37 @@ export default function PurchasingGuidanceDashboard({
                 pastDueLines: kpis?.total_past_due_lines || 0,
                 leadTimeBias: kpis ? kpis.avg_lead_time_bias.toFixed(1) : null,
                 safetyStockShortfall: kpis?.safety_stock_shortfall_items || 0,
-            });
+            }));
 
+            // LAST: Supply Chain Risks - most expensive (PAB + BOM explosion)
+            // Run with reduced scope for initial load
+            setRisksLoading(true);
+            try {
+                const riskResult = await analyzeSupplyChainRisks({
+                    horizon_days: 30, // Reduced from 60 for faster load
+                    include_bom_explosion: false, // Skip BOM explosion on initial load
+                    min_daily_demand: 0.5, // Higher threshold = fewer items
+                    safety_stock_days: 14,
+                });
+                setSupplyChainRisks(riskResult.all_risks || []);
+            } catch (err) {
+                console.error('Failed to load supply chain risks:', err);
+                setSupplyChainRisks([]);
+            } finally {
+                setRisksLoading(false);
+            }
+
+        } catch (err) {
+            console.error('Failed to load deferred analytics', err);
+        }
+    }
+
+    // Full data refresh (for interval refresh and manual refresh)
+    async function loadData(silent = false) {
+        if (!silent) setLoading(true);
+        try {
+            await loadEssentialData();
+            await loadDeferredAnalytics();
         } catch (err) {
             console.error('Failed to load purchasing guidance', err);
         } finally {

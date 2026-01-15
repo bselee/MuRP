@@ -114,25 +114,25 @@ import ErrorBoundary from './components/ErrorBoundary';
 ### Directory Structure
 
 ```
-/components/          # React components (238 total)
+/components/          # React components (~200 total)
   /admin/            # Admin-specific (AgentCommandCenter, WorkflowPanel, EmailTemplateEditor)
   /settings/         # Settings page modules (SettingsLayout, SettingsSidebar, SettingsContent)
   /compliance/       # Compliance UI components
   /ui/               # Reusable UI components
-/hooks/              # Custom React hooks (23 hooks)
-/lib/                # Core utilities and modules (32 files)
+/hooks/              # Custom React hooks (~27 hooks)
+/lib/                # Core utilities and modules
   /auth/             # Authentication logic
   /finale/           # Finale API client
   /google/           # Google API integrations
   /schema/           # Schema definitions and transformers (CRITICAL)
   /supabase/         # Supabase client configuration
   /sync/             # Data sync orchestration
-/pages/              # Page components (28 pages)
-/services/           # Business logic (130 services, 60K+ lines)
-/types/              # TypeScript type definitions (10 files)
+/pages/              # Page components
+/services/           # Business logic (~130 services)
+/types/              # TypeScript type definitions
 /supabase/
   /functions/        # Edge functions (31 functions for webhooks, sync, automation)
-  /migrations/       # 175 SQL migrations (strict 3-digit sequential numbering)
+  /migrations/       # 185+ SQL migrations (strict 3-digit sequential numbering)
 /e2e/                # Playwright E2E tests
 /tests/              # Unit tests
 ```
@@ -150,8 +150,8 @@ ls supabase/migrations | sort | tail -1  # Check current highest number
 # 2. Create new migration (next sequential number)
 supabase migration new feature_name
 
-# 3. Rename to sequential number
-mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/176_feature_name.sql
+# 3. Rename to sequential number (check current highest first!)
+mv supabase/migrations/<timestamp>_feature_name.sql supabase/migrations/186_feature_name.sql
 
 # 4. Test locally
 supabase db reset
@@ -598,13 +598,40 @@ Only proceed to commit when all tests pass and build succeeds.
 ## Claude Code Skills & Agents
 
 ### Available Skills (in `.claude/skills/`)
-- `/deploy` - Build, commit, and push directly to main for production deployment
-- `/code-review` - Review code for quality, security, and best practices
-- `/security-review` - Security audit for vulnerabilities and compliance
+
+| Skill | Trigger | Purpose |
+|-------|---------|---------|
+| `/deploy` | "deploy", "push to main" | Build, commit, push directly to main for production |
+| `/code-review` | "review my changes" | Check code quality, project patterns, security |
+| `/security-review` | "security audit" | Scan for vulnerabilities, hardcoded secrets, OWASP issues |
+| `/systematic-debugging` | Bug encountered | Root cause analysis before proposing fixes |
 
 ### Domain Expert Agents (in `.claude/agents/`)
-- `stock-intelligence-analyst.md` - Expert in inventory forecasting and ROP calculations
-- `email-tracking-specialist.md` - Expert in PO email monitoring and Gmail integration
-- `schema-transformer-expert.md` - Expert in the 4-layer schema system
 
-Agents are automatically loaded by Claude Code and provide specialized context for domain-specific tasks.
+These agents are auto-loaded for domain-specific questions:
+
+| Agent | Use When |
+|-------|----------|
+| `stock-intelligence-analyst` | Questions about ROP calculations, sales velocity, forecasting, `purchasingForecastingService.ts` |
+| `email-tracking-specialist` | PO email monitoring, Gmail OAuth, tracking number extraction, `emailIntelligenceAgent.ts` |
+| `schema-transformer-expert` | Data import issues, CSV processing, 4-layer transforms, `lib/schema/transformers.ts` |
+
+### When to Use Each
+
+**Stock Intelligence Analyst:**
+- "Why is SKU X showing as critical?"
+- "How does ROP calculation work?"
+- "Explain the velocity trend for this item"
+- Debugging `PurchasingGuidanceDashboard.tsx` or `StockIntelligence.tsx`
+
+**Email Tracking Specialist:**
+- "Email polling isn't working"
+- "Tracking numbers not being extracted"
+- "PO correlation confidence is low"
+- Debugging `email-inbox-poller` edge function
+
+**Schema Transformer Expert:**
+- "CSV import failed with validation errors"
+- "How do I add a new field to vendor import?"
+- "Data is missing after sync"
+- Working with `lib/schema/` files
