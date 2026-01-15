@@ -172,10 +172,15 @@ export default function PurchasingGuidanceDashboard({
                 if (isMounted) loadDeferredAnalytics();
             }, 500);
 
-            // PHASE 3: Agent analysis runs after 1.5s (most expensive)
+            // PHASE 3: Build readiness after 1s (important for BOM metrics)
+            setTimeout(() => {
+                if (isMounted) fetchBuildReadiness();
+            }, 1000);
+
+            // PHASE 4: Agent analysis runs after 2s (most expensive)
             setTimeout(() => {
                 if (isMounted) runAgentAnalysis();
-            }, 1500);
+            }, 2000);
         }
 
         loadInPhases();
@@ -188,7 +193,7 @@ export default function PurchasingGuidanceDashboard({
             isMounted = false;
             clearInterval(intervalId);
         };
-    }, []);
+    }, [fetchBuildReadiness]);
 
     async function runAgentAnalysis() {
         try {
