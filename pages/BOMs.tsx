@@ -10,7 +10,7 @@ import PageHeader from '@/components/ui/PageHeader';
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { BillOfMaterials, User, InventoryItem, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions, QuickRequestDefaults, ComponentSwapMap, BomRevisionRequestOptions, PurchaseOrder } from '../types';
+import type { BillOfMaterials, User, InventoryItem, Vendor, WatchlistItem, Artwork, RequisitionItem, RequisitionRequestOptions, QuickRequestDefaults, ComponentSwapMap, BomRevisionRequestOptions, PurchaseOrder } from '../types';
 import type { ComplianceStatus } from '../types/regulatory';
 import {
   ChevronDownIcon,
@@ -42,6 +42,7 @@ type GroupByOption = 'none' | 'category' | 'buildability' | 'compliance';
 interface BOMsProps {
   boms: BillOfMaterials[];
   inventory: InventoryItem[];
+  vendors: Vendor[];
   purchaseOrders: PurchaseOrder[];
   currentUser: User;
   users: User[];
@@ -109,6 +110,7 @@ const readStoredVendorFilter = (): Set<string> => {
 const BOMs: React.FC<BOMsProps> = ({
   boms,
   inventory,
+  vendors: vendorsProp,
   purchaseOrders,
   currentUser,
   users,
@@ -432,6 +434,23 @@ const BOMs: React.FC<BOMsProps> = ({
     return map;
   }, [inventory]);
 
+  // Create vendor lookup map for O(1) access (vendor_id -> vendor name)
+  const vendorNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    vendorsProp.forEach(vendor => {
+      if (vendor.id) map.set(vendor.id, vendor.name);
+      // Also map by name for backwards compatibility
+      if (vendor.name) map.set(vendor.name, vendor.name);
+    });
+    return map;
+  }, [vendorsProp]);
+
+  // Helper to get vendor name from vendorId
+  const getVendorName = (vendorId?: string | null): string => {
+    if (!vendorId) return '';
+    return vendorNameMap.get(vendorId) || vendorId;
+  };
+
   // Calculate buildability for a BOM - CRITICAL MRP FUNCTION
   const calculateBuildability = (bom: BillOfMaterials) => {
     if (!bom.components || bom.components.length === 0) {
@@ -699,13 +718,16 @@ const BOMs: React.FC<BOMsProps> = ({
     filteredBoms.forEach(bom => {
       bom.components?.forEach(component => {
         const invItem = inventoryMap.get(component.sku);
-        if (invItem?.vendorName) {
-          vendorSet.add(invItem.vendorName);
+        if (invItem?.vendorId) {
+          const vendorName = getVendorName(invItem.vendorId);
+          if (vendorName) {
+            vendorSet.add(vendorName);
+          }
         }
       });
     });
     return Array.from(vendorSet).sort();
-  }, [filteredBoms, inventoryMap]);
+  }, [filteredBoms, inventoryMap, getVendorName]);
 
   // Filtered vendors for search
   const filteredVendors = useMemo(() => {
@@ -785,7 +807,8 @@ const BOMs: React.FC<BOMsProps> = ({
       result = result.filter(bom => {
         return bom.components?.some(component => {
           const invItem = inventoryMap.get(component.sku);
-          return invItem?.vendorName && selectedVendors.has(invItem.vendorName);
+          const vendorName = invItem?.vendorId ? getVendorName(invItem.vendorId) : '';
+          return vendorName && selectedVendors.has(vendorName);
         });
       });
     }
@@ -857,7 +880,7 @@ const BOMs: React.FC<BOMsProps> = ({
     });
 
     return result;
-  }, [filteredBoms, searchQuery, selectedCategories, buildabilityFilter, sortBy, inventoryMap, componentFilter]);
+  }, [filteredBoms, searchQuery, selectedCategories, selectedVendors, buildabilityFilter, sortBy, inventoryMap, componentFilter, getVendorName]);
 
   // Identify critical alerts
   const criticalBoms = useMemo(() => {

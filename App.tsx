@@ -1773,6 +1773,7 @@ const AppShell: React.FC = () => {
         return <BOMs
           boms={boms}
           inventory={inventory}
+          vendors={vendors}
           purchaseOrders={purchaseOrders}
           currentUser={currentUser}
           watchlist={watchlist}
