@@ -24,6 +24,8 @@ dist-ssr
 *.sln
 *.sw?
 .env*.local
+.env.production
+.env
 
 # MCP Server secrets
 mcp-server/.env
