@@ -1047,6 +1047,21 @@ const AppShell: React.FC = () => {
     refetchRequisitions();
 
     const label = newReq.alertOnly ? 'Alert' : 'Requisition';
+    const itemCount = normalizedItems.length;
+    const itemSummary = itemCount === 1
+      ? normalizedItems[0].name
+      : `${itemCount} items`;
+
+    // Create system alert for purchasing/ops to review
+    upsertAlert({
+      source: `requisition:${newReq.id}`,
+      severity: newReq.priority === 'high' ? 'warning' : 'info',
+      message: `New ${label.toLowerCase()} from ${newReq.department}: ${itemSummary}`,
+      details: newReq.opsApprovalRequired
+        ? 'Requires Ops approval before processing'
+        : 'Pending purchasing review',
+    });
+
     if (source === 'System') {
       addToast(`⚡ AI-Generated ${label} ${newReq.id} created! Auto-generated based on demand forecast. Pending approval.`, 'success');
     } else {
