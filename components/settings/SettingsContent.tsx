@@ -29,6 +29,7 @@ import EmailTrackingSettingsPanel from '../EmailTrackingSettingsPanel';
 import EmailProcessingLog from './EmailProcessingLog';
 import EmailBrandingPanel from './EmailBrandingPanel';
 import DocumentTemplatesPanel from '../DocumentTemplatesPanel';
+import SlackIntegrationPanel from './SlackIntegrationPanel';
 import AiSettingsPanel from '../AiSettingsPanel';
 import AIProviderPanel from '../AIProviderPanel';
 import WorkflowHistoryLog from './WorkflowHistoryLog';
@@ -523,6 +524,14 @@ Thank you!`
         <>
           <SectionHeader title="Document Templates" description="Manage email and document templates" />
           <DocumentTemplatesPanel addToast={addToast} />
+        </>
+      );
+
+    case 'slack':
+      return (
+        <>
+          <SectionHeader title="Slack Integration" description="Configure Slack notifications, channels, and quality gates" />
+          <SlackIntegrationPanel addToast={addToast} />
         </>
       );
 

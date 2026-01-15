@@ -26,6 +26,7 @@ export type SettingsSectionId =
   | 'email-log'
   // Communication
   | 'templates'
+  | 'slack'
   // AI
   | 'ai-assistant'
   | 'workflow-log'
@@ -88,6 +89,7 @@ export const settingsSections: SettingsSectionConfig[] = [
 
   // Communication (admin only)
   { id: 'templates', label: 'Document Templates', group: 'Communication', adminOnly: true },
+  { id: 'slack', label: 'Slack Integration', group: 'Communication', adminOnly: true },
 
   // AI
   { id: 'ai-assistant', label: 'AI Assistant', group: 'AI' },
