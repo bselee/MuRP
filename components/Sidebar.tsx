@@ -163,7 +163,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     <aside
       className={`flex-shrink-0 hidden md:flex flex-col transition-all duration-300 ease-in-out border-r ${
         isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
-      } ${isCollapsed ? 'w-20' : 'w-64'}`}
+      } ${isCollapsed ? 'w-20' : 'w-60'}`}
     >
       {/* Header with logo - h-16 (64px) for alignment */}
       <div className={`h-16 flex items-center border-b ${
