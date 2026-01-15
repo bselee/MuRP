@@ -152,6 +152,9 @@ const AppShell: React.FC = () => {
   } = useSystemAlerts();
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
+  // E2E test mode check - must be defined before staggered loading effect
+  const isE2ETestMode = isE2ETesting();
+
   // ============================================================================
   // 🔥 STAGGERED DATA LOADING FROM SUPABASE
   // Industry standard: Max 2-3 concurrent requests per phase
@@ -254,7 +257,6 @@ const AppShell: React.FC = () => {
   const [apiKey, setApiKey] = usePersistentState<string | null>('apiKey', null);
   const [externalConnections, setExternalConnections] = usePersistentState<ExternalConnection[]>('externalConnections', []);
   const [artworkFilter, setArtworkFilter] = useState<string>('');
-  const isE2ETestMode = isE2ETesting();
   const [hasInitialDataLoaded, setHasInitialDataLoaded] = useState(isE2ETestMode);
   const trackingSignalRef = useRef<Map<string, { status?: POTrackingStatus | null; invoiceNotified?: boolean }>>(new Map());
   const notificationsPrimedRef = useRef(false);
