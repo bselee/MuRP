@@ -27,6 +27,131 @@ export interface ComposioConfig {
   mcp_url?: string;
 }
 
+// ============================================================================
+// RUBE MCP CONFIGURATION
+// ============================================================================
+
+/**
+ * Rube MCP configuration - direct MCP server with JWT auth
+ * Get your URL and token from: https://rube.app/mcp
+ */
+export interface RubeMCPConfig {
+  mcp_url: string;        // e.g., "https://rube.app/mcp"
+  auth_token: string;     // JWT token for Bearer auth
+}
+
+/**
+ * Check if Rube MCP is configured via environment
+ */
+export function isRubeMCPConfigured(): boolean {
+  return Boolean(
+    import.meta.env.VITE_RUBE_MCP_URL &&
+    import.meta.env.VITE_RUBE_AUTH_TOKEN
+  );
+}
+
+/**
+ * Get Rube MCP configuration from environment
+ */
+export function getRubeMCPConfig(): RubeMCPConfig | null {
+  const mcpUrl = import.meta.env.VITE_RUBE_MCP_URL;
+  const authToken = import.meta.env.VITE_RUBE_AUTH_TOKEN;
+
+  if (!mcpUrl || !authToken) {
+    return null;
+  }
+
+  return {
+    mcp_url: mcpUrl,
+    auth_token: authToken,
+  };
+}
+
+/**
+ * Get Rube MCP server configuration for Claude Agent SDK
+ * Use this when setting up MCP servers for your agent
+ *
+ * Example usage with Claude Agent SDK:
+ * ```typescript
+ * const rubeConfig = getRubeAgentMCPConfig();
+ * if (rubeConfig) {
+ *   const options = {
+ *     mcp_servers: rubeConfig,
+ *   };
+ * }
+ * ```
+ */
+export function getRubeAgentMCPConfig(): Record<string, unknown> | null {
+  const config = getRubeMCPConfig();
+  if (!config) return null;
+
+  return {
+    rube: {
+      type: 'http',
+      url: config.mcp_url,
+      headers: {
+        'Authorization': `Bearer ${config.auth_token}`,
+      },
+    },
+  };
+}
+
+/**
+ * Call Rube MCP server directly (for tool execution)
+ */
+export async function callRubeMCP(
+  method: string,
+  params: Record<string, unknown>
+): Promise<{ success: boolean; result?: unknown; error?: string }> {
+  const config = getRubeMCPConfig();
+  if (!config) {
+    return { success: false, error: 'Rube MCP not configured' };
+  }
+
+  try {
+    const response = await fetch(config.mcp_url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.auth_token}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: Date.now(),
+        method,
+        params,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { success: false, error: `MCP error: ${response.status} - ${errorText}` };
+    }
+
+    const data = await response.json();
+    if (data.error) {
+      return { success: false, error: data.error.message || 'MCP error' };
+    }
+
+    return { success: true, result: data.result };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
+/**
+ * List available tools from Rube MCP server
+ */
+export async function listRubeMCPTools(): Promise<Array<{ name: string; description?: string }>> {
+  const result = await callRubeMCP('tools/list', {});
+  if (!result.success || !result.result) {
+    return [];
+  }
+
+  const tools = result.result as { tools?: Array<{ name: string; description?: string }> };
+  return tools.tools || [];
+}
+
 export interface ComposioSession {
   id: string;
   mcp_url: string;
