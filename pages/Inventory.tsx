@@ -1555,13 +1555,13 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                 </span>
                             </div>}
                             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-blue-600'}`}>
+                                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                                     Showing <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{processedInventory.length}</span> of <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{inventory.length}</span> items
                                 </p>
                                 {onQuickRequest && (
                                     <Button
                                         onClick={() => onQuickRequest?.()}
-                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-accent-500/80 hover:bg-accent-500 text-white text-sm font-semibold transition-colors"
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold transition-colors"
                                     >
                                         Ask About Product
                                     </Button>

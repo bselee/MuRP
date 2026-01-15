@@ -794,8 +794,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                                         viewMode === 'unified'
                                             ? isDark
-                                                ? 'bg-blue-500/20 text-blue-300'
-                                                : 'bg-blue-500 text-white'
+                                                ? 'bg-gray-700 text-white'
+                                                : 'bg-gray-800 text-white'
                                             : isDark
                                                 ? 'text-gray-400 hover:text-gray-200'
                                                 : 'text-gray-600 hover:text-gray-900'
@@ -809,8 +809,8 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                                         viewMode === 'list'
                                             ? isDark
-                                                ? 'bg-blue-500/20 text-blue-300'
-                                                : 'bg-blue-500 text-white'
+                                                ? 'bg-gray-700 text-white'
+                                                : 'bg-gray-800 text-white'
                                             : isDark
                                                 ? 'text-gray-400 hover:text-gray-200'
                                                 : 'text-gray-600 hover:text-gray-900'
@@ -1232,10 +1232,12 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 <Button
                                     onClick={() => setShowAllFinaleHistory(!showAllFinaleHistory)}
                                     className={`px-3 py-1.5 text-xs rounded transition-colors ${showAllFinaleHistory
-                                        ? 'bg-accent-500/20 text-accent-300 border border-accent-500/50'
-                                        : isDark 
+                                        ? isDark
+                                            ? 'bg-gray-700 text-white border border-gray-600'
+                                            : 'bg-gray-800 text-white border border-gray-800'
+                                        : isDark
                                             ? 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
-                                            : 'bg-white/80 text-blue-600 border border-gray-200 hover:bg-gray-100'
+                                            : 'bg-white/80 text-gray-700 border border-gray-300 hover:bg-gray-100'
                                         }`}
                                 >
                                     {showAllFinaleHistory ? 'All History' : 'Active Only'}

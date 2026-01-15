@@ -36,8 +36,8 @@ const variantStyles: Record<BadgeVariant, Record<ThemeVariant, string>> = {
     light: 'bg-gray-200 text-gray-700 border-gray-300',
   },
   primary: {
-    dark: 'bg-accent-500/20 text-accent-300 border-accent-500/30',
-    light: 'bg-blue-100 text-blue-700 border-blue-300',
+    dark: 'bg-gray-600/30 text-gray-200 border-gray-500/40',
+    light: 'bg-gray-200 text-gray-800 border-gray-400',
   },
   success: {
     dark: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',

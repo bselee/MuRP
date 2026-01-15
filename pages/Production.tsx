@@ -56,7 +56,7 @@ const Production: React.FC<ProductionProps> = ({
                             {onQuickRequest && (
                                 <Button
                                     onClick={() => onQuickRequest()}
-                                    className="px-3 py-2 bg-accent-500 hover:bg-accent-500 text-white text-sm font-semibold rounded-lg transition-colors"
+                                    className="px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold rounded-lg transition-colors"
                                 >
                                     Ask About Product
                                 </Button>

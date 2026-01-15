@@ -549,13 +549,28 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
 
             {/* Custom name if no SKU match */}
             {!matchedInventory && sku && (
-              <input
-                type="text"
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="Item description"
-                className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
-              />
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  placeholder="Item description"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                />
+                <input
+                  type="url"
+                  value={externalLink}
+                  onChange={(e) => setExternalLink(e.target.value)}
+                  placeholder="Product URL (Amazon, supplier website, etc.)"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                />
+                {externalLink && amazonMetadata && (
+                  <div className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded flex items-center gap-2">
+                    <CheckCircleIcon className="w-3 h-3" />
+                    Amazon link detected - will auto-track shipping
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Stock info for matched item in requisition mode */}
@@ -661,8 +676,19 @@ const QuickRequestDrawer: React.FC<QuickRequestDrawerProps> = ({ isOpen, invento
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-white truncate">{item.name}</p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-xs text-gray-400">{item.sku}</p>
+                          {item.externalUrl && (
+                            <a
+                              href={item.externalUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-cyan-400 hover:text-cyan-300 underline truncate max-w-[150px]"
+                              title={item.externalUrl}
+                            >
+                              {item.externalUrl.includes('amazon') ? 'Amazon' : 'Link'}
+                            </a>
+                          )}
                           {stockStatus.status === 'sufficient' && (
                             <span className="text-xs text-amber-400">⚠ {stockStatus.message}</span>
                           )}

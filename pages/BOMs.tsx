@@ -1020,7 +1020,7 @@ const BOMs: React.FC<BOMsProps> = ({
           canSubmitRequisitions && onQuickRequest ? (
             <Button
               onClick={() => onQuickRequest()}
-              className="inline-flex items-center justify-center rounded-md bg-accent-500 px-3 py-2 font-semibold text-white shadow hover:bg-accent-500 transition-colors text-sm"
+              className="inline-flex items-center justify-center rounded-md bg-gray-800 px-3 py-2 font-semibold text-white shadow hover:bg-gray-700 transition-colors text-sm"
             >
               Ask About Product
             </Button>
