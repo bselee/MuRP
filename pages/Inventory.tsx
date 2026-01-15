@@ -1301,6 +1301,8 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             </CollapsibleSection>
                         )}
 
+                        {/* z-index raised when dropdowns open to prevent table from overlaying */}
+                        <div className={`relative ${isCategoryDropdownOpen || isVendorDropdownOpen ? 'z-50' : 'z-10'}`}>
                         <CollapsibleSection
                         title="Search & Filters"
                         icon={<AdjustmentsHorizontalIcon className={`w-6 h-6 ${isDark ? 'text-blue-400' : 'text-gray-500'}`} />}
@@ -1565,6 +1567,7 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                             </div>
                         </div>
                     </CollapsibleSection>
+                    </div>
                     {/* Inventory Table */}
                     <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200'} backdrop-blur-sm rounded-lg shadow-lg border overflow-hidden`}>
                         <Table

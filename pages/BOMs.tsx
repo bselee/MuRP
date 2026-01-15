@@ -1047,7 +1047,8 @@ const BOMs: React.FC<BOMsProps> = ({
         />
       )}
 
-      {/* Search, Filters, and Controls */}
+      {/* Search, Filters, and Controls - z-index raised when dropdowns open to prevent cards from overlaying */}
+      <div className={`relative ${isCategoryDropdownOpen || isVendorDropdownOpen ? 'z-50' : 'z-10'}`}>
       <CollapsibleSection
         title="Search & Filters"
         icon={<AdjustmentsHorizontalIcon className={`w-6 h-6 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />}
@@ -1319,6 +1320,7 @@ const BOMs: React.FC<BOMsProps> = ({
         </div>
       </div>
       </CollapsibleSection>
+      </div>
 
       {/* BOM Cards/Table */}
       {processedBoms.length === 0 ? (
