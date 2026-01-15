@@ -1376,16 +1376,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                 >
                                                     Clear
                                                 </button>
-                                                <Button
+                                                <button
+                                                    type="button"
                                                     onClick={() => {
                                                         setIsCategoryDropdownOpen(false);
                                                         setIsCategoryManagementOpen(true);
                                                     }}
-                                                    className={`ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-gray-100'} rounded flex items-center gap-1`}
+                                                    className={`ml-auto text-xs font-medium px-2 py-1 rounded flex items-center gap-1 ${isDark ? 'text-gray-200 hover:text-white bg-gray-700 hover:bg-gray-600' : 'text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200'}`}
                                                 >
                                                     <AdjustmentsHorizontalIcon className="w-3 h-3" />
                                                     Manage
-                                                </Button>
+                                                </button>
                                             </div>
                                             <div className={`sticky top-[52px] p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
                                                 <input
@@ -1459,16 +1460,17 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                                 >
                                                     Clear
                                                 </button>
-                                                <Button
+                                                <button
+                                                    type="button"
                                                     onClick={() => {
                                                         setIsVendorDropdownOpen(false);
                                                         setIsVendorManagementOpen(true);
                                                     }}
-                                                    className={`ml-auto text-xs text-yellow-400 hover:text-yellow-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-gray-100'} rounded flex items-center gap-1`}
+                                                    className={`ml-auto text-xs font-medium px-2 py-1 rounded flex items-center gap-1 ${isDark ? 'text-gray-200 hover:text-white bg-gray-700 hover:bg-gray-600' : 'text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200'}`}
                                                 >
                                                     <AdjustmentsHorizontalIcon className="w-3 h-3" />
                                                     Manage
-                                                </Button>
+                                                </button>
                                             </div>
                                             <div className={`sticky top-[52px] p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
                                                 <input
