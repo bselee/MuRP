@@ -66,6 +66,10 @@ import {
   triggerAutoPOGeneration,
   type AutoPOResult,
 } from './autoPOGenerationService';
+import {
+  sendStockoutNotification,
+  sendAgentActionNotification,
+} from './slackService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 Types
@@ -842,6 +846,40 @@ export async function runInventoryGuardianAgent(
 
   output.push('');
   output.push(`[${new Date().toISOString()}] Inventory Guardian complete`);
+
+  // === SLACK NOTIFICATIONS ===
+  // Send Slack alerts for critical items (fire-and-forget, don't block return)
+  const criticalAlerts = summary.alerts.filter(a => a.severity === 'COOKED' || a.severity === 'CRITICAL');
+  if (criticalAlerts.length > 0) {
+    // Send top 3 critical alerts to Slack
+    criticalAlerts.slice(0, 3).forEach(alert => {
+      sendStockoutNotification({
+        sku: alert.sku,
+        itemName: alert.product_name,
+        currentStock: alert.current_stock,
+        daysUntilStockout: alert.runway_days,
+        urgency: alert.severity === 'COOKED' ? 'critical' : 'high',
+        recommendedAction: alert.recommended_action,
+        vendorName: alert.vendor_name,
+      }).catch(err => {
+        console.error('[InventoryGuardian] Failed to send Slack notification:', err);
+      });
+    });
+
+    // Also notify about agent action if POs were created
+    if (autoPOResult?.draftsCreated && autoPOResult.draftsCreated > 0) {
+      sendAgentActionNotification({
+        agentName: 'Inventory Guardian',
+        actionType: 'Auto PO Generation',
+        description: `Created ${autoPOResult.draftsCreated} PO draft(s) worth $${autoPOResult.totalValue.toLocaleString()} for critical items`,
+        status: autoPOResult.draftsAutoApproved > 0 ? 'executed' : 'proposed',
+        affectedItems: criticalAlerts.slice(0, 5).map(a => a.sku),
+        requiresApproval: autoPOResult.draftsPendingApproval > 0,
+      }).catch(err => {
+        console.error('[InventoryGuardian] Failed to send Slack action notification:', err);
+      });
+    }
+  }
 
   return {
     success: true,

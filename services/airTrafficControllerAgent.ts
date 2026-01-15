@@ -24,6 +24,7 @@
  */
 
 import { supabase } from '../lib/supabase/client';
+import { sendPOOverdueNotification } from './slackService';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 🎨 Types
@@ -193,7 +194,25 @@ export async function scanOpenPOsForDelays(): Promise<PODelayAlert[]> {
       }
     }
 
-    return alerts.filter(a => a.priority_level !== 'low');
+    const filteredAlerts = alerts.filter(a => a.priority_level !== 'low');
+
+    // Send Slack notifications for critical/high priority overdue POs
+    filteredAlerts
+      .filter(a => a.priority_level === 'critical' || a.priority_level === 'high')
+      .slice(0, 5) // Limit to avoid spam
+      .forEach(alert => {
+        sendPOOverdueNotification({
+          poNumber: alert.order_id,
+          vendorName: alert.vendor_name,
+          expectedDate: new Date(Date.now() - alert.delay_days * 24 * 60 * 60 * 1000).toLocaleDateString(),
+          daysOverdue: alert.delay_days,
+          itemCount: alert.affected_items.length,
+        }).catch(err => {
+          console.error('[AirTrafficController] Failed to send Slack notification:', err);
+        });
+      });
+
+    return filteredAlerts;
   } catch (error) {
     console.error('Error scanning open POs:', error);
     return [];

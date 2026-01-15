@@ -10,8 +10,10 @@ import {
   ClockIcon,
   GlobeIcon,
   HashtagIcon,
-  AtSymbolIcon
+  AtSymbolIcon,
+  CheckCircleIcon
 } from './icons';
+import { testSlackConnection } from '../services/slackService';
 
 interface NotificationPreferences {
   id?: string;
@@ -361,13 +363,31 @@ const NotificationPreferencesPanel: React.FC<NotificationPreferencesPanelProps> 
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Personal Slack Webhook URL (optional)
               </label>
-              <input
-                type="url"
-                value={preferences.slack_webhook_url || ''}
-                onChange={(e) => updatePreference('slack_webhook_url', e.target.value || undefined)}
-                placeholder="https://hooks.slack.com/services/..."
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={preferences.slack_webhook_url || ''}
+                  onChange={(e) => updatePreference('slack_webhook_url', e.target.value || undefined)}
+                  placeholder="https://hooks.slack.com/services/..."
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-accent-500"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const result = await testSlackConnection(preferences.slack_webhook_url || undefined);
+                    if (result.success) {
+                      addToast?.('Slack test message sent successfully!', 'success');
+                    } else {
+                      addToast?.(`Slack test failed: ${result.error}`, 'error');
+                    }
+                  }}
+                  disabled={!preferences.slack_webhook_url && !preferences.slack_enabled}
+                  className="px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white rounded-lg text-sm flex items-center gap-1"
+                >
+                  <CheckCircleIcon className="w-4 h-4" />
+                  Test
+                </button>
+              </div>
               <p className="text-xs text-gray-500 mt-1">
                 Use your own webhook for personal notifications
               </p>
