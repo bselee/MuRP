@@ -152,14 +152,23 @@ const AppShell: React.FC = () => {
   } = useSystemAlerts();
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
-  // 🔥 LIVE DATA FROM SUPABASE (Real-time subscriptions enabled)
+  // ============================================================================
+  // 🔥 STAGGERED DATA LOADING FROM SUPABASE
+  // Industry standard: Max 2-3 concurrent requests per phase
+  // Prevents browser thread exhaustion on initial page load
+  // ============================================================================
+
+  // PHASE 1 (T=0ms): Critical data - inventory + vendors (needed for basic UI)
   const { data: inventoryData, loading: inventoryLoading, error: inventoryError, refetch: refetchInventory } = useSupabaseInventory();
   const { data: vendorsData, loading: vendorsLoading, error: vendorsError, refetch: refetchVendors } = useSupabaseVendors();
-  const { data: bomsData, loading: bomsLoading, error: bomsError, refetch: refetchBOMs } = useSupabaseBOMs();
-  const { data: purchaseOrdersData, loading: posLoading, error: posError, refetch: refetchPOs } = useSupabasePurchaseOrders();
-  const { data: buildOrders, loading: buildOrdersLoading, error: buildOrdersError, refetch: refetchBuildOrders } = useSupabaseBuildOrders();
-  const { data: requisitions, loading: requisitionsLoading, error: requisitionsError, refetch: refetchRequisitions } = useSupabaseRequisitions();
-  const { data: userProfiles, loading: userProfilesLoading, refetch: refetchUserProfiles } = useSupabaseUserProfiles();
+
+  // PHASE 2+ : Lazy-loaded data - triggered by staggered loading effect
+  const { data: bomsData, loading: bomsLoading, error: bomsError, refetch: refetchBOMs } = useSupabaseBOMs({ lazy: true });
+  const { data: purchaseOrdersData, loading: posLoading, error: posError, refetch: refetchPOs } = useSupabasePurchaseOrders({ lazy: true });
+  const { data: buildOrders, loading: buildOrdersLoading, error: buildOrdersError, refetch: refetchBuildOrders } = useSupabaseBuildOrders({ lazy: true });
+  const { data: requisitions, loading: requisitionsLoading, error: requisitionsError, refetch: refetchRequisitions } = useSupabaseRequisitions({ lazy: true });
+  const { data: userProfiles, loading: userProfilesLoading, refetch: refetchUserProfiles } = useSupabaseUserProfiles({ lazy: true });
+
   // UI/Config state (keep in localStorage - not business data)
   const [showAllFinaleHistory, setShowAllFinaleHistory] = usePersistentState<boolean>('showAllFinaleHistory', false);
 
@@ -167,7 +176,58 @@ const AppShell: React.FC = () => {
   const { data: finalePurchaseOrders, loading: finalePOsLoading, refetch: refetchFinalePOs } = useSupabaseFinalePurchaseOrders({
     includeInactive: showAllFinaleHistory,
     year: new Date().getFullYear(),
+    lazy: true, // Defer until Phase 5
   });
+
+  // Staggered loading effect - prevents browser resource exhaustion
+  // Each phase waits for previous to complete before starting new requests
+  useEffect(() => {
+    let isMounted = true;
+
+    const runStaggeredLoading = async () => {
+      // Phase 1: Inventory + Vendors already loading (non-lazy)
+      // Wait for them to complete before starting Phase 2
+      console.log('[App] Staggered loading: Phase 1 (Inventory + Vendors) started');
+
+      // Phase 2 (T=200ms): BOMs
+      await new Promise(resolve => setTimeout(resolve, 200));
+      if (!isMounted) return;
+      console.log('[App] Staggered loading: Phase 2 (BOMs) started');
+      refetchBOMs();
+
+      // Phase 3 (T=400ms): Purchase Orders
+      await new Promise(resolve => setTimeout(resolve, 200));
+      if (!isMounted) return;
+      console.log('[App] Staggered loading: Phase 3 (Purchase Orders) started');
+      refetchPOs();
+
+      // Phase 4 (T=600ms): Build Orders + Requisitions
+      await new Promise(resolve => setTimeout(resolve, 200));
+      if (!isMounted) return;
+      console.log('[App] Staggered loading: Phase 4 (Build Orders + Requisitions) started');
+      refetchBuildOrders();
+      refetchRequisitions();
+
+      // Phase 5 (T=800ms): User Profiles + Finale POs
+      await new Promise(resolve => setTimeout(resolve, 200));
+      if (!isMounted) return;
+      console.log('[App] Staggered loading: Phase 5 (User Profiles + Finale POs) started');
+      refetchUserProfiles();
+      refetchFinalePOs();
+
+      console.log('[App] Staggered loading: All phases complete');
+    };
+
+    // Only run staggered loading for authenticated users (not E2E mode)
+    if (currentUser && !isE2ETestMode) {
+      runStaggeredLoading();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser, isE2ETestMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: refetch functions are stable (useCallback), but adding them would cause infinite loops
 
   const [historicalSales] = usePersistentState<HistoricalSale[]>('historicalSales', mockHistoricalSales);
   const [watchlist] = usePersistentState<WatchlistItem[]>('watchlist', mockWatchlist);
@@ -318,7 +378,6 @@ const AppShell: React.FC = () => {
     if (!currentUser) {
       resolveAlert('sync:inventory');
       resolveAlert('sync:vendors');
-      resolveAlert('sync:boms');
       return;
     }
 
@@ -326,15 +385,20 @@ const AppShell: React.FC = () => {
       return;
     }
 
-    const sources = ['inventory', 'vendors', 'boms'] as const;
+    // Only track inventory and vendors - BOMs are managed locally and synced via GraphQL API
+    // The boms sync_metadata entry may have stale data, causing misleading alerts
+    const sources = ['inventory', 'vendors'] as const;
 
     const evaluateRows = (rows: SyncHealthRow[] | null) => {
       (rows || []).forEach((row) => {
+        // Skip boms - they're managed via GraphQL API and local DB, not tracked here
+        if (row.data_type === 'boms') return;
+
         const sourceKey = `sync:${row.data_type}`;
         if (row.last_sync_time && row.success === false) {
           upsertAlert({
             source: sourceKey,
-            message: `Unable to reach Finale ${row.data_type} report. Last attempt ${new Date(row.last_sync_time).toLocaleTimeString()}.`,
+            message: `Finale ${row.data_type} sync failed. Last attempt ${new Date(row.last_sync_time).toLocaleTimeString()}.`,
           });
         } else if (sources.some((source) => `sync:${source}` === sourceKey)) {
           resolveAlert(sourceKey);

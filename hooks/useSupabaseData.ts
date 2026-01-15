@@ -10,7 +10,7 @@
  * const { data: vendors, loading, error } = useSupabaseVendors();
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type {
@@ -38,6 +38,12 @@ export { isGloballyExcludedCategory as isExcludedCategory } from './useGlobalCat
 // ============================================================================
 // TYPES
 // ============================================================================
+
+/** Options for lazy loading hooks */
+export interface LazyLoadOptions {
+  /** If true, don't fetch on mount - wait for manual refetch() call */
+  lazy?: boolean;
+}
 
 export interface UseSupabaseDataResult<T> {
   data: T[];
@@ -133,12 +139,15 @@ const isSchemaCacheError = (err: any): boolean => {
 /**
  * Fetch and subscribe to inventory items
  * Real-time updates when inventory changes in database
+ * @param options.lazy - If true, don't fetch on mount
  */
-export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
+export function useSupabaseInventory(options: LazyLoadOptions = {}): UseSupabaseDataResult<InventoryItem> {
+  const { lazy = false } = options;
   const [data, setData] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState<Error | null>(null);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const hasFetched = useRef(false);
 
   const fetchInventory = useCallback(async () => {
     try {
@@ -270,8 +279,9 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
       });
 
       console.log(`[useSupabaseInventory] Total: ${transformed.length}, After global filter: ${filtered.length}, Excluded categories:`, Array.from(excludedSet));
-      
+
       setData(filtered);
+      hasFetched.current = true;
     } catch (err) {
       console.error('[useSupabaseInventory] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch inventory'));
@@ -281,10 +291,12 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
   }, []);
 
   useEffect(() => {
-    // Initial fetch
-    fetchInventory();
+    // Skip initial fetch if lazy loading
+    if (!lazy) {
+      fetchInventory();
+    }
 
-    // Set up real-time subscription
+    // Set up real-time subscription (always, for updates after initial load)
     const newChannel = supabase
       .channel('inventory-changes')
       .on(
@@ -295,8 +307,11 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
           table: 'inventory_items',
         },
         (payload) => {
-          console.log('[useSupabaseInventory] Real-time update:', payload);
-          fetchInventory();
+          // Only process real-time updates if we've already fetched once
+          if (hasFetched.current) {
+            console.log('[useSupabaseInventory] Real-time update:', payload);
+            fetchInventory();
+          }
         }
       )
       .subscribe();
@@ -305,8 +320,10 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
 
     // Listen for global category filter changes to refetch with new exclusions
     const handleFilterChange = () => {
-      console.log('[useSupabaseInventory] Global category filter changed, refetching...');
-      fetchInventory();
+      if (hasFetched.current) {
+        console.log('[useSupabaseInventory] Global category filter changed, refetching...');
+        fetchInventory();
+      }
     };
     window.addEventListener('global-category-filter-changed', handleFilterChange);
 
@@ -317,7 +334,7 @@ export function useSupabaseInventory(): UseSupabaseDataResult<InventoryItem> {
       }
       window.removeEventListener('global-category-filter-changed', handleFilterChange);
     };
-  }, [fetchInventory]);
+  }, [lazy, fetchInventory]);
 
   return { data, loading, error, refetch: fetchInventory };
 }
@@ -458,11 +475,13 @@ export function useSupabaseInventoryItem(sku: string): UseSupabaseSingleResult<I
  * Fetch and subscribe to vendors
  * Real-time updates when vendors change in database
  */
-export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
+export function useSupabaseVendors(options: LazyLoadOptions = {}): UseSupabaseDataResult<Vendor> {
+  const { lazy = false } = options;
   const [data, setData] = useState<Vendor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState<Error | null>(null);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const hasFetched = useRef(false);
 
   const fetchVendors = useCallback(async () => {
     try {
@@ -519,6 +538,7 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
       }));
 
       setData(transformed);
+      hasFetched.current = true;
     } catch (err) {
       console.error('[useSupabaseVendors] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch vendors'));
@@ -528,8 +548,10 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
   }, []);
 
   useEffect(() => {
-    // Initial fetch
-    fetchVendors();
+    // Skip initial fetch if lazy loading
+    if (!lazy) {
+      fetchVendors();
+    }
 
     // Set up real-time subscription
     const newChannel = supabase
@@ -542,8 +564,10 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
           table: 'vendors',
         },
         (payload) => {
-          console.log('[useSupabaseVendors] Real-time update:', payload);
-          fetchVendors();
+          if (hasFetched.current) {
+            console.log('[useSupabaseVendors] Real-time update:', payload);
+            fetchVendors();
+          }
         }
       )
       .subscribe();
@@ -556,7 +580,7 @@ export function useSupabaseVendors(): UseSupabaseDataResult<Vendor> {
         supabase.removeChannel(newChannel);
       }
     };
-  }, [fetchVendors]);
+  }, [lazy, fetchVendors]);
 
   return { data, loading, error, refetch: fetchVendors };
 }
@@ -632,11 +656,13 @@ export function useSupabaseVendor(id: string): UseSupabaseSingleResult<Vendor> {
  * NOTE: We do NOT filter by inventory existence - BOMs may exist for products
  * that haven't been synced or don't have inventory items yet.
  */
-export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
+export function useSupabaseBOMs(options: LazyLoadOptions = {}): UseSupabaseDataResult<BillOfMaterials> {
+  const { lazy = false } = options;
   const [data, setData] = useState<BillOfMaterials[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState<Error | null>(null);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const hasFetched = useRef(false);
 
   const fetchBOMs = useCallback(async () => {
     if (isE2ETesting()) {
@@ -693,6 +719,7 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       console.log(`[useSupabaseBOMs] Final: ${filtered.length} BOMs (excluded ${excludedSkus.size} SKUs)`);
 
       setData(filtered);
+      hasFetched.current = true;
     } catch (err) {
       console.error('[useSupabaseBOMs] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch BOMs'));
@@ -708,8 +735,10 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       return;
     }
 
-    // Initial fetch
-    fetchBOMs();
+    // Skip initial fetch if lazy loading
+    if (!lazy) {
+      fetchBOMs();
+    }
 
     // Set up real-time subscription
     const newChannel = supabase
@@ -722,8 +751,10 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
           table: 'boms',
         },
         (payload) => {
-          console.log('[useSupabaseBOMs] Real-time update:', payload);
-          fetchBOMs();
+          if (hasFetched.current) {
+            console.log('[useSupabaseBOMs] Real-time update:', payload);
+            fetchBOMs();
+          }
         }
       )
       .subscribe();
@@ -732,8 +763,10 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
 
     // Listen for global filter changes to refetch with new exclusions
     const handleFilterChange = () => {
-      console.log('[useSupabaseBOMs] Global filter changed, refetching...');
-      fetchBOMs();
+      if (hasFetched.current) {
+        console.log('[useSupabaseBOMs] Global filter changed, refetching...');
+        fetchBOMs();
+      }
     };
     window.addEventListener('global-category-filter-changed', handleFilterChange);
     window.addEventListener('global-sku-filter-changed', handleFilterChange);
@@ -746,7 +779,7 @@ export function useSupabaseBOMs(): UseSupabaseDataResult<BillOfMaterials> {
       window.removeEventListener('global-category-filter-changed', handleFilterChange);
       window.removeEventListener('global-sku-filter-changed', handleFilterChange);
     };
-  }, [fetchBOMs]);
+  }, [lazy, fetchBOMs]);
 
   return { data, loading, error, refetch: fetchBOMs };
 }
@@ -963,11 +996,13 @@ const transformPurchaseOrderRecord = (po: any): PurchaseOrder => {
   };
 };
 
-export function useSupabasePurchaseOrders(): UseSupabaseDataResult<PurchaseOrder> {
+export function useSupabasePurchaseOrders(options: LazyLoadOptions = {}): UseSupabaseDataResult<PurchaseOrder> {
+  const { lazy = false } = options;
   const [data, setData] = useState<PurchaseOrder[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState<Error | null>(null);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const hasFetched = useRef(false);
 
   const fetchPurchaseOrders = useCallback(async () => {
     try {
@@ -989,6 +1024,7 @@ export function useSupabasePurchaseOrders(): UseSupabaseDataResult<PurchaseOrder
       });
 
       setData((pos || []).map(transformPurchaseOrderRecord));
+      hasFetched.current = true;
     } catch (err) {
       console.error('[useSupabasePurchaseOrders] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch purchase orders'));
@@ -998,8 +1034,10 @@ export function useSupabasePurchaseOrders(): UseSupabaseDataResult<PurchaseOrder
   }, []);
 
   useEffect(() => {
-    // Initial fetch
-    fetchPurchaseOrders();
+    // Skip initial fetch if lazy loading
+    if (!lazy) {
+      fetchPurchaseOrders();
+    }
 
     // Set up real-time subscription
     const newChannel = supabase
@@ -1012,8 +1050,10 @@ export function useSupabasePurchaseOrders(): UseSupabaseDataResult<PurchaseOrder
           table: 'purchase_orders',
         },
         (payload) => {
-          console.log('[useSupabasePurchaseOrders] Real-time update:', payload);
-          fetchPurchaseOrders();
+          if (hasFetched.current) {
+            console.log('[useSupabasePurchaseOrders] Real-time update:', payload);
+            fetchPurchaseOrders();
+          }
         }
       )
       .subscribe();
@@ -1026,7 +1066,7 @@ export function useSupabasePurchaseOrders(): UseSupabaseDataResult<PurchaseOrder
         supabase.removeChannel(newChannel);
       }
     };
-  }, [fetchPurchaseOrders]);
+  }, [lazy, fetchPurchaseOrders]);
 
   return { data, loading, error, refetch: fetchPurchaseOrders };
 }
@@ -1083,11 +1123,13 @@ export function useSupabasePurchaseOrder(id: string): UseSupabaseSingleResult<Pu
  * Fetch and subscribe to build orders
  * Real-time updates when build orders change in database
  */
-export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
+export function useSupabaseBuildOrders(options: LazyLoadOptions = {}): UseSupabaseDataResult<BuildOrder> {
+  const { lazy = false } = options;
   const [data, setData] = useState<BuildOrder[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState<Error | null>(null);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const hasFetched = useRef(false);
 
   const mapMaterialRequirement = useCallback((req: any): MaterialRequirement => ({
     sku: req.sku,
@@ -1205,6 +1247,7 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
             includeMaterials: false,
             materialMap,
           }));
+          hasFetched.current = true;
           return;
         }
 
@@ -1212,6 +1255,7 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
       }
 
       setData(transformBuildOrders(orders));
+      hasFetched.current = true;
     } catch (err) {
       console.error('[useSupabaseBuildOrders] Error:', err);
       
@@ -1229,8 +1273,10 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
   }, [transformBuildOrders]);
 
   useEffect(() => {
-    // Initial fetch
-    fetchBuildOrders();
+    // Skip initial fetch if lazy loading
+    if (!lazy) {
+      fetchBuildOrders();
+    }
 
     // Set up real-time subscription
     const newChannel = supabase
@@ -1243,8 +1289,10 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
           table: 'build_orders',
         },
         (payload) => {
-          console.log('[useSupabaseBuildOrders] Real-time update:', payload);
-          fetchBuildOrders();
+          if (hasFetched.current) {
+            console.log('[useSupabaseBuildOrders] Real-time update:', payload);
+            fetchBuildOrders();
+          }
         }
       )
       .subscribe();
@@ -1257,7 +1305,7 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
         supabase.removeChannel(newChannel);
       }
     };
-  }, [fetchBuildOrders]);
+  }, [lazy, fetchBuildOrders]);
 
   return { data, loading, error, refetch: fetchBuildOrders };
 }
@@ -1269,12 +1317,15 @@ export function useSupabaseBuildOrders(): UseSupabaseDataResult<BuildOrder> {
 /**
  * Fetch and subscribe to internal requisitions
  * Real-time updates when requisitions change in database
+ * @param options.lazy - If true, don't fetch on mount
  */
-export function useSupabaseRequisitions(): UseSupabaseDataResult<InternalRequisition> {
+export function useSupabaseRequisitions(options: LazyLoadOptions = {}): UseSupabaseDataResult<InternalRequisition> {
+  const { lazy = false } = options;
   const [data, setData] = useState<InternalRequisition[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState<Error | null>(null);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const hasFetched = useRef(false);
 
   const fetchRequisitions = useCallback(async () => {
     try {
@@ -1315,9 +1366,10 @@ export function useSupabaseRequisitions(): UseSupabaseDataResult<InternalRequisi
       }));
 
       setData(transformed);
+      hasFetched.current = true;
     } catch (err) {
       console.error('[useSupabaseRequisitions] Error:', err);
-      
+
       // If it's a schema cache error, return empty array and log warning instead of error
       if (isSchemaCacheError(err)) {
         console.warn('[useSupabaseRequisitions] Schema cache stale, will retry on next fetch');
@@ -1326,14 +1378,17 @@ export function useSupabaseRequisitions(): UseSupabaseDataResult<InternalRequisi
       } else {
         setError(err instanceof Error ? err : new Error('Failed to fetch requisitions'));
       }
+      hasFetched.current = true;
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // Initial fetch
-    fetchRequisitions();
+    // Skip initial fetch if lazy loading
+    if (!lazy) {
+      fetchRequisitions();
+    }
 
     // Set up real-time subscription
     const newChannel = supabase
@@ -1346,8 +1401,10 @@ export function useSupabaseRequisitions(): UseSupabaseDataResult<InternalRequisi
           table: 'requisitions',
         },
         (payload) => {
-          console.log('[useSupabaseRequisitions] Real-time update:', payload);
-          fetchRequisitions();
+          if (hasFetched.current) {
+            console.log('[useSupabaseRequisitions] Real-time update:', payload);
+            fetchRequisitions();
+          }
         }
       )
       .subscribe();
@@ -1360,7 +1417,7 @@ export function useSupabaseRequisitions(): UseSupabaseDataResult<InternalRequisi
         supabase.removeChannel(newChannel);
       }
     };
-  }, [fetchRequisitions]);
+  }, [lazy, fetchRequisitions]);
 
   return { data, loading, error, refetch: fetchRequisitions };
 }
@@ -1380,16 +1437,23 @@ const transformProfileRow = (row: any): User => ({
   regulatoryAgreement: row.agreements?.regulatory,
 });
 
-export function useSupabaseUserProfiles(): UseSupabaseDataResult<User> {
+/**
+ * Fetch user profiles
+ * @param options.lazy - If true, don't fetch on mount
+ */
+export function useSupabaseUserProfiles(options: LazyLoadOptions = {}): UseSupabaseDataResult<User> {
+  const { lazy = false } = options;
   const [data, setData] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState<Error | null>(null);
+  const hasFetched = useRef(false);
 
   const fetchProfiles = useCallback(async () => {
     if (isE2ETesting()) {
       setData(mockUsers);
       setError(null);
       setLoading(false);
+      hasFetched.current = true;
       return;
     }
 
@@ -1402,17 +1466,22 @@ export function useSupabaseUserProfiles(): UseSupabaseDataResult<User> {
         .order('full_name');
       if (fetchError) throw fetchError;
       setData((rows ?? []).map(transformProfileRow));
+      hasFetched.current = true;
     } catch (err) {
       console.error('[useSupabaseUserProfiles] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch user profiles'));
+      hasFetched.current = true;
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchProfiles();
-  }, [fetchProfiles]);
+    // Skip initial fetch if lazy loading
+    if (!lazy) {
+      fetchProfiles();
+    }
+  }, [lazy, fetchProfiles]);
 
   return { data, loading, error, refetch: fetchProfiles };
 }
@@ -1775,16 +1844,20 @@ export function useSupabaseComplianceRecords(bomId?: string): UseSupabaseDataRes
  * Fetch Finale Purchase Orders from finale_purchase_orders table
  * Filters to show only non-completed POs (DRAFT, SUBMITTED, PARTIALLY_RECEIVED)
  * These are the "current" POs that need attention
+ * @param options.lazy - If true, don't fetch on mount
  */
 export function useSupabaseFinalePurchaseOrders(options?: {
   includeCompleted?: boolean;
   includeInactive?: boolean;
   year?: number;
+  lazy?: boolean;
 }): UseSupabaseDataResult<any> {
+  const lazy = options?.lazy ?? false;
   const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState<Error | null>(null);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  const hasFetched = useRef(false);
 
   const fetchFinalePOs = useCallback(async () => {
     try {
@@ -1909,18 +1982,22 @@ export function useSupabaseFinalePurchaseOrders(options?: {
       });
 
       setData(transformed);
+      hasFetched.current = true;
       console.log(`[useSupabaseFinalePurchaseOrders] Loaded ${transformed.length} Finale POs`);
     } catch (err) {
       console.error('[useSupabaseFinalePurchaseOrders] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch Finale purchase orders'));
+      hasFetched.current = true;
     } finally {
       setLoading(false);
     }
   }, [options?.includeCompleted, options?.includeInactive, options?.year]);
 
   useEffect(() => {
-    // Initial fetch
-    fetchFinalePOs();
+    // Skip initial fetch if lazy loading
+    if (!lazy) {
+      fetchFinalePOs();
+    }
 
     // Set up real-time subscription
     const newChannel = supabase
@@ -1933,8 +2010,10 @@ export function useSupabaseFinalePurchaseOrders(options?: {
           table: 'finale_purchase_orders',
         },
         (payload) => {
-          console.log('[useSupabaseFinalePurchaseOrders] Real-time update:', payload);
-          fetchFinalePOs();
+          if (hasFetched.current) {
+            console.log('[useSupabaseFinalePurchaseOrders] Real-time update:', payload);
+            fetchFinalePOs();
+          }
         }
       )
       .subscribe();
@@ -1947,7 +2026,7 @@ export function useSupabaseFinalePurchaseOrders(options?: {
         supabase.removeChannel(newChannel);
       }
     };
-  }, [fetchFinalePOs]);
+  }, [lazy, fetchFinalePOs]);
 
   return { data, loading, error, refetch: fetchFinalePOs };
 }

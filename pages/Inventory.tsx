@@ -1360,18 +1360,20 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     {isCategoryDropdownOpen && (
                                         <div className={`absolute z-[100] w-full mt-1 border-2 ${isDark ? 'border-gray-500 bg-gray-900' : 'border-gray-300 bg-white'} rounded-md shadow-2xl max-h-80 overflow-hidden`}>
                                             <div className={`sticky top-0 p-2 border-b ${isDark ? 'border-gray-600 bg-gray-900' : 'border-gray-200 bg-gray-50'} flex gap-2`}>
-                                                <Button
+                                                <button
+                                                    type="button"
                                                     onClick={selectAllCategories}
-                                                    className={`text-xs text-accent-400 hover:text-accent-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-gray-100'} rounded`}
+                                                    className={`text-xs font-medium px-2 py-1 rounded ${isDark ? 'text-gray-200 hover:text-white bg-gray-700 hover:bg-gray-600' : 'text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200'}`}
                                                 >
                                                     Select All
-                                                </Button>
-                                                <Button
+                                                </button>
+                                                <button
+                                                    type="button"
                                                     onClick={clearAllCategories}
-                                                    className={`text-xs ${isDark ? 'text-gray-400 hover:text-white bg-gray-600' : 'text-gray-500 hover:text-gray-700 bg-gray-100'} px-2 py-1 rounded`}
+                                                    className={`text-xs font-medium px-2 py-1 rounded ${isDark ? 'text-gray-200 hover:text-white bg-gray-700 hover:bg-gray-600' : 'text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200'}`}
                                                 >
                                                     Clear
-                                                </Button>
+                                                </button>
                                                 <Button
                                                     onClick={() => {
                                                         setIsCategoryDropdownOpen(false);
@@ -1441,18 +1443,20 @@ const Inventory: React.FC<InventoryProps> = ({ inventory, vendors, boms, onNavig
                                     {isVendorDropdownOpen && (
                                         <div className={`absolute z-[100] w-full mt-1 ${isDark ? 'bg-gray-900 border-gray-500' : 'bg-white border-gray-300'} border-2 rounded-md shadow-2xl max-h-80 overflow-hidden`}>
                                             <div className={`sticky top-0 ${isDark ? 'bg-gray-900 border-gray-600' : 'bg-gray-50 border-gray-200'} p-2 border-b flex gap-2`}>
-                                                <Button
+                                                <button
+                                                    type="button"
                                                     onClick={selectAllVendors}
-                                                    className={`text-xs text-accent-400 hover:text-accent-300 px-2 py-1 ${isDark ? 'bg-gray-600' : 'bg-gray-100'} rounded`}
+                                                    className={`text-xs font-medium px-2 py-1 rounded ${isDark ? 'text-gray-200 hover:text-white bg-gray-700 hover:bg-gray-600' : 'text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200'}`}
                                                 >
                                                     Select All
-                                                </Button>
-                                                <Button
+                                                </button>
+                                                <button
+                                                    type="button"
                                                     onClick={clearAllVendors}
-                                                    className={`text-xs ${isDark ? 'text-gray-400 hover:text-white bg-gray-600' : 'text-gray-500 hover:text-gray-700 bg-gray-100'} px-2 py-1 rounded`}
+                                                    className={`text-xs font-medium px-2 py-1 rounded ${isDark ? 'text-gray-200 hover:text-white bg-gray-700 hover:bg-gray-600' : 'text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200'}`}
                                                 >
                                                     Clear
-                                                </Button>
+                                                </button>
                                                 <Button
                                                     onClick={() => {
                                                         setIsVendorDropdownOpen(false);
