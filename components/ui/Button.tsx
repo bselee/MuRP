@@ -18,7 +18,7 @@ type ThemeVariant = 'light' | 'dark';
 const variantStyles: Record<ButtonVariant, Record<ThemeVariant, string>> = {
     primary: {
         dark: 'bg-gray-900/85 text-white border border-white/10 shadow-[0_20px_45px_rgba(0,0,0,0.45)] backdrop-blur-lg hover:bg-gray-900/70 hover:border-white/20 hover:shadow-[0_25px_55px_rgba(0,0,0,0.55)] focus-visible:ring-slate-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',
-        light: 'bg-blue-600 text-white border border-blue-600 shadow-sm hover:bg-blue-700 hover:border-blue-700 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+        light: 'bg-gray-800 text-white border border-gray-800 shadow-sm hover:bg-gray-700 hover:border-gray-700 focus-visible:ring-gray-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
     },
     secondary: {
         dark: 'bg-gray-800/70 text-gray-100 border border-white/10 shadow-inner shadow-black/40 backdrop-blur-md hover:bg-gray-800/55 hover:border-white/20 focus-visible:ring-slate-200/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900',

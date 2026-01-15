@@ -870,14 +870,15 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                                 </StatusBadge>
                             </div>
                             {canSubmitRequisitions && (
-                                <Button
+                                <button
+                                    type="button"
                                     onClick={() => setIsCreateReqModalOpen(true)}
                                     className={`px-3 py-1.5 text-xs rounded transition-colors ${isDark
-                                        ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                                        : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                                        ? 'bg-gray-700 hover:bg-gray-600 text-white border border-gray-600'
+                                        : 'bg-gray-800 hover:bg-gray-700 text-white border border-gray-800'}`}
                                 >
                                     + New Requisition
-                                </Button>
+                                </button>
                             )}
                         </div>
                         <div className="space-y-3">
@@ -1201,52 +1202,39 @@ const PurchaseOrders: React.FC<PurchaseOrdersProps> = (props) => {
                 {/* Finale Purchase Orders - Current/Open POs from Finale API (only in detailed view) */}
                 {viewMode !== 'unified' && finalePurchaseOrders.length > 0 && (
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <StatusBadge variant="primary">
-                                    {finalePurchaseOrders.filter(fpo => {
-                                        // Exclude dropship POs - only those with "DropshipPO" in the order ID
-                                        const orderId = (fpo.orderId || '').toLowerCase();
-                                        return !orderId.includes('dropshippo');
-                                    }).length} Finale POs
-                                </StatusBadge>
-                                {!showAllFinaleHistory && (
-                                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>(Active only)</span>
-                                )}
-                                {showAllFinaleHistory && (
-                                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>(Including inactive)</span>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                                {/* Sort Order Toggle */}
-                                <Button
-                                    onClick={() => setFinalePOSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${isDark 
-                                        ? 'bg-gray-800/50 border border-gray-700 text-gray-300 hover:bg-gray-700' 
-                                        : 'bg-white/80 border border-gray-200 text-gray-700 hover:bg-gray-100'}`}
-                                >
-                                    {finalePOSortOrder === 'asc' ? 'Oldest ↑' : 'Newest ↓'}
-                                </Button>
-
-                                {/* Active / All History Toggle */}
-                                <Button
-                                    onClick={() => setShowAllFinaleHistory(!showAllFinaleHistory)}
-                                    className={`px-3 py-1.5 text-xs rounded transition-colors ${showAllFinaleHistory
-                                        ? isDark
-                                            ? 'bg-gray-700 text-white border border-gray-600'
-                                            : 'bg-gray-800 text-white border border-gray-800'
-                                        : isDark
-                                            ? 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
-                                            : 'bg-white/80 text-gray-700 border border-gray-300 hover:bg-gray-100'
-                                        }`}
-                                >
-                                    {showAllFinaleHistory ? 'All History' : 'Active Only'}
-                                </Button>
-
-                                <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                    Synced from Finale API
-                                </span>
-                            </div>
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <StatusBadge variant="primary">
+                                {finalePurchaseOrders.filter(fpo => {
+                                    // Exclude dropship POs - only those with "DropshipPO" in the order ID
+                                    const orderId = (fpo.orderId || '').toLowerCase();
+                                    return !orderId.includes('dropshippo');
+                                }).length} Finale POs
+                            </StatusBadge>
+                            {/* Sort Order Toggle */}
+                            <button
+                                type="button"
+                                onClick={() => setFinalePOSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                                className={`px-3 py-1.5 text-xs rounded transition-colors ${isDark
+                                    ? 'bg-gray-800/50 border border-gray-700 text-gray-300 hover:bg-gray-700'
+                                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'}`}
+                            >
+                                {finalePOSortOrder === 'asc' ? 'Oldest ↑' : 'Newest ↓'}
+                            </button>
+                            {/* Active / All History Toggle */}
+                            <button
+                                type="button"
+                                onClick={() => setShowAllFinaleHistory(!showAllFinaleHistory)}
+                                className={`px-3 py-1.5 text-xs rounded transition-colors ${showAllFinaleHistory
+                                    ? isDark
+                                        ? 'bg-gray-700 text-white border border-gray-600'
+                                        : 'bg-gray-800 text-white border border-gray-800'
+                                    : isDark
+                                        ? 'bg-gray-800/50 text-gray-400 border border-gray-700 hover:bg-gray-700'
+                                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                                    }`}
+                            >
+                                {showAllFinaleHistory ? 'All History' : 'Active Only'}
+                            </button>
                         </div>
 
                         <div className="grid gap-4">
