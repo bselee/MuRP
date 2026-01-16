@@ -32,10 +32,9 @@ import DocumentTemplatesPanel from '../DocumentTemplatesPanel';
 import SlackIntegrationPanel from './SlackIntegrationPanel';
 import AiSettingsPanel from '../AiSettingsPanel';
 import AIProviderPanel from '../AIProviderPanel';
-import MCPToolsPanel from './MCPToolsPanel';
+import MCPIntegrationsPanel from './MCPIntegrationsPanel';
 import WorkflowHistoryLog from './WorkflowHistoryLog';
 import ShopifyIntegrationPanel from '../ShopifyIntegrationPanel';
-import { MCPServerPanel } from '../MCPServerPanel';
 import RegulatoryAgreementPanel from '../RegulatoryAgreementPanel';
 import ModulesSettingsPanel from './ModulesSettingsPanel';
 import SettingsSubNav from './SettingsSubNav';
@@ -561,11 +560,11 @@ Thank you!`
         </>
       );
 
-    case 'mcp-tools':
+    case 'mcp-integrations':
       return (
         <>
-          <SectionHeader title="MCP Tools & Rube" description="Connect AI agents to external tools via MCP" />
-          <MCPToolsPanel addToast={addToast} />
+          <SectionHeader title="MCP Integrations" description="Configure Rube tools, compliance MCP, and user access" />
+          <MCPIntegrationsPanel addToast={addToast} />
         </>
       );
 
@@ -582,14 +581,6 @@ Thank you!`
         <>
           <SectionHeader title="Shopify Integration" description="Connect and configure your Shopify store" />
           <ShopifyIntegrationPanel currentUser={currentUser} inventory={inventory} boms={boms} />
-        </>
-      );
-
-    case 'mcp-server':
-      return (
-        <>
-          <SectionHeader title="MCP Server" description="Configure the Model Context Protocol server" />
-          <MCPServerPanel />
         </>
       );
 

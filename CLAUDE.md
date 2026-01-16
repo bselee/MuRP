@@ -480,37 +480,42 @@ Internal POs with approval workflows:
 - **Badge**: "Internal" badge distinguishes from vendor POs
 - **Workflow**: Create -> Approve -> Convert to PO (via GeneratePoModal)
 
-## MCP Tools & Rube Integration
+## MCP Integrations (Consolidated)
 
-External tool integration via Model Context Protocol (MCP):
+All MCP (Model Context Protocol) features are managed from a single settings panel:
 
-**Configuration:** Settings → AI → MCP Tools & Rube
+**Configuration:** Settings → AI → MCP Integrations
 
 **Key Files:**
 
-- `services/rubeService.ts` - MCP communication, tool discovery, execution
-- `components/settings/MCPToolsPanel.tsx` - Configuration UI
+- `services/rubeService.ts` - Rube MCP communication, tool discovery, execution
+- `components/settings/MCPIntegrationsPanel.tsx` - Unified configuration UI (Rube + Compliance MCP + User Access)
+- `components/MCPServerPanel.tsx` - Legacy compliance MCP server panel (now integrated)
 
-**Environment Variables:**
+**Three Tabs:**
+
+1. **Rube Tools** - External tool integration (Gmail, Slack, recipes)
+2. **Compliance Server** - Localhost Python MCP server for AI compliance checks
+3. **User Access** - Toggle MCP features per user (admin-only)
+
+**Environment Variables (Rube):**
 
 ```bash
 VITE_RUBE_MCP_URL=https://rube.app/mcp
 VITE_RUBE_AUTH_TOKEN=your-jwt-token
 ```
 
-**Usage in Workflows:**
+**User Access Control:**
+
+Admins can enable/disable MCP features for specific users via the `user_mcp_access` table:
 
 ```typescript
-import { isRubeConfigured, parseGmailForPOUpdates, sendSlackMessage } from './services/rubeService';
-
-// Check configuration
-if (isRubeConfigured()) {
-  // Parse Gmail for PO updates with confidence scoring
-  const result = await parseGmailForPOUpdates({ query: 'subject:PO', maxResults: 50 });
-
-  // Send rich Slack message
-  await sendSlackMessage({ channel: '#alerts', text: 'PO Update', blocks: [...] });
-}
+// Check if user has MCP access
+const { data } = await supabase
+  .from('user_mcp_access')
+  .select('rube_enabled, compliance_mcp_enabled')
+  .eq('user_id', userId)
+  .single();
 ```
 
 **Rube-Enhanced Workflows** (in `workflowOrchestrator.ts`):

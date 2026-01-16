@@ -29,12 +29,11 @@ export type SettingsSectionId =
   | 'slack'
   // AI
   | 'ai-assistant'
-  | 'mcp-tools'
+  | 'mcp-integrations'  // Consolidated: Rube, compliance MCP, external tools
   | 'workflow-log'
   // Sales
   | 'shopify'
   // Advanced
-  | 'mcp-server'
   | 'dev-tools'
   | 'help';
 
@@ -94,14 +93,13 @@ export const settingsSections: SettingsSectionConfig[] = [
 
   // AI
   { id: 'ai-assistant', label: 'AI Assistant', group: 'AI' },
-  { id: 'mcp-tools', label: 'MCP Tools & Rube', group: 'AI', adminOnly: true },
+  { id: 'mcp-integrations', label: 'MCP Integrations', group: 'AI', adminOnly: true },
   { id: 'workflow-log', label: 'Workflow History', group: 'AI', adminOnly: true },
 
   // Sales (feature-gated)
   { id: 'shopify', label: 'Shopify', group: 'Sales', featureFlag: 'shopify' },
 
   // Advanced
-  { id: 'mcp-server', label: 'MCP Server', group: 'Advanced', adminOnly: true },
   { id: 'dev-tools', label: 'Developer Tools', group: 'Advanced', devOnly: true, adminOnly: true },
   { id: 'help', label: 'Help & Compliance', group: 'Advanced' },
 ];
