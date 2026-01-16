@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import ProductionCalendarView from '../components/ProductionCalendarView';
 import ProductionTimelineView from '../components/ProductionTimelineView';
+import BuildForecastSummaryCard from '../components/BuildForecastSummaryCard';
 import { CalendarIcon, TableCellsIcon, TimelineIcon } from '../components/icons';
 import Button from '@/components/ui/Button';
 import PageHeader from '@/components/ui/PageHeader';
@@ -106,6 +107,16 @@ const Production: React.FC<ProductionProps> = ({
                         </div>
                     </div>
                 }
+            />
+
+            {/* Build Forecast Summary - shows upcoming demand from calendar sync */}
+            <BuildForecastSummaryCard
+                onNavigateToBOMs={() => {
+                    window.history.pushState(null, '', '/boms');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+                expanded={false}
+                showSyncHealth={true}
             />
 
             {view === 'calendar' ? (

@@ -74,7 +74,10 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
           .lte('forecast_period', fourWeeksOut.toISOString().split('T')[0])
           .order('forecast_period', { ascending: true });
 
-        if (forecastError) throw forecastError;
+        if (forecastError) {
+          console.error('[BuildForecastSummaryCard] Forecast query error:', forecastError);
+          // Continue with empty data instead of throwing
+        }
 
         // Get product names from BOMs
         const productIds = [...new Set((forecasts || []).map((f) => f.product_id))];
@@ -162,39 +165,51 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
           sourceBreakdown,
         });
 
-        // Fetch sync health
+        // Fetch sync health (views may not exist yet, so handle gracefully)
         if (showSyncHealth) {
-          const { data: syncData } = await supabase
-            .from('calendar_sync_health')
-            .select('*')
-            .limit(1)
-            .maybeSingle();
+          try {
+            const { data: syncData, error: syncError } = await supabase
+              .from('calendar_sync_health')
+              .select('*')
+              .limit(1)
+              .maybeSingle();
 
-          const { data: unresolvedSkus } = await supabase
-            .from('calendar_sync_unresolved_skus')
-            .select('sku')
-            .limit(100);
-
-          const lastSync = syncData?.last_sync_at ? new Date(syncData.last_sync_at) : null;
-          const hoursSinceSync = lastSync ? (Date.now() - lastSync.getTime()) / (1000 * 60 * 60) : null;
-
-          let syncStatus: SyncHealth['syncStatus'] = 'unknown';
-          if (hoursSinceSync !== null) {
-            if (hoursSinceSync < 25) {
-              syncStatus = 'healthy';
-            } else if (hoursSinceSync < 48) {
-              syncStatus = 'warning';
-            } else {
-              syncStatus = 'error';
+            if (syncError) {
+              console.warn('[BuildForecastSummaryCard] Sync health view not available:', syncError.message);
             }
-          }
 
-          setSyncHealth({
-            lastSyncAt: syncData?.last_sync_at || null,
-            syncStatus,
-            invalidSkuCount: (unresolvedSkus || []).length,
-            recentSyncs: syncData?.syncs_last_24h || 0,
-          });
+            const { data: unresolvedSkus, error: skuError } = await supabase
+              .from('calendar_sync_unresolved_skus')
+              .select('sku')
+              .limit(100);
+
+            if (skuError) {
+              console.warn('[BuildForecastSummaryCard] Unresolved SKUs view not available:', skuError.message);
+            }
+
+            const lastSync = syncData?.last_sync_at ? new Date(syncData.last_sync_at) : null;
+            const hoursSinceSync = lastSync ? (Date.now() - lastSync.getTime()) / (1000 * 60 * 60) : null;
+
+            let syncStatus: SyncHealth['syncStatus'] = 'unknown';
+            if (hoursSinceSync !== null) {
+              if (hoursSinceSync < 25) {
+                syncStatus = 'healthy';
+              } else if (hoursSinceSync < 48) {
+                syncStatus = 'warning';
+              } else {
+                syncStatus = 'error';
+              }
+            }
+
+            setSyncHealth({
+              lastSyncAt: syncData?.last_sync_at || null,
+              syncStatus,
+              invalidSkuCount: (unresolvedSkus || []).length,
+              recentSyncs: syncData?.syncs_last_24h || 0,
+            });
+          } catch (syncErr) {
+            console.warn('[BuildForecastSummaryCard] Could not fetch sync health:', syncErr);
+          }
         }
       } catch (error) {
         console.error('[BuildForecastSummaryCard] Error fetching data:', error);
