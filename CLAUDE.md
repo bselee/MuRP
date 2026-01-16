@@ -114,9 +114,9 @@ import ErrorBoundary from './components/ErrorBoundary';
 ### Directory Structure
 
 ```
-/components/          # React components (~200 total)
+/components/          # React components (~243 total)
   /admin/            # Admin-specific (AgentCommandCenter, WorkflowPanel, EmailTemplateEditor)
-  /settings/         # Settings page modules (SettingsLayout, SettingsSidebar, SettingsContent)
+  /settings/         # Settings page modules (SettingsLayout, SettingsSidebar, SettingsContent, MCPToolsPanel)
   /compliance/       # Compliance UI components
   /ui/               # Reusable UI components
 /hooks/              # Custom React hooks (~27 hooks)
@@ -128,11 +128,11 @@ import ErrorBoundary from './components/ErrorBoundary';
   /supabase/         # Supabase client configuration
   /sync/             # Data sync orchestration
 /pages/              # Page components
-/services/           # Business logic (~130 services)
+/services/           # Business logic (~135 services)
 /types/              # TypeScript type definitions
 /supabase/
-  /functions/        # Edge functions (31 functions for webhooks, sync, automation)
-  /migrations/       # 185+ SQL migrations (strict 3-digit sequential numbering)
+  /functions/        # Edge functions (32 functions for webhooks, sync, automation)
+  /migrations/       # 186+ SQL migrations (strict 3-digit sequential numbering)
 /e2e/                # Playwright E2E tests
 /tests/              # Unit tests
 ```
@@ -207,9 +207,10 @@ The Settings page uses a modular sidebar-based architecture with hash navigation
 - `components/settings/SettingsContent.tsx` - Dynamic content rendering
 
 **Pattern:**
+
 ```typescript
-// settingsConfig.ts defines 23 sections in 10 groups
-export type SettingsSectionId = 'personalization' | 'billing' | 'team' | 'modules' | ...;
+// settingsConfig.ts defines 24 sections in 10 groups
+export type SettingsSectionId = 'personalization' | 'billing' | 'team' | 'modules' | 'mcp-tools' | ...;
 
 // Sections are permission-gated
 { id: 'team', label: 'Team & Permissions', group: 'Team', adminOnly: true }
@@ -478,6 +479,45 @@ Internal POs with approval workflows:
 - **Pattern**: Card-based view with approval modal
 - **Badge**: "Internal" badge distinguishes from vendor POs
 - **Workflow**: Create -> Approve -> Convert to PO (via GeneratePoModal)
+
+## MCP Tools & Rube Integration
+
+External tool integration via Model Context Protocol (MCP):
+
+**Configuration:** Settings → AI → MCP Tools & Rube
+
+**Key Files:**
+
+- `services/rubeService.ts` - MCP communication, tool discovery, execution
+- `components/settings/MCPToolsPanel.tsx` - Configuration UI
+
+**Environment Variables:**
+
+```bash
+VITE_RUBE_MCP_URL=https://rube.app/mcp
+VITE_RUBE_AUTH_TOKEN=your-jwt-token
+```
+
+**Usage in Workflows:**
+
+```typescript
+import { isRubeConfigured, parseGmailForPOUpdates, sendSlackMessage } from './services/rubeService';
+
+// Check configuration
+if (isRubeConfigured()) {
+  // Parse Gmail for PO updates with confidence scoring
+  const result = await parseGmailForPOUpdates({ query: 'subject:PO', maxResults: 50 });
+
+  // Send rich Slack message
+  await sendSlackMessage({ channel: '#alerts', text: 'PO Update', blocks: [...] });
+}
+```
+
+**Rube-Enhanced Workflows** (in `workflowOrchestrator.ts`):
+
+- `runRubeEmailWorkflow()` - Intelligent Gmail parsing with confidence scoring
+- `sendRubeDailySummary()` - Rich Slack messages via Rube
+- `syncPOFromEmailViaRube()` - Targeted PO lookup via email search
 
 ## Key Integrations
 
