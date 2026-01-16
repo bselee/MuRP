@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase/client';
 import { useTheme } from '../ThemeProvider';
 import { RefreshIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '../icons';
 import Button from '../ui/Button';
+import { SettingsCard, SettingsTabs } from './ui';
 
 interface VendorInteractionEvent {
   id: string;
@@ -36,20 +37,14 @@ interface VendorTrustScoreLogProps {
 }
 
 const VendorTrustScoreLog: React.FC<VendorTrustScoreLogProps> = ({ addToast }) => {
-  const { isDark } = useTheme();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   const [events, setEvents] = useState<VendorInteractionEvent[]>([]);
   const [profiles, setProfiles] = useState<VendorConfidenceChange[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'events' | 'scores'>('events');
 
-  const cardClass = isDark
-    ? "bg-gray-900/60 border border-gray-700 rounded-lg"
-    : "bg-gray-50 border border-gray-200 rounded-lg";
-
-  const headerClass = isDark
-    ? "text-xs font-mono text-gray-500 uppercase"
-    : "text-xs font-mono text-gray-500 uppercase";
-
+  const headerClass = "text-xs font-mono text-gray-500 uppercase";
   const rowClass = isDark
     ? "text-sm font-mono text-gray-300"
     : "text-sm font-mono text-gray-700";
@@ -189,29 +184,20 @@ const VendorTrustScoreLog: React.FC<VendorTrustScoreLogProps> = ({ addToast }) =
     return isDark ? 'text-red-400' : 'text-red-600';
   };
 
-  const tabClass = (tab: string) =>
-    `px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-      activeTab === tab
-        ? isDark
-          ? 'bg-gray-700 text-white'
-          : 'bg-gray-200 text-gray-900'
-        : isDark
-          ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-    }`;
+  const tabs = [
+    { id: 'events', label: 'Activity Log', badge: events.length },
+    { id: 'scores', label: 'Current Scores', badge: profiles.length },
+  ];
 
   return (
     <div className="space-y-4">
       {/* Header with tabs and refresh */}
       <div className="flex items-center justify-between">
-        <div className="flex gap-2">
-          <button className={tabClass('events')} onClick={() => setActiveTab('events')}>
-            Activity Log ({events.length})
-          </button>
-          <button className={tabClass('scores')} onClick={() => setActiveTab('scores')}>
-            Current Scores ({profiles.length})
-          </button>
-        </div>
+        <SettingsTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as 'events' | 'scores')}
+        />
         <Button
           onClick={loadData}
           variant="ghost"
@@ -226,7 +212,7 @@ const VendorTrustScoreLog: React.FC<VendorTrustScoreLogProps> = ({ addToast }) =
 
       {/* Activity Log Tab */}
       {activeTab === 'events' && (
-        <div className={`${cardClass} overflow-hidden`}>
+        <SettingsCard noPadding>
           <div className="overflow-x-auto max-h-64">
             <table className="w-full text-left">
               <thead className={`sticky top-0 ${isDark ? "bg-gray-800" : "bg-gray-100"}`}>
@@ -276,12 +262,12 @@ const VendorTrustScoreLog: React.FC<VendorTrustScoreLogProps> = ({ addToast }) =
               </tbody>
             </table>
           </div>
-        </div>
+        </SettingsCard>
       )}
 
       {/* Scores Tab */}
       {activeTab === 'scores' && (
-        <div className={`${cardClass} overflow-hidden`}>
+        <SettingsCard noPadding>
           <div className="overflow-x-auto max-h-64">
             <table className="w-full text-left">
               <thead className={`sticky top-0 ${isDark ? "bg-gray-800" : "bg-gray-100"}`}>
@@ -330,11 +316,11 @@ const VendorTrustScoreLog: React.FC<VendorTrustScoreLogProps> = ({ addToast }) =
               </tbody>
             </table>
           </div>
-        </div>
+        </SettingsCard>
       )}
 
       {/* Summary stats */}
-      <div className={`${cardClass} p-3`}>
+      <SettingsCard>
         <div className="grid grid-cols-4 gap-4 text-center">
           <div>
             <div className={headerClass}>Events (24h)</div>
@@ -361,7 +347,7 @@ const VendorTrustScoreLog: React.FC<VendorTrustScoreLogProps> = ({ addToast }) =
             </div>
           </div>
         </div>
-      </div>
+      </SettingsCard>
     </div>
   );
 };

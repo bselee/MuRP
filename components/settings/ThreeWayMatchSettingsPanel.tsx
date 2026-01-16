@@ -12,6 +12,14 @@ import {
   updateMatchThresholds,
   type MatchThresholds,
 } from '../../services/threeWayMatchService';
+import {
+  SettingsCard,
+  SettingsInput,
+  SettingsLoading,
+  SettingsAlert,
+  SettingsStatusBadge,
+  SettingsButtonGroup,
+} from './ui';
 
 interface ThreeWayMatchSettingsPanelProps {
   addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -78,45 +86,32 @@ const ThreeWayMatchSettingsPanel: React.FC<ThreeWayMatchSettingsPanelProps> = ({
     }
   };
 
-  const cardClass = isDark
-    ? 'bg-gray-800/50 border border-gray-700 rounded-lg p-6'
-    : 'bg-white border border-gray-200 rounded-lg p-6 shadow-sm';
-
   const labelClass = isDark ? 'text-gray-300' : 'text-gray-700';
   const inputClass = isDark
-    ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500'
-    : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500';
+    ? 'bg-gray-900 border-gray-700 text-white focus:ring-accent-500 focus:border-accent-500'
+    : 'bg-white border-gray-300 text-gray-900 focus:ring-accent-500 focus:border-accent-500';
   const helpTextClass = isDark ? 'text-gray-500' : 'text-gray-400';
 
   if (loading) {
     return (
-      <div className={cardClass}>
-        <div className="animate-pulse space-y-4">
-          <div className={`h-6 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded w-1/3`} />
-          <div className={`h-10 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded`} />
-          <div className={`h-10 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded`} />
-        </div>
-      </div>
+      <SettingsCard>
+        <SettingsLoading variant="skeleton" />
+      </SettingsCard>
     );
   }
 
   return (
-    <div className={cardClass}>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Three-Way Match Settings
-          </h3>
-          <p className={`text-sm ${helpTextClass}`}>
-            Configure tolerance thresholds for PO vs Invoice vs Receipt matching
-          </p>
-        </div>
-        {hasChanges && (
-          <span className="text-xs px-2 py-1 rounded bg-amber-500/20 text-amber-500">
+    <SettingsCard
+      title="Three-Way Match Settings"
+      description="Configure tolerance thresholds for PO vs Invoice vs Receipt matching"
+    >
+      {hasChanges && (
+        <div className="flex justify-end -mt-2 mb-4">
+          <SettingsStatusBadge variant="warning" icon={false} size="sm">
             Unsaved changes
-          </span>
-        )}
-      </div>
+          </SettingsStatusBadge>
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Quantity Tolerance */}
@@ -132,7 +127,7 @@ const ThreeWayMatchSettingsPanel: React.FC<ThreeWayMatchSettingsPanelProps> = ({
               step="0.5"
               value={thresholds.quantityTolerancePercent}
               onChange={e => handleChange('quantityTolerancePercent', parseFloat(e.target.value) || 0)}
-              className={`w-32 px-3 py-2 rounded-md border ${inputClass}`}
+              className={`w-32 px-3 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500/20 ${inputClass}`}
             />
             <span className={`text-sm ${helpTextClass}`}>
               Allow ±{thresholds.quantityTolerancePercent}% shortage/overage before flagging
@@ -153,7 +148,7 @@ const ThreeWayMatchSettingsPanel: React.FC<ThreeWayMatchSettingsPanelProps> = ({
               step="0.5"
               value={thresholds.priceTolerancePercent}
               onChange={e => handleChange('priceTolerancePercent', parseFloat(e.target.value) || 0)}
-              className={`w-32 px-3 py-2 rounded-md border ${inputClass}`}
+              className={`w-32 px-3 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500/20 ${inputClass}`}
             />
             <span className={`text-sm ${helpTextClass}`}>
               Allow ±{thresholds.priceTolerancePercent}% unit price variance
@@ -175,7 +170,7 @@ const ThreeWayMatchSettingsPanel: React.FC<ThreeWayMatchSettingsPanelProps> = ({
                 step="1"
                 value={thresholds.priceToleranceAbsolute}
                 onChange={e => handleChange('priceToleranceAbsolute', parseFloat(e.target.value) || 0)}
-                className={`w-32 pl-7 pr-3 py-2 rounded-md border ${inputClass}`}
+                className={`w-32 pl-7 pr-3 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500/20 ${inputClass}`}
               />
             </div>
             <span className={`text-sm ${helpTextClass}`}>
@@ -197,7 +192,7 @@ const ThreeWayMatchSettingsPanel: React.FC<ThreeWayMatchSettingsPanelProps> = ({
               step="0.5"
               value={thresholds.totalTolerancePercent}
               onChange={e => handleChange('totalTolerancePercent', parseFloat(e.target.value) || 0)}
-              className={`w-32 px-3 py-2 rounded-md border ${inputClass}`}
+              className={`w-32 px-3 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500/20 ${inputClass}`}
             />
             <span className={`text-sm ${helpTextClass}`}>
               Allow ±{thresholds.totalTolerancePercent}% variance on PO total
@@ -206,7 +201,7 @@ const ThreeWayMatchSettingsPanel: React.FC<ThreeWayMatchSettingsPanelProps> = ({
         </div>
 
         {/* Auto-Approve Threshold */}
-        <div className={`p-4 rounded-lg ${isDark ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200'}`}>
+        <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200'}`}>
           <label className={`block text-sm font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'} mb-2`}>
             Auto-Approve Maximum Variance
           </label>
@@ -219,7 +214,7 @@ const ThreeWayMatchSettingsPanel: React.FC<ThreeWayMatchSettingsPanelProps> = ({
                 step="10"
                 value={thresholds.autoApproveMaxVariance}
                 onChange={e => handleChange('autoApproveMaxVariance', parseFloat(e.target.value) || 0)}
-                className={`w-32 pl-7 pr-3 py-2 rounded-md border ${inputClass}`}
+                className={`w-32 pl-7 pr-3 py-2 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-accent-500/20 ${inputClass}`}
               />
             </div>
             <span className={`text-sm ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
@@ -232,45 +227,42 @@ const ThreeWayMatchSettingsPanel: React.FC<ThreeWayMatchSettingsPanelProps> = ({
         </div>
 
         {/* Current Score Impact Preview */}
-        <div className={`p-4 rounded-lg ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-          <h4 className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-700'} mb-3`}>
-            Score Impact Preview
-          </h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+        <SettingsAlert variant="info" title="Score Impact Preview">
+          <div className="grid grid-cols-2 gap-4 text-sm mt-2">
             <div>
-              <span className={helpTextClass}>Exact match:</span>
-              <span className={`ml-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>100 points</span>
+              <span className="opacity-70">Exact match:</span>
+              <span className="ml-2 font-medium">100 points</span>
             </div>
             <div>
-              <span className={helpTextClass}>Within tolerance:</span>
-              <span className={`ml-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>-5 points per item</span>
+              <span className="opacity-70">Within tolerance:</span>
+              <span className="ml-2 font-medium">-5 points per item</span>
             </div>
             <div>
-              <span className={helpTextClass}>Shortage/overage:</span>
-              <span className={`ml-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>-10 points per item</span>
+              <span className="opacity-70">Shortage/overage:</span>
+              <span className="ml-2 font-medium">-10 points per item</span>
             </div>
             <div>
-              <span className={helpTextClass}>Price mismatch:</span>
-              <span className={`ml-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>-15 points per item</span>
+              <span className="opacity-70">Price mismatch:</span>
+              <span className="ml-2 font-medium">-15 points per item</span>
             </div>
             <div>
-              <span className={helpTextClass}>Total out of tolerance:</span>
-              <span className={`ml-2 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>-20 points</span>
+              <span className="opacity-70">Total out of tolerance:</span>
+              <span className="ml-2 font-medium">-20 points</span>
             </div>
             <div>
-              <span className={helpTextClass}>Auto-approve threshold:</span>
-              <span className={`ml-2 font-medium text-emerald-500`}>≥95 points</span>
+              <span className="opacity-70">Auto-approve threshold:</span>
+              <span className="ml-2 font-medium text-emerald-400">≥95 points</span>
             </div>
           </div>
-        </div>
+        </SettingsAlert>
       </div>
 
       {/* Actions */}
-      <div className={`flex justify-end gap-3 mt-6 pt-6 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+      <SettingsButtonGroup>
         <Button
           onClick={handleReset}
           disabled={!hasChanges || saving}
-          className={`px-4 py-2 rounded-md ${
+          className={`px-4 py-2 rounded-lg ${
             isDark
               ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400'
@@ -281,9 +273,9 @@ const ThreeWayMatchSettingsPanel: React.FC<ThreeWayMatchSettingsPanelProps> = ({
         <Button
           onClick={handleSave}
           disabled={!hasChanges || saving}
-          className={`px-4 py-2 rounded-md ${
+          className={`px-4 py-2 rounded-lg ${
             hasChanges
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              ? 'bg-accent-600 text-white hover:bg-accent-700'
               : isDark
                 ? 'bg-gray-700 text-gray-500'
                 : 'bg-gray-100 text-gray-400'
@@ -291,8 +283,8 @@ const ThreeWayMatchSettingsPanel: React.FC<ThreeWayMatchSettingsPanelProps> = ({
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </Button>
-      </div>
-    </div>
+      </SettingsButtonGroup>
+    </SettingsCard>
   );
 };
 

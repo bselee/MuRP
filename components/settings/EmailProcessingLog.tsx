@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase/client';
 import { useTheme } from '../ThemeProvider';
 import { RefreshIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '../icons';
 import Button from '../ui/Button';
+import { SettingsCard, SettingsTabs } from './ui';
 
 interface EmailTrackingRun {
   id: string;
@@ -65,7 +66,8 @@ interface ProcessingLogProps {
 }
 
 const EmailProcessingLog: React.FC<ProcessingLogProps> = ({ addToast }) => {
-  const { isDark } = useTheme();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   const [runs, setRuns] = useState<EmailTrackingRun[]>([]);
   const [recentMessages, setRecentMessages] = useState<EmailThreadMessage[]>([]);
   const [invoices, setInvoices] = useState<InvoiceDocument[]>([]);
@@ -74,14 +76,7 @@ const EmailProcessingLog: React.FC<ProcessingLogProps> = ({ addToast }) => {
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'runs' | 'messages' | 'invoices' | 'errors'>('runs');
 
-  const cardClass = isDark
-    ? "bg-gray-900/60 border border-gray-700 rounded-lg"
-    : "bg-gray-50 border border-gray-200 rounded-lg";
-
-  const headerClass = isDark
-    ? "text-xs font-mono text-gray-500 uppercase"
-    : "text-xs font-mono text-gray-500 uppercase";
-
+  const headerClass = "text-xs font-mono text-gray-500 uppercase";
   const rowClass = isDark
     ? "text-sm font-mono text-gray-300"
     : "text-sm font-mono text-gray-700";
@@ -187,46 +182,24 @@ const EmailProcessingLog: React.FC<ProcessingLogProps> = ({ addToast }) => {
   };
 
   const errorRuns = runs.filter(r => r.status === 'error' || (r.errors && r.errors.length > 0));
+  const varianceCount = invoices.filter(i => i.has_variances).length;
 
-  const tabClass = (tab: string) =>
-    `px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-      activeTab === tab
-        ? isDark
-          ? 'bg-gray-700 text-white'
-          : 'bg-gray-200 text-gray-900'
-        : isDark
-          ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-    }`;
+  const tabs = [
+    { id: 'runs', label: 'Sync Runs', badge: runs.length },
+    { id: 'messages', label: 'Messages', badge: recentMessages.length },
+    { id: 'invoices', label: `Invoices${varianceCount > 0 ? ` (${varianceCount} var)` : ''}`, badge: invoices.length },
+    { id: 'errors', label: 'Errors', badge: errorRuns.length },
+  ];
 
   return (
     <div className="space-y-4">
       {/* Header with refresh */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-2 flex-wrap">
-          <button className={tabClass('runs')} onClick={() => setActiveTab('runs')}>
-            Sync Runs ({runs.length})
-          </button>
-          <button className={tabClass('messages')} onClick={() => setActiveTab('messages')}>
-            Messages ({recentMessages.length})
-          </button>
-          <button className={tabClass('invoices')} onClick={() => setActiveTab('invoices')}>
-            Invoices ({invoices.length})
-            {invoices.filter(i => i.has_variances).length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-xs bg-amber-500 text-white rounded-full">
-                {invoices.filter(i => i.has_variances).length}
-              </span>
-            )}
-          </button>
-          <button className={tabClass('errors')} onClick={() => setActiveTab('errors')}>
-            Errors ({errorRuns.length})
-            {errorRuns.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">
-                {errorRuns.length}
-              </span>
-            )}
-          </button>
-        </div>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <SettingsTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as 'runs' | 'messages' | 'invoices' | 'errors')}
+        />
         <Button
           onClick={loadData}
           variant="ghost"
@@ -241,7 +214,7 @@ const EmailProcessingLog: React.FC<ProcessingLogProps> = ({ addToast }) => {
 
       {/* Sync Runs Tab */}
       {activeTab === 'runs' && (
-        <div className={`${cardClass} overflow-hidden`}>
+        <SettingsCard noPadding>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className={isDark ? "bg-gray-800/50" : "bg-gray-100"}>
@@ -302,12 +275,12 @@ const EmailProcessingLog: React.FC<ProcessingLogProps> = ({ addToast }) => {
               </tbody>
             </table>
           </div>
-        </div>
+        </SettingsCard>
       )}
 
       {/* Messages Tab */}
       {activeTab === 'messages' && (
-        <div className={`${cardClass} overflow-hidden`}>
+        <SettingsCard noPadding>
           <div className="overflow-x-auto max-h-96">
             <table className="w-full text-left">
               <thead className={`sticky top-0 ${isDark ? "bg-gray-800" : "bg-gray-100"}`}>
@@ -362,12 +335,12 @@ const EmailProcessingLog: React.FC<ProcessingLogProps> = ({ addToast }) => {
               </tbody>
             </table>
           </div>
-        </div>
+        </SettingsCard>
       )}
 
       {/* Invoices Tab */}
       {activeTab === 'invoices' && (
-        <div className={`${cardClass} overflow-hidden`}>
+        <SettingsCard noPadding>
           <div className="overflow-x-auto max-h-96">
             <table className="w-full text-left">
               <thead className={`sticky top-0 ${isDark ? "bg-gray-800" : "bg-gray-100"}`}>
@@ -454,12 +427,12 @@ const EmailProcessingLog: React.FC<ProcessingLogProps> = ({ addToast }) => {
               </div>
             </div>
           )}
-        </div>
+        </SettingsCard>
       )}
 
       {/* Errors Tab */}
       {activeTab === 'errors' && (
-        <div className={`${cardClass} p-4`}>
+        <SettingsCard>
           {errorRuns.length === 0 ? (
             <p className={rowClass}>No errors recorded</p>
           ) : (
@@ -487,11 +460,11 @@ const EmailProcessingLog: React.FC<ProcessingLogProps> = ({ addToast }) => {
               ))}
             </div>
           )}
-        </div>
+        </SettingsCard>
       )}
 
       {/* Summary stats */}
-      <div className={`${cardClass} p-3`}>
+      <SettingsCard>
         <div className="grid grid-cols-6 gap-4 text-center">
           <div>
             <div className={headerClass}>Total Runs</div>
@@ -534,7 +507,7 @@ const EmailProcessingLog: React.FC<ProcessingLogProps> = ({ addToast }) => {
             </div>
           </div>
         </div>
-      </div>
+      </SettingsCard>
     </div>
   );
 };

@@ -9,6 +9,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase/client';
 import { EMAIL_MONITORING_SCOPES } from '../../lib/google/scopes';
+import { useTheme } from '../ThemeProvider';
 import {
   MailIcon,
   CheckCircleIcon,
@@ -18,6 +19,7 @@ import {
   ShieldCheckIcon,
   PlusIcon,
 } from '../icons';
+import { SettingsCard, SettingsAlert, SettingsStatusBadge } from './ui';
 
 type InboxPurpose = 'purchasing' | 'accounting' | 'general';
 
@@ -72,6 +74,8 @@ export const EmailConnectionCard: React.FC<EmailConnectionCardProps> = ({
   userId,
   onConnectionChange,
 }) => {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   const [inboxes, setInboxes] = useState<InboxConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<InboxPurpose | null>(null);
@@ -238,22 +242,26 @@ export const EmailConnectionCard: React.FC<EmailConnectionCardProps> = ({
 
   if (loading && inboxes.length === 0) {
     return (
-      <div className="bg-gray-800 dark:bg-gray-800 light:bg-white rounded-xl border border-gray-700 dark:border-gray-700 light:border-gray-200 p-6">
-        <div className="flex items-center gap-3 text-gray-400 dark:text-gray-400 light:text-gray-600">
+      <SettingsCard>
+        <div className={`flex items-center gap-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
           <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
           Checking email connections...
         </div>
-      </div>
+      </SettingsCard>
     );
   }
 
   return (
     <div className="space-y-4">
       {error && (
-        <div className="p-3 bg-red-900/20 dark:bg-red-900/20 light:bg-red-50 border border-red-800 dark:border-red-800 light:border-red-200 rounded-lg flex items-center gap-2 text-red-400 dark:text-red-400 light:text-red-600">
+        <div className={`p-3 rounded-xl flex items-center gap-2 border ${
+          isDark
+            ? 'bg-red-900/20 border-red-800 text-red-400'
+            : 'bg-red-50 border-red-200 text-red-600'
+        }`}>
           <AlertTriangleIcon className="w-5 h-5 flex-shrink-0" />
           {error}
-          <button onClick={() => setError(null)} className="ml-auto text-red-300 hover:text-red-200">
+          <button onClick={() => setError(null)} className={`ml-auto ${isDark ? 'text-red-300 hover:text-red-200' : 'text-red-500 hover:text-red-400'}`}>
             <XCircleIcon className="w-4 h-4" />
           </button>
         </div>
@@ -268,6 +276,7 @@ export const EmailConnectionCard: React.FC<EmailConnectionCardProps> = ({
           onDelete={() => handleDelete(inbox.id, inbox.email_address)}
           onSync={() => handleSyncNow(inbox.id)}
           loading={loading}
+          isDark={isDark}
         />
       ))}
 
@@ -279,16 +288,21 @@ export const EmailConnectionCard: React.FC<EmailConnectionCardProps> = ({
           onReconnect={() => handleConnect(inbox.inbox_purpose)}
           onDelete={() => handleDelete(inbox.id, inbox.email_address)}
           loading={connecting === inbox.inbox_purpose}
+          isDark={isDark}
         />
       ))}
 
       {/* Add New Inbox */}
       {availablePurposes.length > 0 && (
-        <div className="bg-gray-800 dark:bg-gray-800 light:bg-white rounded-xl border border-gray-700 dark:border-gray-700 light:border-gray-200 overflow-hidden">
+        <SettingsCard noPadding>
           {!showAddInbox ? (
             <button
               onClick={() => setShowAddInbox(true)}
-              className="w-full p-4 flex items-center justify-center gap-2 text-gray-400 hover:text-white hover:bg-gray-700/50 transition-colors"
+              className={`w-full p-4 flex items-center justify-center gap-2 transition-colors ${
+                isDark
+                  ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+              }`}
             >
               <PlusIcon className="w-5 h-5" />
               {inboxes.length === 0 ? 'Connect Email for Monitoring' : 'Add Another Email'}
@@ -296,18 +310,18 @@ export const EmailConnectionCard: React.FC<EmailConnectionCardProps> = ({
           ) : (
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-white dark:text-white light:text-gray-900">
+                <h3 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   Connect Email Inbox
                 </h3>
                 <button
                   onClick={() => setShowAddInbox(false)}
-                  className="text-gray-400 hover:text-white"
+                  className={`${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   <XCircleIcon className="w-5 h-5" />
                 </button>
               </div>
 
-              <p className="text-sm text-gray-400 dark:text-gray-400 light:text-gray-600">
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                 Choose which type of email to connect. You can have one of each type.
               </p>
 
@@ -319,28 +333,26 @@ export const EmailConnectionCard: React.FC<EmailConnectionCardProps> = ({
                     info={PURPOSE_INFO[purpose]}
                     onConnect={() => handleConnect(purpose)}
                     connecting={connecting === purpose}
+                    isDark={isDark}
                   />
                 ))}
               </div>
 
               {/* Security Note */}
-              <div className="flex items-start gap-2 p-3 bg-blue-900/20 dark:bg-blue-900/20 light:bg-blue-50 border border-blue-800 dark:border-blue-800 light:border-blue-200 rounded-lg">
-                <ShieldCheckIcon className="w-5 h-5 text-blue-400 dark:text-blue-400 light:text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-200 dark:text-blue-200 light:text-blue-700">
-                  <p className="font-medium">Your data is secure</p>
-                  <p className="text-blue-300/80 dark:text-blue-300/80 light:text-blue-600">
-                    We only read business-related emails. Personal emails are never accessed.
-                  </p>
-                </div>
-              </div>
+              <SettingsAlert variant="info">
+                <p className="font-medium">Your data is secure</p>
+                <p className="opacity-80">
+                  We only read business-related emails. Personal emails are never accessed.
+                </p>
+              </SettingsAlert>
             </div>
           )}
-        </div>
+        </SettingsCard>
       )}
 
       {/* All Connected Message */}
       {availablePurposes.length === 0 && inboxes.length > 0 && (
-        <div className="text-center text-gray-500 dark:text-gray-500 light:text-gray-400 py-2">
+        <div className={`text-center py-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
           <CheckCircleIcon className="w-5 h-5 inline-block mr-2" />
           All email types connected
         </div>
@@ -356,27 +368,27 @@ const InboxCard: React.FC<{
   onDelete: () => void;
   onSync: () => void;
   loading: boolean;
-}> = ({ inbox, onDisconnect, onDelete, onSync, loading }) => {
+  isDark: boolean;
+}> = ({ inbox, onDisconnect, onDelete, onSync, loading, isDark }) => {
   const info = PURPOSE_INFO[inbox.inbox_purpose] || PURPOSE_INFO.general;
 
   return (
-    <div className="bg-gray-800 dark:bg-gray-800 light:bg-white rounded-xl border border-gray-700 dark:border-gray-700 light:border-gray-200 overflow-hidden">
+    <div className={`rounded-xl border overflow-hidden ${
+      isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'
+    }`}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-700 dark:border-gray-700 light:border-gray-200">
+      <div className={`p-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-900/30 dark:bg-green-900/30 light:bg-green-100 rounded-lg">
-              <MailIcon className="w-5 h-5 text-green-400 dark:text-green-400 light:text-green-600" />
+            <div className={`p-2 rounded-lg ${isDark ? 'bg-green-900/30' : 'bg-green-100'}`}>
+              <MailIcon className={`w-5 h-5 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
             </div>
             <div>
-              <h4 className="font-medium text-white dark:text-white light:text-gray-900">{info.title}</h4>
-              <p className="text-sm text-gray-400 dark:text-gray-400 light:text-gray-600">{inbox.email_address}</p>
+              <h4 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{info.title}</h4>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{inbox.email_address}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <CheckCircleIcon className="w-4 h-4 text-green-400" />
-            <span className="text-sm text-green-400 dark:text-green-400 light:text-green-600">Connected</span>
-          </div>
+          <SettingsStatusBadge variant="success">Connected</SettingsStatusBadge>
         </div>
       </div>
 
@@ -386,14 +398,14 @@ const InboxCard: React.FC<{
           <div className="flex gap-6">
             <div>
               <p className="text-xs text-gray-500 uppercase">Emails Processed</p>
-              <p className="text-lg font-bold text-white dark:text-white light:text-gray-900">
+              <p className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {inbox.total_emails_processed || 0}
               </p>
             </div>
             {inbox.last_sync_at && (
               <div>
                 <p className="text-xs text-gray-500 uppercase">Last Sync</p>
-                <p className="text-sm text-gray-300 dark:text-gray-300 light:text-gray-600">
+                <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   {new Date(inbox.last_sync_at).toLocaleString()}
                 </p>
               </div>
@@ -404,7 +416,11 @@ const InboxCard: React.FC<{
             <button
               onClick={onSync}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-700 dark:bg-gray-700 light:bg-gray-100 hover:bg-gray-600 dark:hover:bg-gray-600 light:hover:bg-gray-200 text-white dark:text-white light:text-gray-700 rounded-lg transition-colors disabled:opacity-50"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-50 ${
+                isDark
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
             >
               <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Sync
@@ -437,38 +453,40 @@ const DisconnectedInboxCard: React.FC<{
   onReconnect: () => void;
   onDelete: () => void;
   loading: boolean;
-}> = ({ inbox, onReconnect, onDelete, loading }) => {
+  isDark: boolean;
+}> = ({ inbox, onReconnect, onDelete, loading, isDark }) => {
   const info = PURPOSE_INFO[inbox.inbox_purpose] || PURPOSE_INFO.general;
 
   return (
-    <div className="bg-gray-800 dark:bg-gray-800 light:bg-white rounded-xl border border-amber-700/50 dark:border-amber-700/50 light:border-amber-200 overflow-hidden">
+    <div className={`rounded-xl border overflow-hidden ${
+      isDark ? 'bg-gray-800/50 border-amber-700/50' : 'bg-white border-amber-200 shadow-sm'
+    }`}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-700 dark:border-gray-700 light:border-gray-200">
+      <div className={`p-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-900/30 dark:bg-amber-900/30 light:bg-amber-100 rounded-lg">
-              <MailIcon className="w-5 h-5 text-amber-400 dark:text-amber-400 light:text-amber-600" />
+            <div className={`p-2 rounded-lg ${isDark ? 'bg-amber-900/30' : 'bg-amber-100'}`}>
+              <MailIcon className={`w-5 h-5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
             </div>
             <div>
-              <h4 className="font-medium text-white dark:text-white light:text-gray-900">{info.title}</h4>
-              <p className="text-sm text-gray-400 dark:text-gray-400 light:text-gray-600">{inbox.email_address}</p>
+              <h4 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{info.title}</h4>
+              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{inbox.email_address}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <AlertTriangleIcon className="w-4 h-4 text-amber-400" />
-            <span className="text-sm text-amber-400">Paused</span>
-          </div>
+          <SettingsStatusBadge variant="warning">Paused</SettingsStatusBadge>
         </div>
       </div>
 
       {/* Actions */}
       <div className="p-4 flex items-center justify-between">
-        <p className="text-sm text-gray-400">Email monitoring is paused for this inbox.</p>
+        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+          Email monitoring is paused for this inbox.
+        </p>
         <div className="flex gap-2">
           <button
             onClick={onReconnect}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-700 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors disabled:opacity-50"
           >
             {loading ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -495,17 +513,20 @@ const PurposeOption: React.FC<{
   info: { title: string; description: string; benefits: string[] };
   onConnect: () => void;
   connecting: boolean;
-}> = ({ purpose, info, onConnect, connecting }) => {
+  isDark: boolean;
+}> = ({ purpose, info, onConnect, connecting, isDark }) => {
   return (
-    <div className="p-4 bg-gray-900 dark:bg-gray-900 light:bg-gray-50 rounded-lg border border-gray-700 dark:border-gray-700 light:border-gray-200">
+    <div className={`p-4 rounded-xl border ${
+      isDark ? 'bg-gray-900 border-gray-700' : 'bg-gray-50 border-gray-200'
+    }`}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <h4 className="font-medium text-white dark:text-white light:text-gray-900 mb-1">{info.title}</h4>
-          <p className="text-sm text-gray-400 dark:text-gray-400 light:text-gray-600 mb-3">{info.description}</p>
+          <h4 className={`font-medium mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{info.title}</h4>
+          <p className={`text-sm mb-3 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{info.description}</p>
           <ul className="space-y-1">
             {info.benefits.slice(0, 2).map((benefit, i) => (
-              <li key={i} className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500 light:text-gray-500">
-                <CheckCircleIcon className="w-3 h-3 text-green-400 dark:text-green-400 light:text-green-600" />
+              <li key={i} className="flex items-center gap-2 text-xs text-gray-500">
+                <CheckCircleIcon className={`w-3 h-3 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
                 {benefit}
               </li>
             ))}
