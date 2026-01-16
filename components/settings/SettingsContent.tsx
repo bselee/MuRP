@@ -5,6 +5,12 @@ import { isDevelopment } from '../../lib/auth/guards';
 import { isFeatureEnabled } from '../../lib/featureFlags';
 import type { SettingsSectionId, SettingsPageProps } from './settingsConfig';
 import Button from '../ui/Button';
+import {
+  SettingsCard,
+  SettingsInput,
+  SettingsToggle,
+  SettingsButtonGroup,
+} from './ui';
 
 // Panel imports
 import UserPersonalizationPanel from '../UserPersonalizationPanel';
@@ -64,32 +70,7 @@ const SectionHeader: React.FC<{ title: string; description?: string }> = ({ titl
   );
 };
 
-// Card wrapper for consistent styling - Modern SaaS design
-const SettingsCard: React.FC<{ title?: string; children: React.ReactNode; className?: string }> = ({
-  title,
-  children,
-  className = '',
-}) => {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
-
-  return (
-    <div
-      className={`rounded-lg p-6 ${
-        isDark
-          ? 'bg-gray-900 border border-gray-800'
-          : 'bg-white border border-gray-200 shadow-sm'
-      } ${className}`}
-    >
-      {title && (
-        <h3 className={`text-base font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {title}
-        </h3>
-      )}
-      {children}
-    </div>
-  );
-};
+// Note: SettingsCard is now imported from ./ui for consistency
 
 const SettingsContent: React.FC<SettingsContentProps> = ({
   activeSection,
@@ -387,111 +368,81 @@ Thank you!`
       return (
         <>
           <SectionHeader title="Email Policy" description="Configure company email settings and delivery preferences" />
-          <div className="space-y-6">
-            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              Define a company-wide sender address (e.g., <span className={`font-mono ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>purchasing@yourdomain.com</span>) for all
-              automated compliance and artwork emails.
-            </p>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className={`text-xs font-semibold uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Company From Address
-                </label>
-                <input
+          <SettingsCard
+            description={
+              <>Define a company-wide sender address (e.g., <span className={`font-mono ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>purchasing@yourdomain.com</span>) for all automated compliance and artwork emails.</>
+            }
+          >
+            <div className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <SettingsInput
+                  label="Company From Address"
                   type="email"
                   value={emailPolicyDraft.fromAddress}
                   onChange={e => setEmailPolicyDraft(prev => ({ ...prev, fromAddress: e.target.value }))}
                   placeholder="purchasing@yourdomain.com"
-                  className={`w-full mt-1 rounded-md p-3 text-sm focus:ring-1 ${
-                    isDark
-                      ? 'bg-gray-900/60 border border-gray-700 text-white focus:border-accent-400 focus:ring-accent-400'
-                      : 'bg-white border border-gray-300 text-gray-900 focus:border-accent-500 focus:ring-accent-500'
-                  }`}
                 />
-              </div>
 
-              <div>
-                <label className={`text-xs font-semibold uppercase ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Delivery Provider
-                </label>
-                <div className="mt-2 space-y-2">
-                  {[
-                    { value: 'resend' as const, label: 'Resend (recommended)', description: 'Send through the built-in Resend integration.' },
-                    { value: 'gmail' as const, label: 'Workspace Gmail', description: 'Require each user to connect Google Workspace before sending.' },
-                  ].map(option => (
-                    <label
-                      key={option.value}
-                      className={`flex items-start gap-3 p-3 border rounded-md cursor-pointer ${
-                        emailPolicyDraft.provider === option.value
-                          ? isDark
-                            ? 'border-accent-400 bg-accent-400/5'
-                            : 'border-accent-500 bg-accent-50'
-                          : isDark
-                            ? 'border-gray-700 bg-gray-900/40'
-                            : 'border-gray-200 bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="email-provider"
-                        checked={emailPolicyDraft.provider === option.value}
-                        onChange={() => setEmailPolicyDraft(prev => ({ ...prev, provider: option.value }))}
-                        className="mt-1 text-accent-500 focus:ring-accent-500"
-                      />
-                      <span className={`text-sm ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                        <span className="font-semibold">{option.label}</span>
-                        <span className={`block text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{option.description}</span>
-                      </span>
-                    </label>
-                  ))}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Delivery Provider
+                  </label>
+                  <div className="space-y-2">
+                    {[
+                      { value: 'resend' as const, label: 'Resend (recommended)', description: 'Send through the built-in Resend integration.' },
+                      { value: 'gmail' as const, label: 'Workspace Gmail', description: 'Require each user to connect Google Workspace before sending.' },
+                    ].map(option => (
+                      <label
+                        key={option.value}
+                        className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                          emailPolicyDraft.provider === option.value
+                            ? isDark
+                              ? 'border-accent-400 bg-accent-400/5'
+                              : 'border-accent-500 bg-accent-50'
+                            : isDark
+                              ? 'border-gray-700 bg-gray-900/40'
+                              : 'border-gray-200 bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="email-provider"
+                          checked={emailPolicyDraft.provider === option.value}
+                          onChange={() => setEmailPolicyDraft(prev => ({ ...prev, provider: option.value }))}
+                          className="mt-1 text-accent-500 focus:ring-accent-500"
+                        />
+                        <span className={`text-sm ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                          <span className="font-semibold">{option.label}</span>
+                          <span className={`block text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{option.description}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className={`flex items-center justify-between rounded-lg p-4 ${
-              isDark ? 'bg-gray-900/40 border border-gray-800' : 'bg-gray-50 border border-gray-200'
-            }`}>
-              <div>
-                <p className={`text-sm font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                  Enforce company sender on Artwork emails
-                </p>
-                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Users will no longer send from personal accounts.
-                </p>
-              </div>
-              <label className="inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={emailPolicyDraft.enforceCompanySender}
-                  onChange={e => setEmailPolicyDraft(prev => ({ ...prev, enforceCompanySender: e.target.checked }))}
-                  className="sr-only peer"
-                />
-                <div className={`w-12 h-6 rounded-full peer peer-focus:ring-2 transition-all ${
-                  isDark
-                    ? 'bg-gray-600 peer-checked:bg-accent-500 peer-focus:ring-accent-400'
-                    : 'bg-gray-300 peer-checked:bg-accent-500 peer-focus:ring-accent-500'
-                }`}></div>
-              </label>
-            </div>
+              <SettingsToggle
+                checked={emailPolicyDraft.enforceCompanySender}
+                onChange={(checked) => setEmailPolicyDraft(prev => ({ ...prev, enforceCompanySender: checked }))}
+                label="Enforce company sender on Artwork emails"
+                description="Users will no longer send from personal accounts."
+              />
 
-            <div className="flex justify-end gap-3">
-              <Button
-                onClick={() => setEmailPolicyDraft(companyEmailSettings)}
-                className={`px-4 py-2 rounded-md ${
-                  isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                }`}
-              >
-                Reset
-              </Button>
-              <Button
-                onClick={handleSaveEmailPolicy}
-                className="bg-accent-600 hover:bg-accent-500 text-white px-4 py-2 rounded-md"
-              >
-                Save Policy
-              </Button>
+              <SettingsButtonGroup>
+                <Button
+                  onClick={() => setEmailPolicyDraft(companyEmailSettings)}
+                  className={`px-4 py-2 rounded-lg ${
+                    isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Reset
+                </Button>
+                <Button onClick={handleSaveEmailPolicy}>
+                  Save Policy
+                </Button>
+              </SettingsButtonGroup>
             </div>
-          </div>
+          </SettingsCard>
         </>
       );
 

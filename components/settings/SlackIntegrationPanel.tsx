@@ -9,7 +9,7 @@
  * - Quality gate configuration
  * - Alert queue management
  *
- * Note: Rube MCP tools are now configured in Settings -> AI -> MCP Tools & Rube
+ * Note: Rube MCP tools are now configured in Settings -> AI -> MCP Integrations
  */
 
 import React, { useState, useEffect } from 'react';
@@ -19,7 +19,6 @@ import {
   SlackIcon,
   SettingsIcon,
   CheckCircleIcon,
-  AlertCircleIcon,
   RefreshIcon,
   HashtagIcon,
   BellIcon,
@@ -37,6 +36,17 @@ import {
   type AlertQueueItem,
 } from '@/services/slackQualityGate';
 import { supabase } from '@/lib/supabase/client';
+import {
+  SettingsCard,
+  SettingsInput,
+  SettingsSelect,
+  SettingsTabs,
+  SettingsStatusBadge,
+  SettingsLoading,
+  SettingsRow,
+  SettingsButtonGroup,
+  SettingsDivider,
+} from './ui';
 
 // ============================================================================
 // TYPES
@@ -72,7 +82,7 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
   const { isDark } = useTheme();
 
   // State
-  const [activeTab, setActiveTab] = useState<'setup' | 'channels' | 'quality' | 'queue'>('setup');
+  const [activeTab, setActiveTab] = useState<string>('setup');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -233,35 +243,19 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
     }
   };
 
-  // Styles
-  const cardClass = isDark
-    ? 'bg-gray-800/50 border border-gray-700 rounded-xl p-6'
-    : 'bg-white border border-gray-200 rounded-xl p-6 shadow-sm';
-
-  const inputClass = isDark
-    ? 'w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white focus:border-gray-500 focus:outline-none'
-    : 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:border-gray-500 focus:outline-none';
-
-  const tabClass = (isActive: boolean) => `
-    px-4 py-2 text-sm font-medium rounded-lg transition-colors
-    ${isActive
-      ? isDark
-        ? 'bg-gray-700 text-white'
-        : 'bg-gray-800 text-white'
-      : isDark
-        ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-    }
-  `;
+  // Tab configuration
+  const tabs = [
+    { id: 'setup', label: 'Setup', icon: <SettingsIcon className="w-4 h-4" /> },
+    { id: 'channels', label: 'Channels', icon: <HashtagIcon className="w-4 h-4" /> },
+    { id: 'quality', label: 'Quality Gate', icon: <ShieldCheckIcon className="w-4 h-4" /> },
+    { id: 'queue', label: 'Alert Queue', icon: <BellIcon className="w-4 h-4" />, badge: alertStats?.pending || undefined },
+  ];
 
   if (loading) {
     return (
-      <div className={cardClass}>
-        <div className="flex items-center justify-center py-12">
-          <RefreshIcon className="w-6 h-6 animate-spin text-gray-400" />
-          <span className="ml-2 text-gray-400">Loading configuration...</span>
-        </div>
-      </div>
+      <SettingsCard>
+        <SettingsLoading message="Loading configuration..." />
+      </SettingsCard>
     );
   }
 
@@ -282,112 +276,59 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
         </div>
 
         {/* Connection Status */}
-        <div className="flex items-center gap-2">
-          {connectionStatus.webhookConfigured ? (
-            <span className="flex items-center gap-1 text-sm text-emerald-400">
-              <CheckCircleIcon className="w-4 h-4" />
-              Connected
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-sm text-amber-400">
-              <AlertCircleIcon className="w-4 h-4" />
-              Not configured
-            </span>
-          )}
-        </div>
+        <SettingsStatusBadge variant={connectionStatus.webhookConfigured ? 'success' : 'warning'}>
+          {connectionStatus.webhookConfigured ? 'Connected' : 'Not configured'}
+        </SettingsStatusBadge>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-700 pb-2">
-        <button className={tabClass(activeTab === 'setup')} onClick={() => setActiveTab('setup')}>
-          <SettingsIcon className="w-4 h-4 inline mr-1" />
-          Setup
-        </button>
-        <button className={tabClass(activeTab === 'channels')} onClick={() => setActiveTab('channels')}>
-          <HashtagIcon className="w-4 h-4 inline mr-1" />
-          Channels
-        </button>
-        <button className={tabClass(activeTab === 'quality')} onClick={() => setActiveTab('quality')}>
-          <ShieldCheckIcon className="w-4 h-4 inline mr-1" />
-          Quality Gate
-        </button>
-        <button className={tabClass(activeTab === 'queue')} onClick={() => setActiveTab('queue')}>
-          <BellIcon className="w-4 h-4 inline mr-1" />
-          Alert Queue
-          {alertStats && alertStats.pending > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 text-xs bg-amber-500 text-white rounded-full">
-              {alertStats.pending}
-            </span>
-          )}
-        </button>
-      </div>
+      <SettingsTabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        variant="pills"
+      />
 
       {/* Tab Content */}
       {activeTab === 'setup' && (
-        <div className={cardClass}>
-          <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Workspace Configuration
-          </h3>
-
+        <SettingsCard title="Workspace Configuration">
           <div className="space-y-4">
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Workspace Name (optional)
-              </label>
-              <input
-                type="text"
-                value={workspaceConfig.workspace_name || ''}
-                onChange={(e) => setWorkspaceConfig(prev => ({ ...prev, workspace_name: e.target.value }))}
-                placeholder="My Company"
-                className={inputClass}
-              />
-            </div>
+            <SettingsInput
+              label="Workspace Name (optional)"
+              value={workspaceConfig.workspace_name || ''}
+              onChange={(e) => setWorkspaceConfig(prev => ({ ...prev, workspace_name: e.target.value }))}
+              placeholder="My Company"
+            />
 
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Incoming Webhook URL *
-              </label>
-              <input
-                type="url"
-                value={workspaceConfig.webhook_url}
-                onChange={(e) => setWorkspaceConfig(prev => ({ ...prev, webhook_url: e.target.value }))}
-                placeholder="https://hooks.slack.com/services/..."
-                className={inputClass}
-              />
-              <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                Create a Slack App → Incoming Webhooks → Add to channel →{' '}
-                <a
-                  href="https://api.slack.com/apps"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-cyan-400 hover:underline"
-                >
-                  api.slack.com/apps
-                </a>
-              </p>
-            </div>
+            <SettingsInput
+              label="Incoming Webhook URL *"
+              type="url"
+              value={workspaceConfig.webhook_url}
+              onChange={(e) => setWorkspaceConfig(prev => ({ ...prev, webhook_url: e.target.value }))}
+              placeholder="https://hooks.slack.com/services/..."
+              helpText={
+                <>
+                  Create a Slack App → Incoming Webhooks → Add to channel →{' '}
+                  <a
+                    href="https://api.slack.com/apps"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent-400 hover:underline"
+                  >
+                    api.slack.com/apps
+                  </a>
+                </>
+              }
+            />
 
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Default Channel
-              </label>
-              <input
-                type="text"
-                value={workspaceConfig.default_channel || ''}
-                onChange={(e) => setWorkspaceConfig(prev => ({ ...prev, default_channel: e.target.value }))}
-                placeholder="#murp-alerts"
-                className={inputClass}
-              />
-            </div>
+            <SettingsInput
+              label="Default Channel"
+              value={workspaceConfig.default_channel || ''}
+              onChange={(e) => setWorkspaceConfig(prev => ({ ...prev, default_channel: e.target.value }))}
+              placeholder="#murp-alerts"
+            />
 
-            <div className="flex gap-3 pt-4">
-              <Button
-                onClick={saveWorkspaceConfig}
-                disabled={saving || !workspaceConfig.webhook_url}
-                className="flex-1"
-              >
-                {saving ? 'Saving...' : 'Save Configuration'}
-              </Button>
+            <SettingsButtonGroup>
               <button
                 type="button"
                 onClick={handleTestConnection}
@@ -399,21 +340,23 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
               >
                 {testing ? 'Testing...' : 'Test Connection'}
               </button>
-            </div>
+              <Button
+                onClick={saveWorkspaceConfig}
+                disabled={saving || !workspaceConfig.webhook_url}
+              >
+                {saving ? 'Saving...' : 'Save Configuration'}
+              </Button>
+            </SettingsButtonGroup>
           </div>
-        </div>
+        </SettingsCard>
       )}
 
       {activeTab === 'channels' && (
-        <div className={cardClass}>
-          <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Channel Routing
-          </h3>
-          <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Route different alert types to specific channels. Leave empty to use default channel.
-          </p>
-
-          <div className="grid gap-4">
+        <SettingsCard
+          title="Channel Routing"
+          description="Route different alert types to specific channels. Leave empty to use default channel."
+        >
+          <div className="space-y-3">
             {[
               { key: 'stockout', label: 'Stockout Alerts', placeholder: '#inventory-alerts' },
               { key: 'po_overdue', label: 'PO Overdue Alerts', placeholder: '#purchasing' },
@@ -422,10 +365,7 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
               { key: 'invoice', label: 'Invoice Notifications', placeholder: '#accounting' },
               { key: 'daily_summary', label: 'Daily Summary', placeholder: '#daily-briefing' },
             ].map(({ key, label, placeholder }) => (
-              <div key={key} className="flex items-center gap-4">
-                <label className={`w-48 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {label}
-                </label>
+              <SettingsRow key={key} label={label}>
                 <input
                   type="text"
                   value={workspaceConfig.channels[key as keyof typeof workspaceConfig.channels] || ''}
@@ -434,194 +374,150 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
                     channels: { ...prev.channels, [key]: e.target.value || undefined },
                   }))}
                   placeholder={placeholder}
-                  className={`flex-1 ${inputClass}`}
+                  className={`w-48 px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+                    isDark
+                      ? 'bg-gray-900 border-gray-700 text-white placeholder-gray-500 focus:border-gray-500'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-gray-400'
+                  } focus:outline-none focus:ring-2 focus:ring-accent-500/20`}
                 />
-              </div>
+              </SettingsRow>
             ))}
           </div>
 
-          <div className="flex justify-end pt-4">
+          <SettingsButtonGroup>
             <Button onClick={saveWorkspaceConfig} disabled={saving}>
               {saving ? 'Saving...' : 'Save Channel Routing'}
             </Button>
-          </div>
-        </div>
+          </SettingsButtonGroup>
+        </SettingsCard>
       )}
 
       {activeTab === 'quality' && qualityConfig && (
-        <div className={cardClass}>
-          <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Quality Gate Settings
-          </h3>
-          <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Control alert frequency and prevent notification fatigue.
-          </p>
-
-          {/* Stats */}
+        <SettingsCard
+          title="Quality Gate Settings"
+          description="Control alert frequency and prevent notification fatigue."
+        >
+          {/* Stats Grid */}
           {alertStats && (
             <div className="grid grid-cols-4 gap-4 mb-6">
-              <div className={`p-3 rounded-lg ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
-                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Pending Review</p>
-                <p className={`text-2xl font-semibold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                  {alertStats.pending}
-                </p>
-              </div>
-              <div className={`p-3 rounded-lg ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
-                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Sent Today</p>
-                <p className={`text-2xl font-semibold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                  {alertStats.sent_today}
-                </p>
-              </div>
-              <div className={`p-3 rounded-lg ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
-                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Suppressed</p>
-                <p className={`text-2xl font-semibold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {alertStats.suppressed_today}
-                </p>
-              </div>
-              <div className={`p-3 rounded-lg ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
-                <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Rate Limit Left</p>
-                <p className={`text-2xl font-semibold ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`}>
-                  {alertStats.rate_limit_remaining}
-                </p>
-              </div>
+              {[
+                { label: 'Pending Review', value: alertStats.pending, color: 'text-amber-400' },
+                { label: 'Sent Today', value: alertStats.sent_today, color: 'text-emerald-400' },
+                { label: 'Suppressed', value: alertStats.suppressed_today, color: 'text-gray-400' },
+                { label: 'Rate Limit Left', value: alertStats.rate_limit_remaining, color: 'text-cyan-400' },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className={`p-3 rounded-lg ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
+                >
+                  <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{stat.label}</p>
+                  <p className={`text-2xl font-semibold ${stat.color}`}>{stat.value}</p>
+                </div>
+              ))}
             </div>
           )}
 
+          <SettingsDivider className="my-6" />
+
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Dedup Cooldown (minutes)
-                </label>
-                <input
-                  type="number"
-                  value={qualityConfig.dedup_cooldown_minutes}
-                  onChange={(e) => setQualityConfig(prev => prev ? {
-                    ...prev,
-                    dedup_cooldown_minutes: parseInt(e.target.value) || 60,
-                  } : prev)}
-                  min={1}
-                  max={1440}
-                  className={inputClass}
-                />
-                <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                  Don't repeat same alert within this period
-                </p>
-              </div>
+              <SettingsInput
+                label="Dedup Cooldown (minutes)"
+                type="number"
+                value={qualityConfig.dedup_cooldown_minutes}
+                onChange={(e) => setQualityConfig(prev => prev ? {
+                  ...prev,
+                  dedup_cooldown_minutes: parseInt(e.target.value) || 60,
+                } : prev)}
+                min={1}
+                max={1440}
+                helpText="Don't repeat same alert within this period"
+              />
 
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Max Alerts Per Hour
-                </label>
-                <input
-                  type="number"
-                  value={qualityConfig.max_alerts_per_hour}
-                  onChange={(e) => setQualityConfig(prev => prev ? {
-                    ...prev,
-                    max_alerts_per_hour: parseInt(e.target.value) || 20,
-                  } : prev)}
-                  min={1}
-                  max={100}
-                  className={inputClass}
-                />
-              </div>
+              <SettingsInput
+                label="Max Alerts Per Hour"
+                type="number"
+                value={qualityConfig.max_alerts_per_hour}
+                onChange={(e) => setQualityConfig(prev => prev ? {
+                  ...prev,
+                  max_alerts_per_hour: parseInt(e.target.value) || 20,
+                } : prev)}
+                min={1}
+                max={100}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Minimum Severity to Send
-                </label>
-                <select
-                  value={qualityConfig.min_severity}
-                  onChange={(e) => setQualityConfig(prev => prev ? {
-                    ...prev,
-                    min_severity: e.target.value as any,
-                  } : prev)}
-                  className={inputClass}
-                >
-                  <option value="critical">Critical only</option>
-                  <option value="high">High and above</option>
-                  <option value="medium">Medium and above</option>
-                  <option value="low">Low and above</option>
-                  <option value="info">All alerts</option>
-                </select>
-              </div>
+              <SettingsSelect
+                label="Minimum Severity to Send"
+                value={qualityConfig.min_severity}
+                onChange={(e) => setQualityConfig(prev => prev ? {
+                  ...prev,
+                  min_severity: e.target.value as QualityGateConfig['min_severity'],
+                } : prev)}
+                options={[
+                  { value: 'critical', label: 'Critical only' },
+                  { value: 'high', label: 'High and above' },
+                  { value: 'medium', label: 'Medium and above' },
+                  { value: 'low', label: 'Low and above' },
+                  { value: 'info', label: 'All alerts' },
+                ]}
+              />
 
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Auto-Verify Below Severity
-                </label>
-                <select
-                  value={qualityConfig.auto_verify_below_severity}
-                  onChange={(e) => setQualityConfig(prev => prev ? {
-                    ...prev,
-                    auto_verify_below_severity: e.target.value as any,
-                  } : prev)}
-                  className={inputClass}
-                >
-                  <option value="critical">None (all need review)</option>
-                  <option value="high">High and below</option>
-                  <option value="medium">Medium and below</option>
-                  <option value="low">Low and below</option>
-                  <option value="info">All (no review needed)</option>
-                </select>
-                <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                  Alerts above this need manual verification
-                </p>
-              </div>
+              <SettingsSelect
+                label="Auto-Verify Below Severity"
+                value={qualityConfig.auto_verify_below_severity}
+                onChange={(e) => setQualityConfig(prev => prev ? {
+                  ...prev,
+                  auto_verify_below_severity: e.target.value as QualityGateConfig['auto_verify_below_severity'],
+                } : prev)}
+                options={[
+                  { value: 'critical', label: 'None (all need review)' },
+                  { value: 'high', label: 'High and below' },
+                  { value: 'medium', label: 'Medium and below' },
+                  { value: 'low', label: 'Low and below' },
+                  { value: 'info', label: 'All (no review needed)' },
+                ]}
+                helpText="Alerts above this need manual verification"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Quiet Hours Start
-                </label>
-                <input
-                  type="time"
-                  value={qualityConfig.quiet_hours_start || ''}
-                  onChange={(e) => setQualityConfig(prev => prev ? {
-                    ...prev,
-                    quiet_hours_start: e.target.value || undefined,
-                  } : prev)}
-                  className={inputClass}
-                />
-              </div>
+              <SettingsInput
+                label="Quiet Hours Start"
+                type="time"
+                value={qualityConfig.quiet_hours_start || ''}
+                onChange={(e) => setQualityConfig(prev => prev ? {
+                  ...prev,
+                  quiet_hours_start: e.target.value || undefined,
+                } : prev)}
+              />
 
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Quiet Hours End
-                </label>
-                <input
-                  type="time"
-                  value={qualityConfig.quiet_hours_end || ''}
-                  onChange={(e) => setQualityConfig(prev => prev ? {
-                    ...prev,
-                    quiet_hours_end: e.target.value || undefined,
-                  } : prev)}
-                  className={inputClass}
-                />
-              </div>
+              <SettingsInput
+                label="Quiet Hours End"
+                type="time"
+                value={qualityConfig.quiet_hours_end || ''}
+                onChange={(e) => setQualityConfig(prev => prev ? {
+                  ...prev,
+                  quiet_hours_end: e.target.value || undefined,
+                } : prev)}
+              />
             </div>
           </div>
 
-          <div className="flex justify-end pt-4">
+          <SettingsButtonGroup>
             <Button onClick={saveQualitySettings} disabled={saving}>
               {saving ? 'Saving...' : 'Save Quality Settings'}
             </Button>
-          </div>
-        </div>
+          </SettingsButtonGroup>
+        </SettingsCard>
       )}
 
       {activeTab === 'queue' && (
-        <div className={cardClass}>
-          <h3 className={`text-lg font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Alert Queue
-          </h3>
-          <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Review and manage pending alerts before they are sent to Slack.
-          </p>
-
+        <SettingsCard
+          title="Alert Queue"
+          description="Review and manage pending alerts before they are sent to Slack."
+        >
           {pendingAlerts.length === 0 ? (
             <div className={`text-center py-8 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
               <CheckCircleIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
@@ -640,15 +536,19 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`px-2 py-0.5 text-xs rounded-full ${
-                          alert.severity === 'critical'
-                            ? 'bg-red-500/20 text-red-400'
-                            : alert.severity === 'high'
-                            ? 'bg-amber-500/20 text-amber-400'
-                            : 'bg-gray-500/20 text-gray-400'
-                        }`}>
+                        <SettingsStatusBadge
+                          variant={
+                            alert.severity === 'critical'
+                              ? 'error'
+                              : alert.severity === 'high'
+                              ? 'warning'
+                              : 'neutral'
+                          }
+                          size="sm"
+                          icon={false}
+                        >
                           {alert.severity.toUpperCase()}
-                        </span>
+                        </SettingsStatusBadge>
                         <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {alert.alert_type.replace('_', ' ')}
                         </span>
@@ -663,13 +563,17 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
                     <div className="flex gap-2 ml-4">
                       <button
                         onClick={() => handleVerifyAlert(alert.id)}
-                        className="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded"
+                        className="px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
                       >
                         Send
                       </button>
                       <button
                         onClick={() => handleSuppressAlert(alert.id)}
-                        className="px-3 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-white rounded"
+                        className={`px-3 py-1 text-xs rounded-lg transition-colors ${
+                          isDark
+                            ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                            : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                        }`}
                       >
                         Suppress
                       </button>
@@ -680,19 +584,19 @@ const SlackIntegrationPanel: React.FC<SlackIntegrationPanelProps> = ({ addToast 
             </div>
           )}
 
-          <div className="flex justify-end pt-4">
+          <SettingsButtonGroup>
             <button
               onClick={loadConfiguration}
-              className={`px-4 py-2 rounded-lg border transition-colors ${isDark
+              className={`px-4 py-2 rounded-lg border transition-colors flex items-center gap-2 ${isDark
                 ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
                 : 'border-gray-300 text-gray-700 hover:bg-gray-100'
               }`}
             >
-              <RefreshIcon className="w-4 h-4 inline mr-1" />
+              <RefreshIcon className="w-4 h-4" />
               Refresh
             </button>
-          </div>
-        </div>
+          </SettingsButtonGroup>
+        </SettingsCard>
       )}
     </div>
   );

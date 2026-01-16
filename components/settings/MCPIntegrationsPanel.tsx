@@ -20,17 +20,26 @@ import {
   CheckCircleIcon,
   AlertCircleIcon,
   RefreshIcon,
-  PlayIcon,
-  ClockIcon,
   ZapIcon,
   MailIcon,
   SlackIcon,
-  UserIcon,
   EyeIcon,
   EyeSlashIcon,
-  InformationCircleIcon,
   UsersIcon,
 } from '@/components/icons';
+import {
+  SettingsCard,
+  SettingsInput,
+  SettingsTabs,
+  SettingsToggle,
+  SettingsStatusCard,
+  SettingsStatusBadge,
+  SettingsAlert,
+  SettingsLoading,
+  SettingsRow,
+  SettingsButtonGroup,
+  SettingsCheckbox,
+} from './ui';
 import {
   isRubeConfigured,
   checkConnection,
@@ -75,10 +84,11 @@ interface UserMCPAccess {
 }
 
 const MCPIntegrationsPanel: React.FC<MCPIntegrationsPanelProps> = ({ addToast }) => {
-  const { isDark } = useTheme();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'rube' | 'compliance' | 'users'>('rube');
+  const [activeTab, setActiveTab] = useState<string>('rube');
 
   // Loading states
   const [loading, setLoading] = useState(true);
@@ -89,12 +99,6 @@ const MCPIntegrationsPanel: React.FC<MCPIntegrationsPanelProps> = ({ addToast })
   // Rube state
   const [rubeStatus, setRubeStatus] = useState<RubeConnectionStatus | null>(null);
   const [rubeTools, setRubeTools] = useState<RubeTool[]>([]);
-  const [rubeExecutions, setRubeExecutions] = useState<Array<{
-    tool_name: string;
-    success: boolean;
-    executed_at: string;
-    execution_time_ms?: number;
-  }>>([]);
 
   // Compliance MCP state
   const [complianceServerUrl, setComplianceServerUrl] = useState('http://localhost:8000');
@@ -126,14 +130,12 @@ const MCPIntegrationsPanel: React.FC<MCPIntegrationsPanelProps> = ({ addToast })
   const loadRubeData = async () => {
     try {
       if (isRubeConfigured()) {
-        const [status, toolList, executions] = await Promise.all([
+        const [status, toolList] = await Promise.all([
           checkConnection(),
           listTools(),
-          getRecentExecutions(10),
         ]);
         setRubeStatus(status);
         setRubeTools(toolList);
-        setRubeExecutions(executions);
       } else {
         setRubeStatus({
           connected: false,
@@ -170,7 +172,6 @@ const MCPIntegrationsPanel: React.FC<MCPIntegrationsPanelProps> = ({ addToast })
   const loadUserAccess = async () => {
     setLoadingUsers(true);
     try {
-      // Get all users
       const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('id, email, full_name')
@@ -178,7 +179,6 @@ const MCPIntegrationsPanel: React.FC<MCPIntegrationsPanelProps> = ({ addToast })
 
       if (usersError) throw usersError;
 
-      // Get MCP access settings
       const { data: accessData } = await supabase
         .from('user_mcp_access')
         .select('*');
@@ -255,7 +255,7 @@ const MCPIntegrationsPanel: React.FC<MCPIntegrationsPanelProps> = ({ addToast })
         setComplianceHealthy(false);
         addToast?.(`Connection failed: ${response.statusText}`, 'error');
       }
-    } catch (error) {
+    } catch {
       setComplianceHealthy(false);
       addToast?.('Connection test failed - is the server running?', 'error');
     } finally {
@@ -278,24 +278,12 @@ const MCPIntegrationsPanel: React.FC<MCPIntegrationsPanelProps> = ({ addToast })
       setUsers(prev => prev.map(u =>
         u.user_id === userId ? { ...u, [field]: value } : u
       ));
-      addToast?.(`User access updated`, 'success');
+      addToast?.('User access updated', 'success');
     } catch (error) {
       console.error('Failed to update user access:', error);
       addToast?.('Failed to update user access', 'error');
     }
   };
-
-  // Styles
-  const cardClass = `rounded-lg p-6 ${isDark ? 'bg-gray-800/50 border border-gray-700' : 'bg-white border border-gray-200 shadow-sm'}`;
-  const inputClass = `w-full px-3 py-2 rounded-lg border ${isDark
-    ? 'bg-gray-900 border-gray-700 text-white focus:border-gray-500'
-    : 'bg-white border-gray-300 text-gray-900 focus:border-gray-500'
-  } focus:outline-none`;
-  const tabClass = (active: boolean) => `px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-    active
-      ? isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'
-      : isDark ? 'text-gray-400 hover:text-white hover:bg-gray-700/50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-  }`;
 
   const getToolIcon = (toolName: string) => {
     const name = toolName.toLowerCase();
@@ -306,14 +294,17 @@ const MCPIntegrationsPanel: React.FC<MCPIntegrationsPanelProps> = ({ addToast })
 
   if (loading) {
     return (
-      <div className={cardClass}>
-        <div className="flex items-center justify-center py-12">
-          <RefreshIcon className="w-6 h-6 animate-spin text-gray-400" />
-          <span className="ml-2 text-gray-400">Loading MCP integrations...</span>
-        </div>
-      </div>
+      <SettingsCard>
+        <SettingsLoading message="Loading MCP integrations..." />
+      </SettingsCard>
     );
   }
+
+  const tabs = [
+    { id: 'rube', label: 'Rube Tools', icon: <LinkIcon className="w-4 h-4" /> },
+    { id: 'compliance', label: 'Compliance Server', icon: <ServerStackIcon className="w-4 h-4" /> },
+    { id: 'users', label: 'User Access', icon: <UsersIcon className="w-4 h-4" /> },
+  ];
 
   return (
     <div className="space-y-6">
@@ -338,77 +329,39 @@ const MCPIntegrationsPanel: React.FC<MCPIntegrationsPanelProps> = ({ addToast })
 
       {/* Quick Status */}
       <div className="grid grid-cols-2 gap-4">
-        <div className={`p-4 rounded-lg ${
-          rubeStatus?.connected
-            ? isDark ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-emerald-50 border border-emerald-200'
-            : isDark ? 'bg-gray-800 border border-gray-700' : 'bg-gray-50 border border-gray-200'
-        }`}>
-          <div className="flex items-center gap-3">
-            {rubeStatus?.connected ? (
-              <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
-            ) : (
-              <AlertCircleIcon className={`w-5 h-5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
-            )}
-            <div>
-              <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Rube MCP</p>
-              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {rubeStatus?.connected ? `${rubeStatus.toolCount} tools` : 'Not configured'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className={`p-4 rounded-lg ${
-          complianceHealthy
-            ? isDark ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-emerald-50 border border-emerald-200'
-            : isDark ? 'bg-gray-800 border border-gray-700' : 'bg-gray-50 border border-gray-200'
-        }`}>
-          <div className="flex items-center gap-3">
-            {complianceHealthy ? (
-              <CheckCircleIcon className="w-5 h-5 text-emerald-400" />
-            ) : (
-              <AlertCircleIcon className={`w-5 h-5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
-            )}
-            <div>
-              <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Compliance MCP</p>
-              <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                {complianceHealthy ? 'Server healthy' : complianceEnabled ? 'Server offline' : 'Not enabled'}
-              </p>
-            </div>
-          </div>
-        </div>
+        <SettingsStatusCard
+          variant={rubeStatus?.connected ? 'success' : 'neutral'}
+          title="Rube MCP"
+          description={rubeStatus?.connected ? `${rubeStatus.toolCount} tools` : 'Not configured'}
+          icon={rubeStatus?.connected ? <CheckCircleIcon className="w-5 h-5" /> : <AlertCircleIcon className="w-5 h-5" />}
+        />
+        <SettingsStatusCard
+          variant={complianceHealthy ? 'success' : 'neutral'}
+          title="Compliance MCP"
+          description={complianceHealthy ? 'Server healthy' : complianceEnabled ? 'Server offline' : 'Not enabled'}
+          icon={complianceHealthy ? <CheckCircleIcon className="w-5 h-5" /> : <AlertCircleIcon className="w-5 h-5" />}
+        />
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-700 pb-2">
-        <button className={tabClass(activeTab === 'rube')} onClick={() => setActiveTab('rube')}>
-          <LinkIcon className="w-4 h-4" />
-          Rube Tools
-        </button>
-        <button className={tabClass(activeTab === 'compliance')} onClick={() => setActiveTab('compliance')}>
-          <ServerStackIcon className="w-4 h-4" />
-          Compliance Server
-        </button>
-        <button className={tabClass(activeTab === 'users')} onClick={() => setActiveTab('users')}>
-          <UsersIcon className="w-4 h-4" />
-          User Access
-        </button>
-      </div>
+      <SettingsTabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        variant="pills"
+      />
 
       {/* Rube Tab */}
       {activeTab === 'rube' && (
         <div className="space-y-6">
           {!rubeStatus?.connected ? (
-            <div className={cardClass}>
-              <h3 className={`font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                Setup Rube MCP
-              </h3>
-              <ol className={`space-y-3 text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+            <SettingsCard title="Setup Rube MCP">
+              <ol className={`space-y-4 text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                 <li className="flex gap-3">
                   <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
                     isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
                   }`}>1</span>
-                  <span>Go to <a href="https://rube.app/mcp" target="_blank" rel="noopener noreferrer" className="text-cyan-500 hover:underline">rube.app/mcp</a></span>
+                  <span>Go to <a href="https://rube.app/mcp" target="_blank" rel="noopener noreferrer" className="text-accent-500 hover:underline">rube.app/mcp</a></span>
                 </li>
                 <li className="flex gap-3">
                   <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
@@ -421,8 +374,8 @@ const MCPIntegrationsPanel: React.FC<MCPIntegrationsPanelProps> = ({ addToast })
                     isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
                   }`}>3</span>
                   <div>
-                    <span>Add to <code className={`px-1 rounded ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>.env.local</code>:</span>
-                    <pre className={`mt-2 p-3 rounded text-xs ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+                    <span>Add to <code className={`px-1.5 py-0.5 rounded text-xs ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>.env.local</code>:</span>
+                    <pre className={`mt-2 p-3 rounded-lg text-xs ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
 {`VITE_RUBE_MCP_URL=https://rube.app/mcp
 VITE_RUBE_AUTH_TOKEN=your-jwt-token`}
                     </pre>
@@ -435,14 +388,11 @@ VITE_RUBE_AUTH_TOKEN=your-jwt-token`}
                   <span>Restart the application</span>
                 </li>
               </ol>
-            </div>
+            </SettingsCard>
           ) : (
             <>
               {/* Rube capabilities */}
-              <div className={cardClass}>
-                <h3 className={`font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Rube Capabilities
-                </h3>
+              <SettingsCard title="Rube Capabilities">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
                     <div className="flex items-center gap-2 mb-2">
@@ -467,13 +417,10 @@ VITE_RUBE_AUTH_TOKEN=your-jwt-token`}
                     </ul>
                   </div>
                 </div>
-              </div>
+              </SettingsCard>
 
               {/* Available tools */}
-              <div className={cardClass}>
-                <h3 className={`font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Available Tools ({rubeTools.length})
-                </h3>
+              <SettingsCard title={`Available Tools (${rubeTools.length})`}>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {rubeTools.map((tool) => (
                     <div key={tool.name} className={`p-3 rounded-lg flex items-center gap-3 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -489,7 +436,7 @@ VITE_RUBE_AUTH_TOKEN=your-jwt-token`}
                     </div>
                   ))}
                 </div>
-              </div>
+              </SettingsCard>
             </>
           )}
         </div>
@@ -498,83 +445,62 @@ VITE_RUBE_AUTH_TOKEN=your-jwt-token`}
       {/* Compliance MCP Tab */}
       {activeTab === 'compliance' && (
         <div className="space-y-6">
-          <div className={cardClass}>
-            <h3 className={`font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Compliance MCP Server
-            </h3>
-            <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              Configure the local Python MCP server for AI-powered compliance checks.
-            </p>
-
+          <SettingsCard
+            title="Compliance MCP Server"
+            description="Configure the local Python MCP server for AI-powered compliance checks."
+          >
             <div className="space-y-4">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Server URL
-                </label>
-                <input
-                  type="text"
-                  value={complianceServerUrl}
-                  onChange={(e) => setComplianceServerUrl(e.target.value)}
-                  placeholder="http://localhost:8000"
-                  className={inputClass}
-                />
-              </div>
+              <SettingsInput
+                label="Server URL"
+                value={complianceServerUrl}
+                onChange={(e) => setComplianceServerUrl(e.target.value)}
+                placeholder="http://localhost:8000"
+                helpText="URL of the MCP server (default: http://localhost:8000)"
+              />
 
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Anthropic API Key <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showAnthropicKey ? 'text' : 'password'}
-                    value={anthropicApiKey}
-                    onChange={(e) => setAnthropicApiKey(e.target.value)}
-                    placeholder="sk-ant-..."
-                    className={inputClass}
-                  />
+              <SettingsInput
+                label="Anthropic API Key"
+                type={showAnthropicKey ? 'text' : 'password'}
+                value={anthropicApiKey}
+                onChange={(e) => setAnthropicApiKey(e.target.value)}
+                placeholder="sk-ant-..."
+                helpText="Required for AI-powered compliance checks"
+                suffix={
                   <button
                     type="button"
                     onClick={() => setShowAnthropicKey(!showAnthropicKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    className="text-gray-400 hover:text-gray-300"
                   >
                     {showAnthropicKey ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                   </button>
-                </div>
-              </div>
+                }
+              />
 
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Perplexity API Key <span className="text-purple-500 text-xs">(Regulatory Research)</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPerplexityKey ? 'text' : 'password'}
-                    value={perplexityApiKey}
-                    onChange={(e) => setPerplexityApiKey(e.target.value)}
-                    placeholder="pplx-..."
-                    className={inputClass}
-                  />
+              <SettingsInput
+                label="Perplexity API Key"
+                type={showPerplexityKey ? 'text' : 'password'}
+                value={perplexityApiKey}
+                onChange={(e) => setPerplexityApiKey(e.target.value)}
+                placeholder="pplx-..."
+                helpText="For regulatory research features"
+                suffix={
                   <button
                     type="button"
                     onClick={() => setShowPerplexityKey(!showPerplexityKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    className="text-gray-400 hover:text-gray-300"
                   >
                     {showPerplexityKey ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                   </button>
-                </div>
-              </div>
+                }
+              />
 
-              <label className={`flex items-center gap-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                <input
-                  type="checkbox"
-                  checked={complianceEnabled}
-                  onChange={(e) => setComplianceEnabled(e.target.checked)}
-                  className="rounded border-gray-600"
-                />
-                <span className="text-sm">Enable Compliance MCP integration</span>
-              </label>
+              <SettingsCheckbox
+                checked={complianceEnabled}
+                onChange={setComplianceEnabled}
+                label="Enable Compliance MCP integration"
+              />
 
-              <div className="flex gap-3 pt-2">
+              <SettingsButtonGroup>
                 <Button
                   onClick={handleTestComplianceConnection}
                   disabled={testingCompliance || !complianceServerUrl}
@@ -586,15 +512,12 @@ VITE_RUBE_AUTH_TOKEN=your-jwt-token`}
                 <Button onClick={handleSaveComplianceConfig} disabled={saving}>
                   {saving ? 'Saving...' : 'Save Configuration'}
                 </Button>
-              </div>
+              </SettingsButtonGroup>
             </div>
-          </div>
+          </SettingsCard>
 
           {/* Compliance tools list */}
-          <div className={cardClass}>
-            <h3 className={`font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Available Compliance Tools ({COMPLIANCE_TOOLS.length})
-            </h3>
+          <SettingsCard title={`Available Compliance Tools (${COMPLIANCE_TOOLS.length})`}>
             <div className="space-y-2">
               {COMPLIANCE_TOOLS.map((tool) => (
                 <div key={tool.name} className={`p-3 rounded-lg flex items-start gap-3 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -603,9 +526,7 @@ VITE_RUBE_AUTH_TOKEN=your-jwt-token`}
                     <div className="flex items-center justify-between">
                       <p className={`font-medium text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{tool.displayName}</p>
                       {tool.requiresAI && (
-                        <span className="px-2 py-0.5 text-xs font-medium bg-purple-500/20 text-purple-400 rounded">
-                          AI Required
-                        </span>
+                        <SettingsStatusBadge variant="info" size="sm">AI Required</SettingsStatusBadge>
                       )}
                     </div>
                     <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{tool.description}</p>
@@ -613,24 +534,18 @@ VITE_RUBE_AUTH_TOKEN=your-jwt-token`}
                 </div>
               ))}
             </div>
-          </div>
+          </SettingsCard>
         </div>
       )}
 
       {/* User Access Tab */}
       {activeTab === 'users' && (
-        <div className={cardClass}>
-          <h3 className={`font-medium mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            User MCP Access
-          </h3>
-          <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Control which users can access MCP features. Disabled users won't see MCP tools in their interface.
-          </p>
-
+        <SettingsCard
+          title="User MCP Access"
+          description="Control which users can access MCP features. Disabled users won't see MCP tools in their interface."
+        >
           {loadingUsers ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshIcon className="w-5 h-5 animate-spin text-gray-400" />
-            </div>
+            <SettingsLoading message="Loading users..." />
           ) : users.length === 0 ? (
             <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
               No users found. User access table may not be configured.
@@ -644,55 +559,36 @@ VITE_RUBE_AUTH_TOKEN=your-jwt-token`}
                 <span className="text-center">Compliance</span>
               </div>
               {users.map((user) => (
-                <div key={user.user_id} className={`grid grid-cols-4 gap-4 items-center py-2 ${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} rounded-lg px-2 -mx-2`}>
-                  <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <div key={user.user_id} className={`grid grid-cols-4 gap-4 items-center py-3 ${isDark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'} rounded-lg px-2 -mx-2`}>
+                  <span className={`text-sm font-medium truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {user.user_name}
                   </span>
-                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <span className={`text-sm truncate ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                     {user.user_email}
                   </span>
                   <div className="flex justify-center">
-                    <button
-                      onClick={() => handleToggleUserAccess(user.user_id, 'rube_enabled', !user.rube_enabled)}
-                      className={`w-8 h-5 rounded-full transition-colors ${
-                        user.rube_enabled
-                          ? 'bg-emerald-500'
-                          : isDark ? 'bg-gray-600' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span className={`block w-4 h-4 rounded-full bg-white shadow transform transition-transform ${
-                        user.rube_enabled ? 'translate-x-3.5' : 'translate-x-0.5'
-                      }`} />
-                    </button>
+                    <SettingsToggle
+                      size="sm"
+                      checked={user.rube_enabled}
+                      onChange={(checked) => handleToggleUserAccess(user.user_id, 'rube_enabled', checked)}
+                    />
                   </div>
                   <div className="flex justify-center">
-                    <button
-                      onClick={() => handleToggleUserAccess(user.user_id, 'compliance_mcp_enabled', !user.compliance_mcp_enabled)}
-                      className={`w-8 h-5 rounded-full transition-colors ${
-                        user.compliance_mcp_enabled
-                          ? 'bg-emerald-500'
-                          : isDark ? 'bg-gray-600' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span className={`block w-4 h-4 rounded-full bg-white shadow transform transition-transform ${
-                        user.compliance_mcp_enabled ? 'translate-x-3.5' : 'translate-x-0.5'
-                      }`} />
-                    </button>
+                    <SettingsToggle
+                      size="sm"
+                      checked={user.compliance_mcp_enabled}
+                      onChange={(checked) => handleToggleUserAccess(user.user_id, 'compliance_mcp_enabled', checked)}
+                    />
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          <div className={`mt-4 p-3 rounded-lg ${isDark ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-blue-50 border border-blue-200'}`}>
-            <div className="flex items-start gap-2">
-              <InformationCircleIcon className={`w-4 h-4 mt-0.5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-              <p className={`text-sm ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
-                MCP features are developer tools. Only enable for users who need AI-assisted workflows.
-              </p>
-            </div>
-          </div>
-        </div>
+          <SettingsAlert variant="info" className="mt-4">
+            MCP features are developer tools. Only enable for users who need AI-assisted workflows.
+          </SettingsAlert>
+        </SettingsCard>
       )}
     </div>
   );
