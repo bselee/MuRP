@@ -25,6 +25,13 @@ import {
   previewEmail,
   type EmailBranding,
 } from '../../services/emailTemplateService';
+import {
+  SettingsCard,
+  SettingsInput,
+  SettingsTextarea,
+  SettingsLoading,
+  SettingsButtonGroup,
+} from './ui';
 
 interface EmailBrandingPanelProps {
   addToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -155,26 +162,11 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className={`h-8 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded w-1/3`}></div>
-          <div className={`h-32 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded`}></div>
-        </div>
-      </div>
+      <SettingsCard>
+        <SettingsLoading variant="skeleton" />
+      </SettingsCard>
     );
   }
-
-  const inputClass = `w-full px-3 py-2 rounded-lg border transition-colors ${
-    isDark
-      ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-500 focus:border-accent-500'
-      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-accent-500'
-  } focus:outline-none focus:ring-2 focus:ring-accent-500/20`;
-
-  const labelClass = `block text-sm font-medium mb-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`;
-
-  const cardClass = `rounded-lg border p-5 ${
-    isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'
-  }`;
 
   return (
     <div className="space-y-6">
@@ -204,9 +196,8 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-accent-500 text-white rounded-lg font-medium hover:bg-accent-600 transition-colors"
           >
-            {saving ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : <CheckIcon className="w-4 h-4" />}
+            {saving ? <ArrowPathIcon className="w-4 h-4 animate-spin mr-2" /> : <CheckIcon className="w-4 h-4 mr-2" />}
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
@@ -214,76 +205,57 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Company Info */}
-        <div className={cardClass}>
+        <SettingsCard>
           <div className="flex items-center gap-2 mb-4">
             <BuildingOffice2Icon className={`w-5 h-5 ${isDark ? 'text-accent-400' : 'text-accent-500'}`} />
             <h3 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Company Information</h3>
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className={labelClass}>Company Name *</label>
-              <input
-                type="text"
-                value={branding.companyName}
-                onChange={(e) => handleChange('companyName', e.target.value)}
-                placeholder="Your Company Name"
-                className={inputClass}
-              />
-            </div>
+            <SettingsInput
+              label="Company Name *"
+              value={branding.companyName}
+              onChange={(e) => handleChange('companyName', e.target.value)}
+              placeholder="Your Company Name"
+            />
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>Contact Email *</label>
-                <input
-                  type="email"
-                  value={branding.contactEmail}
-                  onChange={(e) => handleChange('contactEmail', e.target.value)}
-                  placeholder="purchasing@company.com"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Contact Phone</label>
-                <input
-                  type="tel"
-                  value={branding.contactPhone || ''}
-                  onChange={(e) => handleChange('contactPhone', e.target.value)}
-                  placeholder="+1 (555) 123-4567"
-                  className={inputClass}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className={labelClass}>Company Address</label>
-              <input
-                type="text"
-                value={branding.companyAddress || ''}
-                onChange={(e) => handleChange('companyAddress', e.target.value)}
-                placeholder="123 Main St, City, State 12345"
-                className={inputClass}
+              <SettingsInput
+                label="Contact Email *"
+                type="email"
+                value={branding.contactEmail}
+                onChange={(e) => handleChange('contactEmail', e.target.value)}
+                placeholder="purchasing@company.com"
+              />
+              <SettingsInput
+                label="Contact Phone"
+                type="tel"
+                value={branding.contactPhone || ''}
+                onChange={(e) => handleChange('contactPhone', e.target.value)}
+                placeholder="+1 (555) 123-4567"
               />
             </div>
 
-            <div>
-              <label className={labelClass}>Website</label>
-              <div className="relative">
-                <GlobeIcon className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
-                <input
-                  type="url"
-                  value={branding.website || ''}
-                  onChange={(e) => handleChange('website', e.target.value)}
-                  placeholder="https://yourcompany.com"
-                  className={`${inputClass} pl-10`}
-                />
-              </div>
-            </div>
+            <SettingsInput
+              label="Company Address"
+              value={branding.companyAddress || ''}
+              onChange={(e) => handleChange('companyAddress', e.target.value)}
+              placeholder="123 Main St, City, State 12345"
+            />
+
+            <SettingsInput
+              label="Website"
+              type="url"
+              value={branding.website || ''}
+              onChange={(e) => handleChange('website', e.target.value)}
+              placeholder="https://yourcompany.com"
+              icon={<GlobeIcon className="w-4 h-4" />}
+            />
           </div>
-        </div>
+        </SettingsCard>
 
         {/* Logo & Colors */}
-        <div className={cardClass}>
+        <SettingsCard>
           <div className="flex items-center gap-2 mb-4">
             <PaletteIcon className={`w-5 h-5 ${isDark ? 'text-accent-400' : 'text-accent-500'}`} />
             <h3 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Logo & Colors</h3>
@@ -292,7 +264,9 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
           <div className="space-y-4">
             {/* Logo Upload */}
             <div>
-              <label className={labelClass}>Company Logo</label>
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                Company Logo
+              </label>
               <div className="flex items-start gap-4">
                 <div className={`w-20 h-20 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden ${
                   isDark ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-gray-50'
@@ -335,25 +309,22 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
             </div>
 
             {/* Fallback Logo Text */}
-            <div>
-              <label className={labelClass}>Logo Fallback Text</label>
-              <input
-                type="text"
-                value={branding.companyLogoText || ''}
-                onChange={(e) => handleChange('companyLogoText', e.target.value)}
-                placeholder="M"
-                maxLength={3}
-                className={`${inputClass} w-24`}
-              />
-              <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                1-3 chars shown if no logo uploaded
-              </p>
-            </div>
+            <SettingsInput
+              label="Logo Fallback Text"
+              value={branding.companyLogoText || ''}
+              onChange={(e) => handleChange('companyLogoText', e.target.value)}
+              placeholder="M"
+              maxLength={3}
+              className="w-24"
+              helpText="1-3 chars shown if no logo uploaded"
+            />
 
             {/* Colors */}
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className={labelClass}>Primary Color</label>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Primary Color
+                </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
@@ -365,12 +336,18 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
                     type="text"
                     value={branding.primaryColor}
                     onChange={(e) => handleChange('primaryColor', e.target.value)}
-                    className={`${inputClass} flex-1 text-xs font-mono`}
+                    className={`flex-1 px-2 py-1 rounded-lg border text-xs font-mono transition-colors ${
+                      isDark
+                        ? 'bg-gray-900 border-gray-700 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-2 focus:ring-accent-500/20`}
                   />
                 </div>
               </div>
               <div>
-                <label className={labelClass}>Secondary Color</label>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Secondary Color
+                </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
@@ -382,12 +359,18 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
                     type="text"
                     value={branding.secondaryColor}
                     onChange={(e) => handleChange('secondaryColor', e.target.value)}
-                    className={`${inputClass} flex-1 text-xs font-mono`}
+                    className={`flex-1 px-2 py-1 rounded-lg border text-xs font-mono transition-colors ${
+                      isDark
+                        ? 'bg-gray-900 border-gray-700 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-2 focus:ring-accent-500/20`}
                   />
                 </div>
               </div>
               <div>
-                <label className={labelClass}>Accent Color</label>
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Accent Color
+                </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
@@ -399,7 +382,11 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
                     type="text"
                     value={branding.accentColor}
                     onChange={(e) => handleChange('accentColor', e.target.value)}
-                    className={`${inputClass} flex-1 text-xs font-mono`}
+                    className={`flex-1 px-2 py-1 rounded-lg border text-xs font-mono transition-colors ${
+                      isDark
+                        ? 'bg-gray-900 border-gray-700 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    } focus:outline-none focus:ring-2 focus:ring-accent-500/20`}
                   />
                 </div>
               </div>
@@ -407,7 +394,9 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
 
             {/* Color Preview */}
             <div>
-              <label className={labelClass}>Header Preview</label>
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                Header Preview
+              </label>
               <div
                 className="h-16 rounded-lg flex items-center px-4"
                 style={{
@@ -426,33 +415,28 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
               </div>
             </div>
           </div>
-        </div>
+        </SettingsCard>
 
         {/* Footer Text */}
-        <div className={`${cardClass} lg:col-span-2`}>
+        <SettingsCard className="lg:col-span-2">
           <div className="flex items-center gap-2 mb-4">
             <MailIcon className={`w-5 h-5 ${isDark ? 'text-accent-400' : 'text-accent-500'}`} />
             <h3 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>Email Footer</h3>
           </div>
 
-          <div>
-            <label className={labelClass}>Footer Text</label>
-            <textarea
-              value={branding.footerText || ''}
-              onChange={(e) => handleChange('footerText', e.target.value)}
-              placeholder="This is an automated message from Your Company"
-              rows={2}
-              className={inputClass}
-            />
-            <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-              Displayed at the bottom of all outgoing emails
-            </p>
-          </div>
-        </div>
+          <SettingsTextarea
+            label="Footer Text"
+            value={branding.footerText || ''}
+            onChange={(e) => handleChange('footerText', e.target.value)}
+            placeholder="This is an automated message from Your Company"
+            rows={2}
+            helpText="Displayed at the bottom of all outgoing emails"
+          />
+        </SettingsCard>
       </div>
 
       {/* Template Types Info */}
-      <div className={`${cardClass} lg:col-span-2`}>
+      <SettingsCard className="lg:col-span-2">
         <h3 className={`font-medium mb-3 ${isDark ? 'text-white' : 'text-gray-900'}`}>Email Templates</h3>
         <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
           Your branding is automatically applied to all outgoing emails:
@@ -460,7 +444,7 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
             <div className="flex items-center gap-2 mb-2">
-              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
               <span className={`font-medium text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>PO Confirmation</span>
             </div>
             <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -469,7 +453,7 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
           </div>
           <div className={`p-4 rounded-lg ${isDark ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
             <div className="flex items-center gap-2 mb-2">
-              <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
               <span className={`font-medium text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>Follow-Up</span>
             </div>
             <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -486,7 +470,7 @@ const EmailBrandingPanel: React.FC<EmailBrandingPanelProps> = ({ addToast }) => 
             </p>
           </div>
         </div>
-      </div>
+      </SettingsCard>
     </div>
   );
 };

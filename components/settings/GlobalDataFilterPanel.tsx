@@ -14,10 +14,15 @@ import {
   PlusIcon,
   ArrowPathIcon,
   CheckIcon,
-  ExclamationTriangleIcon
 } from '../icons';
 import Button from '../ui/Button';
 import SettingsSubNav from './SettingsSubNav';
+import {
+  SettingsCard,
+  SettingsInput,
+  SettingsAlert,
+  SettingsCheckbox,
+} from './ui';
 
 interface GlobalDataFilterPanelProps {
   /** All categories found in the database (from inventory/BOMs) */
@@ -210,23 +215,6 @@ const GlobalDataFilterPanel: React.FC<GlobalDataFilterPanelProps> = ({
     addToast?.('All categories are now visible', 'info');
   };
 
-  // Styles
-  const cardClass = isDark
-    ? "bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700"
-    : "bg-white rounded-xl p-6 border border-gray-200 shadow-sm";
-
-  const labelClass = isDark
-    ? "text-xs font-semibold text-gray-400 uppercase tracking-wide"
-    : "text-xs font-semibold text-gray-500 uppercase tracking-wide";
-
-  const inputClass = isDark
-    ? "flex-1 bg-gray-900/60 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
-    : "flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 text-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors";
-
-  const checkboxContainerClass = isDark
-    ? "flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700/50 transition-colors cursor-pointer group"
-    : "flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group";
-
   const isDefaultExclusion = (cat: string) =>
     DEFAULT_EXCLUDED_CATEGORIES.map(c => c.toLowerCase()).includes(cat.toLowerCase().trim());
 
@@ -251,19 +239,19 @@ const GlobalDataFilterPanel: React.FC<GlobalDataFilterPanelProps> = ({
           return (
             <label
               key={item}
-              className={checkboxContainerClass}
+              className={`flex items-center gap-3 p-3 rounded-lg transition-colors cursor-pointer ${
+                isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'
+              }`}
             >
-              <input
-                type="checkbox"
+              <SettingsCheckbox
                 checked={isExcluded}
                 onChange={() => onToggle(item)}
-                className="w-4 h-4 rounded border-gray-500 text-red-500 focus:ring-red-500 focus:ring-offset-0"
               />
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 {isExcluded ? (
                   <EyeSlashIcon className="w-4 h-4 text-red-400 flex-shrink-0" />
                 ) : (
-                  <EyeIcon className="w-4 h-4 text-green-400 flex-shrink-0" />
+                  <EyeIcon className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                 )}
                 <span className={`truncate ${
                   isExcluded
@@ -289,21 +277,11 @@ const GlobalDataFilterPanel: React.FC<GlobalDataFilterPanelProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Explanation Card */}
-      <div className={`${cardClass} border-l-4 border-l-amber-500`}>
-        <div className="flex items-start gap-3">
-          <ExclamationTriangleIcon className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <h4 className={`font-semibold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Global Data Exclusions
-            </h4>
-            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              Items marked as excluded will be <strong>completely hidden</strong> throughout the app.
-              They won't appear in Inventory, BOMs, Stock Intelligence, or even as filter options.
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* Explanation Alert */}
+      <SettingsAlert variant="warning" title="Global Data Exclusions">
+        Items marked as excluded will be <strong>completely hidden</strong> throughout the app.
+        They won't appear in Inventory, BOMs, Stock Intelligence, or even as filter options.
+      </SettingsAlert>
 
       {/* Three-section layout with sidebar */}
       <SettingsSubNav
@@ -315,175 +293,172 @@ const GlobalDataFilterPanel: React.FC<GlobalDataFilterPanelProps> = ({
       >
         <div className="space-y-6">
           {/* Categories Section */}
-          <div id="subsection-categories" className={cardClass}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Excluded Categories
-                </h3>
-                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {excludedCategoryCount} of {sortedCategories.length} categories hidden
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResetDefaults}
-                  title="Reset to defaults"
-                >
-                  <ArrowPathIcon className="w-4 h-4 mr-1" />
-                  Defaults
-                </Button>
-                {excludedCategoryCount > 0 && (
-                  showConfirmClear ? (
-                    <div className="flex items-center gap-1">
-                      <Button variant="danger" size="sm" onClick={handleClearAll}>
-                        <CheckIcon className="w-4 h-4 mr-1" />
-                        Confirm
+          <div id="subsection-categories">
+            <SettingsCard>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    Excluded Categories
+                  </h3>
+                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {excludedCategoryCount} of {sortedCategories.length} categories hidden
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetDefaults}
+                    title="Reset to defaults"
+                  >
+                    <ArrowPathIcon className="w-4 h-4 mr-1" />
+                    Defaults
+                  </Button>
+                  {excludedCategoryCount > 0 && (
+                    showConfirmClear ? (
+                      <div className="flex items-center gap-1">
+                        <Button variant="danger" size="sm" onClick={handleClearAll}>
+                          <CheckIcon className="w-4 h-4 mr-1" />
+                          Confirm
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setShowConfirmClear(false)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button variant="ghost" size="sm" onClick={() => setShowConfirmClear(true)}>
+                        <EyeIcon className="w-4 h-4 mr-1" />
+                        Show All
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setShowConfirmClear(false)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button variant="ghost" size="sm" onClick={() => setShowConfirmClear(true)}>
-                      <EyeIcon className="w-4 h-4 mr-1" />
-                      Show All
-                    </Button>
-                  )
-                )}
+                    )
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="mb-4">
-              <label className={labelClass}>Add Custom Exclusion</label>
-              <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="text"
-                  value={customCategory}
-                  onChange={(e) => setCustomCategory(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddCustomCategory()}
-                  placeholder="Enter category name..."
-                  className={inputClass}
-                />
-                <Button variant="secondary" size="sm" onClick={handleAddCustomCategory} disabled={!customCategory.trim()}>
-                  <PlusIcon className="w-4 h-4" />
-                </Button>
+              <div className="mb-4">
+                <div className="flex items-center gap-2">
+                  <SettingsInput
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddCustomCategory()}
+                    placeholder="Enter category name..."
+                  />
+                  <Button variant="secondary" size="sm" onClick={handleAddCustomCategory} disabled={!customCategory.trim()}>
+                    <PlusIcon className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
 
-            {renderExclusionList(
-              sortedCategories,
-              excludedCategories,
-              handleToggleCategory,
-              (s) => s.toLowerCase().trim(),
-              'category'
-            )}
+              {renderExclusionList(
+                sortedCategories,
+                excludedCategories,
+                handleToggleCategory,
+                (s) => s.toLowerCase().trim(),
+                'category'
+              )}
+            </SettingsCard>
           </div>
 
           {/* Vendors Section */}
-          <div id="subsection-vendors" className={cardClass}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Excluded Vendors
-                </h3>
-                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {excludedVendorCount} of {sortedVendors.length} vendors hidden
-                </p>
+          <div id="subsection-vendors">
+            <SettingsCard>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    Excluded Vendors
+                  </h3>
+                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {excludedVendorCount} of {sortedVendors.length} vendors hidden
+                  </p>
+                </div>
+                {excludedVendorCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      saveVendors(new Set());
+                      addToast?.('All vendors are now visible', 'info');
+                    }}
+                  >
+                    <EyeIcon className="w-4 h-4 mr-1" />
+                    Show All
+                  </Button>
+                )}
               </div>
-              {excludedVendorCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    saveVendors(new Set());
-                    addToast?.('All vendors are now visible', 'info');
-                  }}
-                >
-                  <EyeIcon className="w-4 h-4 mr-1" />
-                  Show All
-                </Button>
+
+              <div className="mb-4">
+                <div className="flex items-center gap-2">
+                  <SettingsInput
+                    value={customVendor}
+                    onChange={(e) => setCustomVendor(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddCustomVendor()}
+                    placeholder="Enter vendor name..."
+                  />
+                  <Button variant="secondary" size="sm" onClick={handleAddCustomVendor} disabled={!customVendor.trim()}>
+                    <PlusIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {renderExclusionList(
+                sortedVendors,
+                excludedVendors,
+                handleToggleVendor,
+                (s) => s.toLowerCase().trim(),
+                'vendor'
               )}
-            </div>
-
-            <div className="mb-4">
-              <label className={labelClass}>Add Custom Exclusion</label>
-              <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="text"
-                  value={customVendor}
-                  onChange={(e) => setCustomVendor(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddCustomVendor()}
-                  placeholder="Enter vendor name..."
-                  className={inputClass}
-                />
-                <Button variant="secondary" size="sm" onClick={handleAddCustomVendor} disabled={!customVendor.trim()}>
-                  <PlusIcon className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {renderExclusionList(
-              sortedVendors,
-              excludedVendors,
-              handleToggleVendor,
-              (s) => s.toLowerCase().trim(),
-              'vendor'
-            )}
+            </SettingsCard>
           </div>
 
           {/* SKUs Section */}
-          <div id="subsection-skus" className={cardClass}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Excluded SKUs
-                </h3>
-                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {excludedSkuCount} of {sortedSkus.length} SKUs hidden
-                </p>
+          <div id="subsection-skus">
+            <SettingsCard>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    Excluded SKUs
+                  </h3>
+                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {excludedSkuCount} of {sortedSkus.length} SKUs hidden
+                  </p>
+                </div>
+                {excludedSkuCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      saveSkus(new Set());
+                      addToast?.('All SKUs are now visible', 'info');
+                    }}
+                  >
+                    <EyeIcon className="w-4 h-4 mr-1" />
+                    Show All
+                  </Button>
+                )}
               </div>
-              {excludedSkuCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    saveSkus(new Set());
-                    addToast?.('All SKUs are now visible', 'info');
-                  }}
-                >
-                  <EyeIcon className="w-4 h-4 mr-1" />
-                  Show All
-                </Button>
+
+              <div className="mb-4">
+                <div className="flex items-center gap-2">
+                  <SettingsInput
+                    value={customSku}
+                    onChange={(e) => setCustomSku(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddCustomSku()}
+                    placeholder="Enter SKU..."
+                  />
+                  <Button variant="secondary" size="sm" onClick={handleAddCustomSku} disabled={!customSku.trim()}>
+                    <PlusIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {renderExclusionList(
+                sortedSkus,
+                excludedSkus,
+                handleToggleSku,
+                (s) => s.toUpperCase().trim(),
+                'sku'
               )}
-            </div>
-
-            <div className="mb-4">
-              <label className={labelClass}>Add Custom Exclusion</label>
-              <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="text"
-                  value={customSku}
-                  onChange={(e) => setCustomSku(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddCustomSku()}
-                  placeholder="Enter SKU..."
-                  className={inputClass}
-                />
-                <Button variant="secondary" size="sm" onClick={handleAddCustomSku} disabled={!customSku.trim()}>
-                  <PlusIcon className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {renderExclusionList(
-              sortedSkus,
-              excludedSkus,
-              handleToggleSku,
-              (s) => s.toUpperCase().trim(),
-              'sku'
-            )}
+            </SettingsCard>
           </div>
         </div>
       </SettingsSubNav>
