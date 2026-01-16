@@ -14,6 +14,7 @@ import PurchaseOrders from './pages/PurchaseOrders';
 import Vendors from './pages/Vendors';
 import Production from './pages/Production';
 import BOMs from './pages/BOMs';
+import BuildForecast from './pages/BuildForecast';
 import Settings from './pages/Settings';
 // StockIntelligence moved to Dashboard tab - imported in DashboardContent.tsx
 import ProjectsPage from './pages/ProjectsPage';
@@ -42,6 +43,7 @@ import ResetPassword from './pages/ResetPassword';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import PublicPOView from './pages/PublicPOView';
+import OAuthConsent from './pages/OAuthConsent';
 import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
 import { usePermissions } from './hooks/usePermissions';
@@ -127,7 +129,7 @@ import { extractAmazonMetadata, DEFAULT_AMAZON_TRACKING_EMAIL } from './lib/amaz
 import { initializeFinaleAutoSync } from './services/finaleAutoSync';
 import { triggerPOSync } from './services/purchaseOrderSyncService';
 
-export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page' | 'Agent Command Center' | 'Compliance';
+export type Page = 'Dashboard' | 'Inventory' | 'Purchase Orders' | 'Vendors' | 'Production' | 'BOMs' | 'Build Forecast' | 'Settings' | 'API Documentation' | 'Artwork' | 'Projects' | 'Label Scanner' | 'Product Page' | 'Agent Command Center' | 'Compliance';
 
 export type ToastInfo = {
   id: number;
@@ -1817,6 +1819,8 @@ const AppShell: React.FC = () => {
             setCurrentPage('Purchase Orders');
           }}
         />;
+      case 'Build Forecast':
+        return <BuildForecast addToast={addToast} />;
       case 'Artwork':
         return <ArtworkPage
           boms={boms}
@@ -1965,6 +1969,20 @@ const AppShell: React.FC = () => {
   // Public PO view - shareable links for vendors
   if (currentPath.startsWith('/po/')) {
     return <PublicPOView />;
+  }
+
+  // OAuth consent page - for Supabase OAuth Server authorization requests
+  if (currentPath === '/oauth/consent') {
+    return (
+      <>
+        <OAuthConsent addToast={addToast} />
+        <div className="fixed top-20 right-4 z-[60] w-full max-w-sm">
+          {toasts.map(toast => (
+            <Toast key={toast.id} {...toast} onClose={() => removeToast(toast.id)} />
+          ))}
+        </div>
+      </>
+    );
   }
 
   if (authLoading || checkingOnboarding) {

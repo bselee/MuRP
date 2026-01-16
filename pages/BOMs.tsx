@@ -33,6 +33,7 @@ import CategoryManagementModal, { type CategoryConfig } from '../components/Cate
 import { useLimitingSKUOnOrder } from '../hooks/useLimitingSKUOnOrder';
 import { useTheme } from '../components/ThemeProvider';
 import { useGlobalSkuFilter } from '../hooks/useGlobalSkuFilter';
+import BuildForecastSummaryCard from '../components/BuildForecastSummaryCard';
 
 type ViewMode = 'card' | 'table';
 type SortOption = 'name' | 'sku' | 'inventory' | 'buildability' | 'category' | 'velocity' | 'runway';
@@ -1026,6 +1027,21 @@ const BOMs: React.FC<BOMsProps> = ({
             </Button>
           ) : undefined
         }
+      />
+
+      {/* Build Forecast Summary - expandable at top */}
+      <BuildForecastSummaryCard
+        onNavigateToBOMs={() => {
+          // Already on BOMs page, scroll to top
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onNavigateToBuilds={() => {
+          // Navigate to Build Forecast page for full details
+          window.history.pushState(null, '', '/build-forecast');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }}
+        expanded={false}
+        showSyncHealth={true}
       />
 
       {componentFilter && (

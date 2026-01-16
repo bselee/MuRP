@@ -3,8 +3,10 @@ import { useTheme } from '../ThemeProvider';
 import { HomeIcon } from '../icons';
 import PurchasingGuidanceDashboard from '../PurchasingGuidanceDashboard';
 import SetupStatusCard from '../SetupStatusCard';
+import BuildForecastSummaryCard from '../BuildForecastSummaryCard';
 import PageHeader from '@/components/ui/PageHeader';
 import { useDataSourceStatus } from '../../hooks/useDataSourceStatus';
+import { usePermissions } from '../../hooks/usePermissions';
 import type { DashboardTabId, DashboardPageProps } from './dashboardConfig';
 
 interface DashboardContentProps extends DashboardPageProps {
@@ -17,6 +19,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
 }) => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
+  const permissions = usePermissions();
 
   // Get data source status for onboarding guidance
   const { status: dataSourceStatus, loading: statusLoading } = useDataSourceStatus(currentUser?.id);
@@ -42,6 +45,16 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         <SetupStatusCard
           status={dataSourceStatus}
           onNavigate={(page) => setCurrentPage(page as any)}
+        />
+      )}
+
+      {/* Build Forecast Summary - shows planned builds from calendar sync */}
+      {permissions.canViewBoms && (
+        <BuildForecastSummaryCard
+          onNavigateToBOMs={() => setCurrentPage('BOMs')}
+          onNavigateToBuilds={() => setCurrentPage('Build Forecast' as any)}
+          expanded={false}
+          showSyncHealth={true}
         />
       )}
 

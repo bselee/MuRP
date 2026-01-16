@@ -10,7 +10,7 @@
 
 -- User MCP Access table
 CREATE TABLE IF NOT EXISTS user_mcp_access (
-    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     rube_enabled BOOLEAN DEFAULT FALSE NOT NULL,
     compliance_mcp_enabled BOOLEAN DEFAULT FALSE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
@@ -26,9 +26,9 @@ CREATE POLICY "Admins can read all user MCP access"
     TO authenticated
     USING (
         EXISTS (
-            SELECT 1 FROM users
-            WHERE users.id = auth.uid()
-            AND (users.role = 'Admin' OR users.department = 'Operations')
+            SELECT 1 FROM user_profiles
+            WHERE user_profiles.id = auth.uid()
+            AND (user_profiles.role = 'Admin' OR user_profiles.department = 'Operations')
         )
     );
 
@@ -38,16 +38,16 @@ CREATE POLICY "Admins can manage user MCP access"
     TO authenticated
     USING (
         EXISTS (
-            SELECT 1 FROM users
-            WHERE users.id = auth.uid()
-            AND (users.role = 'Admin' OR users.department = 'Operations')
+            SELECT 1 FROM user_profiles
+            WHERE user_profiles.id = auth.uid()
+            AND (user_profiles.role = 'Admin' OR user_profiles.department = 'Operations')
         )
     )
     WITH CHECK (
         EXISTS (
-            SELECT 1 FROM users
-            WHERE users.id = auth.uid()
-            AND (users.role = 'Admin' OR users.department = 'Operations')
+            SELECT 1 FROM user_profiles
+            WHERE user_profiles.id = auth.uid()
+            AND (user_profiles.role = 'Admin' OR user_profiles.department = 'Operations')
         )
     );
 

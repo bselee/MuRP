@@ -13,6 +13,7 @@ export const pageToPath: Record<Page, string> = {
   'Vendors': '/vendors',
   'Production': '/production',
   'BOMs': '/boms',
+  'Build Forecast': '/build-forecast',
   'Settings': '/settings',
   'API Documentation': '/api',
   'Artwork': '/artwork',
@@ -34,6 +35,8 @@ export const pathToPage: Record<string, Page> = {
   '/vendors': 'Vendors',
   '/production': 'Production',
   '/boms': 'BOMs',
+  '/build-forecast': 'Build Forecast',
+  '/builds': 'Build Forecast',
   // Stock Intelligence is now a Dashboard tab - redirect handled separately
   '/stock-intelligence': 'Dashboard',
   '/settings': 'Settings',
