@@ -2,6 +2,7 @@
  * BuildForecastSummaryCard
  *
  * Production planning dashboard card showing:
+ * - RUNOUT FORECASTS - when components will run out
  * - Calendar sync status (MFG/Soil calendar imports)
  * - Build readiness (what can we build vs what's blocked)
  * - Top component shortages with one-click ordering
@@ -33,7 +34,8 @@ interface ShortageInfo {
   vendorName: string | null;
   leadTimeDays: number;
   urgency: 'CRITICAL' | 'SHORTAGE' | 'COVERED';
-  daysUntilNeeded?: number;
+  daysUntilNeeded: number;
+  runsOutDate: string | null;
 }
 
 interface CalendarSyncInfo {
@@ -54,6 +56,7 @@ interface BuildReadiness {
   calendarBuilds: number;
   calendarSync: CalendarSyncInfo | null;
   weeklyBreakdown: Array<{ week: string; quantity: number; productCount: number }>;
+  soonestRunout: { days: number; componentName: string; date: string } | null;
 }
 
 interface BuildForecastSummaryCardProps {
@@ -151,14 +154,13 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
           console.warn('[BuildForecastSummaryCard] Buildability query error:', buildError.message);
         }
 
-        // 4. Get component shortages with more detail
+        // 4. Get component shortages with runout info from purchasing action summary
         const { data: shortages, error: shortageError } = await supabase
-          .from('mrp_component_requirements')
-          .select('component_sku, component_description, shortage_qty, status, vendor_name, lead_time_days, parent_count, days_until_needed')
-          .in('status', ['CRITICAL', 'SHORTAGE'])
-          .gt('shortage_qty', 0)
-          .order('status', { ascending: true }) // CRITICAL first
-          .order('shortage_qty', { ascending: false })
+          .from('mrp_purchasing_action_summary')
+          .select('component_sku, component_description, total_shortage, vendor_name, lead_time_days, soonest_need_days, action_required, all_consuming_parents')
+          .in('action_required', ['ORDER NOW', 'PLAN ORDER'])
+          .gt('total_shortage', 0)
+          .order('soonest_need_days', { ascending: true })
           .limit(10);
 
         if (shortageError) {
@@ -174,33 +176,39 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
           b.build_action === 'BUILD_URGENT' || b.buildable_units === 0
         ).length;
 
-        const criticalShortages = (shortages || []).filter(s => s.status === 'CRITICAL').length;
+        // Process shortages with runout dates
+        const topShortages: ShortageInfo[] = (shortages || []).slice(0, 5).map(s => {
+          const daysUntil = s.soonest_need_days || 0;
+          const runoutDate = new Date();
+          runoutDate.setDate(runoutDate.getDate() + daysUntil);
 
-        // Dedupe shortages by SKU, keeping the most severe
-        const shortageMap = new Map<string, ShortageInfo>();
-        (shortages || []).forEach(s => {
-          const existing = shortageMap.get(s.component_sku);
-          if (!existing || s.shortage_qty > existing.shortageQty) {
-            shortageMap.set(s.component_sku, {
-              componentSku: s.component_sku,
-              componentName: s.component_description || s.component_sku,
-              shortageQty: s.shortage_qty,
-              blocksBuilds: s.parent_count || 1,
-              vendorName: s.vendor_name,
-              leadTimeDays: s.lead_time_days || 14,
-              urgency: s.status as 'CRITICAL' | 'SHORTAGE' | 'COVERED',
-              daysUntilNeeded: s.days_until_needed,
-            });
-          }
+          return {
+            componentSku: s.component_sku,
+            componentName: s.component_description || s.component_sku,
+            shortageQty: s.total_shortage || 0,
+            blocksBuilds: Array.isArray(s.all_consuming_parents) ? s.all_consuming_parents.length : 1,
+            vendorName: s.vendor_name,
+            leadTimeDays: s.lead_time_days || 14,
+            urgency: s.action_required === 'ORDER NOW' ? 'CRITICAL' : 'SHORTAGE',
+            daysUntilNeeded: daysUntil,
+            runsOutDate: runoutDate.toISOString().split('T')[0],
+          };
         });
 
-        const topShortages = Array.from(shortageMap.values())
-          .sort((a, b) => {
-            if (a.urgency === 'CRITICAL' && b.urgency !== 'CRITICAL') return -1;
-            if (b.urgency === 'CRITICAL' && a.urgency !== 'CRITICAL') return 1;
-            return b.shortageQty - a.shortageQty;
-          })
-          .slice(0, 5);
+        const criticalShortages = topShortages.filter(s => s.urgency === 'CRITICAL').length;
+
+        // Find soonest runout
+        let soonestRunout: BuildReadiness['soonestRunout'] = null;
+        if (topShortages.length > 0) {
+          const soonest = topShortages.reduce((min, s) =>
+            s.daysUntilNeeded < min.daysUntilNeeded ? s : min
+          );
+          soonestRunout = {
+            days: soonest.daysUntilNeeded,
+            componentName: soonest.componentName,
+            date: soonest.runsOutDate || '',
+          };
+        }
 
         setReadiness({
           totalBuildsPlanned: forecastProducts.size,
@@ -208,11 +216,12 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
           buildsReady,
           buildsBlocked,
           criticalShortages,
-          totalShortages: shortageMap.size,
+          totalShortages: topShortages.length,
           topShortages,
           calendarBuilds,
           calendarSync,
           weeklyBreakdown,
+          soonestRunout,
         });
       } catch (error) {
         console.error('[BuildForecastSummaryCard] Error fetching data:', error);
@@ -238,6 +247,21 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     return `${diffDays}d ago`;
+  };
+
+  // Format runout time
+  const formatRunoutDays = (days: number) => {
+    if (days <= 0) return 'OVERDUE';
+    if (days === 1) return 'Tomorrow';
+    if (days <= 7) return `${days} days`;
+    if (days <= 14) return `${Math.ceil(days / 7)} week${days > 7 ? 's' : ''}`;
+    return `${Math.ceil(days / 7)} weeks`;
+  };
+
+  // Format date nicely
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const cardClass = isDark
@@ -349,33 +373,41 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
           </div>
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             {readiness.totalQuantity.toLocaleString()} units across {readiness.totalBuildsPlanned} products
-            {readiness.totalShortages > 0 && (
-              <span className={status.color === 'red' ? 'text-red-400' : 'text-amber-400'}>
-                {' '}• {readiness.totalShortages} component{readiness.totalShortages !== 1 ? 's' : ''} short
+            {readiness.soonestRunout && readiness.soonestRunout.days <= 14 && (
+              <span className={readiness.soonestRunout.days <= 7 ? 'text-red-400 font-medium' : 'text-amber-400'}>
+                {' '}• First shortage in {formatRunoutDays(readiness.soonestRunout.days)}
               </span>
             )}
           </p>
         </div>
 
-        {/* Quick Stats */}
+        {/* Quick Stats - Show soonest runout prominently */}
         <div className="hidden sm:flex items-center gap-3">
-          {readiness.calendarSync && (
+          {readiness.soonestRunout && (
+            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md ${
+              readiness.soonestRunout.days <= 7
+                ? isDark ? 'bg-red-900/40 ring-1 ring-red-500/50' : 'bg-red-100 ring-1 ring-red-300'
+                : isDark ? 'bg-amber-900/30' : 'bg-amber-50'
+            }`}>
+              <ClockIcon className={`w-4 h-4 ${
+                readiness.soonestRunout.days <= 7 ? 'text-red-400' : 'text-amber-400'
+              }`} />
+              <span className={`text-xs font-bold ${
+                readiness.soonestRunout.days <= 7
+                  ? isDark ? 'text-red-300' : 'text-red-700'
+                  : isDark ? 'text-amber-300' : 'text-amber-700'
+              }`}>
+                {readiness.soonestRunout.days <= 0 ? 'OVERDUE' : `${readiness.soonestRunout.days}d`}
+              </span>
+            </div>
+          )}
+          {readiness.calendarSync && readiness.calendarBuilds > 0 && (
             <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${
               isDark ? 'bg-purple-900/30' : 'bg-purple-50'
             }`}>
               <CalendarIcon className="w-4 h-4 text-purple-400" />
               <span className={`text-xs font-medium ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>
                 {readiness.calendarBuilds} synced
-              </span>
-            </div>
-          )}
-          {readiness.buildsBlocked > 0 && (
-            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${
-              isDark ? 'bg-red-900/30' : 'bg-red-50'
-            }`}>
-              <PackageIcon className="w-4 h-4 text-red-400" />
-              <span className={`text-xs font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>
-                {readiness.buildsBlocked} blocked
               </span>
             </div>
           )}
@@ -421,12 +453,29 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
               </div>
             </div>
             <div className={`p-4 ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
-              <div className={`text-2xl font-bold ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
-                {readiness.calendarBuilds}
-              </div>
-              <div className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                From Calendar
-              </div>
+              {readiness.soonestRunout ? (
+                <>
+                  <div className={`text-2xl font-bold ${
+                    readiness.soonestRunout.days <= 7
+                      ? isDark ? 'text-red-400' : 'text-red-600'
+                      : isDark ? 'text-amber-400' : 'text-amber-600'
+                  }`}>
+                    {readiness.soonestRunout.days <= 0 ? '!' : readiness.soonestRunout.days}
+                  </div>
+                  <div className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {readiness.soonestRunout.days <= 0 ? 'Overdue' : 'Days to First Runout'}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={`text-2xl font-bold ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+                    {readiness.calendarBuilds}
+                  </div>
+                  <div className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    From Calendar
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -467,33 +516,29 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
                 Upcoming 4 Weeks
               </div>
               <div className="flex gap-2">
-                {readiness.weeklyBreakdown.map((week, i) => {
-                  const weekDate = new Date(week.week);
-                  const weekLabel = weekDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                  return (
-                    <div
-                      key={week.week}
-                      className={`flex-1 p-2 rounded-lg text-center ${
-                        isDark ? 'bg-gray-700/50' : 'bg-gray-100'
-                      }`}
-                    >
-                      <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                        Week {i + 1}
-                      </div>
-                      <div className={`text-sm font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                        {week.quantity.toLocaleString()}
-                      </div>
-                      <div className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                        {week.productCount} SKU{week.productCount !== 1 ? 's' : ''}
-                      </div>
+                {readiness.weeklyBreakdown.map((week, i) => (
+                  <div
+                    key={week.week}
+                    className={`flex-1 p-2 rounded-lg text-center ${
+                      isDark ? 'bg-gray-700/50' : 'bg-gray-100'
+                    }`}
+                  >
+                    <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Week {i + 1}
                     </div>
-                  );
-                })}
+                    <div className={`text-sm font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                      {week.quantity.toLocaleString()}
+                    </div>
+                    <div className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {week.productCount} SKU{week.productCount !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
-          {/* Component Shortages */}
+          {/* Component Shortages with Runout Dates */}
           {readiness.topShortages.length > 0 && (
             <div className="p-4">
               <div className={`flex items-center gap-2 mb-3`}>
@@ -513,13 +558,13 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
                     }`}
                   >
                     {/* Urgency indicator */}
-                    <div className={`w-1 h-10 rounded-full ${
+                    <div className={`w-1 h-12 rounded-full ${
                       shortage.urgency === 'CRITICAL' ? 'bg-red-500' : 'bg-amber-500'
                     }`} />
 
                     {/* Component info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {shortage.urgency === 'CRITICAL' && (
                           <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${
                             isDark ? 'bg-red-700 text-red-100' : 'bg-red-600 text-white'
@@ -542,9 +587,31 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
                         {shortage.leadTimeDays > 0 && (
                           <>
                             <span>•</span>
-                            <span>{shortage.leadTimeDays}d lead time</span>
+                            <span>{shortage.leadTimeDays}d lead</span>
                           </>
                         )}
+                      </div>
+                    </div>
+
+                    {/* Runout Date - PROMINENT */}
+                    <div className={`text-center px-3 py-1.5 rounded-md ${
+                      shortage.daysUntilNeeded <= 7
+                        ? isDark ? 'bg-red-800/50' : 'bg-red-100'
+                        : isDark ? 'bg-amber-800/30' : 'bg-amber-100'
+                    }`}>
+                      <div className={`text-xs font-bold ${
+                        shortage.daysUntilNeeded <= 7
+                          ? isDark ? 'text-red-300' : 'text-red-700'
+                          : isDark ? 'text-amber-300' : 'text-amber-700'
+                      }`}>
+                        {shortage.daysUntilNeeded <= 0 ? 'OVERDUE' : `${shortage.daysUntilNeeded}d`}
+                      </div>
+                      <div className={`text-[10px] ${
+                        shortage.daysUntilNeeded <= 7
+                          ? isDark ? 'text-red-400/70' : 'text-red-600/70'
+                          : isDark ? 'text-amber-400/70' : 'text-amber-600/70'
+                      }`}>
+                        {shortage.runsOutDate ? formatDate(shortage.runsOutDate) : 'runout'}
                       </div>
                     </div>
 
