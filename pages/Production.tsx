@@ -109,14 +109,17 @@ const Production: React.FC<ProductionProps> = ({
                 }
             />
 
-            {/* Build Forecast Summary - shows upcoming demand from calendar sync */}
+            {/* Build Forecast Summary - shows production readiness and shortages */}
             <BuildForecastSummaryCard
                 onNavigateToBOMs={() => {
                     window.history.pushState(null, '', '/boms');
                     window.dispatchEvent(new PopStateEvent('popstate'));
                 }}
+                onNavigateToBuilds={() => {
+                    window.history.pushState(null, '', '/build-forecast');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
                 expanded={false}
-                showSyncHealth={true}
             />
 
             {view === 'calendar' ? (

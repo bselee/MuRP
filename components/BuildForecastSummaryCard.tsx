@@ -1,10 +1,11 @@
 /**
  * BuildForecastSummaryCard
  *
- * ACTIONABLE production planning card showing:
- * - Component shortages blocking builds
- * - What needs to be ordered NOW
- * - Quick access to Build Forecast page for details
+ * Production planning dashboard card showing:
+ * - Calendar sync status (MFG/Soil calendar imports)
+ * - Build readiness (what can we build vs what's blocked)
+ * - Top component shortages with one-click ordering
+ * - Quick navigation to Build Forecast page
  */
 
 import React, { useState, useEffect } from 'react';
@@ -19,6 +20,8 @@ import {
   ArrowRightIcon,
   PackageIcon,
   TruckIcon,
+  CalendarIcon,
+  ClockIcon,
 } from './icons';
 import { supabase } from '../lib/supabase/client';
 
@@ -30,16 +33,27 @@ interface ShortageInfo {
   vendorName: string | null;
   leadTimeDays: number;
   urgency: 'CRITICAL' | 'SHORTAGE' | 'COVERED';
+  daysUntilNeeded?: number;
+}
+
+interface CalendarSyncInfo {
+  lastSyncAt: string | null;
+  buildsImported: number;
+  calendarType: string | null;
+  syncStatus: 'success' | 'partial' | 'failed' | 'unknown';
 }
 
 interface BuildReadiness {
   totalBuildsPlanned: number;
+  totalQuantity: number;
   buildsReady: number;
   buildsBlocked: number;
   criticalShortages: number;
   totalShortages: number;
   topShortages: ShortageInfo[];
   calendarBuilds: number;
+  calendarSync: CalendarSyncInfo | null;
+  weeklyBreakdown: Array<{ week: string; quantity: number; productCount: number }>;
 }
 
 interface BuildForecastSummaryCardProps {
@@ -65,15 +79,14 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Get build forecasts for next 4 weeks
         const today = new Date();
         const fourWeeksOut = new Date(today);
         fourWeeksOut.setDate(fourWeeksOut.getDate() + 28);
 
-        // 1. Get forecast counts
+        // 1. Get forecast data with quantities
         const { data: forecasts, error: forecastError } = await supabase
           .from('finished_goods_forecast')
-          .select('product_id, base_forecast, forecast_method')
+          .select('product_id, base_forecast, forecast_method, forecast_period')
           .gte('forecast_period', today.toISOString().split('T')[0])
           .lte('forecast_period', fourWeeksOut.toISOString().split('T')[0]);
 
@@ -81,12 +94,54 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
           console.error('[BuildForecastSummaryCard] Forecast query error:', forecastError);
         }
 
+        // Calculate totals and weekly breakdown
         const forecastProducts = new Set((forecasts || []).map(f => f.product_id));
+        const totalQuantity = (forecasts || []).reduce((sum, f) => sum + (f.base_forecast || 0), 0);
         const calendarBuilds = (forecasts || []).filter(f =>
           f.forecast_method?.includes('google_calendar')
         ).length;
 
-        // 2. Get buildability summary to know what's ready vs blocked
+        // Group by week
+        const weekMap = new Map<string, { quantity: number; products: Set<string> }>();
+        (forecasts || []).forEach(f => {
+          const date = new Date(f.forecast_period);
+          const weekStart = new Date(date);
+          weekStart.setDate(date.getDate() - date.getDay());
+          const weekKey = weekStart.toISOString().split('T')[0];
+
+          if (!weekMap.has(weekKey)) {
+            weekMap.set(weekKey, { quantity: 0, products: new Set() });
+          }
+          const week = weekMap.get(weekKey)!;
+          week.quantity += f.base_forecast || 0;
+          week.products.add(f.product_id);
+        });
+
+        const weeklyBreakdown = Array.from(weekMap.entries())
+          .map(([week, data]) => ({
+            week,
+            quantity: data.quantity,
+            productCount: data.products.size,
+          }))
+          .sort((a, b) => a.week.localeCompare(b.week))
+          .slice(0, 4);
+
+        // 2. Get latest calendar sync info
+        const { data: syncEvent } = await supabase
+          .from('calendar_sync_events')
+          .select('completed_at, builds_imported, calendar_type, sync_status')
+          .order('completed_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        const calendarSync: CalendarSyncInfo | null = syncEvent ? {
+          lastSyncAt: syncEvent.completed_at,
+          buildsImported: syncEvent.builds_imported || 0,
+          calendarType: syncEvent.calendar_type,
+          syncStatus: syncEvent.sync_status as any || 'unknown',
+        } : null;
+
+        // 3. Get buildability summary
         const { data: buildability, error: buildError } = await supabase
           .from('mrp_buildability_summary')
           .select('parent_sku, buildable_units, build_action, limiting_component_sku, limiting_component_name')
@@ -96,12 +151,13 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
           console.warn('[BuildForecastSummaryCard] Buildability query error:', buildError.message);
         }
 
-        // 3. Get component shortages
+        // 4. Get component shortages with more detail
         const { data: shortages, error: shortageError } = await supabase
           .from('mrp_component_requirements')
-          .select('component_sku, component_description, shortage_qty, status, vendor_name, lead_time_days, parent_count')
+          .select('component_sku, component_description, shortage_qty, status, vendor_name, lead_time_days, parent_count, days_until_needed')
           .in('status', ['CRITICAL', 'SHORTAGE'])
           .gt('shortage_qty', 0)
+          .order('status', { ascending: true }) // CRITICAL first
           .order('shortage_qty', { ascending: false })
           .limit(10);
 
@@ -111,7 +167,7 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
 
         // Calculate readiness
         const buildsReady = (buildability || []).filter(b =>
-          b.build_action === 'ADEQUATE' || b.buildable_units > 0
+          b.build_action === 'ADEQUATE' || (b.buildable_units && b.buildable_units > 0)
         ).length;
 
         const buildsBlocked = (buildability || []).filter(b =>
@@ -120,7 +176,7 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
 
         const criticalShortages = (shortages || []).filter(s => s.status === 'CRITICAL').length;
 
-        // Aggregate shortages by component (may have duplicates across periods)
+        // Dedupe shortages by SKU, keeping the most severe
         const shortageMap = new Map<string, ShortageInfo>();
         (shortages || []).forEach(s => {
           const existing = shortageMap.get(s.component_sku);
@@ -133,13 +189,13 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
               vendorName: s.vendor_name,
               leadTimeDays: s.lead_time_days || 14,
               urgency: s.status as 'CRITICAL' | 'SHORTAGE' | 'COVERED',
+              daysUntilNeeded: s.days_until_needed,
             });
           }
         });
 
         const topShortages = Array.from(shortageMap.values())
           .sort((a, b) => {
-            // Critical first, then by shortage qty
             if (a.urgency === 'CRITICAL' && b.urgency !== 'CRITICAL') return -1;
             if (b.urgency === 'CRITICAL' && a.urgency !== 'CRITICAL') return 1;
             return b.shortageQty - a.shortageQty;
@@ -148,12 +204,15 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
 
         setReadiness({
           totalBuildsPlanned: forecastProducts.size,
+          totalQuantity,
           buildsReady,
           buildsBlocked,
           criticalShortages,
           totalShortages: shortageMap.size,
           topShortages,
           calendarBuilds,
+          calendarSync,
+          weeklyBreakdown,
         });
       } catch (error) {
         console.error('[BuildForecastSummaryCard] Error fetching data:', error);
@@ -165,55 +224,49 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
     fetchData();
   }, []);
 
+  // Format relative time
+  const formatRelativeTime = (dateStr: string | null) => {
+    if (!dateStr) return 'Never';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
+  };
+
   const cardClass = isDark
     ? 'bg-gray-800/50 border-gray-700'
     : 'bg-white border-gray-200 shadow-sm';
 
-  // Determine header color based on status
-  const getHeaderClass = () => {
-    if (!readiness) return isDark ? 'bg-gray-700' : 'bg-gray-100';
-    if (readiness.criticalShortages > 0) {
-      return isDark ? 'bg-red-900/40 border-red-800/50' : 'bg-red-50 border-red-200';
-    }
-    if (readiness.totalShortages > 0) {
-      return isDark ? 'bg-amber-900/30 border-amber-800/50' : 'bg-amber-50 border-amber-200';
-    }
-    return isDark ? 'bg-emerald-900/30 border-emerald-800/50' : 'bg-emerald-50 border-emerald-200';
+  // Determine overall status
+  const getStatus = () => {
+    if (!readiness) return { color: 'gray', label: 'Loading...' };
+    if (readiness.criticalShortages > 0) return { color: 'red', label: 'Critical' };
+    if (readiness.totalShortages > 0) return { color: 'amber', label: 'Shortages' };
+    if (readiness.totalBuildsPlanned === 0) return { color: 'gray', label: 'No Builds' };
+    return { color: 'emerald', label: 'Ready' };
   };
 
-  const getStatusIcon = () => {
-    if (!readiness) return <WrenchScrewdriverIcon className="w-5 h-5 text-gray-400" />;
-    if (readiness.criticalShortages > 0) {
-      return <ExclamationCircleIcon className="w-5 h-5 text-red-400" />;
-    }
-    if (readiness.totalShortages > 0) {
-      return <AlertTriangleIcon className="w-5 h-5 text-amber-400" />;
-    }
-    return <CheckCircleIcon className="w-5 h-5 text-emerald-400" />;
-  };
-
-  const getStatusText = () => {
-    if (!readiness) return 'Loading...';
-    if (readiness.criticalShortages > 0) {
-      return `${readiness.criticalShortages} critical shortage${readiness.criticalShortages !== 1 ? 's' : ''} - ORDER NOW`;
-    }
-    if (readiness.totalShortages > 0) {
-      return `${readiness.totalShortages} component${readiness.totalShortages !== 1 ? 's' : ''} need ordering`;
-    }
-    if (readiness.totalBuildsPlanned === 0) {
-      return 'No builds scheduled';
-    }
-    return 'All components in stock';
-  };
+  const status = getStatus();
 
   if (loading) {
     return (
       <div className={`rounded-xl border ${cardClass} p-4`}>
-        <div className="animate-pulse flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
+        <div className="animate-pulse flex items-center gap-4">
+          <div className={`w-12 h-12 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
           <div className="flex-1">
-            <div className={`h-4 w-32 rounded ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
-            <div className={`h-3 w-48 rounded mt-2 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
+            <div className={`h-4 w-40 rounded ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
+            <div className={`h-3 w-56 rounded mt-2 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
+          </div>
+          <div className="flex gap-2">
+            <div className={`h-8 w-20 rounded ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
+            <div className={`h-8 w-20 rounded ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
           </div>
         </div>
       </div>
@@ -223,24 +276,29 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
   if (!readiness || readiness.totalBuildsPlanned === 0) {
     return (
       <div className={`rounded-xl border ${cardClass} p-4`}>
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
-            <WrenchScrewdriverIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+        <div className="flex items-center gap-4">
+          <div className={`p-3 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+            <WrenchScrewdriverIcon className={`w-6 h-6 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
           </div>
           <div className="flex-1">
-            <h3 className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              Production Readiness
+            <h3 className={`text-base font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
+              Production Forecast
             </h3>
-            <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+            <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
               No builds scheduled for next 4 weeks
             </p>
           </div>
           {onNavigateToBuilds && (
             <button
               onClick={onNavigateToBuilds}
-              className={`text-xs font-medium ${isDark ? 'text-purple-400 hover:text-purple-300' : 'text-purple-600 hover:text-purple-700'}`}
+              className={`flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                isDark
+                  ? 'text-purple-400 hover:bg-purple-500/10'
+                  : 'text-purple-600 hover:bg-purple-50'
+              }`}
             >
-              View Forecast →
+              View Forecast
+              <ArrowRightIcon className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -250,128 +308,248 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
 
   return (
     <div className={`rounded-xl border ${cardClass} overflow-hidden`}>
-      {/* Header - Always visible */}
+      {/* Collapsed Header - Always visible */}
       <button
+        type="button"
         onClick={() => setExpanded(!expanded)}
-        className={`w-full p-4 ${getHeaderClass()} border-b flex items-center justify-between hover:opacity-90 transition-opacity`}
+        className={`w-full p-4 flex items-center gap-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors`}
       >
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${isDark ? 'bg-black/20' : 'bg-white/50'}`}>
-            {getStatusIcon()}
-          </div>
-          <div className="text-left">
-            <h3 className={`text-sm font-semibold ${
-              readiness.criticalShortages > 0
-                ? isDark ? 'text-red-200' : 'text-red-800'
-                : readiness.totalShortages > 0
-                  ? isDark ? 'text-amber-200' : 'text-amber-800'
-                  : isDark ? 'text-emerald-200' : 'text-emerald-800'
-            }`}>
-              Production Readiness
-            </h3>
-            <p className={`text-xs ${
-              readiness.criticalShortages > 0
-                ? isDark ? 'text-red-300/70' : 'text-red-600/70'
-                : readiness.totalShortages > 0
-                  ? isDark ? 'text-amber-300/70' : 'text-amber-600/70'
-                  : isDark ? 'text-emerald-300/70' : 'text-emerald-600/70'
-            }`}>
-              {getStatusText()}
-            </p>
-          </div>
+        {/* Status Icon */}
+        <div className={`p-3 rounded-lg ${
+          status.color === 'red' ? isDark ? 'bg-red-900/30' : 'bg-red-100' :
+          status.color === 'amber' ? isDark ? 'bg-amber-900/30' : 'bg-amber-100' :
+          status.color === 'emerald' ? isDark ? 'bg-emerald-900/30' : 'bg-emerald-100' :
+          isDark ? 'bg-gray-700' : 'bg-gray-100'
+        }`}>
+          {status.color === 'red' ? (
+            <ExclamationCircleIcon className="w-6 h-6 text-red-500" />
+          ) : status.color === 'amber' ? (
+            <AlertTriangleIcon className="w-6 h-6 text-amber-500" />
+          ) : status.color === 'emerald' ? (
+            <CheckCircleIcon className="w-6 h-6 text-emerald-500" />
+          ) : (
+            <WrenchScrewdriverIcon className="w-6 h-6 text-gray-400" />
+          )}
         </div>
-        <div className="flex items-center gap-3">
-          {/* Quick Stats */}
+
+        {/* Main Info */}
+        <div className="flex-1 text-left">
           <div className="flex items-center gap-2">
-            <span className={`px-2 py-1 rounded text-xs font-medium ${
-              isDark ? 'bg-black/20 text-gray-300' : 'bg-white/70 text-gray-700'
+            <h3 className={`text-base font-semibold ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+              Production Forecast
+            </h3>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+              status.color === 'red' ? 'bg-red-500/20 text-red-400' :
+              status.color === 'amber' ? 'bg-amber-500/20 text-amber-400' :
+              status.color === 'emerald' ? 'bg-emerald-500/20 text-emerald-400' :
+              'bg-gray-500/20 text-gray-400'
             }`}>
-              {readiness.totalBuildsPlanned} products
+              {status.label}
             </span>
-            {readiness.calendarBuilds > 0 && (
-              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                isDark ? 'bg-purple-900/50 text-purple-300' : 'bg-purple-100 text-purple-700'
-              }`}>
-                {readiness.calendarBuilds} from calendar
+          </div>
+          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            {readiness.totalQuantity.toLocaleString()} units across {readiness.totalBuildsPlanned} products
+            {readiness.totalShortages > 0 && (
+              <span className={status.color === 'red' ? 'text-red-400' : 'text-amber-400'}>
+                {' '}• {readiness.totalShortages} component{readiness.totalShortages !== 1 ? 's' : ''} short
               </span>
             )}
-          </div>
+          </p>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="hidden sm:flex items-center gap-3">
+          {readiness.calendarSync && (
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${
+              isDark ? 'bg-purple-900/30' : 'bg-purple-50'
+            }`}>
+              <CalendarIcon className="w-4 h-4 text-purple-400" />
+              <span className={`text-xs font-medium ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>
+                {readiness.calendarBuilds} synced
+              </span>
+            </div>
+          )}
+          {readiness.buildsBlocked > 0 && (
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${
+              isDark ? 'bg-red-900/30' : 'bg-red-50'
+            }`}>
+              <PackageIcon className="w-4 h-4 text-red-400" />
+              <span className={`text-xs font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+                {readiness.buildsBlocked} blocked
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Expand/Collapse */}
+        <div className={`p-1 rounded ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
           {expanded ? (
-            <ChevronUpIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
+            <ChevronUpIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
           ) : (
-            <ChevronDownIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`} />
+            <ChevronDownIcon className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
           )}
         </div>
       </button>
 
-      {/* Expanded Content - Shortages */}
+      {/* Expanded Content */}
       {expanded && (
-        <div className="p-4 space-y-4">
-          {/* Readiness Summary */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
+        <div className={`border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+          {/* Stats Row */}
+          <div className={`grid grid-cols-2 sm:grid-cols-4 gap-px ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
+            <div className={`p-4 ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
               <div className={`text-2xl font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                 {readiness.buildsReady}
               </div>
-              <div className={`text-xs ${isDark ? 'text-emerald-300/70' : 'text-emerald-600/70'}`}>
+              <div className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                 Ready to Build
               </div>
             </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
+            <div className={`p-4 ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
               <div className={`text-2xl font-bold ${isDark ? 'text-red-400' : 'text-red-600'}`}>
                 {readiness.buildsBlocked}
               </div>
-              <div className={`text-xs ${isDark ? 'text-red-300/70' : 'text-red-600/70'}`}>
+              <div className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                 Blocked by Stock
               </div>
             </div>
-            <div className={`p-3 rounded-lg ${isDark ? 'bg-amber-900/20' : 'bg-amber-50'}`}>
+            <div className={`p-4 ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
               <div className={`text-2xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
                 {readiness.totalShortages}
               </div>
-              <div className={`text-xs ${isDark ? 'text-amber-300/70' : 'text-amber-600/70'}`}>
+              <div className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                 Components Short
+              </div>
+            </div>
+            <div className={`p-4 ${isDark ? 'bg-gray-800' : 'bg-gray-50'}`}>
+              <div className={`text-2xl font-bold ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+                {readiness.calendarBuilds}
+              </div>
+              <div className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                From Calendar
               </div>
             </div>
           </div>
 
-          {/* Top Shortages - What to Order */}
+          {/* Calendar Sync Status */}
+          {readiness.calendarSync && (
+            <div className={`px-4 py-3 flex items-center justify-between ${
+              isDark ? 'bg-purple-900/20 border-b border-gray-700' : 'bg-purple-50 border-b border-gray-200'
+            }`}>
+              <div className="flex items-center gap-2">
+                <CalendarIcon className={`w-4 h-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
+                <span className={`text-sm ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>
+                  Google Calendar Sync
+                </span>
+                {readiness.calendarSync.calendarType && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    isDark ? 'bg-purple-800/50 text-purple-300' : 'bg-purple-100 text-purple-700'
+                  }`}>
+                    {readiness.calendarSync.calendarType.toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-xs ${isDark ? 'text-purple-400/70' : 'text-purple-600/70'}`}>
+                  {readiness.calendarSync.buildsImported} builds imported
+                </span>
+                <span className={`flex items-center gap-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                  <ClockIcon className="w-3 h-3" />
+                  {formatRelativeTime(readiness.calendarSync.lastSyncAt)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Weekly Breakdown */}
+          {readiness.weeklyBreakdown.length > 0 && (
+            <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className={`text-xs font-medium mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                Upcoming 4 Weeks
+              </div>
+              <div className="flex gap-2">
+                {readiness.weeklyBreakdown.map((week, i) => {
+                  const weekDate = new Date(week.week);
+                  const weekLabel = weekDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  return (
+                    <div
+                      key={week.week}
+                      className={`flex-1 p-2 rounded-lg text-center ${
+                        isDark ? 'bg-gray-700/50' : 'bg-gray-100'
+                      }`}
+                    >
+                      <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        Week {i + 1}
+                      </div>
+                      <div className={`text-sm font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                        {week.quantity.toLocaleString()}
+                      </div>
+                      <div className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {week.productCount} SKU{week.productCount !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Component Shortages */}
           {readiness.topShortages.length > 0 && (
-            <div>
-              <h4 className={`text-xs font-semibold mb-2 flex items-center gap-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                <TruckIcon className="w-3 h-3" />
-                Components to Order
-              </h4>
+            <div className="p-4">
+              <div className={`flex items-center gap-2 mb-3`}>
+                <TruckIcon className={`w-4 h-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
+                <span className={`text-xs font-semibold uppercase tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Components to Order
+                </span>
+              </div>
               <div className="space-y-2">
                 {readiness.topShortages.map((shortage) => (
                   <div
                     key={shortage.componentSku}
-                    className={`flex items-center justify-between p-2 rounded-lg ${
+                    className={`flex items-center gap-3 p-3 rounded-lg ${
                       shortage.urgency === 'CRITICAL'
-                        ? isDark ? 'bg-red-900/30 border border-red-800/50' : 'bg-red-50 border border-red-200'
+                        ? isDark ? 'bg-red-900/30 ring-1 ring-red-500/30' : 'bg-red-50 ring-1 ring-red-200'
                         : isDark ? 'bg-gray-700/50' : 'bg-gray-50'
                     }`}
                   >
+                    {/* Urgency indicator */}
+                    <div className={`w-1 h-10 rounded-full ${
+                      shortage.urgency === 'CRITICAL' ? 'bg-red-500' : 'bg-amber-500'
+                    }`} />
+
+                    {/* Component info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         {shortage.urgency === 'CRITICAL' && (
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                            isDark ? 'bg-red-800 text-red-200' : 'bg-red-600 text-white'
+                          <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${
+                            isDark ? 'bg-red-700 text-red-100' : 'bg-red-600 text-white'
                           }`}>
-                            URGENT
+                            ORDER NOW
                           </span>
                         )}
-                        <span className={`text-sm font-medium truncate ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                        <span className={`text-sm font-medium truncate ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
                           {shortage.componentName}
                         </span>
                       </div>
-                      <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                        {shortage.componentSku}
-                        {shortage.vendorName && ` • ${shortage.vendorName}`}
-                        {shortage.leadTimeDays > 0 && ` • ${shortage.leadTimeDays}d lead time`}
+                      <div className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'} flex items-center gap-2 flex-wrap`}>
+                        <span>{shortage.componentSku}</span>
+                        {shortage.vendorName && (
+                          <>
+                            <span>•</span>
+                            <span>{shortage.vendorName}</span>
+                          </>
+                        )}
+                        {shortage.leadTimeDays > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>{shortage.leadTimeDays}d lead time</span>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right ml-2">
+
+                    {/* Shortage qty and impact */}
+                    <div className="text-right">
                       <div className={`text-sm font-bold ${
                         shortage.urgency === 'CRITICAL'
                           ? isDark ? 'text-red-400' : 'text-red-600'
@@ -390,30 +568,36 @@ const BuildForecastSummaryCard: React.FC<BuildForecastSummaryCardProps> = ({
           )}
 
           {/* Actions */}
-          <div className="flex gap-2 pt-2">
+          <div className={`p-4 pt-2 flex gap-2 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
             {onNavigateToBuilds && (
               <button
-                onClick={onNavigateToBuilds}
-                className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigateToBuilds();
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                   isDark
-                    ? 'bg-purple-600 hover:bg-purple-500 text-white'
-                    : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
                 }`}
               >
                 <PackageIcon className="w-4 h-4" />
-                View Full Forecast
-                <ArrowRightIcon className="w-3 h-3" />
+                View Build Forecast
               </button>
             )}
             {readiness.totalShortages > 0 && onNavigateToBOMs && (
               <button
-                onClick={onNavigateToBOMs}
-                className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigateToBOMs();
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                   isDark
                     ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                    : 'bg-amber-600 hover:bg-amber-700 text-white'
+                    : 'bg-amber-500 hover:bg-amber-600 text-white'
                 }`}
               >
+                <TruckIcon className="w-4 h-4" />
                 Order Components
               </button>
             )}

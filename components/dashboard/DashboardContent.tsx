@@ -48,13 +48,12 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         />
       )}
 
-      {/* Build Forecast Summary - shows planned builds from calendar sync */}
+      {/* Build Forecast Summary - shows production readiness and shortages */}
       {permissions.canViewBoms && (
         <BuildForecastSummaryCard
           onNavigateToBOMs={() => setCurrentPage('BOMs')}
           onNavigateToBuilds={() => setCurrentPage('Build Forecast' as any)}
           expanded={false}
-          showSyncHealth={true}
         />
       )}
 
