@@ -43,7 +43,6 @@ import ResetPassword from './pages/ResetPassword';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import PublicPOView from './pages/PublicPOView';
-import OAuthConsent from './pages/OAuthConsent';
 import usePersistentState from './hooks/usePersistentState';
 import useModalState from './hooks/useModalState';
 import { usePermissions } from './hooks/usePermissions';
@@ -1969,20 +1968,6 @@ const AppShell: React.FC = () => {
   // Public PO view - shareable links for vendors
   if (currentPath.startsWith('/po/')) {
     return <PublicPOView />;
-  }
-
-  // OAuth consent page - for Supabase OAuth Server authorization requests
-  if (currentPath === '/oauth/consent') {
-    return (
-      <>
-        <OAuthConsent addToast={addToast} />
-        <div className="fixed top-20 right-4 z-[60] w-full max-w-sm">
-          {toasts.map(toast => (
-            <Toast key={toast.id} {...toast} onClose={() => removeToast(toast.id)} />
-          ))}
-        </div>
-      </>
-    );
   }
 
   if (authLoading || checkingOnboarding) {
