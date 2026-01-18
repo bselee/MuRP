@@ -23,6 +23,10 @@
     --panel-light-border: #E5E7EB;
     --text-light-strong: #111827;
     --text-light-muted: #6B7280;
+    --transition-fast: 100ms;
+    --transition-normal: 200ms;
+    --transition-slow: 300ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   [data-theme='light'] {
@@ -221,6 +225,10 @@
 }
 
 @layer utilities {
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent-500/50;
+  }
+
   .glass-panel {
     @apply bg-gray-950/70 border border-white/10 rounded-2xl shadow-[0_25px_65px_rgba(0,0,0,0.65)] backdrop-blur-2xl;
   }

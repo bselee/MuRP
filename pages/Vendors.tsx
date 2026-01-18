@@ -106,7 +106,7 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                     <div className="flex gap-2">
                         <Button
                             onClick={() => setIsSetupWizardOpen(true)}
-                            className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-600 transition-colors text-sm"
+                            className={`flex items-center gap-2 ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-900 hover:bg-gray-300'} font-semibold py-2 px-3 rounded-md transition-colors text-sm`}
                         >
                             <UploadCloud className="w-4 h-4" />
                             <span className="hidden sm:inline">Import</span>
@@ -132,10 +132,10 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                     <VendorConfidenceDashboard />
 
                     {/* Filter Bar */}
-                    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg border border-gray-700 p-4">
+                    <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} backdrop-blur-sm rounded-lg shadow-lg border p-4`}>
                         <div className="flex gap-4 items-end">
                             <div className="flex-1">
-                                <label htmlFor="search-vendors" className="block text-sm font-medium text-gray-300 mb-1">
+                                <label htmlFor="search-vendors" className={`block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} mb-1`}>
                                     Search Vendors
                                 </label>
                                 <SearchBar
@@ -146,36 +146,36 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                             </div>
                             <Button
                                 onClick={() => setIsVendorManagementOpen(true)}
-                                className="flex items-center gap-2 bg-gray-700 text-white font-semibold py-2 px-4 rounded-md hover:bg-gray-600 transition-colors"
+                                className={`flex items-center gap-2 ${isDark ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-900 hover:bg-gray-300'} font-semibold py-2 px-4 rounded-md transition-colors`}
                                 title="Show/hide vendors"
                             >
                                 <AdjustmentsHorizontalIcon className="w-5 h-5" />
                                 <span className="hidden sm:inline">Manage Vendors</span>
                             </Button>
                         </div>
-                        <div className="mt-3 text-sm text-gray-400">
-                            Showing <span className="font-semibold text-white">{filteredVendors.length}</span> of <span className="font-semibold text-white">{vendors.length}</span> vendors
+                        <div className={`mt-3 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                            Showing <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{filteredVendors.length}</span> of <span className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{vendors.length}</span> vendors
                         </div>
                     </div>
 
-                    <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border border-gray-700">
+                    <div className={`${isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white border-gray-200 shadow-sm'} backdrop-blur-sm rounded-lg shadow-lg overflow-hidden border`}>
                         <div className="overflow-x-auto">
-                            <table className="table-density min-w-full divide-y divide-gray-700">
-                                <thead className="bg-gray-800">
+                            <table className={`table-density min-w-full divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                                <thead className={isDark ? 'bg-gray-800' : 'bg-gray-50'}>
                                     <tr>
-                                        <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Vendor Name</th>
-                                        <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact Info</th>
-                                        <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Address</th>
-                                        <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Lead Time</th>
-                                        <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Source</th>
-                                        <th scope="col" role="columnheader" className="px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Auto-PO</th>
+                                        <th scope="col" role="columnheader" className={`px-6 py-2 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider`}>Vendor Name</th>
+                                        <th scope="col" role="columnheader" className={`px-6 py-2 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider`}>Contact Info</th>
+                                        <th scope="col" role="columnheader" className={`px-6 py-2 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider`}>Address</th>
+                                        <th scope="col" role="columnheader" className={`px-6 py-2 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider`}>Lead Time</th>
+                                        <th scope="col" role="columnheader" className={`px-6 py-2 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider`}>Source</th>
+                                        <th scope="col" role="columnheader" className={`px-6 py-2 text-left text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'} uppercase tracking-wider`}>Auto-PO</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-gray-800 divide-y divide-gray-700">
+                                <tbody className={`${isDark ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'} divide-y`}>
                                     {filteredVendors.map((vendor) => (
-                                        <tr key={vendor.id} className="hover:bg-gray-700/50 transition-colors duration-200">
+                                        <tr key={vendor.id} className={`${isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'} transition-colors duration-200`}>
                                             <td className="px-6 py-1">
-                                                <div className="text-sm font-medium text-white">{vendor.name}</div>
+                                                <div className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{vendor.name}</div>
                                                 {vendor.website && (
                                                     <a href={vendor.website} target="_blank" rel="noopener noreferrer" className="text-xs text-accent-400 hover:underline">{vendor.website}</a>
                                                 )}
@@ -185,11 +185,11 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-1 text-sm text-gray-300">
+                                            <td className={`px-6 py-1 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                 {vendor.contactEmails.length > 0 ? (
                                                     vendor.contactEmails.map(email => (
-                                                        <a 
-                                                            key={email} 
+                                                        <a
+                                                            key={email}
                                                             href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
@@ -203,40 +203,40 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                                     <span className="text-gray-500 italic">No email</span>
                                                 )}
                                                 {vendor.phone && (
-                                                    <div className="text-gray-400 mt-1">📞 {vendor.phone}</div>
+                                                    <div className={`${isDark ? 'text-gray-400' : 'text-gray-600'} mt-1`}>📞 {vendor.phone}</div>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-1 text-sm text-gray-300">
+                                            <td className={`px-6 py-1 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                 {vendor.addressLine1 || vendor.city ? (
                                                     <div className="space-y-1">
                                                         {vendor.addressLine1 && <div>{vendor.addressLine1}</div>}
                                                         {vendor.addressLine2 && <div>{vendor.addressLine2}</div>}
                                                         {(vendor.city || vendor.state || vendor.postalCode) && (
-                                                            <div className="text-gray-400">
+                                                            <div className={isDark ? 'text-gray-400' : 'text-gray-600'}>
                                                                 {vendor.city}{vendor.city && (vendor.state || vendor.postalCode) ? ', ' : ''}
                                                                 {vendor.state} {vendor.postalCode}
                                                             </div>
                                                         )}
-                                                        {vendor.country && <div className="text-gray-500 text-xs">{vendor.country}</div>}
+                                                        {vendor.country && <div className={`${isDark ? 'text-gray-500' : 'text-gray-500'} text-xs`}>{vendor.country}</div>}
                                                     </div>
                                                 ) : vendor.address ? (
-                                                    <div className="text-gray-400">{vendor.address}</div>
+                                                    <div className={isDark ? 'text-gray-400' : 'text-gray-600'}>{vendor.address}</div>
                                                 ) : (
                                                     <span className="text-gray-500 italic">No address</span>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-1 whitespace-nowrap text-sm text-gray-300">
+                                            <td className={`px-6 py-1 whitespace-nowrap text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                 {vendor.leadTimeDays} days
                                             </td>
                                             <td className="px-6 py-1 whitespace-nowrap text-xs">
                                                 {vendor.dataSource === 'csv' && (
-                                                    <span className="px-2 py-1 bg-blue-900/50 text-blue-300 rounded-full">CSV</span>
+                                                    <span className={`px-2 py-1 ${isDark ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'} rounded-full`}>CSV</span>
                                                 )}
                                                 {vendor.dataSource === 'api' && (
-                                                    <span className="px-2 py-1 bg-green-900/50 text-green-300 rounded-full">API</span>
+                                                    <span className={`px-2 py-1 ${isDark ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-700'} rounded-full`}>API</span>
                                                 )}
                                                 {vendor.dataSource === 'manual' && (
-                                                    <span className="px-2 py-1 bg-gray-700 text-gray-400 rounded-full">Manual</span>
+                                                    <span className={`px-2 py-1 ${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-600'} rounded-full`}>Manual</span>
                                                 )}
                                                 {vendor.lastSyncAt && (
                                                     <div className="text-gray-500 mt-1">
@@ -247,11 +247,11 @@ const Vendors: React.FC<VendorsProps> = ({ vendors, addToast }) => {
                                             <td className="px-6 py-1 whitespace-nowrap text-sm">
                                                 <div className="flex items-center gap-2">
                                                     {vendor.autoPoEnabled ? (
-                                                        <span className="px-2 py-1 bg-green-900/50 text-green-300 rounded-full text-xs font-medium border border-green-700">
+                                                        <span className={`px-2 py-1 ${isDark ? 'bg-green-900/50 text-green-300 border-green-700' : 'bg-green-100 text-green-700 border-green-300'} rounded-full text-xs font-medium border`}>
                                                             ✓ {vendor.autoPoThreshold || 'critical'}
                                                         </span>
                                                     ) : (
-                                                        <span className="px-2 py-1 bg-gray-700 text-gray-400 rounded-full text-xs">
+                                                        <span className={`px-2 py-1 ${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-600'} rounded-full text-xs`}>
                                                             Off
                                                         </span>
                                                     )}

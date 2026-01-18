@@ -206,7 +206,7 @@ function Table<T>({
 
   // Padding classes based on UI_STANDARDS.md
   const headerPadding = 'py-2'; // 8px vertical
-  const cellPadding = compact ? 'py-1' : 'py-1'; // 4px vertical (compact mode)
+  const cellPadding = compact ? 'py-1' : 'py-2'; // 4px compact, 8px normal
   const horizontalPadding = 'px-6';
 
   return (
@@ -238,7 +238,7 @@ function Table<T>({
                 <div className="flex items-center gap-2">
                   <span>{column.label}</span>
                   {column.sortable && (
-                    <span className="text-gray-500">
+                    <span className="text-gray-500 transition-transform duration-150">
                       {sortKey === column.key ? (
                         sortDirection === 'asc' ? (
                           <ChevronUpIcon className="w-4 h-4" />
@@ -294,12 +294,24 @@ function Table<T>({
               <tr
                 key={getRowKey(row, index)}
                 onClick={() => onRowClick?.(row, index)}
+                tabIndex={onRowClick ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (onRowClick && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    onRowClick(row, index);
+                  }
+                }}
                 className={`
                   ${isDark ? 'bg-gray-900' : 'bg-white'}
-                  ${hoverable ? (isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50') : ''}
-                  ${onRowClick ? 'cursor-pointer' : ''}
+                  ${hoverable
+                    ? isDark
+                      ? 'hover:bg-gray-700/50 hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]'
+                      : 'hover:bg-gray-50 hover:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]'
+                    : ''
+                  }
+                  ${onRowClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-500/50' : ''}
                   ${getRowClassName ? getRowClassName(row, index) : ''}
-                  transition-colors
+                  transition-all duration-200
                 `}
                 {...(getRowAttributes ? getRowAttributes(row, index) : {})}
               >

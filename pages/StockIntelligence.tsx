@@ -2,7 +2,7 @@ import Button from '@/components/ui/Button';
 import StockoutRiskWidget from '@/components/StockoutRiskWidget';
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * 📊 STOCK INTELLIGENCE DASHBOARD
+ * STOCK INTELLIGENCE DASHBOARD
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Advanced analytics and insights for inventory intelligence:
@@ -32,6 +32,7 @@ import {
 import AlertsPanel from '../components/AlertsPanel';
 import { usePermissions } from '../hooks/usePermissions';
 import { getCriticalStockoutAlerts, type StockoutAlert } from '../services/stockoutPreventionAgent';
+import { useTheme } from '../components/ThemeProvider';
 
 interface StockIntelligenceProps {
   inventory: InventoryItem[];
@@ -61,12 +62,37 @@ interface VendorPerformance {
 
 const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendors, purchaseOrders }) => {
   const permissions = usePermissions();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== 'light';
+
   const [activeTab, setActiveTab] = useState<'alerts' | 'guidance' | 'risks' | 'forecasts' | 'trends' | 'vendors' | 'budget'>('alerts');
   const [loading, setLoading] = useState(true);
   const [stockoutRisks, setStockoutRisks] = useState<StockoutRisk[]>([]);
   const [vendorPerformances, setVendorPerformances] = useState<VendorPerformance[]>([]);
   // Agent alerts - used for consistent summary cards that match the widget
   const [agentAlerts, setAgentAlerts] = useState<StockoutAlert[]>([]);
+
+  // Theme-aware style helpers
+  const cardClass = isDark
+    ? 'bg-gray-800/50 backdrop-blur-sm border-gray-700'
+    : 'bg-white border-gray-200 shadow-sm';
+
+  const innerCardClass = isDark
+    ? 'bg-gray-800/30'
+    : 'bg-gray-50';
+
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-gray-400' : 'text-gray-600';
+  const textTertiary = isDark ? 'text-gray-300' : 'text-gray-700';
+  const textMuted = isDark ? 'text-gray-500' : 'text-gray-500';
+
+  const borderColor = isDark ? 'border-gray-700' : 'border-gray-200';
+  const divideColor = isDark ? 'divide-gray-700' : 'divide-gray-200';
+
+  const hoverBg = isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100';
+  const hoverText = isDark ? 'hover:text-white' : 'hover:text-gray-900';
+
+  const progressBarBg = isDark ? 'bg-gray-700' : 'bg-gray-200';
 
   // Filter out items based on classification settings
   // CRITICAL: Stock Intelligence respects per-item overrides, reorder_method, and global rules
@@ -269,7 +295,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
       <div className="p-6">
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-red-400">Access Denied</h2>
-          <p className="text-gray-400 mt-2">You don't have permission to view stock intelligence.</p>
+          <p className={`${textSecondary} mt-2`}>You don't have permission to view stock intelligence.</p>
         </div>
       </div>
     );
@@ -282,7 +308,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+        <h1 className={`text-3xl font-bold ${textPrimary} flex items-center gap-3`}>
           <ChartBarIcon className="w-8 h-8 text-accent-400" />
           Stock Intelligence
         </h1>
@@ -290,30 +316,30 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
 
       {/* Key Metrics Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+        <div className={`${cardClass} rounded-lg border p-4`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Critical Risks</p>
+              <p className={`text-sm ${textSecondary}`}>Critical Risks</p>
               <p className="text-2xl font-bold text-red-400">{criticalRisks.length}</p>
             </div>
             <AlertCircleIcon className="w-8 h-8 text-red-400/50" />
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+        <div className={`${cardClass} rounded-lg border p-4`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">High Priority</p>
+              <p className={`text-sm ${textSecondary}`}>High Priority</p>
               <p className="text-2xl font-bold text-orange-400">{highRisks.length}</p>
             </div>
             <AlertCircleIcon className="w-8 h-8 text-orange-400/50" />
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+        <div className={`${cardClass} rounded-lg border p-4`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Trending Up</p>
+              <p className={`text-sm ${textSecondary}`}>Trending Up</p>
               <p className="text-2xl font-bold text-green-400">
                 {stockoutRisks.filter(r => r.trendDirection === 'up').length}
               </p>
@@ -322,10 +348,10 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           </div>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-4">
+        <div className={`${cardClass} rounded-lg border p-4`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-400">Active Vendors</p>
+              <p className={`text-sm ${textSecondary}`}>Active Vendors</p>
               <p className="text-2xl font-bold text-accent-400">{vendorPerformances.length}</p>
             </div>
             <UsersIcon className="w-8 h-8 text-accent-400/50" />
@@ -334,8 +360,8 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
       </div>
 
       {/* Tabs */}
-      <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
-        <div className="flex border-b border-gray-700">
+      <div className={`${cardClass} rounded-lg border overflow-hidden`}>
+        <div className={`flex border-b ${borderColor}`}>
 
           {[
             { id: 'alerts', label: 'Alerts & Actions', icon: BellIcon },
@@ -353,7 +379,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`flex-1 px-4 py-1 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${activeTab === tab.id
                   ? 'bg-accent-500 text-white'
-                  : 'text-gray-400 hover:bg-gray-700/50 hover:text-white'
+                  : `${textSecondary} ${hoverBg} ${hoverText}`
                   }`}
               >
                 <Icon className="w-4 h-4" />
@@ -367,8 +393,8 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           {/* Alerts & Actions Tab */}
           {activeTab === 'alerts' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Alerts & Pending Actions</h3>
-              <p className="text-gray-400 text-sm">
+              <h3 className={`text-lg font-semibold ${textPrimary}`}>Alerts & Pending Actions</h3>
+              <p className={`${textSecondary} text-sm`}>
                 Email-derived alerts and actions awaiting your approval
               </p>
               <AlertsPanel />
@@ -384,7 +410,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           {/* Stockout Risks Tab */}
           {activeTab === 'risks' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Stockout Risk Analysis</h3>
+              <h3 className={`text-lg font-semibold ${textPrimary}`}>Stockout Risk Analysis</h3>
               <StockoutRiskWidget risks={stockoutRisks} />
             </div>
           )}
@@ -392,13 +418,13 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           {/* Forecast Accuracy Tab */}
           {activeTab === 'forecasts' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Forecast Accuracy Tracking</h3>
-              <p className="text-gray-400 text-sm">
+              <h3 className={`text-lg font-semibold ${textPrimary}`}>Forecast Accuracy Tracking</h3>
+              <p className={`${textSecondary} text-sm`}>
                 Historical forecast performance to improve future predictions
               </p>
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
                 <p className="text-yellow-400 text-sm">
-                  📊 Forecast accuracy tracking requires historical data. This feature will populate over time as forecasts are validated against actual sales.
+                  Forecast accuracy tracking requires historical data. This feature will populate over time as forecasts are validated against actual sales.
                 </p>
               </div>
             </div>
@@ -407,10 +433,10 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           {/* Trends & Patterns Tab */}
           {activeTab === 'trends' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Consumption Trends & Seasonal Patterns</h3>
+              <h3 className={`text-lg font-semibold ${textPrimary}`}>Consumption Trends & Seasonal Patterns</h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="bg-gray-800/30 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-gray-300 mb-3">Growing Demand (30d vs 90d)</h4>
+                <div className={`${innerCardClass} rounded-lg p-4`}>
+                  <h4 className={`text-sm font-semibold ${textTertiary} mb-3`}>Growing Demand (30d vs 90d)</h4>
                   <div className="space-y-2">
                     {filteredInventory
                       .filter(item => {
@@ -423,7 +449,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                         const growth = ((((item.sales30Days || 0) / 30) / ((item.sales90Days || 0) / 90)) - 1) * 100;
                         return (
                           <div key={item.sku} className="flex justify-between items-center">
-                            <span className="text-sm text-gray-300">{item.name}</span>
+                            <span className={`text-sm ${textTertiary}`}>{item.name}</span>
                             <span className="text-sm font-semibold text-green-400">+{growth.toFixed(0)}%</span>
                           </div>
                         );
@@ -431,8 +457,8 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                   </div>
                 </div>
 
-                <div className="bg-gray-800/30 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-gray-300 mb-3">Declining Demand (30d vs 90d)</h4>
+                <div className={`${innerCardClass} rounded-lg p-4`}>
+                  <h4 className={`text-sm font-semibold ${textTertiary} mb-3`}>Declining Demand (30d vs 90d)</h4>
                   <div className="space-y-2">
                     {filteredInventory
                       .filter(item => {
@@ -445,7 +471,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                         const decline = ((((item.sales30Days || 0) / 30) / ((item.sales90Days || 0) / 90)) - 1) * 100;
                         return (
                           <div key={item.sku} className="flex justify-between items-center">
-                            <span className="text-sm text-gray-300">{item.name}</span>
+                            <span className={`text-sm ${textTertiary}`}>{item.name}</span>
                             <span className="text-sm font-semibold text-red-400">{decline.toFixed(0)}%</span>
                           </div>
                         );
@@ -459,36 +485,36 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           {/* Vendor Performance Tab */}
           {activeTab === 'vendors' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Vendor Performance Scoring</h3>
+              <h3 className={`text-lg font-semibold ${textPrimary}`}>Vendor Performance Scoring</h3>
 
               {vendorPerformances.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">No vendor performance data available yet</p>
+                <p className={`${textSecondary} text-center py-8`}>No vendor performance data available yet</p>
               ) : (
                 <div className="space-y-3">
                   {vendorPerformances.map(vp => (
-                    <div key={vp.vendorId} className="bg-gray-800/30 rounded-lg p-4">
+                    <div key={vp.vendorId} className={`${innerCardClass} rounded-lg p-4`}>
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <h4 className="text-lg font-semibold text-white">{vp.vendorName}</h4>
-                          <p className="text-sm text-gray-400">Reliability Score</p>
+                          <h4 className={`text-lg font-semibold ${textPrimary}`}>{vp.vendorName}</h4>
+                          <p className={`text-sm ${textSecondary}`}>Reliability Score</p>
                         </div>
                         <div className="text-right">
                           <div className="text-2xl font-bold text-accent-400">{vp.reliabilityScore}</div>
-                          <div className="text-xs text-gray-400">/ 100</div>
+                          <div className={`text-xs ${textSecondary}`}>/ 100</div>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <p className="text-xs text-gray-400">On-Time Delivery</p>
-                          <p className="text-lg font-semibold text-white">{vp.onTimeDeliveryRate.toFixed(0)}%</p>
+                          <p className={`text-xs ${textSecondary}`}>On-Time Delivery</p>
+                          <p className={`text-lg font-semibold ${textPrimary}`}>{vp.onTimeDeliveryRate.toFixed(0)}%</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-400">Avg Lead Time</p>
-                          <p className="text-lg font-semibold text-white">
+                          <p className={`text-xs ${textSecondary}`}>Avg Lead Time</p>
+                          <p className={`text-lg font-semibold ${textPrimary}`}>
                             {vp.averageLeadTimeActual.toFixed(0)} days
                             {vp.averageLeadTimeEstimated > 0 && (
-                              <span className="text-sm text-gray-400 ml-1">
+                              <span className={`text-sm ${textSecondary} ml-1`}>
                                 (est: {vp.averageLeadTimeEstimated})
                               </span>
                             )}
@@ -497,7 +523,7 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
                       </div>
 
                       {/* Reliability bar */}
-                      <div className="mt-3 h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div className={`mt-3 h-2 ${progressBarBg} rounded-full overflow-hidden`}>
                         <div
                           className={`h-full rounded-full ${vp.reliabilityScore >= 80 ? 'bg-green-500' :
                             vp.reliabilityScore >= 60 ? 'bg-yellow-500' :
@@ -516,10 +542,10 @@ const StockIntelligence: React.FC<StockIntelligenceProps> = ({ inventory, vendor
           {/* Budget Analysis Tab */}
           {activeTab === 'budget' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Budget & Cost Analysis</h3>
+              <h3 className={`text-lg font-semibold ${textPrimary}`}>Budget & Cost Analysis</h3>
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
                 <p className="text-yellow-400 text-sm">
-                  📊 Budget analysis feature coming soon. Will track spending trends, forecast future costs, and identify optimization opportunities.
+                  Budget analysis feature coming soon. Will track spending trends, forecast future costs, and identify optimization opportunities.
                 </p>
               </div>
             </div>

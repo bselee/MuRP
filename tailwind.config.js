@@ -28,6 +28,35 @@ export default {
           900: '#061F30',
         },
       },
+      transitionDuration: {
+        'fast': '100ms',
+        'normal': '200ms',
+        'slow': '300ms',
+      },
+      keyframes: {
+        'shimmer': {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        'scale-in': {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'slide-up': {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'shimmer': 'shimmer 2s infinite linear',
+        'scale-in': 'scale-in 200ms ease-out',
+        'fade-in': 'fade-in 150ms ease-out',
+        'slide-up': 'slide-up 200ms ease-out',
+      },
     },
   },
   plugins: [],

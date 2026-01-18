@@ -131,8 +131,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 /services/           # Business logic (~135 services)
 /types/              # TypeScript type definitions
 /supabase/
-  /functions/        # Edge functions (32 functions for webhooks, sync, automation)
-  /migrations/       # 186+ SQL migrations (strict 3-digit sequential numbering)
+  /functions/        # Edge functions (33 functions for webhooks, sync, automation)
+  /migrations/       # 188+ SQL migrations (strict 3-digit sequential numbering)
 /e2e/                # Playwright E2E tests
 /tests/              # Unit tests
 ```
@@ -177,6 +177,27 @@ All E2E tests use `?e2e=1` query param to bypass authentication:
 // In e2e/*.spec.ts
 await page.goto('/vendors?e2e=1');  // Auto-logs in as DEV_DEFAULT_USER
 ```
+
+**Playwright Configuration** (`playwright.config.ts`):
+- Uses preview server on port **4173** (builds first, then serves)
+- Timeout: 30s per test, 5s for assertions
+- Retries: 1 on failure
+- Single worker (no parallelization for stability)
+- Trace capture on first retry only
+
+**Test Suites (9 total):**
+
+| Test File | Coverage |
+|-----------|----------|
+| `app-smoke.spec.ts` | Basic app functionality, navigation |
+| `boms.spec.ts` | BOM creation, editing, component management |
+| `vendors.spec.ts` | Vendor CRUD operations |
+| `settings.spec.ts` | Settings page functionality |
+| `inventory-wizard.spec.ts` | Inventory setup wizard |
+| `po-tracking.spec.ts` | Purchase order tracking |
+| `email-policy.spec.ts` | Email policy enforcement |
+| `google-oauth.spec.ts` | OAuth flow testing |
+| `projects-create.spec.ts` | Project creation workflow |
 
 Pattern: `test.describe()` -> `test.beforeEach()` -> individual `test()` blocks. See `e2e/vendors.spec.ts` for examples.
 
@@ -273,6 +294,34 @@ const isExcludedItem = (item: InventoryItem): boolean => {
 };
 ```
 
+### Advanced Forecasting Engine (`services/advancedForecastingEngine.ts`)
+
+Multi-method forecasting with ABC/XYZ classification-based method selection:
+
+**Forecasting Methods:**
+- **SMA** (Simple Moving Average) - For stable demand patterns
+- **ETS** (Exponential Smoothing) - For trending patterns
+- **Holt-Winters** - For seasonal patterns
+- **Weighted Ensemble** - Combines methods based on item classification
+
+**Safety Stock Service Levels by ABC Class:**
+- A-class items: 98% service level
+- B-class items: 95% service level
+- C-class items: 90% service level
+
+**Accuracy Metrics:** MAPE (Mean Absolute Percentage Error), MAE (Mean Absolute Error), and bias calculations for automatic model selection.
+
+```typescript
+import { generateForecast, selectBestMethod } from './services/advancedForecastingEngine';
+
+const forecast = await generateForecast(sku, {
+  horizon: 90,          // days to forecast
+  method: 'auto',       // auto-selects based on ABC/XYZ classification
+  includeConfidence: true
+});
+// Returns: { values[], method, accuracy: { mape, mae, bias }, confidence }
+```
+
 ### Inventory KPI Framework
 
 Comprehensive KPIs calculated by `inventoryKPIService.ts`:
@@ -320,6 +369,31 @@ const risks = await analyzeSupplyChainRisks({
 // Each risk has two-sentence output format:
 // risk.risk_statement: "SKU X will breach safety stock on DATE (Y days)"
 // risk.action_statement: "ACTION: Order N units by DATE to prevent stockout"
+```
+
+### BOM Intelligence Service (`services/bomIntelligenceService.ts`)
+
+Handles BOM explosion, dependency tracking, and build feasibility analysis:
+
+**Key Capabilities:**
+- BOM explosion with multi-level dependency resolution
+- Build feasibility analysis with component availability checks
+- Shortage detection and impact assessment across dependent assemblies
+- Component substitution recommendations
+
+```typescript
+import { checkBuildFeasibility, getShortages, explodeBom } from './services/bomIntelligenceService';
+
+// Check if a build is feasible
+const feasibility = await checkBuildFeasibility(bomId, quantity);
+// Returns: { canBuild: boolean, shortages: ShortageItem[], availableQty, requiredQty, blockers[] }
+
+// Get all shortages for a BOM
+const shortages = await getShortages(bomId);
+// Returns: { sku, required, available, shortfall, impactedAssemblies[] }[]
+
+// Explode BOM to component level
+const components = await explodeBom(bomId, { levels: 'all', includePhantoms: false });
 ```
 
 ### Classification Context Service
@@ -374,6 +448,32 @@ const result = await runMorningBriefing(userId);
 - `workflow_executions` - Workflow run logs for audit
 - `pending_actions_queue` - Actions proposed by agents awaiting approval
 - `agent_run_history` - Execution logs
+
+### Agent Execution Architecture
+
+**Central Hub** (`services/agentExecutor.ts`):
+- Registry-based capability executor mapping capabilities to TypeScript functions
+- Bridges database `agent_definitions` to actual execution logic
+- Integrates all 10+ specialized agents through unified interface
+
+**Autonomy Gate** (`services/agentAutonomyGate.ts`):
+- Trust-based autonomy checks before agent actions execute
+- Rules engine determining autonomous execution vs. human approval required
+- Returns `AutonomyCheckResult` with approval workflow integration
+
+```typescript
+import { checkAgentAutonomy } from './services/agentAutonomyGate';
+
+// Check if agent can execute autonomously
+const result = await checkAgentAutonomy(agentId, action, context);
+// Returns: { allowed: boolean, requiresApproval: boolean, reason: string, trustScore: number }
+
+if (result.requiresApproval) {
+  await queueForApproval(action);  // Goes to pending_actions_queue
+} else if (result.allowed) {
+  await executeAction(action);     // Direct execution
+}
+```
 
 ### pg_cron Scheduled Jobs
 
@@ -524,6 +624,32 @@ const { data } = await supabase
 - `sendRubeDailySummary()` - Rich Slack messages via Rube
 - `syncPOFromEmailViaRube()` - Targeted PO lookup via email search
 
+**Composio Integration** (`services/composioService.ts`):
+
+Full Rube/Composio integration enabling access to 500+ external apps:
+- Two-way Slack communication with interactive buttons
+- OAuth-managed connections to external services
+- Recipe execution for complex multi-step workflows
+- Data exchange patterns for cross-app automation
+
+```typescript
+import { executeComposioAction, listAvailableConnections } from './services/composioService';
+
+// Execute an action through Composio
+const result = await executeComposioAction('slack.send_message', {
+  channel: '#alerts',
+  text: 'PO-123 shipped',
+  attachments: [{ ... }]
+});
+```
+
+**Context7 Integration** (`services/context7Service.ts`):
+
+Live documentation lookups during agent execution:
+- Library search and code snippet retrieval
+- Tier-based access control for documentation features
+- Integrated with AI Gateway for enhanced responses
+
 ## Key Integrations
 
 ### Finale Inventory API
@@ -531,18 +657,38 @@ const { data } = await supabase
 - 3-layer security: Frontend -> Proxy -> Finale API
 - Includes circuit breakers, rate limiting, exponential backoff
 
-### Edge Functions (32 deployed)
+### Edge Functions (33 deployed)
 
 Located in `supabase/functions/`:
+
+**Core Sync & Data:**
 - `api-proxy` - Secure backend proxy for external APIs
 - `auto-sync-finale` - Automated Finale data sync orchestrator
 - `sync-finale-graphql` - Direct Finale GraphQL sync
+- `sync-finale-shipments` - Shipment data synchronization
+- `import-build-forecast` - Build forecast data ingestion
+
+**Email & Communications:**
 - `email-inbox-poller` - Email monitoring (5 min interval)
-- `invoice-extractor` - Claude Vision AI extraction
-- `three-way-match-runner` - Batch matching
+- `gmail-webhook` - Direct Gmail webhook handling
 - `po-followup-runner` - Automated vendor follow-ups
+- `slack-notify` - Slack integration notifications
+
+**Invoice & Matching:**
+- `invoice-extractor` - Claude Vision AI extraction
+- `three-way-match-runner` - Batch PO/Invoice/Receipt matching
+- `backorder-processor` - Autonomous backorder processing
+
+**Agents & Automation:**
 - `scheduled-agent-runner` - pg_cron triggered agent execution
-- And 24 more...
+- `nightly-reorder-scan` - Scheduled reorder analysis
+- `po-tracking-updater` - Real-time PO status updates
+
+**Authentication & Google:**
+- `google-auth` - OAuth flow handler
+- `google-callback` - OAuth callback processor
+
+And 18 more for webhooks, notifications, and specialized processing.
 
 ### Google APIs
 - OAuth2 flow: `services/googleAuthService.ts`
@@ -601,6 +747,71 @@ await supabase.from('vendors').insert(dbData);
 
 // Check highest migration number first
 ls supabase/migrations | sort | tail -1
+```
+
+## Feature Flags
+
+Runtime feature toggling via `lib/featureFlags.ts`:
+
+```typescript
+import { isFeatureEnabled } from './lib/featureFlags';
+
+// Check if a feature is enabled
+if (isFeatureEnabled('VITE_SHOPIFY_INTEGRATION_ENABLED')) {
+  // Shopify-specific code path
+}
+```
+
+**Current Flags:**
+- `VITE_SHOPIFY_INTEGRATION_ENABLED` - Shopify store integration
+
+Add new flags by setting `VITE_<FLAG_NAME>=true` in environment variables.
+
+## System Events & Alert Bus
+
+Cross-component event communication patterns for real-time UI updates:
+
+**System Alerts** (`contexts/SystemAlertContext`):
+
+```typescript
+import { useSystemAlerts } from './contexts/SystemAlertContext';
+
+const { addAlert, dismissAlert, alerts } = useSystemAlerts();
+
+// Add a system-wide alert
+addAlert({
+  id: 'unique-alert-id',
+  severity: 'warning',  // 'error' | 'warning'
+  message: 'Stock level critical for SKU-123',
+  source: 'inventory-guardian'
+});
+```
+
+**Sync Progress Events** (Custom event bus):
+
+```typescript
+// Dispatch sync progress from services
+window.dispatchEvent(new CustomEvent('sync-progress', {
+  detail: { running: true, source: 'finale-sync' }
+}));
+
+// Listen for sync events in components
+useEffect(() => {
+  const handler = (e: CustomEvent<{ running: boolean; source: string }>) => {
+    setSyncStatus(e.detail);
+  };
+  window.addEventListener('sync-progress', handler as EventListener);
+  return () => window.removeEventListener('sync-progress', handler as EventListener);
+}, []);
+```
+
+**Global Filter Change Events:**
+
+```typescript
+// Components listen for filter changes to refresh data
+window.addEventListener('global-category-filter-changed', handleRefresh);
+window.addEventListener('global-sku-filter-changed', handleRefresh);
+window.addEventListener('global-vendor-filter-changed', handleRefresh);
 ```
 
 ## Environment Configuration

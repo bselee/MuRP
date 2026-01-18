@@ -1,5 +1,6 @@
 import React, { forwardRef, ButtonHTMLAttributes } from 'react';
 import { useTheme } from '@/components/ThemeProvider';
+import { SpinnerSVG } from './Spinner';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
@@ -41,28 +42,13 @@ const sizeStyles: Record<ButtonSize, string> = {
     lg: 'px-6 py-3 text-base min-h-[48px]',
 };
 
-const Spinner = () => (
-    <svg
-        className="h-4 w-4 animate-spin opacity-80"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-    >
-        <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-            fill="none"
-        />
-        <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-        />
-    </svg>
-);
+/** Maps button size to appropriate spinner size */
+const spinnerSizeMap: Record<ButtonSize, 'xs' | 'sm'> = {
+    xs: 'xs',
+    sm: 'sm',
+    md: 'sm',
+    lg: 'sm',
+};
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     (
@@ -83,33 +69,73 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ) => {
         const { resolvedTheme } = useTheme();
         const themeKey: ThemeVariant = resolvedTheme === 'light' ? 'light' : 'dark';
-        const baseClasses =
-            'inline-flex items-center justify-center gap-2 font-medium rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]';
+        const isDark = themeKey === 'dark';
+
+        // Base classes with micro-interactions for "expensive" feel
+        // - Smooth hover scale-up for anticipation
+        // - Instant active press-down for responsive tactile feedback
+        // - Proper focus states with theme-aware ring offset
+        const baseClasses = [
+            // Layout
+            'inline-flex items-center justify-center gap-2',
+            // Typography
+            'font-medium',
+            // Shape
+            'rounded-full',
+            // Transitions - smooth for hover, none for active (instant press feedback)
+            'transition-all duration-200 ease-out',
+            'active:transition-none',
+            // Micro-interactions - subtle scale transforms
+            'hover:scale-[1.02]',
+            'active:scale-[0.98]',
+            // Focus states - accessible and theme-aware
+            'focus:outline-none',
+            'focus-visible:ring-2',
+            'focus-visible:ring-offset-2',
+            isDark ? 'focus-visible:ring-offset-gray-900' : 'focus-visible:ring-offset-white',
+            // Disabled states - no interactions when disabled
+            'disabled:opacity-50',
+            'disabled:pointer-events-none',
+            'disabled:scale-100',
+            'disabled:hover:scale-100',
+        ].join(' ');
+
         const widthClass = fullWidth ? 'w-full' : '';
+
+        // Loading state classes - prevent interactions and fade content
+        const loadingClasses = loading ? 'cursor-wait' : '';
+
         const composedClassName = [
             baseClasses,
             variantStyles[variant][themeKey],
             sizeStyles[size],
             widthClass,
+            loadingClasses,
             className,
         ]
             .filter(Boolean)
             .join(' ');
 
+        const isDisabled = disabled || loading;
+
         return (
             <button
                 ref={ref}
                 className={composedClassName}
-                disabled={disabled || loading}
+                disabled={isDisabled}
+                aria-disabled={isDisabled}
+                aria-busy={loading}
                 data-variant={variant}
+                data-loading={loading || undefined}
                 data-murp-button="true"
                 type={type}
                 {...props}
             >
                 {loading ? (
                     <>
-                        <Spinner />
-                        <span className="sr-only">Processing…</span>
+                        <SpinnerSVG size={spinnerSizeMap[size]} className="shrink-0" label="Processing" />
+                        <span className="opacity-70">{children}</span>
+                        <span className="sr-only">Processing...</span>
                     </>
                 ) : (
                     <>
